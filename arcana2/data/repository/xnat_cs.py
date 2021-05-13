@@ -204,9 +204,9 @@ class XnatCSRepo(XnatRepo):
                                                record.pipeline_name + '.json'))
 
     @classmethod
-    def command_json(cls, image_name, analysis_cls, inputs, outputs,
-                     parameters, desc, frequency='per_session',
-                     docker_index="https://index.docker.io/v1/"):
+    def make_command_json(cls, image_name, analysis_cls, inputs, outputs,
+                          parameters, desc, frequency='per_session',
+                          docker_index="https://index.docker.io/v1/"):
 
         if frequency != 'per_session':
             raise NotImplementedError(

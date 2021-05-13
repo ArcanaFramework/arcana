@@ -1,13 +1,13 @@
 from builtins import object
 import os
 import os.path as op
+from abc import abstractmethod, ABCMeta
 from collections import defaultdict
+import numpy as np
 from arcana2.exceptions import (
     ArcanaUsageError, ArcanaNoConverterError, ArcanaFileFormatError,
     ArcanaNameError)
-from nipype.interfaces.utility import IdentityInterface
-from arcana2.utils.interfaces import (
-    ZipDir, UnzipDir, TarGzDir, UnTarGzDir)
+
 from arcana2.utils import split_extension
 import logging
 
@@ -357,6 +357,112 @@ class FileFormatAuxFile(object):
         return getattr(self._file_format, attr)
 
 
+class ImageFormat(FileFormat, metaclass=ABCMeta):
+
+    INCLUDE_HDR_KEYS = None
+    IGNORE_HDR_KEYS = None
+
+    @abstractmethod
+    def get_header(self, fileset):
+        """
+        Returns array data associated with the given path for the
+        file format
+        """
+
+    @abstractmethod
+    def get_array(self, fileset):
+        """
+        Returns header data associated with the given path for the
+        file format
+        """
+
+    def contents_equal(self, fileset, other_fileset, rms_tol=None, **kwargs):
+        """
+        Test whether the (relevant) contents of two image filesets are equal
+        given specific criteria
+
+        Parameters
+        ----------
+        fileset : Fileset
+            One of the two filesets to compare
+        other_fileset : Fileset
+            The other fileset to compare
+        rms_tol : float
+            The root-mean-square tolerance that is acceptable between the array
+            data for the images to be considered equal
+        """
+        if other_fileset.format != self:
+            return False
+        if self.headers_diff(fileset, other_fileset, **kwargs):
+            return False
+        if rms_tol:
+            rms_diff = self.rms_diff(fileset, other_fileset)
+            return (rms_diff < rms_tol)
+        else:
+            return np.array_equiv(fileset.get_array(),
+                                  other_fileset.get_array())
+
+    def headers_diff(self, fileset, other_fileset, include_keys=None,
+                     ignore_keys=None, **kwargs):
+        """
+        Check headers to see if all values
+        """
+        diff = []
+        hdr = fileset.get_header()
+        hdr_keys = set(hdr.keys())
+        other_hdr = other_fileset.get_header()
+        if include_keys is not None:
+            if ignore_keys is not None:
+                raise BananaUsageError(
+                    "Doesn't make sense to provide both 'include_keys' ({}) "
+                    "and ignore_keys ({}) to headers_equal method"
+                    .format(include_keys, ignore_keys))
+            include_keys &= hdr_keys
+        elif ignore_keys is not None:
+            include_keys = hdr_keys - set(ignore_keys)
+        else:
+            if self.INCLUDE_HDR_KEYS is not None:
+                if self.IGNORE_HDR_KEYS is not None:
+                    raise BananaUsageError(
+                        "Doesn't make sense to have both 'INCLUDE_HDR_FIELDS'"
+                        "and 'IGNORE_HDR_FIELDS' class attributes of class {}"
+                        .format(type(self).__name__))
+                include_keys = self.INCLUDE_HDR_KEYS  # noqa pylint: disable=no-member
+            elif self.IGNORE_HDR_KEYS is not None:
+                include_keys = hdr_keys - set(self.IGNORE_HDR_KEYS)
+            else:
+                include_keys = hdr_keys
+        for key in include_keys:
+            value = hdr[key]
+            try:
+                other_value = other_hdr[key]
+            except KeyError:
+                diff.append(key)
+            else:
+                if isinstance(value, np.ndarray):
+                    if not isinstance(other_value, np.ndarray):
+                        diff.append(key)
+                    else:
+                        try:
+                            if not np.allclose(value, other_value,
+                                               equal_nan=True):
+                                diff.append(key)
+                        except TypeError:
+                            # Fallback to a straight comparison for some dtypes
+                            if value != other_value:
+                                diff.append(key)
+                elif value != other_value:
+                    diff.append(key)
+        return diff
+
+    def rms_diff(self, fileset, other_fileset):
+        """
+        Return the RMS difference between the image arrays
+        """
+        return np.sqrt(np.sum((fileset.get_array()
+                               - other_fileset.get_array()) ** 2))
+
+
 class Converter(object):
     """
     Base class for all Arcana data format converters
@@ -430,69 +536,3 @@ class Converter(object):
         return "{}(input_format={}, output_format={})".format(
             type(self).__name__, self.input_format, self.output_format)
 
-
-class IdentityConverter(Converter):
-
-    requirements = []
-    interface = IdentityInterface(['i'])
-    input = 'i'
-    output = 'i'
-
-
-class UnzipConverter(Converter):
-
-    interface = UnzipDir()
-    mem_gb = 12
-    input = 'zipped'
-    output = 'unzipped'
-
-
-class ZipConverter(Converter):
-
-    interface = ZipDir()
-    mem_gb = 12
-    input = 'dirname'
-    output = 'zipped'
-
-
-class TarGzConverter(Converter):
-
-    interface = TarGzDir()
-    mem_gb = 12
-    input = 'dirname'
-    output = 'zipped'
-
-
-class UnTarGzConverter(Converter):
-
-    interface = UnTarGzDir()
-    mem_gb = 12
-    input = 'gzipped'
-    output = 'gunzipped'
-
-
-# General formats
-directory_format = FileFormat(name='directory', extension=None, directory=True)
-text_format = FileFormat(name='text', extension='.txt')
-json_format = FileFormat(name='json', extension='.json')
-
-# Compressed formats
-zip_format = FileFormat(name='zip', extension='.zip')
-targz_format = FileFormat(name='targz', extension='.tar.gz')
-
-standard_formats = [text_format, json_format, directory_format, zip_format,
-                    targz_format]
-
-# General image formats
-gif_format = FileFormat(name='gif', extension='.gif')
-png_format = FileFormat(name='png', extension='.png')
-jpg_format = FileFormat(name='jpg', extension='.jpg')
-
-# Document formats
-pdf_format = FileFormat(name='pdf', extension='.pdf')
-
-# Set Converters
-directory_format.set_converter(zip_format, UnzipConverter)
-directory_format.set_converter(targz_format, UnTarGzConverter)
-targz_format.set_converter(directory_format, TarGzConverter)
-zip_format.set_converter(directory_format, ZipConverter)

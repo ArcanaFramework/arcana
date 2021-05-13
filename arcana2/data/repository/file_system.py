@@ -21,7 +21,7 @@ from .base import Repository
 logger = logging.getLogger('arcana')
 
 
-class FileSystemRepo(Repository):
+class FileSystem(Repository):
     """
     A 'Repository' class for data stored simply in file-system
     directories. Can be a single directory if it contains only one subject
@@ -40,6 +40,7 @@ class FileSystemRepo(Repository):
     DEFAULT_SUBJECT_ID = 'SUBJECT'
     DEFAULT_VISIT_ID = 'VISIT'
     MAX_DEPTH = 2
+    POSSIBLE_LEVELS = ('group', 'subject', 'visit')
 
     def __repr__(self):
         return "{}()".format(type(self).__name__)
