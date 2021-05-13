@@ -61,7 +61,7 @@ class BaseMatcherMixin(object):
         dct['order'] = self.order
         dct['is_regex'] = self.is_regex
         dct['analysis_'] = self._analysis
-        dct['slice_'] = self._column
+        dct['column'] = self._column
         dct['skip_missing'] = self.skip_missing
         dct['drop_if_missing'] = self.drop_if_missing
         dct['fallback_to_default'] = self.fallback_to_default
@@ -157,8 +157,6 @@ class FileGroupMatcher(BaseMatcherMixin, BaseFileGroup):
 
     Parameters
     ----------
-    target : str
-        The name of the file group spec to match against
     valid_formats : list[FileFormat] | FileFormat
         File formats that data will be accepted in
     pattern : str
@@ -212,18 +210,18 @@ class FileGroupMatcher(BaseMatcherMixin, BaseFileGroup):
     is_spec = False
     ColumnClass = FileGroupColumn
 
-    def __init__(self, target, pattern=None, valid_formats=None,
+    def __init__(self, pattern=None, valid_formats=None,
                  frequency='per_session', id=None,
                  order=None, dicom_tags=None, is_regex=False,
                  from_analysis=None, skip_missing=False, drop_if_missing=False,
                  fallback_to_default=False, dataset=None,
                  acceptable_quality=None,
-                 analysis_=None, slice_=None):
-        BaseFileGroup.__init__(self, target, None, frequency)
+                 analysis_=None, column=None):
+        BaseFileGroup.__init__(self, None, frequency)
         BaseMatcherMixin.__init__(self, pattern, is_regex, order,
                                 from_analysis, skip_missing, drop_if_missing,
                                 fallback_to_default, dataset, analysis_,
-                                slice_)
+                                column)
         self.dicom_tags = dicom_tags
         if order is not None and id is not None:
             raise ArcanaUsageError(
@@ -384,8 +382,6 @@ class FieldMatcher(BaseMatcherMixin, BaseField):
 
     Parameters
     ----------
-    target : str
-        The name of the field spec to match against.
     pattern : str
         A regex pattern to match the field names with. Must match
         one and only one file_group per <frequency>. If None, the name
@@ -431,16 +427,16 @@ class FieldMatcher(BaseMatcherMixin, BaseField):
     is_spec = False
     ColumnClass = FieldColumn
 
-    def __init__(self, target, pattern, dtype=None, frequency='per_session',
+    def __init__(self, pattern, dtype=None, frequency='per_session',
                  order=None, is_regex=False, from_analysis=None,
                  skip_missing=False, drop_if_missing=False,
                  fallback_to_default=False, dataset=None, analysis_=None,
-                 slice_=None):
-        BaseField.__init__(self, target, dtype, frequency)
+                 column=None):
+        BaseField.__init__(self, dtype, frequency)
         BaseMatcherMixin.__init__(self, pattern, is_regex, order,
                                 from_analysis, skip_missing, drop_if_missing,
                                 fallback_to_default, dataset, analysis_,
-                                slice_)
+                                column)
 
     def __eq__(self, other):
         return (BaseField.__eq__(self, other) and

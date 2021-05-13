@@ -1,3 +1,4 @@
+from typing import Sequence
 from past.builtins import basestring
 from future.utils import PY3, PY2
 import subprocess as sp
@@ -11,6 +12,7 @@ import tempfile
 from arcana2.exceptions import ArcanaUsageError
 from contextlib import ExitStack
 from collections.abc import Iterable
+from importlib import import_module
 
 
 PATH_SUFFIX = '_path'
@@ -294,3 +296,4 @@ def wrap_text(text, line_length, indent, prefix_indent=False):
     if prefix_indent:
         wrapped = ' ' * indent + wrapped
     return wrapped
+
