@@ -168,18 +168,16 @@ class BaseRunCmd(BaseRepoCmd):
         workflow = Workflow(name=cls.app_name(args))
         workflow.add(repository.source(dataset_name=args.dataset_name,
                                        inputs=inputs,
-                                       frequency=frequency)(
-            name='source',
-            id=ids).split('id'))
+                                       id=ids,
+                                       frequency=frequency))
 
         app_outs = cls.add_app_task(workflow, args, input_paths, output_paths)
             
         workflow.add(repository.sink(dataset_name=args.dataset_name,
                                      outputs=outputs,
-                                     frequency=frequency)(
-            name='sink',
-            id=workflow.source.lzout.id,
-            **app_outs))
+                                     frequency=frequency,
+                                     id=workflow.source.lzout.id,
+                                     **app_outs))
 
         if not args.dry_run:
             workflow.run()
