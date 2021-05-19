@@ -18,7 +18,7 @@ class HelpCmd():
     desc = "Show help for a particular command"
 
     @classmethod
-    def make_parser(cls, parser):
+    def construct_parser(cls, parser):
         parser.add_argument('command',
                             help="The sub-command to show the help info for")
 
@@ -70,7 +70,7 @@ class MainCmd():
         else:
             cmd_parser = ArgumentParser(prog='arcana ' + args.command,
                                         description=cmd_cls.desc)
-            cmd_cls.make_parser(cmd_parser)
+            cmd_cls.construct_parser(cmd_parser)
             cmd_args = cmd_parser.parse_args(argv[1:])
             cmd_cls.run(cmd_args)
 
