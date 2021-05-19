@@ -3,7 +3,7 @@ import logging
 from argparse import ArgumentParser
 from arcana2.utils import wrap_text
 from arcana2.__about__ import __version__
-from .run import RunAppCmd
+from .run import RunAppCmd, RunBidsAppCmd
 from .wrapper import Wrap4XnatCSCmd
 
 logger = logging.getLogger('arcana')
@@ -32,6 +32,7 @@ class MainCmd():
 
     commands = {
         'run-app': RunAppCmd,
+        'run-bids-app': RunBidsAppCmd,
         'wrap4xnat': Wrap4XnatCSCmd,
         'help': HelpCmd}
 

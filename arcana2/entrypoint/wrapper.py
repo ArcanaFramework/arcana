@@ -8,7 +8,7 @@ class Wrap4XnatCSCmd():
             "generate specified derivatives")
 
     @classmethod
-    def make_parser(cls, parser):
+    def construct_parser(cls, parser):
         parser.add_argument('image_name',
                             help=("The name of the Docker image to generate"
                                   "(with org separated by '/')"))
