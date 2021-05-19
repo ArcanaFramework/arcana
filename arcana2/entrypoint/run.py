@@ -19,6 +19,8 @@ def sanitize_path(path):
     return sanitize_path_re.sub(path, '_')
 
 class BaseRunCmd(BaseRepoCmd):
+    """Abstract base class for RunCmds
+    """
 
     @classmethod
     def construct_parser(cls, parser):
@@ -163,20 +165,20 @@ class BaseRunCmd(BaseRepoCmd):
 
         frequency = cls.parse_frequency(args)
 
-        workflow = Workflow()
-        workflow.add(repository.source(name='source',
-                                       dataset_name=args.dataset_name,
-                                       frequency=frequency,
-                                       ids=ids,
-                                       matchers=inputs))
+        workflow = Workflow(name=cls.app_name(args))
+        workflow.add(repository.source(dataset_name=args.dataset_name,
+                                       inputs=inputs,
+                                       frequency=frequency)(
+            name='source',
+            id=ids).split('id'))
 
         app_outs = cls.add_app_task(workflow, args, input_paths, output_paths)
             
-        workflow.add(repository.sink(args.dataset_name, outputs)(
+        workflow.add(repository.sink(dataset_name=args.dataset_name,
+                                     outputs=outputs,
+                                     frequency=frequency)(
             name='sink',
-            path=workflow.construct_bids.lzout.path,
-            frequency=frequency,
-            ids=ids,
+            id=workflow.source.lzout.id,
             **app_outs))
 
         if not args.dry_run:
@@ -329,6 +331,10 @@ class RunAppCmd():
                 f"(valid: {valid_frequencies})")
         return 'per_' + args.frequency
 
+    @classmethod
+    def app_name(cls, args):
+        return args.app.split('.')[-1].lower()
+
     PATH_DESC = """
         The NAME argument is the name of the input in the Pydra
         interface that wraps the app."""
@@ -384,6 +390,15 @@ class RunBidsAppCmd(BaseRunCmd):
                                   output_paths=output_paths))
         return {n: getattr(workflow.extract_bids.lzout, n)
                 for n in output_paths}
+
+    @classmethod
+    def app_name(cls, args):
+        if args.container:
+            name = args.container[1].split('/')[-1]
+        else:
+            name = args.entrypoint
+        return name
+
 
     PATH_DESC = """
         By default the PATH argument is taken to the name of the

@@ -4,6 +4,7 @@ from nipype.interfaces.base import (
     traits, DynamicTraitedSpec, Undefined, File, Directory,
     BaseInterface, isdefined)
 from itertools import chain
+from typing import Sequence
 from copy import copy
 from arcana2.utils import ExitStack, PATH_SUFFIX, FIELD_SUFFIX, CHECKSUM_SUFFIX
 from arcana2.exceptions import ArcanaError, ArcanaDesignError
@@ -188,6 +189,53 @@ class Repository(metaclass=ABCMeta):
         dataset : Dataset
             The dataset to put the record into
         """
+
+    def source(dataset_name, inputs, frequency='per_session'):
+        """
+        Returns a Pydra task that downloads/extracts data from the
+        repository to be passed to a workflow
+
+        Parameters
+        ----------
+        dataset_name : str
+            The name of the dataset within the repository (e.g. project name)
+        inputs : Sequence[Matcher|Column]
+            A sequence of Matcher of Column objects that specify which data
+            to pull from the repository
+        frequency : str, optional
+            The frequency of the data to extract (i.e. per_session,
+            per_subject, etc...), by default 'per_session'
+
+        Returns
+        -------
+        pydra.task
+            A Pydra task to that downloads/extracts the requested data
+        """
+        raise NotImplementedError
+
+
+    def sink(dataset_name, outputs, frequency='per_session'):
+        """
+        Returns a Pydra task that uploads/moves data to the
+        repository to be passed to a workflow
+
+        Parameters
+        ----------
+        dataset_name : str
+            The name of the dataset within the repository (e.g. project name)
+        outputs : Spec
+            A sequence Spec objects that specify where to put the data
+            in the repository
+        frequency : str, optional
+            The frequency of the data to put (i.e. per_session,
+            per_subject, etc...), by default 'per_session'
+
+        Returns
+        -------
+        pydra.task
+            A Pydra task to that downloads/extracts the requested data
+        """
+        raise NotImplementedError
 
 
 PATH_TRAIT = traits.Either(File(exists=True), Directory(exists=True))
