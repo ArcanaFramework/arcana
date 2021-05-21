@@ -7,12 +7,12 @@ from arcana2.exceptions import (
     ArcanaError, ArcanaFileFormatError, ArcanaUsageError, ArcanaNameError,
     ArcanaDataNotDerivedYetError, ArcanaUriAlreadySetException)
 from .file_format import FileFormat
-from .base import BaseFileGroup, BaseField
+from .base import FileGroupMixin, FieldMixin
 
 HASH_CHUNK_SIZE = 2 ** 20  # 1MB
 
 
-class BaseItemMixin(object):
+class DataItem(object):
 
     is_spec = False
 
@@ -121,7 +121,7 @@ class BaseItemMixin(object):
         return dct
 
 
-class FileGroup(BaseItemMixin, BaseFileGroup):
+class FileGroup(DataItem, FileGroupMixin):
     """
     A representation of a file_group within the dataset.
 
@@ -131,10 +131,9 @@ class FileGroup(BaseItemMixin, BaseFileGroup):
         The name of the file group within the data tree
     format : FileFormat
         The file format used to store the file_group.
-    frequency : str
-        One of 'per_session', 'per_subject', 'per_visit' and 'per_dataset',
-        specifying whether the file_group is present for each session, subject,
-        visit or project.
+    tree_level : TreeLevel
+        The level within the dataset tree that the data items sit, i.e. 
+        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     derived : bool
         Whether the scan was generated or acquired. Depending on the dataset
         used to store the file_group this is used to determine the location of the
@@ -179,14 +178,14 @@ class FileGroup(BaseItemMixin, BaseFileGroup):
         The quality label assigned to the file_group (e.g. as is saved on XNAT)
     """
 
-    def __init__(self, name, format=None, frequency='per_session',
+    def __init__(self, name, format=None, tree_level='per_session',
                  path=None, aux_files=None, id=None, uri=None, subject_id=None,
                  visit_id=None, dataset=None, from_analysis=None,
                  exists=True, checksums=None, record=None, resource_name=None,
                  potential_aux_files=None, quality=None):
-        BaseFileGroup.__init__(self, name=name, format=format,
-                             frequency=frequency)
-        BaseItemMixin.__init__(self, subject_id, visit_id, dataset,
+        FileGroupMixin.__init__(self, name=name, format=format,
+                             tree_level=tree_level)
+        DataItem.__init__(self, subject_id, visit_id, dataset,
                                from_analysis, exists, record)
         if aux_files is not None:
             if path is None:
@@ -250,8 +249,8 @@ class FileGroup(BaseItemMixin, BaseFileGroup):
                              "attribute".format(frmt, attr))
 
     def __eq__(self, other):
-        eq = (BaseFileGroup.__eq__(self, other)
-              and BaseItemMixin.__eq__(self, other)
+        eq = (FileGroupMixin.__eq__(self, other)
+              and DataItem.__eq__(self, other)
               and self._aux_files == other._aux_files
               and self._id == other._id
               and self._checksums == other._checksums
@@ -267,8 +266,8 @@ class FileGroup(BaseItemMixin, BaseFileGroup):
         return eq
 
     def __hash__(self):
-        return (BaseFileGroup.__hash__(self)
-                ^ BaseItemMixin.__hash__(self)
+        return (FileGroupMixin.__hash__(self)
+                ^ DataItem.__hash__(self)
                 ^ hash(self._id)
                 ^ hash(tuple(sorted(self._aux_files.items())))
                 ^ hash(self._checksums)
@@ -305,7 +304,7 @@ class FileGroup(BaseItemMixin, BaseFileGroup):
                 "quality={}{})"
                 .format(
                     type(self).__name__, self.name, self.format,
-                    self.frequency, self.subject_id,
+                    self.tree_level, self.subject_id,
                     self.visit_id, self.from_analysis,
                     (", resource_name='{}'".format(self._resource_name)
                      if self._resource_name is not None else ''),
@@ -314,8 +313,8 @@ class FileGroup(BaseItemMixin, BaseFileGroup):
                      if self._path is not None else '')))
 
     def find_mismatch(self, other, indent=''):
-        mismatch = BaseFileGroup.find_mismatch(self, other, indent)
-        mismatch += BaseItemMixin.find_mismatch(self, other, indent)
+        mismatch = FileGroupMixin.find_mismatch(self, other, indent)
+        mismatch += DataItem.find_mismatch(self, other, indent)
         sub_indent = indent + '  '
         if self._path != other._path:
             mismatch += ('\n{}path: self={} v other={}'
@@ -543,8 +542,8 @@ class FileGroup(BaseItemMixin, BaseFileGroup):
         return matches[0]
 
     def initkwargs(self):
-        dct = BaseFileGroup.initkwargs(self)
-        dct.update(BaseItemMixin.initkwargs(self))
+        dct = FileGroupMixin.initkwargs(self)
+        dct.update(DataItem.initkwargs(self))
         dct['path'] = self.path
         dct['id'] = self.id
         dct['uri'] = self.uri
@@ -583,7 +582,7 @@ class FileGroup(BaseItemMixin, BaseFileGroup):
         return equal
 
 
-class Field(BaseItemMixin, BaseField):
+class Field(DataItem, FieldMixin):
     """
     A representation of a value field in the dataset.
 
@@ -593,10 +592,9 @@ class Field(BaseItemMixin, BaseField):
         The name of the file_group
     dtype : type
         The datatype of the value. Can be one of (float, int, str)
-    frequency : str
-        One of 'per_session', 'per_subject', 'per_visit' and 'per_dataset',
-        specifying whether the file_group is present for each session, subject,
-        visit or project.
+    tree_level : TreeLevel
+        The level within the dataset tree that the data items sit, i.e. 
+        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     derived : bool
         Whether or not the value belongs in the derived session or not
     subject_id : int | str | None
@@ -615,7 +613,7 @@ class Field(BaseItemMixin, BaseField):
     """
 
     def __init__(self, name, value=None, dtype=None,
-                 frequency='per_session', array=None, subject_id=None,
+                 tree_level='per_session', array=None, subject_id=None,
                  visit_id=None, dataset=None, from_analysis=None,
                  exists=True, record=None):
         # Try to determine dtype and array from value if they haven't
@@ -653,24 +651,24 @@ class Field(BaseItemMixin, BaseField):
                     value = [dtype(v) for v in value]
                 else:
                     value = dtype(value)
-        BaseField.__init__(self, name, dtype, frequency, array)
-        BaseItemMixin.__init__(self, subject_id, visit_id, dataset,
+        FieldMixin.__init__(self, name, dtype, tree_level, array)
+        DataItem.__init__(self, subject_id, visit_id, dataset,
                                from_analysis, exists, record)
         self._value = value
 
     def __eq__(self, other):
-        return (BaseField.__eq__(self, other)
-                and BaseItemMixin.__eq__(self, other)
+        return (FieldMixin.__eq__(self, other)
+                and DataItem.__eq__(self, other)
                 and self.value == other.value)
 
     def __hash__(self):
-        return (BaseField.__hash__(self)
-                ^ BaseItemMixin.__hash__(self)
+        return (FieldMixin.__hash__(self)
+                ^ DataItem.__hash__(self)
                 ^ hash(self.value))
 
     def find_mismatch(self, other, indent=''):
-        mismatch = BaseField.find_mismatch(self, other, indent)
-        mismatch += BaseItemMixin.find_mismatch(self, other, indent)
+        mismatch = FieldMixin.find_mismatch(self, other, indent)
+        mismatch += DataItem.find_mismatch(self, other, indent)
         sub_indent = indent + '  '
         if self.value != other.value:
             mismatch += ('\n{}value: self={} v other={}'
@@ -717,7 +715,7 @@ class Field(BaseItemMixin, BaseField):
                     type(self).__name__, self.name,
                     (" {},".format(self._value)
                      if self._value is not None else ''),
-                    self.frequency, self.subject_id,
+                    self.tree_level, self.subject_id,
                     self.visit_id, self.from_analysis,
                     self.exists))
 
@@ -755,8 +753,8 @@ class Field(BaseItemMixin, BaseField):
         return self.value
 
     def initkwargs(self):
-        dct = BaseField.initkwargs(self)
-        dct.update(BaseItemMixin.initkwargs(self))
+        dct = FieldMixin.initkwargs(self)
+        dct.update(DataItem.initkwargs(self))
         dct['value'] = self.value
         return dct
 

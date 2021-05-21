@@ -6,12 +6,12 @@ from itertools import chain
 from arcana2.exceptions import (
     ArcanaUsageError, ArcanaInputError,
     ArcanaInputMissingMatchError, ArcanaNotBoundToAnalysisError)
-from .base import BaseFileGroup, BaseField
+from .base import FileGroupMixin, FieldMixin
 from .item import FileGroup, Field
 from .column import FileGroupColumn, FieldColumn
 
 
-class BaseMatcherMixin(object):
+class DataMatcher():
     """
     Base class for FileGroup and Field Matcher classes
     """
@@ -69,16 +69,16 @@ class BaseMatcherMixin(object):
 
     def nodes(self, tree):
         # Run the match against the tree
-        if self.frequency == 'per_session':
+        if self.tree_level == 'per_session':
             nodes = chain(*(s.sessions for s in tree.subjects))
-        elif self.frequency == 'per_subject':
+        elif self.tree_level == 'per_subject':
             nodes = tree.subjects
-        elif self.frequency == 'per_visit':
+        elif self.tree_level == 'per_visit':
             nodes = tree.visits
-        elif self.frequency == 'per_dataset':
+        elif self.tree_level == 'per_dataset':
             nodes = [tree]
         else:
-            assert False, "Unrecognised frequency '{}'".format(self.frequency)
+            assert False, "Unrecognised tree_level '{}'".format(self.tree_level)
         return nodes
 
     def _match(self, tree, item_cls, **kwargs):
@@ -98,7 +98,7 @@ class BaseMatcherMixin(object):
                         # the the missing item
                         matches.append(item_cls(
                             self.name,
-                            frequency=self.frequency,
+                            tree_level=self.tree_level,
                             subject_id=node.subject_id,
                             visit_id=node.visit_id,
                             dataset=self.analysis.dataset,
@@ -150,7 +150,7 @@ class BaseMatcherMixin(object):
         return match
 
 
-class FileGroupMatcher(BaseMatcherMixin, BaseFileGroup):
+class FileGroupMatcher(DataMatcher, FileGroupMixin):
     """
     A pattern that describes a single file_group (typically acquired
     rather than generated but not necessarily) within each session.
@@ -161,14 +161,13 @@ class FileGroupMatcher(BaseMatcherMixin, BaseFileGroup):
         File formats that data will be accepted in
     pattern : str
         A regex pattern to match the file_group names with. Must match
-        one and only one file_group per <frequency>. If None, the name
+        one and only one file_group per <tree_level>. If None, the name
         is used instead.
     is_regex : bool
         Flags whether the pattern is a regular expression or not
-    frequency : str
-        One of 'per_session', 'per_subject', 'per_visit' and 'per_dataset',
-        specifying whether the file_group is present for each session, subject,
-        visit or project.
+    tree_level : TreeLevel
+        The level within the dataset tree that the data items sit, i.e. 
+        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     id : int | None
         To be used to distinguish multiple file_groups that match the
         pattern in the same session. The ID of the file_group within the
@@ -211,14 +210,14 @@ class FileGroupMatcher(BaseMatcherMixin, BaseFileGroup):
     ColumnClass = FileGroupColumn
 
     def __init__(self, pattern=None, valid_formats=None,
-                 frequency='per_session', id=None,
+                 tree_level='per_session', id=None,
                  order=None, dicom_tags=None, is_regex=False,
                  from_analysis=None, skip_missing=False, drop_if_missing=False,
                  fallback_to_default=False, dataset=None,
                  acceptable_quality=None,
                  analysis_=None, column=None):
-        BaseFileGroup.__init__(self, None, frequency)
-        BaseMatcherMixin.__init__(self, pattern, is_regex, order,
+        FileGroupMixin.__init__(self, None, tree_level)
+        DataMatcher.__init__(self, pattern, is_regex, order,
                                 from_analysis, skip_missing, drop_if_missing,
                                 fallback_to_default, dataset, analysis_,
                                 column)
@@ -241,33 +240,33 @@ class FileGroupMatcher(BaseMatcherMixin, BaseFileGroup):
         self.acceptable_quality = acceptable_quality
 
     def __eq__(self, other):
-        return (BaseFileGroup.__eq__(self, other) and
-                BaseMatcherMixin.__eq__(self, other) and
+        return (FileGroupMixin.__eq__(self, other) and
+                DataMatcher.__eq__(self, other) and
                 self.dicom_tags == other.dicom_tags and
                 self.id == other.id and
                 self._acceptable_quality == other._acceptable_quality)
 
     def __hash__(self):
-        return (BaseFileGroup.__hash__(self) ^
-                BaseMatcherMixin.__hash__(self) ^
+        return (FileGroupMixin.__hash__(self) ^
+                DataMatcher.__hash__(self) ^
                 hash(self.dicom_tags) ^
                 hash(self.id) ^
                 hash(self._acceptable_quality))
 
     def initkwargs(self):
-        dct = BaseFileGroup.initkwargs(self)
-        dct.update(BaseMatcherMixin.initkwargs(self))
+        dct = FileGroupMixin.initkwargs(self)
+        dct.update(DataMatcher.initkwargs(self))
         dct['dicom_tags'] = self.dicom_tags
         dct['id'] = self.id
         dct['acceptable_quality'] = self.acceptable_quality
         return dct
 
     def __repr__(self):
-        return ("{}(name='{}', format={}, frequency={}, pattern={}, "
+        return ("{}(name='{}', format={}, tree_level={}, pattern={}, "
                 "is_regex={}, order={}, id={}, dicom_tags={}, "
                 "from_analysis={}, acceptable_quality={})"
                 .format(self.__class__.__name__, self.name, self._format,
-                        self.frequency, self.pattern, self.is_regex,
+                        self.tree_level, self.pattern, self.is_regex,
                         self.order, self.id, self.dicom_tags,
                         self.from_analysis, self._acceptable_quality))
 
@@ -286,7 +285,7 @@ class FileGroupMatcher(BaseMatcherMixin, BaseFileGroup):
                                 tree, FileGroup,
                                 valid_formats=valid_formats,
                                 **kwargs),
-                            frequency=self.frequency,
+                            tree_level=self.tree_level,
                             candidate_formats=valid_formats)
 
     def _filtered_matches(self, node, valid_formats=None, **kwargs):  # noqa pylint: disable=unused-argument
@@ -375,7 +374,7 @@ class FileGroupMatcher(BaseMatcherMixin, BaseFileGroup):
         return {'format': self.format}
 
 
-class FieldMatcher(BaseMatcherMixin, BaseField):
+class FieldMatcher(DataMatcher, FieldMixin):
     """
     A pattern that matches a single field (typically acquired rather than
     generated but not necessarily) in each session.
@@ -384,17 +383,16 @@ class FieldMatcher(BaseMatcherMixin, BaseField):
     ----------
     pattern : str
         A regex pattern to match the field names with. Must match
-        one and only one file_group per <frequency>. If None, the name
+        one and only one file_group per <tree_level>. If None, the name
         is used instead.
     dtype : type | None
         The datatype of the value. Can be one of (float, int, str). If None
         then the dtype is taken from the FieldSpec that it is bound to
     is_regex : bool
         Flags whether the pattern is a regular expression or not
-    frequency : str
-        One of 'per_session', 'per_subject', 'per_visit' and 'per_dataset',
-        specifying whether the file_group is present for each session, subject,
-        visit or project.
+    tree_level : TreeLevel
+        The level within the dataset tree that the data items sit, i.e. 
+        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     order : int | None
         To be used to distinguish multiple file_groups that match the
         pattern in the same session. The order of the file_group within the
@@ -427,26 +425,26 @@ class FieldMatcher(BaseMatcherMixin, BaseField):
     is_spec = False
     ColumnClass = FieldColumn
 
-    def __init__(self, pattern, dtype=None, frequency='per_session',
+    def __init__(self, pattern, dtype=None, tree_level='per_session',
                  order=None, is_regex=False, from_analysis=None,
                  skip_missing=False, drop_if_missing=False,
                  fallback_to_default=False, dataset=None, analysis_=None,
                  column=None):
-        BaseField.__init__(self, dtype, frequency)
-        BaseMatcherMixin.__init__(self, pattern, is_regex, order,
+        FieldMixin.__init__(self, dtype, tree_level)
+        DataMatcher.__init__(self, pattern, is_regex, order,
                                 from_analysis, skip_missing, drop_if_missing,
                                 fallback_to_default, dataset, analysis_,
                                 column)
 
     def __eq__(self, other):
-        return (BaseField.__eq__(self, other) and
-                BaseMatcherMixin.__eq__(self, other))
+        return (FieldMixin.__eq__(self, other) and
+                DataMatcher.__eq__(self, other))
 
     def match(self, tree, **kwargs):
         # Run the match against the tree
         return FieldColumn(self.name,
                           self._match(tree, Field, **kwargs),
-                          frequency=self.frequency,
+                          tree_level=self.tree_level,
                           dtype=self.dtype)
 
     @property
@@ -461,11 +459,11 @@ class FieldMatcher(BaseMatcherMixin, BaseField):
         return dtype
 
     def __hash__(self):
-        return (BaseField.__hash__(self) ^ BaseMatcherMixin.__hash__(self))
+        return (FieldMixin.__hash__(self) ^ DataMatcher.__hash__(self))
 
     def initkwargs(self):
-        dct = BaseField.initkwargs(self)
-        dct.update(BaseMatcherMixin.initkwargs(self))
+        dct = FieldMixin.initkwargs(self)
+        dct.update(DataMatcher.initkwargs(self))
         return dct
 
     def _filtered_matches(self, node, **kwargs):
@@ -487,10 +485,10 @@ class FieldMatcher(BaseMatcherMixin, BaseField):
         return matches
 
     def __repr__(self):
-        return ("{}(name='{}', dtype={}, frequency={}, pattern={}, "
+        return ("{}(name='{}', dtype={}, tree_level={}, pattern={}, "
                 "is_regex={}, order={}, from_analysis={})"
                 .format(self.__class__.__name__, self.name, self._dtype,
-                        self.frequency, self.pattern, self.is_regex,
+                        self.tree_level, self.pattern, self.is_regex,
                         self.order, self.from_analysis))
 
     @property
