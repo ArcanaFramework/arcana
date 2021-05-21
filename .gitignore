@@ -21,3 +21,4 @@
 .pytest_cache/
 /.history
 .env
+__pycache__

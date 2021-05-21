@@ -16,12 +16,6 @@ class DataColumn(object):
     Base class for a "column" of file_groups and field items
     """
 
-    # For duck-typing with *Spec and *Input objects
-    is_spec = False
-    skip_missing = False
-    drop_if_missing = False
-    derivable = False
-
     def __init__(self, column, tree_level):
         self._tree_level = tree_level
         if tree_level == 'per_dataset':
