@@ -1,12 +1,13 @@
 from builtins import zip
 from builtins import object
 import weakref
+from enum import Enum
 from itertools import chain, groupby
 from collections import defaultdict
 from operator import attrgetter, itemgetter
 from collections import OrderedDict
 import logging
-from arcana2.data import BaseFileGroup, BaseField
+# from .base import FileGroupMixin, FieldMixin
 from arcana2.utils import split_extension
 from arcana2.exceptions import (
     ArcanaNameError, ArcanaRepositoryError, ArcanaUsageError)
@@ -14,6 +15,29 @@ from arcana2.exceptions import (
 id_getter = attrgetter('id')
 
 logger = logging.getLogger('arcana')
+
+
+class TreeLevel(Enum):
+    """
+    The level at which a data item sits within a data tree. For typical
+    neuroimaging analysis these levels are hardcoded to one of six values.
+    """
+
+    session = 'Per session data items'
+    subject = 'Per subject data items'
+    visit = ('Per visit (e.g. timepoint in a longitudinal study) data '
+             'items')
+    group_visit = ('Per group and vist (e.g. a timepoint for a specific '
+                   'group in a longitudinal study) data items')
+    group = 'Per subject group data items'
+    dataset = "A singular data item in the whole dataset"
+
+    @property
+    def desc(self):
+        return self.value
+
+    def __str__(self):
+        return self.name
 
 
 class TreeNode(object):
@@ -122,10 +146,10 @@ class TreeNode(object):
             name and analysis then that is returned otherwise an exception is
             raised
         """
-        if isinstance(id, BaseFileGroup):
-            if from_analysis is None and id.derived:
-                from_analysis = id.analysis.name
-            id = id.name
+        # if id.is_file_group:
+        #     if from_analysis is None and id.derived:
+        #         from_analysis = id.analysis.name
+        #     id = id.name
         try:
             format_dct = self._file_groups[(id, from_analysis)]
         except KeyError:
@@ -197,17 +221,17 @@ class TreeNode(object):
 
         Parameters
         ----------
-        name : str | BaseField
+        name : str | FieldMixin
             The name of the field or a spec matching the given name
         analysis : str | None
             Name of the analysis that produced the field if derived. If None
             and a spec is passed instaed of string to the name argument then
             the analysis name will be taken from the spec instead.
         """
-        if isinstance(name, BaseField):
-            if from_analysis is None and name.derived:
-                from_analysis = name.analysis.name
-            name = name.name
+        # if isinstance(name, FieldMixin):
+        #     if from_analysis is None and name.derived:
+        #         from_analysis = name.analysis.name
+        #     name = name.name
         try:
             return self._fields[(name, from_analysis)]
         except KeyError:
@@ -344,7 +368,7 @@ class TreeNode(object):
             self._tree = weakref.ref(self._tree)
 
 
-class Tree(TreeNode):
+class DataTree(TreeNode):
     """
     Represents a project tree as stored in a dataset
 
@@ -358,11 +382,9 @@ class Tree(TreeNode):
     dataset : Dataset
         The dataset that the tree represents
     file_groups : List[FileGroup]
-        The file_groups that belong to the project, i.e. of 'per_dataset'
-        frequency
+        The file_groups at the top level of the data tree
     fields : List[Field]
-        The fields that belong to the project, i.e. of 'per_dataset'
-        frequency
+        The fields at the top level of the data tree
     fill_subjects : list[int] | None
         Create empty sessions for any subjects that are missing
         from the provided list. Typically only used if all
@@ -375,7 +397,7 @@ class Tree(TreeNode):
         to the one that the derived products are stored in
     """
 
-    frequency = 'per_dataset'
+    level = TreeLevel.dataset
 
     def __init__(self, subjects, visits, dataset, file_groups=None,
                  fields=None, records=None, fill_subjects=None,
@@ -418,7 +440,7 @@ class Tree(TreeNode):
                                         for k, v in ids.items())))
 
     def __eq__(self, other):
-        return (super(Tree, self).__eq__(other)
+        return (super(DataTree, self).__eq__(other)
                 and self._subjects == other._subjects
                 and self._visits == other._visits)
 
@@ -501,37 +523,38 @@ class Tree(TreeNode):
     def __iter__(self):
         return self.nodes()
 
-    def nodes(self, frequency=None):
+    def nodes(self, level=None):
         """
         Returns an iterator over all nodes in the tree for the specified
-        frequency. If no frequency is specified then all nodes are returned
+        level. If no level is specified then all nodes are returned
 
         Parameters
         ----------
-        frequency : str | None
-            The frequency of the nodes to iterate over. If None all
-            frequencies are returned
+        level : TreeLevel | None
+            The level within the dataset tree that the data items sit, i.e. 
+            per 'session', 'subject', 'visit', 'group_visit', 'group' or
+            'dataset'
 
         Returns
         -------
         nodes : iterable[TreeNode]
         """
-        if frequency is None:
+        if level is None:
             nodes = chain(*(self._nodes(f)
                             for f in ('per_dataset', 'per_subject',
                                       'per_visit', 'per_session')))
         else:
-            nodes = self._nodes(frequency=frequency)
+            nodes = self._nodes(level=level)
         return nodes
 
-    def _nodes(self, frequency):
-        if frequency == 'per_session':
+    def _nodes(self, tree_level):
+        if tree_level == 'per_session':
             nodes = chain(*(s.sessions for s in self.subjects))
-        elif frequency == 'per_subject':
+        elif tree_level == 'per_subject':
             nodes = self.subjects
-        elif frequency == 'per_visit':
+        elif tree_level == 'per_visit':
             nodes = self.visits
-        elif frequency == 'per_dataset':
+        elif tree_level == 'per_dataset':
             nodes = [self]
         else:
             assert False
@@ -541,7 +564,7 @@ class Tree(TreeNode):
         """
         Used in debugging unittests
         """
-        mismatch = super(Tree, self).find_mismatch(other, indent)
+        mismatch = super(DataTree, self).find_mismatch(other, indent)
         sub_indent = indent + '  '
         if len(list(self.subjects)) != len(list(other.subjects)):
             mismatch += ('\n{indent}mismatching subject lengths '
@@ -570,7 +593,7 @@ class Tree(TreeNode):
         return mismatch
 
     def __repr__(self):
-        return ("Tree(num_subjects={}, num_visits={}, "
+        return ("DataTree(num_subjects={}, num_visits={}, "
                 "num_file_groups={}, num_fields={})".format(
                     len(list(self.subjects)),
                     len(list(self.visits)),
@@ -624,7 +647,7 @@ class Tree(TreeNode):
 
         Returns
         -------
-        tree : arcana2.repository.Tree
+        tree : arcana2.repository.DataTree
             A hierarchical tree of subject, session and file_group
             information for the dataset
         """
@@ -671,7 +694,7 @@ class Tree(TreeNode):
                 file_groups_dict[(None, visit_id)],
                 fields_dict[(None, visit_id)],
                 records_dict[(None, visit_id)]))
-        return Tree(sorted(subjects),
+        return DataTree(sorted(subjects),
                     sorted(visits),
                     dataset,
                     file_groups_dict[(None, None)],
@@ -692,13 +715,13 @@ class Subject(TreeNode):
         The sessions in the subject
     file_groups : List[FileGroup]
         The file_groups that belong to the subject, i.e. of 'per_subject'
-        frequency
+        tree_level
     fields : List[Field]
         The fields that belong to the subject, i.e. of 'per_subject'
-        frequency
+        tree_level
     """
 
-    frequency = 'per_subject'
+    tree_level = 'per_subject'
 
     def __init__(self, subject_id, sessions, file_groups=None,
                  fields=None, records=None):
@@ -741,32 +764,34 @@ class Subject(TreeNode):
     def sessions(self):
         return self._sessions.values()
 
-    def nodes(self, frequency=None):
+    def nodes(self, tree_level=None):
         """
-        Returns all sessions in the subject. If a frequency is passed then
-        it will return all nodes of that frequency related to the current node.
-        If there is no relationshop between the current node and the frequency
-        then all nodes in the tree for that frequency will be returned
+        Returns all sessions in the subject. If a tree_level is passed then
+        it will return all nodes of that tree_level related to the current node.
+        If there is no relationshop between the current node and the tree_level
+        then all nodes in the tree for that tree_level will be returned
 
         Parameters
         ----------
-        frequency : str | None
-            The frequency of the nodes to return
+        tree_level : TreeLevel | None
+            The level within the dataset tree that the data items sit, i.e. 
+            per 'session', 'subject', 'visit', 'group_visit', 'group' or
+            'dataset'
 
         Returns
         -------
         nodes : iterable[TreeNode]
-            All nodes related to the subject for the specified frequency, or
-            all nodes in the tree if there is no relation with that frequency
+            All nodes related to the subject for the specified tree_level, or
+            all nodes in the tree if there is no relation with that tree_level
             (e.g. per_visit)
         """
-        if frequency in (None, 'per_session'):
+        if tree_level in (None, 'per_session'):
             return self.sessions
-        elif frequency == 'per_visit':
-            return self.tree.nodes(frequency)
-        elif frequency == 'per_subject':
+        elif tree_level == 'per_visit':
+            return self.tree.nodes(tree_level)
+        elif tree_level == 'per_subject':
             return [self]
-        elif frequency == 'per_dataset':
+        elif tree_level == 'per_dataset':
             return [self.tree]
 
     @property
@@ -823,13 +848,13 @@ class Visit(TreeNode):
         The sessions in the visit
     file_groups : List[FileGroup]
         The file_groups that belong to the visit, i.e. of 'per_visit'
-        frequency
+        tree_level
     fields : List[Field]
         The fields that belong to the visit, i.e. of 'per_visit'
-        frequency
+        tree_level
     """
 
-    frequency = 'per_visit'
+    tree_level = 'per_visit'
 
     def __init__(self, visit_id, sessions, file_groups=None, fields=None,
                  records=None):
@@ -871,32 +896,34 @@ class Visit(TreeNode):
     def sessions(self):
         return self._sessions.values()
 
-    def nodes(self, frequency=None):
+    def nodes(self, tree_level=None):
         """
-        Returns all sessions in the visit. If a frequency is passed then
-        it will return all nodes of that frequency related to the current node.
-        If there is no relationshop between the current node and the frequency
-        then all nodes in the tree for that frequency will be returned
+        Returns all sessions in the visit. If a tree_level is passed then
+        it will return all nodes of that tree_level related to the current node.
+        If there is no relationshop between the current node and the tree_level
+        then all nodes in the tree for that tree_level will be returned
 
         Parameters
         ----------
-        frequency : str | None
-            The frequency of the nodes to return
+        tree_level : TreeLevel | None
+            The level within the dataset tree that the data items sit, i.e. 
+            per 'session', 'subject', 'visit', 'group_visit', 'group' or
+            'dataset'
 
         Returns
         -------
         nodes : iterable[TreeNode]
-            All nodes related to the visit for the specified frequency, or
-            all nodes in the tree if there is no relation with that frequency
+            All nodes related to the visit for the specified tree_level, or
+            all nodes in the tree if there is no relation with that tree_level
             (e.g. per_subject)
         """
-        if frequency in (None, 'per_session'):
+        if tree_level in (None, 'per_session'):
             return self.sessions
-        elif frequency == 'per_subject':
-            return self.tree.nodes(frequency)
-        elif frequency == 'per_visit':
+        elif tree_level == 'per_subject':
+            return self.tree.nodes(tree_level)
+        elif tree_level == 'per_visit':
             return [self]
-        elif frequency == 'per_dataset':
+        elif tree_level == 'per_dataset':
             return [self.tree]
 
     def session(self, subject_id):
@@ -952,7 +979,7 @@ class Session(TreeNode):
         Sessions storing derived scans are stored for separate analyses
     """
 
-    frequency = 'per_session'
+    tree_level = 'per_session'
 
     def __init__(self, subject_id, visit_id, file_groups=None, fields=None,
                  records=None):
@@ -1002,28 +1029,28 @@ class Session(TreeNode):
     def visit(self, visit):
         self._visit = visit
 
-    def nodes(self, frequency=None):
+    def nodes(self, tree_level=None):
         """
-        Returns all nodes of the specified frequency that are related to
+        Returns all nodes of the specified tree_level that are related to
         the given Session
 
         Parameters
         ----------
-        frequency : str | None
-            The frequency of the nodes to return
+        tree_level : TreeLevel | None
+            The level of the nodes to return within the tree
 
         Returns
         -------
         nodes : iterable[TreeNode]
-            All nodes related to the Session for the specified frequency
+            All nodes related to the Session for the specified tree_level
         """
-        if frequency is None:
+        if tree_level is None:
             []
-        elif frequency == 'per_session':
+        elif tree_level == 'per_session':
             return [self]
-        elif frequency in ('per_visit', 'per_subject'):
-            return [self.tree.nodes(self.frequency)]
-        elif frequency == 'per_dataset':
+        elif tree_level in ('per_visit', 'per_subject'):
+            return [self.tree.nodes(self.tree_level)]
+        elif tree_level == 'per_dataset':
             return [self.tree]
 
     def find_mismatch(self, other, indent=''):

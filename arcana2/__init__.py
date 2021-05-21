@@ -18,17 +18,15 @@ limitations under the License.
 """
 import os
 from .__about__ import __version__, __authors__
-from .analysis import (
-    Analysis, AnalysisMetaClass, MultiAnalysis, MultiAnalysisMetaClass,
-    SubCompSpec, Parameter, ParamSpec, SwitchSpec)
+# from .analysis import (
+#     Analysis, AnalysisMetaClass, MultiAnalysis, MultiAnalysisMetaClass,
+    # SubCompSpec, Parameter, ParamSpec, SwitchSpec)
 from .data import (
-    FileGroupSpec, FileGroupMatcher, FieldSpec, FieldMatcher,
-    InputFileGroupSpec, InputFieldSpec, OutputFileGroupSpec, OutputFieldSpec)
+    FileGroupSpec, FileGroupMatcher, FieldSpec, FieldMatcher)
 from .data.file_format import FileFormat
-from .data import FileGroup, Field, FileGroupSlice, FieldSlice
-from .processor import (
-    SingleProc, MultiProc, SlurmProc)
-from .environment import StaticEnv, ModulesEnv
-from .repository import XnatRepo, XnatCSRepo, Dataset, LocalFileSystemRepo
+from .data import FileGroup, Field, FileGroupColumn, FieldColumn
+# from .processor import (
+#     SingleProc, MultiProc, SlurmProc)
+# from .environment import StaticEnv, ModulesEnv
 # Should be set explicitly in all FSL interfaces, but this squashes the warning
 os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'

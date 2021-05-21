@@ -228,22 +228,22 @@ class FileSystem(Repository):
             # Map IDs into ID space of analysis
             subj_id = dataset.map_subject_id(subj_id)
             visit_id = dataset.map_visit_id(visit_id)
-            # Determine frequency of session|summary
+            # Determine tree_level of session|summary
             if (subj_id, visit_id) == (None, None):
-                frequency = 'per_dataset'
+                tree_level = 'per_dataset'
             elif subj_id is None:
-                frequency = 'per_visit'
+                tree_level = 'per_visit'
             elif visit_id is None:
-                frequency = 'per_subject'
+                tree_level = 'per_subject'
             else:
-                frequency = 'per_session'
+                tree_level = 'per_session'
             filtered_files = self._filter_files(files, session_path)
             for fname in filtered_files:
                 basename = split_extension(fname)[0]
                 all_file_groups.append(
                     FileGroup.from_path(
                         op.join(session_path, fname),
-                        frequency=frequency,
+                        tree_level=tree_level,
                         subject_id=subj_id, visit_id=visit_id,
                         dataset=dataset,
                         from_analysis=from_analysis,
@@ -256,7 +256,7 @@ class FileSystem(Repository):
                 all_file_groups.append(
                     FileGroup.from_path(
                         op.join(session_path, fname),
-                        frequency=frequency,
+                        tree_level=tree_level,
                         subject_id=subj_id, visit_id=visit_id,
                         dataset=dataset,
                         from_analysis=from_analysis,
@@ -266,7 +266,7 @@ class FileSystem(Repository):
                                   self.FIELDS_FNAME), 'r') as f:
                     dct = json.load(f)
                 all_fields.extend(
-                    Field(name=k, value=v, frequency=frequency,
+                    Field(name=k, value=v, tree_level=tree_level,
                           subject_id=subj_id, visit_id=visit_id,
                           dataset=dataset, from_analysis=from_analysis,
                           **kwargs)
@@ -280,7 +280,7 @@ class FileSystem(Repository):
                 for fname in os.listdir(base_prov_dir):
                     all_records.append(Record.load(
                         split_extension(fname)[0],
-                        frequency, subj_id, visit_id, from_analysis,
+                        tree_level, subj_id, visit_id, from_analysis,
                         op.join(base_prov_dir, fname)))
         return all_file_groups, all_fields, all_records
 
@@ -325,29 +325,29 @@ class FileSystem(Repository):
         depth = dataset.depth
         subject_id = dataset.inv_map_subject_id(item.subject_id)
         visit_id = dataset.inv_map_visit_id(item.visit_id)
-        if item.frequency == 'per_dataset':
+        if item.tree_level == 'per_dataset':
             subj_dir = self.SUMMARY_NAME
             visit_dir = self.SUMMARY_NAME
-        elif item.frequency.startswith('per_subject'):
+        elif item.tree_level.startswith('per_subject'):
             if depth < 2:
                 raise ArcanaInsufficientRepoDepthError(
                     "Basic repo needs to have depth of 2 (i.e. sub-directories"
                     " for subjects and visits) to hold 'per_subject' data")
             subj_dir = str(subject_id)
             visit_dir = self.SUMMARY_NAME
-        elif item.frequency.startswith('per_visit'):
+        elif item.tree_level.startswith('per_visit'):
             if depth < 1:
                 raise ArcanaInsufficientRepoDepthError(
                     "Basic repo needs to have depth of at least 1 (i.e. "
                     "sub-directories for subjects) to hold 'per_visit' data")
             subj_dir = self.SUMMARY_NAME
             visit_dir = str(visit_id)
-        elif item.frequency.startswith('per_session'):
+        elif item.tree_level.startswith('per_session'):
             subj_dir = str(subject_id)
             visit_dir = str(visit_id)
         else:
-            assert False, "Unrecognised frequency '{}'".format(
-                item.frequency)
+            assert False, "Unrecognised tree_level '{}'".format(
+                item.tree_level)
         if depth == 2:
             acq_dir = op.join(root_dir, subj_dir, visit_dir)
         elif depth == 1:

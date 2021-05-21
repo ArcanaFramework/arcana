@@ -28,8 +28,9 @@ class Record(object):
     ----------
     pipeline_name : str
         Name of the pipeline the record corresponds to
-    frequency : str
-        The frequency of the record
+    tree_level : TreeLevel
+        The level within the dataset tree that the record will sit, i.e. 
+        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     subject_id : str | None
         The subject ID the record corresponds to. If None can be a per-visit or
         per-analysis summary
@@ -45,11 +46,11 @@ class Record(object):
     # For duck-typing with FileGroups and Fields
     derived = True
 
-    def __init__(self, pipeline_name, frequency, subject_id, visit_id,
+    def __init__(self, pipeline_name, tree_level, subject_id, visit_id,
                  from_analysis, prov):
         self._prov = deepcopy(prov)
         self._pipeline_name = pipeline_name
-        self._frequency = frequency
+        self._tree_level = tree_level
         self._subject_id = subject_id
         self._visit_id = visit_id
         self._from_analysis = from_analysis
@@ -57,14 +58,14 @@ class Record(object):
             self._prov['datetime'] = datetime.now().isoformat()
 
     def __repr__(self):
-        return ("{}(pipeline={}, frequency={}, subject_id={}, visit_id={}, "
+        return ("{}(pipeline={}, tree_level={}, subject_id={}, visit_id={}, "
                 "from_analysis='{}')".format(
-                    type(self).__name__, self.pipeline_name, self.frequency,
+                    type(self).__name__, self.pipeline_name, self.tree_level,
                     self.subject_id, self.visit_id, self.from_analysis))
 
     def __eq__(self, other):
         return (self._prov == other._prov
-                and self._frequency == other._frequency
+                and self._tree_level == other._tree_level
                 and self._subject_id == other._subject_id
                 and self._visit_id == other._visit_id
                 and self._from_analysis == other._from_analysis)
@@ -98,8 +99,8 @@ class Record(object):
         return self._from_analysis
 
     @property
-    def frequency(self):
-        return self._frequency
+    def tree_level(self):
+        return self._tree_level
 
     @property
     def datetime(self):
@@ -121,9 +122,9 @@ class Record(object):
             Path to save the generated JSON file
         inputs : dict[str, str | list[str] | list[list[str]]] | None
             Checksums of all pipeline inputs used by the pipeline. For inputs
-            of matching frequency to the output derivative associated with the
+            of matching tree_level to the output derivative associated with the
             provenance object, the values of the dictionary will be single
-            checksums. If the output is of lower frequency they will be lists
+            checksums. If the output is of lower tree_level they will be lists
             of checksums or in the case of 'per_session' inputs to 'per_dataset'
             outputs, lists of lists of checksum. They need to be provided here
             if the provenance object was initialised without checksums
@@ -140,7 +141,7 @@ class Record(object):
                     .format(pformat(self.prov)))
 
     @classmethod
-    def load(cls, pipeline_name, frequency, subject_id, visit_id,
+    def load(cls, pipeline_name, tree_level, subject_id, visit_id,
              from_analysis, path):
         """
         Loads a saved provenance object from a JSON file
@@ -149,8 +150,10 @@ class Record(object):
         ----------
         path : str
             Path to the provenance file
-        frequency : str
-            The frequency of the record
+        tree_level : TreeLevel
+            The level within the dataset tree that the data items sit, i.e. 
+            per 'session', 'subject', 'visit', 'group_visit', 'group' or
+            'dataset'
         subject_id : str | None
             The subject ID of the provenance record
         visit_id : str | None
@@ -165,7 +168,7 @@ class Record(object):
         """
         with open(path) as f:
             prov = json.load(f)
-        return Record(pipeline_name, frequency, subject_id, visit_id,
+        return Record(pipeline_name, tree_level, subject_id, visit_id,
                       from_analysis, prov)
 
     def mismatches(self, other, include=None, exclude=None):

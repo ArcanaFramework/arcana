@@ -120,7 +120,7 @@ class XnatRepo(Repository):
         to avoid having to retrieve metadata for them, and potentially speeding
         up the initialisation of the Analysis. Note that if the processing
         relies on summary derivatives (i.e. of 'per_visit/subject/analysis'
-        frequency) then the filter should match all sessions in the Analysis's
+        tree_level) then the filter should match all sessions in the Analysis's
         subject_ids and visit_ids.
     """
 
@@ -511,9 +511,9 @@ class XnatRepo(Repository):
             project_uri = '/data/archive/projects/{}'.format(project_id)
             project_json = self.login.get_json(project_uri)['items'][0]
             fields.extend(self.find_fields(
-                project_json, dataset, frequency='per_dataset'))
+                project_json, dataset, tree_level='per_dataset'))
             fsets, recs = self.find_derivatives(
-                project_json, project_uri, dataset, frequency='per_dataset')
+                project_json, project_uri, dataset, tree_level='per_dataset')
             file_groups.extend(fsets)
             records.extend(recs)
             # Get map of internal subject IDs to subject labels in project
@@ -556,11 +556,11 @@ class XnatRepo(Repository):
                     session_json, session_uri, subject_id, visit_id,
                     dataset, **kwargs))
                 fields.extend(self.find_fields(
-                    session_json, dataset, frequency='per_session',
+                    session_json, dataset, tree_level='per_session',
                     subject_id=subject_id, visit_id=visit_id, **kwargs))
                 fsets, recs = self.find_derivatives(
                     session_json, session_uri, dataset, subject_id=subject_id,
-                    visit_id=visit_id, frequency='per_session')
+                    visit_id=visit_id, tree_level='per_session')
                 file_groups.extend(fsets)
                 records.extend(recs)
             # Get subject level resources and fields
@@ -570,16 +570,16 @@ class XnatRepo(Repository):
                                .format(project_id, subject_id))
                 subject_json = self.login.get_json(subject_uri)['items'][0]
                 fields.extend(self.find_fields(
-                    subject_json, dataset, frequency='per_subject',
+                    subject_json, dataset, tree_level='per_subject',
                     subject_id=subject_id))
                 fsets, recs = self.find_derivatives(
                     subject_json, subject_uri, dataset,
-                    frequency='per_subject', subject_id=subject_id)
+                    tree_level='per_subject', subject_id=subject_id)
                 file_groups.extend(fsets)
                 records.extend(recs)
         return file_groups, fields, records
 
-    def find_derivatives(self, node_json, node_uri, dataset, frequency,
+    def find_derivatives(self, node_json, node_uri, dataset, tree_level,
                          subject_id=None, visit_id=None, **kwargs):
         try:
             resources_json = next(
@@ -594,12 +594,12 @@ class XnatRepo(Repository):
             resource_uri = '{}/resources/{}'.format(node_uri, label)
             (name, from_analysis,
              file_group_visit_id, file_group_freq) = self.split_derived_name(
-                 label, visit_id=visit_id, frequency=frequency)
+                 label, visit_id=visit_id, tree_level=tree_level)
             if name != self.PROV_RESOURCE:
                 # Use the visit from the derived name if present
                 file_groups.append(FileGroup(
                     name, uri=resource_uri, dataset=dataset,
-                    from_analysis=from_analysis, frequency=file_group_freq,
+                    from_analysis=from_analysis, tree_level=file_group_freq,
                     subject_id=subject_id, visit_id=file_group_visit_id,
                     resource_name=d['data_fields']['format'], **kwargs))
             else:
@@ -621,7 +621,7 @@ class XnatRepo(Repository):
                                     Record.load(
                                         pipeline_name,
                                         path=json_path,
-                                        frequency=frequency,
+                                        tree_level=tree_level,
                                         subject_id=subject_id,
                                         visit_id=visit_id,
                                         from_analysis=from_analysis))
@@ -629,7 +629,7 @@ class XnatRepo(Repository):
                     shutil.rmtree(temp_dir, ignore_errors=True)
         return file_groups, records
 
-    def find_fields(self, node_json, dataset, frequency, subject_id=None,
+    def find_fields(self, node_json, dataset, tree_level, subject_id=None,
                     visit_id=None, **kwargs):
         try:
             fields_json = next(
@@ -645,7 +645,7 @@ class XnatRepo(Repository):
                 continue
             value = value.replace('&quot;', '"')
             name = js['data_fields']['name']
-            # field_names = set([(name, None, visit_id, frequency)])
+            # field_names = set([(name, None, visit_id, tree_level)])
             # # Potentially add the field twice, once
             # # as a field name in its own right (for externally created fields)
             # # and second as a field name prefixed by an analysis name. Would
@@ -654,11 +654,11 @@ class XnatRepo(Repository):
             # # be little harm in having the field referenced twice, the only
             # # issue being with pattern matching
             # field_names.add(self.split_derived_name(name, visit_id=visit_id,
-            #                                         frequency=frequency))
+            #                                         tree_level=tree_level))
             # for name, from_analysis, field_visit_id, field_freq in field_names:
             (name, from_analysis,
              field_visit_id, field_freq) = self.split_derived_name(
-                 name, visit_id=visit_id, frequency=frequency)
+                 name, visit_id=visit_id, tree_level=tree_level)
             fields.append(Field(
                 name=name,
                 value=value,
@@ -666,7 +666,7 @@ class XnatRepo(Repository):
                 dataset=dataset,
                 subject_id=subject_id,
                 visit_id=field_visit_id,
-                frequency=field_freq,
+                tree_level=field_freq,
                 **kwargs))
         return fields
 
@@ -804,18 +804,18 @@ class XnatRepo(Repository):
         sess_label = dataset.session_label(item.subject_id, item.visit_id)
         with self:
             xproject = self.login.projects[dataset.name]
-            if item.frequency not in ('per_subject', 'per_session'):
+            if item.tree_level not in ('per_subject', 'per_session'):
                 return xproject
             try:
                 xsubject = xproject.subjects[subj_label]
             except KeyError:
                 xsubject = self.login.classes.SubjectData(
                     label=subj_label, parent=xproject)
-            if item.frequency == 'per_subject':
+            if item.tree_level == 'per_subject':
                 return xsubject
-            elif item.frequency != 'per_session':
+            elif item.tree_level != 'per_session':
                 raise ArcanaUsageError(
-                    "Unrecognised item frequency '{}'".format(item.frequency))
+                    "Unrecognised item tree_level '{}'".format(item.tree_level))
             try:
                 xsession = xsubject.experiments[sess_label]
             except KeyError:
@@ -872,7 +872,7 @@ class XnatRepo(Repository):
             name = cls.prepend_analysis(item.name, item.from_analysis)
         else:
             name = item.name
-        if item.frequency == 'per_visit':
+        if item.tree_level == 'per_visit':
             name = 'VISIT_{}--{}'.format(item.visit_id, name)
         return name
 
@@ -881,7 +881,7 @@ class XnatRepo(Repository):
         return from_analysis + '-' + name
 
     @classmethod
-    def split_derived_name(cls, name, visit_id=None, frequency='per_session'):
+    def split_derived_name(cls, name, visit_id=None, tree_level='per_session'):
         """Reverses the escape of an item name by `derived_name`
 
         Parameters
@@ -891,8 +891,8 @@ class XnatRepo(Repository):
         visit_id : `str`
             The visit ID of the node that name is found in. Will be overridden
              if 'vis_<visit_id>' is found in the name
-        frequency : `str`
-            The frequency of the node the derived name is found in.
+        tree_level : `str`
+            The tree_level of the node the derived name is found in.
 
         Returns
         -------
@@ -903,8 +903,8 @@ class XnatRepo(Repository):
         visit_id : `str` | `NoneType`
             The visit ID of the derived_name, overridden from the value passed
             to the method if 'vis_<visit_id>' is found in the name
-        frequency : `str`
-            The frequency of the derived name, overridden from the value passed
+        tree_level : `str`
+            The tree_level of the derived name, overridden from the value passed
             to the method if 'vis_<visit_id>' is found in the name
         """
         from_analysis = None
@@ -916,13 +916,13 @@ class XnatRepo(Repository):
             name = match.group('name')
             from_analysis = match.group('analysis')
             if match.group('visit') is not None:
-                if frequency != 'per_dataset':
+                if tree_level != 'per_dataset':
                     raise ArcanaRepositoryError(
                         "Visit prefixed resource ({}) found in non-project"
                         " level node".format(name))
-                frequency = 'per_visit'
+                tree_level = 'per_visit'
                 visit_id = match.group('visit')
-        return name, from_analysis, visit_id, frequency
+        return name, from_analysis, visit_id, tree_level
 
     @classmethod
     def standard_uri(cls, xnode):

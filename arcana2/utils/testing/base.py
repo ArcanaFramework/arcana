@@ -273,7 +273,7 @@ class BaseTestCase(TestCase):
             The class to initialise
         name : str
             Name of the analysis
-        inputs : List[BaseSpecMixin]
+        inputs : List[DataSpec]
             List of inputs to the analysis
         dataset : Dataset | None
             The dataset to use (a default local dataset is used if one
@@ -357,10 +357,10 @@ class BaseTestCase(TestCase):
             "{} was not created".format(file_group))
 
     def assertField(self, name, ref_value, from_analysis, subject=None,
-                    visit=None, frequency='per_session',
+                    visit=None, tree_level='per_session',
                     to_places=None):
         esc_name = from_analysis + '_' + name
-        output_dir = self.get_session_dir(subject, visit, frequency)
+        output_dir = self.get_session_dir(subject, visit, tree_level)
         try:
             with open(op.join(output_dir,
                               LocalFileSystemRepo.FIELDS_FNAME)) as f:
@@ -396,13 +396,13 @@ class BaseTestCase(TestCase):
 
     def assertStatEqual(self, stat, file_group_name, target, from_analysis,
                         subject=None, visit=None,
-                        frequency='per_session'):
+                        tree_level='per_session'):
         val = float(sp.check_output(
             'mrstats {} -output {}'.format(
                 self.output_file_path(
                     file_group_name, from_analysis,
                     subject=subject, visit=visit,
-                    frequency=frequency),
+                    tree_level=tree_level),
                 stat),
             shell=True))
         self.assertEqual(
@@ -431,27 +431,27 @@ class BaseTestCase(TestCase):
                      thresh_stdev=stdev_threshold, a=out_path, b=ref_path)))
 
     def get_session_dir(self, subject=None, visit=None,
-                        frequency='per_session', from_analysis=None):
-        if subject is None and frequency in ('per_session', 'per_subject'):
+                        tree_level='per_session', from_analysis=None):
+        if subject is None and tree_level in ('per_session', 'per_subject'):
             subject = self.SUBJECT
-        if visit is None and frequency in ('per_session', 'per_visit'):
+        if visit is None and tree_level in ('per_session', 'per_visit'):
             visit = self.VISIT
-        if frequency == 'per_session':
+        if tree_level == 'per_session':
             assert subject is not None
             assert visit is not None
             path = op.join(self.project_dir, subject, visit)
-        elif frequency == 'per_subject':
+        elif tree_level == 'per_subject':
             assert subject is not None
             assert visit is None
             path = op.join(
                 self.project_dir, subject,
                 LocalFileSystemRepo.SUMMARY_NAME)
-        elif frequency == 'per_visit':
+        elif tree_level == 'per_visit':
             assert visit is not None
             assert subject is None
             path = op.join(self.project_dir,
                            LocalFileSystemRepo.SUMMARY_NAME, visit)
-        elif frequency == 'per_dataset':
+        elif tree_level == 'per_dataset':
             assert subject is None
             assert visit is None
             path = op.join(self.project_dir,
@@ -470,10 +470,10 @@ class BaseTestCase(TestCase):
                 os.remove(op.join(self.get_session_dir(), fname))
 
     def output_file_path(self, fname, from_analysis, subject=None, visit=None,
-                         frequency='per_session', **kwargs):
+                         tree_level='per_session', **kwargs):
         return op.join(
             self.get_session_dir(subject=subject, visit=visit,
-                                 frequency=frequency,
+                                 tree_level=tree_level,
                                  from_analysis=from_analysis, **kwargs),
             fname)
 

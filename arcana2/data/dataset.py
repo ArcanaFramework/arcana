@@ -3,7 +3,7 @@ import os.path as op
 import pickle as pkl
 from logging import getLogger
 from arcana2.exceptions import ArcanaUsageError
-from .tree import Tree
+from .tree import DataTree
 
 
 logger = getLogger('arcana')
@@ -240,7 +240,7 @@ class Dataset():
 
         Returns
         -------
-        tree : arcana2.repository.Tree
+        tree : arcana2.repository.DataTree
             A hierarchical tree of subject, session and file_group
             information for the repository
         """
@@ -264,7 +264,7 @@ class Dataset():
         if self._cached_tree is None:
             # Find all data present in the repository (filtered by the
             # passed IDs)
-            self._cached_tree = Tree.construct(
+            self._cached_tree = DataTree.construct(
                 self,
                 *self.repository.find_data(
                     dataset=self,

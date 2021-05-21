@@ -190,7 +190,7 @@ class Repository(metaclass=ABCMeta):
             The dataset to put the record into
         """
 
-    def source(dataset_name, inputs, frequency='per_session'):
+    def source(dataset_name, data_columns, tree_level):
         """
         Returns a Pydra task that downloads/extracts data from the
         repository to be passed to a workflow
@@ -199,11 +199,11 @@ class Repository(metaclass=ABCMeta):
         ----------
         dataset_name : str
             The name of the dataset within the repository (e.g. project name)
-        inputs : Sequence[Matcher|Column]
+        data_columns : DataColumn
             A sequence of Matcher of Column objects that specify which data
             to pull from the repository
-        frequency : str, optional
-            The frequency of the data to extract (i.e. per_session,
+        tree_level : str, optional
+            The tree_level of the data to extract (i.e. per_session,
             per_subject, etc...), by default 'per_session'
 
         Returns
@@ -211,10 +211,55 @@ class Repository(metaclass=ABCMeta):
         pydra.task
             A Pydra task to that downloads/extracts the requested data
         """
-        raise NotImplementedError
+        # Protect against iterators
+        columns = {
+            n: self.column(m) for n, v in inputs.items()}
+        # Check for consistent frequencies in columns
+        frequencies = set(c.tree_level for c in columns)
+        if len(frequencies) > 1:
+            raise ArcanaError(
+                "Attempting to sink multiple frequencies in {}"
+                .format(', '.join(str(c) for c in columns)))
+        elif frequencies:
+            # NB: Exclude very rare case where pipeline doesn't have inputs,
+            #     would only really happen in unittests
+            self._tree_level = next(iter(frequencies))
+        # Extract set of datasets used to source/sink from/to
+        self.datasets = set(chain(*(
+            (i.dataset for i in c if i.dataset is not None)
+            for c in columns)))
+        self.repositories = set(d.repository for d in self.datasets)
+        # Segregate into file_group and field columns
+        self.file_group_columns = [c for c in columns if c.is_file_group]
+        self.field_columns = [c for c in columns if c.is_field]
+
+          # Directory that holds session-specific
+        outputs = self.output_spec().get()
+        subject_id = (self.inputs.subject_id
+                      if isdefined(self.inputs.subject_id) else None)
+        visit_id = (self.inputs.visit_id
+                    if isdefined(self.inputs.visit_id) else None)
+        outputs['subject_id'] = self.inputs.subject_id
+        outputs['visit_id'] = self.inputs.visit_id
+        # Source file_groups
+        with ExitStack() as stack:
+            # Connect to set of repositories that the columns come from
+            for repository in self.repositories:
+                stack.enter_context(repository)
+            for file_group_column in self.file_group_columns:
+                file_group = file_group_column.item(subject_id, visit_id)
+                file_group.get()
+                outputs[file_group_column.name + PATH_SUFFIX] = file_group.path
+                outputs[file_group_column.name
+                        + CHECKSUM_SUFFIX] = file_group.checksums
+            for field_column in self.field_columns:
+                field = field_column.item(subject_id, visit_id)
+                field.get()
+                outputs[field_column.name + FIELD_SUFFIX] = field.value
+        return outputs
 
 
-    def sink(dataset_name, outputs, frequency='per_session'):
+    def sink(dataset_name, outputs, tree_level='per_session'):
         """
         Returns a Pydra task that uploads/moves data to the
         repository to be passed to a workflow
@@ -226,8 +271,8 @@ class Repository(metaclass=ABCMeta):
         outputs : Spec
             A sequence Spec objects that specify where to put the data
             in the repository
-        frequency : str, optional
-            The frequency of the data to put (i.e. per_session,
+        tree_level : str, optional
+            The tree_level of the data to put (i.e. per_session,
             per_subject, etc...), by default 'per_session'
 
         Returns
@@ -236,6 +281,93 @@ class Repository(metaclass=ABCMeta):
             A Pydra task to that downloads/extracts the requested data
         """
         raise NotImplementedError
+        super(RepositorySink, self).__init__(columns)
+        # Add traits for file_groups to sink
+        for file_group_column in self.file_group_columns:
+            self._add_trait(self.inputs,
+                            file_group_column.name + PATH_SUFFIX,
+                            PATH_TRAIT)
+        # Add traits for fields to sink
+        for field_column in self.field_columns:
+            self._add_trait(self.inputs,
+                            field_column.name + FIELD_SUFFIX,
+                            self.field_trait(field_column))
+        # Add traits for checksums/values of pipeline inputs
+        self._pipeline_input_file_groups = []
+        self._pipeline_input_fields = []
+        for inpt in pipeline.inputs:
+            if inpt.is_file_group:
+                trait_t = JOINED_CHECKSUM_TRAIT
+            else:
+                trait_t = self.field_trait(inpt)
+                trait_t = traits.Either(trait_t, traits.List(trait_t),
+                                        traits.List(traits.List(trait_t)))
+            self._add_trait(self.inputs, inpt.checksum_suffixed_name, trait_t)
+            if inpt.is_file_group:
+                self._pipeline_input_file_groups.append(inpt.name)
+            elif inpt.is_field:
+                self._pipeline_input_fields.append(inpt.name)
+            else:
+                assert False
+        self._prov = pipeline.prov
+        self._pipeline_name = pipeline.name
+        self._from_analysis = pipeline.analysis.name
+        self._required = required
+        outputs = self.output_spec().get()
+        # Connect iterables (i.e. subject_id and visit_id)
+        subject_id = (self.inputs.subject_id
+                      if isdefined(self.inputs.subject_id) else None)
+        visit_id = (self.inputs.visit_id
+                    if isdefined(self.inputs.visit_id) else None)
+        missing_inputs = []
+        # Collate input checksums into a dictionary
+        input_checksums = {n: getattr(self.inputs, n + CHECKSUM_SUFFIX)
+                           for n in self._pipeline_input_file_groups}
+        input_checksums.update({n: getattr(self.inputs, n + FIELD_SUFFIX)
+                                for n in self._pipeline_input_fields})
+        output_checksums = {}
+        with ExitStack() as stack:
+            # Connect to set of repositories that the columns come from
+            for repository in self.repositories:
+                stack.enter_context(repository)
+            for file_group_column in self.file_group_columns:
+                file_group = file_group_column.item(subject_id, visit_id)
+                path = getattr(self.inputs, file_group_column.name + PATH_SUFFIX)
+                if not isdefined(path):
+                    if file_group.name in self._required:
+                        missing_inputs.append(file_group.name)
+                    continue  # skip the upload for this file_group
+                file_group.path = path  # Push to repository
+                output_checksums[file_group.name] = file_group.checksums
+            for field_column in self.field_columns:
+                field = field_column.item(
+                    subject_id,
+                    visit_id)
+                value = getattr(self.inputs,
+                                field_column.name + FIELD_SUFFIX)
+                if not isdefined(value):
+                    if field.name in self._required:
+                        missing_inputs.append(field.name)
+                    continue  # skip the upload for this field
+                field.value = value  # Push to repository
+                output_checksums[field.name] = field.value
+            # Add input and output checksums to provenance record and sink to
+            # all repositories that have received data (typically only one)
+            prov = copy(self._prov)
+            prov['inputs'] = input_checksums
+            prov['outputs'] = output_checksums
+            record = Record(self._pipeline_name, self.tree_level, subject_id,
+                            visit_id, self._from_analysis, prov)
+            for dataset in self.datasets:
+                dataset.put_record(record)
+        if missing_inputs:
+            raise ArcanaDesignError(
+                "Required derivatives '{}' to were not created by upstream "
+                "nodes connected to sink {}".format(
+                    "', '".join(missing_inputs), self))
+        # Return cache file paths
+        outputs['checksums'] = output_checksums
+        return outputs
 
 
 PATH_TRAIT = traits.Either(File(exists=True), Directory(exists=True))
@@ -262,7 +394,7 @@ class RepositoryInterface(BaseInterface):
         # Protect against iterators
         columns = list(columns)
         # Check for consistent frequencies in columns
-        frequencies = set(c.frequency for c in columns)
+        frequencies = set(c.tree_level for c in columns)
         if len(frequencies) > 1:
             raise ArcanaError(
                 "Attempting to sink multiple frequencies in {}"
@@ -270,7 +402,7 @@ class RepositoryInterface(BaseInterface):
         elif frequencies:
             # NB: Exclude very rare case where pipeline doesn't have inputs,
             #     would only really happen in unittests
-            self._frequency = next(iter(frequencies))
+            self._tree_level = next(iter(frequencies))
         # Extract set of datasets used to source/sink from/to
         self.datasets = set(chain(*(
             (i.dataset for i in c if i.dataset is not None)
@@ -304,8 +436,8 @@ class RepositoryInterface(BaseInterface):
         return chain(self.file_group_columns, self.field_columns)
 
     @property
-    def frequency(self):
-        return self._frequency
+    def tree_level(self):
+        return self._tree_level
 
     @classmethod
     def _add_trait(cls, spec, name, trait_type):
@@ -508,7 +640,7 @@ class RepositorySink(RepositoryInterface):
             prov = copy(self._prov)
             prov['inputs'] = input_checksums
             prov['outputs'] = output_checksums
-            record = Record(self._pipeline_name, self.frequency, subject_id,
+            record = Record(self._pipeline_name, self.tree_level, subject_id,
                             visit_id, self._from_analysis, prov)
             for dataset in self.datasets:
                 dataset.put_record(record)

@@ -87,7 +87,7 @@ class BaseRunCmd(BaseRepoCmd):
             input_paths[name] = path
             inputs[path] = FileGroupMatcher(
                 pattern=pattern, format=ff.get_file_format(format_name),
-                frequency='per_' + freq, order=order, dicom_tags=dicom_tags,
+                tree_level='per_' + freq, order=order, dicom_tags=dicom_tags,
                 is_regex=True, acceptable_quality=quality)
 
         # Create field matchers
@@ -106,7 +106,7 @@ class BaseRunCmd(BaseRepoCmd):
             name = sanitize_path(path)
             input_paths[name] = path
             inputs[path] = FieldMatcher(pattern=field_name, dtype=dtype,
-                                          frequency='per_' + freq)
+                                        tree_level='per_' + freq)
 
         outputs = {}
         output_paths = {}
@@ -125,7 +125,7 @@ class BaseRunCmd(BaseRepoCmd):
             path, name, file_format, freq = inpt + defaults[nargs - 2:]
             output_paths[name] = path
             outputs[name] = FileGroupSpec(format=ff.get_format(file_format),
-                                          frequency='per_' + freq)
+                                          tree_level='per_' + freq)
 
         
         # Create field outputs
@@ -142,7 +142,7 @@ class BaseRunCmd(BaseRepoCmd):
                     f"instead of max 4 ({inpt})")
             path, name, dtype, freq = inpt + defaults[nargs - 2:]
             output_paths[name] = path
-            outputs[name] = FieldSpec(dtype=dtype, frequency='per_' + freq)
+            outputs[name] = FieldSpec(dtype=dtype, tree_level='per_' + freq)
 
         return inputs, outputs, input_paths, output_paths
 
@@ -163,19 +163,19 @@ class BaseRunCmd(BaseRepoCmd):
         (inputs, outputs,
          input_paths, output_paths) = cls.parse_inputs_and_outputs(args)
 
-        frequency = cls.parse_frequency(args)
+        tree_level = cls.parse_tree_level(args)
 
         workflow = Workflow(name=cls.app_name(args))
         workflow.add(repository.source(dataset_name=args.dataset_name,
                                        inputs=inputs,
                                        id=ids,
-                                       frequency=frequency))
+                                       tree_level=tree_level))
 
         app_outs = cls.add_app_task(workflow, args, input_paths, output_paths)
             
         workflow.add(repository.sink(dataset_name=args.dataset_name,
                                      outputs=outputs,
-                                     frequency=frequency,
+                                     tree_level=tree_level,
                                      id=workflow.source.lzout.id,
                                      **app_outs))
 
@@ -210,7 +210,7 @@ class BaseRunCmd(BaseRepoCmd):
                         just the numeric values, i.e. no punctuation
                         e.g. '00080008:ORIGINAL\\PRIMARY\\M_IR\M\\IR;
                         00101010:067Y'
-            frequency  - The frequency of the file-group within the dataset.
+            tree_level  - The tree_level of the file-group within the dataset.
                         Can be either 'dataset', 'group', 'subject', 'visit'
                         or 'session'. Typically only required for
                         derivatives
@@ -234,7 +234,7 @@ class BaseRunCmd(BaseRepoCmd):
         is an array that is stored as a comma-separated list in
         the repository.
         
-        The FREQUENCY arg specifies the frequency of the file-group
+        The FREQUENCY arg specifies the tree_level of the file-group
         within the dataset. It can be either 'dataset', 'group',
         'subject', 'visit' or 'session'. Typically only required for
         derivatives
@@ -255,7 +255,7 @@ class RunAppCmd():
                   "convenience the 'pydra.tasks' prefix can be omitted "
                   "(e.g. fsl.preprocess.first.First)"))
         parser.add_argument(
-            '--frequency', '-f', default='session',
+            '--tree_level', '-f', default='session',
             help=("The level at which the analysis is performed. One of (per) "
                   "dataset, group, subject, visit, group_visit or session"))        
         super().construct_parser(parser)
@@ -320,14 +320,14 @@ class RunAppCmd():
         return app_args
 
     @classmethod
-    def parse_frequency(cls, args):
+    def parse_tree_level(cls, args):
         valid_frequencies = ('dataset', 'group', 'subject', 'visit',
                              'subject_visit', 'session')
-        if args.frequency not in valid_frequencies:
+        if args.tree_level not in valid_frequencies:
             raise ArcanaUsageError(
-                f"Unrecognised frequency '{args.frequency}' "
+                f"Unrecognised tree_level '{args.tree_level}' "
                 f"(valid: {valid_frequencies})")
-        return 'per_' + args.frequency
+        return 'per_' + args.tree_level
 
     @classmethod
     def app_name(cls, args):
@@ -362,11 +362,11 @@ class RunBidsAppCmd(BaseRunCmd):
                   "quotation marks)"))
 
     @classmethod
-    def parse_frequency(cls, args):
+    def parse_tree_level(cls, args):
         if args.analysis_level == 'particpant':
-            frequency = 'per_session'
+            tree_level = 'per_session'
         elif args.analysis_level == 'group':
-            frequency = 'per_group'
+            tree_level = 'per_group'
         else:
             raise ArcanaUsageError(
                 "Unrecognised analysis level '{}'".format(args.analysis_level))

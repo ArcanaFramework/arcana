@@ -149,7 +149,7 @@ class XnatCSRepo(XnatRepo):
                 all_file_groups.append(
                     FileGroup.from_path(
                         op.join(session_path, fname),
-                        frequency=frequency,
+                        tree_level=tree_level,
                         subject_id=subj_id, visit_id=visit_id,
                         dataset=dataset,
                         from_analysis=from_analysis,
@@ -162,7 +162,7 @@ class XnatCSRepo(XnatRepo):
                 all_file_groups.append(
                     FileGroup.from_path(
                         op.join(session_path, fname),
-                        frequency=frequency,
+                        tree_level=tree_level,
                         subject_id=subj_id, visit_id=visit_id,
                         dataset=dataset,
                         from_analysis=from_analysis,
@@ -172,7 +172,7 @@ class XnatCSRepo(XnatRepo):
                                   self.FIELDS_FNAME), 'r') as f:
                     dct = json.load(f)
                 all_fields.extend(
-                    Field(name=k, value=v, frequency=frequency,
+                    Field(name=k, value=v, tree_level=tree_level,
                           subject_id=subj_id, visit_id=visit_id,
                           dataset=dataset, from_analysis=from_analysis,
                           **kwargs)
@@ -186,7 +186,7 @@ class XnatCSRepo(XnatRepo):
                 for fname in os.listdir(base_prov_dir):
                     all_records.append(Record.load(
                         split_extension(fname)[0],
-                        frequency, subj_id, visit_id, from_analysis,
+                        tree_level, subj_id, visit_id, from_analysis,
                         op.join(base_prov_dir, fname)))
         return all_file_groups, all_fields, all_records
 
@@ -205,13 +205,13 @@ class XnatCSRepo(XnatRepo):
 
     @classmethod
     def make_command_json(cls, image_name, analysis_cls, inputs, outputs,
-                          parameters, desc, frequency='per_session',
+                          parameters, desc, tree_level='per_session',
                           docker_index="https://index.docker.io/v1/"):
 
-        if frequency != 'per_session':
+        if tree_level != 'per_session':
             raise NotImplementedError(
                 "Support for frequencies other than '{}' haven't been "
-                "implemented yet".format(frequency))
+                "implemented yet".format(tree_level))
         try:
             analysis_name, version = image_name.split('/')[1].split(':')
         except (IndexError, ValueError):
@@ -279,7 +279,7 @@ class XnatCSRepo(XnatRepo):
                 params=' '.join('-p {} #{}_PARAM#'.format(p, p.upper())
                                 for p in parameters)))
 
-        if frequency == 'per_session':
+        if tree_level == 'per_session':
             cmd_inputs.append(
                 {
                     "name": "session-id",
