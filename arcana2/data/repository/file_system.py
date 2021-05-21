@@ -164,7 +164,7 @@ class FileSystem(Repository):
             os.mkdir(op.dirname(fpath))
         record.save(fpath)
 
-    # root_dir=None, all_from_analysis=None,
+    # root_dir=None, all_namespace=None,
     def find_data(self, dataset, subject_ids=None, visit_ids=None, **kwargs):
         """
         Find all data within a repository, registering file_groups, fields and
@@ -182,8 +182,8 @@ class FileSystem(Repository):
         root_dir : str
             The root dir to use instead of the 'name' (path) of the dataset.
             Only for use in sub-classes (e.g. BIDS)
-        all_from_analysis : str
-            Global 'from_analysis' to be applied to every found item.
+        all_namespace : str
+            Global 'namespace' to be applied to every found item.
             Only for use in sub-classes (e.g. BIDS)
 
         Returns
@@ -207,15 +207,15 @@ class FileSystem(Repository):
                                               files)
             if ids is None:
                 continue
-            subj_id, visit_id, from_analysis = ids
-            # if all_from_analysis is not None:
-            #     if from_analysis is not None:
+            subj_id, visit_id, namespace = ids
+            # if all_namespace is not None:
+            #     if namespace is not None:
             #         raise ArcanaRepositoryError(
-            #             "Found from_analysis sub-directory '{}' when global "
+            #             "Found namespace sub-directory '{}' when global "
             #             "from analysis '{}' was passed".format(
-            #                 from_analysis, all_from_analysis))
+            #                 namespace, all_namespace))
             #     else:
-            #         from_analysis = all_from_analysis
+            #         namespace = all_namespace
             # Check for summaries and filtered IDs
             if subj_id == self.SUMMARY_NAME:
                 subj_id = None
@@ -246,7 +246,7 @@ class FileSystem(Repository):
                         tree_level=tree_level,
                         subject_id=subj_id, visit_id=visit_id,
                         dataset=dataset,
-                        from_analysis=from_analysis,
+                        namespace=namespace,
                         potential_aux_files=[
                             f for f in filtered_files
                             if (split_extension(f)[0] == basename
@@ -259,7 +259,7 @@ class FileSystem(Repository):
                         tree_level=tree_level,
                         subject_id=subj_id, visit_id=visit_id,
                         dataset=dataset,
-                        from_analysis=from_analysis,
+                        namespace=namespace,
                         **kwargs))
             if self.FIELDS_FNAME in files:
                 with open(op.join(session_path,
@@ -268,11 +268,11 @@ class FileSystem(Repository):
                 all_fields.extend(
                     Field(name=k, value=v, tree_level=tree_level,
                           subject_id=subj_id, visit_id=visit_id,
-                          dataset=dataset, from_analysis=from_analysis,
+                          dataset=dataset, namespace=namespace,
                           **kwargs)
                     for k, v in list(dct.items()))
             if self.PROV_DIR in dirs:
-                if from_analysis is None:
+                if namespace is None:
                     raise ArcanaRepositoryError(
                         "Found provenance directory in session directory (i.e."
                         " not in analysis-specific sub-directory)")
@@ -280,7 +280,7 @@ class FileSystem(Repository):
                 for fname in os.listdir(base_prov_dir):
                     all_records.append(Record.load(
                         split_extension(fname)[0],
-                        tree_level, subj_id, visit_id, from_analysis,
+                        tree_level, subj_id, visit_id, namespace,
                         op.join(base_prov_dir, fname)))
         return all_file_groups, all_fields, all_records
 
@@ -288,11 +288,11 @@ class FileSystem(Repository):
         path_depth = len(path_parts)
         if path_depth == depth:
             # Load input data
-            from_analysis = None
+            namespace = None
         elif (path_depth == (depth + 1)
               and self.PROV_DIR in dirs):
             # Load analysis output
-            from_analysis = path_parts.pop()
+            namespace = path_parts.pop()
         elif (path_depth < depth
               and any(not f.startswith('.') for f in files)):
             # Check to see if there are files in upper level
@@ -314,7 +314,7 @@ class FileSystem(Repository):
         else:
             subj_id = self.DEFAULT_SUBJECT_ID
             visit_id = self.DEFAULT_VISIT_ID
-        return subj_id, visit_id, from_analysis
+        return subj_id, visit_id, namespace
 
     def file_group_path(self, item, dataset=None, fname=None):
         if fname is None:
@@ -356,12 +356,12 @@ class FileSystem(Repository):
             acq_dir = root_dir
         else:
             assert False
-        if item.from_analysis is None:
+        if item.namespace is None:
             sess_dir = acq_dir
         else:
             # Append analysis-name to path (i.e. make a sub-directory to
             # hold derived products)
-            sess_dir = op.join(acq_dir, item.from_analysis)
+            sess_dir = op.join(acq_dir, item.namespace)
         # Make session dir if required
         if item.derived and not op.exists(sess_dir):
             os.makedirs(sess_dir, stat.S_IRWXU | stat.S_IRWXG)

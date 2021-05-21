@@ -267,17 +267,17 @@ class TestMultiSubjectOnXnatMixin(CreateXnatProjectMixin):
                 "Session path '{}' does not exist".format(session_path))
         return session_path
 
-    def output_file_path(self, fname, from_analysis, subject=None, visit=None,
+    def output_file_path(self, fname, namespace, subject=None, visit=None,
                          tree_level='per_session'):
         try:
             acq_path = self.BASE_CLASS.output_file_path(
-                self, fname, from_analysis, subject=subject, visit=visit,
+                self, fname, namespace, subject=subject, visit=visit,
                 tree_level=tree_level, derived=False)
         except KeyError:
             acq_path = None
         try:
             proc_path = self.BASE_CLASS.output_file_path(
-                self, fname, from_analysis, subject=subject, visit=visit,
+                self, fname, namespace, subject=subject, visit=visit,
                 tree_level=tree_level, derived=True)
         except KeyError:
             proc_path = None
@@ -285,7 +285,7 @@ class TestMultiSubjectOnXnatMixin(CreateXnatProjectMixin):
             if op.exists(proc_path):
                 raise ArcanaError(
                     "Both acquired and derived paths were found for "
-                    "'{}_{}' ({} and {})".format(from_analysis, fname,
+                    "'{}_{}' ({} and {})".format(namespace, fname,
                                                  acq_path, proc_path))
             path = acq_path
         else:

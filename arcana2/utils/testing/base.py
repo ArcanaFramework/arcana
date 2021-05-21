@@ -181,10 +181,10 @@ class BaseTestCase(TestCase):
     def session_dir(self):
         return self.get_session_dir(self.SUBJECT, self.VISIT)
 
-    def derived_session_dir(self, from_analysis=None):
-        if from_analysis is None:
-            from_analysis = self.ANALYSIS_NAME
-        return op.join(self.session_dir, from_analysis)
+    def derived_session_dir(self, namespace=None):
+        if namespace is None:
+            namespace = self.ANALYSIS_NAME
+        return op.join(self.session_dir, namespace)
 
     @property
     def session(self):
@@ -356,10 +356,10 @@ class BaseTestCase(TestCase):
             os.path.exists(file_group.path),
             "{} was not created".format(file_group))
 
-    def assertField(self, name, ref_value, from_analysis, subject=None,
+    def assertField(self, name, ref_value, namespace, subject=None,
                     visit=None, tree_level='per_session',
                     to_places=None):
-        esc_name = from_analysis + '_' + name
+        esc_name = namespace + '_' + name
         output_dir = self.get_session_dir(subject, visit, tree_level)
         try:
             with open(op.join(output_dir,
@@ -369,16 +369,16 @@ class BaseTestCase(TestCase):
             if e.errno == errno.ENOENT:
                 raise ArcanaError(
                     "No fields were created by pipeline in analysis '{}'"
-                    .format(from_analysis))
+                    .format(namespace))
         try:
             value = fields[esc_name]
         except KeyError:
             raise ArcanaError(
                 "Field '{}' was not created by pipeline in analysis '{}'. "
                 "Created fields were ('{}')"
-                .format(esc_name, from_analysis, "', '".join(fields)))
+                .format(esc_name, namespace, "', '".join(fields)))
         msg = ("Field value '{}' for analysis '{}', {}, does not match "
-               "reference value ({})".format(name, from_analysis, value,
+               "reference value ({})".format(name, namespace, value,
                                              ref_value))
         if to_places is not None:
             self.assertAlmostEqual(
@@ -394,13 +394,13 @@ class BaseTestCase(TestCase):
         self.assertTrue(filecmp.cmp(file_group1.path, file_group2.path,
                                     shallow=False), msg=msg)
 
-    def assertStatEqual(self, stat, file_group_name, target, from_analysis,
+    def assertStatEqual(self, stat, file_group_name, target, namespace,
                         subject=None, visit=None,
                         tree_level='per_session'):
         val = float(sp.check_output(
             'mrstats {} -output {}'.format(
                 self.output_file_path(
-                    file_group_name, from_analysis,
+                    file_group_name, namespace,
                     subject=subject, visit=visit,
                     tree_level=tree_level),
                 stat),
@@ -413,8 +413,8 @@ class BaseTestCase(TestCase):
                         subject, visit)))
 
     def assertImagesAlmostMatch(self, out, ref, mean_threshold,
-                                stdev_threshold, from_analysis):
-        out_path = self.output_file_path(out, from_analysis)
+                                stdev_threshold, namespace):
+        out_path = self.output_file_path(out, namespace)
         ref_path = self.ref_file_path(ref)
         # Should probably look into ITK fuzzy matching methods
         cmd = ("mrcalc -quiet {a} {b} -subtract - | mrstats - | "
@@ -431,7 +431,7 @@ class BaseTestCase(TestCase):
                      thresh_stdev=stdev_threshold, a=out_path, b=ref_path)))
 
     def get_session_dir(self, subject=None, visit=None,
-                        tree_level='per_session', from_analysis=None):
+                        tree_level='per_session', namespace=None):
         if subject is None and tree_level in ('per_session', 'per_subject'):
             subject = self.SUBJECT
         if visit is None and tree_level in ('per_session', 'per_visit'):
@@ -459,8 +459,8 @@ class BaseTestCase(TestCase):
                            LocalFileSystemRepo.SUMMARY_NAME)
         else:
             assert False
-        if from_analysis is not None:
-            path = op.join(path, from_analysis)
+        if namespace is not None:
+            path = op.join(path, namespace)
         return op.abspath(path)
 
     def remove_generated_files(self, analysis=None):
@@ -469,12 +469,12 @@ class BaseTestCase(TestCase):
             if analysis is None or fname.startswith(analysis + '_'):
                 os.remove(op.join(self.get_session_dir(), fname))
 
-    def output_file_path(self, fname, from_analysis, subject=None, visit=None,
+    def output_file_path(self, fname, namespace, subject=None, visit=None,
                          tree_level='per_session', **kwargs):
         return op.join(
             self.get_session_dir(subject=subject, visit=visit,
                                  tree_level=tree_level,
-                                 from_analysis=from_analysis, **kwargs),
+                                 namespace=namespace, **kwargs),
             fname)
 
     def ref_file_path(self, fname, subject=None, session=None):

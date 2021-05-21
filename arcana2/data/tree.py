@@ -53,7 +53,7 @@ class TreeNode(object):
         # name of analysis that generated them (if applicable)
         self._file_groups = OrderedDict()
         for file_group in sorted(file_groups):
-            id_key = (file_group.id, file_group.from_analysis)
+            id_key = (file_group.id, file_group.namespace)
             try:
                 dct = self._file_groups[id_key]
             except KeyError:
@@ -67,12 +67,12 @@ class TreeNode(object):
                     "Attempting to add duplicate file_groups to tree ({} and {})"
                     .format(file_group, dct[format_key]))
             dct[format_key] = file_group
-        self._fields = OrderedDict(((f.name, f.from_analysis), f)
+        self._fields = OrderedDict(((f.name, f.namespace), f)
                                    for f in sorted(fields))
         self._records = OrderedDict(
-            ((r.pipeline_name, r.from_analysis), r)
+            ((r.pipeline_name, r.namespace), r)
             for r in sorted(records, key=lambda r: (r.subject_id, r.visit_id,
-                                                    r.from_analysis)))
+                                                    r.namespace)))
         self._missing_records = []
         self._duplicate_records = []
         self._tree = None
@@ -81,7 +81,7 @@ class TreeNode(object):
             if not item.derived:
                 continue  # Skip acquired items
             records = [r for r in self.records
-                       if (item.from_analysis == r.from_analysis
+                       if (item.namespace == r.namespace
                            and item.name in r.outputs)]
             if not records:
                 self._missing_records.append(item.name)
@@ -125,7 +125,7 @@ class TreeNode(object):
         "To be overridden by subclasses where appropriate"
         return None
 
-    def file_group(self, id, from_analysis=None, format=None):
+    def file_group(self, id, namespace=None, format=None):
         """
         Gets the file_group with the ID 'id' produced by the Analysis named
         'analysis' if provided. If a spec is passed instead of a str to the
@@ -136,7 +136,7 @@ class TreeNode(object):
         ----------
         id : str | FileGroupSpec
             The name of the file_group or a spec matching the given name
-        from_analysis : str | None
+        namespace : str | None
             Name of the analysis that produced the file_group if derived. If None
             and a spec is passed instaed of string to the name argument then
             the analysis name will be taken from the spec instead.
@@ -147,18 +147,18 @@ class TreeNode(object):
             raised
         """
         # if id.is_file_group:
-        #     if from_analysis is None and id.derived:
-        #         from_analysis = id.analysis.name
+        #     if namespace is None and id.derived:
+        #         namespace = id.analysis.name
         #     id = id.name
         try:
-            format_dct = self._file_groups[(id, from_analysis)]
+            format_dct = self._file_groups[(id, namespace)]
         except KeyError:
             available = [
                 ('{}(format={})'.format(f.id, f._resource_name)
                  if f._resource_name is not None else f.id)
-                for f in self.file_groups if f.from_analysis == from_analysis]
+                for f in self.file_groups if f.namespace == namespace]
             other_analyses = [
-                (f.from_analysis if f.from_analysis is not None else '<root>')
+                (f.namespace if f.namespace is not None else '<root>')
                 for f in self.file_groups if f.id == id]
             if other_analyses:
                 msg = (". NB: matching file_group(s) found for '{}' analysis(es) "
@@ -170,8 +170,8 @@ class TreeNode(object):
                 ("{} doesn't have a file_group named '{}'{} "
                  "(available '{}'){}"
                  .format(self, id,
-                         (" from analysis '{}'".format(from_analysis)
-                          if from_analysis is not None else ''),
+                         (" from analysis '{}'".format(namespace)
+                          if namespace is not None else ''),
                          "', '".join(available), msg)))
         else:
             if format is None:
@@ -181,8 +181,8 @@ class TreeNode(object):
                         id,
                         "Multiple file_groups found for '{}'{} in {} with formats"
                         " {}. Need to specify a format"
-                        .format(id, ("in '{}'".format(from_analysis)
-                                     if from_analysis is not None else ''),
+                        .format(id, ("in '{}'".format(namespace)
+                                     if namespace is not None else ''),
                                 self, "', '".join(format_dct.keys())))
                 file_group = all_formats[0]
             else:
@@ -207,13 +207,13 @@ class TreeNode(object):
                         ("{} doesn't have a file_group named '{}'{} with "
                          "format '{}' (available '{}')"
                          .format(self, id,
-                                 (" from analysis '{}'".format(from_analysis)
-                                  if from_analysis is not None else ''),
+                                 (" from analysis '{}'".format(namespace)
+                                  if namespace is not None else ''),
                                  format, "', '".join(format_dct.keys()))))
 
         return file_group
 
-    def field(self, name, from_analysis=None):
+    def field(self, name, namespace=None):
         """
         Gets the field named 'name' produced by the Analysis named 'analysis'
         if provided. If a spec is passed instead of a str to the name argument,
@@ -229,15 +229,15 @@ class TreeNode(object):
             the analysis name will be taken from the spec instead.
         """
         # if isinstance(name, FieldMixin):
-        #     if from_analysis is None and name.derived:
-        #         from_analysis = name.analysis.name
+        #     if namespace is None and name.derived:
+        #         namespace = name.analysis.name
         #     name = name.name
         try:
-            return self._fields[(name, from_analysis)]
+            return self._fields[(name, namespace)]
         except KeyError:
             available = [d.name for d in self.fields
-                         if d.from_analysis == from_analysis]
-            other_analyses = [(d.from_analysis if d.from_analysis is not None
+                         if d.namespace == namespace]
+            other_analyses = [(d.namespace if d.namespace is not None
                                else '<root>')
                               for d in self.fields if d.name == name]
             if other_analyses:
@@ -249,11 +249,11 @@ class TreeNode(object):
                 name, ("{} doesn't have a field named '{}'{} "
                        + "(available '{}')").format(
                            self, name,
-                           (" from analysis '{}'".format(from_analysis)
-                            if from_analysis is not None else ''),
+                           (" from analysis '{}'".format(namespace)
+                            if namespace is not None else ''),
                            "', '".join(available), msg))
 
-    def record(self, pipeline_name, from_analysis):
+    def record(self, pipeline_name, namespace):
         """
         Returns the provenance record for a given pipeline
 
@@ -261,7 +261,7 @@ class TreeNode(object):
         ----------
         pipeline_name : str
             The name of the pipeline that generated the record
-        from_analysis : str
+        namespace : str
             The name of the analysis that the pipeline was generated from
 
         Returns
@@ -270,7 +270,7 @@ class TreeNode(object):
             The provenance record generated by the specified pipeline
         """
         try:
-            return self._records[(pipeline_name, from_analysis)]
+            return self._records[(pipeline_name, namespace)]
         except KeyError:
             found = []
             for sname, pnames in groupby(sorted(self._records,
@@ -280,10 +280,10 @@ class TreeNode(object):
                     "'{}' for '{}'".format("', '".join(p for p, _ in pnames),
                                            sname))
             raise ArcanaNameError(
-                (pipeline_name, from_analysis),
+                (pipeline_name, namespace),
                 ("{} doesn't have a provenance record for pipeline '{}' "
                  "for '{}' analysis (found {})".format(
-                     self, pipeline_name, from_analysis,
+                     self, pipeline_name, namespace,
                      '; '.join(found))))
 
     @property

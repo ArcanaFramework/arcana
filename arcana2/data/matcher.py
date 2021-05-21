@@ -9,6 +9,7 @@ from arcana2.exceptions import (
 from .base import FileGroupMixin, FieldMixin
 from .item import FileGroup, Field
 from .column import FileGroupColumn, FieldColumn
+from .tree import TreeLevel
 
 
 class DataMatcher():
@@ -16,70 +17,27 @@ class DataMatcher():
     Base class for FileGroup and Field Matcher classes
     """
 
-    def __init__(self, pattern, is_regex, order, from_analysis,
-                 skip_missing=False, drop_if_missing=False,
-                 fallback_to_default=False):
+    def __init__(self, pattern, is_regex, order):
         self.pattern = pattern
         self.is_regex = is_regex
         self.order = order
-        self.from_analysis = from_analysis
-        self.skip_missing = skip_missing
-        self.drop_if_missing = drop_if_missing
-        self.fallback_to_default = fallback_to_default
-        if skip_missing and fallback_to_default:
-            raise ArcanaUsageError(
-                "Cannot provide both mutually exclusive 'skip_missing' and "
-                "'fallback_to_default' flags to {}".format(self))
-        # Set when fallback_to_default is True and there are missing matches
-        self._derivable = False
-        self._fallback = None
 
     def __eq__(self, other):
-        return (self.from_analysis == other.from_analysis
-                and self.pattern == other.pattern
+        return (self.pattern == other.pattern
                 and self.is_regex == other.is_regex
-                and self.order == other.order
-                and self._dataset == other._dataset
-                and self.skip_missing == other.skip_missing
-                and self.drop_if_missing == other.drop_if_missing
-                and self.fallback_to_default == other.fallback_to_default)
+                and self.order == other.order)
 
     def __hash__(self):
-        return (hash(self.from_analysis)
-                ^ hash(self.pattern)
+        return (hash(self.pattern)
                 ^ hash(self.is_regex)
-                ^ hash(self.order)
-                ^ hash(self._dataset)
-                ^ hash(self.skip_missing)
-                ^ hash(self.drop_if_missing)
-                ^ hash(self.fallback_to_default))
+                ^ hash(self.order))
 
     def initkwargs(self):
         dct = {}
-        dct['from_analysis'] = self.from_analysis
         dct['pattern'] = self.pattern
         dct['order'] = self.order
         dct['is_regex'] = self.is_regex
-        dct['analysis_'] = self._analysis
-        dct['column'] = self._column
-        dct['skip_missing'] = self.skip_missing
-        dct['drop_if_missing'] = self.drop_if_missing
-        dct['fallback_to_default'] = self.fallback_to_default
         return dct
-
-    def nodes(self, tree):
-        # Run the match against the tree
-        if self.tree_level == 'per_session':
-            nodes = chain(*(s.sessions for s in tree.subjects))
-        elif self.tree_level == 'per_subject':
-            nodes = tree.subjects
-        elif self.tree_level == 'per_visit':
-            nodes = tree.visits
-        elif self.tree_level == 'per_dataset':
-            nodes = [tree]
-        else:
-            assert False, "Unrecognised tree_level '{}'".format(self.tree_level)
-        return nodes
 
     def _match(self, tree, item_cls, **kwargs):
         matches = []
@@ -102,7 +60,7 @@ class DataMatcher():
                             subject_id=node.subject_id,
                             visit_id=node.visit_id,
                             dataset=self.analysis.dataset,
-                            from_analysis=self.from_analysis,
+                            namespace=self.namespace,
                             exists=False,
                             **self._specific_kwargs))
                     else:
@@ -123,30 +81,29 @@ class DataMatcher():
         # Get names matching pattern
         matches = self._filtered_matches(node, **kwargs)
         # Matcher matches by analysis name
-        analysis_matches = [d for d in matches
-                            if d.from_analysis == self.from_analysis]
+        ns_matches = [d for d in matches if d.namespace == self.namespace]
         # Select the file_group from the matches
-        if not analysis_matches:
+        if not ns_matches:
             raise ArcanaInputMissingMatchError(
                 "No matches found for {} in {} for analysis {}. Found:\n    {}"
                 .format(
-                    self, node, self.from_analysis,
+                    self, node, self.namespace,
                     '\n    '.join(str(m) for m in matches)))
         elif self.order is not None:
             try:
-                match = analysis_matches[self.order]
+                match = ns_matches[self.order]
             except IndexError:
                 raise ArcanaInputMissingMatchError(
                     "Did not find {} named data matching pattern {}, found "
                     " {} in {}".format(self.order, self.pattern,
                                        len(matches), node))
-        elif len(analysis_matches) == 1:
-            match = analysis_matches[0]
+        elif len(ns_matches) == 1:
+            match = ns_matches[0]
         else:
             raise ArcanaInputError(
                 "Found multiple matches for {} in {}:\n    {}"
                 .format(self, node,
-                        '\n    '.join(str(m) for m in analysis_matches)))
+                        '\n    '.join(str(m) for m in ns_matches)))
         return match
 
 
@@ -157,20 +114,20 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
 
     Parameters
     ----------
-    valid_formats : list[FileFormat] | FileFormat
-        File formats that data will be accepted in
     pattern : str
         A regex pattern to match the file_group names with. Must match
         one and only one file_group per <tree_level>. If None, the name
         is used instead.
+    format : FileFormat
+        File formats that data will be accepted in        
     is_regex : bool
         Flags whether the pattern is a regular expression or not
     tree_level : TreeLevel
         The level within the dataset tree that the data items sit, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
-    id : int | None
-        To be used to distinguish multiple file_groups that match the
-        pattern in the same session. The ID of the file_group within the
+    scan_id : int | None
+        To be used to distinguish multiple scan that match the
+        pattern in the same session. The scan ID of the file_group within the
         session.
     order : int | None
         To be used to distinguish multiple file_groups that match the
@@ -178,28 +135,15 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
         session. Based on the scan ID but is more robust to small
         changes to the IDs within the session if for example there are
         two scans of the same type taken before and after a task.
-    dicom_tags : dct(str | str)
+    dicom_tags : Dict[str, str]
         To be used to distinguish multiple file_groups that match the
         pattern in the same session. The provided DICOM values dicom
         header values must match exactly.
-    from_analysis : str
+    namespace : str
         The name of the analysis that generated the derived file_group to match.
         Is used to determine the location of the file_groups in the
         dataset as the derived file_groups and fields are grouped by
         the name of the analysis that generated them.
-    skip_missing : bool
-        If there is no file_group matching the selector for a node then pipelines
-        that use it as an input, including downstream pipelines, will not be
-        run for that node
-    drop_if_missing : bool
-        If there are missing file_groups then drop the selector from the analysis
-        input. Useful in the case where you want to provide selectors for the
-        a list of inputs which may or may not be acquired for a range of
-        studies
-    fallback_to_default : bool
-        If there is no file_group matching the selection for a node
-        and corresponding data spec has a default or is a derived spec
-        then fallback to the default or generate the derivative.
     acceptable_quality : str | list[str] | None
         An acceptable quality label, or list thereof, to accept, i.e. if a
         file_group's quality label is not in the list it will be ignored. If a
@@ -209,30 +153,19 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     is_spec = False
     ColumnClass = FileGroupColumn
 
-    def __init__(self, pattern=None, valid_formats=None,
-                 tree_level='per_session', id=None,
+    def __init__(self, pattern=None, format=None,
+                 tree_level=TreeLevel.session, scan_id=None,
                  order=None, dicom_tags=None, is_regex=False,
-                 from_analysis=None, skip_missing=False, drop_if_missing=False,
-                 fallback_to_default=False, dataset=None,
-                 acceptable_quality=None,
-                 analysis_=None, column=None):
-        FileGroupMixin.__init__(self, None, tree_level)
-        DataMatcher.__init__(self, pattern, is_regex, order,
-                                from_analysis, skip_missing, drop_if_missing,
-                                fallback_to_default, dataset, analysis_,
-                                column)
+                 namespace=None, acceptable_quality=None):
+        FileGroupMixin.__init__(self, None, tree_level, namespace)
+        DataMatcher.__init__(self, pattern, is_regex, order)
         self.dicom_tags = dicom_tags
-        if order is not None and id is not None:
+        if order is not None and scan_id is not None:
             raise ArcanaUsageError(
-                "Cannot provide both 'order' and 'id' to a file_group"
+                "Cannot provide both 'order' and 'scan_id' to a file_group"
                 "match")
-        if valid_formats is not None:
-            try:
-                valid_formats = tuple(valid_formats)
-            except TypeError:
-                valid_formats = (valid_formats,)
-        self.valid_formats = valid_formats
-        self.id = str(id) if id is not None else id
+        self.format = format
+        self.scan_id = str(scan_id) if scan_id is not None else scan_id
         if isinstance(acceptable_quality, basestring):
             acceptable_quality = (acceptable_quality,)
         elif acceptable_quality is not None:
@@ -243,52 +176,40 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
         return (FileGroupMixin.__eq__(self, other) and
                 DataMatcher.__eq__(self, other) and
                 self.dicom_tags == other.dicom_tags and
-                self.id == other.id and
+                self.scan_id == other.scan_id and
                 self._acceptable_quality == other._acceptable_quality)
 
     def __hash__(self):
         return (FileGroupMixin.__hash__(self) ^
                 DataMatcher.__hash__(self) ^
                 hash(self.dicom_tags) ^
-                hash(self.id) ^
+                hash(self.scan_id) ^
                 hash(self._acceptable_quality))
 
     def initkwargs(self):
         dct = FileGroupMixin.initkwargs(self)
         dct.update(DataMatcher.initkwargs(self))
         dct['dicom_tags'] = self.dicom_tags
-        dct['id'] = self.id
+        dct['scan_id'] = self.scan_id
         dct['acceptable_quality'] = self.acceptable_quality
         return dct
 
     def __repr__(self):
         return ("{}(name='{}', format={}, tree_level={}, pattern={}, "
-                "is_regex={}, order={}, id={}, dicom_tags={}, "
-                "from_analysis={}, acceptable_quality={})"
+                "is_regex={}, order={}, scan_id={}, dicom_tags={}, "
+                "namespace={}, acceptable_quality={})"
                 .format(self.__class__.__name__, self.name, self._format,
                         self.tree_level, self.pattern, self.is_regex,
-                        self.order, self.id, self.dicom_tags,
-                        self.from_analysis, self._acceptable_quality))
+                        self.order, self.scan_id, self.dicom_tags,
+                        self.namespace, self._acceptable_quality))
 
-    def match(self, tree, valid_formats=None, **kwargs):
-        if self.valid_formats is not None:
-            valid_formats = self.valid_formats
-        else:
-            if valid_formats is None:
-                raise ArcanaUsageError(
-                    "'valid_formats' need to be provided to the 'match' "
-                    "method if the FileGroupMatcher ({}) doesn't specify a "
-                    "format".format(self))
+    def match(self, tree, **kwargs):
         # Run the match against the tree
         return FileGroupColumn(self.name,
-                            self._match(
-                                tree, FileGroup,
-                                valid_formats=valid_formats,
-                                **kwargs),
-                            tree_level=self.tree_level,
-                            candidate_formats=valid_formats)
+                               self._match(tree, FileGroup, **kwargs),
+                               tree_level=self.tree_level)
 
-    def _filtered_matches(self, node, valid_formats=None, **kwargs):  # noqa pylint: disable=unused-argument
+    def _filtered_matches(self, node, **kwargs):  # noqa pylint: disable=unused-argument
         if self.pattern is not None:
             if self.is_regex:
                 pattern_re = re.compile(self.pattern)
@@ -315,18 +236,17 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                         self.pattern, self.acceptable_quality, node,
                         '\n    '.join(str(m) for m in matches)))
             matches = filtered
-        if self.id is not None:
-            filtered = [d for d in matches if d.id == self.id]
+        if self.scan_id is not None:
+            filtered = [d for d in matches if d.scan_id == self.scan_id]
             if not filtered:
                 raise ArcanaInputMissingMatchError(
                     "Did not find file_groups names matching pattern {} "
-                    "with an id of {} in {}. Found:\n    {} ".format(
-                        self.pattern, self.id,
+                    "with an scan_id of {} in {}. Found:\n    {} ".format(
+                        self.pattern, self.scan_id,
                         '\n    '.join(str(m) for m in matches), node))
             matches = filtered
-        if valid_formats is not None:
-            format_matches = [
-                m for m in matches if any(f.matches(m) for f in valid_formats)]
+        if self.format is not None:
+            format_matches = [m for m in matches if self.format.matches(m)]
             if not format_matches:
                 for f in matches:
                     self.format.matches(f)
@@ -399,42 +319,20 @@ class FieldMatcher(DataMatcher, FieldMixin):
         session. Based on the scan ID but is more robust to small
         changes to the IDs within the session if for example there are
         two scans of the same type taken before and after a task.
-    from_analysis : str
+    namespace : str
         The name of the analysis that generated the derived field to match.
         Is used to determine the location of the fields in the
         dataset as the derived file_groups and fields are grouped by
         the name of the analysis that generated them.
-    skip_missing : bool
-        If there is no field matching the selector for a node then pipelines
-        that use it as an input, including downstream pipelines, will not be
-        run for that node
-    drop_if_missing : bool
-        If there are missing file_groups then drop the selector from the analysis
-        input. Useful in the case where you want to provide selectors for the
-        a list of inputs which may or may not be acquired for a range of
-        studies
-    fallback_to_default : bool
-        If the there is no file_group/field matching the selection for a node
-        and corresponding data spec has a default or is a derived spec,
-        then fallback to the default or generate the derivative.
-    dataset : Repository | None
-        The dataset to draw the matches from, if not the main dataset
-        that is used to store the products of the current analysis.
     """
 
     is_spec = False
     ColumnClass = FieldColumn
 
-    def __init__(self, pattern, dtype=None, tree_level='per_session',
-                 order=None, is_regex=False, from_analysis=None,
-                 skip_missing=False, drop_if_missing=False,
-                 fallback_to_default=False, dataset=None, analysis_=None,
-                 column=None):
-        FieldMixin.__init__(self, dtype, tree_level)
-        DataMatcher.__init__(self, pattern, is_regex, order,
-                                from_analysis, skip_missing, drop_if_missing,
-                                fallback_to_default, dataset, analysis_,
-                                column)
+    def __init__(self, pattern, dtype=None, tree_level=TreeLevel.session,
+                 order=None, is_regex=False, namespace=None):
+        FieldMixin.__init__(self, dtype, tree_level, namespace)
+        DataMatcher.__init__(self, pattern, is_regex, order)
 
     def __eq__(self, other):
         return (FieldMixin.__eq__(self, other) and
@@ -474,9 +372,9 @@ class FieldMatcher(DataMatcher, FieldMixin):
         else:
             matches = [f for f in node.fields
                        if f.name == self.pattern]
-        if self.from_analysis is not None:
+        if self.namespace is not None:
             matches = [f for f in matches
-                       if f.from_analysis == self.from_analysis]
+                       if f.namespace == self.namespace]
         if not matches:
             raise ArcanaInputMissingMatchError(
                 "Did not find any matches for {} in {}. Found:\n    {}"
@@ -486,10 +384,10 @@ class FieldMatcher(DataMatcher, FieldMixin):
 
     def __repr__(self):
         return ("{}(name='{}', dtype={}, tree_level={}, pattern={}, "
-                "is_regex={}, order={}, from_analysis={})"
+                "is_regex={}, order={}, namespace={})"
                 .format(self.__class__.__name__, self.name, self._dtype,
                         self.tree_level, self.pattern, self.is_regex,
-                        self.order, self.from_analysis))
+                        self.order, self.namespace))
 
     @property
     def _specific_kwargs(self):

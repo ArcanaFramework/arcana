@@ -16,26 +16,22 @@ class DataItem(object):
 
     is_spec = False
 
-    def __init__(self, subject_id, visit_id, dataset, from_analysis,
-                 exists, record):
-        self._subject_id = subject_id
-        self._visit_id = visit_id
-        self._dataset = dataset
-        self._from_analysis = from_analysis
-        self._exists = exists
+    def __init__(self, subject_id, visit_id, dataset, exists, record):
+        self.subject_id = subject_id
+        self.visit_id = visit_id
+        self.dataset = dataset
+        self.exists = exists
         self._record = record
 
     def __eq__(self, other):
         return (self.subject_id == other.subject_id
                 and self.visit_id == other.visit_id
-                and self.from_analysis == other.from_analysis
                 and self.exists == other.exists
                 and self._record == other._record)
 
     def __hash__(self):
         return (hash(self.subject_id)
                 ^ hash(self.visit_id)
-                ^ hash(self.from_analysis)
                 ^ hash(self.exists)
                 ^ hash(self._record))
 
@@ -50,10 +46,6 @@ class DataItem(object):
             mismatch += ('\n{}visit_id: self={} v other={}'
                          .format(sub_indent, self.visit_id,
                                  other.visit_id))
-        if self.from_analysis != other.from_analysis:
-            mismatch += ('\n{}from_analysis: self={} v other={}'
-                         .format(sub_indent, self.from_analysis,
-                                 other.from_analysis))
         if self.exists != other.exists:
             mismatch += ('\n{}exists: self={} v other={}'
                          .format(sub_indent, self.exists,
@@ -66,31 +58,11 @@ class DataItem(object):
 
     @property
     def derived(self):
-        return self.from_analysis is not None
-
-    @property
-    def dataset(self):
-        return self._dataset
-
-    @property
-    def exists(self):
-        return self._exists
-
-    @property
-    def subject_id(self):
-        return self._subject_id
-
-    @property
-    def visit_id(self):
-        return self._visit_id
+        return self.namespace is not None
 
     @property
     def session_id(self):
         return (self.subject_id, self.visit_id)
-
-    @property
-    def from_analysis(self):
-        return self._from_analysis
 
     @property
     def record(self):
@@ -117,7 +89,7 @@ class DataItem(object):
         dct['dataset'] = self.dataset
         dct['subject_id'] = self.subject_id
         dct['visit_id'] = self.visit_id
-        dct['from_analysis'] = self._from_analysis
+        dct['exists'] = self.exists
         return dct
 
 
@@ -143,7 +115,7 @@ class FileGroup(DataItem, FileGroupMixin):
     aux_files : dict[str, str] | None
         Additional files in the file_group. Keys should match corresponding
         aux_files dictionary in format.
-    id : int | None
+    scan_id : int | None
         The ID of the file_group in the session. To be used to
         distinguish multiple file_groups with the same scan type in the
         same session, e.g. scans taken before and after a task. For
@@ -154,7 +126,7 @@ class FileGroup(DataItem, FileGroupMixin):
         The id of the visit which the file_group belongs to
     dataset : Repository
         The dataset which the file_group is stored
-    from_analysis : str
+    namespace : str
         Name of the Arcana analysis that that generated the field
     exists : bool
         Whether the file_group exists or is just a placeholder for a derivative
@@ -179,14 +151,14 @@ class FileGroup(DataItem, FileGroupMixin):
     """
 
     def __init__(self, name, format=None, tree_level='per_session',
-                 path=None, aux_files=None, id=None, uri=None, subject_id=None,
-                 visit_id=None, dataset=None, from_analysis=None,
+                 path=None, aux_files=None, scan_id=None, uri=None,
+                 subject_id=None, visit_id=None, dataset=None, namespace=None,
                  exists=True, checksums=None, record=None, resource_name=None,
                  potential_aux_files=None, quality=None):
         FileGroupMixin.__init__(self, name=name, format=format,
                              tree_level=tree_level)
         DataItem.__init__(self, subject_id, visit_id, dataset,
-                               from_analysis, exists, record)
+                               namespace, exists, record)
         if aux_files is not None:
             if path is None:
                 raise ArcanaUsageError(
@@ -282,12 +254,12 @@ class FileGroup(DataItem, FileGroupMixin):
         else:
             if self.id == other.id:
                 # If ids are equal order depending on analysis name
-                # with acquired (from_analysis==None) coming first
-                if self.from_analysis is None:
-                    return other.from_analysis is not None
-                elif other.from_analysis is None:
+                # with acquired (namespace==None) coming first
+                if self.namespace is None:
+                    return other.namespace is not None
+                elif other.namespace is None:
                     return False
-                elif self.from_analysis == other.from_analysis:
+                elif self.namespace == other.namespace:
                     if self.format_name is None:
                         return other.format_name is not None
                     elif other.format_name is None:
@@ -295,7 +267,7 @@ class FileGroup(DataItem, FileGroupMixin):
                     else:
                         return self.format_name < other.format_name
                 else:
-                    return self.from_analysis < other.from_analysis
+                    return self.namespace < other.namespace
             else:
                 return self.id < other.id
 
@@ -305,7 +277,7 @@ class FileGroup(DataItem, FileGroupMixin):
                 .format(
                     type(self).__name__, self.name, self.format,
                     self.tree_level, self.subject_id,
-                    self.visit_id, self.from_analysis,
+                    self.visit_id, self.namespace,
                     (", resource_name='{}'".format(self._resource_name)
                      if self._resource_name is not None else ''),
                     self.exists, self.quality,
@@ -603,7 +575,7 @@ class Field(DataItem, FieldMixin):
         The id of the visit which the field belongs to
     dataset : Repository
         The dataset which the field is stored
-    from_analysis : str
+    namespace : str
         Name of the Arcana analysis that that generated the field
     exists : bool
         Whether the field exists or is just a placeholder for a derivative
@@ -614,7 +586,7 @@ class Field(DataItem, FieldMixin):
 
     def __init__(self, name, value=None, dtype=None,
                  tree_level='per_session', array=None, subject_id=None,
-                 visit_id=None, dataset=None, from_analysis=None,
+                 visit_id=None, dataset=None, namespace=None,
                  exists=True, record=None):
         # Try to determine dtype and array from value if they haven't
         # been provided.
@@ -653,7 +625,7 @@ class Field(DataItem, FieldMixin):
                     value = dtype(value)
         FieldMixin.__init__(self, name, dtype, tree_level, array)
         DataItem.__init__(self, subject_id, visit_id, dataset,
-                               from_analysis, exists, record)
+                               namespace, exists, record)
         self._value = value
 
     def __eq__(self, other):
@@ -699,13 +671,13 @@ class Field(DataItem, FieldMixin):
     def __lt__(self, other):
         if self.name == other.name:
             # If ids are equal order depending on analysis name
-            # with acquired (from_analysis==None) coming first
-            if self.from_analysis is None:
-                return other.from_analysis is None
-            elif other.from_analysis is None:
+            # with acquired (namespace==None) coming first
+            if self.namespace is None:
+                return other.namespace is None
+            elif other.namespace is None:
                 return False
             else:
-                return self.from_analysis < other.from_analysis
+                return self.namespace < other.namespace
         else:
             return self.name < other.name
 
@@ -716,7 +688,7 @@ class Field(DataItem, FieldMixin):
                     (" {},".format(self._value)
                      if self._value is not None else ''),
                     self.tree_level, self.subject_id,
-                    self.visit_id, self.from_analysis,
+                    self.visit_id, self.namespace,
                     self.exists))
 
     @property

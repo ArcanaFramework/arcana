@@ -63,7 +63,7 @@ class XnatCSRepo(XnatRepo):
     def dataset_cache_dir(self, dataset_name):
         return None
 
-    # root_dir=None, all_from_analysis=None,
+    # root_dir=None, all_namespace=None,
     def find_data(self, dataset, subject_ids=None, visit_ids=None, **kwargs):
         """
         Find all data within a repository, registering file_groups, fields and
@@ -152,7 +152,7 @@ class XnatCSRepo(XnatRepo):
                         tree_level=tree_level,
                         subject_id=subj_id, visit_id=visit_id,
                         dataset=dataset,
-                        from_analysis=from_analysis,
+                        namespace=namespace,
                         potential_aux_files=[
                             f for f in filtered_files
                             if (split_extension(f)[0] == basename
@@ -165,7 +165,7 @@ class XnatCSRepo(XnatRepo):
                         tree_level=tree_level,
                         subject_id=subj_id, visit_id=visit_id,
                         dataset=dataset,
-                        from_analysis=from_analysis,
+                        namespace=namespace,
                         **kwargs))
             if self.FIELDS_FNAME in files:
                 with open(op.join(session_path,
@@ -174,11 +174,11 @@ class XnatCSRepo(XnatRepo):
                 all_fields.extend(
                     Field(name=k, value=v, tree_level=tree_level,
                           subject_id=subj_id, visit_id=visit_id,
-                          dataset=dataset, from_analysis=from_analysis,
+                          dataset=dataset, namespace=namespace,
                           **kwargs)
                     for k, v in list(dct.items()))
             if self.PROV_DIR in dirs:
-                if from_analysis is None:
+                if namespace is None:
                     raise ArcanaRepositoryError(
                         "Found provenance directory in session directory (i.e."
                         " not in analysis-specific sub-directory)")
@@ -186,7 +186,7 @@ class XnatCSRepo(XnatRepo):
                 for fname in os.listdir(base_prov_dir):
                     all_records.append(Record.load(
                         split_extension(fname)[0],
-                        tree_level, subj_id, visit_id, from_analysis,
+                        tree_level, subj_id, visit_id, namespace,
                         op.join(base_prov_dir, fname)))
         return all_file_groups, all_fields, all_records
 

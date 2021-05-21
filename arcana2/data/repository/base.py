@@ -311,7 +311,7 @@ class Repository(metaclass=ABCMeta):
                 assert False
         self._prov = pipeline.prov
         self._pipeline_name = pipeline.name
-        self._from_analysis = pipeline.analysis.name
+        self._namespace = pipeline.analysis.name
         self._required = required
         outputs = self.output_spec().get()
         # Connect iterables (i.e. subject_id and visit_id)
@@ -357,7 +357,7 @@ class Repository(metaclass=ABCMeta):
             prov['inputs'] = input_checksums
             prov['outputs'] = output_checksums
             record = Record(self._pipeline_name, self.tree_level, subject_id,
-                            visit_id, self._from_analysis, prov)
+                            visit_id, self._namespace, prov)
             for dataset in self.datasets:
                 dataset.put_record(record)
         if missing_inputs:
@@ -593,7 +593,7 @@ class RepositorySink(RepositoryInterface):
                 assert False
         self._prov = pipeline.prov
         self._pipeline_name = pipeline.name
-        self._from_analysis = pipeline.analysis.name
+        self._namespace = pipeline.analysis.name
         self._required = required
 
     def _list_outputs(self):
@@ -641,7 +641,7 @@ class RepositorySink(RepositoryInterface):
             prov['inputs'] = input_checksums
             prov['outputs'] = output_checksums
             record = Record(self._pipeline_name, self.tree_level, subject_id,
-                            visit_id, self._from_analysis, prov)
+                            visit_id, self._namespace, prov)
             for dataset in self.datasets:
                 dataset.put_record(record)
         if missing_inputs:
