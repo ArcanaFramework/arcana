@@ -17,28 +17,28 @@ id_getter = attrgetter('id')
 logger = logging.getLogger('arcana')
 
 
-class TreeLevel(Enum):
+class DataFreq(Enum):
     """
-    The level at which a data item sits within a data tree. For typical
-    neuroimaging analysis these levels are hardcoded to one of six values.
+    The frequency at which a data item is stored within a data tree. For
+    typical neuroimaging analysis these levels are hardcoded to one of six
+    values.
     """
 
     # Name = (iteration-pattern, description)
-    visit = (0b001,
-             'for each visit (e.g. longitudinal timepoint)')    
+    visit = (0b001, 'for each visit (e.g. longitudinal timepoint)')    
     subject = (0b010, 'for each subject')
     group = (0b100, 'for each group')
     session = (0b011, 'for each session')
     group_visit = (
         0b101, 'for each group and visit combination, '
         'e.g. a timepoint for a specific group in a longitudinal study')
-    dataset = (0b000, "singularly in the dataset")
+    dataset = (0b000, "singularly within the dataset")
 
     # The 'iteration-pattern' is a binary string that specifies the depth of
     # the tree by its length (i.e. 3), and which level needs to be iterated
     # over for each frequency.
 
-    # Note that patterns 0b110 and 0b111 are not possible because it is
+    # Note that patterns 0b110 and 0b111 are not required because it is
     # assumed that each subject can only belong to one group
 
     @property
@@ -410,7 +410,7 @@ class DataTree(TreeNode):
         to the one that the derived products are stored in
     """
 
-    level = TreeLevel.dataset
+    level = DataFreq.dataset
 
     def __init__(self, subjects, visits, dataset, file_groups=None,
                  fields=None, records=None, fill_subjects=None,
@@ -543,8 +543,8 @@ class DataTree(TreeNode):
 
         Parameters
         ----------
-        level : TreeLevel | None
-            The level within the dataset tree that the data items sit, i.e. 
+        level : DataFreq | None
+            The frequency that the items occur in the dataset, i.e. 
             per 'session', 'subject', 'visit', 'group_visit', 'group' or
             'dataset'
 
@@ -560,14 +560,14 @@ class DataTree(TreeNode):
             nodes = self._nodes(level=level)
         return nodes
 
-    def _nodes(self, tree_level):
-        if tree_level == 'per_session':
+    def _nodes(self, frequency):
+        if frequency == 'per_session':
             nodes = chain(*(s.sessions for s in self.subjects))
-        elif tree_level == 'per_subject':
+        elif frequency == 'per_subject':
             nodes = self.subjects
-        elif tree_level == 'per_visit':
+        elif frequency == 'per_visit':
             nodes = self.visits
-        elif tree_level == 'per_dataset':
+        elif frequency == 'per_dataset':
             nodes = [self]
         else:
             assert False
@@ -728,13 +728,13 @@ class Subject(TreeNode):
         The sessions in the subject
     file_groups : List[FileGroup]
         The file_groups that belong to the subject, i.e. of 'per_subject'
-        tree_level
+        frequency
     fields : List[Field]
         The fields that belong to the subject, i.e. of 'per_subject'
-        tree_level
+        frequency
     """
 
-    tree_level = 'per_subject'
+    frequency = 'per_subject'
 
     def __init__(self, subject_id, sessions, file_groups=None,
                  fields=None, records=None):
@@ -777,34 +777,34 @@ class Subject(TreeNode):
     def sessions(self):
         return self._sessions.values()
 
-    def nodes(self, tree_level=None):
+    def nodes(self, frequency=None):
         """
-        Returns all sessions in the subject. If a tree_level is passed then
-        it will return all nodes of that tree_level related to the current node.
-        If there is no relationshop between the current node and the tree_level
-        then all nodes in the tree for that tree_level will be returned
+        Returns all sessions in the subject. If a frequency is passed then
+        it will return all nodes of that frequency related to the current node.
+        If there is no relationshop between the current node and the frequency
+        then all nodes in the tree for that frequency will be returned
 
         Parameters
         ----------
-        tree_level : TreeLevel | None
-            The level within the dataset tree that the data items sit, i.e. 
+        frequency : DataFreq | None
+            The frequency that the items occur in the dataset, i.e. 
             per 'session', 'subject', 'visit', 'group_visit', 'group' or
             'dataset'
 
         Returns
         -------
         nodes : iterable[TreeNode]
-            All nodes related to the subject for the specified tree_level, or
-            all nodes in the tree if there is no relation with that tree_level
+            All nodes related to the subject for the specified frequency, or
+            all nodes in the tree if there is no relation with that frequency
             (e.g. per_visit)
         """
-        if tree_level in (None, 'per_session'):
+        if frequency in (None, 'per_session'):
             return self.sessions
-        elif tree_level == 'per_visit':
-            return self.tree.nodes(tree_level)
-        elif tree_level == 'per_subject':
+        elif frequency == 'per_visit':
+            return self.tree.nodes(frequency)
+        elif frequency == 'per_subject':
             return [self]
-        elif tree_level == 'per_dataset':
+        elif frequency == 'per_dataset':
             return [self.tree]
 
     @property
@@ -861,13 +861,13 @@ class Visit(TreeNode):
         The sessions in the visit
     file_groups : List[FileGroup]
         The file_groups that belong to the visit, i.e. of 'per_visit'
-        tree_level
+        frequency
     fields : List[Field]
         The fields that belong to the visit, i.e. of 'per_visit'
-        tree_level
+        frequency
     """
 
-    tree_level = 'per_visit'
+    frequency = 'per_visit'
 
     def __init__(self, visit_id, sessions, file_groups=None, fields=None,
                  records=None):
@@ -909,34 +909,34 @@ class Visit(TreeNode):
     def sessions(self):
         return self._sessions.values()
 
-    def nodes(self, tree_level=None):
+    def nodes(self, frequency=None):
         """
-        Returns all sessions in the visit. If a tree_level is passed then
-        it will return all nodes of that tree_level related to the current node.
-        If there is no relationshop between the current node and the tree_level
-        then all nodes in the tree for that tree_level will be returned
+        Returns all sessions in the visit. If a frequency is passed then
+        it will return all nodes of that frequency related to the current node.
+        If there is no relationshop between the current node and the frequency
+        then all nodes in the tree for that frequency will be returned
 
         Parameters
         ----------
-        tree_level : TreeLevel | None
-            The level within the dataset tree that the data items sit, i.e. 
+        frequency : DataFreq | None
+            The frequency that the items occur in the dataset, i.e. 
             per 'session', 'subject', 'visit', 'group_visit', 'group' or
             'dataset'
 
         Returns
         -------
         nodes : iterable[TreeNode]
-            All nodes related to the visit for the specified tree_level, or
-            all nodes in the tree if there is no relation with that tree_level
+            All nodes related to the visit for the specified frequency, or
+            all nodes in the tree if there is no relation with that frequency
             (e.g. per_subject)
         """
-        if tree_level in (None, 'per_session'):
+        if frequency in (None, 'per_session'):
             return self.sessions
-        elif tree_level == 'per_subject':
-            return self.tree.nodes(tree_level)
-        elif tree_level == 'per_visit':
+        elif frequency == 'per_subject':
+            return self.tree.nodes(frequency)
+        elif frequency == 'per_visit':
             return [self]
-        elif tree_level == 'per_dataset':
+        elif frequency == 'per_dataset':
             return [self.tree]
 
     def session(self, subject_id):
@@ -992,7 +992,7 @@ class Session(TreeNode):
         Sessions storing derived scans are stored for separate analyses
     """
 
-    tree_level = 'per_session'
+    frequency = 'per_session'
 
     def __init__(self, subject_id, visit_id, file_groups=None, fields=None,
                  records=None):
@@ -1042,28 +1042,28 @@ class Session(TreeNode):
     def visit(self, visit):
         self._visit = visit
 
-    def nodes(self, tree_level=None):
+    def nodes(self, frequency=None):
         """
-        Returns all nodes of the specified tree_level that are related to
+        Returns all nodes of the specified frequency that are related to
         the given Session
 
         Parameters
         ----------
-        tree_level : TreeLevel | None
+        frequency : DataFreq | None
             The level of the nodes to return within the tree
 
         Returns
         -------
         nodes : iterable[TreeNode]
-            All nodes related to the Session for the specified tree_level
+            All nodes related to the Session for the specified frequency
         """
-        if tree_level is None:
+        if frequency is None:
             []
-        elif tree_level == 'per_session':
+        elif frequency == 'per_session':
             return [self]
-        elif tree_level in ('per_visit', 'per_subject'):
-            return [self.tree.nodes(self.tree_level)]
-        elif tree_level == 'per_dataset':
+        elif frequency in ('per_visit', 'per_subject'):
+            return [self.tree.nodes(self.frequency)]
+        elif frequency == 'per_dataset':
             return [self.tree]
 
     def find_mismatch(self, other, indent=''):

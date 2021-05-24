@@ -8,6 +8,7 @@ from arcana2.exceptions import (
     ArcanaDataNotDerivedYetError, ArcanaUriAlreadySetException)
 # from .file_format import FileFormat
 from .base import FileGroupMixin, FieldMixin
+from .tree import DataFreq
 
 HASH_CHUNK_SIZE = 2 ** 20  # 1MB
 
@@ -104,8 +105,8 @@ class FileGroup(DataItem, FileGroupMixin):
         information about which node in the data tree it belongs to
     format : FileFormat
         The file format used to store the file_group.
-    tree_level : TreeLevel
-        The level within the dataset tree that the data items sit, i.e. 
+    frequency : DataFreq
+        The frequency that the file group occurs in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     derived : bool
         Whether the scan was generated or acquired. Depending on the dataset
@@ -145,13 +146,13 @@ class FileGroup(DataItem, FileGroupMixin):
         Path to the file-group in the local cache
     """
 
-    def __init__(self, path, format=None, tree_level='per_session',
+    def __init__(self, path, format=None, frequency=DataFreq.session,
                  aux_files=None, scan_id=None, uri=None,
                  subject_id=None, visit_id=None, dataset=None,
                  exists=True, checksums=None, record=None, resource_name=None,
                  quality=None, cache_path=None):
         FileGroupMixin.__init__(self, path=path, format=format,
-                                tree_level=tree_level)
+                                frequency=frequency)
         DataItem.__init__(self, subject_id, visit_id, dataset, exists, record)
         if aux_files is not None:
             if path is None:
@@ -256,7 +257,7 @@ class FileGroup(DataItem, FileGroupMixin):
                 "quality={}{})"
                 .format(
                     type(self).__name__, self.path, self.format,
-                    self.tree_level, self.subject_id,
+                    self.frequency, self.subject_id,
                     self.visit_id, self.exists, self.quality,
                     (", resource_name='{}'".format(self._resource_name)
                      if self._resource_name is not None else '')))
@@ -533,8 +534,8 @@ class Field(DataItem, FieldMixin):
         information about which node in the data tree it belongs to
     dtype : type
         The datatype of the value. Can be one of (float, int, str)
-    tree_level : TreeLevel
-        The level within the dataset tree that the data items sit, i.e. 
+    frequency : DataFreq
+        The frequency that the items occur in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     derived : bool
         Whether or not the value belongs in the derived session or not
@@ -552,7 +553,7 @@ class Field(DataItem, FieldMixin):
     """
 
     def __init__(self, path, value=None, dtype=None,
-                 tree_level='per_session', array=None, subject_id=None,
+                 frequency=DataFreq.session, array=None, subject_id=None,
                  visit_id=None, dataset=None, exists=True, record=None):
         # Try to determine dtype and array from value if they haven't
         # been provided.
@@ -589,7 +590,7 @@ class Field(DataItem, FieldMixin):
                     value = [dtype(v) for v in value]
                 else:
                     value = dtype(value)
-        FieldMixin.__init__(self, path, dtype, tree_level, array)
+        FieldMixin.__init__(self, path, dtype, frequency, array)
         DataItem.__init__(self, subject_id, visit_id, dataset,
                           exists, record)
         self._value = value
@@ -649,7 +650,7 @@ class Field(DataItem, FieldMixin):
                     type(self).__name__, self.path,
                     (" {},".format(self._value)
                      if self._value is not None else ''),
-                    self.tree_level, self.subject_id,
+                    self.frequency, self.subject_id,
                     self.visit_id, self.exists))
 
     @property

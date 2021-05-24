@@ -28,7 +28,7 @@ class Record(object):
     ----------
     pipeline_name : str
         Name of the pipeline the record corresponds to
-    tree_level : TreeLevel
+    frequency : DataFreq
         The level within the dataset tree that the record will sit, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     subject_id : str | None
@@ -46,25 +46,25 @@ class Record(object):
     # For duck-typing with FileGroups and Fields
     derived = True
 
-    def __init__(self, pipeline_name, tree_level, subject_id, visit_id,
+    def __init__(self, pipeline_name, frequency, subject_id, visit_id,
                  namespace, prov):
         self.prov = deepcopy(prov)
         self.pipeline_name = pipeline_name
-        self.tree_level = tree_level
+        self.frequency = frequency
         self.subject_id = subject_id
         self.visit_id = visit_id
         if 'datetime' not in self.prov:
             self._prov['datetime'] = datetime.now().isoformat()
 
     def __repr__(self):
-        return ("{}(pipeline={}, tree_level={}, subject_id={}, visit_id={},)"
+        return ("{}(pipeline={}, frequency={}, subject_id={}, visit_id={},)"
                 .format(
-                    type(self).__name__, self.pipeline_name, self.tree_level,
+                    type(self).__name__, self.pipeline_name, self.frequency,
                     self.subject_id, self.visit_id))
 
     def __eq__(self, other):
         return (self.prov == other.prov
-                and self.tree_level == other.tree_level
+                and self.frequency == other.frequency
                 and self.subject_id == other.subject_id
                 and self.visit_id == other.visit_id)
 
@@ -100,9 +100,9 @@ class Record(object):
             Path to save the generated JSON file
         inputs : dict[str, str | list[str] | list[list[str]]] | None
             Checksums of all pipeline inputs used by the pipeline. For inputs
-            of matching tree_level to the output derivative associated with the
+            of matching frequency to the output derivative associated with the
             provenance object, the values of the dictionary will be single
-            checksums. If the output is of lower tree_level they will be lists
+            checksums. If the output is of lower frequency they will be lists
             of checksums or in the case of 'per_session' inputs to 'per_dataset'
             outputs, lists of lists of checksum. They need to be provided here
             if the provenance object was initialised without checksums
@@ -119,7 +119,7 @@ class Record(object):
                     .format(pformat(self.prov)))
 
     @classmethod
-    def load(cls, pipeline_name, tree_level, subject_id, visit_id,
+    def load(cls, pipeline_name, frequency, subject_id, visit_id,
              path):
         """
         Loads a saved provenance object from a JSON file
@@ -128,8 +128,8 @@ class Record(object):
         ----------
         path : str
             Path to the provenance file
-        tree_level : TreeLevel
-            The level within the dataset tree that the data items sit, i.e. 
+        frequency : DataFreq
+            The frequency that the items occur in the dataset, i.e. 
             per 'session', 'subject', 'visit', 'group_visit', 'group' or
             'dataset'
         subject_id : str | None
@@ -144,7 +144,7 @@ class Record(object):
         """
         with open(path) as f:
             prov = json.load(f)
-        return Record(pipeline_name, tree_level, subject_id, visit_id,
+        return Record(pipeline_name, frequency, subject_id, visit_id,
                       prov)
 
     def mismatches(self, other, include=None, exclude=None):

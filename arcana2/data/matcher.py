@@ -9,7 +9,7 @@ from arcana2.exceptions import (
 from .base import FileGroupMixin, FieldMixin
 from .item import FileGroup, Field
 from .column import FileGroupColumn, FieldColumn
-from .tree import TreeLevel
+from .tree import DataFreq
 
 
 class DataMatcher():
@@ -56,7 +56,7 @@ class DataMatcher():
                         # the the missing item
                         matches.append(item_cls(
                             self.path,
-                            tree_level=self.tree_level,
+                            frequency=self.frequency,
                             subject_id=node.subject_id,
                             visit_id=node.visit_id,
                             dataset=self.analysis.dataset,
@@ -111,14 +111,14 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     ----------
     path : str
         A regex path to match the file_group names with. Must match
-        one and only one file_group per <tree_level>. If None, the name
+        one and only one file_group per <frequency>. If None, the name
         is used instead.
     format : FileFormat
         File formats that data will be accepted in        
     is_regex : bool
         Flags whether the path is a regular expression or not
-    tree_level : TreeLevel
-        The level within the dataset tree that the data items sit, i.e. 
+    frequency : DataFreq
+        The frequency that the items occur in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     order : int | None
         To be used to distinguish multiple file_groups that match the
@@ -144,10 +144,10 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     is_spec = False
     ColumnClass = FileGroupColumn
 
-    def __init__(self, path=None, format=None, tree_level=TreeLevel.session, 
+    def __init__(self, path=None, format=None, frequency=DataFreq.session, 
                  order=None, metadata=None, is_regex=False, namespace=None,
                  acceptable_quality=None):
-        FileGroupMixin.__init__(self, None, tree_level, namespace)
+        FileGroupMixin.__init__(self, None, frequency, namespace)
         DataMatcher.__init__(self, path, is_regex, order)
         self.metadata = metadata
         self.format = format
@@ -177,17 +177,17 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
         return dct
 
     def __repr__(self):
-        return ("{}(path='{}', format={}, tree_level={}, path={}, "
+        return ("{}(path='{}', format={}, frequency={}, path={}, "
                 "is_regex={}, order={}, metadata={}, acceptable_quality={})"
                 .format(self.__class__.__name__, self.path, self._format,
-                        self.tree_level, self.path, self.is_regex,
+                        self.frequency, self.path, self.is_regex,
                         self.order, self.metadata, self._acceptable_quality))
 
     def match(self, tree, **kwargs):
         # Run the match against the tree
         return FileGroupColumn(self.path,
                                self._match(tree, FileGroup, **kwargs),
-                               tree_level=self.tree_level)
+                               frequency=self.frequency)
 
     def _filtered_matches(self, node, **kwargs):  # noqa pylint: disable=unused-argument
         if self.path is not None:
@@ -283,15 +283,15 @@ class FieldMatcher(DataMatcher, FieldMixin):
     ----------
     path : str
         A regex path to match the field names with. Must match
-        one and only one file_group per <tree_level>. If None, the name
+        one and only one file_group per <frequency>. If None, the name
         is used instead.
     dtype : type | None
         The datatype of the value. Can be one of (float, int, str). If None
         then the dtype is taken from the FieldSpec that it is bound to
     is_regex : bool
         Flags whether the path is a regular expression or not
-    tree_level : TreeLevel
-        The level within the dataset tree that the data items sit, i.e. 
+    frequency : DataFreq
+        The frequency that the items occur in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     order : int | None
         To be used to distinguish multiple file_groups that match the
@@ -309,9 +309,9 @@ class FieldMatcher(DataMatcher, FieldMixin):
     is_spec = False
     ColumnClass = FieldColumn
 
-    def __init__(self, path, dtype=None, tree_level=TreeLevel.session,
+    def __init__(self, path, dtype=None, frequency=DataFreq.session,
                  order=None, is_regex=False, namespace=None):
-        FieldMixin.__init__(self, dtype, tree_level, namespace)
+        FieldMixin.__init__(self, dtype, frequency, namespace)
         DataMatcher.__init__(self, path, is_regex, order)
 
     def __eq__(self, other):
@@ -322,7 +322,7 @@ class FieldMatcher(DataMatcher, FieldMixin):
         # Run the match against the tree
         return FieldColumn(self.path,
                           self._match(tree, Field, **kwargs),
-                          tree_level=self.tree_level,
+                          frequency=self.frequency,
                           dtype=self.dtype)
 
     @property
@@ -360,10 +360,10 @@ class FieldMatcher(DataMatcher, FieldMixin):
         return matches
 
     def __repr__(self):
-        return ("{}(path='{}', dtype={}, tree_level={}, "
+        return ("{}(path='{}', dtype={}, frequency={}, "
                 "is_regex={}, order={})"
                 .format(self.__class__.__name__, self.path, self._dtype,
-                        self.tree_level, self.is_regex, self.order))
+                        self.frequency, self.is_regex, self.order))
 
     @property
     def _specific_kwargs(self):

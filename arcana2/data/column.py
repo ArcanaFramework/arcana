@@ -16,9 +16,9 @@ class DataColumn():
     Base class for a "column" of file_groups and field items
     """
 
-    def __init__(self, items, tree_level):
-        self._tree_level = tree_level
-        if tree_level == 'per_dataset':
+    def __init__(self, items, frequency):
+        self._frequency = frequency
+        if frequency == 'per_dataset':
             # If wrapped in an iterable
             if not isinstance(items, self.RowClass):
                 if len(items) > 1:
@@ -28,18 +28,18 @@ class DataColumn():
                                 type(self).__name__))
                 items = list(items)
             self._items = items
-        elif tree_level == 'per_session':
+        elif frequency == 'per_session':
             self._items = OrderedDict()
             for subj_id in sorted(set(c.subject_id for c in items)):
                 self._items[subj_id] = OrderedDict(
                     sorted(((c.visit_id, c) for c in items
                             if c.subject_id == subj_id),
                            key=itemgetter(0)))
-        elif tree_level == 'per_subject':
+        elif frequency == 'per_subject':
             self._items = OrderedDict(
                 sorted(((c.subject_id, c) for c in items),
                        key=itemgetter(0)))
-        elif tree_level == 'per_visit':
+        elif frequency == 'per_visit':
             self._items = OrderedDict(
                 sorted(((c.visit_id, c) for c in items),
                        key=itemgetter(0)))
@@ -51,16 +51,16 @@ class DataColumn():
                     "Invalid class {} in {}".format(datum, self))
 
     def __iter__(self):
-        if self._tree_level == 'per_dataset':
+        if self._frequency == 'per_dataset':
             return iter(self._items)
-        elif self._tree_level == 'per_session':
+        elif self._frequency == 'per_session':
             return chain(*(c.values()
                            for c in self._items.values()))
         else:
             return iter(self._items.values())
 
     def __len__(self):
-        if self.tree_level == 'per_session':
+        if self.frequency == 'per_session':
             ln = sum(len(d) for d in self._items.values())
         else:
             ln = len(self._items)
@@ -95,7 +95,7 @@ class DataColumn():
             The visit id of the item to return
         """
 
-        if self.tree_level == 'per_session':
+        if self.frequency == 'per_session':
             if subject_id is None or visit_id is None:
                 raise ArcanaError(
                     "The 'subject_id' ({}) and 'visit_id' ({}) must be "
@@ -118,7 +118,7 @@ class DataColumn():
                     "items ({})"
                     .format(visit_id, subject_id, self.path,
                             ', '.join(subj_dct.keys())))
-        elif self.tree_level == 'per_subject':
+        elif self.frequency == 'per_subject':
             if subject_id is None:
                 raise ArcanaError(
                     "The 'subject_id' arg must be provided to get "
@@ -132,7 +132,7 @@ class DataColumn():
                     "{} not a subject ID in '{}' items ({})"
                     .format(subject_id, self.path,
                             ', '.join(self._items.keys())))
-        elif self.tree_level == 'per_visit':
+        elif self.frequency == 'per_visit':
             if visit_id is None:
                 raise ArcanaError(
                     "The 'visit_id' arg must be provided to get "
@@ -146,7 +146,7 @@ class DataColumn():
                     "{} not a visit ID in '{}' items ({})"
                     .format(visit_id, self.path,
                             ', '.join(self._items.keys())))
-        elif self.tree_level == 'per_dataset':
+        elif self.frequency == 'per_dataset':
             try:
                 file_group = self._items[0]
             except IndexError:
@@ -166,7 +166,7 @@ class DataColumn():
     #     Used for duck typing Column objects with Spec and Match
     #     in source and sink initiation. Checks IDs match sessions in analysis.
     #     """
-    #     if self.tree_level == 'per_subject':
+    #     if self.frequency == 'per_subject':
     #         tree_subject_ids = list(analysis.dataset.tree.subject_ids)
     #         subject_ids = list(self._column.keys())
     #         if tree_subject_ids != subject_ids:
@@ -175,7 +175,7 @@ class DataColumn():
     #                 "do not match Analysis tree ('{}')".format(
     #                     self.name, "', '".join(subject_ids),
     #                     "', '".join(tree_subject_ids)))
-    #     elif self.tree_level == 'per_visit':
+    #     elif self.frequency == 'per_visit':
     #         tree_visit_ids = list(analysis.dataset.tree.visit_ids)
     #         visit_ids = list(self._column.keys())
     #         if tree_visit_ids != visit_ids:
@@ -184,7 +184,7 @@ class DataColumn():
     #                 "do not match Analysis tree ('{}')".format(
     #                     self.name, "', '".join(visit_ids),
     #                     "', '".join(tree_visit_ids)))
-    #     elif self.tree_level == 'per_session':
+    #     elif self.frequency == 'per_session':
     #         for subject in analysis.dataset.tree.subjects:
     #             if subject.id not in self._column:
     #                 raise ArcanaUsageError(
@@ -211,8 +211,8 @@ class FileGroupColumn(DataColumn, FileGroupMixin):
     ----------
     items : List[FileGroup]
         An iterable of file_groups
-    tree_level : TreeLevel
-        The level within the dataset tree that the data items sit, i.e. 
+    frequency : DataFreq
+        The frequency that the items occur in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     format : FileFormat | None
         The file format of the column (will be determined from items
@@ -221,7 +221,7 @@ class FileGroupColumn(DataColumn, FileGroupMixin):
 
     RowClass = FileGroup
 
-    def __init__(self, items, format=None, tree_level=None,
+    def __init__(self, items, format=None, frequency=None,
                  candidate_formats=None):
         if format is None and candidate_formats is None:
             formats = set(d.format for d in items)
@@ -235,20 +235,20 @@ class FileGroupColumn(DataColumn, FileGroupMixin):
         if not items:
             if format is None:
                 format = candidate_formats[0]
-            if tree_level is None:
+            if frequency is None:
                 raise ArcanaUsageError(
-                    "Need to provide explicit tree_level for empty "
+                    "Need to provide explicit frequency for empty "
                     "FileGroupColumn")
         else:
-            implicit_tree_level = self._common_attr(items,
-                                                   'tree_level')
-            if tree_level is None:
-                tree_level = implicit_tree_level
-            elif tree_level != implicit_tree_level:
+            implicit_frequency = self._common_attr(items,
+                                                   'frequency')
+            if frequency is None:
+                frequency = implicit_frequency
+            elif frequency != implicit_frequency:
                 raise ArcanaUsageError(
-                    "Implicit tree_level '{}' does not match explicit "
-                    "tree_level '{}' for FileGroupColumn"
-                    .format(implicit_tree_level, tree_level))
+                    "Implicit frequency '{}' does not match explicit "
+                    "frequency '{}' for FileGroupColumn"
+                    .format(implicit_frequency, frequency))
             formatted_items = []
             for file_group in items:
                 file_group = copy(file_group)
@@ -260,8 +260,8 @@ class FileGroupColumn(DataColumn, FileGroupMixin):
             items = formatted_items
             path = self._common_attr(items, 'path')
             format = self._common_attr(items, 'format')
-        FileGroupMixin.__init__(self, path, format, tree_level=tree_level)
-        DataColumn.__init__(self, items, tree_level)
+        FileGroupMixin.__init__(self, path, format, frequency=frequency)
+        DataColumn.__init__(self, items, frequency)
 
     def path(self, subject_id=None, visit_id=None):
         return self.item(
@@ -276,8 +276,8 @@ class FieldColumn(DataColumn, FieldMixin):
     ----------
     items : List[Field]
         An iterable of Fields
-    tree_level : TreeLevel
-        The level within the dataset tree that the data items sit, i.e. 
+    frequency : DataFreq
+        The frequency that the items occur in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     dtype : type
         The data type ofthe column (will be determined from items
@@ -286,19 +286,19 @@ class FieldColumn(DataColumn, FieldMixin):
 
     RowClass = Field
 
-    def __init__(self, items, tree_level=None, dtype=None, array=None):
+    def __init__(self, items, frequency=None, dtype=None, array=None):
         items = list(items)
         if items:
-            implicit_tree_level = self._common_attr(items,
-                                                   'tree_level')
+            implicit_frequency = self._common_attr(items,
+                                                   'frequency')
             path = self._common_attr(items, 'path')
-            if tree_level is None:
-                tree_level = implicit_tree_level
-            elif tree_level != implicit_tree_level:
+            if frequency is None:
+                frequency = implicit_frequency
+            elif frequency != implicit_frequency:
                 raise ArcanaUsageError(
-                    "Implicit tree_level '{}' does not match explicit "
-                    "tree_level '{}' for FieldColumn (of common path: {})"
-                    .format(implicit_tree_level, tree_level, path))
+                    "Implicit frequency '{}' does not match explicit "
+                    "frequency '{}' for FieldColumn (of common path: {})"
+                    .format(implicit_frequency, frequency, path))
             implicit_dtype = self._common_attr(items, 'dtype')
             if dtype is None:
                 dtype = implicit_dtype
@@ -315,17 +315,17 @@ class FieldColumn(DataColumn, FieldMixin):
                     "Implicit array '{}' does not match explicit "
                     "array '{}' for '{}' FieldColumn (of common path: {})"
                     .format(implicit_array, array, path))
-        if tree_level is None:
+        if frequency is None:
             raise ArcanaUsageError(
-                "Need to provide explicit tree_level for empty "
+                "Need to provide explicit frequency for empty "
                 "FieldColumn")
         if dtype is None:
             raise ArcanaUsageError(
                 "Need to provide explicit dtype for empty "
                 "FieldColumn")
-        FieldMixin.__init__(self, path, dtype=dtype, tree_level=tree_level,
+        FieldMixin.__init__(self, path, dtype=dtype, frequency=frequency,
                            array=array)
-        DataColumn.__init__(self, items, tree_level)
+        DataColumn.__init__(self, items, frequency)
 
     def value(self, subject_id=None, visit_id=None):
         return self.item(subject_id=subject_id, visit_id=visit_id).value
