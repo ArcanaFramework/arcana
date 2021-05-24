@@ -17,24 +17,24 @@ class DataMatcher():
     Base class for FileGroup and Field Matcher classes
     """
 
-    def __init__(self, pattern, is_regex, order):
-        self.pattern = pattern
+    def __init__(self, path, is_regex, order):
+        self.path = path
         self.is_regex = is_regex
         self.order = order
 
     def __eq__(self, other):
-        return (self.pattern == other.pattern
+        return (self.path == other.path
                 and self.is_regex == other.is_regex
                 and self.order == other.order)
 
     def __hash__(self):
-        return (hash(self.pattern)
+        return (hash(self.path)
                 ^ hash(self.is_regex)
                 ^ hash(self.order))
 
     def initkwargs(self):
         dct = {}
-        dct['pattern'] = self.pattern
+        dct['path'] = self.path
         dct['order'] = self.order
         dct['is_regex'] = self.is_regex
         return dct
@@ -78,7 +78,7 @@ class DataMatcher():
         return matches
 
     def match_node(self, node, **kwargs):
-        # Get names matching pattern
+        # Get names matching path
         matches = self._filtered_matches(node, **kwargs)
         # Matcher matches by analysis name
         ns_matches = [d for d in matches if d.namespace == self.namespace]
@@ -94,8 +94,8 @@ class DataMatcher():
                 match = ns_matches[self.order]
             except IndexError:
                 raise ArcanaInputMissingMatchError(
-                    "Did not find {} named data matching pattern {}, found "
-                    " {} in {}".format(self.order, self.pattern,
+                    "Did not find {} named data matching path {}, found "
+                    " {} in {}".format(self.order, self.path,
                                        len(matches), node))
         elif len(ns_matches) == 1:
             match = ns_matches[0]
@@ -109,31 +109,31 @@ class DataMatcher():
 
 class FileGroupMatcher(DataMatcher, FileGroupMixin):
     """
-    A pattern that describes a single file_group (typically acquired
+    A path that describes a single file_group (typically acquired
     rather than generated but not necessarily) within each session.
 
     Parameters
     ----------
-    pattern : str
-        A regex pattern to match the file_group names with. Must match
+    path : str
+        A regex path to match the file_group names with. Must match
         one and only one file_group per <tree_level>. If None, the name
         is used instead.
     format : FileFormat
         File formats that data will be accepted in        
     is_regex : bool
-        Flags whether the pattern is a regular expression or not
+        Flags whether the path is a regular expression or not
     tree_level : TreeLevel
         The level within the dataset tree that the data items sit, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     order : int | None
         To be used to distinguish multiple file_groups that match the
-        pattern in the same session. The order of the file_group within the
+        path in the same session. The order of the file_group within the
         session. Based on the scan ID but is more robust to small
         changes to the IDs within the session if for example there are
         two scans of the same type taken before and after a task.
     metadata : Dict[str, str]
         To be used to distinguish multiple file_groups that match the
-        pattern in the same node. The provided dictionary contains
+        path in the same node. The provided dictionary contains
         header values that must match the stored metadata exactly.
     namespace : str
         The name of the analysis that generated the derived file_group to
@@ -149,11 +149,11 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     is_spec = False
     ColumnClass = FileGroupColumn
 
-    def __init__(self, pattern=None, format=None, tree_level=TreeLevel.session, 
+    def __init__(self, path=None, format=None, tree_level=TreeLevel.session, 
                  order=None, metadata=None, is_regex=False, namespace=None,
                  acceptable_quality=None):
         FileGroupMixin.__init__(self, None, tree_level, namespace)
-        DataMatcher.__init__(self, pattern, is_regex, order)
+        DataMatcher.__init__(self, path, is_regex, order)
         self.metadata = metadata
         self.format = format
         if isinstance(acceptable_quality, basestring):
@@ -182,11 +182,11 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
         return dct
 
     def __repr__(self):
-        return ("{}(name='{}', format={}, tree_level={}, pattern={}, "
+        return ("{}(name='{}', format={}, tree_level={}, path={}, "
                 "is_regex={}, order={}, metadata={}, "
                 "namespace={}, acceptable_quality={})"
                 .format(self.__class__.__name__, self.name, self._format,
-                        self.tree_level, self.pattern, self.is_regex,
+                        self.tree_level, self.path, self.is_regex,
                         self.order, self.metadata,
                         self.namespace, self._acceptable_quality))
 
@@ -197,14 +197,14 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                                tree_level=self.tree_level)
 
     def _filtered_matches(self, node, **kwargs):  # noqa pylint: disable=unused-argument
-        if self.pattern is not None:
+        if self.path is not None:
             if self.is_regex:
-                pattern_re = re.compile(self.pattern)
+                path_re = re.compile(self.path)
                 matches = [f for f in node.file_groups
-                           if pattern_re.match(f.basename)]
+                           if path_re.match(f.basename)]
             else:
                 matches = [f for f in node.file_groups
-                           if f.basename == self.pattern]
+                           if f.basename == self.path]
         else:
             matches = list(node.file_groups)
         if not matches:
@@ -217,19 +217,19 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                         if f.quality in self.acceptable_quality]
             if not filtered:
                 raise ArcanaInputMissingMatchError(
-                    "Did not find file_groups names matching pattern {} "
+                    "Did not find file_groups names matching path {} "
                     "with an acceptable quality {} in {}. Found:\n    {}"
                     .format(
-                        self.pattern, self.acceptable_quality, node,
+                        self.path, self.acceptable_quality, node,
                         '\n    '.join(str(m) for m in matches)))
             matches = filtered
         # if self.scan_id is not None:
         #     filtered = [d for d in matches if d.scan_id == self.scan_id]
         #     if not filtered:
         #         raise ArcanaInputMissingMatchError(
-        #             "Did not find file_groups names matching pattern {} "
+        #             "Did not find file_groups names matching path {} "
         #             "with an scan_id of {} in {}. Found:\n    {} ".format(
-        #                 self.pattern, self.scan_id,
+        #                 self.path, self.scan_id,
         #                 '\n    '.join(str(m) for m in matches), node))
         #     matches = filtered
         if self.format is not None:
@@ -258,9 +258,9 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                     filtered.append(file_group)
             if not filtered:
                 raise ArcanaInputMissingMatchError(
-                    "Did not find file_groups names matching pattern {}"
+                    "Did not find file_groups names matching path {}"
                     "that matched DICOM tags {} in {}. Found:\n    {}"
-                    .format(self.pattern, self.metadata,
+                    .format(self.path, self.metadata,
                             '\n    '.join(str(m) for m in matches), node))
             matches = filtered
         return matches
@@ -283,26 +283,26 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
 
 class FieldMatcher(DataMatcher, FieldMixin):
     """
-    A pattern that matches a single field (typically acquired rather than
+    A path that matches a single field (typically acquired rather than
     generated but not necessarily) in each session.
 
     Parameters
     ----------
-    pattern : str
-        A regex pattern to match the field names with. Must match
+    path : str
+        A regex path to match the field names with. Must match
         one and only one file_group per <tree_level>. If None, the name
         is used instead.
     dtype : type | None
         The datatype of the value. Can be one of (float, int, str). If None
         then the dtype is taken from the FieldSpec that it is bound to
     is_regex : bool
-        Flags whether the pattern is a regular expression or not
+        Flags whether the path is a regular expression or not
     tree_level : TreeLevel
         The level within the dataset tree that the data items sit, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     order : int | None
         To be used to distinguish multiple file_groups that match the
-        pattern in the same session. The order of the file_group within the
+        path in the same session. The order of the file_group within the
         session. Based on the scan ID but is more robust to small
         changes to the IDs within the session if for example there are
         two scans of the same type taken before and after a task.
@@ -316,10 +316,10 @@ class FieldMatcher(DataMatcher, FieldMixin):
     is_spec = False
     ColumnClass = FieldColumn
 
-    def __init__(self, pattern, dtype=None, tree_level=TreeLevel.session,
+    def __init__(self, path, dtype=None, tree_level=TreeLevel.session,
                  order=None, is_regex=False, namespace=None):
         FieldMixin.__init__(self, dtype, tree_level, namespace)
-        DataMatcher.__init__(self, pattern, is_regex, order)
+        DataMatcher.__init__(self, path, is_regex, order)
 
     def __eq__(self, other):
         return (FieldMixin.__eq__(self, other) and
@@ -353,12 +353,12 @@ class FieldMatcher(DataMatcher, FieldMixin):
 
     def _filtered_matches(self, node, **kwargs):
         if self.is_regex:
-            pattern_re = re.compile(self.pattern)
+            path_re = re.compile(self.path)
             matches = [f for f in node.fields
-                       if pattern_re.match(f.name)]
+                       if path_re.match(f.name)]
         else:
             matches = [f for f in node.fields
-                       if f.name == self.pattern]
+                       if f.name == self.path]
         if self.namespace is not None:
             matches = [f for f in matches
                        if f.namespace == self.namespace]
@@ -370,10 +370,10 @@ class FieldMatcher(DataMatcher, FieldMixin):
         return matches
 
     def __repr__(self):
-        return ("{}(name='{}', dtype={}, tree_level={}, pattern={}, "
+        return ("{}(name='{}', dtype={}, tree_level={}, path={}, "
                 "is_regex={}, order={}, namespace={})"
                 .format(self.__class__.__name__, self.name, self._dtype,
-                        self.tree_level, self.pattern, self.is_regex,
+                        self.tree_level, self.path, self.is_regex,
                         self.order, self.namespace))
 
     @property
