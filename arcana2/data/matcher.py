@@ -125,23 +125,19 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     tree_level : TreeLevel
         The level within the dataset tree that the data items sit, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
-    scan_id : int | None
-        To be used to distinguish multiple scan that match the
-        pattern in the same session. The scan ID of the file_group within the
-        session.
     order : int | None
         To be used to distinguish multiple file_groups that match the
         pattern in the same session. The order of the file_group within the
         session. Based on the scan ID but is more robust to small
         changes to the IDs within the session if for example there are
         two scans of the same type taken before and after a task.
-    dicom_tags : Dict[str, str]
+    metadata : Dict[str, str]
         To be used to distinguish multiple file_groups that match the
-        pattern in the same session. The provided DICOM values dicom
-        header values must match exactly.
+        pattern in the same node. The provided dictionary contains
+        header values that must match the stored metadata exactly.
     namespace : str
-        The name of the analysis that generated the derived file_group to match.
-        Is used to determine the location of the file_groups in the
+        The name of the analysis that generated the derived file_group to
+        match. Is used to determine the location of the file_groups in the
         dataset as the derived file_groups and fields are grouped by
         the name of the analysis that generated them.
     acceptable_quality : str | list[str] | None
@@ -153,19 +149,13 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     is_spec = False
     ColumnClass = FileGroupColumn
 
-    def __init__(self, pattern=None, format=None,
-                 tree_level=TreeLevel.session, scan_id=None,
-                 order=None, dicom_tags=None, is_regex=False,
-                 namespace=None, acceptable_quality=None):
+    def __init__(self, pattern=None, format=None, tree_level=TreeLevel.session, 
+                 order=None, metadata=None, is_regex=False, namespace=None,
+                 acceptable_quality=None):
         FileGroupMixin.__init__(self, None, tree_level, namespace)
         DataMatcher.__init__(self, pattern, is_regex, order)
-        self.dicom_tags = dicom_tags
-        if order is not None and scan_id is not None:
-            raise ArcanaUsageError(
-                "Cannot provide both 'order' and 'scan_id' to a file_group"
-                "match")
+        self.metadata = metadata
         self.format = format
-        self.scan_id = str(scan_id) if scan_id is not None else scan_id
         if isinstance(acceptable_quality, basestring):
             acceptable_quality = (acceptable_quality,)
         elif acceptable_quality is not None:
@@ -175,32 +165,29 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     def __eq__(self, other):
         return (FileGroupMixin.__eq__(self, other) and
                 DataMatcher.__eq__(self, other) and
-                self.dicom_tags == other.dicom_tags and
-                self.scan_id == other.scan_id and
+                self.metadata == other.metadata and
                 self._acceptable_quality == other._acceptable_quality)
 
     def __hash__(self):
         return (FileGroupMixin.__hash__(self) ^
                 DataMatcher.__hash__(self) ^
-                hash(self.dicom_tags) ^
-                hash(self.scan_id) ^
+                hash(self.metadata) ^
                 hash(self._acceptable_quality))
 
     def initkwargs(self):
         dct = FileGroupMixin.initkwargs(self)
         dct.update(DataMatcher.initkwargs(self))
-        dct['dicom_tags'] = self.dicom_tags
-        dct['scan_id'] = self.scan_id
+        dct['metadata'] = self.metadata
         dct['acceptable_quality'] = self.acceptable_quality
         return dct
 
     def __repr__(self):
         return ("{}(name='{}', format={}, tree_level={}, pattern={}, "
-                "is_regex={}, order={}, scan_id={}, dicom_tags={}, "
+                "is_regex={}, order={}, metadata={}, "
                 "namespace={}, acceptable_quality={})"
                 .format(self.__class__.__name__, self.name, self._format,
                         self.tree_level, self.pattern, self.is_regex,
-                        self.order, self.scan_id, self.dicom_tags,
+                        self.order, self.metadata,
                         self.namespace, self._acceptable_quality))
 
     def match(self, tree, **kwargs):
@@ -236,15 +223,15 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                         self.pattern, self.acceptable_quality, node,
                         '\n    '.join(str(m) for m in matches)))
             matches = filtered
-        if self.scan_id is not None:
-            filtered = [d for d in matches if d.scan_id == self.scan_id]
-            if not filtered:
-                raise ArcanaInputMissingMatchError(
-                    "Did not find file_groups names matching pattern {} "
-                    "with an scan_id of {} in {}. Found:\n    {} ".format(
-                        self.pattern, self.scan_id,
-                        '\n    '.join(str(m) for m in matches), node))
-            matches = filtered
+        # if self.scan_id is not None:
+        #     filtered = [d for d in matches if d.scan_id == self.scan_id]
+        #     if not filtered:
+        #         raise ArcanaInputMissingMatchError(
+        #             "Did not find file_groups names matching pattern {} "
+        #             "with an scan_id of {} in {}. Found:\n    {} ".format(
+        #                 self.pattern, self.scan_id,
+        #                 '\n    '.join(str(m) for m in matches), node))
+        #     matches = filtered
         if self.format is not None:
             format_matches = [m for m in matches if self.format.matches(m)]
             if not format_matches:
@@ -257,7 +244,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                             '\n    '.join(str(f) for f in matches)))
             matches = format_matches
         # Matcher matches by dicom tags
-        if self.dicom_tags is not None:
+        if self.metadata is not None:
             if self.valid_formats is None or len(self.valid_formats) != 1:
                 raise ArcanaUsageError(
                     "Can only match header tags if exactly one valid format "
@@ -265,7 +252,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
             format = self.valid_formats[0]
             filtered = []
             for file_group in matches:
-                keys, ref_values = zip(*self.dicom_tags.items())
+                keys, ref_values = zip(*self.metadata.items())
                 values = tuple(format.dicom_values(file_group, keys))
                 if ref_values == values:
                     filtered.append(file_group)
@@ -273,7 +260,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                 raise ArcanaInputMissingMatchError(
                     "Did not find file_groups names matching pattern {}"
                     "that matched DICOM tags {} in {}. Found:\n    {}"
-                    .format(self.pattern, self.dicom_tags,
+                    .format(self.pattern, self.metadata,
                             '\n    '.join(str(m) for m in matches), node))
             matches = filtered
         return matches

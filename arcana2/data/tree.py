@@ -23,18 +23,31 @@ class TreeLevel(Enum):
     neuroimaging analysis these levels are hardcoded to one of six values.
     """
 
-    session = 'Per session data items'
-    subject = 'Per subject data items'
-    visit = ('Per visit (e.g. timepoint in a longitudinal study) data '
-             'items')
-    group_visit = ('Per group and vist (e.g. a timepoint for a specific '
-                   'group in a longitudinal study) data items')
-    group = 'Per subject group data items'
-    dataset = "A singular data item in the whole dataset"
+    # Name = (iteration-pattern, description)
+    visit = (0b001,
+             'for each visit (e.g. longitudinal timepoint)')    
+    subject = (0b010, 'for each subject')
+    group = (0b100, 'for each group')
+    session = (0b011, 'for each session')
+    group_visit = (
+        0b101, 'for each group and visit combination, '
+        'e.g. a timepoint for a specific group in a longitudinal study')
+    dataset = (0b000, "singularly in the dataset")
+
+    # The 'iteration-pattern' is a binary string that specifies the depth of
+    # the tree by its length (i.e. 3), and which level needs to be iterated
+    # over for each frequency.
+
+    # Note that patterns 0b110 and 0b111 are not possible because it is
+    # assumed that each subject can only belong to one group
 
     @property
     def desc(self):
-        return self.value
+        return self.value[1]
+
+    @property
+    def iteration_pattern(self):
+        return self.value[0]
 
     def __str__(self):
         return self.name

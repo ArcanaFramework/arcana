@@ -77,7 +77,8 @@ class BaseRunCmd(BaseRepoCmd):
                 raise ArcanaUsageError(
                     f"Input {i} has too many input args, {nargs} instead "
                     f"of max 7 ({inpt})")
-            (path, pattern, format_name, order, quality, dicom_tags, freq) = [
+            (path, pattern, format_name, order,
+             quality, metadata, freq) = [
                 a if a != '*' else d
                 for a, d in zip_longest(inpt, defaults, fillvalue='*')]
             if not path:
@@ -87,7 +88,7 @@ class BaseRunCmd(BaseRepoCmd):
             input_paths[name] = path
             inputs[path] = FileGroupMatcher(
                 pattern=pattern, format=ff.get_file_format(format_name),
-                tree_level='per_' + freq, order=order, dicom_tags=dicom_tags,
+                tree_level='per_' + freq, order=order, metadata=metadata,
                 is_regex=True, acceptable_quality=quality)
 
         # Create field matchers
@@ -205,11 +206,10 @@ class BaseRunCmd(BaseRepoCmd):
             quality    - the minimum usuable quality to be considered.
                         Can be one of 'usable', 'questionable' or
                         'unusable'
-            dicom_tags - semicolon-separated list of DICOM attributes
-                        in TAG:VALUE form, where the tag contains
-                        just the numeric values, i.e. no punctuation
-                        e.g. '00080008:ORIGINAL\\PRIMARY\\M_IR\M\\IR;
-                        00101010:067Y'
+            metadata   - semicolon-separated list of metadata values
+                        in NAME:VALUE form. For DICOM headers
+                        NAME is the numeric values of the DICOM tag, e.g
+                        (0008,0008) -> 00080008
             tree_level  - The tree_level of the file-group within the dataset.
                         Can be either 'dataset', 'group', 'subject', 'visit'
                         or 'session'. Typically only required for
