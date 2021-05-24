@@ -48,67 +48,45 @@ class Record(object):
 
     def __init__(self, pipeline_name, tree_level, subject_id, visit_id,
                  namespace, prov):
-        self._prov = deepcopy(prov)
-        self._pipeline_name = pipeline_name
-        self._tree_level = tree_level
-        self._subject_id = subject_id
-        self._visit_id = visit_id
-        self._namespace = namespace
-        if 'datetime' not in self._prov:
+        self.prov = deepcopy(prov)
+        self.pipeline_name = pipeline_name
+        self.tree_level = tree_level
+        self.subject_id = subject_id
+        self.visit_id = visit_id
+        if 'datetime' not in self.prov:
             self._prov['datetime'] = datetime.now().isoformat()
 
     def __repr__(self):
-        return ("{}(pipeline={}, tree_level={}, subject_id={}, visit_id={}, "
-                "namespace='{}')".format(
+        return ("{}(pipeline={}, tree_level={}, subject_id={}, visit_id={},)"
+                .format(
                     type(self).__name__, self.pipeline_name, self.tree_level,
-                    self.subject_id, self.visit_id, self.namespace))
+                    self.subject_id, self.visit_id))
 
     def __eq__(self, other):
-        return (self._prov == other._prov
-                and self._tree_level == other._tree_level
-                and self._subject_id == other._subject_id
-                and self._visit_id == other._visit_id
-                and self._namespace == other._namespace)
+        return (self.prov == other.prov
+                and self.tree_level == other.tree_level
+                and self.subject_id == other.subject_id
+                and self.visit_id == other.visit_id)
 
     @property
     def pipeline_name(self):
         return self._pipeline_name
 
     @property
-    def prov(self):
-        return self._prov
-
-    @property
     def inputs(self):
-        return self._prov['inputs']
+        return self.prov['inputs']
 
     @property
     def outputs(self):
-        return self._prov['outputs']
-
-    @property
-    def subject_id(self):
-        return self._subject_id
-
-    @property
-    def visit_id(self):
-        return self._visit_id
-
-    @property
-    def namespace(self):
-        return self._namespace
-
-    @property
-    def tree_level(self):
-        return self._tree_level
+        return self.prov['outputs']
 
     @property
     def datetime(self):
-        return self._prov['datetime']
+        return self.prov['datetime']
 
     @property
     def provenance_version(self):
-        return self._prov[PROVENANCE_VERSION]
+        return self.prov[PROVENANCE_VERSION]
 
     def save(self, path):
         """
@@ -142,7 +120,7 @@ class Record(object):
 
     @classmethod
     def load(cls, pipeline_name, tree_level, subject_id, visit_id,
-             namespace, path):
+             path):
         """
         Loads a saved provenance object from a JSON file
 
@@ -158,8 +136,6 @@ class Record(object):
             The subject ID of the provenance record
         visit_id : str | None
             The visit ID of the provenance record
-        namespace : str
-            Name of the analysis the derivatives were created for
 
         Returns
         -------
@@ -169,7 +145,7 @@ class Record(object):
         with open(path) as f:
             prov = json.load(f)
         return Record(pipeline_name, tree_level, subject_id, visit_id,
-                      namespace, prov)
+                      prov)
 
     def mismatches(self, other, include=None, exclude=None):
         """
