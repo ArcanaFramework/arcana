@@ -55,12 +55,11 @@ class DataMatcher():
                         # Insert a non-existant item placeholder in-place of
                         # the the missing item
                         matches.append(item_cls(
-                            self.name,
+                            self.path,
                             tree_level=self.tree_level,
                             subject_id=node.subject_id,
                             visit_id=node.visit_id,
                             dataset=self.analysis.dataset,
-                            namespace=self.namespace,
                             exists=False,
                             **self._specific_kwargs))
                     else:
@@ -80,30 +79,26 @@ class DataMatcher():
     def match_node(self, node, **kwargs):
         # Get names matching path
         matches = self._filtered_matches(node, **kwargs)
-        # Matcher matches by analysis name
-        ns_matches = [d for d in matches if d.namespace == self.namespace]
         # Select the file_group from the matches
-        if not ns_matches:
+        if not matches:
             raise ArcanaInputMissingMatchError(
-                "No matches found for {} in {} for analysis {}. Found:\n    {}"
-                .format(
-                    self, node, self.namespace,
-                    '\n    '.join(str(m) for m in matches)))
+                "No matches found for {} in {} for analysis {}."
+                .format(self, node))
         elif self.order is not None:
             try:
-                match = ns_matches[self.order]
+                match = matches[self.order]
             except IndexError:
                 raise ArcanaInputMissingMatchError(
                     "Did not find {} named data matching path {}, found "
                     " {} in {}".format(self.order, self.path,
                                        len(matches), node))
-        elif len(ns_matches) == 1:
-            match = ns_matches[0]
+        elif len(matches) == 1:
+            match = matches[0]
         else:
             raise ArcanaInputError(
                 "Found multiple matches for {} in {}:\n    {}"
                 .format(self, node,
-                        '\n    '.join(str(m) for m in ns_matches)))
+                        '\n    '.join(str(m) for m in matches)))
         return match
 
 
@@ -182,17 +177,15 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
         return dct
 
     def __repr__(self):
-        return ("{}(name='{}', format={}, tree_level={}, path={}, "
-                "is_regex={}, order={}, metadata={}, "
-                "namespace={}, acceptable_quality={})"
-                .format(self.__class__.__name__, self.name, self._format,
+        return ("{}(path='{}', format={}, tree_level={}, path={}, "
+                "is_regex={}, order={}, metadata={}, acceptable_quality={})"
+                .format(self.__class__.__name__, self.path, self._format,
                         self.tree_level, self.path, self.is_regex,
-                        self.order, self.metadata,
-                        self.namespace, self._acceptable_quality))
+                        self.order, self.metadata, self._acceptable_quality))
 
     def match(self, tree, **kwargs):
         # Run the match against the tree
-        return FileGroupColumn(self.name,
+        return FileGroupColumn(self.path,
                                self._match(tree, FileGroup, **kwargs),
                                tree_level=self.tree_level)
 
@@ -327,7 +320,7 @@ class FieldMatcher(DataMatcher, FieldMixin):
 
     def match(self, tree, **kwargs):
         # Run the match against the tree
-        return FieldColumn(self.name,
+        return FieldColumn(self.path,
                           self._match(tree, Field, **kwargs),
                           tree_level=self.tree_level,
                           dtype=self.dtype)
@@ -336,7 +329,7 @@ class FieldMatcher(DataMatcher, FieldMixin):
     def dtype(self):
         if self._dtype is None:
             try:
-                dtype = self.analysis.data_spec(self.name).dtype
+                dtype = self.analysis.data_spec(self.path).dtype
             except ArcanaNotBoundToAnalysisError:
                 dtype = None
         else:
@@ -355,26 +348,22 @@ class FieldMatcher(DataMatcher, FieldMixin):
         if self.is_regex:
             path_re = re.compile(self.path)
             matches = [f for f in node.fields
-                       if path_re.match(f.name)]
+                       if path_re.match(f.path)]
         else:
             matches = [f for f in node.fields
-                       if f.name == self.path]
-        if self.namespace is not None:
-            matches = [f for f in matches
-                       if f.namespace == self.namespace]
+                       if f.path == self.path]
         if not matches:
             raise ArcanaInputMissingMatchError(
                 "Did not find any matches for {} in {}. Found:\n    {}"
                 .format(self, node,
-                        '\n    '.join(f.name for f in node.fields)))
+                        '\n    '.join(f.path for f in node.fields)))
         return matches
 
     def __repr__(self):
-        return ("{}(name='{}', dtype={}, tree_level={}, path={}, "
-                "is_regex={}, order={}, namespace={})"
-                .format(self.__class__.__name__, self.name, self._dtype,
-                        self.tree_level, self.path, self.is_regex,
-                        self.order, self.namespace))
+        return ("{}(path='{}', dtype={}, tree_level={}, "
+                "is_regex={}, order={})"
+                .format(self.__class__.__name__, self.path, self._dtype,
+                        self.tree_level, self.is_regex, self.order))
 
     @property
     def _specific_kwargs(self):

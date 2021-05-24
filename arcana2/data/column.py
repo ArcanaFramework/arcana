@@ -107,7 +107,7 @@ class DataColumn():
                 raise ArcanaIndexError(
                     subject_id,
                     "{} not a subject ID in '{}' items ({})"
-                    .format(subject_id, self.name,
+                    .format(subject_id, self.path,
                             ', '.join(self._items.keys())))
             try:
                 file_group = subj_dct[visit_id]
@@ -116,7 +116,7 @@ class DataColumn():
                     visit_id,
                     "{} not a visit ID in subject {} of '{}' "
                     "items ({})"
-                    .format(visit_id, subject_id, self.name,
+                    .format(visit_id, subject_id, self.path,
                             ', '.join(subj_dct.keys())))
         elif self.tree_level == 'per_subject':
             if subject_id is None:
@@ -130,7 +130,7 @@ class DataColumn():
                 raise ArcanaIndexError(
                     subject_id,
                     "{} not a subject ID in '{}' items ({})"
-                    .format(subject_id, self.name,
+                    .format(subject_id, self.path,
                             ', '.join(self._items.keys())))
         elif self.tree_level == 'per_visit':
             if visit_id is None:
@@ -144,7 +144,7 @@ class DataColumn():
                 raise ArcanaIndexError(
                     visit_id,
                     "{} not a visit ID in '{}' items ({})"
-                    .format(visit_id, self.name,
+                    .format(visit_id, self.path,
                             ', '.join(self._items.keys())))
         elif self.tree_level == 'per_dataset':
             try:
@@ -152,7 +152,7 @@ class DataColumn():
             except IndexError:
                 raise ArcanaIndexError(
                     0, ("'{}' Column is empty so doesn't have a "
-                        + "per_dataset node").format(self.name))
+                        + "per_dataset node").format(self.path))
         return file_group
 
     # @property
