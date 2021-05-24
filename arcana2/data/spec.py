@@ -7,7 +7,15 @@ from .column import FileGroupColumn, FieldColumn
 
 class Salience(Enum):
     """An enum that holds the salience levels options that can be used when
-    specifying a file-group or field.
+    specifying a file-group or field. Salience is used to indicate whether
+    it would be best to store the file-group or field a data repository
+    or whether it can be just stored in the local cache and discarded after it
+    has been used. However, this is ultimately specified by the user and will
+    be typically dependent on where in the development-cycle the pipeline that
+    generates them is.
+
+    The salience is also used when generating information on what derivatives
+    are available
     """
     
     primary = (5, 'Primary input data or difficult to regenerate derivs. e.g. '
@@ -20,7 +28,7 @@ class Salience(Enum):
           'assurance of analysis workflows')
     debug = (1, 'Derivatives that would typically only need to be checked '
              'when debugging analysis workflows')
-    temp = (0, "Temporary data")
+    temp = (0, "Data only temporarily stored to pass between pipelines")
 
     def __init__(self, level, desc):
         self.level = level
