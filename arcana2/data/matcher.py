@@ -216,13 +216,13 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                         self.path, self.acceptable_quality, node,
                         '\n    '.join(str(m) for m in matches)))
             matches = filtered
-        # if self.scan_id is not None:
-        #     filtered = [d for d in matches if d.scan_id == self.scan_id]
+        # if self.order is not None:
+        #     filtered = [d for d in matches if d.order == self.order]
         #     if not filtered:
         #         raise ArcanaInputMissingMatchError(
         #             "Did not find file_groups names matching path {} "
-        #             "with an scan_id of {} in {}. Found:\n    {} ".format(
-        #                 self.path, self.scan_id,
+        #             "with an order of {} in {}. Found:\n    {} ".format(
+        #                 self.path, self.order,
         #                 '\n    '.join(str(m) for m in matches), node))
         #     matches = filtered
         if self.format is not None:

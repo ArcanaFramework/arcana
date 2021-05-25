@@ -11,8 +11,8 @@ from copy import copy
 import pydicom
 import xnat
 from arcana2.utils.testing import BaseTestCase
-from arcana2.repository.xnat import XnatRepo
-from arcana2.repository import Dataset
+from arcana2.data.repository.xnat import XnatRepo
+from arcana2.data.dataset import Dataset
 from arcana2.exceptions import ArcanaError
 from arcana2.data.file_format import text_format
 import logging

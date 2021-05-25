@@ -35,8 +35,8 @@ RELEVANT_DICOM_TAG_TYPES = set(('UI', 'CS', 'DA', 'TM', 'SH', 'LO',
 
 class XnatDataset(Dataset):
     """
-    A representation of an XNAT "dataset", the complete collection of data
-    (file-sets and fields) to be used in an analysis.
+    A representation of an XNAT "dataset" (project), the complete collection of
+    data (file-sets and fields) to be used in an analysis.
 
     Parameters
     ----------
@@ -91,6 +91,7 @@ class XnatDataset(Dataset):
             project=self.name,
             subject=self.inv_map_subject_id(subject_id),
             visit=self.inv_map_visit_id(visit_id))
+
 
 class XnatRepo(Repository):
     """
@@ -255,8 +256,8 @@ class XnatRepo(Repository):
 
     def get_file_group(self, file_group):
         """
-        Caches a single file_group (if the 'path' attribute is accessed
-        and it has not been previously cached for example
+        Caches a single file_group (if the 'cache_path' attribute is accessed
+        and it has not been previously cached for example)
 
         Parameters
         ----------
@@ -680,7 +681,7 @@ class XnatRepo(Repository):
             return []
         file_groups = []
         for scan_json in scans_json:
-            scan_id = scan_json['data_fields']['ID']
+            order = scan_json['data_fields']['ID']
             scan_type = scan_json['data_fields'].get('type', '')
             scan_quality = scan_json['data_fields'].get('quality', None)
             try:
@@ -696,8 +697,8 @@ class XnatRepo(Repository):
             resources.discard('SNAPSHOTS')
             for resource in resources:
                 file_groups.append(FileGroup(
-                    scan_type, id=scan_id,
-                    uri='{}/scans/{}/resources/{}'.format(session_uri, scan_id,
+                    scan_type, id=order,
+                    uri='{}/scans/{}/resources/{}'.format(session_uri, order,
                                                           resource),
                     dataset=dataset, subject_id=subject_id, visit_id=visit_id,
                     quality=scan_quality, resource_name=resource, **kwargs))

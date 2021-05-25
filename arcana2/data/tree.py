@@ -25,21 +25,21 @@ class DataFreq(Enum):
     """
 
     # Name = (iteration-pattern, description)
-    visit = (0b001, 'for each visit (e.g. longitudinal timepoint)')    
+    visit = (0b001, 'for each visit across the whole cohort '
+             '(e.g. longitudinal timepoint)')    
     subject = (0b010, 'for each subject')
-    group = (0b100, 'for each group')
-    session = (0b011, 'for each session')
+    group = (0b100, 'for each subject group')
+    session = (0b011, 'for each session (i.e. a single visit of a subject)')
     group_visit = (
-        0b101, 'for each group and visit combination, '
+        0b101, 'for each combination of subject group and visit, '
         'e.g. a timepoint for a specific group in a longitudinal study')
-    dataset = (0b000, "singularly within the dataset")
+    dataset = (0b000, "singular within the dataset")
 
     # The 'iteration-pattern' is a binary string that specifies the depth of
     # the tree by its length (i.e. 3), and which level needs to be iterated
-    # over for each frequency.
-
-    # Note that patterns 0b110 and 0b111 are not required because it is
-    # assumed that each subject can only belong to one group
+    # over for each frequency. Note that patterns 0b110 and 0b111 are not
+    # required because it is assumed that each subject can only belong to one
+    # group
 
     @property
     def desc(self):
@@ -138,7 +138,7 @@ class TreeNode(object):
         "To be overridden by subclasses where appropriate"
         return None
 
-    def file_group(self, id, namespace=None, format=None):
+    def file_group(self, id, format=None):
         """
         Gets the file_group with the ID 'id' produced by the Analysis named
         'analysis' if provided. If a spec is passed instead of a str to the
@@ -149,11 +149,7 @@ class TreeNode(object):
         ----------
         id : str | FileGroupSpec
             The name of the file_group or a spec matching the given name
-        namespace : str | None
-            Name of the analysis that produced the file_group if derived. If None
-            and a spec is passed instaed of string to the name argument then
-            the analysis name will be taken from the spec instead.
-        format : FileFormat | str | None
+            format : FileFormat | str | None
             Either the format of the file_group to return or the name of the
             format. If None and only a single file_group is found for the given
             name and analysis then that is returned otherwise an exception is
@@ -167,8 +163,8 @@ class TreeNode(object):
             format_dct = self._file_groups[(id, namespace)]
         except KeyError:
             available = [
-                ('{}(format={})'.format(f.id, f._resource_name)
-                 if f._resource_name is not None else f.id)
+                ('{}(format={})'.format(f.id, f.resource_name)
+                 if f.resource_name is not None else f.id)
                 for f in self.file_groups if f.namespace == namespace]
             other_analyses = [
                 (f.namespace if f.namespace is not None else '<root>')

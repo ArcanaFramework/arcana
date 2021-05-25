@@ -5,9 +5,10 @@ import hashlib
 from arcana2.utils import split_extension, parse_value
 from arcana2.exceptions import (
     ArcanaError, ArcanaFileFormatError, ArcanaUsageError, ArcanaNameError,
-    ArcanaDataNotDerivedYetError, ArcanaUriAlreadySetException)
+    ArcanaDataNotDerivedYetError, ArcanaUriAlreadySetException,
+    ArcanaNoMatchingFileFormatException)
 # from .file_format import FileFormat
-from .base import FileGroupMixin, FieldMixin
+from .base import FileGroupMixin, FieldMixin, DataMixin
 from .tree import DataFreq
 
 HASH_CHUNK_SIZE = 2 ** 20  # 1MB
@@ -108,33 +109,28 @@ class FileGroup(DataItem, FileGroupMixin):
     frequency : DataFreq
         The frequency that the file group occurs in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
-    derived : bool
-        Whether the scan was generated or acquired. Depending on the dataset
-        used to store the file_group this is used to determine the location of the
-        file_group.
-    path : str | None
-        The path to the file_group (for repositories on the local system)
     aux_files : dict[str, str] | None
         Additional files in the file_group. Keys should match corresponding
         aux_files dictionary in format.
-    scan_id : int | None
-        The ID of the file_group in the session. To be used to
-        distinguish multiple file_groups with the same scan type in the
-        same session, e.g. scans taken before and after a task. For
-        datasets where this isn't stored (i.e. Local), id can be None
+    order : int | None
+        The order in which the file-group appears in the node it belongs to.
+        Typically corresponds to the acquisition order for scans within an
+        imaging session. Can be used to distinguish between scans with the
+        same series description (e.g. multiple BOLD or T1w scans) in the same
+        imaging sessions.
     subject_id : int | str | None
         The id of the subject which the file_group belongs to
     visit_id : int | str | None
         The id of the visit which the file_group belongs to
     dataset : Dataset
-        The dataset which the file-group is stored
+        The dataset which the file-group belongs to
     exists : bool
         Whether the file_group exists or is just a placeholder for a derivative
     checksums : dict[str, str]
         A checksums of all files within the file_group in a dictionary sorted by
         relative file paths
     record : ..provenance.Record | None
-        The provenance record for the pipeline that generated the file set,
+        The provenance record for the pipeline that generated the file-group,
         if applicable
     resource_name : str | None
         For repositories where the name of the file format is saved with the
@@ -142,29 +138,31 @@ class FileGroup(DataItem, FileGroupMixin):
         format identification
     quality : str
         The quality label assigned to the file_group (e.g. as is saved on XNAT)
-    cache_path : str | None
-        Path to the file-group in the local cache
+    local_path : str | None
+        Path to the file-group on the local file system (i.e. cache for remote
+        repositories)
     """
 
     def __init__(self, path, format=None, frequency=DataFreq.session,
-                 aux_files=None, scan_id=None, uri=None,
+                 aux_files=None, order=None, uri=None,
                  subject_id=None, visit_id=None, dataset=None,
                  exists=True, checksums=None, record=None, resource_name=None,
-                 quality=None, cache_path=None):
+                 quality=None, local_path=None):
         FileGroupMixin.__init__(self, path=path, format=format,
                                 frequency=frequency)
         DataItem.__init__(self, subject_id, visit_id, dataset, exists, record)
         if aux_files is not None:
-            if path is None:
+            if local_path is None:
                 raise ArcanaUsageError(
-                    "Side cars provided to '{}' file_group ({}) but not primary "
-                    "path".format(self.path, aux_files))
+                    "Side cars can only be provided to a FileGroup __init__ "
+                    "of '{}' ({}) if the local cache path is also".format(
+                        self.path, aux_files))
             if format is None:
                 raise ArcanaUsageError(
                     "Side cars provided to '{}' file_group ({}) but format is "
                     "not specified".format(self.path, aux_files))
-        if cache_path is not None:
-            cache_path = op.abscache_path(op.realpath(cache_path))
+        if local_path is not None:
+            local_path = op.abslocal_path(op.realpath(local_path))
             if aux_files is None:
                 aux_files = {}
             elif set(aux_files.keys()) != set(self.format.aux_files.keys()):
@@ -172,21 +170,13 @@ class FileGroup(DataItem, FileGroupMixin):
                     "Provided side cars for '{}' but expected '{}'"
                     .format("', '".join(aux_files.keys()),
                             "', '".join(self.format.aux_files.keys())))
-        self._cache_path = cache_path
+        self._local_path = local_path
         self.aux_files = aux_files if aux_files is not None else {}
         self.uri = uri
-        self.scan_id = scan_id
+        self._order = order
         self.checksums = checksums
         self.resource_name = resource_name
         self.quality = quality
-        # if potential_aux_files is not None and format is not None:
-        #     raise ArcanaUsageError(
-        #         "Potential paths should only be provided to FileGroup.__init__ "
-        #         "({}) when the format of the file_group ({}) is not determined"
-        #         .format(self.name, format))
-        # if potential_aux_files is not None:
-        #     potential_aux_files = list(potential_aux_files)
-        # self._potential_aux_files = potential_aux_files
 
     # def __getattr__(self, attr):
     #     """
@@ -219,38 +209,38 @@ class FileGroup(DataItem, FileGroupMixin):
         eq = (FileGroupMixin.__eq__(self, other)
               and DataItem.__eq__(self, other)
               and self.aux_files == other.aux_files
-              and self.scan_id == other.scan_id
+              and self._order == other._order
               and self._checksums == other._checksums
               and self.resource_name == other.resource_name
               and self.quality == other.quality)
         # Avoid having to cache file_group in order to test equality unless they
         # are already both cached
-        # try:
-        #     if self._path is not None and other._path is not None:
-        #         eq &= (self._path == other._path)
-        # except AttributeError:
-        #     return False
+        try:
+            if self._local_path is not None and other._local_path is not None:
+                eq &= (self._local_path == other._local_path)
+        except AttributeError:
+            return False
         return eq
 
     def __hash__(self):
         return (FileGroupMixin.__hash__(self)
                 ^ DataItem.__hash__(self)
-                ^ hash(self.scan_id)
+                ^ hash(self._order)
                 ^ hash(tuple(sorted(self.aux_files.items())))
                 ^ hash(self._checksums)
                 ^ hash(self.resource_name)
                 ^ hash(self.quality))
 
     def __lt__(self, other):
-        if isinstance(self.scan_id, int) and isinstance(other.scan_id, str):
+        if isinstance(self.order, int) and isinstance(other.order, str):
             return True
-        elif isinstance(self.scan_id, str) and isinstance(other.scan_id, int):
+        elif isinstance(self.order, str) and isinstance(other.order, int):
             return False
         else:
-            if self.scan_id == other.scan_id:
+            if self.order == other.order:
                 return self.path < other.path
             else:
-                return self.scan_id < other.scan_id
+                return self.order < other.order
 
     def __repr__(self):
         return ("{}('{}', {}, '{}', subj={}, vis={}, exists={}, "
@@ -266,10 +256,10 @@ class FileGroup(DataItem, FileGroupMixin):
         mismatch = FileGroupMixin.find_mismatch(self, other, indent)
         mismatch += DataItem.find_mismatch(self, other, indent)
         sub_indent = indent + '  '
-        if self.scan_id != other.scan_id:
-            mismatch += ('\n{}scan_id: self={} v other={}'
-                         .format(sub_indent, self.scan_id,
-                                 other.scan_id))
+        if self.order != other.order:
+            mismatch += ('\n{}order: self={} v other={}'
+                         .format(sub_indent, self.order,
+                                 other.order))
         if self._checksums != other._checksums:
             mismatch += ('\n{}checksum: self={} v other={}'
                          .format(sub_indent, self.checksums,
@@ -289,29 +279,29 @@ class FileGroup(DataItem, FileGroupMixin):
         return mismatch
 
     @property
-    def cache_path(self):
+    def local_path(self):
         if not self.exists:
             raise ArcanaDataNotDerivedYetError(
                 self.path,
-                "Cannot access cache path of {} as it hasn't been derived yet"
+                "Cannot access cache-path of {} as it hasn't been derived yet"
                 .format(self))
-        if self._cache_path is None:
+        if self._local_path is None:
             if self.dataset is not None:
                 self.get()  # Retrieve from dataset
             else:
                 raise ArcanaError(
-                    "Neither path nor dataset has been set for FileGroup("
-                    "'{}')".format(self.path))
-        return self._cache_path
+                    "Neither cache-path nor dataset has been set for "
+                    "FileGroup('{}')".format(self.path))
+        return self._local_path
 
-    def set_cache_path(self, cache_path, aux_files=None):
-        if cache_path is not None:
-            cache_path = op.abspath(op.realpath(cache_path))
+    def set_local_path(self, local_path, aux_files=None):
+        if local_path is not None:
+            local_path = op.abspath(op.realpath(local_path))
             self._exists = True
-        self._cache_path = cache_path
+        self._local_path = local_path
         if aux_files is None:
             self._aux_files = dict(
-                self.format.default_aux_file_paths(cache_path))
+                self.format.default_aux_file_paths(local_path))
         else:
             if set(self.format.aux_files.keys()) != set(aux_files.keys()):
                 raise ArcanaUsageError(
@@ -322,12 +312,12 @@ class FileGroup(DataItem, FileGroupMixin):
         self._checksums = self.calculate_checksums()
         self.put()  # Push to dataset
 
-    @cache_path.setter
-    def cache_path(self, path):
-        self.set_cache_path(path, aux_files=None)
+    @local_path.setter
+    def local_path(self, local_path):
+        self.set_local_path(local_path, aux_files=None)
 
     @property
-    def cache_paths(self):
+    def local_paths(self):
         "Iterates through all files in the group and returns their cache paths"
 
         if self.format is None:
@@ -336,26 +326,9 @@ class FileGroup(DataItem, FileGroupMixin):
                 "set".format(self))
         if self.format.directory:
             return chain(*((op.join(root, f) for f in files)
-                           for root, _, files in os.walk(self.cache_path)))
+                           for root, _, files in os.walk(self.local_path)))
         else:
-            return chain([self.cache_path], self.aux_files.values())
-
-    # @property
-    # def format(self):
-    #     return self._format
-
-    # @format.setter
-    # def format(self, format):
-    #     assert isinstance(format, FileFormat)
-    #     self._format = format
-    #     if format.aux_files and self._path is not None:
-    #         self._aux_files = format.assort_files(
-    #             [self._path] + list(self._potential_aux_files))[1]
-    #     if self._id is None and hasattr(format, 'extract_id'):
-    #         self._id = format.extract_id(self)
-    #     # No longer need to retain potentials after we have assigned the real
-    #     # auxiliaries
-    #     self._potential_aux_files = None
+            return chain([self.local_path], self.aux_files.values())
 
     @property
     def fname(self):
@@ -370,19 +343,19 @@ class FileGroup(DataItem, FileGroupMixin):
     #     return self.name
 
     @property
-    def id(self):
-        if self.scan_id is None:
+    def order(self):
+        if self.order is None:
             return self.path
         else:
-            return self._scan_id
+            return self._order
 
-    @id.setter
-    def id(self, id):
-        if self._id is None:
-            self._id = id
-        elif id != self._id:
+    @order.setter
+    def order(self, order):
+        if self._order is None:
+            self._order = order
+        elif order != self._order:
             raise ArcanaUsageError("Can't change value of ID for {} from {} "
-                                   "to {}".format(self, self._id, id))
+                                   "to {}".format(self, self._order, order))
 
     @property
     def uri(self):
@@ -451,57 +424,28 @@ class FileGroup(DataItem, FileGroupMixin):
             path = op.basename(local_path)
         else:
             path = split_extension(op.basename(local_path))[0]
-        return cls(path, cache_path=path, **kwargs)
-
-    # def detect_format(self, candidates):
-    #     """
-    #     Detects the format of the file_group from a list of possible
-    #     candidates. If multiple candidates match the potential files, e.g.
-    #     NiFTI-X (see dcm2niix) and NiFTI, then the first matching candidate is
-    #     selected.
-
-    #     If a 'format_name' was specified when the file_group was
-    #     created then that is used to select between the candidates. Otherwise
-    #     the file extensions of the primary path and potential auxiliary files,
-    #     or extensions of the files within the directory for directories are
-    #     matched against those specified for the file formats
-
-    #     Parameters
-    #     ----------
-    #     candidates : FileFormat
-    #         A list of file-formats to select from.
-    #     """
-    #     if self._format is not None:
-    #         raise ArcanaFileFormatError(
-    #             "Format has already been set for {}".format(self))
-    #     matches = [c for c in candidates if c.matches(self)]
-    #     if not matches:
-    #         raise ArcanaFileFormatError(
-    #             "None of the candidate file formats ({}) match {}"
-    #             .format(', '.join(str(c) for c in candidates), self))
-    #     return matches[0]
+        return cls(path, local_path=path, **kwargs)
 
     def initkwargs(self):
         dct = FileGroupMixin.initkwargs(self)
         dct.update(DataItem.initkwargs(self))
-        dct['cache_path'] = self.cache_path
-        dct['scan_id'] = self.scan_id
+        dct['local_path'] = self.local_path
+        dct['order'] = self.order
         dct['uri'] = self.uri
         dct['bids_attr'] = self.bids_attr
         dct['checksums'] = self.checksums
         dct['resource_name'] = self.resource_name
-        # dct['potential_aux_files'] = self._potential_aux_files
         dct['quality'] = self.quality
         return dct
 
     def get(self):
         if self.dataset is not None:
             self._exists = True
-            self._cache_path, self._aux_files = self.dataset.get_file_group(
+            self._local_path, self._aux_files = self.dataset.get_file_group(
                 self)
 
     def put(self):
-        if self.dataset is not None and self._cache_path is not None:
+        if self.dataset is not None and self._local_path is not None:
             self.dataset.put_file_group(self)
 
     def contents_equal(self, other, **kwargs):
@@ -700,3 +644,142 @@ class Field(DataItem, FieldMixin):
     def put(self):
         if self.dataset is not None and self._value is not None:
             self.dataset.put_field(self)
+
+
+class MultiFormatFileGroup(DataItem, DataMixin):
+    """A file-group that (potentially) stored in multiple file formats, and
+    the file formats can't be determined until a list of possible candidates
+    are provided (i.e. in the 'match' method)
+    
+
+    Parameters
+    ----------
+    path : str
+        The path to the relative location of the file group, i.e. excluding
+        information about which node in the data tree it belongs to
+    frequency : DataFreq
+        The frequency that the file group occurs in the dataset, i.e. 
+        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
+    files : Sequence[str] | None
+        Files in the file-group in (potentially) multiple formats.
+    order : int | None
+        The ID of the file_group in the session. To be used to
+        distinguish multiple file_groups with the same scan type in the
+        same session, e.g. scans taken before and after a task. For
+        datasets where this isn't stored (i.e. Local), id can be None
+    subject_id : int | str | None
+        The id of the subject which the file_group belongs to
+    visit_id : int | str | None
+        The id of the visit which the file_group belongs to
+    dataset : Dataset
+        The dataset which the file-group belongs to
+    record : ..provenance.Record | None
+        The provenance record for the pipeline that generated the file-group,
+        if applicable
+    resource_names : Dict[str, str] | None
+        For repositories where the name of the file format is saved with the
+        data (i.e. XNAT), the name of the resource enables straightforward
+        format identification. It is stored here along with URIs corresponding
+        to each resource
+    quality : str
+        The quality label assigned to the file_group (e.g. as is saved on XNAT)
+    local_path : str | None
+        Path to the file-group in the local cache
+    """
+
+    def __init__(self, path, frequency=DataFreq.session, order=None,
+                 subject_id=None, visit_id=None, dataset=None,
+                 resource_names=None, quality=None, local_paths=None,
+                 record=None):
+        DataItem.__init__(self, subject_id, visit_id, dataset, True, record)
+        DataMixin.__init__(self, path=path, frequency=frequency)
+        if local_paths is not None:
+            local_paths = [op.abspath(op.realpath(p)) for p in local_paths]
+        self._local_paths = local_paths
+        self.order = order
+        self.resource_names = resource_names
+        self.quality = quality
+
+    def match_format(self, candidates):
+        """
+        Detects the format of the file-group from a list of possible
+        candidates and returns a corresponding FileGroup object. If multiple
+        candidates match the potential files, e.g. NiFTI-X (see dcm2niix) and
+        NiFTI, then the first matching candidate is selected.
+
+        If 'resource_names' were specified when the multi-format file-group was
+        created then that is used to select between the candidates. Otherwise
+        the file extensions of the local paths, and extensions of the files
+        within the directory will be used instead.
+
+        Parameters
+        ----------
+        candidates : Sequence[FileFormat]
+            A list of file-formats to try to match. The first matching format
+            in the sequence will be used to create a file-group
+
+        Returns
+        -------
+        FileGroup
+            The file-group in the first matching format
+        """
+        # If multiple formats are specified via resource names
+        common_kwargs = {
+            'path': self.path,
+            'frequency': self.frequency,
+            'order': self.order,
+            'subject_id': self.subject_id,
+            'visit_id': self.visit_id,
+            'dataset': self.dataset,
+            'exists': True,
+            'quality': self.quality}
+        # Perform matching based on resource names in multi-format
+        # file-group
+        if self.resource_names is not None:
+            for candidate in candidates:
+                for resource_name, uri in self.resource_names.items():
+                    if resource_name in candidate.resource_names:
+                        return FileGroup(resource_name=resource_name, uri=uri,
+                                         **common_kwargs)
+            raise ArcanaNoMatchingFileFormatException(
+                "Could not find a matching resource in {} for any of the "
+                "candidates ({}), found ('{}')".format(
+                    self,
+                    ', '.join(str(c)for c in candidates),
+                    "', '".join(self.resource_names)))
+        # Perform matching based on file-extensions of local paths in
+        # multi-format file-group
+        else:
+            if not self._local_paths:
+                raise ArcanaError(
+                    "Either resource_names or local paths must be provided "
+                    f"to MultiFormatFileGroup('{self.path}') in before "
+                    "attempting to match to a candidate file format")
+            for candidate in candidates:
+                if candidate.directory:
+                    if (len(self._local_paths) == 1
+                        and op.isdir(self._local_paths[0])
+                        and (candidate.within_dir_exts is None
+                             or (candidate.within_dir_exts == frozenset(
+                                 split_extension(f)[1]
+                                 for f in os.listdir(self.local_paths)
+                                 if not f.startswith('.'))))):
+                        local_path = self._local_paths[0]
+                        aux_files = []
+                    else:
+                        continue
+                else:
+                    try:
+                        local_path, aux_files = candidate.assort_files(
+                            self.local_paths)[0]
+                    except ArcanaFileFormatError:
+                        continue
+                return FileGroup(local_path=local_path, aux_files=aux_files,
+                                 **common_kwargs)
+            raise ArcanaNoMatchingFileFormatException(
+                "Paths in {} ({}) did not match the naming conventions "
+                "expected by any of the candidates formats ({}), found ('{}')"
+                .format(self,
+                        ', '.join(self._local_paths),
+                        ', '.join(str(c)for c in candidates),
+                        "', '".join(self.resource_names)))

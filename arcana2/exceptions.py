@@ -106,6 +106,10 @@ class ArcanaFileFormatError(ArcanaError):
     pass
 
 
+class ArcanaNoMatchingFileFormatException(ArcanaException):
+    pass
+
+
 class ArcanaFileGroupNotCachedException(ArcanaException):
     pass
 

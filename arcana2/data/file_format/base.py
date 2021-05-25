@@ -266,42 +266,42 @@ class FileFormat(object):
                 aux_files[aux_name] = aux[0]
         return primary_file, aux_files
 
-    def matches(self, file_group):
-        """
-        Checks to see whether the format matches the given file_group
+    # def matches(self, file_group):
+    #     """
+    #     Checks to see whether the format matches the given file_group
 
-        Parameters
-        ----------
-        file_group : FileGroup
-            The file_group to check
-        """
-        if file_group._resource_name is not None:
-            return (file_group._resource_name in self.resource_names(
-                file_group.dataset.repository.type))
-        elif self.directory:
-            if op.isdir(file_group.path):
-                if self.within_dir_exts is None:
-                    return True
-                else:
-                    # Get set of all extensions in the directory
-                    return self.within_dir_exts == frozenset(
-                        split_extension(f)[1] for f in os.listdir(file_group.path)
-                        if not f.startswith('.'))
-            else:
-                return False
-        else:
-            if op.isfile(file_group.path):
-                all_paths = [file_group.path]
-                if file_group._potential_aux_files is not None:
-                    all_paths += file_group._potential_aux_files
-                try:
-                    primary_path = self.assort_files(all_paths)[0]
-                except ArcanaFileFormatError:
-                    return False
-                else:
-                    return primary_path == file_group.path
-            else:
-                return False
+    #     Parameters
+    #     ----------
+    #     file_group : FileGroup
+    #         The file_group to check
+    #     """
+    #     if file_group._resource_name is not None:
+    #         return (file_group._resource_name in self.resource_names(
+    #             file_group.dataset.repository.type))
+    #     elif self.directory:
+    #         if op.isdir(file_group.path):
+    #             if self.within_dir_exts is None:
+    #                 return True
+    #             else:
+    #                 # Get set of all extensions in the directory
+    #                 return self.within_dir_exts == frozenset(
+    #                     split_extension(f)[1] for f in os.listdir(file_group.path)
+    #                     if not f.startswith('.'))
+    #         else:
+    #             return False
+    #     else:
+    #         if op.isfile(file_group.path):
+    #             all_paths = [file_group.path]
+    #             if file_group._potential_aux_files is not None:
+    #                 all_paths += file_group._potential_aux_files
+    #             try:
+    #                 primary_path = self.assort_files(all_paths)[0]
+    #             except ArcanaFileFormatError:
+    #                 return False
+    #             else:
+    #                 return primary_path == file_group.path
+    #         else:
+    #             return False
 
     def set_converter(self, file_format, converter):
         """
