@@ -2,6 +2,7 @@ import os
 import os.path as op
 from itertools import chain
 import hashlib
+from itertools import Iterable
 from arcana2.utils import split_extension, parse_value
 from arcana2.exceptions import (
     ArcanaError, ArcanaFileFormatError, ArcanaUsageError, ArcanaNameError,
@@ -647,7 +648,7 @@ class Field(DataItem, FieldMixin):
 
 
 class MultiFormatFileGroup(DataItem, DataMixin):
-    """A file-group that (potentially) stored in multiple file formats, and
+    """A file-group potentially stored in multiple file formats, and
     the file formats can't be determined until a list of possible candidates
     are provided (i.e. in the 'match' method)
     
@@ -699,6 +700,7 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         self.order = order
         self.resource_names = resource_names
         self.quality = quality
+        self._matched = {}
 
     def match_format(self, candidates):
         """
@@ -714,7 +716,7 @@ class MultiFormatFileGroup(DataItem, DataMixin):
 
         Parameters
         ----------
-        candidates : Sequence[FileFormat]
+        candidates : FileFormat | Sequence[FileFormat]
             A list of file-formats to try to match. The first matching format
             in the sequence will be used to create a file-group
 
@@ -723,6 +725,11 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         FileGroup
             The file-group in the first matching format
         """
+        # Ensure candidates is a list of file formats
+        if not isinstance(candidates, Iterable):
+            candidates = [candidates]
+        else:
+            candidates = list(candidates)
         # If multiple formats are specified via resource names
         common_kwargs = {
             'path': self.path,
@@ -733,53 +740,61 @@ class MultiFormatFileGroup(DataItem, DataMixin):
             'dataset': self.dataset,
             'exists': True,
             'quality': self.quality}
-        # Perform matching based on resource names in multi-format
-        # file-group
-        if self.resource_names is not None:
-            for candidate in candidates:
-                for resource_name, uri in self.resource_names.items():
-                    if resource_name in candidate.resource_names:
-                        return FileGroup(resource_name=resource_name, uri=uri,
-                                         **common_kwargs)
-            raise ArcanaNoMatchingFileFormatException(
+        if not (self.resource_names or self._local_paths):
+            raise ArcanaError(
+                "Either resource_names or local paths must be provided "
+                f"to UnresolvedFormatFileGroup('{self.path}') in before "
+                "attempting to resolve a file-groups format")
+        for candidate in candidates:
+            try:
+                # Attempt to access previously saved
+                return self._matched[candidate]
+            except KeyError:
+                # Perform matching based on resource names in multi-format
+                # file-group
+                if self.resource_names is not None:   
+                    for resource_name, uri in self.resource_names.items():
+                        if resource_name in candidate.resource_names:
+                            return FileGroup(resource_name=resource_name,
+                                             uri=uri, **common_kwargs)
+                # Perform matching based on file-extensions of local paths in
+                # multi-format file-group
+                else:
+                    local_path = None
+                    aux_files = []
+                    if candidate.directory:
+                        if (len(self._local_paths) == 1
+                            and op.isdir(self._local_paths[0])
+                            and (candidate.within_dir_exts is None
+                                or (candidate.within_dir_exts == frozenset(
+                                    split_extension(f)[1]
+                                    for f in os.listdir(self.local_paths)
+                                    if not f.startswith('.'))))):
+                            local_path = self._local_paths[0]
+                    else:
+                        try:
+                            local_path, aux_files = candidate.assort_files(
+                                self.local_paths)[0]
+                        except ArcanaFileFormatError:
+                            pass
+                    if local_path is not None:
+                        return FileGroup(local_path=local_path,
+                                        aux_files=aux_files, **common_kwargs)
+        # If we get to here none of the candidate formats have matched and
+        # we raise and error
+        if self.resource_names:
+            error_msg = (
                 "Could not find a matching resource in {} for any of the "
                 "candidates ({}), found ('{}')".format(
                     self,
                     ', '.join(str(c)for c in candidates),
                     "', '".join(self.resource_names)))
-        # Perform matching based on file-extensions of local paths in
-        # multi-format file-group
         else:
-            if not self._local_paths:
-                raise ArcanaError(
-                    "Either resource_names or local paths must be provided "
-                    f"to MultiFormatFileGroup('{self.path}') in before "
-                    "attempting to match to a candidate file format")
-            for candidate in candidates:
-                if candidate.directory:
-                    if (len(self._local_paths) == 1
-                        and op.isdir(self._local_paths[0])
-                        and (candidate.within_dir_exts is None
-                             or (candidate.within_dir_exts == frozenset(
-                                 split_extension(f)[1]
-                                 for f in os.listdir(self.local_paths)
-                                 if not f.startswith('.'))))):
-                        local_path = self._local_paths[0]
-                        aux_files = []
-                    else:
-                        continue
-                else:
-                    try:
-                        local_path, aux_files = candidate.assort_files(
-                            self.local_paths)[0]
-                    except ArcanaFileFormatError:
-                        continue
-                return FileGroup(local_path=local_path, aux_files=aux_files,
-                                 **common_kwargs)
-            raise ArcanaNoMatchingFileFormatException(
+            error_msg = (
                 "Paths in {} ({}) did not match the naming conventions "
                 "expected by any of the candidates formats ({}), found ('{}')"
                 .format(self,
                         ', '.join(self._local_paths),
                         ', '.join(str(c)for c in candidates),
                         "', '".join(self.resource_names)))
+        raise ArcanaNoMatchingFileFormatException(error_msg)
