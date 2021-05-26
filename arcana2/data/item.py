@@ -19,36 +19,28 @@ class DataItem(object):
 
     is_spec = False
 
-    def __init__(self, subject_id, visit_id, dataset, exists, record):
-        self.subject_id = subject_id
-        self.visit_id = visit_id
-        self.dataset = dataset
+    def __init__(self, data_node, exists, record):
+        self.data_node = data_node
         self.exists = exists
         self._record = record
 
     def __eq__(self, other):
-        return (self.subject_id == other.subject_id
-                and self.visit_id == other.visit_id
+        return (self.data_node == other.data_node
                 and self.exists == other.exists
                 and self._record == other._record)
 
     def __hash__(self):
-        return (hash(self.subject_id)
-                ^ hash(self.visit_id)
+        return (hash(self.data_node)
                 ^ hash(self.exists)
                 ^ hash(self._record))
 
     def find_mismatch(self, other, indent=''):
         sub_indent = indent + '  '
         mismatch = ''
-        if self.subject_id != other.subject_id:
-            mismatch += ('\n{}subject_id: self={} v other={}'
-                         .format(sub_indent, self.subject_id,
-                                 other.subject_id))
-        if self.visit_id != other.visit_id:
-            mismatch += ('\n{}visit_id: self={} v other={}'
-                         .format(sub_indent, self.visit_id,
-                                 other.visit_id))
+        if self.data_node != other.data_node:
+            mismatch += ('\n{}data_node: self={} v other={}'
+                         .format(sub_indent, self.data_node,
+                                 other.data_node))
         if self.exists != other.exists:
             mismatch += ('\n{}exists: self={} v other={}'
                          .format(sub_indent, self.exists,
@@ -62,10 +54,6 @@ class DataItem(object):
     # @property
     # def derived(self):
     #     return self.namespace is not None
-
-    @property
-    def session_id(self):
-        return (self.subject_id, self.visit_id)
 
     @property
     def record(self):
@@ -89,9 +77,7 @@ class DataItem(object):
 
     def initkwargs(self):
         dct = super().initkwargs()
-        dct['dataset'] = self.dataset
-        dct['subject_id'] = self.subject_id
-        dct['visit_id'] = self.visit_id
+        dct['data_node'] = self.data_node
         dct['exists'] = self.exists
         return dct
 
@@ -119,12 +105,8 @@ class FileGroup(DataItem, FileGroupMixin):
         imaging session. Can be used to distinguish between scans with the
         same series description (e.g. multiple BOLD or T1w scans) in the same
         imaging sessions.
-    subject_id : int | str | None
-        The id of the subject which the file_group belongs to
-    visit_id : int | str | None
-        The id of the visit which the file_group belongs to
-    dataset : Dataset
-        The dataset which the file-group belongs to
+    data_node : DataNode
+        The data node that the file-group belongs to
     exists : bool
         Whether the file_group exists or is just a placeholder for a derivative
     checksums : dict[str, str]
@@ -145,13 +127,12 @@ class FileGroup(DataItem, FileGroupMixin):
     """
 
     def __init__(self, path, format=None, frequency=DataFreq.session,
-                 aux_files=None, order=None, uri=None,
-                 subject_id=None, visit_id=None, dataset=None,
-                 exists=True, checksums=None, record=None, resource_name=None,
-                 quality=None, local_path=None):
+                 aux_files=None, order=None, uri=None, exists=True,
+                 checksums=None, record=None, resource_name=None, quality=None,
+                 local_path=None, data_node=None):
         FileGroupMixin.__init__(self, path=path, format=format,
                                 frequency=frequency)
-        DataItem.__init__(self, subject_id, visit_id, dataset, exists, record)
+        DataItem.__init__(self, data_node, exists, record)
         if aux_files is not None:
             if local_path is None:
                 raise ArcanaUsageError(
@@ -484,12 +465,8 @@ class Field(DataItem, FieldMixin):
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     derived : bool
         Whether or not the value belongs in the derived session or not
-    subject_id : int | str | None
-        The id of the subject which the field belongs to
-    visit_id : int | str | None
-        The id of the visit which the field belongs to
-    dataset : Dataset
-        The dataset which the field is stored
+    data_node : DataNode
+        The data node that the field belongs to
     exists : bool
         Whether the field exists or is just a placeholder for a derivative
     record : ..provenance.Record | None
@@ -498,8 +475,8 @@ class Field(DataItem, FieldMixin):
     """
 
     def __init__(self, path, value=None, dtype=None,
-                 frequency=DataFreq.session, array=None, subject_id=None,
-                 visit_id=None, dataset=None, exists=True, record=None):
+                 frequency=DataFreq.session, array=None, data_node=None,
+                 exists=True, record=None):
         # Try to determine dtype and array from value if they haven't
         # been provided.
         if value is None:
@@ -536,8 +513,7 @@ class Field(DataItem, FieldMixin):
                 else:
                     value = dtype(value)
         FieldMixin.__init__(self, path, dtype, frequency, array)
-        DataItem.__init__(self, subject_id, visit_id, dataset,
-                          exists, record)
+        DataItem.__init__(self, data_node, exists, record)
         self._value = value
 
     def __eq__(self, other):
@@ -668,12 +644,8 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         distinguish multiple file_groups with the same scan type in the
         same session, e.g. scans taken before and after a task. For
         datasets where this isn't stored (i.e. Local), id can be None
-    subject_id : int | str | None
-        The id of the subject which the file_group belongs to
-    visit_id : int | str | None
-        The id of the visit which the file_group belongs to
-    dataset : Dataset
-        The dataset which the file-group belongs to
+    data_node : DataNode
+        The data node that the field belongs to
     record : ..provenance.Record | None
         The provenance record for the pipeline that generated the file-group,
         if applicable
@@ -689,10 +661,9 @@ class MultiFormatFileGroup(DataItem, DataMixin):
     """
 
     def __init__(self, path, frequency=DataFreq.session, order=None,
-                 subject_id=None, visit_id=None, dataset=None,
                  resource_names=None, quality=None, local_paths=None,
-                 record=None):
-        DataItem.__init__(self, subject_id, visit_id, dataset, True, record)
+                 record=None, data_node=None):
+        DataItem.__init__(self, data_node, True, record)
         DataMixin.__init__(self, path=path, frequency=frequency)
         if local_paths is not None:
             local_paths = [op.abspath(op.realpath(p)) for p in local_paths]

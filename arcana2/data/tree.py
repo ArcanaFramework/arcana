@@ -37,17 +37,41 @@ class DataFreq(Enum):
     # required because it is assumed that each subject can only belong to one
     # group
 
+    def __init__(self, value):
+        if value in (0b010, 0b011):
+            value += 0b100
+        super().__init__(value)
+
 
     def __str__(self):
         return self.name
 
+    @property
+    def bases(self):
+        """Returns the bases the frequency is composed of, e.g.
+           session -> subject + visit
+           group_visit -> group + visit
+        """
+        n = self.value
+        bases = []
+        while n:
+            m = n & (n - 1)
+            bases.append(type(self)(m ^ n))
+            n = m
+        return bases
+
+    def is_base(self):
+        return len(self.bases) == 1
+
 
 class DataNode():
 
-    def __init__(self):
-        self._file_groups = OrderedDict()
-        self._fields = OrderedDict()
-        self._records = OrderedDict()
+    def __init__(self, id=None, base_ids=None):
+        self.file_groups = OrderedDict()
+        self.fields = OrderedDict()
+        self.records = OrderedDict()
+        self.id = id
+        self.base_ids = base_ids
 
         # self, file_groups, fields, records):
         # if file_groups is None:
@@ -118,16 +142,6 @@ class DataNode():
     @property
     def records(self):
         return self._records.values()
-
-    @property
-    def subject_id(self):
-        "To be overridden by subclasses where appropriate"
-        return None
-
-    @property
-    def visit_id(self):
-        "To be overridden by subclasses where appropriate"
-        return None
 
     def file_group(self, path, file_format=None):
         """
@@ -293,3 +307,13 @@ class DataNode():
         self.__dict__ = state.copy()
         if self._tree is not None:
             self._tree = weakref.ref(self._tree)
+
+
+class DataTree():
+
+    def __init__(self, frequencies):
+        self.frequencies = frequencies
+        self.nodes = defaultdict(dict)
+
+    def add_node(self, ids, file_groups, fields, records):
+        self.nodes
