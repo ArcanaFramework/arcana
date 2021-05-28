@@ -1,26 +1,28 @@
 import os
 import os.path as op
+import weakref
 from itertools import chain
 import hashlib
-from itertools import Iterable
+from collections.abc import Iterable
 from arcana2.utils import split_extension, parse_value
 from arcana2.exceptions import (
     ArcanaError, ArcanaFileFormatError, ArcanaUsageError, ArcanaNameError,
     ArcanaDataNotDerivedYetError, ArcanaUriAlreadySetException,
-    ArcanaNoMatchingFileFormatException)
+    ArcanaNoMatchingFileFormatError)
 # from .file_format import FileFormat
 from .base import FileGroupMixin, FieldMixin, DataMixin
-from .tree import DataFreq
+from arcana2.enum import DataFreq
 
 HASH_CHUNK_SIZE = 2 ** 20  # 1MB
 
 
-class DataItem(object):
+class DataItem():
 
     is_spec = False
 
     def __init__(self, data_node, exists, record):
-        self.data_node = data_node
+        self._data_node = (
+            weakref.ref(data_node) if data_node is not None else None)
         self.exists = exists
         self._record = record
 
@@ -59,6 +61,17 @@ class DataItem(object):
     def record(self):
         return self._record
 
+    @property
+    def data_node(self):
+        if self.data_node is None:
+            data_node = None
+        else:
+            data_node = self.data_node()
+            if data_node is None:
+                raise ArcanaError("Referenced data_node no longer exists")
+        return data_node
+        
+
     @record.setter
     def record(self, record):
         if self.path not in record.outputs:
@@ -93,9 +106,6 @@ class FileGroup(DataItem, FileGroupMixin):
         information about which node in the data tree it belongs to
     format : FileFormat
         The file format used to store the file_group.
-    frequency : DataFreq
-        The frequency that the file group occurs in the dataset, i.e. 
-        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     aux_files : dict[str, str] | None
         Additional files in the file_group. Keys should match corresponding
         aux_files dictionary in format.
@@ -106,7 +116,7 @@ class FileGroup(DataItem, FileGroupMixin):
         same series description (e.g. multiple BOLD or T1w scans) in the same
         imaging sessions.
     data_node : DataNode
-        The data node that the file-group belongs to
+        The data node within a dataset that the file-group belongs to
     exists : bool
         Whether the file_group exists or is just a placeholder for a derivative
     checksums : dict[str, str]
@@ -126,12 +136,10 @@ class FileGroup(DataItem, FileGroupMixin):
         repositories)
     """
 
-    def __init__(self, path, format=None, frequency=DataFreq.session,
-                 aux_files=None, order=None, uri=None, exists=True,
-                 checksums=None, record=None, resource_name=None, quality=None,
-                 local_path=None, data_node=None):
-        FileGroupMixin.__init__(self, path=path, format=format,
-                                frequency=frequency)
+    def __init__(self, path, format=None, aux_files=None, order=None, uri=None,
+                 exists=True, checksums=None, record=None, resource_name=None,
+                 quality=None, local_path=None, data_node=None):
+        FileGroupMixin.__init__(self, path=path, format=format)
         DataItem.__init__(self, data_node, exists, record)
         if aux_files is not None:
             if local_path is None:
@@ -460,9 +468,6 @@ class Field(DataItem, FieldMixin):
         information about which node in the data tree it belongs to
     dtype : type
         The datatype of the value. Can be one of (float, int, str)
-    frequency : DataFreq
-        The frequency that the items occur in the dataset, i.e. 
-        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     derived : bool
         Whether or not the value belongs in the derived session or not
     data_node : DataNode
@@ -474,9 +479,8 @@ class Field(DataItem, FieldMixin):
         if applicable
     """
 
-    def __init__(self, path, value=None, dtype=None,
-                 frequency=DataFreq.session, array=None, data_node=None,
-                 exists=True, record=None):
+    def __init__(self, path, value=None, dtype=None, array=None,
+                 data_node=None, exists=True, record=None):
         # Try to determine dtype and array from value if they haven't
         # been provided.
         if value is None:
@@ -512,7 +516,7 @@ class Field(DataItem, FieldMixin):
                     value = [dtype(v) for v in value]
                 else:
                     value = dtype(value)
-        FieldMixin.__init__(self, path, dtype, frequency, array)
+        FieldMixin.__init__(self, path, dtype, array)
         DataItem.__init__(self, data_node, exists, record)
         self._value = value
 
@@ -649,7 +653,7 @@ class MultiFormatFileGroup(DataItem, DataMixin):
     record : ..provenance.Record | None
         The provenance record for the pipeline that generated the file-group,
         if applicable
-    resource_names : Dict[str, str] | None
+    resource_uris : Dict[str, str] | None
         For repositories where the name of the file format is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
         format identification. It is stored here along with URIs corresponding
@@ -660,16 +664,15 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         Path to the file-group in the local cache
     """
 
-    def __init__(self, path, frequency=DataFreq.session, order=None,
-                 resource_names=None, quality=None, local_paths=None,
-                 record=None, data_node=None):
+    def __init__(self, path, order=None, resource_uris=None, quality=None,
+                 local_paths=None, record=None, data_node=None):
         DataItem.__init__(self, data_node, True, record)
-        DataMixin.__init__(self, path=path, frequency=frequency)
+        DataMixin.__init__(self, path=path)
         if local_paths is not None:
             local_paths = [op.abspath(op.realpath(p)) for p in local_paths]
         self._local_paths = local_paths
         self.order = order
-        self.resource_names = resource_names
+        self.resource_uris = resource_uris
         self.quality = quality
         self._matched = {}
 
@@ -680,7 +683,7 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         candidates match the potential files, e.g. NiFTI-X (see dcm2niix) and
         NiFTI, then the first matching candidate is selected.
 
-        If 'resource_names' were specified when the multi-format file-group was
+        If 'resource_uris' were specified when the multi-format file-group was
         created then that is used to select between the candidates. Otherwise
         the file extensions of the local paths, and extensions of the files
         within the directory will be used instead.
@@ -711,9 +714,9 @@ class MultiFormatFileGroup(DataItem, DataMixin):
             'dataset': self.dataset,
             'exists': True,
             'quality': self.quality}
-        if not (self.resource_names or self._local_paths):
+        if not (self.resource_uris or self._local_paths):
             raise ArcanaError(
-                "Either resource_names or local paths must be provided "
+                "Either resource_uris or local paths must be provided "
                 f"to UnresolvedFormatFileGroup('{self.path}') in before "
                 "attempting to resolve a file-groups format")
         for candidate in candidates:
@@ -723,9 +726,9 @@ class MultiFormatFileGroup(DataItem, DataMixin):
             except KeyError:
                 # Perform matching based on resource names in multi-format
                 # file-group
-                if self.resource_names is not None:   
-                    for resource_name, uri in self.resource_names.items():
-                        if resource_name in candidate.resource_names:
+                if self.resource_uris is not None:   
+                    for resource_name, uri in self.resource_uris.items():
+                        if resource_name in candidate.resource_uris:
                             return FileGroup(resource_name=resource_name,
                                              uri=uri, **common_kwargs)
                 # Perform matching based on file-extensions of local paths in
@@ -753,13 +756,13 @@ class MultiFormatFileGroup(DataItem, DataMixin):
                                         aux_files=aux_files, **common_kwargs)
         # If we get to here none of the candidate formats have matched and
         # we raise and error
-        if self.resource_names:
+        if self.resource_uris:
             error_msg = (
                 "Could not find a matching resource in {} for any of the "
                 "candidates ({}), found ('{}')".format(
                     self,
                     ', '.join(str(c)for c in candidates),
-                    "', '".join(self.resource_names)))
+                    "', '".join(self.resource_uris)))
         else:
             error_msg = (
                 "Paths in {} ({}) did not match the naming conventions "
@@ -767,5 +770,5 @@ class MultiFormatFileGroup(DataItem, DataMixin):
                 .format(self,
                         ', '.join(self._local_paths),
                         ', '.join(str(c)for c in candidates),
-                        "', '".join(self.resource_names)))
-        raise ArcanaNoMatchingFileFormatException(error_msg)
+                        "', '".join(self.resource_uris)))
+        raise ArcanaNoMatchingFileFormatError(error_msg)

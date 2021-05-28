@@ -26,7 +26,7 @@ class Record(object):
 
     Parameters
     ----------
-    pipeline_name : str
+    path : str
         Name of the pipeline the record corresponds to
     frequency : DataFreq
         The level within the dataset tree that the record will sit, i.e. 
@@ -46,31 +46,21 @@ class Record(object):
     # For duck-typing with FileGroups and Fields
     derived = True
 
-    def __init__(self, pipeline_name, frequency, subject_id, visit_id,
-                 namespace, prov):
+    def __init__(self, path, prov, data_node):
         self.prov = deepcopy(prov)
-        self.pipeline_name = pipeline_name
-        self.frequency = frequency
-        self.subject_id = subject_id
-        self.visit_id = visit_id
+        self.path = path
+        self.data_node = data_node
         if 'datetime' not in self.prov:
             self._prov['datetime'] = datetime.now().isoformat()
 
     def __repr__(self):
-        return ("{}(pipeline={}, frequency={}, subject_id={}, visit_id={},)"
-                .format(
-                    type(self).__name__, self.pipeline_name, self.frequency,
-                    self.subject_id, self.visit_id))
+        return ("{}(path={}, data_node={})"
+                .format(type(self).__name__, self.path, self.data_node))
 
     def __eq__(self, other):
         return (self.prov == other.prov
-                and self.frequency == other.frequency
-                and self.subject_id == other.subject_id
-                and self.visit_id == other.visit_id)
-
-    @property
-    def pipeline_name(self):
-        return self._pipeline_name
+                and self.path == other.path
+                and self.data_node == other.data_node)
 
     @property
     def inputs(self):
@@ -88,7 +78,7 @@ class Record(object):
     def provenance_version(self):
         return self.prov[PROVENANCE_VERSION]
 
-    def save(self, path):
+    def save(self, local_path):
         """
         Saves the provenance object to a JSON file, optionally including
         checksums for inputs and outputs (which are initially produced mid-
@@ -110,7 +100,7 @@ class Record(object):
             Checksums of all pipeline outputs. They need to be provided here
             if the provenance object was initialised without checksums
         """
-        with open(path, 'w') as f:
+        with open(local_path, 'w') as f:
             try:
                 json.dump(self.prov, f, indent=2)
             except TypeError:
@@ -119,8 +109,7 @@ class Record(object):
                     .format(pformat(self.prov)))
 
     @classmethod
-    def load(cls, pipeline_name, frequency, subject_id, visit_id,
-             path):
+    def load(cls, path, local_path, data_node):
         """
         Loads a saved provenance object from a JSON file
 
@@ -136,16 +125,17 @@ class Record(object):
             The subject ID of the provenance record
         visit_id : str | None
             The visit ID of the provenance record
+        local_path : str
+            The path to a local file containing the provenance JSON
 
         Returns
         -------
         record : Record
             The loaded provenance record
         """
-        with open(path) as f:
+        with open(local_path) as f:
             prov = json.load(f)
-        return Record(pipeline_name, frequency, subject_id, visit_id,
-                      prov)
+        return Record(path, prov, data_node)
 
     def mismatches(self, other, include=None, exclude=None):
         """
@@ -194,14 +184,14 @@ class Record(object):
         return filtered_diff
 
     @classmethod
-    def _gen_prov_path_regex(self, path):
-        if isinstance(path, basestring):
-            if path.startswith('/'):
-                path = path[1:]
+    def _gen_prov_path_regex(self, local_path):
+        if isinstance(local_path, basestring):
+            if local_path.startswith('/'):
+                local_path = local_path[1:]
             regex = re.compile(r"root\['{}'\].*"
-                               .format(r"'\]\['".join(path.split('/'))))
-        elif not isinstance(path, re.Pattern):
+                               .format(r"'\]\['".join(local_path.split('/'))))
+        elif not isinstance(local_path, re.Pattern):
             raise ArcanaUsageError(
                 "Provenance in/exclude paths can either be path strings or "
-                "regexes, not '{}'".format(path))
+                "regexes, not '{}'".format(local_path))
         return regex

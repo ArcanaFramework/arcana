@@ -5,25 +5,17 @@ from logging import getLogger
 from arcana2.exceptions import ArcanaUsageError
 from future.types import newstr
 from arcana2.utils import PATH_SUFFIX, FIELD_SUFFIX, CHECKSUM_SUFFIX
-from .tree import DataFreq
+from arcana2.enum import DataFreq
 logger = getLogger('arcana')
     
 
-class DataMixin(object):
+class DataMixin():
     """Base class for all Data related classes
     """
 
     def __init__(self, path, frequency):
         self.path = path
-        if not frequency in DataFreq:
-            try:
-                frequency = DataFreq[frequency]
-            except KeyError:
-                raise ArcanaUsageError(
-                    f"Invalid value for frequency, {frequency}, passed to "
-                    f"initialisation of {type(self)}")
         self.frequency = frequency
-        
 
     def __eq__(self, other):
         return (self.frequency == other.frequency

@@ -16,39 +16,13 @@ class DataColumn():
     Base class for a "column" of file_groups and field items
     """
 
-    def __init__(self, items, frequency):
-        self._frequency = frequency
-        if frequency == 'per_dataset':
-            # If wrapped in an iterable
-            if not isinstance(items, self.RowClass):
-                if len(items) > 1:
-                    raise ArcanaUsageError(
-                        "More than one {} passed to {}"
-                        .format(self.CONTAINED_CLASS.__name__,
-                                type(self).__name__))
-                items = list(items)
-            self._items = items
-        elif frequency == 'per_session':
-            self._items = OrderedDict()
-            for subj_id in sorted(set(c.subject_id for c in items)):
-                self._items[subj_id] = OrderedDict(
-                    sorted(((c.visit_id, c) for c in items
-                            if c.subject_id == subj_id),
-                           key=itemgetter(0)))
-        elif frequency == 'per_subject':
-            self._items = OrderedDict(
-                sorted(((c.subject_id, c) for c in items),
-                       key=itemgetter(0)))
-        elif frequency == 'per_visit':
-            self._items = OrderedDict(
-                sorted(((c.visit_id, c) for c in items),
-                       key=itemgetter(0)))
-        else:
-            assert False
-        for datum in self:
-            if not isinstance(datum, self.RowClass):
+    def __init__(self, items):
+        self.items = {
+            tuple((f, i) for sorted())}
+        for item in self:
+            if not isinstance(item, self.RowClass):
                 raise ArcanaUsageError(
-                    "Invalid class {} in {}".format(datum, self))
+                    "Invalid class {} in {}".format(item, self))
 
     def __iter__(self):
         if self._frequency == 'per_dataset':

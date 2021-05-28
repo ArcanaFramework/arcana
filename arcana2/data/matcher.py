@@ -9,7 +9,7 @@ from arcana2.exceptions import (
 from .base import FileGroupMixin, FieldMixin
 from .item import FileGroup, Field
 from .column import FileGroupColumn, FieldColumn
-from .tree import DataFreq
+from arcana2.enum import DataFreq
 
 
 class DataMatcher():
@@ -17,18 +17,21 @@ class DataMatcher():
     Base class for FileGroup and Field Matcher classes
     """
 
-    def __init__(self, path, is_regex, order):
+    def __init__(self, path, is_regex, order, frequency):
         self.path = path
         self.is_regex = is_regex
         self.order = order
+        self.frequency = frequency
 
     def __eq__(self, other):
         return (self.path == other.path
+                and self.frequency == other.frequency
                 and self.is_regex == other.is_regex
                 and self.order == other.order)
 
     def __hash__(self):
         return (hash(self.path)
+                ^ hash(self.frequency)
                 ^ hash(self.is_regex)
                 ^ hash(self.order))
 
@@ -37,6 +40,7 @@ class DataMatcher():
         dct['path'] = self.path
         dct['order'] = self.order
         dct['is_regex'] = self.is_regex
+        dct['frequency'] = self.frequency
         return dct
 
     def _match(self, tree, item_cls, **kwargs):
@@ -145,9 +149,9 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     ColumnClass = FileGroupColumn
 
     def __init__(self, path=None, format=None, frequency=DataFreq.session, 
-                 order=None, metadata=None, is_regex=False, namespace=None,
+                 order=None, metadata=None, is_regex=False,
                  acceptable_quality=None):
-        FileGroupMixin.__init__(self, None, frequency, namespace)
+        FileGroupMixin.__init__(self, None, frequency)
         DataMatcher.__init__(self, path, is_regex, order)
         self.metadata = metadata
         self.format = format

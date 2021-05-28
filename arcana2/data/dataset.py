@@ -1,12 +1,17 @@
-import os
-import os.path as op
-import pickle as pkl
-from logging import getLogger
-from arcana2.exceptions import ArcanaUsageError
-from .tree import DataTree
+from arcana2.data.item import MultiFormatFileGroup
+import weakref
+from itertools import itemgetter
+import logging
+from collections import defaultdict
+from itertools import chain
+from collections import OrderedDict
+from arcana2.enum import DataFreq
+from .provenance import Record
+from arcana2.exceptions import (
+    ArcanaError, ArcanaNameError, ArcanaDataTreeConstructionError,
+    ArcanaUsageError)
 
-
-logger = getLogger('arcana')
+logger = logging.getLogger('arcana')
 
 
 class Dataset():
@@ -20,328 +25,388 @@ class Dataset():
         The name/id/path that uniquely identifies the datset within the
         repository it is stored
     repository : Repository
-        The repository the dataset belongs to
-    subject_ids : list[str]
-        Subject IDs to be included in the analysis. All other subjects are
-        ignored
-    visit_ids : list[str]
-        Visit IDs to be included in the analysis. All other visits are ignored
-    fill_tree : bool
-        Whether to fill the tree of the destination repository with the
-        provided subject and/or visit IDs. Intended to be used when the
-        destination repository doesn't contain any of the the input
-        file_groups/fields (which are stored in external repositories) and
-        so the sessions will need to be created in the destination
-        repository.
-    depth : int (0|1|2)
-        The depth of the dataset (i.e. whether it has subjects and sessions).
-            0 -> single session
-            1 -> multiple subjects
-            2 -> multiple subjects and visits
-    subject_id_map : dict[str, str]
-        Maps subject IDs in dataset to a global name-space
-    visit_id_map : dict[str, str]
-        Maps visit IDs in dataset to a global name-space
+        The repository the dataset is stored into. Can be the local file
+        system by providing a FileSystem repo.
+    include_ids : Dict[str, List[str]]
+        The IDs to be included in the dataset for each frequency. E.g. can be
+        used to limit the subject IDs in a project to the sub-set that passed
+        QC. If a frequency is omitted or its value is None, then all available
+        will be used
     """
 
-    def __init__(self, name, repository=None, subject_ids=None, visit_ids=None,
-                 fill_tree=False, depth=0, subject_id_map=None,
-                 visit_id_map=None, file_formats=(), clear_cache=True):
-        if repository is None:
-            # needs to be imported here to avoid circular imports
-            from .repository.file_system import FileSystemRepo
-            repository = FileSystemRepo()
-            if not op.exists(name):
+    def __init__(self, name, repository, include_ids=None,
+                 frequency_cls=DataFreq):
+        self.name = name
+        self.repository = repository
+        self.frequency_cls = frequency_cls
+        self.include_ids = {f: None for f in frequency_cls}
+        for freq, ids in include_ids:
+            try:
+                self.include_ids[frequency_cls[freq]] = list(ids)
+            except KeyError:
                 raise ArcanaUsageError(
-                    "Base directory for FileSystemRepo '{}' does not "
-                    "exist".format(name))
-        self._name = repository.standardise_name(name)
-        self._repository = repository
-        self._subject_ids = (tuple(subject_ids)
-                             if subject_ids is not None else None)
-        self._visit_ids = tuple(visit_ids) if visit_ids is not None else None
-        self._fill_tree = fill_tree
-        self._depth = depth
-        if clear_cache:
-            self.clear_cache()
-
-        self._subject_id_map = subject_id_map
-        self._visit_id_map = visit_id_map
-        self._inv_subject_id_map = {}
-        self._inv_visit_id_map = {}
-        self._file_formats = file_formats
-        self._cached_tree = None
+                    f"Unrecognised data frequency '{freq}' (valid "
+                    f"{', '.join(self.frequency_cls)})")
+        # Add root node for tree
+        self.root_freq = self.frequency_cls(0)
+        self.root_node = DataNode(self.root_freq, {}, self)
 
     def __repr__(self):
-        return "Dataset(name='{}', depth={}, repository={})".format(
-            self.name, self.depth, self.repository)
+        return (f"Dataset(name='{self.name}', repository={self.repository}, "
+                f"include_ids={self.include_ids})")
 
     def __eq__(self, other):
         return (self.name == other.name
                 and self.repository == other.repository
-                and self._subject_ids == other._subject_ids
-                and self._visit_ids == other._visit_ids
-                and self._fill_tree == other._fill_tree
-                and self.depth == other.depth)
+                and self.include_ids == other.include_ids
+                and self.root_node == other.root_node
+                and self.frequency_cls == other.frequency_cls)
 
     def __hash__(self):
-        return (hash(self._name)
+        return (hash(self.name)
                 ^ hash(self.repository)
-                ^ hash(self._subject_ids)
-                ^ hash(self._visit_ids)
-                ^ hash(self._fill_tree)
-                ^ hash(self._depth))
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
-    def repository(self):
-        return self._repository
-
-    @property
-    def subject_ids(self):
-        if self._subject_ids is None:
-            return [s.id for s in self.tree.subjects]
-        return self._subject_ids
-
-    @property
-    def visit_ids(self):
-        if self._visit_ids is None:
-            return [v.id for v in self.tree.visits]
-        return self._visit_ids
+                ^ hash(self.include_ids)
+                ^ hash(self.root_node)
+                ^ hash(self.frequency_cls))
 
     @property
     def prov(self):
         return {
             'name': self.name,
-            'depth': self._depth,
             'repository': self.repository.prov,
-            'subject_ids': tuple(self.subject_ids),
-            'visit_ids': tuple(self.visit_ids)}
-
-    @property
-    def depth(self):
-        return self._depth
-
-    @property
-    def num_subjects(self):
-        return len(self.subject_ids)
-
-    @property
-    def num_visits(self):
-        return len(self.visit_ids)
-
-    @property
-    def num_sessions(self):
-        if self._visit_ids is None and self._subject_ids is None:
-            num_sessions = len(list(self.tree.sessions))
-        else:
-            num_sessions = self.num_subjects * self.num_visits
-        return num_sessions
-
-    def get_file_group(self, file_group):
-        """
-        Cache the file_group locally if required
-
-        Parameters
-        ----------
-        file_group : FileGroup
-            The file_group to cache locally
-
-        Returns
-        -------
-        path : str
-            The file-system path to the cached file
-        """
-        return self.repository.get_file_group(file_group)
-
-    def get_field(self, field):
-        """
-        Extract the value of the field from the repository
-
-        Parameters
-        ----------
-        field : Field
-            The field to retrieve the value for
-
-        Returns
-        -------
-        value : int | float | str | list[int] | list[float] | list[str]
-            The value of the Field
-        """
-        return self.repository.get_field(field)
-
-    def get_checksums(self, file_group):
-        """
-        Returns the checksums for the files in the file_group that are stored in
-        the repository. If no checksums are stored in the repository then this
-        method should be left to return None and the checksums will be
-        calculated by downloading the files and taking calculating the digests
-
-        Parameters
-        ----------
-        file_group : FileGroup
-            The file_group to return the checksums for
-
-        Returns
-        -------
-        checksums : dct[str, str]
-            A dictionary with keys corresponding to the relative paths of all
-            files in the file_group from the base path and values equal to the MD5
-            hex digest. The primary file in the file-set (i.e. the one that the
-            path points to) should be specified by '.'.
-        """
-        return self.repository.get_checksums(file_group)
-
-    def put_file_group(self, file_group):
-        """
-        Inserts or updates the file_group into the repository
-
-        Parameters
-        ----------
-        file_group : FileGroup
-            The file_group to insert into the repository
-        """
-        self.repository.put_file_group(file_group)
-        self.clear_cache()
-
-    def put_field(self, field):
-        """
-        Inserts or updates the fields into the repository
-
-        Parameters
-        ----------
-        field : Field
-            The field to insert into the repository
-        """
-        self.repository.put_field(field)
-        self.clear_cache()
-
-    def put_record(self, record):
-        """
-        Inserts a provenance record into a session or subject|visit|analysis
-        summary
-
-        Parameters
-        ----------
-        record : prov.Record
-            The record to insert into the repository
-        """
-        self.repository.put_record(record, self)
-        self.clear_cache()
-
-    @property
-    def tree(self):
-        """
-        Return the tree of subject and sessions information within a
-        project in the XNAT repository
-
-        Returns
-        -------
-        tree : arcana2.repository.DataTree
-            A hierarchical tree of subject, session and file_group
-            information for the repository
-        """
-        if self._cached_tree is None:
-            try:
-                with open(self._tree_cache_path, 'rb') as f:
-                    self._cached_tree = pkl.load(f)
-            except (FileNotFoundError, TypeError):
-                pass
-            else:
-                cached_dataset = self._cached_tree.dataset
-                if (cached_dataset.name == self.name
-                        and cached_dataset.repository == self.repository):
-                    self._cached_tree._dataset = self
-                else:
-                    logger.warning(
-                        "Incompatible data tree saved in cache directory "
-                        "(name: '%s' v '%s', repository %s v %s) ",
-                        cached_dataset.name, self.name,
-                        cached_dataset.repository, self.repository)
-        if self._cached_tree is None:
-            # Find all data present in the repository (filtered by the
-            # passed IDs)
-            self._cached_tree = DataTree.construct(
-                self,
-                *self.repository.find_data(
-                    dataset=self,
-                    subject_ids=self._subject_ids,
-                    visit_ids=self._visit_ids),
-                fill_subjects=(self._subject_ids
-                               if self._fill_tree else None),
-                fill_visits=(self._visit_ids if self._fill_tree else None))
-            try:
-                with open(self._tree_cache_path, 'wb') as f:
-                    pkl.dump(self._cached_tree, f)
-            except TypeError:
-                pass  # No cache path
-        return self._cached_tree
-
-    @property
-    def _tree_cache_path(self):
-        try:
-            cache_dir = self.repository.dataset_cache_dir(self.dataset_name)
-        except AttributeError:
-            cache_path = None
-        else:
-            os.makedirs(cache_dir, exist_ok=True)
-            cache_path = op.join(cache_dir, 'datatree-cache.pkl')
-        return cache_path
-
-    def clear_cache(self):
-        self._cached_tree = None
-        try:
-            os.remove(self._tree_cache_path)
-        except (FileNotFoundError, TypeError):
-            pass
+            'ids': {str(freq): tuple(ids) for freq, ids in self.nodes.items()}}
 
     def __ne__(self, other):
         return not (self == other)
 
-    def map_subject_id(self, subject_id):
-        return self._map_id(subject_id, self._subject_id_map,
-                            self._inv_subject_id_map)
-
-    def map_visit_id(self, visit_id):
-        return self._map_id(visit_id, self._visit_id_map,
-                            self._inv_visit_id_map)
-
-    def inv_map_subject_id(self, subject_id):
+    def node(self, frequency, **ids):
+        # Parse str to frequency enums
+        frequency = self.frequency_cls[str(frequency)]
+        if frequency == self.root_freq:
+            if ids:
+                raise ArcanaUsageError(
+                    f"Root nodes don't have any IDs ({ids})")
+            return self.root_node
+        ids_tuple = self._ids_tuple(ids)
         try:
-            return self._inv_subject_id_map[subject_id]
+            return self.root_node.subnodes[frequency][ids_tuple]
         except KeyError:
-            return subject_id
+            raise ArcanaNameError(
+                ids_tuple,
+                f"{ids_tuple} not present in data tree "
+                "({})".format(
+                    str(i) for i in self.root_node.subnodes[frequency]))
 
-    def inv_map_visit_id(self, visit_id):
+    def add_node(self, frequency, **ids):
+        """Adds a node to the dataset, creating references to upper and lower
+        layers in the data tree.
+
+        Parameters
+        ----------
+        frequency : DataFreq
+            The frequency of the data_node
+        **ids : Dict[str, str]
+            The IDs of the node and all branching points the data tree
+            above it. The keys should match the Enum used provided for the
+            'frequency
+
+        Raises
+        ------
+        ArcanaDataTreeConstructionError
+            If frequency is not of self.frequency.cls
+        ArcanaDataTreeConstructionError
+            If inserting a multiple IDs of the same class within the tree if
+            one of their ids is None
+        """
+        if not isinstance(frequency, self.frequency_cls):
+            raise ArcanaDataTreeConstructionError(
+                f"Provided frequency {frequency} is not of "
+                f"{self.frequency_cls} type")
+        # Convert frequencies to enum
+        ids = {self.frequency_cls[str(f)]: i for f, i in ids.items()}
+        # Create new data node
+        node = DataNode(frequency, ids, self)
+        basis_ids = {ids[f] for f in frequency.basis_layers if f in ids}
+        ids_tuple = tuple(basis_ids.items())
+        node_dict = self.root_node.subnodes[frequency]
+        if node_dict:
+            if ids_tuple in node_dict:
+                raise ArcanaDataTreeConstructionError(
+                    f"ID clash ({ids_tuple}) between nodes inserted into data "
+                    "tree")
+            existing_tuple = next(iter(node_dict))
+            if not ids_tuple or not existing_tuple:
+                raise ArcanaDataTreeConstructionError(
+                    f"IDs provided for some {frequency} nodes but not others"
+                    f"in data tree ({ids_tuple} and {existing_tuple})")
+            new_freqs = tuple(zip(ids_tuple))[0]
+            exist_freqs = tuple(zip(existing_tuple))[0]
+            if new_freqs != exist_freqs:
+                raise ArcanaDataTreeConstructionError(
+                    f"Inconsistent IDs provided for nodes in {frequency} "
+                    f"in data tree ({ids_tuple} and {existing_tuple})")
+        node_dict[ids_tuple] = node
+        node._supranodes[self.frequency_cls(0)] = weakref.ref(self.root_node)
+        # Insert nodes for basis layers if not already present and link them
+        # with inserted node
+        for supra_freq in frequency.basis_layers:
+            # Select relevant IDs from those provided
+            supra_ids = {
+                str(f): ids[f] for f in supra_freq.basis_layers if f in ids}
+            sub_ids = tuple((f, i) for f, i in ids_tuple
+                            if f not in supra_freq.basis_layers)
+            try:
+                supranode = self.node(supra_freq, **supra_ids)
+            except ArcanaNameError:
+                supranode = self.add_node(supra_freq, **supra_ids)
+            # Set reference to level node in new node
+            node.__supranodes[supra_freq] = weakref.ref(supranode)
+            supranode.subnodes[frequency][sub_ids] = node
+        return node
+
+    def _ids_tuple(self, ids):
+        """Generates a tuple in consistent order from the passed ids that can
+        be used as a key in a dictionary
+
+        Parameters
+        ----------
+        ids : Dict[DataFreq | str, str]
+            A dictionary with IDs for each frequency that specifies the
+            nodes position within the data tree
+
+        Returns
+        -------
+        Tuple[(DataFreq, str)]
+            A tuple sorted in order of provided frequencies
+        """
         try:
-            return self._inv_visit_id_map[visit_id]
+            return tuple((self.frequency_cls[str(f)], i)
+                         for f, i in sorted(ids.items(), key=itemgetter(1)))
         except KeyError:
-            return visit_id
+            raise ArcanaUsageError(
+                    f"Unrecognised data frequencies in ID dict '{ids}' (valid "
+                    f"{', '.join(self.frequency_cls)})")
 
-    def _map_id(self, id, map, inv_map):
-        if id is None:
-            return None
-        mapped = id
-        if callable(map):
-            mapped = map(id)
-        elif self._visit_id_map is not None:
-            try:
-                mapped = map(id)
-            except KeyError:
-                pass
-        if mapped != id:
-            # Check for multiple mappings onto the same ID
-            try:
-                prev = inv_map[mapped]
-            except KeyError:
-                inv_map[mapped] = id
-            else:
-                if prev != id:
-                    raise ArcanaUsageError(
-                        "Both '{}' and '{}' have been mapped onto the same ID "
-                        "in repository {}"
-                        .format(prev, id, self))
-        return mapped
+
+class DataNode():
+    """A "node" in a data tree where file-groups and fields can be placed, e.g.
+    a session or subject.
+
+    Parameters
+    ----------
+    frequency : DataFreq
+        The frequency of the node
+    ids : Dict[DataFreq, str]
+        The ids for each provided frequency need to specify the data node
+        within the tree
+    root : DataNode
+        A reference to the root of the data tree
+    """
+
+    def __init__(self, frequency, ids, dataset):
+        self.ids = ids
+        self.frequency = frequency
+        self._file_groups = OrderedDict()
+        self._fields = OrderedDict()
+        self._records = OrderedDict()
+        self.subnodes = defaultdict(dict)
+        self._supranodes = {}  # Refs to level (e.g. session -> subject)
+        self._dataset = weakref.ref(dataset)
+        
+
+    def __eq__(self, other):
+        if not (isinstance(other, type(self))
+                or isinstance(self, type(other))):
+            return False
+        return (tuple(self._file_groups) == tuple(other._file_groups)
+                and tuple(self._fields) == tuple(other._fields)
+                and tuple(self._records) == tuple(other._records))
+
+    def __hash__(self):
+        return (hash(tuple(self._file_groups)) ^ hash(tuple(self._fields))
+                ^ hash(tuple(self._records)))
+
+    def add_file_group(self, path, **kwargs):
+        self._file_groups[path] = MultiFormatFileGroup(path, data_node=self,
+                                                       **kwargs)
+
+    def add_field(self, path, **kwargs):
+        self._fields[path] = MultiFormatFileGroup(path, data_node=self,
+                                                  **kwargs)
+
+    def add_record(self, path, **kwargs):
+        self._records[path] = Record(path, data_node=self, **kwargs)
+
+    def file_group(self, path, file_format=None):
+        """
+        Gets the file_group with the ID 'id' produced by the Analysis named
+        'analysis' if provided. If a spec is passed instead of a str to the
+        name argument, then the analysis will be set from the spec iff it is
+        derived
+
+        Parameters
+        ----------
+        path : str
+            The path to the file_group within the tree node, e.g. anat/T1w
+        file_format : FileFormat | Sequence[FileFormat] | None
+            A file format, or sequence of file formats, which are used to
+            resolve the format of the file-group
+
+        Returns
+        -------
+        FileGroup | UnresolvedFormatFileGroup
+            The file-group corresponding to the given path. If a, or
+            multiple, candidate file formats are provided then the format of
+            the file-group is resolved and a FileGroup object is returned.
+            Otherwise, an UnresolvedFormatFileGroup is returned instead.
+        """
+        try:
+            file_group = self._file_groups[path]
+        except KeyError:
+            raise ArcanaNameError(
+                path,
+                (f"{self} doesn't have a file_group at the path {path} "
+                 "(available '{}')".format("', '".join(self.file_groups))))
+        else:
+            if file_format is not None:
+                file_group = file_group.resolve_format(file_format)
+        return file_group
+
+    def field(self, path):
+        """
+        Gets the field named 'name' produced by the Analysis named 'analysis'
+        if provided. If a spec is passed instead of a str to the name argument,
+        then the analysis will be set from the spec iff it is derived
+
+        Parameters
+        ----------
+        path : str
+            The path of the field within the node
+        """
+        # if isinstance(name, FieldMixin):
+        #     if namespace is None and name.derived:
+        #         namespace = name.analysis.name
+        #     name = name.name
+        try:
+            return self._fields[path]
+        except KeyError:
+            raise ArcanaNameError(
+                path, ("{} doesn't have a field named '{}' "
+                       "(available '{}')").format(
+                           self, path, "', '".join(self._fields)))
+
+    def record(self, path):
+        """
+        Returns the provenance record for a given pipeline
+
+        Parameters
+        ----------
+        path : str
+            The name of the pipeline that generated the record
+
+        Returns
+        -------
+        record : arcana2.provenance.Record
+            The provenance record generated by the specified pipeline
+        """
+        try:
+            return self._records[path]
+        except KeyError:
+            raise ArcanaNameError(
+                path,
+                ("{} doesn't have a provenance record for '{}' "
+                 "(found {})".format(self, path, '; '.join(self.records))))
+
+    def supranode(self, frequency):
+        node = self.__supranodes[frequency]()
+        if node is None:
+            raise ArcanaError(
+                f"Node referenced by {self} for {frequency} no longer exists")
+        return node
+
+    @property
+    def file_groups(self):
+        return self._file_groups.values()
+    
+    @property
+    def fields(self):
+        return self._fields.values()
+
+
+    @property
+    def records(self):
+        return self._records.values()
+
+    @property
+    def data(self):
+        return chain(self.file_groups, self.fields)
+
+    @property
+    def dataset(self):
+        dataset = self._dataset()
+        if dataset is None:
+            raise ArcanaError(
+                "Dataset referenced by data node no longer exists")
+        return dataset
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def find_mismatch(self, other, indent=''):
+        """
+        Highlights where two nodes differ in a human-readable form
+
+        Parameters
+        ----------
+        other : TreeNode
+            The node to compare
+        indent : str
+            The white-space with which to indent output string
+
+        Returns
+        -------
+        mismatch : str
+            The human-readable mismatch string
+        """
+        if self != other:
+            mismatch = "\n{}{}".format(indent, type(self).__name__)
+        else:
+            mismatch = ''
+        sub_indent = indent + '  '
+        if len(list(self.file_groups)) != len(list(other.file_groups)):
+            mismatch += ('\n{indent}mismatching summary file_group lengths '
+                         '(self={} vs other={}): '
+                         '\n{indent}  self={}\n{indent}  other={}'
+                         .format(len(list(self.file_groups)),
+                                 len(list(other.file_groups)),
+                                 list(self.file_groups),
+                                 list(other.file_groups),
+                                 indent=sub_indent))
+        else:
+            for s, o in zip(self.file_groups, other.file_groups):
+                mismatch += s.find_mismatch(o, indent=sub_indent)
+        if len(list(self.fields)) != len(list(other.fields)):
+            mismatch += ('\n{indent}mismatching summary field lengths '
+                         '(self={} vs other={}): '
+                         '\n{indent}  self={}\n{indent}  other={}'
+                         .format(len(list(self.fields)),
+                                 len(list(other.fields)),
+                                 list(self.fields),
+                                 list(other.fields),
+                                 indent=sub_indent))
+        else:
+            for s, o in zip(self.fields, other.fields):
+                mismatch += s.find_mismatch(o, indent=sub_indent)
+        if len(list(self.records)) != len(list(other.records)):
+            mismatch += ('\n{indent}mismatching summary record lengths '
+                         '(self={} vs other={}): '
+                         '\n{indent}  self={}\n{indent}  other={}'
+                         .format(len(list(self.records)),
+                                 len(list(other.records)),
+                                 list(self.records),
+                                 list(other.records),
+                                 indent=sub_indent))
+        else:
+            for s, o in zip(self.records, other.records):
+                mismatch += s.find_mismatch(o, indent=sub_indent)
+        return mismatch

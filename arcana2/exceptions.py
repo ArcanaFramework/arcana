@@ -106,7 +106,7 @@ class ArcanaFileFormatError(ArcanaError):
     pass
 
 
-class ArcanaNoMatchingFileFormatException(ArcanaException):
+class ArcanaNoMatchingFileFormatError(ArcanaException):
     pass
 
 
@@ -180,3 +180,7 @@ class ArcanaXnatCSCommandError(ArcanaRepositoryError):
 
 class ArcanaUriAlreadySetException(ArcanaException):
     """Raised when attempting to set the URI of an item is already set"""
+
+
+class ArcanaDataTreeConstructionError(ArcanaError):
+    "Error in constructing data tree by repository construct_tree method"
