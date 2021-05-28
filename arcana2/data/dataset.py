@@ -6,7 +6,7 @@ from collections import defaultdict
 from itertools import chain
 from collections import OrderedDict
 from arcana2.enum import DataFreq
-from .provenance import Record
+from .item import Record
 from arcana2.exceptions import (
     ArcanaError, ArcanaNameError, ArcanaDataTreeConstructionError,
     ArcanaUsageError)
