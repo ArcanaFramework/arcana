@@ -71,12 +71,12 @@ class CreateXnatProjectMixin(object):
 
 class TestOnXnatMixin(CreateXnatProjectMixin):
 
-    def session_label(self, subject=None, visit=None):
+    def session_label(self, subject=None, timepoint=None):
         if subject is None:
             subject = self.SUBJECT
-        if visit is None:
-            visit = self.VISIT
-        label = '_'.join((subject, visit))
+        if timepoint is None:
+            timepoint = self.VISIT
+        label = '_'.join((subject, timepoint))
         return label
 
     def subject_label(self, subject=None):
@@ -84,13 +84,13 @@ class TestOnXnatMixin(CreateXnatProjectMixin):
             subject = self.SUBJECT
         return subject
 
-    def session_uri(self, project=None, subject=None, visit=None):
+    def session_uri(self, project=None, subject=None, timepoint=None):
         if project is None:
             project = self.project
         if subject is None:
             subject = self.SUBJECT
         return '/data/archive/projects/{}/subjects/{}/experiments/{}'.format(
-            project, subject, self.session_label(subject, visit))
+            project, subject, self.session_label(subject, timepoint))
 
     def subject_uri(self, project=None, subject=None):
         if project is None:
@@ -105,9 +105,9 @@ class TestOnXnatMixin(CreateXnatProjectMixin):
         return '/data/archive/projects/{}'.format(project)
 
     def session_cache_path(self, repository, project=None, subject=None,
-                           visit=None):
+                           timepoint=None):
         return repository.cache_path(self.session_uri(
-            project=project, subject=subject, visit=visit))
+            project=project, subject=subject, timepoint=timepoint))
 
     def subject_cache_path(self, repository, project=None, subject=None):
         return repository.cache_path(self.subject_uri(
@@ -194,12 +194,12 @@ class TestMultiSubjectOnXnatMixin(CreateXnatProjectMixin):
             login = temp_dataset.repository.login
             xproject = login.projects[self.project]
             for node in self.input_tree:
-                if node.subject_id is not None and node.visit_id is not None:
+                if node.subject_id is not None and node.timepoint_id is not None:
                     xsubject = login.classes.SubjectData(
                         label=node.subject_id,
                         parent=xproject)
                     xsession = login.classes.MrSessionData(
-                        label='_'.join((node.subject_id, node.visit_id)),
+                        label='_'.join((node.subject_id, node.timepoint_id)),
                         parent=xsubject)
                 else:
                     xsession = None
@@ -254,30 +254,30 @@ class TestMultiSubjectOnXnatMixin(CreateXnatProjectMixin):
     def _full_subject_id(self, subject):
         return self.project + '_' + subject
 
-    def get_session_dir(self, subject=None, visit=None,
+    def get_session_dir(self, subject=None, timepoint=None,
                         tree_level='per_session'):
         if subject is None and tree_level in ('per_session', 'per_subject'):
             subject = self.SUBJECT
-        if visit is None and tree_level in ('per_session', 'per_visit'):
-            visit = self.VISIT
+        if timepoint is None and tree_level in ('per_session', 'per_timepoint'):
+            timepoint = self.VISIT
         session_path = op.join(self.output_cache_dir, '{}_{}'.format(subject,
-                                                                     visit))
+                                                                     timepoint))
         if not op.exists(session_path):
             raise ArcanaError(
                 "Session path '{}' does not exist".format(session_path))
         return session_path
 
-    def output_file_path(self, fname, namespace, subject=None, visit=None,
+    def output_file_path(self, fname, namespace, subject=None, timepoint=None,
                          tree_level='per_session'):
         try:
             acq_path = self.BASE_CLASS.output_file_path(
-                self, fname, namespace, subject=subject, visit=visit,
+                self, fname, namespace, subject=subject, timepoint=timepoint,
                 tree_level=tree_level, derived=False)
         except KeyError:
             acq_path = None
         try:
             proc_path = self.BASE_CLASS.output_file_path(
-                self, fname, namespace, subject=subject, visit=visit,
+                self, fname, namespace, subject=subject, timepoint=timepoint,
                 tree_level=tree_level, derived=True)
         except KeyError:
             proc_path = None
@@ -293,16 +293,16 @@ class TestMultiSubjectOnXnatMixin(CreateXnatProjectMixin):
         return path
 
 
-def filter_resources(names, visit=None, analysis=None):
+def filter_resources(names, timepoint=None, analysis=None):
     """Matchers out the names of resources to exclude provenance and
     md5"""
     filtered = []
     for name in names:
         match = re.match(
-            r'(?:(?P<analysis>\w+)-)?(?:vis_(?P<visit>\w+)-)?(?P<deriv>\w+)',
+            r'(?:(?P<analysis>\w+)-)?(?:vis_(?P<timepoint>\w+)-)?(?P<deriv>\w+)',
             name)
         if ((analysis is None or match.analysis == analysis)
-                and visit == match.group('visit')):
+                and timepoint == match.group('timepoint')):
             filtered.append(name)
     return sorted(filtered)
 

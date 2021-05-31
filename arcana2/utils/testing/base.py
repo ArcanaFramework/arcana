@@ -116,16 +116,16 @@ class BaseTestCase(TestCase):
                          fields=getattr(self, 'INPUT_FIELDS', None))
 
     def add_session(self, file_groups=None, fields=None, project_dir=None,
-                    subject=None, visit=None):
+                    subject=None, timepoint=None):
         if project_dir is None:
             project_dir = self.project_dir
         if file_groups is None:
             file_groups = {}
         if subject is None:
             subject = self.SUBJECT
-        if visit is None:
-            visit = self.VISIT
-        session_dir = op.join(project_dir, subject, visit)
+        if timepoint is None:
+            timepoint = self.VISIT
+        session_dir = op.join(project_dir, subject, timepoint)
         os.makedirs(session_dir)
         for name, file_group in list(file_groups.items()):
             if isinstance(file_group, FileGroup):
@@ -317,7 +317,7 @@ class BaseTestCase(TestCase):
         if isinstance(reference, (basestring, int, float)):
             if len(column) != 1:
                 raise ArcanaUsageError(
-                    "Multi-subject/visit collections cannot be compared"
+                    "Multi-subject/timepoint collections cannot be compared"
                     " against a single contents string (list or dict "
                     "should be provided)")
             references = [str(reference)]
@@ -326,10 +326,10 @@ class BaseTestCase(TestCase):
             references = []
             file_groups = []
             for subj_id, subj_dct in reference.items():
-                for visit_id, ref_value in subj_dct.items():
+                for timepoint_id, ref_value in subj_dct.items():
                     references.append(str(ref_value))
                     file_groups.append(column.item(subject_id=subj_id,
-                                              visit_id=visit_id))
+                                              timepoint_id=timepoint_id))
         elif isinstance(reference, (list, tuple)):
             references = [str(r) for r in reference]
             file_groups = list(column)
@@ -357,10 +357,10 @@ class BaseTestCase(TestCase):
             "{} was not created".format(file_group))
 
     def assertField(self, name, ref_value, namespace, subject=None,
-                    visit=None, tree_level='per_session',
+                    timepoint=None, tree_level='per_session',
                     to_places=None):
         esc_name = namespace + '_' + name
-        output_dir = self.get_session_dir(subject, visit, tree_level)
+        output_dir = self.get_session_dir(subject, timepoint, tree_level)
         try:
             with open(op.join(output_dir,
                               LocalFileSystemRepo.FIELDS_FNAME)) as f:
@@ -395,22 +395,22 @@ class BaseTestCase(TestCase):
                                     shallow=False), msg=msg)
 
     def assertStatEqual(self, stat, file_group_name, target, namespace,
-                        subject=None, visit=None,
+                        subject=None, timepoint=None,
                         tree_level='per_session'):
         val = float(sp.check_output(
             'mrstats {} -output {}'.format(
                 self.output_file_path(
                     file_group_name, namespace,
-                    subject=subject, visit=visit,
+                    subject=subject, timepoint=timepoint,
                     tree_level=tree_level),
                 stat),
             shell=True))
         self.assertEqual(
             val, target, (
                 "{} value of '{}' ({}) does not equal target ({}) "
-                "for subject {} visit {}"
+                "for subject {} timepoint {}"
                 .format(stat, file_group_name, val, target,
-                        subject, visit)))
+                        subject, timepoint)))
 
     def assertImagesAlmostMatch(self, out, ref, mean_threshold,
                                 stdev_threshold, namespace):
@@ -430,30 +430,30 @@ class BaseTestCase(TestCase):
              .format(mean=mean, stdev=stdev, thresh_mean=mean_threshold,
                      thresh_stdev=stdev_threshold, a=out_path, b=ref_path)))
 
-    def get_session_dir(self, subject=None, visit=None,
+    def get_session_dir(self, subject=None, timepoint=None,
                         tree_level='per_session', namespace=None):
         if subject is None and tree_level in ('per_session', 'per_subject'):
             subject = self.SUBJECT
-        if visit is None and tree_level in ('per_session', 'per_visit'):
-            visit = self.VISIT
+        if timepoint is None and tree_level in ('per_session', 'per_timepoint'):
+            timepoint = self.VISIT
         if tree_level == 'per_session':
             assert subject is not None
-            assert visit is not None
-            path = op.join(self.project_dir, subject, visit)
+            assert timepoint is not None
+            path = op.join(self.project_dir, subject, timepoint)
         elif tree_level == 'per_subject':
             assert subject is not None
-            assert visit is None
+            assert timepoint is None
             path = op.join(
                 self.project_dir, subject,
                 LocalFileSystemRepo.SUMMARY_NAME)
-        elif tree_level == 'per_visit':
-            assert visit is not None
+        elif tree_level == 'per_timepoint':
+            assert timepoint is not None
             assert subject is None
             path = op.join(self.project_dir,
-                           LocalFileSystemRepo.SUMMARY_NAME, visit)
+                           LocalFileSystemRepo.SUMMARY_NAME, timepoint)
         elif tree_level == 'per_dataset':
             assert subject is None
-            assert visit is None
+            assert timepoint is None
             path = op.join(self.project_dir,
                            LocalFileSystemRepo.SUMMARY_NAME,
                            LocalFileSystemRepo.SUMMARY_NAME)
@@ -469,10 +469,10 @@ class BaseTestCase(TestCase):
             if analysis is None or fname.startswith(analysis + '_'):
                 os.remove(op.join(self.get_session_dir(), fname))
 
-    def output_file_path(self, fname, namespace, subject=None, visit=None,
+    def output_file_path(self, fname, namespace, subject=None, timepoint=None,
                          tree_level='per_session', **kwargs):
         return op.join(
-            self.get_session_dir(subject=subject, visit=visit,
+            self.get_session_dir(subject=subject, timepoint=timepoint,
                                  tree_level=tree_level,
                                  namespace=namespace, **kwargs),
             fname)
@@ -537,17 +537,17 @@ class BaseMultiSubjectTestCase(BaseTestCase):
         return (d for d in os.listdir(self.project_dir)
                 if d != self.SUMMARY_NAME)
 
-    def visit_ids(self, subject_id):
+    def timepoint_ids(self, subject_id):
         subject_dir = op.join(self.project_dir, subject_id)
         return (d for d in os.listdir(subject_dir)
                 if d != self.SUMMARY_NAME)
 
-    def session_dir(self, subject, visit):
-        return self.get_session_dir(subject, visit)
+    def session_dir(self, subject, timepoint):
+        return self.get_session_dir(subject, timepoint)
 
-    def get_session_dir(self, subject, visit, **kwargs):
+    def get_session_dir(self, subject, timepoint, **kwargs):
         return super(BaseMultiSubjectTestCase, self).get_session_dir(
-            subject=subject, visit=visit, **kwargs)
+            subject=subject, timepoint=timepoint, **kwargs)
 
     def _make_dir(self, path):
         makedirs(path, exist_ok=True)

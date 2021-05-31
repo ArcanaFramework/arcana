@@ -598,11 +598,11 @@ class SelectSessionInputSpec(BaseInterfaceInputSpec):
     subject_ids = traits.List(traits.Str, mandatory=True,
                               desc=('List of subject IDs corresponding to the '
                                     'provided items'))
-    visit_ids = traits.List(traits.Str, mandatory=True,
-                            desc=('List of visit IDs corresponding to the '
+    timepoint_ids = traits.List(traits.Str, mandatory=True,
+                            desc=('List of timepoint IDs corresponding to the '
                                   'provided items'))
     subject_id = traits.Str(mandatory=True, desc='Subject ID')
-    visit_id = traits.Str(mandatory=True, desc='Visit ID')
+    timepoint_id = traits.Str(mandatory=True, desc='Visit ID')
 
 
 class SelectSessionOutputSpec(TraitedSpec):
@@ -622,13 +622,13 @@ class SelectSession(IOBase):
                 "Length of subject IDs ({}) doesn't match that of input items "
                 "({})".format(len(self.inputs.subject_ids),
                               len(self.inputs.inlist)))
-        if len(self.inputs.visit_ids) != len(self.inputs.inlist):
+        if len(self.inputs.timepoint_ids) != len(self.inputs.inlist):
             raise ArcanaDesignError(
-                "Length of visit IDs ({}) doesn't match that of input items "
-                "({})".format(len(self.inputs.visit_ids),
+                "Length of timepoint IDs ({}) doesn't match that of input items "
+                "({})".format(len(self.inputs.timepoint_ids),
                               len(self.inputs.inlist)))
-        session_ids = list(zip(self.inputs.subject_ids, self.inputs.visit_ids))
+        session_ids = list(zip(self.inputs.subject_ids, self.inputs.timepoint_ids))
         index = session_ids.index((self.inputs.subject_id,
-                                   self.inputs.visit_id))
+                                   self.inputs.timepoint_id))
         outputs['out'] = self.inputs.inlist[index]
         return outputs

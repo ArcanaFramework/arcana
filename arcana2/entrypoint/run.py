@@ -51,7 +51,7 @@ class BaseRunCmd(BaseRepoCmd):
                   "repository"))
         parser.add_argument(
             '--ids', nargs='+', default=None, metavar='ID',
-            help=("The IDs (group, subject, visit or session) to include in "
+            help=("The IDs (group, subject, timepoint or session) to include in "
                   "the analysis. If a single value with a '/' is provided "
                   "then it is interpreted as a text file containing a list "
                   "of IDs"))
@@ -211,7 +211,7 @@ class BaseRunCmd(BaseRepoCmd):
                         NAME is the numeric values of the DICOM tag, e.g
                         (0008,0008) -> 00080008
             tree_level  - The tree_level of the file-group within the dataset.
-                        Can be either 'dataset', 'group', 'subject', 'visit'
+                        Can be either 'dataset', 'group', 'subject', 'timepoint'
                         or 'session'. Typically only required for
                         derivatives
 
@@ -236,7 +236,7 @@ class BaseRunCmd(BaseRepoCmd):
         
         The FREQUENCY arg specifies the tree_level of the file-group
         within the dataset. It can be either 'dataset', 'group',
-        'subject', 'visit' or 'session'. Typically only required for
+        'subject', 'timepoint' or 'session'. Typically only required for
         derivatives
     """
 
@@ -257,7 +257,7 @@ class RunAppCmd():
         parser.add_argument(
             '--tree_level', '-f', default='session',
             help=("The level at which the analysis is performed. One of (per) "
-                  "dataset, group, subject, visit, group_visit or session"))        
+                  "dataset, group, subject, timepoint, group_timepoint or session"))        
         super().construct_parser(parser)
         parser.add_argument(
             '--app_arg', '-a', nargs=2, metavar=('NAME', 'VAL'),
@@ -321,8 +321,8 @@ class RunAppCmd():
 
     @classmethod
     def parse_tree_level(cls, args):
-        valid_frequencies = ('dataset', 'group', 'subject', 'visit',
-                             'subject_visit', 'session')
+        valid_frequencies = ('dataset', 'group', 'subject', 'timepoint',
+                             'subject_timepoint', 'session')
         if args.tree_level not in valid_frequencies:
             raise ArcanaUsageError(
                 f"Unrecognised tree_level '{args.tree_level}' "
@@ -354,7 +354,7 @@ class RunBidsAppCmd(BaseRunCmd):
         parser.add_argument(
             '--analysis_level', default='participant',
             help=("The level at which the analysis is performed. One of (per) "
-                  "dataset, group, subject, visit or session"))
+                  "dataset, group, subject, timepoint or session"))
         super().construct_parser(parser)
         parser.add_argument(
             '--flags', '-f', default='',

@@ -52,7 +52,7 @@ class DataMatcher():
                     if self._fallback is not None:
                         matches.append(self._fallback.column.item(
                             subject_id=node.subject_id,
-                            visit_id=node.visit_id))
+                            timepoint_id=node.timepoint_id))
                     elif self.skip_missing:
                         # Insert a non-existant item placeholder in-place of
                         # the the missing item
@@ -60,7 +60,7 @@ class DataMatcher():
                             self.path,
                             frequency=self.frequency,
                             subject_id=node.subject_id,
-                            visit_id=node.visit_id,
+                            timepoint_id=node.timepoint_id,
                             dataset=self.analysis.dataset,
                             exists=False,
                             **self._specific_kwargs))
@@ -121,7 +121,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
         Flags whether the path is a regular expression or not
     frequency : DataFrequency
         The frequency that the items occur in the dataset, i.e. 
-        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
+        per 'session', 'subject', 'timepoint', 'group_timepoint', 'group' or 'dataset'
     order : int | None
         To be used to distinguish multiple file_groups that match the
         path in the same session. The order of the file_group within the
@@ -294,7 +294,7 @@ class FieldMatcher(DataMatcher, FieldMixin):
         Flags whether the path is a regular expression or not
     frequency : DataFrequency
         The frequency that the items occur in the dataset, i.e. 
-        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
+        per 'session', 'subject', 'timepoint', 'group_timepoint', 'group' or 'dataset'
     order : int | None
         To be used to distinguish multiple file_groups that match the
         path in the same session. The order of the file_group within the

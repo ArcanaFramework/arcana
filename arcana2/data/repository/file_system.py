@@ -25,10 +25,10 @@ class FileSystem(Repository):
     """
     A 'Repository' class for data stored simply in file-system
     directories. Can be a single directory if it contains only one subject
-    and visit, otherwise if sub-directories are present (that aren't
+    and timepoint, otherwise if sub-directories are present (that aren't
     recognised as single file_groups) then they are assumed to be
-    separate subjects. For multi-visit datasets an additional
-    layer of sub-directories for each visit is required within each
+    separate subjects. For multi-timepoint datasets an additional
+    layer of sub-directories for each timepoint is required within each
     subject sub-directory.
     """
 
@@ -40,7 +40,7 @@ class FileSystem(Repository):
     DEFAULT_SUBJECT_ID = 'SUBJECT'
     DEFAULT_VISIT_ID = 'VISIT'
     MAX_DEPTH = 2
-    POSSIBLE_LEVELS = ('group', 'subject', 'visit')
+    POSSIBLE_LEVELS = ('group', 'subject', 'timepoint')
 
     def __repr__(self):
         return "{}()".format(type(self).__name__)
@@ -165,7 +165,7 @@ class FileSystem(Repository):
         record.save(fpath)
 
     # root_dir=None, all_namespace=None,
-    def find_data(self, dataset, subject_ids=None, visit_ids=None, **kwargs):
+    def find_data(self, dataset, subject_ids=None, timepoint_ids=None, **kwargs):
         """
         Find all data within a repository, registering file_groups, fields and
         provenance with the found_file_group, found_field and found_provenance
@@ -176,8 +176,8 @@ class FileSystem(Repository):
         subject_ids : list(str)
             List of subject IDs with which to filter the tree with. If
             None all are returned
-        visit_ids : list(str)
-            List of visit IDs with which to filter the tree with. If
+        timepoint_ids : list(str)
+            List of timepoint IDs with which to filter the tree with. If
             None all are returned
         root_dir : str
             The root dir to use instead of the 'name' (path) of the dataset.
@@ -207,7 +207,7 @@ class FileSystem(Repository):
                                               files)
             if ids is None:
                 continue
-            subj_id, visit_id, namespace = ids
+            subj_id, timepoint_id, namespace = ids
             # if all_namespace is not None:
             #     if namespace is not None:
             #         raise ArcanaRepositoryError(
@@ -221,19 +221,19 @@ class FileSystem(Repository):
                 subj_id = None
             elif subject_ids is not None and subj_id not in subject_ids:
                 continue
-            if visit_id == self.SUMMARY_NAME:
-                visit_id = None
-            elif visit_ids is not None and visit_id not in visit_ids:
+            if timepoint_id == self.SUMMARY_NAME:
+                timepoint_id = None
+            elif timepoint_ids is not None and timepoint_id not in timepoint_ids:
                 continue
             # Map IDs into ID space of analysis
             subj_id = dataset.map_subject_id(subj_id)
-            visit_id = dataset.map_visit_id(visit_id)
+            timepoint_id = dataset.map_timepoint_id(timepoint_id)
             # Determine tree_level of session|summary
-            if (subj_id, visit_id) == (None, None):
+            if (subj_id, timepoint_id) == (None, None):
                 tree_level = 'per_dataset'
             elif subj_id is None:
-                tree_level = 'per_visit'
-            elif visit_id is None:
+                tree_level = 'per_timepoint'
+            elif timepoint_id is None:
                 tree_level = 'per_subject'
             else:
                 tree_level = 'per_session'
@@ -244,7 +244,7 @@ class FileSystem(Repository):
                     FileGroup.from_path(
                         op.join(session_path, fname),
                         tree_level=tree_level,
-                        subject_id=subj_id, visit_id=visit_id,
+                        subject_id=subj_id, timepoint_id=timepoint_id,
                         dataset=dataset,
                         namespace=namespace,
                         potential_aux_files=[
@@ -257,7 +257,7 @@ class FileSystem(Repository):
                     FileGroup.from_path(
                         op.join(session_path, fname),
                         tree_level=tree_level,
-                        subject_id=subj_id, visit_id=visit_id,
+                        subject_id=subj_id, timepoint_id=timepoint_id,
                         dataset=dataset,
                         namespace=namespace,
                         **kwargs))
@@ -267,7 +267,7 @@ class FileSystem(Repository):
                     dct = json.load(f)
                 all_fields.extend(
                     Field(name=k, value=v, tree_level=tree_level,
-                          subject_id=subj_id, visit_id=visit_id,
+                          subject_id=subj_id, timepoint_id=timepoint_id,
                           dataset=dataset, namespace=namespace,
                           **kwargs)
                     for k, v in list(dct.items()))
@@ -280,7 +280,7 @@ class FileSystem(Repository):
                 for fname in os.listdir(base_prov_dir):
                     all_records.append(Record.load(
                         split_extension(fname)[0],
-                        tree_level, subj_id, visit_id, namespace,
+                        tree_level, subj_id, timepoint_id, namespace,
                         op.join(base_prov_dir, fname)))
         return all_file_groups, all_fields, all_records
 
@@ -307,14 +307,14 @@ class FileSystem(Repository):
             # Not a directory that contains data files or directories
             return None
         if len(path_parts) == 2:
-            subj_id, visit_id = path_parts
+            subj_id, timepoint_id = path_parts
         elif len(path_parts) == 1:
             subj_id = path_parts[0]
-            visit_id = self.DEFAULT_VISIT_ID
+            timepoint_id = self.DEFAULT_VISIT_ID
         else:
             subj_id = self.DEFAULT_SUBJECT_ID
-            visit_id = self.DEFAULT_VISIT_ID
-        return subj_id, visit_id, namespace
+            timepoint_id = self.DEFAULT_VISIT_ID
+        return subj_id, timepoint_id, namespace
 
     def file_group_path(self, item, dataset=None, fname=None):
         if fname is None:
@@ -324,32 +324,32 @@ class FileSystem(Repository):
         root_dir = dataset.name
         depth = dataset.depth
         subject_id = dataset.inv_map_subject_id(item.subject_id)
-        visit_id = dataset.inv_map_visit_id(item.visit_id)
+        timepoint_id = dataset.inv_map_timepoint_id(item.timepoint_id)
         if item.tree_level == 'per_dataset':
             subj_dir = self.SUMMARY_NAME
-            visit_dir = self.SUMMARY_NAME
+            timepoint_dir = self.SUMMARY_NAME
         elif item.tree_level.startswith('per_subject'):
             if depth < 2:
                 raise ArcanaInsufficientRepoDepthError(
                     "Basic repo needs to have depth of 2 (i.e. sub-directories"
-                    " for subjects and visits) to hold 'per_subject' data")
+                    " for subjects and timepoints) to hold 'per_subject' data")
             subj_dir = str(subject_id)
-            visit_dir = self.SUMMARY_NAME
-        elif item.tree_level.startswith('per_visit'):
+            timepoint_dir = self.SUMMARY_NAME
+        elif item.tree_level.startswith('per_timepoint'):
             if depth < 1:
                 raise ArcanaInsufficientRepoDepthError(
                     "Basic repo needs to have depth of at least 1 (i.e. "
-                    "sub-directories for subjects) to hold 'per_visit' data")
+                    "sub-directories for subjects) to hold 'per_timepoint' data")
             subj_dir = self.SUMMARY_NAME
-            visit_dir = str(visit_id)
+            timepoint_dir = str(timepoint_id)
         elif item.tree_level.startswith('per_session'):
             subj_dir = str(subject_id)
-            visit_dir = str(visit_id)
+            timepoint_dir = str(timepoint_id)
         else:
             assert False, "Unrecognised tree_level '{}'".format(
                 item.tree_level)
         if depth == 2:
-            acq_dir = op.join(root_dir, subj_dir, visit_dir)
+            acq_dir = op.join(root_dir, subj_dir, timepoint_dir)
         elif depth == 1:
             acq_dir = op.join(root_dir, subj_dir)
         elif depth == 0:
@@ -381,7 +381,7 @@ class FileSystem(Repository):
     def guess_depth(cls, root_dir):
         """
         Try to guess the depth of a directory repository (i.e. whether it has
-        sub-folders for multiple subjects or visits, depending on where files
+        sub-folders for multiple subjects or timepoints, depending on where files
         and/or derived label files are found in the hierarchy of
         sub-directories under the root dir.
 

@@ -10,9 +10,9 @@ class DataFrequency(Enum):
     Frequencies that have only one non-zero bit in their binary values
     correspond to a layer in the data tree (e.g. subject, timepoint).
     frequency sits below in the data tree. Each bit corresponds to a layer,
-    e.g. 'group', 'subject' and 'visit', and if they are present in the
+    e.g. 'group', 'subject' and 'timepoint', and if they are present in the
     binary string it signifies that the data is specific to a particular
-    branch at that layer (i.e. specific group, subject or visit). 
+    branch at that layer (i.e. specific group, subject or timepoint). 
     """
 
     def __str__(self):
@@ -24,7 +24,7 @@ class DataFrequency(Enum):
             dataset -> 
             subject -> subject
             group_subject -> group + subject
-            session -> group + subject + visit
+            session -> group + subject + timepoint
         """
         val = self.value
         # Check which bits are '1', and append them to the list of levels
@@ -60,17 +60,17 @@ class ClinicalStudy(DataFrequency):
     group = 0b100  # for each subject group
     subject = 0b010  # for each subject within a group, e.g., matched pairs
                      # of test and control participants
-    visit = 0b001  # for each visit (e.g. longitudinal timepoint)
+    timepoint = 0b001  # for each timepoint (e.g. longitudinal timepoint)
 
     participant = 0b110 # combination of group and subject, i.e. uniquely
                         # identifies a participant in the dataset as opposed
                         # to 'subject', which can match between groups
-    session = 0b111  # for each session (i.e. a single visit of a subject)
+    session = 0b111  # for each session (i.e. a single timepoint of a subject)
     dataset = 0b000  # singular within the dataset
 
     # Lesser used combinations
-    group_visit = 0b101  # combination of group and visit across all subjects
-    subject_visit = 0b011 # combination of subject and visit across all groups,
+    group_timepoint = 0b101  # combination of group and timepoint across all subjects
+    subject_timepoint = 0b011 # combination of subject and timepoint across all groups,
                           # could be useful for matched control/test studies
 
 

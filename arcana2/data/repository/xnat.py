@@ -50,15 +50,15 @@ class XnatDataset(Dataset):
         subject IDs, e.g. "{project}_{subject}"
     session_label_format : str
         A string used to generate the session label from project and
-        subject and visit IDs, e.g. "{project}_{subject}_{visit}"
+        subject and timepoint IDs, e.g. "{project}_{subject}_{timepoint}"
     subject_ids : list[str]
         Subject IDs to be included in the analysis. All other subjects are
         ignored
-    visit_ids : list[str]
-        Visit IDs to be included in the analysis. All other visits are ignored
+    timepoint_ids : list[str]
+        Visit IDs to be included in the analysis. All other timepoints are ignored
     fill_tree : bool
         Whether to fill the tree of the destination repository with the
-        provided subject and/or visit IDs. Intended to be used when the
+        provided subject and/or timepoint IDs. Intended to be used when the
         destination repository doesn't contain any of the the input
         file_groups/fields (which are stored in external repositories) and
         so the sessions will need to be created in the destination
@@ -67,15 +67,15 @@ class XnatDataset(Dataset):
         The depth of the dataset (i.e. whether it has subjects and sessions).
             0 -> single session
             1 -> multiple subjects
-            2 -> multiple subjects and visits
+            2 -> multiple subjects and timepoints
     subject_id_map : dict[str, str]
         Maps subject IDs in dataset to a global name-space
-    visit_id_map : dict[str, str]
-        Maps visit IDs in dataset to a global name-space
+    timepoint_id_map : dict[str, str]
+        Maps timepoint IDs in dataset to a global name-space
     """
 
     def __init__(self, name, repository, subject_label_format="{subject}",
-                 session_label_format="{subject}_{visit}", **kwargs):
+                 session_label_format="{subject}_{timepoint}", **kwargs):
         super().__init__(name, repository, **kwargs)
         self.subject_label_format = subject_label_format
         self.session_label_format = session_label_format
@@ -86,11 +86,11 @@ class XnatDataset(Dataset):
             subject=self.inv_map_subject_id(subject_id))
 
 
-    def session_label(self, subject_id, visit_id):
+    def session_label(self, subject_id, timepoint_id):
         return self.session_label_format.format(
             project=self.name,
             subject=self.inv_map_subject_id(subject_id),
-            visit=self.inv_map_visit_id(visit_id))
+            timepoint=self.inv_map_timepoint_id(timepoint_id))
 
 
 class XnatRepo(Repository):
@@ -120,9 +120,9 @@ class XnatRepo(Repository):
         A regular expression that is used to prefilter the discovered sessions
         to avoid having to retrieve metadata for them, and potentially speeding
         up the initialisation of the Analysis. Note that if the processing
-        relies on summary derivatives (i.e. of 'per_visit/subject/analysis'
+        relies on summary derivatives (i.e. of 'per_timepoint/subject/analysis'
         tree_level) then the filter should match all sessions in the Analysis's
-        subject_ids and visit_ids.
+        subject_ids and timepoint_ids.
     """
 
     type = 'xnat'
@@ -234,23 +234,23 @@ class XnatRepo(Repository):
             subject IDs, e.g. "{project}_{subject}"
         session_label_format : str
             A string used to generate the session label from project and
-            subject and visit IDs, e.g. "{project}_{subject}_{visit}"
+            subject and timepoint IDs, e.g. "{project}_{subject}_{timepoint}"
         subject_ids : list[str]
             Subject IDs to be included in the analysis. All other subjects are
             ignored
-        visit_ids : list[str]
-            Visit IDs to be included in the analysis. All other visits are ignored
+        timepoint_ids : list[str]
+            Visit IDs to be included in the analysis. All other timepoints are ignored
         fill_tree : bool
             Whether to fill the tree of the destination repository with the
-            provided subject and/or visit IDs. Intended to be used when the
+            provided subject and/or timepoint IDs. Intended to be used when the
             destination repository doesn't contain any of the the input
             file_groups/fields (which are stored in external repositories) and
             so the sessions will need to be created in the destination
             repository.
         subject_id_map : dict[str, str]
             Maps subject IDs in dataset to a global name-space
-        visit_id_map : dict[str, str]
-            Maps visit IDs in dataset to a global name-space
+        timepoint_id_map : dict[str, str]
+            Maps timepoint IDs in dataset to a global name-space
         """
         return XnatDataset(name, repository=self, depth=2, **kwargs)
 
@@ -478,7 +478,7 @@ class XnatRepo(Repository):
             checksums['.'] = checksums.pop(primary)
         return checksums
 
-    def find_data(self, dataset, subject_ids=None, visit_ids=None, **kwargs):
+    def find_data(self, dataset, subject_ids=None, timepoint_ids=None, **kwargs):
         """
         Find all file_groups, fields and provenance records within an XNAT project
 
@@ -487,8 +487,8 @@ class XnatRepo(Repository):
         subject_ids : list(str)
             List of subject IDs with which to filter the tree with. If
             None all are returned
-        visit_ids : list(str)
-            List of visit IDs with which to filter the tree with. If
+        timepoint_ids : list(str)
+            List of timepoint IDs with which to filter the tree with. If
             None all are returned
 
         Returns
@@ -500,7 +500,7 @@ class XnatRepo(Repository):
         records : list[Record]
             The provenance records found in the repository
         """
-        # Add derived visit IDs to list of visit ids to filter
+        # Add derived timepoint IDs to list of timepoint ids to filter
         file_groups = []
         fields = []
         records = []
@@ -546,22 +546,22 @@ class XnatRepo(Repository):
                 # Extract analysis name and derived-from session
                 # Strip subject ID from session label if required
                 if session_label.startswith(subject_id + '_'):
-                    visit_id = session_label[len(subject_id) + 1:]
+                    timepoint_id = session_label[len(subject_id) + 1:]
                 else:
-                    visit_id = session_label
+                    timepoint_id = session_label
                 # Strip project ID from subject ID if required
                 if subject_id.startswith(project_id + '_'):
                     subject_id = subject_id[len(project_id) + 1:]
                         # Extract part of JSON relating to files
                 file_groups.extend(self.find_scans(
-                    session_json, session_uri, subject_id, visit_id,
+                    session_json, session_uri, subject_id, timepoint_id,
                     dataset, **kwargs))
                 fields.extend(self.find_fields(
                     session_json, dataset, tree_level='per_session',
-                    subject_id=subject_id, visit_id=visit_id, **kwargs))
+                    subject_id=subject_id, timepoint_id=timepoint_id, **kwargs))
                 fsets, recs = self.find_derivatives(
                     session_json, session_uri, dataset, subject_id=subject_id,
-                    visit_id=visit_id, tree_level='per_session')
+                    timepoint_id=timepoint_id, tree_level='per_session')
                 file_groups.extend(fsets)
                 records.extend(recs)
             # Get subject level resources and fields
@@ -581,7 +581,7 @@ class XnatRepo(Repository):
         return file_groups, fields, records
 
     def find_derivatives(self, node_json, node_uri, dataset, tree_level,
-                         subject_id=None, visit_id=None, **kwargs):
+                         subject_id=None, timepoint_id=None, **kwargs):
         try:
             resources_json = next(
                 c['items'] for c in node_json['children']
@@ -594,14 +594,14 @@ class XnatRepo(Repository):
             label = d['data_fields']['label']
             resource_uri = '{}/resources/{}'.format(node_uri, label)
             (name, namespace,
-             file_group_visit_id, file_group_freq) = self.split_derived_name(
-                 label, visit_id=visit_id, tree_level=tree_level)
+             file_group_timepoint_id, file_group_freq) = self.split_derived_name(
+                 label, timepoint_id=timepoint_id, tree_level=tree_level)
             if name != self.PROV_RESOURCE:
-                # Use the visit from the derived name if present
+                # Use the timepoint from the derived name if present
                 file_groups.append(FileGroup(
                     name, uri=resource_uri, dataset=dataset,
                     namespace=namespace, tree_level=file_group_freq,
-                    subject_id=subject_id, visit_id=file_group_visit_id,
+                    subject_id=subject_id, timepoint_id=file_group_timepoint_id,
                     resource_name=d['data_fields']['format'], **kwargs))
             else:
                 # Download provenance JSON files and parse into
@@ -624,14 +624,14 @@ class XnatRepo(Repository):
                                         path=json_path,
                                         tree_level=tree_level,
                                         subject_id=subject_id,
-                                        visit_id=visit_id,
+                                        timepoint_id=timepoint_id,
                                         namespace=namespace))
                 finally:
                     shutil.rmtree(temp_dir, ignore_errors=True)
         return file_groups, records
 
     def find_fields(self, node_json, dataset, tree_level, subject_id=None,
-                    visit_id=None, **kwargs):
+                    timepoint_id=None, **kwargs):
         try:
             fields_json = next(
                 c['items'] for c in node_json['children']
@@ -646,7 +646,7 @@ class XnatRepo(Repository):
                 continue
             value = value.replace('&quot;', '"')
             name = js['data_fields']['name']
-            # field_names = set([(name, None, visit_id, tree_level)])
+            # field_names = set([(name, None, timepoint_id, tree_level)])
             # # Potentially add the field twice, once
             # # as a field name in its own right (for externally created fields)
             # # and second as a field name prefixed by an analysis name. Would
@@ -654,25 +654,25 @@ class XnatRepo(Repository):
             # # assessor so there was no chance of a conflict but there should
             # # be little harm in having the field referenced twice, the only
             # # issue being with pattern matching
-            # field_names.add(self.split_derived_name(name, visit_id=visit_id,
+            # field_names.add(self.split_derived_name(name, timepoint_id=timepoint_id,
             #                                         tree_level=tree_level))
-            # for name, namespace, field_visit_id, field_freq in field_names:
+            # for name, namespace, field_timepoint_id, field_freq in field_names:
             (name, namespace,
-             field_visit_id, field_freq) = self.split_derived_name(
-                 name, visit_id=visit_id, tree_level=tree_level)
+             field_timepoint_id, field_freq) = self.split_derived_name(
+                 name, timepoint_id=timepoint_id, tree_level=tree_level)
             fields.append(Field(
                 name=name,
                 value=value,
                 namespace=namespace,
                 dataset=dataset,
                 subject_id=subject_id,
-                visit_id=field_visit_id,
+                timepoint_id=field_timepoint_id,
                 tree_level=field_freq,
                 **kwargs))
         return fields
 
     def find_scans(self, session_json, session_uri, subject_id,
-                   visit_id, dataset, **kwargs):
+                   timepoint_id, dataset, **kwargs):
         try:
             scans_json = next(
                 c['items'] for c in session_json['children']
@@ -700,9 +700,9 @@ class XnatRepo(Repository):
                     scan_type, id=order,
                     uri='{}/scans/{}/resources/{}'.format(session_uri, order,
                                                           resource),
-                    dataset=dataset, subject_id=subject_id, visit_id=visit_id,
+                    dataset=dataset, subject_id=subject_id, timepoint_id=timepoint_id,
                     quality=scan_quality, resource_name=resource, **kwargs))
-        logger.debug("Found node %s:%s", subject_id, visit_id)
+        logger.debug("Found node %s:%s", subject_id, timepoint_id)
         return file_groups
 
     def extract_subject_id(self, xsubject_label):
@@ -712,7 +712,7 @@ class XnatRepo(Repository):
         """
         return xsubject_label.split('_')[1]
 
-    def extract_visit_id(self, xsession_label):
+    def extract_timepoint_id(self, xsession_label):
         """
         This assumes that the session ID is preprended
         """
@@ -802,7 +802,7 @@ class XnatRepo(Repository):
         if dataset is None:
             dataset = item.dataset
         subj_label = dataset.subject_label(item.subject_id)
-        sess_label = dataset.session_label(item.subject_id, item.visit_id)
+        sess_label = dataset.session_label(item.subject_id, item.timepoint_id)
         with self:
             xproject = self.login.projects[dataset.name]
             if item.tree_level not in ('per_subject', 'per_session'):
@@ -873,8 +873,8 @@ class XnatRepo(Repository):
             name = cls.prepend_analysis(item.name, item.namespace)
         else:
             name = item.name
-        if item.tree_level == 'per_visit':
-            name = 'VISIT_{}--{}'.format(item.visit_id, name)
+        if item.tree_level == 'per_timepoint':
+            name = 'VISIT_{}--{}'.format(item.timepoint_id, name)
         return name
 
     @classmethod
@@ -882,16 +882,16 @@ class XnatRepo(Repository):
         return namespace + '-' + name
 
     @classmethod
-    def split_derived_name(cls, name, visit_id=None, tree_level='per_session'):
+    def split_derived_name(cls, name, timepoint_id=None, tree_level='per_session'):
         """Reverses the escape of an item name by `derived_name`
 
         Parameters
         ----------
         name : `str`
             An name escaped by `derived_name`
-        visit_id : `str`
-            The visit ID of the node that name is found in. Will be overridden
-             if 'vis_<visit_id>' is found in the name
+        timepoint_id : `str`
+            The timepoint ID of the node that name is found in. Will be overridden
+             if 'vis_<timepoint_id>' is found in the name
         tree_level : `str`
             The tree_level of the node the derived name is found in.
 
@@ -901,29 +901,29 @@ class XnatRepo(Repository):
             The unescaped name of an item
         namespace : `str` | `NoneType`
             The name of the analysis the item was generated by
-        visit_id : `str` | `NoneType`
-            The visit ID of the derived_name, overridden from the value passed
-            to the method if 'vis_<visit_id>' is found in the name
+        timepoint_id : `str` | `NoneType`
+            The timepoint ID of the derived_name, overridden from the value passed
+            to the method if 'vis_<timepoint_id>' is found in the name
         tree_level : `str`
             The tree_level of the derived name, overridden from the value passed
-            to the method if 'vis_<visit_id>' is found in the name
+            to the method if 'vis_<timepoint_id>' is found in the name
         """
         namespace = None
         if '-' in name:
             match = re.match(
-                (r'(?:VISIT_(?P<visit>\w+)--)?(?:(?P<analysis>\w+)-)?'
+                (r'(?:VISIT_(?P<timepoint>\w+)--)?(?:(?P<analysis>\w+)-)?'
                  + r'(?P<name>.+)'),
                 name)
             name = match.group('name')
             namespace = match.group('analysis')
-            if match.group('visit') is not None:
+            if match.group('timepoint') is not None:
                 if tree_level != 'per_dataset':
                     raise ArcanaRepositoryError(
                         "Visit prefixed resource ({}) found in non-project"
                         " level node".format(name))
-                tree_level = 'per_visit'
-                visit_id = match.group('visit')
-        return name, namespace, visit_id, tree_level
+                tree_level = 'per_timepoint'
+                timepoint_id = match.group('timepoint')
+        return name, namespace, timepoint_id, tree_level
 
     @classmethod
     def standard_uri(cls, xnode):

@@ -64,7 +64,7 @@ class XnatCSRepo(XnatRepo):
         return None
 
     # root_dir=None, all_namespace=None,
-    def find_data(self, dataset, subject_ids=None, visit_ids=None, **kwargs):
+    def find_data(self, dataset, subject_ids=None, timepoint_ids=None, **kwargs):
         """
         Find all data within a repository, registering file_groups, fields and
         provenance with the found_file_group, found_field and found_provenance
@@ -78,8 +78,8 @@ class XnatCSRepo(XnatRepo):
         subject_ids : list(str)
             List of subject IDs with which to filter the tree with. If
             None all are returned
-        visit_ids : list(str)
-            List of visit IDs with which to filter the tree with. If
+        timepoint_ids : list(str)
+            List of timepoint IDs with which to filter the tree with. If
             None all are returned
 
         Returns
@@ -109,9 +109,9 @@ class XnatCSRepo(XnatRepo):
                 subject_id = xsubject.label
                 # Strip subject ID from session label if required
                 if xsession.label.startswith(subject_id + '_'):
-                    visit_id = xsession.label[len(subject_id) + 1:]
+                    timepoint_id = xsession.label[len(subject_id) + 1:]
                 else:
-                    visit_id = xsession.label
+                    timepoint_id = xsession.label
                 session_json = self.login.get_json(
                     '/data/projects/{}/experiments/{}'.format(
                         project_id, xsession.id))['items'][0]
@@ -140,7 +140,7 @@ class XnatCSRepo(XnatRepo):
                         name=name, value=value,
                         dataset=dataset,
                         subject_id=subject_id,
-                        visit_id=visit_id
+                        timepoint_id=timepoint_id
                         **kwargs))
 
             filtered_files = self._filter_files(files, session_path)
@@ -150,7 +150,7 @@ class XnatCSRepo(XnatRepo):
                     FileGroup.from_path(
                         op.join(session_path, fname),
                         tree_level=tree_level,
-                        subject_id=subj_id, visit_id=visit_id,
+                        subject_id=subj_id, timepoint_id=timepoint_id,
                         dataset=dataset,
                         namespace=namespace,
                         potential_aux_files=[
@@ -163,7 +163,7 @@ class XnatCSRepo(XnatRepo):
                     FileGroup.from_path(
                         op.join(session_path, fname),
                         tree_level=tree_level,
-                        subject_id=subj_id, visit_id=visit_id,
+                        subject_id=subj_id, timepoint_id=timepoint_id,
                         dataset=dataset,
                         namespace=namespace,
                         **kwargs))
@@ -173,7 +173,7 @@ class XnatCSRepo(XnatRepo):
                     dct = json.load(f)
                 all_fields.extend(
                     Field(name=k, value=v, tree_level=tree_level,
-                          subject_id=subj_id, visit_id=visit_id,
+                          subject_id=subj_id, timepoint_id=timepoint_id,
                           dataset=dataset, namespace=namespace,
                           **kwargs)
                     for k, v in list(dct.items()))
@@ -186,7 +186,7 @@ class XnatCSRepo(XnatRepo):
                 for fname in os.listdir(base_prov_dir):
                     all_records.append(Record.load(
                         split_extension(fname)[0],
-                        tree_level, subj_id, visit_id, namespace,
+                        tree_level, subj_id, timepoint_id, namespace,
                         op.join(base_prov_dir, fname)))
         return all_file_groups, all_fields, all_records
 

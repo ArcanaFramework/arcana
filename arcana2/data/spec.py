@@ -64,7 +64,7 @@ class FileGroupSpec(FileGroupMixin, DataSpec):
         recognised formats
     frequency : DataFrequency
         The frequency that the items occur in the dataset, i.e. 
-        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
+        per 'session', 'subject', 'timepoint', 'group_timepoint', 'group' or 'dataset'
     desc : str
         Description of what the field represents
     namespace : str
@@ -130,7 +130,7 @@ class FileGroupSpec(FileGroupMixin, DataSpec):
             file_group = FileGroup(self.path, format=self.format,
                                    frequency=self.frequency,
                                    subject_id=node.subject_id,
-                                   visit_id=node.visit_id,
+                                   timepoint_id=node.timepoint_id,
                                    dataset=node.dataset,
                                    exists=False,
                                    **kwargs)
@@ -151,7 +151,7 @@ class FieldSpec(FieldMixin, DataSpec):
         The datatype of the value. Can be one of (float, int, str)
     frequency : DataFrequency
         The frequency that the items occur in the dataset, i.e. 
-        per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
+        per 'session', 'subject', 'timepoint', 'group_timepoint', 'group' or 'dataset'
     array : bool
         Whether the field is an array of values rather than a singleton
     desc : str
@@ -206,7 +206,7 @@ class FieldSpec(FieldMixin, DataSpec):
             field = Field(self.path, dtype=self.dtype,
                           frequency=self.frequency,
                           subject_id=node.subject_id,
-                          visit_id=node.visit_id,
+                          timepoint_id=node.timepoint_id,
                           dataset=node.tree.dataset,
                           array=self.array,
                           exists=False, **kwargs)

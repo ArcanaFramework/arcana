@@ -68,13 +68,13 @@ class Repository(metaclass=ABCMeta):
             The name, path or ID of the dataset within the repository
         subject_ids : list[str]
             The list of subjects to include in the dataset
-        visit_ids : list[str]
-            The list of visits to include in the dataset
+        timepoint_ids : list[str]
+            The list of timepoints to include in the dataset
         """
         return Dataset(name, repository=self, **kwargs)
 
     @abstractmethod
-    def find_data(self, dataset, subject_ids=None, visit_ids=None, **kwargs):
+    def find_data(self, dataset, subject_ids=None, timepoint_ids=None, **kwargs):
         """
         Find all data within a repository, registering file_groups, fields and
         provenance with the found_file_group, found_field and found_provenance
@@ -87,8 +87,8 @@ class Repository(metaclass=ABCMeta):
         subject_ids : list(str)
             List of subject IDs with which to filter the tree with. If
             None all are returned
-        visit_ids : list(str)
-            List of visit IDs with which to filter the tree with. If
+        timepoint_ids : list(str)
+            List of timepoint IDs with which to filter the tree with. If
             None all are returned
 
         Returns
@@ -179,7 +179,7 @@ class Repository(metaclass=ABCMeta):
     @abstractmethod
     def put_record(self, record, dataset):
         """
-        Inserts a provenance record into a session or subject|visit|analysis
+        Inserts a provenance record into a session or subject|timepoint|analysis
         summary
 
         Parameters
@@ -237,23 +237,23 @@ class Repository(metaclass=ABCMeta):
         outputs = self.output_spec().get()
         subject_id = (self.inputs.subject_id
                       if isdefined(self.inputs.subject_id) else None)
-        visit_id = (self.inputs.visit_id
-                    if isdefined(self.inputs.visit_id) else None)
+        timepoint_id = (self.inputs.timepoint_id
+                    if isdefined(self.inputs.timepoint_id) else None)
         outputs['subject_id'] = self.inputs.subject_id
-        outputs['visit_id'] = self.inputs.visit_id
+        outputs['timepoint_id'] = self.inputs.timepoint_id
         # Source file_groups
         with ExitStack() as stack:
             # Connect to set of repositories that the columns come from
             for repository in self.repositories:
                 stack.enter_context(repository)
             for file_group_column in self.file_group_columns:
-                file_group = file_group_column.item(subject_id, visit_id)
+                file_group = file_group_column.item(subject_id, timepoint_id)
                 file_group.get()
                 outputs[file_group_column.name + PATH_SUFFIX] = file_group.path
                 outputs[file_group_column.name
                         + CHECKSUM_SUFFIX] = file_group.checksums
             for field_column in self.field_columns:
-                field = field_column.item(subject_id, visit_id)
+                field = field_column.item(subject_id, timepoint_id)
                 field.get()
                 outputs[field_column.name + FIELD_SUFFIX] = field.value
         return outputs
@@ -314,11 +314,11 @@ class Repository(metaclass=ABCMeta):
         self._namespace = pipeline.analysis.name
         self._required = required
         outputs = self.output_spec().get()
-        # Connect iterables (i.e. subject_id and visit_id)
+        # Connect iterables (i.e. subject_id and timepoint_id)
         subject_id = (self.inputs.subject_id
                       if isdefined(self.inputs.subject_id) else None)
-        visit_id = (self.inputs.visit_id
-                    if isdefined(self.inputs.visit_id) else None)
+        timepoint_id = (self.inputs.timepoint_id
+                    if isdefined(self.inputs.timepoint_id) else None)
         missing_inputs = []
         # Collate input checksums into a dictionary
         input_checksums = {n: getattr(self.inputs, n + CHECKSUM_SUFFIX)
@@ -331,7 +331,7 @@ class Repository(metaclass=ABCMeta):
             for repository in self.repositories:
                 stack.enter_context(repository)
             for file_group_column in self.file_group_columns:
-                file_group = file_group_column.item(subject_id, visit_id)
+                file_group = file_group_column.item(subject_id, timepoint_id)
                 path = getattr(self.inputs, file_group_column.name + PATH_SUFFIX)
                 if not isdefined(path):
                     if file_group.name in self._required:
@@ -342,7 +342,7 @@ class Repository(metaclass=ABCMeta):
             for field_column in self.field_columns:
                 field = field_column.item(
                     subject_id,
-                    visit_id)
+                    timepoint_id)
                 value = getattr(self.inputs,
                                 field_column.name + FIELD_SUFFIX)
                 if not isdefined(value):
@@ -357,7 +357,7 @@ class Repository(metaclass=ABCMeta):
             prov['inputs'] = input_checksums
             prov['outputs'] = output_checksums
             record = Record(self._pipeline_name, self.tree_level, subject_id,
-                            visit_id, self._namespace, prov)
+                            timepoint_id, self._namespace, prov)
             for dataset in self.datasets:
                 dataset.put_record(record)
         if missing_inputs:
@@ -462,7 +462,7 @@ class RepositorySpec(DynamicTraitedSpec):
     and sink interfaces
     """
     subject_id = traits.Str(desc="The subject ID")
-    visit_id = traits.Str(desc="The visit ID")
+    timepoint_id = traits.Str(desc="The timepoint ID")
 
 
 class RepositorySourceInputSpec(RepositorySpec):
@@ -511,23 +511,23 @@ class RepositorySource(RepositoryInterface):
         outputs = self.output_spec().get()
         subject_id = (self.inputs.subject_id
                       if isdefined(self.inputs.subject_id) else None)
-        visit_id = (self.inputs.visit_id
-                    if isdefined(self.inputs.visit_id) else None)
+        timepoint_id = (self.inputs.timepoint_id
+                    if isdefined(self.inputs.timepoint_id) else None)
         outputs['subject_id'] = self.inputs.subject_id
-        outputs['visit_id'] = self.inputs.visit_id
+        outputs['timepoint_id'] = self.inputs.timepoint_id
         # Source file_groups
         with ExitStack() as stack:
             # Connect to set of repositories that the columns come from
             for repository in self.repositories:
                 stack.enter_context(repository)
             for file_group_column in self.file_group_columns:
-                file_group = file_group_column.item(subject_id, visit_id)
+                file_group = file_group_column.item(subject_id, timepoint_id)
                 file_group.get()
                 outputs[file_group_column.name + PATH_SUFFIX] = file_group.path
                 outputs[file_group_column.name
                         + CHECKSUM_SUFFIX] = file_group.checksums
             for field_column in self.field_columns:
-                field = field_column.item(subject_id, visit_id)
+                field = field_column.item(subject_id, timepoint_id)
                 field.get()
                 outputs[field_column.name + FIELD_SUFFIX] = field.value
         return outputs
@@ -598,11 +598,11 @@ class RepositorySink(RepositoryInterface):
 
     def _list_outputs(self):
         outputs = self.output_spec().get()
-        # Connect iterables (i.e. subject_id and visit_id)
+        # Connect iterables (i.e. subject_id and timepoint_id)
         subject_id = (self.inputs.subject_id
                       if isdefined(self.inputs.subject_id) else None)
-        visit_id = (self.inputs.visit_id
-                    if isdefined(self.inputs.visit_id) else None)
+        timepoint_id = (self.inputs.timepoint_id
+                    if isdefined(self.inputs.timepoint_id) else None)
         missing_inputs = []
         # Collate input checksums into a dictionary
         input_checksums = {n: getattr(self.inputs, n + CHECKSUM_SUFFIX)
@@ -615,7 +615,7 @@ class RepositorySink(RepositoryInterface):
             for repository in self.repositories:
                 stack.enter_context(repository)
             for file_group_column in self.file_group_columns:
-                file_group = file_group_column.item(subject_id, visit_id)
+                file_group = file_group_column.item(subject_id, timepoint_id)
                 path = getattr(self.inputs, file_group_column.name + PATH_SUFFIX)
                 if not isdefined(path):
                     if file_group.name in self._required:
@@ -626,7 +626,7 @@ class RepositorySink(RepositoryInterface):
             for field_column in self.field_columns:
                 field = field_column.item(
                     subject_id,
-                    visit_id)
+                    timepoint_id)
                 value = getattr(self.inputs,
                                 field_column.name + FIELD_SUFFIX)
                 if not isdefined(value):
@@ -641,7 +641,7 @@ class RepositorySink(RepositoryInterface):
             prov['inputs'] = input_checksums
             prov['outputs'] = output_checksums
             record = Record(self._pipeline_name, self.tree_level, subject_id,
-                            visit_id, self._namespace, prov)
+                            timepoint_id, self._namespace, prov)
             for dataset in self.datasets:
                 dataset.put_record(record)
         if missing_inputs:

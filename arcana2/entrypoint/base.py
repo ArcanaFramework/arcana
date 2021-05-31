@@ -48,7 +48,7 @@ class BaseRepoCmd():
                     f"than 3 are required (LEVEL, SUBJECT, VISIT)")
             repository = repo.XnatCS(level=args[0],
                                      subject=args[1] if nargs > 1 else None,
-                                     visit=args[2] if nargs > 2 else None)
+                                     timepoint=args[2] if nargs > 2 else None)
         else:
             raise ArcanaUsageError(
                 f"Unrecognised repository type provided as first argument "
