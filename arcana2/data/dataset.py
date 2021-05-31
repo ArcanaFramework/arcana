@@ -126,7 +126,7 @@ class Dataset():
         ids = {self.frequency_cls[str(f)]: i for f, i in ids.items()}
         # Create new data node
         node = DataNode(frequency, ids, self)
-        basis_ids = {ids[f] for f in frequency.basis_layers if f in ids}
+        basis_ids = {ids[f] for f in frequency.layers if f in ids}
         ids_tuple = tuple(basis_ids.items())
         node_dict = self.root_node.subnodes[frequency]
         if node_dict:
@@ -149,12 +149,12 @@ class Dataset():
         node._supranodes[self.frequency_cls(0)] = weakref.ref(self.root_node)
         # Insert nodes for basis layers if not already present and link them
         # with inserted node
-        for supra_freq in frequency.basis_layers:
+        for supra_freq in frequency.layers:
             # Select relevant IDs from those provided
             supra_ids = {
-                str(f): ids[f] for f in supra_freq.basis_layers if f in ids}
+                str(f): ids[f] for f in supra_freq.layers if f in ids}
             sub_ids = tuple((f, i) for f, i in ids_tuple
-                            if f not in supra_freq.basis_layers)
+                            if f not in supra_freq.layers)
             try:
                 supranode = self.node(supra_freq, **supra_ids)
             except ArcanaNameError:
