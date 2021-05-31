@@ -8,8 +8,6 @@ from arcana2.exceptions import (
     ArcanaInputMissingMatchError, ArcanaNotBoundToAnalysisError)
 from .base import FileGroupMixin, FieldMixin
 from .item import FileGroup, Field
-from .column import FileGroupColumn, FieldColumn
-from arcana2.enum import DataFreq
 
 
 class DataMatcher():
@@ -121,7 +119,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
         File formats that data will be accepted in        
     is_regex : bool
         Flags whether the path is a regular expression or not
-    frequency : DataFreq
+    frequency : DataFrequency
         The frequency that the items occur in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     order : int | None
@@ -148,7 +146,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     is_spec = False
     ColumnClass = FileGroupColumn
 
-    def __init__(self, path=None, format=None, frequency=DataFreq.session, 
+    def __init__(self, path=None, format=None, frequency=DataFrequency.session, 
                  order=None, metadata=None, is_regex=False,
                  acceptable_quality=None):
         FileGroupMixin.__init__(self, None, frequency)
@@ -294,7 +292,7 @@ class FieldMatcher(DataMatcher, FieldMixin):
         then the dtype is taken from the FieldSpec that it is bound to
     is_regex : bool
         Flags whether the path is a regular expression or not
-    frequency : DataFreq
+    frequency : DataFrequency
         The frequency that the items occur in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     order : int | None
@@ -313,7 +311,7 @@ class FieldMatcher(DataMatcher, FieldMixin):
     is_spec = False
     ColumnClass = FieldColumn
 
-    def __init__(self, path, dtype=None, frequency=DataFreq.session,
+    def __init__(self, path, dtype=None, frequency=DataFrequency.session,
                  order=None, is_regex=False, namespace=None):
         FieldMixin.__init__(self, dtype, frequency, namespace)
         DataMatcher.__init__(self, path, is_regex, order)

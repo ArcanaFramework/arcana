@@ -18,7 +18,6 @@ from arcana2.exceptions import (
     ArcanaNoMatchingFileFormatError)
 # from .file_format import FileFormat
 from .base import FileGroupMixin, FieldMixin, DataMixin
-from arcana2.enum import DataFreq
 
 HASH_CHUNK_SIZE = 2 ** 20  # 1MB
 
@@ -645,7 +644,7 @@ class MultiFormatFileGroup(DataItem, DataMixin):
     path : str
         The path to the relative location of the file group, i.e. excluding
         information about which node in the data tree it belongs to
-    frequency : DataFreq
+    frequency : DataFrequency
         The frequency that the file group occurs in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     files : Sequence[str] | None
@@ -795,7 +794,7 @@ class Record(object):
     ----------
     path : str
         Name of the pipeline the record corresponds to
-    frequency : DataFreq
+    frequency : DataFrequency
         The level within the dataset tree that the record will sit, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     subject_id : str | None
@@ -886,7 +885,7 @@ class Record(object):
         ----------
         path : str
             Path to the provenance file
-        frequency : DataFreq
+        frequency : DataFrequency
             The frequency that the items occur in the dataset, i.e. 
             per 'session', 'subject', 'visit', 'group_visit', 'group' or
             'dataset'

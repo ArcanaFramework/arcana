@@ -5,7 +5,6 @@ import logging
 from collections import defaultdict
 from itertools import chain
 from collections import OrderedDict
-from arcana2.enum import DataFreq
 from .item import Record
 from arcana2.exceptions import (
     ArcanaError, ArcanaNameError, ArcanaDataTreeConstructionError,
@@ -34,8 +33,7 @@ class Dataset():
         will be used
     """
 
-    def __init__(self, name, repository, include_ids=None,
-                 frequency_cls=DataFreq):
+    def __init__(self, name, repository, frequency_cls, include_ids=None):
         self.name = name
         self.repository = repository
         self.frequency_cls = frequency_cls
@@ -103,7 +101,7 @@ class Dataset():
 
         Parameters
         ----------
-        frequency : DataFreq
+        frequency : DataFrequency
             The frequency of the data_node
         **ids : Dict[str, str]
             The IDs of the node and all branching points the data tree
@@ -170,13 +168,13 @@ class Dataset():
 
         Parameters
         ----------
-        ids : Dict[DataFreq | str, str]
+        ids : Dict[DataFrequency | str, str]
             A dictionary with IDs for each frequency that specifies the
             nodes position within the data tree
 
         Returns
         -------
-        Tuple[(DataFreq, str)]
+        Tuple[(DataFrequency, str)]
             A tuple sorted in order of provided frequencies
         """
         try:
@@ -194,9 +192,9 @@ class DataNode():
 
     Parameters
     ----------
-    frequency : DataFreq
+    frequency : DataFrequency
         The frequency of the node
-    ids : Dict[DataFreq, str]
+    ids : Dict[DataFrequency, str]
         The ids for each provided frequency need to specify the data node
         within the tree
     root : DataNode

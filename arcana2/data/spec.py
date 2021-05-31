@@ -1,8 +1,6 @@
-from arcana2.enum import DataFreq
 from arcana2.exceptions import ArcanaNameError
 from .base import FileGroupMixin, FieldMixin
 from .item import FileGroup, Field
-from .column import FileGroupColumn, FieldColumn
 
 
 
@@ -64,7 +62,7 @@ class FileGroupSpec(FileGroupMixin, DataSpec):
     format : FileFormat
         The file format used to store the file_group. Can be one of the
         recognised formats
-    frequency : DataFreq
+    frequency : DataFrequency
         The frequency that the items occur in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     desc : str
@@ -86,9 +84,8 @@ class FileGroupSpec(FileGroupMixin, DataSpec):
     """
 
     is_spec = True
-    ColumnClass = FileGroupColumn
 
-    def __init__(self, path, format, frequency=DataFreq.session, desc=None,
+    def __init__(self, path, format, frequency, desc=None,
                  namespace=None, salience=None, category=None,
                  converters=None):
         FileGroupMixin.__init__(self, path, format, frequency, namespace)
@@ -139,13 +136,6 @@ class FileGroupSpec(FileGroupMixin, DataSpec):
                                    **kwargs)
         return file_group
 
-    def column(self, tree, **kwargs):
-        return FileGroupColumn(
-            self.path,
-            (self.item(n, **kwargs) for n in tree.nodes(self.frequency)),
-            frequency=self.frequency,
-            format=self.format)
-
 
 class FieldSpec(FieldMixin, DataSpec):
     """
@@ -159,7 +149,7 @@ class FieldSpec(FieldMixin, DataSpec):
         information about which node in the data tree it belongs to
     dtype : type
         The datatype of the value. Can be one of (float, int, str)
-    frequency : DataFreq
+    frequency : DataFrequency
         The frequency that the items occur in the dataset, i.e. 
         per 'session', 'subject', 'visit', 'group_visit', 'group' or 'dataset'
     array : bool
@@ -179,9 +169,8 @@ class FieldSpec(FieldMixin, DataSpec):
     """
 
     is_spec = True
-    ColumnClass = FieldColumn
 
-    def __init__(self, path, dtype, frequency=DataFreq.session, array=False,
+    def __init__(self, path, dtype, frequency, array=False,
                  desc=None, namespace=None, salience=None, category=None):
         FieldMixin.__init__(self, path, dtype, frequency, namespace,
                             array=array)
@@ -223,10 +212,3 @@ class FieldSpec(FieldMixin, DataSpec):
                           exists=False, **kwargs)
         return field
 
-    def column(self, tree, **kwargs):
-        return FieldColumn(
-            self.path,
-            (self.item(n, **kwargs) for n in tree.nodes(self.frequency)),
-            frequency=self.frequency,
-            dtype=self.dtype,
-            array=self.array)

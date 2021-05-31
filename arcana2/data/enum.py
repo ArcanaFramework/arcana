@@ -53,19 +53,18 @@ class DataFrequency(Enum):
 
 class ClinicalStudy(DataFrequency):
     """
-    An enum that specifies the data frequencies within a typical clinical
-    study data tree with groups, subjects and timepoints.
+    An enum that specifies the data frequencies within a data tree of a typical
+    clinical research study with groups, subjects and timepoints.
     """
 
-    group = 0b100  #for each subject group
-    subject = 0b010  # for each subject within group, i.e., can be multiple
-                     # subject IDs in a dataset, e.g., 01 could be for
-                     # both test-01 & control-01
+    group = 0b100  # for each subject group
+    subject = 0b010  # for each subject within a group, e.g., matched pairs
+                     # of test and control participants
     visit = 0b001  # for each visit (e.g. longitudinal timepoint)
 
     participant = 0b110 # combination of group and subject, i.e. uniquely
                         # identifies a participant in the dataset as opposed
-                        # to 'subject', which has matches between groups
+                        # to 'subject', which can match between groups
     session = 0b111  # for each session (i.e. a single visit of a subject)
     dataset = 0b000  # singular within the dataset
 
