@@ -1,47 +1,32 @@
 from enum import Enum
 
 
-class DataFreq(Enum):
+class DataFrequency(Enum):
     """
-    The frequency at which a data item is stored within a data tree. For
-    typical neuroimaging analysis these levels are hardcoded to one of six
-    values.
+    Base class for tree structure enums. The values for each member of the 
+    enum should be a binary string that specifies the relationship between
+    the different "data frequencies" present in the dataset.
+
+    Frequencies that have only one non-zero bit in their binary values
+    correspond to a layer in the data tree (e.g. subject, timepoint).
+    frequency sits below in the data tree. Each bit corresponds to a layer,
+    e.g. 'group', 'subject' and 'visit', and if they are present in the
+    binary string it signifies that the data is specific to a particular
+    branch at that layer (i.e. specific group, subject or visit). 
     """
-
-    group = 0b100  #for each subject group
-    subject = 0b010  # for each subject (NB: implies group iteration)
-    visit = 0b001  # for each visit (e.g. longitudinal timepoint)
-    session = 0b011  # for each session (i.e. a single visit of a subject)
-    group_visit = 0b101  # for each combination of subject group and visit
-    dataset = 0b000  # singular within the dataset
-
-    # The value for each enum is a binary string that specifies layers the
-    # frequency sits below in the data tree. Each bit corresponds to a layer,
-    # e.g. 'group', 'subject' and 'visit', and if they are present in the
-    # binary string it signifies that the data is specific to a particular
-    # branch at that layer (i.e. specific group, subject or visit). 
-    # 
-    # Note that patterns 0b110 and 0b111 are not explicitly included because
-    # subject specificity implies group specificity
 
     def __str__(self):
         return self.name
 
-    def basis_layers(self):
-        """Returns the layers in the data tree above the given layer, e.g.
+    def layers(self):
+        """Returns the layers in the data tree the frequency consists of, e.g.
 
-            group_visit -> group + visit
-
-        Note that subjects are below the group layer as each subject always
-        belongs to one group (even if there is only 1 group in the dataset), i.e.
-
-            subject -> group
+            dataset -> 
+            subject -> subject
+            group_subject -> group + subject
             session -> group + subject + visit
-
         """
         val = self.value
-        if val & self.subject:
-            val += 0b100  # Subject-specificity implies group-specificity
         # Check which bits are '1', and append them to the list of levels
         cls = type(self)
         return [cls(b) for b in sorted(self._nonzero_bits(val))]
@@ -64,6 +49,30 @@ class DataFreq(Enum):
 
     def __le__(self, other):
         return self.value <= other.value
+
+
+class ClinicalStudy(DataFrequency):
+    """
+    An enum that specifies the data frequencies within a typical clinical
+    study data tree with groups, subjects and timepoints.
+    """
+
+    group = 0b100  #for each subject group
+    subject = 0b010  # for each subject within group, i.e., can be multiple
+                     # subject IDs in a dataset, e.g., 01 could be for
+                     # both test-01 & control-01
+    visit = 0b001  # for each visit (e.g. longitudinal timepoint)
+
+    participant = 0b110 # combination of group and subject, i.e. uniquely
+                        # identifies a participant in the dataset as opposed
+                        # to 'subject', which has matches between groups
+    session = 0b111  # for each session (i.e. a single visit of a subject)
+    dataset = 0b000  # singular within the dataset
+
+    # Lesser used combinations
+    group_visit = 0b101  # combination of group and visit across all subjects
+    subject_visit = 0b011 # combination of subject and visit across all groups,
+                          # could be useful for matched control/test studies
 
 
 class Salience(Enum):
