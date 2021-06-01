@@ -78,7 +78,7 @@ class BaseRunCmd(BaseRepoCmd):
                     f"Input {i} has too many input args, {nargs} instead "
                     f"of max 7 ({inpt})")
             (path, pattern, format_name, order,
-             quality, metadata, freq) = [
+             quality, header_vals, freq) = [
                 a if a != '*' else d
                 for a, d in zip_longest(inpt, defaults, fillvalue='*')]
             if not path:
@@ -88,7 +88,7 @@ class BaseRunCmd(BaseRepoCmd):
             input_paths[name] = path
             inputs[path] = FileGroupMatcher(
                 pattern=pattern, format=ff.get_file_format(format_name),
-                tree_level='per_' + freq, order=order, metadata=metadata,
+                tree_level='per_' + freq, order=order, header_vals=header_vals,
                 is_regex=True, acceptable_quality=quality)
 
         # Create field matchers
@@ -206,7 +206,7 @@ class BaseRunCmd(BaseRepoCmd):
             quality   - the minimum usuable quality to be considered.
                         Can be one of 'usable', 'questionable' or
                         'unusable'
-            metadata  - semicolon-separated list of metadata values
+            header_vals  - semicolon-separated list of header_vals values
                         in NAME:VALUE form. For DICOM headers
                         NAME is the numeric values of the DICOM tag, e.g
                         (0008,0008) -> 00080008

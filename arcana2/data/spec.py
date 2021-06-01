@@ -85,11 +85,10 @@ class FileGroupSpec(FileGroupMixin, DataSpec):
 
     is_spec = True
 
-    def __init__(self, path, format, frequency, desc=None,
-                 namespace=None, salience=None, category=None,
-                 converters=None):
-        FileGroupMixin.__init__(self, path, format, frequency, namespace)
-        DataSpec.__init__(self,desc, salience, category)
+    def __init__(self, path, format, frequency, desc=None, salience=None,
+                 category=None, converters=None):
+        FileGroupMixin.__init__(self, path, format)
+        DataSpec.__init__(self,desc, salience, category, frequency)
         self.converters = converters if converters else {}
 
     def __eq__(self, other):
@@ -157,10 +156,9 @@ class FieldSpec(FieldMixin, DataSpec):
     is_spec = True
 
     def __init__(self, path, dtype, frequency, array=False,
-                 desc=None, namespace=None, salience=None, category=None):
-        FieldMixin.__init__(self, path, dtype, frequency, namespace,
-                            array=array)
-        DataSpec.__init__(self, desc, salience, category)
+                 desc=None, salience=None, category=None):
+        FieldMixin.__init__(self, path, dtype, array)
+        DataSpec.__init__(self, desc, salience, category, frequency)
 
     def __eq__(self, other):
         return (FieldMixin.__eq__(self, other)

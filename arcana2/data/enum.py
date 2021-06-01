@@ -50,6 +50,10 @@ class DataFrequency(Enum):
     def __le__(self, other):
         return self.value <= other.value
 
+    @classmethod
+    def default(cls):
+        return max(cls)
+
 
 class ClinicalStudy(DataFrequency):
     """
@@ -62,23 +66,24 @@ class ClinicalStudy(DataFrequency):
 
     # "Layers" of the data tree structure
     group = 0b100  # subject groups
-    member = 0b010  # subjects within a group e.g., matched pairs of test and
-                    # controls
+    member = 0b010  # subjects relative to their group membership.
+                    # Matched pairs of test and control subjects will share the
+                    # same member IDs
     timepoint = 0b001  # time-points in longitudinal studies
 
     # Commonly used combinations
     subject = 0b110 # uniquely identified subject within in the dataset.
-                    # As opposed to member, which specifies a subject in
-                    # relation to its group (and therefore there is typically
-                    # one for each group)
-    session = 0b111  # for each session (i.e. a single timepoint of a subject)
+                    # As opposed to 'member', which specifies a subject in
+                    # relation to its group (i.e. one subject for each member
+                    # in each group). For datasets with only one group, then
+                    # subject and member can be the same.
+    session = 0b111  # a single session (i.e. a single timepoint of a subject)
 
     # Lesser used combinations
-    group_timepoint = 0b101  # iterate over group and timepoints combining
-                             # across all group members. 
-    subject_timepoint = 0b011 # combination of subject and timepoint across all
-                              # groups. May be useful in matched control
-                              # studies.
+    group_timepoint = 0b101  # iterate over group and timepoints, i.e.
+                             # matched members are combined 
+    subject_timepoint = 0b011 # iterate over each subject and timepoint
+                              # combinations, groups are combined
 
 
 class Salience(Enum):

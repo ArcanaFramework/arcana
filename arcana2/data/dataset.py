@@ -70,6 +70,12 @@ class Dataset():
                 ^ hash(self.root_node)
                 ^ hash(self.frequency_cls))
 
+    def __getitem__(self, key):
+        if key == self.frequency_cls(0):
+            return self.root_node
+        else:
+            return self.root_node.subnodes[key]
+
     @property
     def prov(self):
         return {

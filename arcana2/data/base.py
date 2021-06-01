@@ -12,16 +12,14 @@ class DataMixin():
     """Base class for all Data related classes
     """
 
-    def __init__(self, path, frequency):
+    def __init__(self, path):
         self.path = path
-        self.frequency = frequency
 
     def __eq__(self, other):
-        return (self.frequency == other.frequency
-                and self.path == other.path)
+        return self.path == other.path
 
     def __hash__(self):
-        return hash(self.frequency) ^ hash(self.path)
+        return hash(self.path)
 
     def find_mismatch(self, other, indent=''):
         if self != other:
@@ -35,22 +33,17 @@ class DataMixin():
             mismatch += ('\n{}path: self={} v other={}'
                          .format(sub_indent, self.path,
                                  other.path))
-        if self.frequency != other.frequency:
-            mismatch += ('\n{}frequency: self={} v other={}'
-                         .format(sub_indent, self.frequency,
-                                 other.frequency))
         return mismatch
 
     def __ne__(self, other):
         return not (self == other)
 
     def initkwargs(self):
-        return {'path': self.path,
-                'frequency': self.frequency}
+        return {'path': self.path}
 
 
 class FileGroupMixin(DataMixin):
-    f"""
+    """
     An abstract base class representing either an acquired file_group or the
     specification for a derived file_group.
 
@@ -65,15 +58,12 @@ class FileGroupMixin(DataMixin):
     format : FileFormat
         The file format used to store the file_group. Can be one of the
         recognised formats
-    frequency : DataFrequency
-        The frequency of the field within the dataset tree, e.g. per
-        'session', 'subject', 'timepoint', 'group', 'dataset'
     """
 
     is_file_group = True
 
-    def __init__(self, path, format, frequency):
-        super().__init__(path, frequency)
+    def __init__(self, path, format):
+        super().__init__(path)
         self.format = format
 
     def __eq__(self, other):
@@ -111,9 +101,6 @@ class FieldMixin(DataMixin):
         logically separate related derivatives, e.g. 'myanalysis/mymetric'
     dtype : type
         The datatype of the value. Can be one of (float, int, str)
-    frequency : DataFrequency
-        The frequency of the field within the dataset tree, e.g. per
-        'session', 'subject', 'timepoint', 'group', 'dataset'
     array : bool
         Whether the field contains scalar or array data
     """
@@ -122,8 +109,8 @@ class FieldMixin(DataMixin):
 
     dtypes = (int, float, str)
 
-    def __init__(self, path, dtype, frequency, array):
-        super().__init__(path, frequency)
+    def __init__(self, path, dtype, array):
+        super().__init__(path)
         if dtype not in self.dtypes + (newstr, None):
             raise ArcanaUsageError(
                 "Invalid dtype {}, can be one of {}".format(
@@ -140,9 +127,8 @@ class FieldMixin(DataMixin):
         return (super().__hash__() ^ hash(self.dtype) ^ hash(self.array))
 
     def __repr__(self):
-        return ("{}(dtype={}, frequency='{}', array={})"
-                .format(self.__class__.__name__, self.dtype,
-                        self.frequency, self.array))
+        return ("{}(dtype={}, array={})"
+                .format(self.__class__.__name__, self.dtype, self.array))
 
     def find_mismatch(self, other, indent=''):
         mismatch = super(FieldMixin, self).find_mismatch(other, indent)
