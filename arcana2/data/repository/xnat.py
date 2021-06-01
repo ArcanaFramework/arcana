@@ -54,7 +54,7 @@ class Xnat(Repository):
         subject and session labels. Keys of the outer dictionary correspond to
         the frequency to extract (typically group and/or subject) and the keys
         of the inner dictionary the frequency to extract from (i.e.
-        participant or session). The values of the inner dictionary are regular
+        subject or session). The values of the inner dictionary are regular
         expression patterns that match the ID to extract in the 'ID' regular
         expression group.
     check_md5 : bool

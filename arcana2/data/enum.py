@@ -57,21 +57,28 @@ class ClinicalStudy(DataFrequency):
     clinical research study with groups, subjects and timepoints.
     """
 
-    group = 0b100  # for each subject group
-    subject = 0b010  # for each subject within a group, e.g., matched pairs
-                     # of test and control participants
-    timepoint = 0b001  # for each timepoint (e.g. longitudinal timepoint)
-
-    participant = 0b110 # combination of group and subject, i.e. uniquely
-                        # identifies a participant in the dataset as opposed
-                        # to 'subject', which can match between groups
-    session = 0b111  # for each session (i.e. a single timepoint of a subject)
+    # Root node of the dataset
     dataset = 0b000  # singular within the dataset
 
+    # "Layers" of the data tree structure
+    group = 0b100  # subject groups
+    member = 0b010  # subjects within a group e.g., matched pairs of test and
+                    # controls
+    timepoint = 0b001  # time-points in longitudinal studies
+
+    # Commonly used combinations
+    subject = 0b110 # uniquely identified subject within in the dataset.
+                    # As opposed to member, which specifies a subject in
+                    # relation to its group (and therefore there is typically
+                    # one for each group)
+    session = 0b111  # for each session (i.e. a single timepoint of a subject)
+
     # Lesser used combinations
-    group_timepoint = 0b101  # combination of group and timepoint across all subjects
-    subject_timepoint = 0b011 # combination of subject and timepoint across all groups,
-                          # could be useful for matched control/test studies
+    group_timepoint = 0b101  # iterate over group and timepoints combining
+                             # across all group members. 
+    subject_timepoint = 0b011 # combination of subject and timepoint across all
+                              # groups. May be useful in matched control
+                              # studies.
 
 
 class Salience(Enum):

@@ -38,8 +38,9 @@ class FileSystemDir(Repository):
         would specify a 3-level directory structure, with the first level
         sorting by study group, the second by subject ID and the last level
         the timepoint. Alternatively, [Clinical.subject, Clinical.group]
-        would specify a 2-level structure where participant data is organised
-        into matching subjects (e.g. across test & control groups) first.
+        would specify a 2-level structure where the data is organised
+        into matching subjects (e.g. across test & control groups) at the
+        lowest level in the hierarchy.
     """
 
     type = 'file_system_dir'

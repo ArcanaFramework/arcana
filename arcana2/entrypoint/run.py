@@ -212,8 +212,8 @@ class BaseRunCmd(BaseRepoCmd):
                         (0008,0008) -> 00080008
             frequency - The frequency of the file-group within the dataset.
                         Can be either 'dataset', 'group', 'subject',
-                        'timepoint', 'session', 'participant', 'group_visit' or
-                        'subject_timepoint'. Typically only required for
+                        'timepoint', 'session', 'unique_subject', 'group_visit'
+                        or 'subject_timepoint'. Typically only required for
                         derivatives
 
         Trailing args can be dropped if default, 
