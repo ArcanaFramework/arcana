@@ -19,7 +19,7 @@ from .base import Repository
 from arcana2.exceptions import (
     ArcanaError, ArcanaUsageError, ArcanaFileFormatError,
     ArcanaRepositoryError, ArcanaWrongRepositoryError)
-from ..item import Record
+from ..item import Provenance
 from arcana2.utils import dir_modtime, get_class_info, parse_value
 from ..dataset import Dataset
 
@@ -341,15 +341,15 @@ class Xnat(Repository):
             xsession = self.get_xnode(field)
             xsession.fields[self.derived_name(field)] = val
 
-    def put_record(self, record, dataset):
-        xnode = self.get_xnode(record, dataset=dataset)
+    def put_provenance(self, provenance, dataset):
+        xnode = self.get_xnode(provenance, dataset=dataset)
         resource_name = self.prepend_analysis(self.PROV_RESOURCE,
-                                              record.namespace)
+                                              provenance.namespace)
         uri = '{}/resources/{}'.format(self.standard_uri(xnode), resource_name)
         cache_dir = self.cache_path(uri)
         os.makedirs(cache_dir, exist_ok=True)
-        cache_path = op.join(cache_dir, record.pipeline_name + '.json')
-        record.save(cache_path)
+        cache_path = op.join(cache_dir, provenance.pipeline_name + '.json')
+        provenance.save(cache_path)
         # TODO: Should also save digest of prov.json to check to see if it
         #       has been altered remotely
         try:
@@ -396,7 +396,7 @@ class Xnat(Repository):
 
     def construct_dataset(self, dataset, **kwargs):
         """
-        Find all file_groups, fields and provenance records within an XNAT project
+        Find all file_groups, fields and provenance provenances within an XNAT project
 
         Parameters
         ----------
@@ -413,13 +413,13 @@ class Xnat(Repository):
             All the file_groups found in the repository
         fields : list[Field]
             All the fields found in the repository
-        records : list[Record]
-            The provenance records found in the repository
+        provenances : list[Provenance]
+            The provenance provenances found in the repository
         """
         # Add derived timepoint IDs to list of timepoint ids to filter
         file_groups = []
         fields = []
-        records = []
+        provenances = []
         project_id = dataset.name
         # Note we prefer the use of raw REST API calls here for performance
         # reasons over using XnatPy's data structures.
@@ -432,7 +432,7 @@ class Xnat(Repository):
             fsets, recs = self.find_derivatives(
                 project_json, project_uri, dataset, tree_level='per_dataset')
             file_groups.extend(fsets)
-            records.extend(recs)
+            provenances.extend(recs)
             # Get map of internal subject IDs to subject labels in project
             subject_xids_to_labels = {
                 s['ID']: s['label'] for s in self.login.get_json(
@@ -479,7 +479,7 @@ class Xnat(Repository):
                     session_json, session_uri, dataset, subject_id=subject_id,
                     timepoint_id=timepoint_id, tree_level='per_session')
                 file_groups.extend(fsets)
-                records.extend(recs)
+                provenances.extend(recs)
             # Get subject level resources and fields
             for subject_xid in subject_xids:
                 subject_id = subject_xids_to_labels[subject_xid]
@@ -493,8 +493,8 @@ class Xnat(Repository):
                     subject_json, subject_uri, dataset,
                     tree_level='per_subject', subject_id=subject_id)
                 file_groups.extend(fsets)
-                records.extend(recs)
-        return file_groups, fields, records
+                provenances.extend(recs)
+        return file_groups, fields, provenances
 
     def find_derivatives(self, node_json, node_uri, dataset, tree_level,
                          subject_id=None, timepoint_id=None, **kwargs):
@@ -505,7 +505,7 @@ class Xnat(Repository):
         except StopIteration:
             return [], []
         file_groups = []
-        records = []
+        provenances = []
         for d in resources_json:
             label = d['data_fields']['label']
             resource_uri = '{}/resources/{}'.format(node_uri, label)
@@ -521,7 +521,7 @@ class Xnat(Repository):
                     resource_name=d['data_fields']['format'], **kwargs))
             else:
                 # Download provenance JSON files and parse into
-                # records
+                # provenances
                 temp_dir = tempfile.mkdtemp()
                 try:
                     with tempfile.TemporaryFile() as temp_zip:
@@ -534,8 +534,8 @@ class Xnat(Repository):
                             if fname.endswith('.json'):
                                 pipeline_name = fname[:-len('.json')]
                                 json_path = op.join(base_dir, fname)
-                                records.append(
-                                    Record.load(
+                                provenances.append(
+                                    Provenance.load(
                                         pipeline_name,
                                         path=json_path,
                                         tree_level=tree_level,
@@ -544,7 +544,7 @@ class Xnat(Repository):
                                         namespace=namespace))
                 finally:
                     shutil.rmtree(temp_dir, ignore_errors=True)
-        return file_groups, records
+        return file_groups, provenances
 
     def find_fields(self, node_json, dataset, tree_level, subject_id=None,
                     timepoint_id=None, **kwargs):
@@ -747,7 +747,7 @@ class Xnat(Repository):
         Parameters
         ----------
         item : FileGroup | `str`
-            The file_group record that has been, or will be, cached
+            The file_group provenance that has been, or will be, cached
 
         Returns
         -------
@@ -777,7 +777,7 @@ class Xnat(Repository):
 
         Parameters
         ----------
-        item : FileGroup | Record
+        item : FileGroup | Provenance
             The item to generate a derived name for
 
         Returns

@@ -26,21 +26,21 @@ class DataItem():
 
     is_spec = False
 
-    def __init__(self, data_node, exists, record):
+    def __init__(self, data_node, exists, provenance):
         self._data_node = (
             weakref.ref(data_node) if data_node is not None else None)
         self.exists = exists
-        self._record = record
+        self._provenance = provenance
 
     def __eq__(self, other):
         return (self.data_node == other.data_node
                 and self.exists == other.exists
-                and self._record == other._record)
+                and self._provenance == other._provenance)
 
     def __hash__(self):
         return (hash(self.data_node)
                 ^ hash(self.exists)
-                ^ hash(self._record))
+                ^ hash(self._provenance))
 
     def find_mismatch(self, other, indent=''):
         sub_indent = indent + '  '
@@ -53,10 +53,10 @@ class DataItem():
             mismatch += ('\n{}exists: self={} v other={}'
                          .format(sub_indent, self.exists,
                                  other.exists))
-        if self._record != other._record:
-            mismatch += ('\n{}_record: self={} v other={}'
-                         .format(sub_indent, self._record,
-                                 other._record))
+        if self._provenance != other._provenance:
+            mismatch += ('\n{}_provenance: self={} v other={}'
+                         .format(sub_indent, self._provenance,
+                                 other._provenance))
         return mismatch
 
     # @property
@@ -64,8 +64,8 @@ class DataItem():
     #     return self.namespace is not None
 
     @property
-    def record(self):
-        return self._record
+    def provenance(self):
+        return self._provenance
 
     @property
     def data_node(self):
@@ -78,21 +78,21 @@ class DataItem():
         return data_node
         
 
-    @record.setter
-    def record(self, record):
-        if self.path not in record.outputs:
+    @provenance.setter
+    def provenance(self, provenance):
+        if self.path not in provenance.outputs:
             raise ArcanaNameError(
                 self.path,
-                "{} was not found in outputs {} of provenance record {}"
-                .format(self.path, record.outputs.keys(), record))
-        self._record = record
+                "{} was not found in outputs {} of provenance provenance {}"
+                .format(self.path, provenance.outputs.keys(), provenance))
+        self._provenance = provenance
 
     @property
-    def recorded_checksums(self):
-        if self.record is None:
+    def provenanceed_checksums(self):
+        if self.provenance is None:
             return None
         else:
-            return self._record.outputs[self.path]
+            return self._provenance.outputs[self.path]
 
     def initkwargs(self):
         dct = super().initkwargs()
@@ -121,15 +121,13 @@ class FileGroup(DataItem, FileGroupMixin):
         imaging session. Can be used to distinguish between scans with the
         same series description (e.g. multiple BOLD or T1w scans) in the same
         imaging sessions.
-    data_node : DataNode
-        The data node within a dataset that the file-group belongs to
     exists : bool
         Whether the file_group exists or is just a placeholder for a derivative
     checksums : dict[str, str]
-        A checksums of all files within the file_group in a dictionary sorted by
-        relative file paths
-    record : ..provenance.Record | None
-        The provenance record for the pipeline that generated the file-group,
+        A checksums of all files within the file_group in a dictionary sorted
+        bys relative file paths
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the file-group,
         if applicable
     resource_name : str | None
         For repositories where the name of the file format is saved with the
@@ -140,13 +138,15 @@ class FileGroup(DataItem, FileGroupMixin):
     local_path : str | None
         Path to the file-group on the local file system (i.e. cache for remote
         repositories)
+    data_node : DataNode
+        The data node within a dataset that the file-group belongs to
     """
 
     def __init__(self, path, format=None, aux_files=None, order=None, uri=None,
-                 exists=True, checksums=None, record=None, resource_name=None,
+                 exists=True, checksums=None, provenance=None, resource_name=None,
                  quality=None, local_path=None, data_node=None):
         FileGroupMixin.__init__(self, path=path, format=format)
-        DataItem.__init__(self, data_node, exists, record)
+        DataItem.__init__(self, data_node, exists, provenance)
         if aux_files is not None:
             if local_path is None:
                 raise ArcanaUsageError(
@@ -478,13 +478,13 @@ class Field(DataItem, FieldMixin):
         The data node that the field belongs to
     exists : bool
         Whether the field exists or is just a placeholder for a derivative
-    record : ..provenance.Record | None
-        The provenance record for the pipeline that generated the field,
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the field,
         if applicable
     """
 
     def __init__(self, path, value=None, dtype=None, array=None,
-                 data_node=None, exists=True, record=None):
+                 data_node=None, exists=True, provenance=None):
         # Try to determine dtype and array from value if they haven't
         # been provided.
         if value is None:
@@ -521,7 +521,7 @@ class Field(DataItem, FieldMixin):
                 else:
                     value = dtype(value)
         FieldMixin.__init__(self, path, dtype, array)
-        DataItem.__init__(self, data_node, exists, record)
+        DataItem.__init__(self, data_node, exists, provenance)
         self._value = value
 
     def __eq__(self, other):
@@ -650,8 +650,8 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         datasets where this isn't stored (i.e. Local), id can be None
     data_node : DataNode
         The data node that the field belongs to
-    record : ..provenance.Record | None
-        The provenance record for the pipeline that generated the file-group,
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the file-group,
         if applicable
     resource_uris : Dict[str, str] | None
         For repositories where the name of the file format is saved with the
@@ -665,8 +665,8 @@ class MultiFormatFileGroup(DataItem, DataMixin):
     """
 
     def __init__(self, path, order=None, resource_uris=None, quality=None,
-                 local_paths=None, record=None, data_node=None):
-        DataItem.__init__(self, data_node, True, record)
+                 local_paths=None, provenance=None, data_node=None):
+        DataItem.__init__(self, data_node, True, provenance)
         DataMixin.__init__(self, path=path)
         if local_paths is not None:
             local_paths = [op.abspath(op.realpath(p)) for p in local_paths]
@@ -772,62 +772,62 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         raise ArcanaNoMatchingFileFormatError(error_msg)
 
 
-class Record(object):
+class Provenance(object):
     """
     A representation of the information required to describe the provenance of
-    analysis derivatives. Records the provenance information relevant to a
+    analysis derivatives. Provenances the provenance information relevant to a
     specific session, i.e. the general configuration of the pipeline and file
     checksums|field values of the pipeline inputs used to derive the outputs in
-    a given session (or timepoint, subject, analysis summary). It also records
+    a given session (or timepoint, subject, analysis summary). It also provenances
     the checksums|values of the outputs in order to detect if they have been
     altered outside of Arcana's management (e.g. manual QC/correction)
 
     Parameters
     ----------
     path : str
-        Name of the pipeline the record corresponds to
+        Name of the pipeline the provenance corresponds to
     namespace : str
-        Name of the analysis that the record was generated by
-    prov : dict[str, *]
-        A dictionary containing the provenance recorded/to record
+        Name of the analysis that the provenance was generated by
+    dct : dict[str, *]
+        A dictionary containing the provenance record
     """
-
-    # For duck-typing with FileGroups and Fields
-    derived = True
 
     PROVENANCE_VERSION = '1.0'
 
-    def __init__(self, path, prov, data_node):
-        self.prov = deepcopy(prov)
+    def __init__(self, path, dct, data_node):
+        self._dct = deepcopy(dct)
         self.path = path
         self.data_node = data_node
-        if 'datetime' not in self.prov:
-            self._prov['datetime'] = datetime.now().isoformat()
+        if 'datetime' not in self._dct:
+            self._dct['datetime'] = datetime.now().isoformat()
 
     def __repr__(self):
         return ("{}(path={}, data_node={})"
                 .format(type(self).__name__, self.path, self.data_node))
 
     def __eq__(self, other):
-        return (self.prov == other.prov
+        return (self._dct == other._dct
                 and self.path == other.path
                 and self.data_node == other.data_node)
 
+    def __getitem__(self, key):
+        return self._dct[key]
+
     @property
     def inputs(self):
-        return self.prov['inputs']
+        return self._dct['inputs']
 
     @property
     def outputs(self):
-        return self.prov['outputs']
+        return self._dct['outputs']
 
     @property
     def datetime(self):
-        return self.prov['datetime']
+        return self._dct['datetime']
 
     @property
-    def provenance_version(self):
-        return self.prov[self.PROVENANCE_VERSION]
+    def version(self):
+        return self._dct[self.PROVENANCE_VERSION]
 
     def save(self, local_path):
         """
@@ -853,11 +853,11 @@ class Record(object):
         """
         with open(local_path, 'w') as f:
             try:
-                json.dump(self.prov, f, indent=2)
+                json.dump(self._dct, f, indent=2)
             except TypeError:
                 raise ArcanaError(
-                    "Could not serialise provenance record dictionary:\n{}"
-                    .format(pformat(self.prov)))
+                    "Could not serialise provenance provenance dictionary:\n{}"
+                    .format(pformat(self._dct)))
 
     @classmethod
     def load(cls, path, local_path, data_node):
@@ -873,12 +873,12 @@ class Record(object):
 
         Returns
         -------
-        record : Record
-            The loaded provenance record
+        provenance : Provenance
+            The loaded provenance provenance
         """
         with open(local_path) as f:
             prov = json.load(f)
-        return Record(path, prov, data_node)
+        return Provenance(path, prov, data_node)
 
     def mismatches(self, other, include=None, exclude=None):
         """

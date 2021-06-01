@@ -3,7 +3,7 @@ import os.path as op
 import logging
 import json
 from arcana2.data import FileGroup, Field
-from ..item import Record
+from ..item import Provenance
 from arcana2.exceptions import (
     ArcanaRepositoryError)
 from arcana2.utils import split_extension
@@ -88,12 +88,12 @@ class XnatCS(Xnat):
             All the file_groups found in the repository
         fields : list[Field]
             All the fields found in the repository
-        records : list[Record]
-            The provenance records found in the repository
+        provenances : list[Provenance]
+            The provenance provenances found in the repository
         """
         all_file_groups = []
         all_fields = []
-        all_records = []
+        all_provenances = []
 
         project_id = dataset.name
 
@@ -184,11 +184,11 @@ class XnatCS(Xnat):
                         " not in analysis-specific sub-directory)")
                 base_prov_dir = op.join(session_path, self.PROV_DIR)
                 for fname in os.listdir(base_prov_dir):
-                    all_records.append(Record.load(
+                    all_provenances.append(Provenance.load(
                         split_extension(fname)[0],
                         tree_level, subj_id, timepoint_id, namespace,
                         op.join(base_prov_dir, fname)))
-        return all_file_groups, all_fields, all_records
+        return all_file_groups, all_fields, all_provenances
 
     def file_group_path(self, item, dataset=None, fname=None):
         pass
@@ -197,11 +197,11 @@ class XnatCS(Xnat):
         return self.file_group_path(field, fname=self.FIELDS_FNAME,
                                  dataset=dataset)
 
-    def prov_json_path(self, record, dataset):
-        return self.file_group_path(record,
+    def prov_json_path(self, provenance, dataset):
+        return self.file_group_path(provenance,
                                  dataset=dataset,
                                  fname=op.join(self.PROV_DIR,
-                                               record.pipeline_name + '.json'))
+                                               provenance.pipeline_name + '.json'))
 
     @classmethod
     def make_command_json(cls, image_name, analysis_cls, inputs, outputs,

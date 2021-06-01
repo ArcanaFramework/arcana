@@ -8,7 +8,7 @@ import logging
 import json
 from fasteners import InterProcessLock
 from arcana2.data import FileGroup, Field
-from arcana2.data.item import Record
+from arcana2.data.item import Provenance
 from arcana2.exceptions import (
     ArcanaError, ArcanaUsageError,
     ArcanaRepositoryError,
@@ -172,11 +172,11 @@ class FileSystemDir(Repository):
             with open(fpath, 'w') as f:
                 json.dump(dct, f, indent=2)
 
-    def put_record(self, record, dataset):
-        fpath = self.prov_json_path(record, dataset)
+    def put_provenance(self, provenance, dataset):
+        fpath = self.prov_json_path(provenance, dataset)
         if not op.exists(op.dirname(fpath)):
             os.mkdir(op.dirname(fpath))
-        record.save(fpath)
+        provenance.save(fpath)
 
     # root_dir=None, all_namespace=None,
     def construct_dataset(self, dataset, **kwargs):
@@ -192,7 +192,7 @@ class FileSystemDir(Repository):
         """
         all_file_groups = []
         all_fields = []
-        all_records = []
+        all_provenances = []
         # if root_dir is None:
         root_dir = dataset.name
         for session_path, dirs, files in os.walk(root_dir):
@@ -273,11 +273,11 @@ class FileSystemDir(Repository):
                         " not in analysis-specific sub-directory)")
                 base_prov_dir = op.join(session_path, self.PROV_DIR)
                 for fname in os.listdir(base_prov_dir):
-                    all_records.append(Record.load(
+                    all_provenances.append(Provenance.load(
                         split_extension(fname)[0],
                         tree_level, subj_id, timepoint_id, namespace,
                         op.join(base_prov_dir, fname)))
-        return all_file_groups, all_fields, all_records
+        return all_file_groups, all_fields, all_provenances
 
     def _extract_ids_from_path(self, depth, path_parts, dirs, files):
         path_depth = len(path_parts)
@@ -366,11 +366,11 @@ class FileSystemDir(Repository):
         return self.file_group_path(field, fname=self.FIELDS_FNAME,
                                  dataset=dataset)
 
-    def prov_json_path(self, record, dataset):
-        return self.file_group_path(record,
+    def prov_json_path(self, provenance, dataset):
+        return self.file_group_path(provenance,
                                  dataset=dataset,
                                  fname=op.join(self.PROV_DIR,
-                                               record.pipeline_name + '.json'))
+                                               provenance.pipeline_name + '.json'))
 
     @classmethod
     def guess_depth(cls, root_dir):

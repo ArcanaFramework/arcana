@@ -220,8 +220,8 @@ class TestMultiSubjectOnXnatMixin(CreateXnatProjectMixin):
                         field = copy(field)
                         field._dataset = temp_dataset
                         field.put()
-                for record in node.records:
-                    temp_dataset.put_record(record)
+                for provenance in node.provenances:
+                    temp_dataset.put_provenance(provenance)
 
     def tearDown(self):
         self._clean_up()

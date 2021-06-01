@@ -8,7 +8,7 @@ from typing import Sequence
 from copy import copy
 from arcana2.utils import ExitStack, PATH_SUFFIX, FIELD_SUFFIX, CHECKSUM_SUFFIX
 from arcana2.exceptions import ArcanaError, ArcanaDesignError
-from ..item import Record
+from ..item import Provenance
 from ..dataset import Dataset
 
 import logging
@@ -161,16 +161,16 @@ class Repository(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_record(self, record, dataset):
+    def put_provenance(self, provenance, dataset):
         """
-        Inserts a provenance record into a data node
+        Inserts a provenance provenance into a data node
 
         Parameters
         ----------
-        record : prov.Record
-            The record to insert into the repository
+        provenance : prov.Provenance
+            The provenance to insert into the repository
         dataset : Dataset
-            The dataset to put the record into
+            The dataset to put the provenance into
         """
 
     def source(dataset_name, data_columns, tree_level):
@@ -334,15 +334,15 @@ class Repository(metaclass=ABCMeta):
                     continue  # skip the upload for this field
                 field.value = value  # Push to repository
                 output_checksums[field.name] = field.value
-            # Add input and output checksums to provenance record and sink to
+            # Add input and output checksums to provenance provenance and sink to
             # all repositories that have received data (typically only one)
             prov = copy(self._prov)
             prov['inputs'] = input_checksums
             prov['outputs'] = output_checksums
-            record = Record(self._pipeline_name, self.tree_level, subject_id,
+            provenance = Provenance(self._pipeline_name, self.tree_level, subject_id,
                             timepoint_id, self._namespace, prov)
             for dataset in self.datasets:
-                dataset.put_record(record)
+                dataset.put_provenance(provenance)
         if missing_inputs:
             raise ArcanaDesignError(
                 "Required derivatives '{}' to were not created by upstream "
@@ -618,15 +618,15 @@ class RepositorySink(RepositoryInterface):
                     continue  # skip the upload for this field
                 field.value = value  # Push to repository
                 output_checksums[field.name] = field.value
-            # Add input and output checksums to provenance record and sink to
+            # Add input and output checksums to provenance provenance and sink to
             # all repositories that have received data (typically only one)
             prov = copy(self._prov)
             prov['inputs'] = input_checksums
             prov['outputs'] = output_checksums
-            record = Record(self._pipeline_name, self.tree_level, subject_id,
+            provenance = Provenance(self._pipeline_name, self.tree_level, subject_id,
                             timepoint_id, self._namespace, prov)
             for dataset in self.datasets:
-                dataset.put_record(record)
+                dataset.put_provenance(provenance)
         if missing_inputs:
             raise ArcanaDesignError(
                 "Required derivatives '{}' to were not created by upstream "
