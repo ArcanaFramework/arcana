@@ -143,8 +143,9 @@ class FileGroup(DataItem, FileGroupMixin):
     """
 
     def __init__(self, path, format=None, aux_files=None, order=None, uri=None,
-                 exists=True, checksums=None, provenance=None, resource_name=None,
-                 quality=None, local_path=None, data_node=None):
+                 exists=True, checksums=None, provenance=None,
+                 resource_name=None, quality=None, local_path=None,
+                 data_node=None):
         FileGroupMixin.__init__(self, path=path, format=format)
         DataItem.__init__(self, data_node, exists, provenance)
         if aux_files is not None:
