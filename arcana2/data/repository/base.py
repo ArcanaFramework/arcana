@@ -8,8 +8,8 @@ from typing import Sequence
 from copy import copy
 from arcana2.utils import ExitStack, PATH_SUFFIX, FIELD_SUFFIX, CHECKSUM_SUFFIX
 from arcana2.exceptions import ArcanaError, ArcanaDesignError
-from ..provenance import Record
-from ..set import Dataset
+from ..item import Record
+from ..dataset import Dataset
 
 import logging
 
@@ -66,15 +66,11 @@ class Repository(metaclass=ABCMeta):
         ----------
         name : str
             The name, path or ID of the dataset within the repository
-        subject_ids : list[str]
-            The list of subjects to include in the dataset
-        timepoint_ids : list[str]
-            The list of timepoints to include in the dataset
         """
         return Dataset(name, repository=self, **kwargs)
 
     @abstractmethod
-    def find_data(self, dataset, subject_ids=None, timepoint_ids=None, **kwargs):
+    def construct_dataset(self, dataset, ids=None, **kwargs):
         """
         Find all data within a repository, registering file_groups, fields and
         provenance with the found_file_group, found_field and found_provenance
@@ -84,21 +80,9 @@ class Repository(metaclass=ABCMeta):
         ----------
         dataset : Dataset
             The dataset to return the data for
-        subject_ids : list(str)
+        ids : Dict[DataFrequency, str]
             List of subject IDs with which to filter the tree with. If
             None all are returned
-        timepoint_ids : list(str)
-            List of timepoint IDs with which to filter the tree with. If
-            None all are returned
-
-        Returns
-        -------
-        file_groups : list[FileGroup]
-            All the file_groups found in the repository
-        fields : list[Field]
-            All the fields found in the repository
-        records : list[Record]
-            The provenance records found in the repository
         """
 
     @abstractmethod
@@ -179,8 +163,7 @@ class Repository(metaclass=ABCMeta):
     @abstractmethod
     def put_record(self, record, dataset):
         """
-        Inserts a provenance record into a session or subject|timepoint|analysis
-        summary
+        Inserts a provenance record into a data node
 
         Parameters
         ----------

@@ -50,17 +50,12 @@ class DataMatcher():
                     matches.append(self.match_node(node, **kwargs))
                 except ArcanaInputMissingMatchError as e:
                     if self._fallback is not None:
-                        matches.append(self._fallback.column.item(
-                            subject_id=node.subject_id,
-                            timepoint_id=node.timepoint_id))
+                        matches.append(self._fallback.column.item(**node.ids))
                     elif self.skip_missing:
                         # Insert a non-existant item placeholder in-place of
                         # the the missing item
                         matches.append(item_cls(
                             self.path,
-                            frequency=self.frequency,
-                            subject_id=node.subject_id,
-                            timepoint_id=node.timepoint_id,
                             dataset=self.analysis.dataset,
                             exists=False,
                             **self._specific_kwargs))
@@ -120,8 +115,8 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     is_regex : bool
         Flags whether the path is a regular expression or not
     frequency : DataFrequency
-        The frequency that the items occur in the dataset, i.e. 
-        per 'session', 'subject', 'timepoint', 'group_timepoint', 'group' or 'dataset'
+        The frequency of the file-group within the dataset tree, e.g. per
+        'session', 'subject', 'timepoint', 'group', 'dataset'
     order : int | None
         To be used to distinguish multiple file_groups that match the
         path in the same session. The order of the file_group within the
@@ -144,9 +139,8 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     """
 
     is_spec = False
-    ColumnClass = FileGroupColumn
 
-    def __init__(self, path=None, format=None, frequency=DataFrequency.session, 
+    def __init__(self, path=None, format=None, frequency=None, 
                  order=None, metadata=None, is_regex=False,
                  acceptable_quality=None):
         FileGroupMixin.__init__(self, None, frequency)
@@ -293,8 +287,8 @@ class FieldMatcher(DataMatcher, FieldMixin):
     is_regex : bool
         Flags whether the path is a regular expression or not
     frequency : DataFrequency
-        The frequency that the items occur in the dataset, i.e. 
-        per 'session', 'subject', 'timepoint', 'group_timepoint', 'group' or 'dataset'
+        The frequency of the field within the dataset tree, e.g. per
+        'session', 'subject', 'timepoint', 'group', 'dataset'
     order : int | None
         To be used to distinguish multiple file_groups that match the
         path in the same session. The order of the file_group within the

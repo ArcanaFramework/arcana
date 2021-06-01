@@ -1,5 +1,4 @@
-from .xnat import XnatRepo
-from .xnat_cs import XnatCSRepo
-from .local import LocalFileSystemRepo
-from .dataset import Dataset
-from .tree import DataTree, Subject, Visit, Session
+from .base import Repository
+from .xnat import Xnat
+from .xnat_cs import XnatCS
+from .file_system_dir import FileSystemDir

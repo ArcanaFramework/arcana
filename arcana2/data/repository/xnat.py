@@ -19,7 +19,7 @@ from .base import Repository
 from arcana2.exceptions import (
     ArcanaError, ArcanaUsageError, ArcanaFileFormatError,
     ArcanaRepositoryError, ArcanaWrongRepositoryError)
-from ..provenance import Record
+from ..item import Record
 from arcana2.utils import dir_modtime, get_class_info, parse_value
 from ..dataset import Dataset
 
@@ -33,67 +33,7 @@ RELEVANT_DICOM_TAG_TYPES = set(('UI', 'CS', 'DA', 'TM', 'SH', 'LO',
                                 'PN', 'ST', 'AS'))
 
 
-class XnatDataset(Dataset):
-    """
-    A representation of an XNAT "dataset" (project), the complete collection of
-    data (file-sets and fields) to be used in an analysis.
-
-    Parameters
-    ----------
-    name : str
-        The name/id/path that uniquely identifies the datset within the
-        repository it is stored
-    repository : Repository
-        The repository the dataset belongs to
-    subject_label_format : str
-        A string used to generate the subject label from project and
-        subject IDs, e.g. "{project}_{subject}"
-    session_label_format : str
-        A string used to generate the session label from project and
-        subject and timepoint IDs, e.g. "{project}_{subject}_{timepoint}"
-    subject_ids : list[str]
-        Subject IDs to be included in the analysis. All other subjects are
-        ignored
-    timepoint_ids : list[str]
-        Visit IDs to be included in the analysis. All other timepoints are ignored
-    fill_tree : bool
-        Whether to fill the tree of the destination repository with the
-        provided subject and/or timepoint IDs. Intended to be used when the
-        destination repository doesn't contain any of the the input
-        file_groups/fields (which are stored in external repositories) and
-        so the sessions will need to be created in the destination
-        repository.
-    depth : int (0|1|2)
-        The depth of the dataset (i.e. whether it has subjects and sessions).
-            0 -> single session
-            1 -> multiple subjects
-            2 -> multiple subjects and timepoints
-    subject_id_map : dict[str, str]
-        Maps subject IDs in dataset to a global name-space
-    timepoint_id_map : dict[str, str]
-        Maps timepoint IDs in dataset to a global name-space
-    """
-
-    def __init__(self, name, repository, subject_label_format="{subject}",
-                 session_label_format="{subject}_{timepoint}", **kwargs):
-        super().__init__(name, repository, **kwargs)
-        self.subject_label_format = subject_label_format
-        self.session_label_format = session_label_format
-
-    def subject_label(self, subject_id):
-        return self.subject_label_format.format(
-            project=self.name,
-            subject=self.inv_map_subject_id(subject_id))
-
-
-    def session_label(self, subject_id, timepoint_id):
-        return self.session_label_format.format(
-            project=self.name,
-            subject=self.inv_map_subject_id(subject_id),
-            timepoint=self.inv_map_timepoint_id(timepoint_id))
-
-
-class XnatRepo(Repository):
+class Xnat(Repository):
     """
     A 'Repository' class for XNAT repositories
 
@@ -109,6 +49,14 @@ class XnatRepo(Repository):
         Username with which to connect to XNAT with
     password : str
         Password to connect to the XNAT repository with
+    id_maps : Dict[DataFrequency, Dict[DataFrequency, str]]
+        A dictionary of dictionaries that is used to extract IDs from
+        subject and session labels. Keys of the outer dictionary correspond to
+        the frequency to extract (typically group and/or subject) and the keys
+        of the inner dictionary the frequency to extract from (i.e.
+        participant or session). The values of the inner dictionary are regular
+        expression patterns that match the ID to extract in the 'ID' regular
+        expression group.
     check_md5 : bool
         Whether to check the MD5 digest of cached files before using. This
         checks for updates on the server since the file was cached
@@ -131,8 +79,8 @@ class XnatRepo(Repository):
     PROV_RESOURCE = 'PROVENANCE__'
     depth = 2
 
-    def __init__(self, server, cache_dir, user=None,
-                 password=None, check_md5=True, race_cond_delay=30,
+    def __init__(self, server, cache_dir, user=None, password=None,
+                 id_maps=None, check_md5=True, race_cond_delay=30,
                  session_filter=None):
         super().__init__()
         if not isinstance(server, str):
@@ -143,6 +91,7 @@ class XnatRepo(Repository):
         makedirs(self.cache_dir, exist_ok=True)
         self.user = user
         self.password = password
+        self.id_maps = id_maps
         self._race_cond_delay = race_cond_delay
         self.check_md5 = check_md5
         self.session_filter = session_filter
@@ -220,39 +169,6 @@ class XnatRepo(Repository):
     def disconnect(self):
         self.login.disconnect()
         self._login = None
-
-    def dataset(self, name, **kwargs):
-        """
-        Returns a dataset from the XNAT repository
-
-        Parameters
-        ----------
-        name : str
-            The name, path or ID of the dataset within the repository
-        subject_label_format : str
-            A string used to generate the subject label from project and
-            subject IDs, e.g. "{project}_{subject}"
-        session_label_format : str
-            A string used to generate the session label from project and
-            subject and timepoint IDs, e.g. "{project}_{subject}_{timepoint}"
-        subject_ids : list[str]
-            Subject IDs to be included in the analysis. All other subjects are
-            ignored
-        timepoint_ids : list[str]
-            Visit IDs to be included in the analysis. All other timepoints are ignored
-        fill_tree : bool
-            Whether to fill the tree of the destination repository with the
-            provided subject and/or timepoint IDs. Intended to be used when the
-            destination repository doesn't contain any of the the input
-            file_groups/fields (which are stored in external repositories) and
-            so the sessions will need to be created in the destination
-            repository.
-        subject_id_map : dict[str, str]
-            Maps subject IDs in dataset to a global name-space
-        timepoint_id_map : dict[str, str]
-            Maps timepoint IDs in dataset to a global name-space
-        """
-        return XnatDataset(name, repository=self, depth=2, **kwargs)
 
     def get_file_group(self, file_group):
         """
@@ -478,7 +394,7 @@ class XnatRepo(Repository):
             checksums['.'] = checksums.pop(primary)
         return checksums
 
-    def find_data(self, dataset, subject_ids=None, timepoint_ids=None, **kwargs):
+    def construct_dataset(self, dataset, **kwargs):
         """
         Find all file_groups, fields and provenance records within an XNAT project
 

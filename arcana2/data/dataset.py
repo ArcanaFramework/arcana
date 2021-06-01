@@ -25,7 +25,10 @@ class Dataset():
         repository it is stored
     repository : Repository
         The repository the dataset is stored into. Can be the local file
-        system by providing a FileSystem repo.
+        system by providing a FileSystemDir repo.
+    frequency_cls : type
+        The enum that describes the tree structure of the dataset. See
+        `arcana2.data.enum.DataFrequency`.
     include_ids : Dict[str, List[str]]
         The IDs to be included in the dataset for each frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed

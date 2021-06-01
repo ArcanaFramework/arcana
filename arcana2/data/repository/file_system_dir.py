@@ -8,7 +8,7 @@ import logging
 import json
 from fasteners import InterProcessLock
 from arcana2.data import FileGroup, Field
-from arcana2.data.provenance import Record
+from arcana2.data.item import Record
 from arcana2.exceptions import (
     ArcanaError, ArcanaUsageError,
     ArcanaRepositoryError,
@@ -21,33 +21,45 @@ from .base import Repository
 logger = logging.getLogger('arcana')
 
 
-class FileSystem(Repository):
+class FileSystemDir(Repository):
     """
-    A 'Repository' class for data stored simply in file-system
-    directories. Can be a single directory if it contains only one subject
-    and timepoint, otherwise if sub-directories are present (that aren't
-    recognised as single file_groups) then they are assumed to be
-    separate subjects. For multi-timepoint datasets an additional
-    layer of sub-directories for each timepoint is required within each
-    subject sub-directory.
+    A Repository class for data stored hierarchically within sub-directories
+    of a file-system directory. The depth and which layer in the data tree
+    the sub-directories correspond to is defined by the `layers` argument.
+
+    Parameters
+    ----------
+    base_dir : str
+        Path to the base directory of the "repository", i.e. datasets are
+        arranged by name as sub-directories of the base dir.
+    layers : List[DataFrequency]
+        The layers that each sub-directory corresponds to in the data tree.
+        For example, [Clinical.group, Clinical.subject, Clinical.timepoint]
+        would specify a 3-level directory structure, with the first level
+        sorting by study group, the second by subject ID and the last level
+        the timepoint. Alternatively, [Clinical.subject, Clinical.group]
+        would specify a 2-level structure where participant data is organised
+        into matching subjects (e.g. across test & control groups) first.
     """
 
-    type = 'directory'
+    type = 'file_system_dir'
     SUMMARY_NAME = '__ALL__'
     FIELDS_FNAME = 'fields.json'
     PROV_DIR = '__prov__'
     LOCK_SUFFIX = '.lock'
-    DEFAULT_SUBJECT_ID = 'SUBJECT'
-    DEFAULT_VISIT_ID = 'VISIT'
-    MAX_DEPTH = 2
-    POSSIBLE_LEVELS = ('group', 'subject', 'timepoint')
+
+    def __init__(self, base_dir, layers):
+        self.base_dir = base_dir
+        self.layers = layers
 
     def __repr__(self):
-        return "{}()".format(type(self).__name__)
+        return (f"{type(self).__name__}(base_dir={self.base_dir}, "
+                f"layers={self.layers})")
 
     def __eq__(self, other):
         try:
-            return self.type == other.type and self.root_dir == other.root_dir
+            return (self.layers == other.layers
+                    and self.base_dir == other.base_dir)
         except AttributeError:
             return False
 
@@ -55,7 +67,9 @@ class FileSystem(Repository):
     def prov(self):
         return {
             'type': get_class_info(type(self)),
-            'host': HOSTNAME}
+            'host': HOSTNAME,
+            'base_dir': self.base_dir,
+            'layers': [str(l) for l in self.layers]}
 
     def __hash__(self):
         return hash(self.type)
@@ -165,7 +179,7 @@ class FileSystem(Repository):
         record.save(fpath)
 
     # root_dir=None, all_namespace=None,
-    def find_data(self, dataset, subject_ids=None, timepoint_ids=None, **kwargs):
+    def construct_dataset(self, dataset, **kwargs):
         """
         Find all data within a repository, registering file_groups, fields and
         provenance with the found_file_group, found_field and found_provenance
@@ -173,27 +187,8 @@ class FileSystem(Repository):
 
         Parameters
         ----------
-        subject_ids : list(str)
-            List of subject IDs with which to filter the tree with. If
-            None all are returned
-        timepoint_ids : list(str)
-            List of timepoint IDs with which to filter the tree with. If
-            None all are returned
-        root_dir : str
-            The root dir to use instead of the 'name' (path) of the dataset.
-            Only for use in sub-classes (e.g. BIDS)
-        all_namespace : str
-            Global 'namespace' to be applied to every found item.
-            Only for use in sub-classes (e.g. BIDS)
-
-        Returns
-        -------
-        file_groups : list[FileGroup]
-            All the file_groups found in the repository
-        fields : list[Field]
-            All the fields found in the repository
-        records : list[Record]
-            The provenance records found in the repository
+        dataset : Dataset
+            The dataset to construct the tree structure for
         """
         all_file_groups = []
         all_fields = []

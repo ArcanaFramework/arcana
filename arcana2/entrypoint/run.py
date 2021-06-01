@@ -51,7 +51,7 @@ class BaseRunCmd(BaseRepoCmd):
                   "repository"))
         parser.add_argument(
             '--ids', nargs='+', default=None, metavar='ID',
-            help=("The IDs (group, subject, timepoint or session) to include in "
+            help=("The IDs to include in "
                   "the analysis. If a single value with a '/' is provided "
                   "then it is interpreted as a text file containing a list "
                   "of IDs"))
@@ -192,27 +192,28 @@ class BaseRunCmd(BaseRepoCmd):
         The criteria used to match the file-group (e.g. scan) in the
         repository follows the PATH arg in the following order:
 
-            pattern    - regular expression (in Python syntax) of
+            pattern   - regular expression (in Python syntax) of
                         file-group or field name
-            format     - the name or extension of the file-format the
+            format    - the name or extension of the file-format the
                         input is required in. Implicit conversions will
                         be attempted when required. The default is
                         'niftix_gz', which is the g-zipped NIfTI image file
                         + JSON side-car required for BIDS
-            order      - the order of the scan in the session to select
+            order     - the order of the scan in the session to select
                         if more than one match the other criteria. E.g.
                         an order of '2' with a pattern of '.*bold.*' could
                         match the second T1-weighted scan in the session
-            quality    - the minimum usuable quality to be considered.
+            quality   - the minimum usuable quality to be considered.
                         Can be one of 'usable', 'questionable' or
                         'unusable'
-            metadata   - semicolon-separated list of metadata values
+            metadata  - semicolon-separated list of metadata values
                         in NAME:VALUE form. For DICOM headers
                         NAME is the numeric values of the DICOM tag, e.g
                         (0008,0008) -> 00080008
-            tree_level  - The tree_level of the file-group within the dataset.
-                        Can be either 'dataset', 'group', 'subject', 'timepoint'
-                        or 'session'. Typically only required for
+            frequency - The frequency of the file-group within the dataset.
+                        Can be either 'dataset', 'group', 'subject',
+                        'timepoint', 'session', 'participant', 'group_visit' or
+                        'subject_timepoint'. Typically only required for
                         derivatives
 
         Trailing args can be dropped if default, 
@@ -257,7 +258,8 @@ class RunAppCmd():
         parser.add_argument(
             '--tree_level', '-f', default='session',
             help=("The level at which the analysis is performed. One of (per) "
-                  "dataset, group, subject, timepoint, group_timepoint or session"))        
+                  "dataset, group, subject, timepoint, group_timepoint or "
+                  "session"))        
         super().construct_parser(parser)
         parser.add_argument(
             '--app_arg', '-a', nargs=2, metavar=('NAME', 'VAL'),
@@ -318,16 +320,6 @@ class RunAppCmd():
                         f"cannot be converted to type {arg_spec[1]}") 
             app_args[name] = val
         return app_args
-
-    @classmethod
-    def parse_tree_level(cls, args):
-        valid_frequencies = ('dataset', 'group', 'subject', 'timepoint',
-                             'subject_timepoint', 'session')
-        if args.tree_level not in valid_frequencies:
-            raise ArcanaUsageError(
-                f"Unrecognised tree_level '{args.tree_level}' "
-                f"(valid: {valid_frequencies})")
-        return 'per_' + args.tree_level
 
     @classmethod
     def app_name(cls, args):

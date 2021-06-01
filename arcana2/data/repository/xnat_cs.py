@@ -3,12 +3,12 @@ import os.path as op
 import logging
 import json
 from arcana2.data import FileGroup, Field
-from ..provenance import Record
+from ..item import Record
 from arcana2.exceptions import (
     ArcanaRepositoryError)
 from arcana2.utils import split_extension
 from arcana2.exceptions import ArcanaUsageError
-from .xnat import XnatRepo
+from .xnat import Xnat
 
 
 logger = logging.getLogger('arcana2')
@@ -20,7 +20,7 @@ COMMAND_INPUT_TYPES = {
     float: 'number'}
 
 
-class XnatCSRepo(XnatRepo):
+class XnatCS(Xnat):
     """
     A 'Repository' class for data stored within a XNAT repository and accessed
     via the XNAT container service.

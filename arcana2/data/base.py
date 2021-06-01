@@ -66,8 +66,8 @@ class FileGroupMixin(DataMixin):
         The file format used to store the file_group. Can be one of the
         recognised formats
     frequency : DataFrequency
-        The level within the dataset tree that the file group sits, i.e. 
-        per 'session', 'subject', 'timepoint', 'group_timepoint', 'group' or 'dataset'
+        The frequency of the field within the dataset tree, e.g. per
+        'session', 'subject', 'timepoint', 'group', 'dataset'
     """
 
     is_file_group = True
@@ -112,8 +112,8 @@ class FieldMixin(DataMixin):
     dtype : type
         The datatype of the value. Can be one of (float, int, str)
     frequency : DataFrequency
-        The level within the dataset tree that the field sits, i.e. 
-        per 'session', 'subject', 'timepoint', 'group_timepoint', 'group' or 'dataset'
+        The frequency of the field within the dataset tree, e.g. per
+        'session', 'subject', 'timepoint', 'group', 'dataset'
     array : bool
         Whether the field contains scalar or array data
     """
