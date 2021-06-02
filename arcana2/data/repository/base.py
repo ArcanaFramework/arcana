@@ -60,7 +60,7 @@ class Repository(metaclass=ABCMeta):
     def standardise_name(self, name):
         return name
 
-    def mapped_ids(self, ids):
+    def map_ids(self, ids):
         if callable(self.id_maps):
             return self.id_maps(ids)
         ids = copy(ids)

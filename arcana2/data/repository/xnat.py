@@ -1,5 +1,5 @@
 import os
-import os.name_path as op
+import os.path as op
 import tempfile
 import stat
 from glob import glob
@@ -8,6 +8,7 @@ import logging
 import errno
 import json
 import re
+from copy import copy
 from zipfile import ZipFile, BadZipfile
 import shutil
 from tqdm import tqdm
@@ -25,6 +26,7 @@ from ..dataset import Dataset
 from ..enum import Clinical
 
 
+
 logger = logging.getLogger('arcana2')
 
 special_char_re = re.compile(r'[^a-zA-Z_0-9]')
@@ -33,6 +35,17 @@ tag_parse_re = re.compile(r'\((\d+),(\d+)\)')
 RELEVANT_DICOM_TAG_TYPES = set(('UI', 'CS', 'DA', 'TM', 'SH', 'LO',
                                 'PN', 'ST', 'AS'))
 
+def default_id_map(self, ids):
+    ids = copy(ids)
+    try:
+        ids[Clinical.member] = ids[Clinical.subject]
+    except KeyError:
+        pass
+    try:
+        ids[Clinical.timepoint] = ids[Clinical.session]
+    except KeyError:
+        pass
+    return ids
 
 class Xnat(Repository):
     """
@@ -83,7 +96,7 @@ class Xnat(Repository):
 
     def __init__(self, server, cache_dir, user=None, password=None,
                  check_md5=True, race_cond_delay=30,
-                 session_filter=None, id_maps=None):
+                 session_filter=None, id_maps=default_id_map):
         super().__init__(id_maps)
         if not isinstance(server, str):
             raise ArcanaUsageError(
@@ -178,8 +191,8 @@ class Xnat(Repository):
 
     def get_file_group(self, file_group):
         """
-        Caches a single file_group (if the 'cache_name_path' attribute is accessed
-        and it has not been previously cached for example)
+        Caches a single file_group (if the 'cache_path' attribute is
+        accessed and it has not been previously cached for example)
 
         Parameters
         ----------
@@ -220,12 +233,12 @@ class Xnat(Repository):
             # consistency with other locations where it is set and to keep the
             # cache name_path consistent
             file_group.uri = base_uri + '/resources/' + xresource.label
-            cache_name_path = self.cache_name_path(file_group)
+            cache_path = self.cache_path(file_group)
             need_to_download = True
-            if op.exists(cache_name_path):
+            if op.exists(cache_path):
                 if self.check_md5:
                     try:
-                        with open(cache_name_path + self.MD5_SUFFIX, 'r') as f:
+                        with open(cache_path + self.MD5_SUFFIX, 'r') as f:
                             cached_checksums = json.load(f)
                     except IOError:
                         pass
@@ -237,7 +250,7 @@ class Xnat(Repository):
             if need_to_download:
                 # The name_path to the directory which the files will be
                 # downloaded to.
-                tmp_dir = cache_name_path + '.download'
+                tmp_dir = cache_path + '.download'
                 try:
                     # Attempt to make tmp download directory. This will
                     # fail if another process (or previous attempt) has
@@ -253,19 +266,19 @@ class Xnat(Repository):
                         # has been completed or assume interrupted and
                         # redownload.
                         self._delayed_download(
-                            tmp_dir, xresource, file_group, cache_name_path,
+                            tmp_dir, xresource, file_group, cache_path,
                             delay=self._race_cond_delay)
                     else:
                         raise
                 else:
                     self.download_file_group(tmp_dir, xresource, file_group,
-                                          cache_name_path)
+                                          cache_path)
                     shutil.rmtree(tmp_dir)
         if not file_group.format.directory:
             (primary_name_path, aux_name_paths) = file_group.format.assort_files(
-                op.join(cache_name_path, f) for f in os.listdir(cache_name_path))
+                op.join(cache_path, f) for f in os.listdir(cache_path))
         else:
-            primary_name_path = cache_name_path
+            primary_name_path = cache_path
             aux_name_paths = None
         return primary_name_path, aux_name_paths
 
@@ -293,20 +306,20 @@ class Xnat(Repository):
             file_group.uri = '{}/resources/{}'.format(self.standard_uri(xnode),
                                                    name)
             # Copy file_group to cache
-            cache_name_path = self.cache_name_path(file_group)
-            if os.name_path.exists(cache_name_path):
-                shutil.rmtree(cache_name_path)
-            os.makedirs(cache_name_path, stat.S_IRWXU | stat.S_IRWXG)
+            cache_path = self.cache_path(file_group)
+            if os.name_path.exists(cache_path):
+                shutil.rmtree(cache_path)
+            os.makedirs(cache_path, stat.S_IRWXU | stat.S_IRWXG)
             if file_group.format.directory:
-                shutil.copytree(file_group.name_path, cache_name_path)
+                shutil.copytree(file_group.name_path, cache_path)
             else:
                 # Copy primary file
                 shutil.copyfile(file_group.name_path,
-                                op.join(cache_name_path, file_group.fname))
+                                op.join(cache_path, file_group.fname))
                 # Copy auxiliaries
                 for sc_fname, sc_name_path in file_group.aux_file_fnames_and_name_paths:
-                    shutil.copyfile(sc_name_path, op.join(cache_name_path, sc_fname))
-            with open(cache_name_path + self.MD5_SUFFIX, 'w',
+                    shutil.copyfile(sc_name_path, op.join(cache_path, sc_fname))
+            with open(cache_path + self.MD5_SUFFIX, 'w',
                       **JSON_ENCODING) as f:
                 json.dump(file_group.calculate_checksums(), f, indent=2)
             # Delete existing resource (if present)
@@ -352,10 +365,10 @@ class Xnat(Repository):
         resource_name = self.prepend_analysis(self.PROV_RESOURCE,
                                               provenance.namespace)
         uri = '{}/resources/{}'.format(self.standard_uri(xnode), resource_name)
-        cache_dir = self.cache_name_path(uri)
+        cache_dir = self.cache_path(uri)
         os.makedirs(cache_dir, exist_ok=True)
-        cache_name_path = op.join(cache_dir, provenance.pipeline_name + '.json')
-        provenance.save(cache_name_path)
+        cache_path = op.join(cache_dir, provenance.pipeline_name + '.json')
+        provenance.save(cache_path)
         # TODO: Should also save digest of prov.json to check to see if it
         #       has been altered remotely
         try:
@@ -367,7 +380,7 @@ class Xnat(Repository):
             # Until XnatPy adds a create_resource to projects, subjects &
             # sessions
             # xresource = xnode.create_resource(resource_name)
-        xresource.upload(cache_name_path, op.basename(cache_name_path))
+        xresource.upload(cache_path, op.basename(cache_path))
 
     def get_checksums(self, file_group):
         """
@@ -622,8 +635,9 @@ class Xnat(Repository):
                     scan_type, id=order,
                     uri='{}/scans/{}/resources/{}'.format(session_uri, order,
                                                           resource),
-                    dataset=dataset, subject_id=subject_id, timepoint_id=timepoint_id,
-                    quality=scan_quality, resource_name=resource, **kwargs))
+                    dataset=dataset, subject_id=subject_id,
+                    timepoint_id=timepoint_id, quality=scan_quality,
+                    resource_name=resource, **kwargs))
         logger.debug("Found node %s:%s", subject_id, timepoint_id)
         return file_groups
 
@@ -661,7 +675,7 @@ class Xnat(Repository):
                                      and t['vr'] in RELEVANT_DICOM_TAG_TYPES)}
         return hdr
 
-    def download_file_group(self, tmp_dir, xresource, file_group, cache_name_path):
+    def download_file_group(self, tmp_dir, xresource, file_group, cache_path):
         # Download resource to zip file
         zip_name_path = op.join(tmp_dir, 'download.zip')
         with open(zip_name_path, 'wb') as f:
@@ -680,65 +694,67 @@ class Xnat(Repository):
         data_name_path = glob(expanded_dir + '/**/files', recursive=True)[0]
         # Remove existing cache if present
         try:
-            shutil.rmtree(cache_name_path)
+            shutil.rmtree(cache_path)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise e
-        shutil.move(data_name_path, cache_name_path)
-        with open(cache_name_path + XnatRepo.MD5_SUFFIX, 'w',
-                  **JSON_ENCODING) as f:
+        shutil.move(data_name_path, cache_path)
+        with open(cache_path + self.MD5_SUFFIX, 'w', **JSON_ENCODING) as f:
             json.dump(checksums, f, indent=2)
 
-    def _delayed_download(self, tmp_dir, xresource, file_group, cache_name_path,
+    def _delayed_download(self, tmp_dir, xresource, file_group, cache_path,
                           delay):
         logger.info("Waiting %s seconds for incomplete download of '%s' "
-                    "initiated another process to finish", delay, cache_name_path)
+                    "initiated another process to finish", delay, cache_path)
         initial_mod_time = dir_modtime(tmp_dir)
         time.sleep(delay)
-        if op.exists(cache_name_path):
+        if op.exists(cache_path):
             logger.info("The download of '%s' has completed "
                         "successfully in the other process, continuing",
-                        cache_name_path)
+                        cache_path)
             return
         elif initial_mod_time != dir_modtime(tmp_dir):
             logger.info(
                 "The download of '%s' hasn't completed yet, but it has"
                 " been updated.  Waiting another %s seconds before "
-                "checking again.", cache_name_path, delay)
-            self._delayed_download(tmp_dir, xresource, file_group, cache_name_path,
+                "checking again.", cache_path, delay)
+            self._delayed_download(tmp_dir, xresource, file_group, cache_path,
                                    delay)
         else:
             logger.warning(
                 "The download of '%s' hasn't updated in %s "
                 "seconds, assuming that it was interrupted and "
-                "restarting download", cache_name_path, delay)
+                "restarting download", cache_path, delay)
             shutil.rmtree(tmp_dir)
             os.mkdir(tmp_dir)
-            self.download_file_group(tmp_dir, xresource, file_group, cache_name_path)
+            self.download_file_group(tmp_dir, xresource, file_group, cache_path)
 
-    def get_xnode(self, item, dataset=None):
+    def get_xnode(self, data_node):
         """
-        Returns the XNAT session and cache dir corresponding to the
-        item.
+        Returns the XNAT session and cache dir corresponding to the provided
+        data_node
+
+        Parameters
+        ----------
+        data_node : DataNode
+            The data_node to get the corresponding XNAT node for
         """
-        if dataset is None:
-            dataset = item.dataset
-        subj_label = dataset.subject_label(item.subject_id)
-        sess_label = dataset.session_label(item.subject_id, item.timepoint_id)
         with self:
-            xproject = self.login.projects[dataset.name]
-            if item.tree_level not in ('per_subject', 'per_session'):
+            xproject = self.login.projects[data_node.dataset.name]
+            if data_node.frequency == Clinical.dataset:
                 return xproject
+            subj_label = data_node.ids[Clinical.subject]
             try:
                 xsubject = xproject.subjects[subj_label]
             except KeyError:
                 xsubject = self.login.classes.SubjectData(
                     label=subj_label, parent=xproject)
-            if item.tree_level == 'per_subject':
+            if data_node.frequency == Clinical.subject:
                 return xsubject
-            elif item.tree_level != 'per_session':
+            elif data_node.frequency != Clinical.session:
                 raise ArcanaUsageError(
-                    "Unrecognised item tree_level '{}'".format(item.tree_level))
+                    f"Unrecognised item frequency '{data_node.frequency}'")
+            sess_label = data_node.ids[Clinical.session]
             try:
                 xsession = xsubject.experiments[sess_label]
             except KeyError:
@@ -746,7 +762,7 @@ class Xnat(Repository):
                     label=sess_label, parent=xsubject)
             return xsession
 
-    def cache_name_path(self, item):
+    def cache_path(self, item):
         """Path to the directory where the item is/should be cached. Note that
         the URI of the item needs to be set beforehand
 
@@ -767,7 +783,7 @@ class Xnat(Repository):
         else:
             uri = item
         if uri is None:
-            raise ArcanaError("URI of item needs to be set before cache name_path")
+            raise ArcanaError("URI of item needs to be set before cache path")
         return op.join(self.cache_dir, *uri.split('/')[3:])
 
     def _check_repository(self, item):

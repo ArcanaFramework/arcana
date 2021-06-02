@@ -275,6 +275,7 @@ class FileSystemDir(Repository):
             # First ID can be omitted
             node_freq = self.frequencies[len(ids)]  # last freq
             ids_dict = dict(zip(self.frequencies, ids))
+            ids_dict = self.map_ids(ids_dict)
             node = dataset.add_node(node_freq, ids_dict)
             # Check if node is a leaf (i.e. lowest level in directory
             # structure)
