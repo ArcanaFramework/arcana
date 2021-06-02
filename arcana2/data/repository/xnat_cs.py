@@ -1,5 +1,5 @@
 import os
-import os.path as op
+import os.name_path as op
 import logging
 import json
 from arcana2.data import FileGroup, Field
@@ -27,7 +27,7 @@ class XnatCS(Xnat):
 
     Parameters
     ----------
-    root_dir : str (path)
+    root_dir : str (name_path)
         Path to local directory containing data
     """
 
@@ -115,7 +115,7 @@ class XnatCS(Xnat):
                 session_json = self.login.get_json(
                     '/data/projects/{}/experiments/{}'.format(
                         project_id, xsession.id))['items'][0]
-                session_path = op.join(self.input_dir, xsession.label)
+                session_name_path = op.join(self.input_dir, xsession.label)
                 # Get field values. We do this first so we can check for the
                 # DERIVED_FROM_FIELD to determine the correct session label and
                 # analysis name
@@ -143,12 +143,12 @@ class XnatCS(Xnat):
                         timepoint_id=timepoint_id
                         **kwargs))
 
-            filtered_files = self._filter_files(files, session_path)
+            filtered_files = self._filter_files(files, session_name_path)
             for fname in filtered_files:
                 basename = split_extension(fname)[0]
                 all_file_groups.append(
-                    FileGroup.from_path(
-                        op.join(session_path, fname),
+                    FileGroup.from_name_path(
+                        op.join(session_name_path, fname),
                         tree_level=tree_level,
                         subject_id=subj_id, timepoint_id=timepoint_id,
                         dataset=dataset,
@@ -158,17 +158,17 @@ class XnatCS(Xnat):
                             if (split_extension(f)[0] == basename
                                 and f != fname)],
                         **kwargs))
-            for fname in self._filter_dirs(dirs, session_path):
+            for fname in self._filter_dirs(dirs, session_name_path):
                 all_file_groups.append(
-                    FileGroup.from_path(
-                        op.join(session_path, fname),
+                    FileGroup.from_name_path(
+                        op.join(session_name_path, fname),
                         tree_level=tree_level,
                         subject_id=subj_id, timepoint_id=timepoint_id,
                         dataset=dataset,
                         namespace=namespace,
                         **kwargs))
             if self.FIELDS_FNAME in files:
-                with open(op.join(session_path,
+                with open(op.join(session_name_path,
                                   self.FIELDS_FNAME), 'r') as f:
                     dct = json.load(f)
                 all_fields.extend(
@@ -182,7 +182,7 @@ class XnatCS(Xnat):
                     raise ArcanaRepositoryError(
                         "Found provenance directory in session directory (i.e."
                         " not in analysis-specific sub-directory)")
-                base_prov_dir = op.join(session_path, self.PROV_DIR)
+                base_prov_dir = op.join(session_name_path, self.PROV_DIR)
                 for fname in os.listdir(base_prov_dir):
                     all_provenances.append(Provenance.load(
                         split_extension(fname)[0],
@@ -190,15 +190,15 @@ class XnatCS(Xnat):
                         op.join(base_prov_dir, fname)))
         return all_file_groups, all_fields, all_provenances
 
-    def file_group_path(self, item, dataset=None, fname=None):
+    def file_group_name_path(self, item, dataset=None, fname=None):
         pass
 
-    def fields_json_path(self, field, dataset=None):
-        return self.file_group_path(field, fname=self.FIELDS_FNAME,
+    def fields_json_name_path(self, field, dataset=None):
+        return self.file_group_name_path(field, fname=self.FIELDS_FNAME,
                                  dataset=dataset)
 
-    def prov_json_path(self, provenance, dataset):
-        return self.file_group_path(provenance,
+    def prov_json_name_path(self, provenance, dataset):
+        return self.file_group_name_path(provenance,
                                  dataset=dataset,
                                  fname=op.join(self.PROV_DIR,
                                                provenance.pipeline_name + '.json'))
@@ -306,17 +306,17 @@ class XnatCS(Xnat):
                 {
                     "name": "in",
                     "writable": False,
-                    "path": "/input"
+                    "name_path": "/input"
                 },
                 {
                     "name": "output",
                     "writable": True,
-                    "path": "/output"
+                    "name_path": "/output"
                 },
                 {
                     "name": "work",
                     "writable": True,
-                    "path": "/work"
+                    "name_path": "/work"
                 }
             ],
             "ports": {},
@@ -327,7 +327,7 @@ class XnatCS(Xnat):
                     "description": "Derivatives",
                     "required": True,
                     "mount": "out",
-                    "path": None,
+                    "name_path": None,
                     "glob": None
                 },
                 {
@@ -335,7 +335,7 @@ class XnatCS(Xnat):
                     "description": "Working directory",
                     "required": True,
                     "mount": "work",
-                    "path": None,
+                    "name_path": None,
                     "glob": None
                 }
             ],

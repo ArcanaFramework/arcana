@@ -53,7 +53,7 @@ class DataMatcher():
                         # Insert a non-existant item placeholder in-place of
                         # the the missing item
                         matches.append(self.item_cls(
-                            self.path,
+                            self.name_path,
                             data_node=data_node,
                             exists=False,
                             **self._specific_kwargs))
@@ -72,7 +72,7 @@ class DataMatcher():
         return matches
 
     def match_node(self, node, **kwargs):
-        # Get names matching path
+        # Get names matching name_path
         matches = self._filtered_matches(node, **kwargs)
         # Select the file_group from the matches
         if not matches:
@@ -84,8 +84,8 @@ class DataMatcher():
                 match = matches[self.order]
             except IndexError:
                 raise ArcanaInputMissingMatchError(
-                    "Did not find {} named data matching path {}, found "
-                    " {} in {}".format(self.order, self.path,
+                    "Did not find {} named data matching name_path {}, found "
+                    " {} in {}".format(self.order, self.name_path,
                                        len(matches), node))
         elif len(matches) == 1:
             match = matches[0]
@@ -99,7 +99,7 @@ class DataMatcher():
 
 class FileGroupMatcher(DataMatcher, FileGroupMixin):
     """
-    A path that describes a single file_group (typically acquired
+    A name_path that describes a single file_group (typically acquired
     rather than generated but not necessarily) within each session.
 
     Parameters
@@ -107,23 +107,23 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     frequency : DataFrequency
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
-    path : str
-        A regex path to match the file_group names with. Must match
+    name_path : str
+        A regex name_path to match the file_group names with. Must match
         one and only one file_group per <frequency>. If None, the name
         is used instead.
     format : FileFormat
         File formats that data will be accepted in        
     is_regex : bool
-        Flags whether the path is a regular expression or not
+        Flags whether the name_path is a regular expression or not
     order : int | None
         To be used to distinguish multiple file_groups that match the
-        path in the same session. The order of the file_group within the
+        name_path in the same session. The order of the file_group within the
         session. Based on the scan ID but is more robust to small
         changes to the IDs within the session if for example there are
         two scans of the same type taken before and after a task.
     header_vals : Dict[str, str]
         To be used to distinguish multiple file_groups that match the
-        path in the same node. The provided dictionary contains
+        name_path in the same node. The provided dictionary contains
         header values that must match the stored header_vals exactly.
     acceptable_quality : str | list[str] | None
         An acceptable quality label, or list thereof, to accept, i.e. if a
@@ -136,10 +136,10 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     is_spec = False
     item_cls = FileGroup
 
-    def __init__(self, frequency, path=None, format=None,  
+    def __init__(self, frequency, name_path=None, format=None,  
                  order=None, header_vals=None, is_regex=False,
                  acceptable_quality=None, skip_missing=False):
-        FileGroupMixin.__init__(self, path, format)
+        FileGroupMixin.__init__(self, name_path, format)
         DataMatcher.__init__(self, is_regex, order, frequency, skip_missing)
         self.header_vals = header_vals
         if isinstance(acceptable_quality, basestring):
@@ -168,21 +168,21 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
         return dct
 
     def __repr__(self):
-        return ("{}(path='{}', format={}, frequency={}, path={}, "
+        return ("{}(name_path='{}', format={}, frequency={}, name_path={}, "
                 "is_regex={}, order={}, header_vals={}, acceptable_quality={})"
-                .format(self.__class__.__name__, self.path, self._format,
-                        self.frequency, self.path, self.is_regex,
+                .format(self.__class__.__name__, self.name_path, self._format,
+                        self.frequency, self.name_path, self.is_regex,
                         self.order, self.header_vals, self._acceptable_quality))
 
     def _filtered_matches(self, node, **kwargs):  # noqa pylint: disable=unused-argument
-        if self.path is not None:
+        if self.name_path is not None:
             if self.is_regex:
-                path_re = re.compile(self.path)
+                name_path_re = re.compile(self.name_path)
                 matches = [f for f in node.file_groups
-                           if path_re.match(f.basename)]
+                           if name_path_re.match(f.basename)]
             else:
                 matches = [f for f in node.file_groups
-                           if f.basename == self.path]
+                           if f.basename == self.name_path]
         else:
             matches = list(node.file_groups)
         if not matches:
@@ -195,19 +195,19 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                         if f.quality in self.acceptable_quality]
             if not filtered:
                 raise ArcanaInputMissingMatchError(
-                    "Did not find file_groups names matching path {} "
+                    "Did not find file_groups names matching name_path {} "
                     "with an acceptable quality {} in {}. Found:\n    {}"
                     .format(
-                        self.path, self.acceptable_quality, node,
+                        self.name_path, self.acceptable_quality, node,
                         '\n    '.join(str(m) for m in matches)))
             matches = filtered
         if self.order is not None:
             filtered = [d for d in matches if d.order == self.order]
             if not filtered:
                 raise ArcanaInputMissingMatchError(
-                    "Did not find file_groups names matching path {} "
+                    "Did not find file_groups names matching name_path {} "
                     "with an order of {} in {}. Found:\n    {} ".format(
-                        self.path, self.order,
+                        self.name_path, self.order,
                         '\n    '.join(str(m) for m in matches), node))
             matches = filtered
         if self.format is not None:
@@ -236,9 +236,9 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                     filtered.append(file_group)
             if not filtered:
                 raise ArcanaInputMissingMatchError(
-                    "Did not find file_groups names matching path {}"
+                    "Did not find file_groups names matching name_path {}"
                     "that matched DICOM tags {} in {}. Found:\n    {}"
-                    .format(self.path, self.header_vals,
+                    .format(self.name_path, self.header_vals,
                             '\n    '.join(str(m) for m in matches), node))
             matches = filtered
         return matches
@@ -261,7 +261,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
 
 class FieldMatcher(DataMatcher, FieldMixin):
     """
-    A path that matches a single field (typically acquired rather than
+    A name_path that matches a single field (typically acquired rather than
     generated but not necessarily) in each session.
 
     Parameters
@@ -269,18 +269,18 @@ class FieldMatcher(DataMatcher, FieldMixin):
     frequency : DataFrequency
         The frequency of the field within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
-    path : str
-        A regex path to match the field names with. Must match
+    name_path : str
+        A regex name_path to match the field names with. Must match
         one and only one file_group per <frequency>. If None, the name
         is used instead.
     dtype : type | None
         The datatype of the value. Can be one of (float, int, str). If None
         then the dtype is taken from the FieldSpec that it is bound to
     is_regex : bool
-        Flags whether the path is a regular expression or not
+        Flags whether the name_path is a regular expression or not
     order : int | None
         To be used to distinguish multiple file_groups that match the
-        path in the same session. The order of the file_group within the
+        name_path in the same session. The order of the file_group within the
         session. Based on the scan ID but is more robust to small
         changes to the IDs within the session if for example there are
         two scans of the same type taken before and after a task.
@@ -296,9 +296,9 @@ class FieldMatcher(DataMatcher, FieldMixin):
     is_spec = False
     item_cls = Field
 
-    def __init__(self, frequency, path, dtype=None, order=None, is_regex=False,
+    def __init__(self, frequency, name_path, dtype=None, order=None, is_regex=False,
                  skip_missing=False, array=False):
-        FieldMixin.__init__(self, path, dtype, array)
+        FieldMixin.__init__(self, name_path, dtype, array)
         DataMatcher.__init__(self, is_regex, order, frequency, skip_missing)
 
     def __eq__(self, other):
@@ -309,7 +309,7 @@ class FieldMatcher(DataMatcher, FieldMixin):
     def dtype(self):
         if self._dtype is None:
             try:
-                dtype = self.analysis.data_spec(self.path).dtype
+                dtype = self.analysis.data_spec(self.name_path).dtype
             except ArcanaNotBoundToAnalysisError:
                 dtype = None
         else:
@@ -326,23 +326,23 @@ class FieldMatcher(DataMatcher, FieldMixin):
 
     def _filtered_matches(self, node, **kwargs):
         if self.is_regex:
-            path_re = re.compile(self.path)
+            name_path_re = re.compile(self.name_path)
             matches = [f for f in node.fields
-                       if path_re.match(f.path)]
+                       if name_path_re.match(f.name_path)]
         else:
             matches = [f for f in node.fields
-                       if f.path == self.path]
+                       if f.name_path == self.name_path]
         if not matches:
             raise ArcanaInputMissingMatchError(
                 "Did not find any matches for {} in {}. Found:\n    {}"
                 .format(self, node,
-                        '\n    '.join(f.path for f in node.fields)))
+                        '\n    '.join(f.name_path for f in node.fields)))
         return matches
 
     def __repr__(self):
-        return ("{}(path='{}', dtype={}, frequency={}, "
+        return ("{}(name_path='{}', dtype={}, frequency={}, "
                 "is_regex={}, order={})"
-                .format(self.__class__.__name__, self.path, self._dtype,
+                .format(self.__class__.__name__, self.name_path, self._dtype,
                         self.frequency, self.is_regex, self.order))
 
     @property

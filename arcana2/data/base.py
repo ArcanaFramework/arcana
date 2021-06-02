@@ -12,14 +12,14 @@ class DataMixin():
     """Base class for all Data related classes
     """
 
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, name_path):
+        self.name_path = name_path
 
     def __eq__(self, other):
-        return self.path == other.path
+        return self.name_path == other.name_path
 
     def __hash__(self):
-        return hash(self.path)
+        return hash(self.name_path)
 
     def find_mismatch(self, other, indent=''):
         if self != other:
@@ -29,17 +29,17 @@ class DataMixin():
         else:
             mismatch = ''
         sub_indent = indent + '  '
-        if self.path != other.path:
-            mismatch += ('\n{}path: self={} v other={}'
-                         .format(sub_indent, self.path,
-                                 other.path))
+        if self.name_path != other.name_path:
+            mismatch += ('\n{}name_path: self={} v other={}'
+                         .format(sub_indent, self.name_path,
+                                 other.name_path))
         return mismatch
 
     def __ne__(self, other):
         return not (self == other)
 
     def initkwargs(self):
-        return {'path': self.path}
+        return {'name_path': self.name_path}
 
 
 class FileGroupMixin(DataMixin):
@@ -49,8 +49,8 @@ class FileGroupMixin(DataMixin):
 
     Parameters
     ----------
-    path : str
-        The path to the file-group excluding any parts that are specific to its
+    name_path : str
+        The name_path to the file-group excluding any parts that are specific to its
         location within in a data tree (i.e. no subject or session ID
         information). May contain namespaces (separated by forward slashes) to
         logically separate related derivatives and avoid clashes,
@@ -62,8 +62,8 @@ class FileGroupMixin(DataMixin):
 
     is_file_group = True
 
-    def __init__(self, path, format):
-        super().__init__(path)
+    def __init__(self, name_path, format):
+        super().__init__(name_path)
         self.format = format
 
     def __eq__(self, other):
@@ -94,8 +94,8 @@ class FieldMixin(DataMixin):
 
     Parameters
     ----------
-    path : str
-        The path to the field excluding any parts that are specific to its
+    name_path : str
+        The name_path to the field excluding any parts that are specific to its
         location within in a data tree (i.e. no subject or session ID
         information). May contain namespaces (separated by forward slashes) to
         logically separate related derivatives, e.g. 'myanalysis/mymetric'
@@ -109,8 +109,8 @@ class FieldMixin(DataMixin):
 
     dtypes = (int, float, str)
 
-    def __init__(self, path, dtype, array):
-        super().__init__(path)
+    def __init__(self, name_path, dtype, array):
+        super().__init__(name_path)
         if dtype not in self.dtypes + (newstr, None):
             raise ArcanaUsageError(
                 "Invalid dtype {}, can be one of {}".format(

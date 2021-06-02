@@ -82,19 +82,19 @@ class DataItem():
 
     @provenance.setter
     def provenance(self, provenance):
-        if self.path not in provenance.outputs:
+        if self.name_path not in provenance.outputs:
             raise ArcanaNameError(
-                self.path,
+                self.name_path,
                 "{} was not found in outputs {} of provenance provenance {}"
-                .format(self.path, provenance.outputs.keys(), provenance))
+                .format(self.name_path, provenance.outputs.keys(), provenance))
         self._provenance = provenance
 
     @property
-    def provenanceed_checksums(self):
+    def recorded_checksums(self):
         if self.provenance is None:
             return None
         else:
-            return self._provenance.outputs[self.path]
+            return self._provenance.outputs[self.name_path]
 
     def initkwargs(self):
         dct = super().initkwargs()
@@ -109,8 +109,8 @@ class FileGroup(DataItem, FileGroupMixin):
 
     Parameters
     ----------
-    path : str
-        The path to the relative location of the file group, i.e. excluding
+    name_path : str
+        The name_path to the relative location of the file group, i.e. excluding
         information about which node in the data tree it belongs to
     format : FileFormat
         The file format used to store the file_group.
@@ -127,7 +127,7 @@ class FileGroup(DataItem, FileGroupMixin):
         Whether the file_group exists or is just a placeholder for a derivative
     checksums : dict[str, str]
         A checksums of all files within the file_group in a dictionary sorted
-        bys relative file paths
+        bys relative file name_paths
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
@@ -137,29 +137,29 @@ class FileGroup(DataItem, FileGroupMixin):
         format identification
     quality : str
         The quality label assigned to the file_group (e.g. as is saved on XNAT)
-    local_path : str | None
+    local_name_path : str | None
         Path to the file-group on the local file system (i.e. cache for remote
         repositories)
     data_node : DataNode
         The data node within a dataset that the file-group belongs to
     """
 
-    def __init__(self, path, format=None, aux_files=None, order=None, uri=None,
+    def __init__(self, name_path, format=None, aux_files=None, order=None, uri=None,
                  exists=True, checksums=None, provenance=None,
-                 resource_name=None, quality=None, local_path=None,
+                 resource_name=None, quality=None, local_name_path=None,
                  data_node=None):
-        FileGroupMixin.__init__(self, path=path, format=format)
+        FileGroupMixin.__init__(self, name_path=name_path, format=format)
         DataItem.__init__(self, data_node, exists, provenance)
         if aux_files is not None:
-            if local_path is None:
+            if local_name_path is None:
                 raise ArcanaUsageError(
                     "Side cars can only be provided to a FileGroup __init__ "
-                    "of '{}' ({}) if the local cache path is also".format(
-                        self.path, aux_files))
+                    "of '{}' ({}) if the local cache name_path is also".format(
+                        self.name_path, aux_files))
             if format is None:
                 raise ArcanaUsageError(
                     "Side cars provided to '{}' file_group ({}) but format is "
-                    "not specified".format(self.path, aux_files))
+                    "not specified".format(self.name_path, aux_files))
         if local_path is not None:
             local_path = op.abslocal_path(op.realpath(local_path))
             if aux_files is None:
@@ -237,14 +237,14 @@ class FileGroup(DataItem, FileGroupMixin):
             return False
         else:
             if self.order == other.order:
-                return self.path < other.path
+                return self.name_path < other.name_path
             else:
                 return self.order < other.order
 
     def __repr__(self):
         return ("{}('{}', {}, exists={}, quality={}{})"
                 .format(
-                    type(self).__name__, self.path, self.format,
+                    type(self).__name__, self.name_path, self.format,
                     self.exists, self.quality,
                     (", resource_name='{}'".format(self.resource_name)
                      if self.resource_name is not None else '')))
@@ -279,7 +279,7 @@ class FileGroup(DataItem, FileGroupMixin):
     def local_path(self):
         if not self.exists:
             raise ArcanaDataNotDerivedYetError(
-                self.path,
+                self.name_path,
                 "Cannot access cache-path of {} as it hasn't been derived yet"
                 .format(self))
         if self._local_path is None:
@@ -287,8 +287,8 @@ class FileGroup(DataItem, FileGroupMixin):
                 self.get()  # Retrieve from dataset
             else:
                 raise ArcanaError(
-                    "Neither cache-path nor dataset has been set for "
-                    "FileGroup('{}')".format(self.path))
+                    "Neither cache-name_path nor dataset has been set for "
+                    "FileGroup('{}')".format(self.name_path))
         return self._local_path
 
     def set_local_path(self, local_path, aux_files=None):
@@ -309,23 +309,23 @@ class FileGroup(DataItem, FileGroupMixin):
         self._checksums = self.calculate_checksums()
         self.put()  # Push to dataset
 
-    @local_path.setter
-    def local_path(self, local_path):
-        self.set_local_path(local_path, aux_files=None)
+    @local_name_path.setter
+    def local_name_path(self, local_name_path):
+        self.set_local_name_path(local_name_path, aux_files=None)
 
     @property
-    def local_paths(self):
-        "Iterates through all files in the group and returns their cache paths"
+    def local_name_paths(self):
+        "Iterates through all files in the group and returns their cache name_paths"
 
         if self.format is None:
             raise ArcanaFileFormatError(
-                "Cannot get paths of file_group ({}) that hasn't had its format "
+                "Cannot get name_paths of file_group ({}) that hasn't had its format "
                 "set".format(self))
         if self.format.directory:
             return chain(*((op.join(root, f) for f in files)
-                           for root, _, files in os.walk(self.local_path)))
+                           for root, _, files in os.walk(self.local_name_path)))
         else:
-            return chain([self.local_path], self.aux_files.values())
+            return chain([self.local_name_path], self.aux_files.values())
 
     @property
     def fname(self):
@@ -333,7 +333,7 @@ class FileGroup(DataItem, FileGroupMixin):
             raise ArcanaFileFormatError(
                 "Need to provide format before accessing the filename of {}"
                 .format(self))
-        return self.path + self.format.ext_str
+        return self.name_path + self.format.ext_str
 
     # @property
     # def basename(self):
@@ -342,7 +342,7 @@ class FileGroup(DataItem, FileGroupMixin):
     @property
     def order(self):
         if self.order is None:
-            return self.path
+            return self.name_path
         else:
             return self._order
 
@@ -373,9 +373,9 @@ class FileGroup(DataItem, FileGroupMixin):
         return self.aux_files[name]
 
     @property
-    def aux_file_fnames_and_paths(self):
-        return ((self.basename + self.format.aux_files[sc_name], sc_path)
-                for sc_name, sc_path in self.aux_files.items())
+    def aux_file_fnames_and_name_paths(self):
+        return ((self.basename + self.format.aux_files[sc_name], sc_name_path)
+                for sc_name, sc_name_path in self.aux_files.items())
 
     @property
     def format_name(self):
@@ -389,7 +389,7 @@ class FileGroup(DataItem, FileGroupMixin):
     def checksums(self):
         if not self.exists:
             raise ArcanaDataNotDerivedYetError(
-                self.path,
+                self.name_path,
                 "Cannot access checksums of {} as it hasn't been derived yet"
                 .format(self))
         if self._checksums is None:
@@ -401,32 +401,32 @@ class FileGroup(DataItem, FileGroupMixin):
 
     def calculate_checksums(self):
         checksums = {}
-        for fpath in self.paths:
+        for fname_path in self.name_paths:
             fhash = hashlib.md5()
-            with open(fpath, 'rb') as f:
+            with open(fname_path, 'rb') as f:
                 # Calculate hash in chunks so we don't run out of memory for
                 # large files.
                 for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b''):
                     fhash.update(chunk)
-            checksums[op.relpath(fpath, self.path)] = fhash.hexdigest()
+            checksums[op.relname_path(fname_path, self.name_path)] = fhash.hexdigest()
         return checksums
 
     @classmethod
-    def from_path(cls, local_path, **kwargs):
-        if not op.exists(local_path):
+    def from_name_path(cls, local_name_path, **kwargs):
+        if not op.exists(local_name_path):
             raise ArcanaUsageError(
-                "Attempting to read FileGroup from path '{}' but it "
-                "does not exist".format(local_path))
-        if op.isdir(local_path):
-            path = op.basename(local_path)
+                "Attempting to read FileGroup from name_path '{}' but it "
+                "does not exist".format(local_name_path))
+        if op.isdir(local_name_path):
+            name_path = op.basename(local_name_path)
         else:
-            path = split_extension(op.basename(local_path))[0]
-        return cls(path, local_path=path, **kwargs)
+            name_path = split_extension(op.basename(local_name_path))[0]
+        return cls(name_path, local_name_path=name_path, **kwargs)
 
     def initkwargs(self):
         dct = FileGroupMixin.initkwargs(self)
         dct.update(DataItem.initkwargs(self))
-        dct['local_path'] = self.local_path
+        dct['local_name_path'] = self.local_name_path
         dct['order'] = self.order
         dct['uri'] = self.uri
         dct['bids_attr'] = self.bids_attr
@@ -438,11 +438,11 @@ class FileGroup(DataItem, FileGroupMixin):
     def get(self):
         if self.dataset is not None:
             self._exists = True
-            self._local_path, self._aux_files = self.dataset.get_file_group(
+            self._local_name_path, self._aux_files = self.dataset.get_file_group(
                 self)
 
     def put(self):
-        if self.dataset is not None and self._local_path is not None:
+        if self.dataset is not None and self._local_name_path is not None:
             self.dataset.put_file_group(self)
 
     def contents_equal(self, other, **kwargs):
@@ -470,8 +470,8 @@ class Field(DataItem, FieldMixin):
 
     Parameters
     ----------
-    path : str
-        The path to the relative location of the field, i.e. excluding
+    name_path : str
+        The name_path to the relative location of the field, i.e. excluding
         information about which node in the data tree it belongs to
     dtype : type
         The datatype of the value. Can be one of (float, int, str)
@@ -486,7 +486,7 @@ class Field(DataItem, FieldMixin):
         if applicable
     """
 
-    def __init__(self, path, value=None, dtype=None, array=None,
+    def __init__(self, name_path, value=None, dtype=None, array=None,
                  data_node=None, exists=True, provenance=None):
         # Try to determine dtype and array from value if they haven't
         # been provided.
@@ -502,13 +502,13 @@ class Field(DataItem, FieldMixin):
                 if array is False:
                     raise ArcanaUsageError(
                         "Array value passed to '{}', which is explicitly not "
-                        "an array ({})".format(path, value))
+                        "an array ({})".format(name_path, value))
                 array = True
             else:
                 if array:
                     raise ArcanaUsageError(
                         "Non-array value ({}) passed to '{}', which expects "
-                        "array{}".format(value, path,
+                        "array{}".format(value, name_path,
                                          ('of type {}'.format(dtype)
                                           if dtype is not None else '')))
                 array = False
@@ -523,7 +523,7 @@ class Field(DataItem, FieldMixin):
                     value = [dtype(v) for v in value]
                 else:
                     value = dtype(value)
-        FieldMixin.__init__(self, path, dtype, array)
+        FieldMixin.__init__(self, name_path, dtype, array)
         DataItem.__init__(self, data_node, exists, provenance)
         self._value = value
 
@@ -574,12 +574,12 @@ class Field(DataItem, FieldMixin):
         return val
 
     def __lt__(self, other):
-        return self.path < other.path
+        return self.name_path < other.name_path
 
     def __repr__(self):
         return ("{}('{}',{} exists={})"
                 .format(
-                    type(self).__name__, self.path,
+                    type(self).__name__, self.name_path,
                     (" {},".format(self._value)
                      if self._value is not None else ''),
                     self.exists))
@@ -588,7 +588,7 @@ class Field(DataItem, FieldMixin):
     def value(self):
         if not self.exists:
             raise ArcanaDataNotDerivedYetError(
-                self.path,
+                self.name_path,
                 "Cannot access value of {} as it hasn't been "
                 "derived yet".format(repr(self)))
         if self._value is None:
@@ -597,7 +597,7 @@ class Field(DataItem, FieldMixin):
             else:
                 raise ArcanaError(
                     "Neither value nor dataset has been set for Field("
-                    "'{}')".format(self.path))
+                    "'{}')".format(self.name_path))
         return self._value
 
     @value.setter
@@ -640,8 +640,8 @@ class UnresolvedFileGroup(DataItem, DataMixin):
 
     Parameters
     ----------
-    path : str
-        The path to the relative location of the file group, i.e. excluding
+    name_path : str
+        The name_path to the relative location of the file group, i.e. excluding
         information about which node in the data tree it belongs to
     files : Sequence[str] | None
         Files in the file-group in (potentially) multiple formats.
@@ -657,7 +657,7 @@ class UnresolvedFileGroup(DataItem, DataMixin):
         to each resource
     quality : str
         The quality label assigned to the file_group (e.g. as is saved on XNAT)
-    local_paths : Sequence[str] | None
+    local_name_paths : Sequence[str] | None
         Path to the file-group in the local cache
     data_node : DataNode
         The data node that the field belongs to
@@ -666,13 +666,13 @@ class UnresolvedFileGroup(DataItem, DataMixin):
         if applicable
     """
 
-    def __init__(self, path, order=None, resource_uris=None, quality=None,
-                 local_paths=None, provenance=None, data_node=None):
+    def __init__(self, name_path, order=None, resource_uris=None, quality=None,
+                 local_name_paths=None, provenance=None, data_node=None):
         DataItem.__init__(self, data_node, True, provenance)
-        DataMixin.__init__(self, path=path)
-        if local_paths is not None:
-            local_paths = [op.abspath(op.realpath(p)) for p in local_paths]
-        self._local_paths = local_paths
+        DataMixin.__init__(self, name_path=name_path)
+        if local_name_paths is not None:
+            local_name_paths = [op.absname_path(op.realname_path(p)) for p in local_name_paths]
+        self._local_name_paths = local_name_paths
         self.order = order
         self.resource_uris = resource_uris
         self.quality = quality
@@ -687,7 +687,7 @@ class UnresolvedFileGroup(DataItem, DataMixin):
 
         If 'resource_uris' were specified when the multi-format file-group was
         created then that is used to select between the candidates. Otherwise
-        the file extensions of the local paths, and extensions of the files
+        the file extensions of the local name_paths, and extensions of the files
         within the directory will be used instead.
 
         Parameters
@@ -708,16 +708,16 @@ class UnresolvedFileGroup(DataItem, DataMixin):
             candidates = list(candidates)
         # If multiple formats are specified via resource names
         common_kwargs = {
-            'path': self.path,
+            'name_path': self.name_path,
             'frequency': self.frequency,
             'order': self.order,
             'dataset': self.dataset,
             'exists': True,
             'quality': self.quality}
-        if not (self.resource_uris or self._local_paths):
+        if not (self.resource_uris or self._local_name_paths):
             raise ArcanaError(
-                "Either resource_uris or local paths must be provided "
-                f"to UnresolvedFileGroup('{self.path}') in before "
+                "Either resource_uris or local name_paths must be provided "
+                f"to UnresolvedFileGroup('{self.name_path}') in before "
                 "attempting to resolve a file-groups format")
         for candidate in candidates:
             try:
@@ -731,28 +731,28 @@ class UnresolvedFileGroup(DataItem, DataMixin):
                         if resource_name in candidate.resource_uris:
                             return FileGroup(resource_name=resource_name,
                                              uri=uri, **common_kwargs)
-                # Perform matching based on file-extensions of local paths in
+                # Perform matching based on file-extensions of local name_paths in
                 # multi-format file-group
                 else:
-                    local_path = None
+                    local_name_path = None
                     aux_files = []
                     if candidate.directory:
-                        if (len(self._local_paths) == 1
-                            and op.isdir(self._local_paths[0])
+                        if (len(self._local_name_paths) == 1
+                            and op.isdir(self._local_name_paths[0])
                             and (candidate.within_dir_exts is None
                                 or (candidate.within_dir_exts == frozenset(
                                     split_extension(f)[1]
-                                    for f in os.listdir(self.local_paths)
+                                    for f in os.listdir(self.local_name_paths)
                                     if not f.startswith('.'))))):
-                            local_path = self._local_paths[0]
+                            local_name_path = self._local_name_paths[0]
                     else:
                         try:
-                            local_path, aux_files = candidate.assort_files(
-                                self.local_paths)[0]
+                            local_name_path, aux_files = candidate.assort_files(
+                                self.local_name_paths)[0]
                         except ArcanaFileFormatError:
                             pass
-                    if local_path is not None:
-                        return FileGroup(local_path=local_path,
+                    if local_name_path is not None:
+                        return FileGroup(local_name_path=local_name_path,
                                         aux_files=aux_files, **common_kwargs)
         # If we get to here none of the candidate formats have matched and
         # we raise and error
@@ -768,7 +768,7 @@ class UnresolvedFileGroup(DataItem, DataMixin):
                 "Paths in {} ({}) did not match the naming conventions "
                 "expected by any of the candidates formats ({}), found ('{}')"
                 .format(self,
-                        ', '.join(self._local_paths),
+                        ', '.join(self._local_name_paths),
                         ', '.join(str(c)for c in candidates),
                         "', '".join(self.resource_uris)))
         raise ArcanaNoMatchingFileFormatError(error_msg)
@@ -780,8 +780,8 @@ class UnresolvedField():
 
     Parameters
     ----------
-    path : str
-        The path to the relative location of the file group, i.e. excluding
+    name_path : str
+        The name_path to the relative location of the file group, i.e. excluding
         information about which node in the data tree it belongs to
     value : str
         The value of the field (in a generic datatype)
@@ -792,9 +792,9 @@ class UnresolvedField():
         if applicable
     """
 
-    def __init__(self, path, value=None, data_node=None, provenance=None):
+    def __init__(self, name_path, value=None, data_node=None, provenance=None):
         DataItem.__init__(self, data_node, True, provenance)
-        DataMixin.__init__(self, path=path)
+        DataMixin.__init__(self, name_path=name_path)
         self.value = value
 
     def resolve(self, dtype, array=False):
@@ -806,7 +806,7 @@ class UnresolvedField():
 
         If 'resource_uris' were specified when the multi-format file-group was
         created then that is used to select between the candidates. Otherwise
-        the file extensions of the local paths, and extensions of the files
+        the file extensions of the local name_paths, and extensions of the files
         within the directory will be used instead.
 
         Parameters
@@ -825,7 +825,7 @@ class UnresolvedField():
             value = [dtype(v) for v in self.value[1:-1].split(',')]
         else:
             value = dtype(self.value)
-        return Field(path=self.path, value=value, dtype=dtype, array=array,
+        return Field(name_path=self.name_path, value=value, dtype=dtype, array=array,
                      data_node=self.data_node, provenance=self.provenance)
         
 
@@ -879,7 +879,7 @@ class Provenance():
     def version(self):
         return self.dct[self.PROV_VERSION_KEY]
 
-    def save(self, local_path):
+    def save(self, local_name_path):
         """
         Saves the provenance object to a JSON file, optionally including
         checksums for inputs and outputs (which are initially produced mid-
@@ -887,7 +887,7 @@ class Provenance():
 
         Parameters
         ----------
-        path : str
+        name_path : str
             Path to save the generated JSON file
         inputs : dict[str, str | list[str] | list[list[str]]] | None
             Checksums of all pipeline inputs used by the pipeline. For inputs
@@ -901,7 +901,7 @@ class Provenance():
             Checksums of all pipeline outputs. They need to be provided here
             if the provenance object was initialised without checksums
         """
-        with open(local_path, 'w') as f:
+        with open(local_name_path, 'w') as f:
             try:
                 json.dump(self.dct, f, sort_keys=True, indent=2)
             except TypeError:
@@ -910,23 +910,23 @@ class Provenance():
                     .format(pformat(self.dct)))
 
     @classmethod
-    def load(cls, local_path):
+    def load(cls, local_name_path):
         """
         Loads a saved provenance object from a JSON file
 
         Parameters
         ----------
-        path : str
+        name_path : str
             Path to the provenance file
-        local_path : str
-            The path to a local file containing the provenance JSON
+        local_name_path : str
+            The name_path to a local file containing the provenance JSON
 
         Returns
         -------
         provenance : Provenance
             The loaded provenance provenance
         """
-        with open(local_path) as f:
+        with open(local_name_path) as f:
             dct = json.load(f)
         return Provenance(dct)
 
@@ -934,8 +934,8 @@ class Provenance():
         """
         Compares information stored within provenance objects with the
         exception of version information to see if they match. Matches are
-        constrained to the paths passed to the 'include' kwarg, with the
-        exception of sub-paths passed to the 'exclude' kwarg
+        constrained to the name_paths passed to the 'include' kwarg, with the
+        exception of sub-name_paths passed to the 'exclude' kwarg
 
         Parameters
         ----------
@@ -949,11 +949,11 @@ class Provenance():
             excluded
         """
         if include is not None:
-            include_res = [self._gen_prov_path_regex(p) for p in include]
+            include_res = [self._gen_prov_name_path_regex(p) for p in include]
         if exclude is not None:
-            exclude_res = [self._gen_prov_path_regex(p) for p in exclude]
+            exclude_res = [self._gen_prov_name_path_regex(p) for p in exclude]
         diff = DeepDiff(self._prov, other._prov, ignore_order=True)
-        # Create regular expresssions for the include and exclude paths in
+        # Create regular expresssions for the include and exclude name_paths in
         # the format that deepdiff uses for nested dictionary/lists
 
         def include_change(change):
@@ -977,14 +977,14 @@ class Provenance():
         return filtered_diff
 
     @classmethod
-    def _gen_prov_path_regex(self, local_path):
-        if isinstance(local_path, str):
-            if local_path.startswith('/'):
-                local_path = local_path[1:]
+    def _gen_prov_name_path_regex(self, local_name_path):
+        if isinstance(local_name_path, str):
+            if local_name_path.startswith('/'):
+                local_name_path = local_name_path[1:]
             regex = re.compile(r"root\['{}'\].*"
-                               .format(r"'\]\['".join(local_path.split('/'))))
-        elif not isinstance(local_path, re.Pattern):
+                               .format(r"'\]\['".join(local_name_path.split('/'))))
+        elif not isinstance(local_name_path, re.Pattern):
             raise ArcanaUsageError(
-                "Provenance in/exclude paths can either be path strings or "
-                "regexes, not '{}'".format(local_path))
+                "Provenance in/exclude name_paths can either be name_path strings or "
+                "regexes, not '{}'".format(local_name_path))
         return regex
