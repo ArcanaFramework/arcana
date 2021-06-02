@@ -26,23 +26,26 @@ class DataItem():
 
     is_spec = False
 
-    def __init__(self, data_node, exists, provenance):
+    def __init__(self, data_node, exists, provenance, derived):
         self._data_node = (
             weakref.ref(data_node) if data_node is not None else None)
         self.exists = exists
         if not isinstance(provenance, Provenance):
             provenance = Provenance(provenance)
         self._provenance = provenance
+        self.derived = derived
 
     def __eq__(self, other):
         return (self.data_node == other.data_node
                 and self.exists == other.exists
-                and self._provenance == other._provenance)
+                and self._provenance == other._provenance
+                and self.derived == other.derived)
 
     def __hash__(self):
         return (hash(self.data_node)
                 ^ hash(self.exists)
-                ^ hash(self._provenance))
+                ^ hash(self._provenance)
+                ^ hash(self.derived))
 
     def find_mismatch(self, other, indent=''):
         sub_indent = indent + '  '
@@ -59,15 +62,15 @@ class DataItem():
             mismatch += ('\n{}_provenance: self={} v other={}'
                          .format(sub_indent, self._provenance,
                                  other._provenance))
+        if self.derived != other.derived:
+            mismatch += ('\n{}derived: self={} v other={}'
+                         .format(sub_indent, self.derived,
+                                 other.derived))
         return mismatch
 
     # @property
     # def derived(self):
     #     return self.namespace is not None
-
-    @property
-    def provenance(self):
-        return self._provenance
 
     @property
     def data_node(self):
@@ -78,7 +81,12 @@ class DataItem():
             if data_node is None:
                 raise ArcanaError("Referenced data_node no longer exists")
         return data_node
-        
+
+    @property
+    def provenance(self):
+        if self.exists and self._provenance is None:
+            self._provenance = self.data_node.repository.get_provenance(self)
+        return self._provenance
 
     @provenance.setter
     def provenance(self, provenance):
@@ -147,9 +155,9 @@ class FileGroup(DataItem, FileGroupMixin):
     def __init__(self, name_path, format=None, aux_files=None, order=None,
                  uri=None, exists=True, checksums=None, provenance=None,
                  resource_name=None, quality=None, local_path=None,
-                 data_node=None):
+                 data_node=None, derived=False):
         FileGroupMixin.__init__(self, name_path=name_path, format=format)
-        DataItem.__init__(self, data_node, exists, provenance)
+        DataItem.__init__(self, data_node, exists, provenance, derived)
         if aux_files is not None:
             if local_path is None:
                 raise ArcanaUsageError(
@@ -487,7 +495,8 @@ class Field(DataItem, FieldMixin):
     """
 
     def __init__(self, name_path, value=None, dtype=None, array=None,
-                 data_node=None, exists=True, provenance=None):
+                 data_node=None, exists=True, provenance=None,
+                 derived=False):
         # Try to determine dtype and array from value if they haven't
         # been provided.
         if value is None:
@@ -524,7 +533,7 @@ class Field(DataItem, FieldMixin):
                 else:
                     value = dtype(value)
         FieldMixin.__init__(self, name_path, dtype, array)
-        DataItem.__init__(self, data_node, exists, provenance)
+        DataItem.__init__(self, data_node, exists, provenance, derived)
         self._value = value
 
     def __eq__(self, other):
