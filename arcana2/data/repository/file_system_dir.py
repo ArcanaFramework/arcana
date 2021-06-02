@@ -26,6 +26,12 @@ from .base import Repository
 
 logger = logging.getLogger('arcana')
 
+def default_id_map(self, ids):
+    ids = copy(ids)
+    for prev_freq, freq in zip(self.frequencies[:-1], self.frequencies[1:]):
+        layer_freq = self.frequency_enum(freq.value & ~prev_freq.value)
+        ids[layer_freq] = ids[freq]
+
 
 class FileSystemDir(Repository):
     """
@@ -38,7 +44,7 @@ class FileSystemDir(Repository):
     base_dir : str
         Path to the base directory of the "repository", i.e. datasets are
         arranged by name as sub-directories of the base dir.
-    frequencies : List[DataFrequency]
+    frequencies : Sequence[DataFrequency]
         The frequencies that each sub-directory layers corresponds to.
         Each frequency in the list should contain the layers of the previous
         frequencies [Clinical.dataset, Clinical.group,
@@ -49,6 +55,15 @@ class FileSystemDir(Repository):
         Clinical.subject] would specify a 2-level structure where the data
         is organised into directories for matching members between groups and
         then the groups in sub-directories containing sub-directories.
+    id_maps : Dict[DataFrequency, Dict[DataFrequency, str]] or Callable
+        Either a dictionary of dictionaries that is used to extract IDs from
+        subject and session labels. Keys of the outer dictionary correspond to
+        the frequency to extract (typically group and/or subject) and the keys
+        of the inner dictionary the frequency to extract from (i.e.
+        subject or session). The values of the inner dictionary are regular
+        expression patterns that match the ID to extract in the 'ID' regular
+        expression group. Otherwise, it is a function with signature
+        `f(ids)` that returns a dictionary with the mapped IDs included
     """
 
     type = 'file_system_dir'
@@ -59,12 +74,14 @@ class FileSystemDir(Repository):
     PROV_KEY = 'provenance'
     VALUE_KEY = 'value'
 
-    def __init__(self, base_dir, frequencies):
+    def __init__(self, base_dir, frequencies, id_maps=default_id_map):
+        super().__init__(id_maps)
         self.base_dir = base_dir
         self.frequencies = list(frequencies)
         if not len(self.frequencies):
             raise ArcanaUsageError(
                 "At least one layer must be provided to FileSystemDir")
+        self.frequency_enum = type(self.frequencies[0])
         for prev_freq, freq in zip(self.frequencies[:-1],
                                    self.frequencies[1:]):
             if not isinstance(freq, type(prev_freq)):
@@ -82,28 +99,25 @@ class FileSystemDir(Repository):
 
     def __repr__(self):
         return (f"{type(self).__name__}(base_dir={self.base_dir}, "
-                f"layers={self.layers})")
+                f"frequencies={self.frequencies})")
 
     def __eq__(self, other):
         try:
-            return (self.layers == other.layers
+            return (self.frequencies == other.frequencies
                     and self.base_dir == other.base_dir)
         except AttributeError:
             return False
 
     @property
-    def prov(self):
+    def provenance(self):
         return {
             'type': get_class_info(type(self)),
             'host': HOSTNAME,
             'base_dir': self.base_dir,
-            'layers': [str(l) for l in self.layers]}
+            'frequencies': [str(l) for l in self.frequencies]}
 
     def __hash__(self):
         return hash(self.type)
-
-    def standardise_name(self, name):
-        return op.abspath(name)
 
     def get_file_group(self, file_group):
         """
@@ -111,21 +125,17 @@ class FileSystemDir(Repository):
         """
         # Don't need to cache file_group as it is already local as long
         # as the path is set
-        if file_group.local_path is None:
-            primary_path = self.file_group_path(file_group)
-            aux_files = file_group.format.default_aux_file_paths(primary_path)
-            if not op.exists(primary_path):
+        primary_path = self.file_group_path(file_group)
+        aux_files = file_group.format.default_aux_file_paths(primary_path)
+        if not op.exists(primary_path):
+            raise ArcanaMissingDataException(
+                "{} does not exist in {}"
+                .format(file_group, self))
+        for aux_name, aux_path in aux_files.items():
+            if not op.exists(aux_path):
                 raise ArcanaMissingDataException(
-                    "{} does not exist in {}"
-                    .format(file_group, self))
-            for aux_name, aux_path in aux_files.items():
-                if not op.exists(aux_path):
-                    raise ArcanaMissingDataException(
-                        "{} is missing '{}' side car in {}"
-                        .format(file_group, aux_name, self))
-        else:
-            primary_path = file_group.local_path
-            aux_files = file_group.aux_files
+                    "{} is missing '{}' side car in {}"
+                    .format(file_group, aux_name, self))
         return primary_path, aux_files
 
     def get_file_group_provenance(self, file_group):
@@ -190,16 +200,22 @@ class FileSystemDir(Repository):
         Inserts or updates a file_group in the repository
         """
         target_path = self.file_group_path(file_group)
-        if op.isfile(file_group.path):
-            shutil.copyfile(file_group.path, target_path)
+        source_path = file_group.local_path
+        # Create target directory if it doesn't exist already
+        dname = op.dirname(target_path)
+        if not op.exists(dname):
+            shutil.makedirs(dname)
+        if op.isfile(source_path):
+            shutil.copyfile(source_path, target_path)
             # Copy side car files into repository
             for aux_name, aux_path in file_group.format.default_aux_file_paths(
                     target_path).items():
-                shutil.copyfile(file_group.format.aux_files[aux_name],aux_path)
-        elif op.isdir(file_group.path):
+                shutil.copyfile(
+                    file_group.format.aux_files[aux_name], aux_path)
+        elif op.isdir(source_path):
             if op.exists(target_path):
                 shutil.rmtree(target_path)
-            shutil.copytree(file_group.path, target_path)
+            shutil.copytree(source_path, target_path)
         else:
             assert False
         if file_group.provenance is not None:
@@ -317,15 +333,16 @@ class FileSystemDir(Repository):
         return op.join(self.base_dir,
                        *(data_node.ids[f] for f in self.frequencies))
 
+    def file_group_path(self, file_group):
+        return op.join(self.node_path(file_group.data_node)
+                        *(file_group.name_path.split('/')))
+
     def fields_json_path(self, field):
         return op.join(self.node_path(field.data_node), self.FIELDS_FNAME)
 
     def prov_json_path(self, file_group):
-        return (op.join(self.node_path(file_group.data_node)
-                        *(file_group.path.split('/')))
-                + self.PROV_SUFFX)
+        return self.file_group_path(file_group) + self.PROV_SUFFX
                                  
-
 
 
 def single_dataset(path: str, frequencies: Iterable[DataFrequency]=(

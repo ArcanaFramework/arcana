@@ -1,5 +1,6 @@
 from abc import ABCMeta, abstractmethod
 import logging
+import re
 from nipype.interfaces.base import (
     traits, DynamicTraitedSpec, Undefined, File, Directory,
     BaseInterface, isdefined)
@@ -7,7 +8,7 @@ from itertools import chain
 from typing import Sequence
 from copy import copy
 from arcana2.utils import ExitStack, PATH_SUFFIX, FIELD_SUFFIX, CHECKSUM_SUFFIX
-from arcana2.exceptions import ArcanaError, ArcanaDesignError
+from arcana2.exceptions import ArcanaError, ArcanaDesignError, ArcanaUsageError
 from ..item import Provenance
 from ..dataset import Dataset
 
@@ -22,10 +23,23 @@ class Repository(metaclass=ABCMeta):
     Abstract base class for all Repository systems, DaRIS, XNAT and
     local file system. Sets out the interface that all Repository
     classes should implement.
+
+    Parameters
+    ----------
+    id_maps : Dict[DataFrequency, Dict[DataFrequency, str]] or Callable
+        Either a dictionary of dictionaries that is used to extract IDs from
+        subject and session labels. Keys of the outer dictionary correspond to
+        the frequency to extract (typically group and/or subject) and the keys
+        of the inner dictionary the frequency to extract from (i.e.
+        subject or session). The values of the inner dictionary are regular
+        expression patterns that match the ID to extract in the 'ID' regular
+        expression group. Otherwise, it is a function with signature
+        `f(ids)` that returns a dictionary with the mapped IDs included
     """
 
-    def __init__(self):
+    def __init__(self, id_maps=None):
         self._connection_depth = 0
+        self.id_maps = id_maps
 
     def __enter__(self):
         # This allows the repository to be used within nested contexts
@@ -45,6 +59,24 @@ class Repository(metaclass=ABCMeta):
 
     def standardise_name(self, name):
         return name
+
+    def mapped_ids(self, ids):
+        if callable(self.id_maps):
+            return self.id_maps(ids)
+        ids = copy(ids)
+        for source_freq, id in ids.items():
+            for target_freq, pattern in self.id_maps[source_freq].items():
+                match = re.match(pattern, id)
+                if match is None:
+                    raise ArcanaUsageError(
+                        f"Cannot map {id} using pattern {pattern}, no match")
+                try:
+                    ids[target_freq] = match.group('ID')
+                except KeyError:
+                    raise ArcanaUsageError(
+                        f"ID map pattern {pattern} does not have 'ID' group "
+                        f"when mapping {id}")
+        return ids
 
     def connect(self):
         """
@@ -67,7 +99,8 @@ class Repository(metaclass=ABCMeta):
         name : str
             The name, path or ID of the dataset within the repository
         """
-        return Dataset(name, repository=self, **kwargs)
+        return Dataset(name, repository=self,
+                       frequency_enum=self.frequency_enum, **kwargs)
 
     @abstractmethod
     def construct_dataset(self, dataset, ids=None, **kwargs):

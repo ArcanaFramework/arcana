@@ -25,7 +25,7 @@ class Dataset():
     repository : Repository
         The repository the dataset is stored into. Can be the local file
         system by providing a FileSystemDir repo.
-    frequency_cls : type
+    frequency_enum : type
         The enum that describes the tree structure of the dataset. See
         `arcana2.data.enum.DataFrequency`.
     include_ids : Dict[str, List[str]]
@@ -35,18 +35,18 @@ class Dataset():
         will be used
     """
 
-    def __init__(self, name, repository, frequency_cls, include_ids=None):
+    def __init__(self, name, repository, frequency_enum, include_ids=None):
         self.name = name
         self.repository = repository
-        self.frequency_cls = frequency_cls
-        self.include_ids = {f: None for f in frequency_cls}
+        self.frequency_enum = frequency_enum
+        self.include_ids = {f: None for f in frequency_enum}
         for freq, ids in include_ids:
             try:
-                self.include_ids[frequency_cls[freq]] = list(ids)
+                self.include_ids[frequency_enum[freq]] = list(ids)
             except KeyError:
                 raise ArcanaUsageError(
                     f"Unrecognised data frequency '{freq}' (valid "
-                    f"{', '.join(self.frequency_cls)})")
+                    f"{', '.join(self.frequency_enum)})")
         # Add root node for tree
         self.root_node = DataNode(self.root_frequency, {}, self)
 
@@ -59,17 +59,17 @@ class Dataset():
                 and self.repository == other.repository
                 and self.include_ids == other.include_ids
                 and self.root_node == other.root_node
-                and self.frequency_cls == other.frequency_cls)
+                and self.frequency_enum == other.frequency_enum)
 
     def __hash__(self):
         return (hash(self.name)
                 ^ hash(self.repository)
                 ^ hash(self.include_ids)
                 ^ hash(self.root_node)
-                ^ hash(self.frequency_cls))
+                ^ hash(self.frequency_enum))
 
     def __getitem__(self, key):
-        if key == self.frequency_cls(0):
+        if key == self.frequency_enum(0):
             return self.root_node
         else:
             return self.root_node.subnodes[key]
@@ -83,14 +83,14 @@ class Dataset():
 
     @property
     def root_frequency(self):
-        return self.frequency_cls(0)
+        return self.frequency_enum(0)
 
     def __ne__(self, other):
         return not (self == other)
 
     def node(self, frequency, **ids):
         # Parse str to frequency enums
-        frequency = self.frequency_cls[str(frequency)]
+        frequency = self.frequency_enum[str(frequency)]
         if frequency == self.root_freq:
             if ids:
                 raise ArcanaUsageError(
@@ -127,12 +127,12 @@ class Dataset():
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
-        if not isinstance(frequency, self.frequency_cls):
+        if not isinstance(frequency, self.frequency_enum):
             raise ArcanaDataTreeConstructionError(
                 f"Provided frequency {frequency} is not of "
-                f"{self.frequency_cls} type")
+                f"{self.frequency_enum} type")
         # Check conversion to frequency cls
-        ids = {self.frequency_cls[str(f)]: i for f, i in ids.items()}
+        ids = {self.frequency_enum[str(f)]: i for f, i in ids.items()}
         # Create new data node
         node = DataNode(frequency, ids, self)
         basis_ids = {ids[f] for f in frequency.layers if f in ids}
@@ -155,7 +155,7 @@ class Dataset():
                     f"Inconsistent IDs provided for nodes in {frequency} "
                     f"in data tree ({ids_tuple} and {existing_tuple})")
         node_dict[ids_tuple] = node
-        node._supranodes[self.frequency_cls(0)] = weakref.ref(self.root_node)
+        node._supranodes[self.frequency_enum(0)] = weakref.ref(self.root_node)
         # Insert nodes for basis layers if not already present and link them
         # with inserted node
         for supra_freq in frequency.layers:
@@ -189,12 +189,12 @@ class Dataset():
             A tuple sorted in order of provided frequencies
         """
         try:
-            return tuple((self.frequency_cls[str(f)], i)
+            return tuple((self.frequency_enum[str(f)], i)
                          for f, i in sorted(ids.items(), key=itemgetter(1)))
         except KeyError:
             raise ArcanaUsageError(
                     f"Unrecognised data frequencies in ID dict '{ids}' (valid "
-                    f"{', '.join(self.frequency_cls)})")
+                    f"{', '.join(self.frequency_enum)})")
 
 
 class DataNode():

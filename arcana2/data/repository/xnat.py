@@ -22,6 +22,7 @@ from arcana2.exceptions import (
 from ..item import Provenance
 from arcana2.utils import dir_modtime, get_class_info, parse_value
 from ..dataset import Dataset
+from ..enum import Clinical
 
 
 logger = logging.getLogger('arcana2')
@@ -49,14 +50,6 @@ class Xnat(Repository):
         Username with which to connect to XNAT with
     password : str
         Password to connect to the XNAT repository with
-    id_maps : Dict[DataFrequency, Dict[DataFrequency, str]]
-        A dictionary of dictionaries that is used to extract IDs from
-        subject and session labels. Keys of the outer dictionary correspond to
-        the frequency to extract (typically group and/or subject) and the keys
-        of the inner dictionary the frequency to extract from (i.e.
-        subject or session). The values of the inner dictionary are regular
-        expression patterns that match the ID to extract in the 'ID' regular
-        expression group.
     check_md5 : bool
         Whether to check the MD5 digest of cached files before using. This
         checks for updates on the server since the file was cached
@@ -71,6 +64,15 @@ class Xnat(Repository):
         relies on summary derivatives (i.e. of 'per_timepoint/subject/analysis'
         tree_level) then the filter should match all sessions in the Analysis's
         subject_ids and timepoint_ids.
+    id_maps : Dict[DataFrequency, Dict[DataFrequency, str]] or Callable
+        Either a dictionary of dictionaries that is used to extract IDs from
+        subject and session labels. Keys of the outer dictionary correspond to
+        the frequency to extract (typically group and/or subject) and the keys
+        of the inner dictionary the frequency to extract from (i.e.
+        subject or session). The values of the inner dictionary are regular
+        expression patterns that match the ID to extract in the 'ID' regular
+        expression group. Otherwise, it is a function with signature
+        `f(ids)` that returns a dictionary with the mapped IDs included
     """
 
     type = 'xnat'
@@ -80,9 +82,9 @@ class Xnat(Repository):
     depth = 2
 
     def __init__(self, server, cache_dir, user=None, password=None,
-                 id_maps=None, check_md5=True, race_cond_delay=30,
-                 session_filter=None):
-        super().__init__()
+                 check_md5=True, race_cond_delay=30,
+                 session_filter=None, id_maps=None):
+        super().__init__(id_maps)
         if not isinstance(server, str):
             raise ArcanaUsageError(
                 "Invalid server url {}".format(server))
@@ -141,6 +143,10 @@ class Xnat(Repository):
             raise ArcanaError("XNAT repository has been disconnected before "
                               "exiting outer context")
         return self._login
+
+    @property
+    def frequency_enum(self):
+        return Clinical
 
     @property
     def server(self):
