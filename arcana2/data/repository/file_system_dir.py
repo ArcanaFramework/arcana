@@ -138,13 +138,6 @@ class FileSystemDir(Repository):
                     .format(file_group, aux_name, self))
         return primary_path, aux_files
 
-    def get_file_group_provenance(self, file_group):
-        if file_group.local_path is not None:
-            prov = Provenance.load(self.prov_json_path(file_group))
-        else:
-            prov = None
-        return prov
-
     def get_field(self, field):
         """
         Update the value of the field from the repository
@@ -158,7 +151,21 @@ class FileSystemDir(Repository):
             val = field.dtype(val)
         return val
 
-    def get_field_provenance(self, field):
+    def get_provenance(self, item):
+        if item.is_file_group:
+            prov = self._get_file_group_provenance(item)
+        else:
+            prov = self._get_field_provenance(item)
+        return prov
+
+    def _get_file_group_provenance(self, file_group):
+        if file_group.local_path is not None:
+            prov = Provenance.load(self.prov_json_path(file_group))
+        else:
+            prov = None
+        return prov
+
+    def _get_field_provenance(self, field):
         """
         Loads the fields provenance from the JSON dictionary
         """
@@ -303,7 +310,8 @@ class FileSystemDir(Repository):
                         value = value[self.VALUE_KEY]
                     else:
                         prov = None
-                    node.add_field(name_path=name, value=value, provenance=prov)
+                    node.add_field(name_path=name, value=value,
+                                   provenance=prov)
             # Add sub-directory nodes
             if not is_leaf_node:
                 for sub_dir in os.listdir(dpath):

@@ -26,26 +26,23 @@ class DataItem():
 
     is_spec = False
 
-    def __init__(self, data_node, exists, provenance, derived):
+    def __init__(self, data_node, exists, provenance):
         self._data_node = (
             weakref.ref(data_node) if data_node is not None else None)
         self.exists = exists
         if not isinstance(provenance, Provenance):
             provenance = Provenance(provenance)
         self._provenance = provenance
-        self.derived = derived
 
     def __eq__(self, other):
         return (self.data_node == other.data_node
                 and self.exists == other.exists
-                and self._provenance == other._provenance
-                and self.derived == other.derived)
+                and self._provenance == other._provenance)
 
     def __hash__(self):
         return (hash(self.data_node)
                 ^ hash(self.exists)
-                ^ hash(self._provenance)
-                ^ hash(self.derived))
+                ^ hash(self._provenance))
 
     def find_mismatch(self, other, indent=''):
         sub_indent = indent + '  '
@@ -62,15 +59,7 @@ class DataItem():
             mismatch += ('\n{}_provenance: self={} v other={}'
                          .format(sub_indent, self._provenance,
                                  other._provenance))
-        if self.derived != other.derived:
-            mismatch += ('\n{}derived: self={} v other={}'
-                         .format(sub_indent, self.derived,
-                                 other.derived))
         return mismatch
-
-    # @property
-    # def derived(self):
-    #     return self.namespace is not None
 
     @property
     def data_node(self):
@@ -84,8 +73,6 @@ class DataItem():
 
     @property
     def provenance(self):
-        if self.exists and self._provenance is None:
-            self._provenance = self.data_node.repository.get_provenance(self)
         return self._provenance
 
     @provenance.setter
@@ -102,12 +89,13 @@ class DataItem():
         if self.provenance is None:
             return None
         else:
-            return self._provenance.outputs[self.name_path]
+            return self.provenance.outputs[self.name_path]
 
     def initkwargs(self):
         dct = super().initkwargs()
         dct['data_node'] = self.data_node
         dct['exists'] = self.exists
+        dct['provenance'] = self.provenance
         return dct
 
 

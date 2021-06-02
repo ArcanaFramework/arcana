@@ -91,7 +91,8 @@ class Xnat(Repository):
     type = 'xnat'
 
     MD5_SUFFIX = '.md5.json'
-    PROV_RESOURCE = 'PROVENANCE__'
+    PROV_SUFFIX = '.__prov__.json'
+    FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
 
     def __init__(self, server, cache_dir, user=None, password=None,
@@ -104,6 +105,7 @@ class Xnat(Repository):
         self._server = server
         self.cache_dir = cache_dir
         makedirs(self.cache_dir, exist_ok=True)
+        self._cached_datasets = {}        
         self.user = user
         self.password = password
         self.id_maps = id_maps
@@ -204,9 +206,9 @@ class Xnat(Repository):
 
         Returns
         -------
-        primary_name_path : str
+        primary_path : str
             The name_path of the primary file once it has been cached
-        aux_name_paths : dict[str, str]
+        aux_paths : dict[str, str]
             A dictionary containing a mapping of auxiliary file names to
             name_paths
         """
@@ -217,22 +219,23 @@ class Xnat(Repository):
         self._check_repository(file_group)
         with self:  # Connect to the XNAT repository if haven't already
             xnode = self.get_xnode(file_group)
-            base_uri = self.standard_uri(xnode)
-            if file_group.derived:
-                xresource = xnode.resources[self.derived_name(file_group)]
-            else:
-                # If file_group is a primary 'scan' (rather than a derivative)
-                # we need to get the resource of the scan instead of
-                # the session
-                xscan = xnode.scans[file_group.name]
-                file_group.id = xscan.id
-                base_uri += '/scans/' + xscan.id
-                xresource = xscan.resources[file_group.resource_name]
-            # Set URI so we can retrieve checksums if required. We ensure we
-            # use the resource name instead of its ID in the URI for
-            # consistency with other locations where it is set and to keep the
-            # cache name_path consistent
-            file_group.uri = base_uri + '/resources/' + xresource.label
+            if not file_group.uri:
+                base_uri = self.standard_uri(xnode)
+                if file_group.derived:
+                    xresource = xnode.resources[self.derived_name(file_group)]
+                else:
+                    # If file_group is a primary 'scan' (rather than a
+                    # derivative) we need to get the resource of the scan
+                    # instead of the scan
+                    xscan = xnode.scans[file_group.name]
+                    file_group.id = xscan.id
+                    base_uri += '/scans/' + xscan.id
+                    xresource = xscan.resources[file_group.resource_name]
+                # Set URI so we can retrieve checksums if required. We ensure we
+                # use the resource name instead of its ID in the URI for
+                # consistency with other locations where it is set and to keep the
+                # cache name_path consistent
+                file_group.uri = base_uri + '/resources/' + xresource.label
             cache_path = self.cache_path(file_group)
             need_to_download = True
             if op.exists(cache_path):
@@ -265,6 +268,10 @@ class Xnat(Repository):
                         # 'race_cond_delay' seconds and then check that it
                         # has been completed or assume interrupted and
                         # redownload.
+                        # TODO: This should really take into account the
+                        # size of the file being downloaded, and then the
+                        # user can estimate the download speed for their
+                        # repository
                         self._delayed_download(
                             tmp_dir, xresource, file_group, cache_path,
                             delay=self._race_cond_delay)
@@ -275,12 +282,12 @@ class Xnat(Repository):
                                           cache_path)
                     shutil.rmtree(tmp_dir)
         if not file_group.format.directory:
-            (primary_name_path, aux_name_paths) = file_group.format.assort_files(
+            primary_path, aux_paths = file_group.format.assort_files(
                 op.join(cache_path, f) for f in os.listdir(cache_path))
         else:
-            primary_name_path = cache_path
-            aux_name_paths = None
-        return primary_name_path, aux_name_paths
+            primary_path = cache_path
+            aux_paths = None
+        return primary_path, aux_paths
 
     def get_field(self, field):
         self._check_repository(field)
@@ -301,27 +308,30 @@ class Xnat(Repository):
         with self:
             # Add session for derived scans if not present
             xnode = self.get_xnode(file_group)
-            name = self.derived_name(file_group)
-            # Set the uri of the file_group
-            file_group.uri = '{}/resources/{}'.format(self.standard_uri(xnode),
-                                                   name)
+            if not file_group.uri:
+                name = self.derived_name(file_group)
+                # Set the uri of the file_group
+                file_group.uri = '{}/resources/{}'.format(
+                    self.standard_uri(xnode), name)
             # Copy file_group to cache
             cache_path = self.cache_path(file_group)
-            if os.name_path.exists(cache_path):
+            if os.path.exists(cache_path):
                 shutil.rmtree(cache_path)
             os.makedirs(cache_path, stat.S_IRWXU | stat.S_IRWXG)
             if file_group.format.directory:
-                shutil.copytree(file_group.name_path, cache_path)
+                shutil.copytree(file_group.local_path, cache_path)
             else:
                 # Copy primary file
-                shutil.copyfile(file_group.name_path,
+                shutil.copyfile(file_group.local_path,
                                 op.join(cache_path, file_group.fname))
                 # Copy auxiliaries
-                for sc_fname, sc_name_path in file_group.aux_file_fnames_and_name_paths:
-                    shutil.copyfile(sc_name_path, op.join(cache_path, sc_fname))
+                for sc_fname, sc_path in file_group.aux_file_fnames_and_paths:
+                    shutil.copyfile(sc_path, op.join(cache_path, sc_fname))
             with open(cache_path + self.MD5_SUFFIX, 'w',
                       **JSON_ENCODING) as f:
                 json.dump(file_group.calculate_checksums(), f, indent=2)
+            if file_group.provenance:
+                self.put_provenance(file_group)
             # Delete existing resource (if present)
             try:
                 xresource = xnode.resources[name]
@@ -337,15 +347,15 @@ class Xnat(Repository):
                 parent=xnode, label=name, format=file_group.format_name)
             # Upload the files to the new resource                
             if file_group.format.directory:
-                for dname_path, _, fnames  in os.walk(file_group.name_path):
+                for dpath, _, fnames  in os.walk(file_group.local_path):
                     for fname in fnames:
-                        fname_path = op.join(dname_path, fname)
-                        frelname_path = op.relname_path(fname_path, file_group.name_path)
-                        xresource.upload(fname_path, frelname_path)
+                        fpath = op.join(dpath, fname)
+                        frelpath = op.relpath(fpath, file_group.local_path)
+                        xresource.upload(fpath, frelpath)
             else:
                 xresource.upload(file_group.name_path, file_group.fname)
-                for sc_fname, sc_name_path in file_group.aux_file_fnames_and_name_paths:
-                    xresource.upload(sc_name_path, sc_fname)
+                for sc_fname, sc_path in file_group.aux_file_fnames_and_paths:
+                    xresource.upload(sc_path, sc_fname)
 
     def put_field(self, field):
         self._check_repository(field)
@@ -359,28 +369,31 @@ class Xnat(Repository):
         with self:
             xsession = self.get_xnode(field)
             xsession.fields[self.derived_name(field)] = val
+        if field.provenance:
+            self.put_provenance(field)
 
-    def put_provenance(self, provenance, dataset):
-        xnode = self.get_xnode(provenance, dataset=dataset)
-        resource_name = self.prepend_analysis(self.PROV_RESOURCE,
-                                              provenance.namespace)
-        uri = '{}/resources/{}'.format(self.standard_uri(xnode), resource_name)
+    def put_provenance(self, item):
+        xnode = self.get_xnode(item)
+        uri = '{}/resources/{}'.format(self.standard_uri(xnode),
+                                       self.PROV_RESOURCE)
         cache_dir = self.cache_path(uri)
         os.makedirs(cache_dir, exist_ok=True)
-        cache_path = op.join(cache_dir, provenance.pipeline_name + '.json')
-        provenance.save(cache_path)
+        fname = self.derived_name(item) + '.json'
+        cache_path = op.join(cache_dir, fname)
+        item.provenance.save(cache_path)
         # TODO: Should also save digest of prov.json to check to see if it
-        #       has been altered remotely
+        #       has been altered remotely. This could be put in a field
+        #       to save having to download a file
         try:
-            xresource = xnode.resources[resource_name]
+            xresource = xnode.resources[self.PROV_RESOURCE]
         except KeyError:
             xresource = self.login.classes.ResourceCatalog(
-                parent=xnode, label=resource_name,
+                parent=xnode, label=self.PROV_RESOURCE,
                 format='PROVENANCE')
             # Until XnatPy adds a create_resource to projects, subjects &
             # sessions
             # xresource = xnode.create_resource(resource_name)
-        xresource.upload(cache_path, op.basename(cache_path))
+        xresource.upload(cache_path, fname)
 
     def get_checksums(self, file_group):
         """
@@ -415,7 +428,8 @@ class Xnat(Repository):
 
     def construct_dataset(self, dataset, **kwargs):
         """
-        Find all file_groups, fields and provenance provenances within an XNAT project
+        Find all file_groups, fields and provenance provenances within an XNAT
+        project
 
         Parameters
         ----------
@@ -552,11 +566,11 @@ class Xnat(Repository):
                         for fname in fnames:
                             if fname.endswith('.json'):
                                 pipeline_name = fname[:-len('.json')]
-                                json_name_path = op.join(base_dir, fname)
+                                json_path = op.join(base_dir, fname)
                                 provenances.append(
                                     Provenance.load(
                                         pipeline_name,
-                                        name_path=json_name_path,
+                                        name_path=json_path,
                                         tree_level=tree_level,
                                         subject_id=subject_id,
                                         timepoint_id=timepoint_id,
@@ -677,28 +691,28 @@ class Xnat(Repository):
 
     def download_file_group(self, tmp_dir, xresource, file_group, cache_path):
         # Download resource to zip file
-        zip_name_path = op.join(tmp_dir, 'download.zip')
-        with open(zip_name_path, 'wb') as f:
+        zip_path = op.join(tmp_dir, 'download.zip')
+        with open(zip_path, 'wb') as f:
             xresource.xnat_session.download_stream(
                 xresource.uri + '/files', f, format='zip', verbose=True)
         checksums = self.get_checksums(file_group)
         # Extract downloaded zip file
         expanded_dir = op.join(tmp_dir, 'expanded')
         try:
-            with ZipFile(zip_name_path) as zip_file:
+            with ZipFile(zip_path) as zip_file:
                 zip_file.extractall(expanded_dir)
         except BadZipfile as e:
             raise ArcanaError(
                 "Could not unzip file '{}' ({})"
                 .format(xresource.id, e))
-        data_name_path = glob(expanded_dir + '/**/files', recursive=True)[0]
+        data_path = glob(expanded_dir + '/**/files', recursive=True)[0]
         # Remove existing cache if present
         try:
             shutil.rmtree(cache_path)
         except OSError as e:
             if e.errno != errno.ENOENT:
                 raise e
-        shutil.move(data_name_path, cache_path)
+        shutil.move(data_path, cache_path)
         with open(cache_path + self.MD5_SUFFIX, 'w', **JSON_ENCODING) as f:
             json.dump(checksums, f, indent=2)
 
@@ -741,7 +755,7 @@ class Xnat(Repository):
         """
         with self:
             xproject = self.login.projects[data_node.dataset.name]
-            if data_node.frequency == Clinical.dataset:
+            if data_node.frequency not in (Clinical.subject, Clinical.session):
                 return xproject
             subj_label = data_node.ids[Clinical.subject]
             try:
@@ -751,9 +765,6 @@ class Xnat(Repository):
                     label=subj_label, parent=xproject)
             if data_node.frequency == Clinical.subject:
                 return xsubject
-            elif data_node.frequency != Clinical.session:
-                raise ArcanaUsageError(
-                    f"Unrecognised item frequency '{data_node.frequency}'")
             sess_label = data_node.ids[Clinical.session]
             try:
                 xsession = xsubject.experiments[sess_label]
@@ -787,7 +798,7 @@ class Xnat(Repository):
         return op.join(self.cache_dir, *uri.split('/')[3:])
 
     def _check_repository(self, item):
-        if item.dataset.repository is not self:
+        if item.data_node.dataset.repository is not self:
             raise ArcanaWrongRepositoryError(
                 "{} is from {} instead of {}".format(
                     item, item.dataset.repository, self))
@@ -807,61 +818,44 @@ class Xnat(Repository):
         `str`
             The derived name
         """
-        if item.derived:
-            name = cls.prepend_analysis(item.name, item.namespace)
-        else:
-            name = item.name
-        if item.tree_level == 'per_timepoint':
-            name = 'VISIT_{}--{}'.format(item.timepoint_id, name)
+        name = '__'.join(item.name_path)
+        if item.data_node.frequency not in (Clinical.subject,
+                                            Clinical.session):
+            name = ('___'
+                    + '___'.join(f'{l}__{item.data_node.ids[l]}'
+                                 for l in item.data_node.frequency.layers)
+                    + '___')
         return name
 
     @classmethod
-    def prepend_analysis(cls, name, namespace):
-        return namespace + '-' + name
-
-    @classmethod
-    def split_derived_name(cls, name, timepoint_id=None, tree_level='per_session'):
+    def split_derived_name(cls, xname):
         """Reverses the escape of an item name by `derived_name`
 
         Parameters
         ----------
-        name : `str`
-            An name escaped by `derived_name`
-        timepoint_id : `str`
-            The timepoint ID of the node that name is found in. Will be overridden
-             if 'vis_<timepoint_id>' is found in the name
-        tree_level : `str`
-            The tree_level of the node the derived name is found in.
+        xname : `str`
+            An escaped name of a data node stored in the project resources
 
         Returns
         -------
         name : `str`
             The unescaped name of an item
-        namespace : `str` | `NoneType`
-            The name of the analysis the item was generated by
-        timepoint_id : `str` | `NoneType`
-            The timepoint ID of the derived_name, overridden from the value passed
-            to the method if 'vis_<timepoint_id>' is found in the name
-        tree_level : `str`
-            The tree_level of the derived name, overridden from the value passed
-            to the method if 'vis_<timepoint_id>' is found in the name
+        frequency : Clinical
+            The frequency of the node
+        ids : Dict[Clinical, str]
+            A dictionary of IDs for the node
         """
-        namespace = None
-        if '-' in name:
-            match = re.match(
-                (r'(?:VISIT_(?P<timepoint>\w+)--)?(?:(?P<analysis>\w+)-)?'
-                 + r'(?P<name>.+)'),
-                name)
-            name = match.group('name')
-            namespace = match.group('analysis')
-            if match.group('timepoint') is not None:
-                if tree_level != 'per_dataset':
-                    raise ArcanaRepositoryError(
-                        "Visit prefixed resource ({}) found in non-project"
-                        " level node".format(name))
-                tree_level = 'per_timepoint'
-                timepoint_id = match.group('timepoint')
-        return name, namespace, timepoint_id, tree_level
+        ids = {}
+        id_parts = xname.split('___')[1:-1]
+        freq_value = 0b0
+        for part in id_parts:
+            layer_freq_str, id = part.split('__')
+            layer_freq = Clinical[layer_freq_str]
+            ids[layer_freq] = id
+            freq_value != layer_freq
+        frequency = Clinical(freq_value)
+        name_path = '/'.join(id_parts[-1].split('__'))
+        return name_path, frequency, ids
 
     @classmethod
     def standard_uri(cls, xnode):
