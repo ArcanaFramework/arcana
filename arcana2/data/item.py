@@ -30,6 +30,8 @@ class DataItem():
         self._data_node = (
             weakref.ref(data_node) if data_node is not None else None)
         self.exists = exists
+        if not isinstance(provenance, Provenance):
+            provenance = Provenance(provenance)
         self._provenance = provenance
 
     def __eq__(self, other):
@@ -631,11 +633,10 @@ class Field(DataItem, FieldMixin):
             self.dataset.put_field(self)
 
 
-class MultiFormatFileGroup(DataItem, DataMixin):
-    """A file-group potentially stored in multiple file formats, and
-    the file formats can't be determined until a list of possible candidates
-    are provided (i.e. in the 'match' method)
-    
+class UnresolvedFileGroup(DataItem, DataMixin):
+    """A file-group stored in, potentially multiple, unknown file formats.
+    File formats are resolved by providing a list of candidates to the
+    'resolve' method
 
     Parameters
     ----------
@@ -649,11 +650,6 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         distinguish multiple file_groups with the same scan type in the
         same session, e.g. scans taken before and after a task. For
         datasets where this isn't stored (i.e. Local), id can be None
-    data_node : DataNode
-        The data node that the field belongs to
-    provenance : Provenance | None
-        The provenance for the pipeline that generated the file-group,
-        if applicable
     resource_uris : Dict[str, str] | None
         For repositories where the name of the file format is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
@@ -661,8 +657,13 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         to each resource
     quality : str
         The quality label assigned to the file_group (e.g. as is saved on XNAT)
-    local_path : str | None
+    local_paths : Sequence[str] | None
         Path to the file-group in the local cache
+    data_node : DataNode
+        The data node that the field belongs to
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the file-group,
+        if applicable
     """
 
     def __init__(self, path, order=None, resource_uris=None, quality=None,
@@ -677,7 +678,7 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         self.quality = quality
         self._matched = {}
 
-    def match_format(self, candidates):
+    def resolve(self, candidates):
         """
         Detects the format of the file-group from a list of possible
         candidates and returns a corresponding FileGroup object. If multiple
@@ -716,7 +717,7 @@ class MultiFormatFileGroup(DataItem, DataMixin):
         if not (self.resource_uris or self._local_paths):
             raise ArcanaError(
                 "Either resource_uris or local paths must be provided "
-                f"to UnresolvedFormatFileGroup('{self.path}') in before "
+                f"to UnresolvedFileGroup('{self.path}') in before "
                 "attempting to resolve a file-groups format")
         for candidate in candidates:
             try:
@@ -772,8 +773,63 @@ class MultiFormatFileGroup(DataItem, DataMixin):
                         "', '".join(self.resource_uris)))
         raise ArcanaNoMatchingFileFormatError(error_msg)
 
+class UnresolvedField():
+    """A field stored in unknown datatype. Can create a Field
+    object by the 'resolve' method.
+    
 
-class Provenance(object):
+    Parameters
+    ----------
+    path : str
+        The path to the relative location of the file group, i.e. excluding
+        information about which node in the data tree it belongs to
+    value : str
+        The value of the field (in a generic datatype)
+    data_node : DataNode
+        The data node that the field belongs to
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the file-group,
+        if applicable
+    """
+
+    def __init__(self, path, value=None, data_node=None, provenance=None):
+        DataItem.__init__(self, data_node, True, provenance)
+        DataMixin.__init__(self, path=path)
+        self.value = value
+
+    def resolve(self, dtype, array=False):
+        """
+        Detects the format of the file-group from a list of possible
+        candidates and returns a corresponding FileGroup object. If multiple
+        candidates match the potential files, e.g. NiFTI-X (see dcm2niix) and
+        NiFTI, then the first matching candidate is selected.
+
+        If 'resource_uris' were specified when the multi-format file-group was
+        created then that is used to select between the candidates. Otherwise
+        the file extensions of the local paths, and extensions of the files
+        within the directory will be used instead.
+
+        Parameters
+        ----------
+        dtype : type
+            The dtype of the field
+        array : bool
+            Whether the field should be treated as an array (i.e. split on ',')
+
+        Returns
+        -------
+        Field
+            The field with resolved datatype
+        """
+        if array:
+            value = [dtype(v) for v in self.value[1:-1].split(',')]
+        else:
+            value = dtype(self.value)
+        return Field(path=self.path, value=value, dtype=dtype, array=array,
+                     data_node=self.data_node, provenance=self.provenance)
+        
+
+class Provenance():
     """
     A representation of the information required to describe the provenance of
     analysis derivatives. Provenances the provenance information relevant to a
@@ -785,50 +841,43 @@ class Provenance(object):
 
     Parameters
     ----------
-    path : str
-        Name of the pipeline the provenance corresponds to
-    namespace : str
-        Name of the analysis that the provenance was generated by
-    dct : dict[str, *]
+    dct : dict[str, Any]
         A dictionary containing the provenance record
     """
 
-    PROVENANCE_VERSION = '1.0'
+    PROV_VERSION_KEY = '__prov_version__'
+    PROV_VERSION = '1.0'
+    DATETIME = 'datetime'
 
-    def __init__(self, path, dct, data_node):
-        self._dct = deepcopy(dct)
-        self.path = path
-        self.data_node = data_node
-        if 'datetime' not in self._dct:
-            self._dct['datetime'] = datetime.now().isoformat()
+    def __init__(self, dct):
+        self.dct = deepcopy(dct)
+        if self.DATETIME not in self.dct:
+            self.dct[self.DATETIME] = datetime.now().isoformat()
+        if self.PROV_VERSION_KEY not in self.dct:
+            self.dct[self.PROV_VERSION_KEY] = self.PROV_VERSION
 
     def __repr__(self):
-        return ("{}(path={}, data_node={})"
-                .format(type(self).__name__, self.path, self.data_node))
+        return repr(self.dct)
 
     def __eq__(self, other):
-        return (self._dct == other._dct
-                and self.path == other.path
-                and self.data_node == other.data_node)
+        return self.dct == other.dct
 
     def __getitem__(self, key):
-        return self._dct[key]
+        return self.dct[key]
 
-    @property
-    def inputs(self):
-        return self._dct['inputs']
+    def __setitem__(self, key, value):
+        self.dct[key] = value
 
-    @property
-    def outputs(self):
-        return self._dct['outputs']
+    def items(self):
+        return self.dct.items()
 
     @property
     def datetime(self):
-        return self._dct['datetime']
+        return self.dct[self.DATETIME]
 
     @property
     def version(self):
-        return self._dct[self.PROVENANCE_VERSION]
+        return self.dct[self.PROV_VERSION_KEY]
 
     def save(self, local_path):
         """
@@ -854,14 +903,14 @@ class Provenance(object):
         """
         with open(local_path, 'w') as f:
             try:
-                json.dump(self._dct, f, indent=2)
+                json.dump(self.dct, f, sort_keys=True, indent=2)
             except TypeError:
                 raise ArcanaError(
                     "Could not serialise provenance provenance dictionary:\n{}"
-                    .format(pformat(self._dct)))
+                    .format(pformat(self.dct)))
 
     @classmethod
-    def load(cls, path, local_path, data_node):
+    def load(cls, local_path):
         """
         Loads a saved provenance object from a JSON file
 
@@ -878,8 +927,8 @@ class Provenance(object):
             The loaded provenance provenance
         """
         with open(local_path) as f:
-            prov = json.load(f)
-        return Provenance(path, prov, data_node)
+            dct = json.load(f)
+        return Provenance(dct)
 
     def mismatches(self, other, include=None, exclude=None):
         """

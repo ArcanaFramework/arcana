@@ -1,11 +1,15 @@
 import os
 import os.path as op
 import errno
-from itertools import chain
+from typing import List
+from itertools import chain, zip_longest
+from collections.abc import Iterable
+from collections import defaultdict
 import stat
 import shutil
 import logging
 import json
+from copy import copy
 from fasteners import InterProcessLock
 from arcana2.data import FileGroup, Field
 from arcana2.data.item import Provenance
@@ -15,6 +19,8 @@ from arcana2.exceptions import (
     ArcanaMissingDataException,
     ArcanaInsufficientRepoDepthError)
 from arcana2.utils import get_class_info, HOSTNAME, split_extension
+from ..dataset import Dataset
+from ..enum import Clinical, DataFrequency
 from .base import Repository
 
 
@@ -32,26 +38,47 @@ class FileSystemDir(Repository):
     base_dir : str
         Path to the base directory of the "repository", i.e. datasets are
         arranged by name as sub-directories of the base dir.
-    layers : List[DataFrequency]
-        The layers that each sub-directory corresponds to in the data tree.
-        For example, [Clinical.group, Clinical.subject, Clinical.timepoint]
-        would specify a 3-level directory structure, with the first level
-        sorting by study group, the second by subject ID and the last level
-        the timepoint. Alternatively, [Clinical.subject, Clinical.group]
-        would specify a 2-level structure where the data is organised
-        into matching subjects (e.g. across test & control groups) at the
-        lowest level in the hierarchy.
+    frequencies : List[DataFrequency]
+        The frequencies that each sub-directory layers corresponds to.
+        Each frequency in the list should contain the layers of the previous
+        frequencies [Clinical.dataset, Clinical.group,
+        Clinical.subject, Clinical.session] would specify a 3-level
+        directory structure, with the first level sorting by study group, the
+        second by member ID (position within group) and then the study
+        timepoint. Alternatively, [Clinical.dataset, Clinical.member,
+        Clinical.subject] would specify a 2-level structure where the data
+        is organised into directories for matching members between groups and
+        then the groups in sub-directories containing sub-directories.
     """
 
     type = 'file_system_dir'
-    SUMMARY_NAME = '__ALL__'
-    FIELDS_FNAME = 'fields.json'
-    PROV_DIR = '__prov__'
+    NODE_DIR = '__node__'
+    PROV_SUFFIX = '.__prov__.json'
+    FIELDS_FNAME = '__fields__.json'
     LOCK_SUFFIX = '.lock'
+    PROV_KEY = 'provenance'
+    VALUE_KEY = 'value'
 
-    def __init__(self, base_dir, layers):
+    def __init__(self, base_dir, frequencies):
         self.base_dir = base_dir
-        self.layers = layers
+        self.frequencies = list(frequencies)
+        if not len(self.frequencies):
+            raise ArcanaUsageError(
+                "At least one layer must be provided to FileSystemDir")
+        for prev_freq, freq in zip(self.frequencies[:-1],
+                                   self.frequencies[1:]):
+            if not isinstance(freq, type(prev_freq)):
+                raise ArcanaUsageError(
+                    "Mismatching data frequencies provided to FileSystemDir. "
+                    "The must all be of the same Enum class "
+                    f"({freq} and {prev_freq})")
+            if (freq.value | prev_freq.value) != freq.value:
+                raise ArcanaUsageError(
+                    "Subsequent frequencies in list provided to FileSystemDir "
+                    "must have a superset of layers to previous frequencies "
+                    f"({freq}: {freq.layers} and "
+                    f"{prev_freq}: {prev_freq.layers})")
+
 
     def __repr__(self):
         return (f"{type(self).__name__}(base_dir={self.base_dir}, "
@@ -84,7 +111,7 @@ class FileSystemDir(Repository):
         """
         # Don't need to cache file_group as it is already local as long
         # as the path is set
-        if file_group._path is None:
+        if file_group.local_path is None:
             primary_path = self.file_group_path(file_group)
             aux_files = file_group.format.default_aux_file_paths(primary_path)
             if not op.exists(primary_path):
@@ -97,28 +124,55 @@ class FileSystemDir(Repository):
                         "{} is missing '{}' side car in {}"
                         .format(file_group, aux_name, self))
         else:
-            primary_path = file_group.path
+            primary_path = file_group.local_path
             aux_files = file_group.aux_files
         return primary_path, aux_files
+
+    def get_file_group_provenance(self, file_group):
+        if file_group.local_path is not None:
+            prov = Provenance.load(self.prov_json_path(file_group))
+        else:
+            prov = None
+        return prov
 
     def get_field(self, field):
         """
         Update the value of the field from the repository
         """
-        # Load fields JSON, locking to prevent read/write conflicts
-        # Would be better if only checked if locked to allow
-        # concurrent reads but not possible with multi-process
-        # locks (in my understanding at least).
+        val = self._get_field_val(field)
+        if isinstance(val, dict):
+            val = val[self.VALUE_KEY]
+        if field.array:
+            val = [field.dtype(v) for v in val]
+        else:
+            val = field.dtype(val)
+        return val
+
+    def get_field_provenance(self, field):
+        """
+        Loads the fields provenance from the JSON dictionary
+        """
+        val_dct = self._get_field_val(field)
+        if isinstance(val_dct, dict):
+            prov = val_dct.get(self.PROV_KEY)
+        else:
+            prov = None
+        return prov
+
+    def _get_field_val(self, field):
+        """
+        Load fields JSON, locking to prevent read/write conflicts
+        Would be better if only checked if locked to allow
+        concurrent reads but not possible with multi-process
+        locks (in my understanding at least).
+        """
         fpath = self.fields_json_path(field)
         try:
             with InterProcessLock(fpath + self.LOCK_SUFFIX,
                                   logger=logger), open(fpath, 'r') as f:
                 dct = json.load(f)
-            val = dct[field.name]
-            if field.array:
-                val = [field.dtype(v) for v in val]
-            else:
-                val = field.dtype(val)
+            val_dct = dct[field.name]
+            return val_dct
         except (KeyError, IOError) as e:
             try:
                 # Check to see if the IOError wasn't just because of a
@@ -130,7 +184,6 @@ class FileSystemDir(Repository):
             raise ArcanaMissingDataException(
                 "{} does not exist in the local repository {}"
                 .format(field.name, self))
-        return val
 
     def put_file_group(self, file_group):
         """
@@ -142,13 +195,15 @@ class FileSystemDir(Repository):
             # Copy side car files into repository
             for aux_name, aux_path in file_group.format.default_aux_file_paths(
                     target_path).items():
-                shutil.copyfile(file_group.format.aux_files[aux_name], aux_path)
+                shutil.copyfile(file_group.format.aux_files[aux_name],aux_path)
         elif op.isdir(file_group.path):
             if op.exists(target_path):
                 shutil.rmtree(target_path)
             shutil.copytree(file_group.path, target_path)
         else:
             assert False
+        if file_group.provenance is not None:
+            file_group.provenance.save(self.prov_json_path(file_group))
 
     def put_field(self, field):
         """
@@ -167,20 +222,17 @@ class FileSystemDir(Repository):
                 else:
                     raise
             if field.array:
-                dct[field.name] = list(field.value)
+                value = list(field.value)
             else:
-                dct[field.name] = field.value
+                value = field.value
+            if field.provenance is not None:
+                value = {self.VALUE_KEY: value,
+                         self.PROV_KEY: field.provenance.dct}
             with open(fpath, 'w') as f:
                 json.dump(dct, f, indent=2)
 
-    def put_provenance(self, provenance, dataset):
-        fpath = self.prov_json_path(provenance, dataset)
-        if not op.exists(op.dirname(fpath)):
-            os.mkdir(op.dirname(fpath))
-        provenance.save(fpath)
-
     # root_dir=None, all_namespace=None,
-    def construct_dataset(self, dataset, **kwargs):
+    def construct_dataset(self, dataset: Dataset, **kwargs):
         """
         Find all data within a repository, registering file_groups, fields and
         provenance with the found_file_group, found_field and found_provenance
@@ -191,264 +243,112 @@ class FileSystemDir(Repository):
         dataset : Dataset
             The dataset to construct the tree structure for
         """
-        all_file_groups = []
-        all_fields = []
-        all_provenances = []
-        # if root_dir is None:
-        root_dir = dataset.name
-        for session_path, dirs, files in os.walk(root_dir):
-            relpath = op.relpath(session_path, root_dir)
-            path_parts = relpath.split(op.sep) if relpath != '.' else []
-            ids = self._extract_ids_from_path(dataset.depth, path_parts, dirs,
-                                              files)
-            if ids is None:
-                continue
-            subj_id, timepoint_id, namespace = ids
-            # if all_namespace is not None:
-            #     if namespace is not None:
-            #         raise ArcanaRepositoryError(
-            #             "Found namespace sub-directory '{}' when global "
-            #             "from analysis '{}' was passed".format(
-            #                 namespace, all_namespace))
-            #     else:
-            #         namespace = all_namespace
-            # Check for summaries and filtered IDs
-            if subj_id == self.SUMMARY_NAME:
-                subj_id = None
-            elif subject_ids is not None and subj_id not in subject_ids:
-                continue
-            if timepoint_id == self.SUMMARY_NAME:
-                timepoint_id = None
-            elif timepoint_ids is not None and timepoint_id not in timepoint_ids:
-                continue
-            # Map IDs into ID space of analysis
-            subj_id = dataset.map_subject_id(subj_id)
-            timepoint_id = dataset.map_timepoint_id(timepoint_id)
-            # Determine tree_level of session|summary
-            if (subj_id, timepoint_id) == (None, None):
-                tree_level = 'per_dataset'
-            elif subj_id is None:
-                tree_level = 'per_timepoint'
-            elif timepoint_id is None:
-                tree_level = 'per_subject'
+
+        def load_prov(dpath, bname):
+            prov_path = op.join(dpath, bname + self.PROV_SUFFIX)
+            if op.exists(prov_path):
+                prov = Provenance.load(prov_path)
             else:
-                tree_level = 'per_session'
-            filtered_files = self._filter_files(files, session_path)
-            for fname in filtered_files:
-                basename = split_extension(fname)[0]
-                all_file_groups.append(
-                    FileGroup.from_path(
-                        op.join(session_path, fname),
-                        tree_level=tree_level,
-                        subject_id=subj_id, timepoint_id=timepoint_id,
-                        dataset=dataset,
-                        namespace=namespace,
-                        potential_aux_files=[
-                            f for f in filtered_files
-                            if (split_extension(f)[0] == basename
-                                and f != fname)],
-                        **kwargs))
-            for fname in self._filter_dirs(dirs, session_path):
-                all_file_groups.append(
-                    FileGroup.from_path(
-                        op.join(session_path, fname),
-                        tree_level=tree_level,
-                        subject_id=subj_id, timepoint_id=timepoint_id,
-                        dataset=dataset,
-                        namespace=namespace,
-                        **kwargs))
-            if self.FIELDS_FNAME in files:
-                with open(op.join(session_path,
-                                  self.FIELDS_FNAME), 'r') as f:
+                prov = None
+            return prov
+
+        def construct_node(dpath, ids=[], dname=None):
+            if dname is not None:
+                dpath = op.join(dpath, dname)
+                ids += [dname]
+            # First ID can be omitted
+            node_freq = self.frequencies[len(ids)]  # last freq
+            ids_dict = dict(zip(self.frequencies, ids))
+            node = dataset.add_node(node_freq, ids_dict)
+            # Check if node is a leaf (i.e. lowest level in directory
+            # structure)
+            is_leaf_node = node_freq == self.frequencies[-1]
+            filtered, has_fields = self._list_node_dir_contents(
+                dpath, is_leaf=is_leaf_node)
+            # Group files and sub-dirs that match except for extensions
+            matching = defaultdict(set)
+            for fname in filtered:
+                basename = fname.split('.')[0]
+                matching[basename].add(fname)
+            # Add file groups
+            for bname, fnames in matching.items():
+                node.add_file_group(
+                    path=bname,
+                    local_paths=[op.join(dpath, f) for f in fnames],
+                    provenance=load_prov(dpath, bname))
+            # Add fields
+            if has_fields:
+                with open(op.join(dpath, self.FIELDS_FNAME), 'r') as f:
                     dct = json.load(f)
-                all_fields.extend(
-                    Field(name=k, value=v, tree_level=tree_level,
-                          subject_id=subj_id, timepoint_id=timepoint_id,
-                          dataset=dataset, namespace=namespace,
-                          **kwargs)
-                    for k, v in list(dct.items()))
-            if self.PROV_DIR in dirs:
-                if namespace is None:
-                    raise ArcanaRepositoryError(
-                        "Found provenance directory in session directory (i.e."
-                        " not in analysis-specific sub-directory)")
-                base_prov_dir = op.join(session_path, self.PROV_DIR)
-                for fname in os.listdir(base_prov_dir):
-                    all_provenances.append(Provenance.load(
-                        split_extension(fname)[0],
-                        tree_level, subj_id, timepoint_id, namespace,
-                        op.join(base_prov_dir, fname)))
-        return all_file_groups, all_fields, all_provenances
-
-    def _extract_ids_from_path(self, depth, path_parts, dirs, files):
-        path_depth = len(path_parts)
-        if path_depth == depth:
-            # Load input data
-            namespace = None
-        elif (path_depth == (depth + 1)
-              and self.PROV_DIR in dirs):
-            # Load analysis output
-            namespace = path_parts.pop()
-        elif (path_depth < depth
-              and any(not f.startswith('.') for f in files)):
-            # Check to see if there are files in upper level
-            # directories, which shouldn't be there (ignoring
-            # "hidden" files that start with '.')
-            raise ArcanaRepositoryError(
-                "Files ('{}') not permitted at {} level in local "
-                "repository".format("', '".join(files),
-                                    ('subject'
-                                     if path_depth else 'dataset')))
-        else:
-            # Not a directory that contains data files or directories
-            return None
-        if len(path_parts) == 2:
-            subj_id, timepoint_id = path_parts
-        elif len(path_parts) == 1:
-            subj_id = path_parts[0]
-            timepoint_id = self.DEFAULT_VISIT_ID
-        else:
-            subj_id = self.DEFAULT_SUBJECT_ID
-            timepoint_id = self.DEFAULT_VISIT_ID
-        return subj_id, timepoint_id, namespace
-
-    def file_group_path(self, item, dataset=None, fname=None):
-        if fname is None:
-            fname = item.fname
-        if dataset is None:
-            dataset = item.dataset
-        root_dir = dataset.name
-        depth = dataset.depth
-        subject_id = dataset.inv_map_subject_id(item.subject_id)
-        timepoint_id = dataset.inv_map_timepoint_id(item.timepoint_id)
-        if item.tree_level == 'per_dataset':
-            subj_dir = self.SUMMARY_NAME
-            timepoint_dir = self.SUMMARY_NAME
-        elif item.tree_level.startswith('per_subject'):
-            if depth < 2:
-                raise ArcanaInsufficientRepoDepthError(
-                    "Basic repo needs to have depth of 2 (i.e. sub-directories"
-                    " for subjects and timepoints) to hold 'per_subject' data")
-            subj_dir = str(subject_id)
-            timepoint_dir = self.SUMMARY_NAME
-        elif item.tree_level.startswith('per_timepoint'):
-            if depth < 1:
-                raise ArcanaInsufficientRepoDepthError(
-                    "Basic repo needs to have depth of at least 1 (i.e. "
-                    "sub-directories for subjects) to hold 'per_timepoint' data")
-            subj_dir = self.SUMMARY_NAME
-            timepoint_dir = str(timepoint_id)
-        elif item.tree_level.startswith('per_session'):
-            subj_dir = str(subject_id)
-            timepoint_dir = str(timepoint_id)
-        else:
-            assert False, "Unrecognised tree_level '{}'".format(
-                item.tree_level)
-        if depth == 2:
-            acq_dir = op.join(root_dir, subj_dir, timepoint_dir)
-        elif depth == 1:
-            acq_dir = op.join(root_dir, subj_dir)
-        elif depth == 0:
-            acq_dir = root_dir
-        else:
-            assert False
-        if item.namespace is None:
-            sess_dir = acq_dir
-        else:
-            # Append analysis-name to path (i.e. make a sub-directory to
-            # hold derived products)
-            sess_dir = op.join(acq_dir, item.namespace)
-        # Make session dir if required
-        if item.derived and not op.exists(sess_dir):
-            os.makedirs(sess_dir, stat.S_IRWXU | stat.S_IRWXG)
-        return op.join(sess_dir, fname)
-
-    def fields_json_path(self, field, dataset=None):
-        return self.file_group_path(field, fname=self.FIELDS_FNAME,
-                                 dataset=dataset)
-
-    def prov_json_path(self, provenance, dataset):
-        return self.file_group_path(provenance,
-                                 dataset=dataset,
-                                 fname=op.join(self.PROV_DIR,
-                                               provenance.pipeline_name + '.json'))
+                for name, value in dct.items():
+                    if isinstance(value, dict):
+                        prov = value[self.PROV_KEY]
+                        value = value[self.VALUE_KEY]
+                    else:
+                        prov = None
+                    node.add_field(path=name, value=value, provenance=prov)
+            # Add sub-directory nodes
+            if not is_leaf_node:
+                for sub_dir in os.listdir(dpath):
+                    if (not sub_dir.startswith('.')
+                            and sub_dir != self.NODE_DIR):
+                        construct_node(dpath, ids=ids, dname=sub_dir)
+                
+        construct_node(op.join(self.base_dir, dataset.name))
 
     @classmethod
-    def guess_depth(cls, root_dir):
-        """
-        Try to guess the depth of a directory repository (i.e. whether it has
-        sub-folders for multiple subjects or timepoints, depending on where files
-        and/or derived label files are found in the hierarchy of
-        sub-directories under the root dir.
-
-        Parameters
-        ----------
-        root_dir : str
-            Path to the root directory of the repository
-        """
-        deepest = -1
-        for path, dirs, files in os.walk(root_dir):
-            depth = cls.path_depth(root_dir, path)
-            filtered_files = cls._filter_files(files, path)
-            if filtered_files:
-                logger.info("Guessing depth of directory repository at '{}' is"
-                            " {} due to unfiltered files ('{}') in '{}'"
-                            .format(root_dir, depth,
-                                    "', '".join(filtered_files), path))
-                return depth
-            if cls.PROV_DIR in dirs:
-                depth_to_return = max(depth - 1, 0)
-                logger.info("Guessing depth of directory repository at '{}' is"
-                            "{} due to \"Derived label file\" in '{}'"
-                            .format(root_dir, depth_to_return, path))
-                return depth_to_return
-            if depth >= cls.MAX_DEPTH:
-                logger.info("Guessing depth of directory repository at '{}' is"
-                            " {} as '{}' is already at maximum depth"
-                            .format(root_dir, cls.MAX_DEPTH, path))
-                return cls.MAX_DEPTH
-            try:
-                for fpath in chain(filtered_files,
-                                   cls._filter_dirs(dirs, path)):
-                    FileGroup.from_path(fpath)
-            except ArcanaError:
-                pass
-            else:
-                if depth > deepest:
-                    deepest = depth
-        if deepest == -1:
-            raise ArcanaRepositoryError(
-                "Could not guess depth of '{}' repository as did not find "
-                "a valid session directory within sub-directories."
-                .format(root_dir))
-        return deepest
-
-    @classmethod
-    def _filter_files(cls, files, base_dir):
+    def _list_node_dir_contents(cls, path, is_leaf):
         # Matcher out hidden files (i.e. starting with '.')
-        return [op.join(base_dir, f) for f in files
-                if not (f.startswith('.')
-                        or f.startswith(cls.FIELDS_FNAME))]
+        if not is_leaf:
+            path += cls.NODE_DIR
+        filtered = []
+        has_fields = False
+        if op.exists(path):
+            contents = os.listdir(path)
+            for item in contents:
+                if (item.startswith('.') or item == cls.FIELDS_FNAME
+                        or item.endswith(cls.PROV_SUFFIX)):
+                    continue
+                filtered.append(item)
+            has_fields = cls.FIELDS_FNAME in contents
+        return filtered, has_fields
 
     @classmethod
-    def _filter_dirs(cls, dirs, base_dir):
-        # Matcher out hidden directories (i.e. starting with '.')
-        # and derived analysis directories from file_group names
-        filtered = [
-            op.join(base_dir, d) for d in dirs
-            if not (d.startswith('.') or d == cls.PROV_DIR or (
-                cls.PROV_DIR in os.listdir(op.join(base_dir, d))))]
-        return filtered
+    def _provenance_file_path(cls, path):
+        return path.split('.')[0] + cls.PROV_SUFFIX
 
-    @classmethod
-    def path_depth(cls, root_dir, dpath):
-        relpath = op.relpath(dpath, root_dir)
-        if '..' in relpath:
-            raise ArcanaUsageError(
-                "Path '{}' is not a sub-directory of '{}'".format(
-                    dpath, root_dir))
-        elif relpath == '.':
-            depth = 0
-        else:
-            depth = relpath.count(op.sep) + 1
-        return depth
+    def node_path(self, data_node):
+        return op.join(self.base_dir,
+                       *(data_node.ids[f] for f in self.frequencies))
+
+    def fields_json_path(self, field):
+        return op.join(self.node_path(field.data_node), self.FIELDS_FNAME)
+
+    def prov_json_path(self, file_group):
+        return (op.join(self.node_path(file_group.data_node)
+                        *(file_group.path.split('/')))
+                + self.PROV_SUFFX)
+                                 
+
+
+
+def single_dataset(path: str, frequencies: Iterable[DataFrequency]=(
+        Clinical.dataset,
+        Clinical.subject,
+        Clinical.session), **kwargs) -> Dataset:
+    """
+    Creates a Dataset from a file system path to a directory
+
+    Parameters
+    ----------
+    path : str
+        Path to directory containing the dataset
+    frequencies : List[DataFrequency] | DataFrequency
+        Defines the hierarchy of the dataset by the frequency of each of the
+        layers of the tree. By default expects a 2 levels of sub-directories:
+        outer directory->dataset, first-level->subject, second-level->session
+    """
+    if not isinstance(frequencies, Iterable):
+        frequencies = [frequencies]
+    return FileSystemDir(op.abspath(op.join(path, '..')),
+                         frequencies, **kwargs).dataset(op.basename(path))

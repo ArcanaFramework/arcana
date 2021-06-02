@@ -1,11 +1,10 @@
-from arcana2.data.item import MultiFormatFileGroup
 import weakref
 from itertools import itemgetter
 import logging
 from collections import defaultdict
 from itertools import chain
 from collections import OrderedDict
-from .item import Provenance
+from .item import UnresolvedFileGroup, UnresolvedField
 from arcana2.exceptions import (
     ArcanaError, ArcanaNameError, ArcanaDataTreeConstructionError,
     ArcanaUsageError)
@@ -49,8 +48,7 @@ class Dataset():
                     f"Unrecognised data frequency '{freq}' (valid "
                     f"{', '.join(self.frequency_cls)})")
         # Add root node for tree
-        self.root_freq = self.frequency_cls(0)
-        self.root_node = DataNode(self.root_freq, {}, self)
+        self.root_node = DataNode(self.root_frequency, {}, self)
 
     def __repr__(self):
         return (f"Dataset(name='{self.name}', repository={self.repository}, "
@@ -83,6 +81,10 @@ class Dataset():
             'repository': self.repository.prov,
             'ids': {str(freq): tuple(ids) for freq, ids in self.nodes.items()}}
 
+    @property
+    def root_frequency(self):
+        return self.frequency_cls(0)
+
     def __ne__(self, other):
         return not (self == other)
 
@@ -104,7 +106,7 @@ class Dataset():
                 "({})".format(
                     str(i) for i in self.root_node.subnodes[frequency]))
 
-    def add_node(self, frequency, **ids):
+    def add_node(self, frequency, ids):
         """Adds a node to the dataset, creating references to upper and lower
         layers in the data tree.
 
@@ -112,7 +114,7 @@ class Dataset():
         ----------
         frequency : DataFrequency
             The frequency of the data_node
-        **ids : Dict[str, str]
+        ids : Dict[DataFrequency, str]
             The IDs of the node and all branching points the data tree
             above it. The keys should match the Enum used provided for the
             'frequency
@@ -129,7 +131,7 @@ class Dataset():
             raise ArcanaDataTreeConstructionError(
                 f"Provided frequency {frequency} is not of "
                 f"{self.frequency_cls} type")
-        # Convert frequencies to enum
+        # Check conversion to frequency cls
         ids = {self.frequency_cls[str(f)]: i for f, i in ids.items()}
         # Create new data node
         node = DataNode(frequency, ids, self)
@@ -233,16 +235,13 @@ class DataNode():
         return (hash(tuple(self._file_groups)) ^ hash(tuple(self._fields))
                 ^ hash(tuple(self._provenances)))
 
-    def add_file_group(self, path, **kwargs):
-        self._file_groups[path] = MultiFormatFileGroup(path, data_node=self,
-                                                       **kwargs)
+    def add_file_group(self, path, *args, **kwargs):
+        self._file_groups[path] = UnresolvedFileGroup(
+            path, *args, data_node=self, **kwargs)
 
-    def add_field(self, path, **kwargs):
-        self._fields[path] = MultiFormatFileGroup(path, data_node=self,
-                                                  **kwargs)
-
-    def add_provenance(self, path, **kwargs):
-        self._provenances[path] = Provenance(path, data_node=self, **kwargs)
+    def add_field(self, path, *args, **kwargs):
+        self._fields[path] = UnresolvedField(path, *args, data_node=self,
+                                             **kwargs)
 
     def file_group(self, path, file_format=None):
         """
@@ -261,11 +260,11 @@ class DataNode():
 
         Returns
         -------
-        FileGroup | UnresolvedFormatFileGroup
+        FileGroup | UnresolvedFileGroup
             The file-group corresponding to the given path. If a, or
             multiple, candidate file formats are provided then the format of
             the file-group is resolved and a FileGroup object is returned.
-            Otherwise, an UnresolvedFormatFileGroup is returned instead.
+            Otherwise, an UnresolvedFileGroup is returned instead.
         """
         try:
             file_group = self._file_groups[path]

@@ -55,7 +55,7 @@ class DataFrequency(Enum):
         return max(cls)
 
 
-class ClinicalStudy(DataFrequency):
+class Clinical(DataFrequency):
     """
     An enum that specifies the data frequencies within a data tree of a typical
     clinical research study with groups, subjects and timepoints.
