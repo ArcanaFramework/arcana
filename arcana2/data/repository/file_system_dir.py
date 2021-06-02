@@ -273,7 +273,7 @@ class FileSystemDir(Repository):
             # Add file groups
             for bname, fnames in matching.items():
                 node.add_file_group(
-                    path=bname,
+                    name_path=bname,
                     local_paths=[op.join(dpath, f) for f in fnames],
                     provenance=load_prov(dpath, bname))
             # Add fields
@@ -286,7 +286,7 @@ class FileSystemDir(Repository):
                         value = value[self.VALUE_KEY]
                     else:
                         prov = None
-                    node.add_field(path=name, value=value, provenance=prov)
+                    node.add_field(name_path=name, value=value, provenance=prov)
             # Add sub-directory nodes
             if not is_leaf_node:
                 for sub_dir in os.listdir(dpath):
@@ -312,10 +312,6 @@ class FileSystemDir(Repository):
                 filtered.append(item)
             has_fields = cls.FIELDS_FNAME in contents
         return filtered, has_fields
-
-    @classmethod
-    def _provenance_file_path(cls, path):
-        return path.split('.')[0] + cls.PROV_SUFFIX
 
     def node_path(self, data_node):
         return op.join(self.base_dir,
