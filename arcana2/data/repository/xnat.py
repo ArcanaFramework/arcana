@@ -230,7 +230,7 @@ class Xnat(Repository):
                     xscan = xnode.scans[file_group.name]
                     file_group.id = xscan.id
                     base_uri += '/scans/' + xscan.id
-                    xresource = xscan.resources[file_group.resource_name]
+                    xresource = xscan.resources[file_group.format_name]
                 # Set URI so we can retrieve checksums if required. We ensure we
                 # use the resource name instead of its ID in the URI for
                 # consistency with other locations where it is set and to keep the
@@ -394,7 +394,7 @@ class Xnat(Repository):
                 format='PROVENANCE')
             # Until XnatPy adds a create_resource to projects, subjects &
             # sessions
-            # xresource = xnode.create_resource(resource_name)
+            # xresource = xnode.create_resource(format_name)
         xresource.upload(cache_path, fname)
 
     def get_checksums(self, file_group):

@@ -127,7 +127,7 @@ class FileGroup(DataItem, FileGroupMixin):
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
-    resource_name : str | None
+    format_name : str | None
         For repositories where the name of the file format is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
         format identification
@@ -142,7 +142,7 @@ class FileGroup(DataItem, FileGroupMixin):
 
     def __init__(self, name_path, format=None, aux_files=None, order=None,
                  uri=None, exists=True, checksums=None, provenance=None,
-                 resource_name=None, quality=None, local_path=None,
+                 format_name=None, quality=None, local_path=None,
                  data_node=None, derived=False):
         FileGroupMixin.__init__(self, name_path=name_path, format=format)
         DataItem.__init__(self, data_node, exists, provenance, derived)
@@ -170,7 +170,7 @@ class FileGroup(DataItem, FileGroupMixin):
         self.uri = uri
         self._order = order
         self.checksums = checksums
-        self.resource_name = resource_name
+        self.format_name = format_name
         self.quality = quality
 
     # def __getattr__(self, attr):
@@ -206,7 +206,7 @@ class FileGroup(DataItem, FileGroupMixin):
               and self.aux_files == other.aux_files
               and self._order == other._order
               and self._checksums == other._checksums
-              and self.resource_name == other.resource_name
+              and self.format_name == other.format_name
               and self.quality == other.quality)
         # Avoid having to cache file_group in order to test equality unless they
         # are already both cached
@@ -223,7 +223,7 @@ class FileGroup(DataItem, FileGroupMixin):
                 ^ hash(self._order)
                 ^ hash(tuple(sorted(self.aux_files.items())))
                 ^ hash(self._checksums)
-                ^ hash(self.resource_name)
+                ^ hash(self.format_name)
                 ^ hash(self.quality))
 
     def __lt__(self, other):
@@ -242,8 +242,8 @@ class FileGroup(DataItem, FileGroupMixin):
                 .format(
                     type(self).__name__, self.name_path, self.format,
                     self.exists, self.quality,
-                    (", resource_name='{}'".format(self.resource_name)
-                     if self.resource_name is not None else '')))
+                    (", format_name='{}'".format(self.format_name)
+                     if self.format_name is not None else '')))
 
     def find_mismatch(self, other, indent=''):
         mismatch = FileGroupMixin.find_mismatch(self, other, indent)
@@ -257,18 +257,14 @@ class FileGroup(DataItem, FileGroupMixin):
             mismatch += ('\n{}checksum: self={} v other={}'
                          .format(sub_indent, self.checksums,
                                  other.checksums))
-        if self.resource_name != other.resource_name:
-            mismatch += ('\n{}format_name: self={} v other={}'
-                         .format(sub_indent, self.resource_name,
-                                 other.resource_name))
         if self.quality != other.quality:
             mismatch += ('\n{}quality: self={} v other={}'
                          .format(sub_indent, self.quality,
                                  other.quality))
-        if self.resource_name != other.resource_name:
-            mismatch += ('\n{}resource_name: self={} v other={}'
-                         .format(sub_indent, self.resource_name,
-                                 other.resource_name))
+        if self.format_name != other.format_name:
+            mismatch += ('\n{}format_name: self={} v other={}'
+                         .format(sub_indent, self.format_name,
+                                 other.format_name))
         return mismatch
 
     @property
@@ -374,14 +370,6 @@ class FileGroup(DataItem, FileGroupMixin):
                 for sc_name, sc_path in self.aux_files.items())
 
     @property
-    def format_name(self):
-        if self.format is None:
-            name = self._resource_name
-        else:
-            name = self.format.name
-        return name
-
-    @property
     def checksums(self):
         if not self.exists:
             raise ArcanaDataNotDerivedYetError(
@@ -427,7 +415,7 @@ class FileGroup(DataItem, FileGroupMixin):
         dct['uri'] = self.uri
         dct['bids_attr'] = self.bids_attr
         dct['checksums'] = self.checksums
-        dct['resource_name'] = self.resource_name
+        dct['format_name'] = self.format_name
         dct['quality'] = self.quality
         return dct
 
@@ -647,7 +635,7 @@ class UnresolvedFileGroup(DataItem, DataMixin):
         distinguish multiple file_groups with the same scan type in the
         same session, e.g. scans taken before and after a task. For
         datasets where this isn't stored (i.e. Local), id can be None
-    resource_uris : Dict[str, str] | None
+    format_uris : Dict[str, str] | None
         For repositories where the name of the file format is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
         format identification. It is stored here along with URIs corresponding
@@ -663,15 +651,15 @@ class UnresolvedFileGroup(DataItem, DataMixin):
         if applicable
     """
 
-    def __init__(self, name_path, order=None, resource_uris=None, quality=None,
+    def __init__(self, name_path, order=None, format_uris=None, quality=None,
                  local_paths=None, provenance=None, data_node=None):
         DataItem.__init__(self, data_node, True, provenance)
         DataMixin.__init__(self, name_path=name_path)
         if local_paths is not None:
             local_paths = [op.abspath(op.realpath(p)) for p in local_paths]
-        self._local_paths = local_paths
+        self.local_paths = local_paths
         self.order = order
-        self.resource_uris = resource_uris
+        self.format_uris = format_uris
         self.quality = quality
         self._matched = {}
 
@@ -682,7 +670,7 @@ class UnresolvedFileGroup(DataItem, DataMixin):
         candidates match the potential files, e.g. NiFTI-X (see dcm2niix) and
         NiFTI, then the first matching candidate is selected.
 
-        If 'resource_uris' were specified when the multi-format file-group was
+        If 'format_uris' were specified when the multi-format file-group was
         created then that is used to select between the candidates. Otherwise
         the file extensions of the local name_paths, and extensions of the files
         within the directory will be used instead.
@@ -711,9 +699,9 @@ class UnresolvedFileGroup(DataItem, DataMixin):
             'dataset': self.dataset,
             'exists': True,
             'quality': self.quality}
-        if not (self.resource_uris or self._local_paths):
+        if not (self.format_uris or self.local_paths):
             raise ArcanaError(
-                "Either resource_uris or local name_paths must be provided "
+                "Either format_uris or local name_paths must be provided "
                 f"to UnresolvedFileGroup('{self.name_path}') in before "
                 "attempting to resolve a file-groups format")
         for candidate in candidates:
@@ -723,10 +711,10 @@ class UnresolvedFileGroup(DataItem, DataMixin):
             except KeyError:
                 # Perform matching based on resource names in multi-format
                 # file-group
-                if self.resource_uris is not None:   
-                    for resource_name, uri in self.resource_uris.items():
-                        if resource_name in candidate.resource_uris:
-                            return FileGroup(resource_name=resource_name,
+                if self.format_uris is not None:   
+                    for format_name, uri in self.format_uris.items():
+                        if format_name in candidate.format_uris:
+                            return FileGroup(format_name=format_name,
                                              uri=uri, **common_kwargs)
                 # Perform matching based on file-extensions of local name_paths in
                 # multi-format file-group
@@ -734,14 +722,14 @@ class UnresolvedFileGroup(DataItem, DataMixin):
                     local_path = None
                     aux_files = []
                     if candidate.directory:
-                        if (len(self._local_paths) == 1
-                            and op.isdir(self._local_paths[0])
+                        if (len(self.local_paths) == 1
+                            and op.isdir(self.local_paths[0])
                             and (candidate.within_dir_exts is None
                                 or (candidate.within_dir_exts == frozenset(
                                     split_extension(f)[1]
                                     for f in os.listdir(self.local_paths)
                                     if not f.startswith('.'))))):
-                            local_path = self._local_paths[0]
+                            local_path = self.local_paths[0]
                     else:
                         try:
                             local_path, aux_files = candidate.assort_files(
@@ -753,21 +741,21 @@ class UnresolvedFileGroup(DataItem, DataMixin):
                                         aux_files=aux_files, **common_kwargs)
         # If we get to here none of the candidate formats have matched and
         # we raise and error
-        if self.resource_uris:
+        if self.format_uris:
             error_msg = (
                 "Could not find a matching resource in {} for any of the "
                 "candidates ({}), found ('{}')".format(
                     self,
                     ', '.join(str(c)for c in candidates),
-                    "', '".join(self.resource_uris)))
+                    "', '".join(self.format_uris)))
         else:
             error_msg = (
                 "Paths in {} ({}) did not match the naming conventions "
                 "expected by any of the candidates formats ({}), found ('{}')"
                 .format(self,
-                        ', '.join(self._local_paths),
+                        ', '.join(self.local_paths),
                         ', '.join(str(c)for c in candidates),
-                        "', '".join(self.resource_uris)))
+                        "', '".join(self.format_uris)))
         raise ArcanaNoMatchingFileFormatError(error_msg)
 
 class UnresolvedField():
@@ -801,7 +789,7 @@ class UnresolvedField():
         candidates match the potential files, e.g. NiFTI-X (see dcm2niix) and
         NiFTI, then the first matching candidate is selected.
 
-        If 'resource_uris' were specified when the multi-format file-group was
+        If 'format_uris' were specified when the multi-format file-group was
         created then that is used to select between the candidates. Otherwise
         the file extensions of the local name_paths, and extensions of the files
         within the directory will be used instead.
