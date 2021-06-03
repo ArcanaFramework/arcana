@@ -18,7 +18,7 @@ from arcana2.utils import makedirs
 from arcana2.data import FileGroup, Field
 from .base import Repository
 from arcana2.exceptions import (
-    ArcanaError, ArcanaUsageError, ArcanaFileFormatError,
+    ArcanaError, ArcanaNameError, ArcanaUsageError, ArcanaFileFormatError,
     ArcanaRepositoryError, ArcanaWrongRepositoryError)
 from ..item import Provenance
 from arcana2.utils import dir_modtime, get_class_info, parse_value
@@ -222,7 +222,7 @@ class Xnat(Repository):
             if not file_group.uri:
                 base_uri = self.standard_uri(xnode)
                 if file_group.derived:
-                    xresource = xnode.resources[self.derived_name(file_group)]
+                    xresource = xnode.resources[self.escape_name(file_group)]
                 else:
                     # If file_group is a primary 'scan' (rather than a
                     # derivative) we need to get the resource of the scan
@@ -293,7 +293,7 @@ class Xnat(Repository):
         self._check_repository(field)
         with self:
             xsession = self.get_xnode(field)
-            val = xsession.fields[self.derived_name(field)]
+            val = xsession.fields[self.escape_name(field)]
             val = val.replace('&quot;', '"')
             val = parse_value(val)
         return val
@@ -309,7 +309,7 @@ class Xnat(Repository):
             # Add session for derived scans if not present
             xnode = self.get_xnode(file_group)
             if not file_group.uri:
-                name = self.derived_name(file_group)
+                name = self.escape_name(file_group)
                 # Set the uri of the file_group
                 file_group.uri = '{}/resources/{}'.format(
                     self.standard_uri(xnode), name)
@@ -368,7 +368,7 @@ class Xnat(Repository):
             val = '"{}"'.format(val)
         with self:
             xsession = self.get_xnode(field)
-            xsession.fields[self.derived_name(field)] = val
+            xsession.fields[self.escape_name(field)] = val
         if field.provenance:
             self.put_provenance(field)
 
@@ -378,7 +378,9 @@ class Xnat(Repository):
                                        self.PROV_RESOURCE)
         cache_dir = self.cache_path(uri)
         os.makedirs(cache_dir, exist_ok=True)
-        fname = self.derived_name(item) + '.json'
+        fname = self.escape_name(item) + '.json'
+        if item.is_field:
+            fname = self.FIELD_PROV_PREFIX + fname
         cache_path = op.join(cache_dir, fname)
         item.provenance.save(cache_path)
         # TODO: Should also save digest of prov.json to check to see if it
@@ -426,33 +428,17 @@ class Xnat(Repository):
             checksums['.'] = checksums.pop(primary)
         return checksums
 
-    def construct_dataset(self, dataset, **kwargs):
+    def construct_dataset(self, dataset: Dataset, **kwargs):
         """
         Find all file_groups, fields and provenance provenances within an XNAT
         project
 
         Parameters
         ----------
-        subject_ids : list(str)
-            List of subject IDs with which to filter the tree with. If
-            None all are returned
-        timepoint_ids : list(str)
-            List of timepoint IDs with which to filter the tree with. If
-            None all are returned
-
-        Returns
-        -------
-        file_groups : list[FileGroup]
-            All the file_groups found in the repository
-        fields : list[Field]
-            All the fields found in the repository
-        provenances : list[Provenance]
-            The provenance provenances found in the repository
+        dataset : Dataset
+            The dataset to construct
         """
         # Add derived timepoint IDs to list of timepoint ids to filter
-        file_groups = []
-        fields = []
-        provenances = []
         project_id = dataset.name
         # Note we prefer the use of raw REST API calls here for performance
         # reasons over using XnatPy's data structures.
@@ -460,12 +446,10 @@ class Xnat(Repository):
             # Get per_dataset level derivatives and fields
             project_uri = '/data/archive/projects/{}'.format(project_id)
             project_json = self.login.get_json(project_uri)['items'][0]
-            fields.extend(self.find_fields(
-                project_json, dataset, tree_level='per_dataset'))
-            fsets, recs = self.find_derivatives(
-                project_json, project_uri, dataset, tree_level='per_dataset')
-            file_groups.extend(fsets)
-            provenances.extend(recs)
+            # Add project and summary nodes to dataset
+            self.add_fields_to_node(dataset.root_node, project_json)
+            self.add_resources_to_node(dataset.root_node, project_json,
+                                       project_uri)
             # Get map of internal subject IDs to subject labels in project
             subject_xids_to_labels = {
                 s['ID']: s['label'] for s in self.login.get_json(
@@ -489,105 +473,86 @@ class Xnat(Repository):
                 subject_xids.add(subject_xid)
                 subject_id = subject_xids_to_labels[subject_xid]
                 session_label = session_json['data_fields']['label']
+                ids = self.map_ids({Clinical.subject: subject_id,
+                                    Clinical.session: session_label})
+                # Add node for session
+                data_node = dataset.add_node(Clinical.session, ids)
                 session_uri = (
                     '/data/archive/projects/{}/subjects/{}/experiments/{}'
                     .format(project_id, subject_id, session_label))
-                # Extract analysis name and derived-from session
-                # Strip subject ID from session label if required
-                if session_label.startswith(subject_id + '_'):
-                    timepoint_id = session_label[len(subject_id) + 1:]
-                else:
-                    timepoint_id = session_label
-                # Strip project ID from subject ID if required
-                if subject_id.startswith(project_id + '_'):
-                    subject_id = subject_id[len(project_id) + 1:]
-                        # Extract part of JSON relating to files
-                file_groups.extend(self.find_scans(
-                    session_json, session_uri, subject_id, timepoint_id,
-                    dataset, **kwargs))
-                fields.extend(self.find_fields(
-                    session_json, dataset, tree_level='per_session',
-                    subject_id=subject_id, timepoint_id=timepoint_id, **kwargs))
-                fsets, recs = self.find_derivatives(
-                    session_json, session_uri, dataset, subject_id=subject_id,
-                    timepoint_id=timepoint_id, tree_level='per_session')
-                file_groups.extend(fsets)
-                provenances.extend(recs)
+                # Add scans, fields and resources to data node
+                self.add_scans_to_node(data_node, session_json, session_uri,
+                                       ids, **kwargs)
+                self.add_fields_to_node(data_node, session_json, **kwargs)
+                self.add_resources_to_node(data_node, session_json,
+                                           session_uri, **kwargs)
             # Get subject level resources and fields
             for subject_xid in subject_xids:
                 subject_id = subject_xids_to_labels[subject_xid]
+                ids = self.map_ids({Clinical.subject: subject_id})
+                data_node = dataset.add_node(Clinical.subject, ids)
                 subject_uri = ('/data/archive/projects/{}/subjects/{}'
                                .format(project_id, subject_id))
                 subject_json = self.login.get_json(subject_uri)['items'][0]
-                fields.extend(self.find_fields(
-                    subject_json, dataset, tree_level='per_subject',
-                    subject_id=subject_id))
-                fsets, recs = self.find_derivatives(
-                    subject_json, subject_uri, dataset,
-                    tree_level='per_subject', subject_id=subject_id)
-                file_groups.extend(fsets)
-                provenances.extend(recs)
-        return file_groups, fields, provenances
+                # Add subject level resources and fields to subject node
+                self.add_fields_to_node(data_node, subject_json, **kwargs)
+                self.add_resources_to_node(data_node, subject_json,
+                                           subject_uri, dataset, **kwargs)
 
-    def find_derivatives(self, node_json, node_uri, dataset, tree_level,
-                         subject_id=None, timepoint_id=None, **kwargs):
+    def add_resources_to_node(self, data_node, node_json, node_uri, **kwargs):
         try:
             resources_json = next(
                 c['items'] for c in node_json['children']
                 if c['field'] == 'resources/resource')
         except StopIteration:
-            return [], []
-        file_groups = []
-        provenances = []
+            resources_json = []
+        provenance_resources = []
         for d in resources_json:
             label = d['data_fields']['label']
             resource_uri = '{}/resources/{}'.format(node_uri, label)
-            (name, namespace,
-             file_group_timepoint_id, file_group_freq) = self.split_derived_name(
-                 label, timepoint_id=timepoint_id, tree_level=tree_level)
+            name, dn = self._unescape_name_and_get_node(name, data_node)
+            format_name = d['data_fields']['format']
             if name != self.PROV_RESOURCE:
                 # Use the timepoint from the derived name if present
-                file_groups.append(FileGroup(
-                    name, uri=resource_uri, dataset=dataset,
-                    namespace=namespace, tree_level=file_group_freq,
-                    subject_id=subject_id, timepoint_id=file_group_timepoint_id,
-                    resource_name=d['data_fields']['format'], **kwargs))
+                dn.add_file_group(
+                    name, resource_uris={format_name: resource_uri}, **kwargs)
             else:
-                # Download provenance JSON files and parse into
-                # provenances
-                temp_dir = tempfile.mkdtemp()
-                try:
-                    with tempfile.TemporaryFile() as temp_zip:
-                        self.login.download_stream(
-                            resource_uri + '/files', temp_zip, format='zip')
-                        with ZipFile(temp_zip) as zip_file:
-                            zip_file.extractall(temp_dir)
-                    for base_dir, _, fnames in os.walk(temp_dir):
-                        for fname in fnames:
-                            if fname.endswith('.json'):
-                                pipeline_name = fname[:-len('.json')]
-                                json_path = op.join(base_dir, fname)
-                                provenances.append(
-                                    Provenance.load(
-                                        pipeline_name,
-                                        name_path=json_path,
-                                        tree_level=tree_level,
-                                        subject_id=subject_id,
-                                        timepoint_id=timepoint_id,
-                                        namespace=namespace))
-                finally:
-                    shutil.rmtree(temp_dir, ignore_errors=True)
-        return file_groups, provenances
+                provenance_resources.append((dn, resource_uri))
+        for dn, uri in provenance_resources:
+            self.set_provenance(dn, uri)
 
-    def find_fields(self, node_json, dataset, tree_level, subject_id=None,
-                    timepoint_id=None, **kwargs):
+
+    def set_provenance(self, data_node, resource_uri):
+        # Download provenance JSON files and parse into
+        # provenances
+        temp_dir = tempfile.mkdtemp()
+        try:
+            with tempfile.TemporaryFile() as temp_zip:
+                self.login.download_stream(
+                    resource_uri + '/files', temp_zip, format='zip')
+                with ZipFile(temp_zip) as zip_file:
+                    zip_file.extractall(temp_dir)
+            for base_dir, _, fnames in os.walk(temp_dir):
+                for fname in fnames:
+                    if fname.endswith('.json'):
+                        name_path = fname[:-len('.json')]
+                        prov = Provenance.load(op.join(base_dir,
+                                                        fname))
+                        if fname.starts_with(self.FIELD_PROV_PREFIX):
+                            name_path = name_path[len(self.FIELD_PROV_PREFIX):]
+                            data_node.field(name_path).provenance = prov
+                        else:
+                            data_node.file_group(name_path).provenance = prov
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def add_fields_to_node(self, data_node, node_json, **kwargs):
         try:
             fields_json = next(
                 c['items'] for c in node_json['children']
                 if c['field'] == 'fields/field')
         except StopIteration:
             return []
-        fields = []
         for js in fields_json:
             try:
                 value = js['data_fields']['field']
@@ -603,25 +568,23 @@ class Xnat(Repository):
             # # assessor so there was no chance of a conflict but there should
             # # be little harm in having the field referenced twice, the only
             # # issue being with pattern matching
-            # field_names.add(self.split_derived_name(name, timepoint_id=timepoint_id,
+            # field_names.add(self.unescape_name(name, timepoint_id=timepoint_id,
             #                                         tree_level=tree_level))
             # for name, namespace, field_timepoint_id, field_freq in field_names:
-            (name, namespace,
-             field_timepoint_id, field_freq) = self.split_derived_name(
-                 name, timepoint_id=timepoint_id, tree_level=tree_level)
-            fields.append(Field(
-                name=name,
-                value=value,
-                namespace=namespace,
-                dataset=dataset,
-                subject_id=subject_id,
-                timepoint_id=field_timepoint_id,
-                tree_level=field_freq,
-                **kwargs))
-        return fields
+            name, dn = self._unescape_name_and_get_node(name, data_node)
+            dn.add_field(name=name, value=value **kwargs)
 
-    def find_scans(self, session_json, session_uri, subject_id,
-                   timepoint_id, dataset, **kwargs):
+    def _unescape_name_and_get_node(self, name, data_node):
+        name, frequency, ids = self.unescape_name(name)
+        if frequency != data_node.frequency:
+            try:
+                data_node = data_node.dataset.node(frequency, ids)
+            except ArcanaNameError:
+                data_node = data_node.dataset.add_node(frequency, ids)
+        return name, data_node
+
+    def add_scans_to_node(self, data_node: Dataset, session_json: dict,
+                          session_uri: str, **kwargs):
         try:
             scans_json = next(
                 c['items'] for c in session_json['children']
@@ -642,17 +605,11 @@ class Xnat(Repository):
             else:
                 resources = set(js['data_fields']['label']
                                 for js in resources_json)
-            # Remove auto-generated snapshots directory
-            resources.discard('SNAPSHOTS')
-            for resource in resources:
-                file_groups.append(FileGroup(
-                    scan_type, id=order,
-                    uri='{}/scans/{}/resources/{}'.format(session_uri, order,
-                                                          resource),
-                    dataset=dataset, subject_id=subject_id,
-                    timepoint_id=timepoint_id, quality=scan_quality,
-                    resource_name=resource, **kwargs))
-        logger.debug("Found node %s:%s", subject_id, timepoint_id)
+            data_node.add_file_group(
+                name=scan_type, order=order, quality=scan_quality,
+                resource_uris={
+                    r: f"{session_uri}/scans/{order}/resources/{r}"
+                    for r in resources}, **kwargs)
         return file_groups
 
     def extract_subject_id(self, xsubject_label):
@@ -804,7 +761,7 @@ class Xnat(Repository):
                     item, item.dataset.repository, self))
 
     @classmethod
-    def derived_name(cls, item):
+    def escape_name(cls, item):
         """Escape the name of an item by prefixing the name of the current
         analysis
 
@@ -828,8 +785,8 @@ class Xnat(Repository):
         return name
 
     @classmethod
-    def split_derived_name(cls, xname):
-        """Reverses the escape of an item name by `derived_name`
+    def unescape_name(cls, xname: str):
+        """Reverses the escape of an item name by `escape_name`
 
         Parameters
         ----------

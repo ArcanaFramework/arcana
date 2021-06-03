@@ -369,9 +369,9 @@ class FileGroup(DataItem, FileGroupMixin):
         return self.aux_files[name]
 
     @property
-    def aux_file_fnames_and_name_paths(self):
-        return ((self.basename + self.format.aux_files[sc_name], sc_name_path)
-                for sc_name, sc_name_path in self.aux_files.items())
+    def aux_file_fnames_and_paths(self):
+        return ((self.basename + self.format.aux_files[sc_name], sc_path)
+                for sc_name, sc_path in self.aux_files.items())
 
     @property
     def format_name(self):
@@ -397,18 +397,18 @@ class FileGroup(DataItem, FileGroupMixin):
 
     def calculate_checksums(self):
         checksums = {}
-        for fname_path in self.name_paths:
+        for fpath in self.name_paths:
             fhash = hashlib.md5()
-            with open(fname_path, 'rb') as f:
+            with open(fpath, 'rb') as f:
                 # Calculate hash in chunks so we don't run out of memory for
                 # large files.
                 for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b''):
                     fhash.update(chunk)
-            checksums[op.relname_path(fname_path, self.name_path)] = fhash.hexdigest()
+            checksums[op.relpath(fpath, self.name_path)] = fhash.hexdigest()
         return checksums
 
     @classmethod
-    def from_name_path(cls, local_path, **kwargs):
+    def from_path(cls, local_path, **kwargs):
         if not op.exists(local_path):
             raise ArcanaUsageError(
                 "Attempting to read FileGroup from name_path '{}' but it "
@@ -668,7 +668,7 @@ class UnresolvedFileGroup(DataItem, DataMixin):
         DataItem.__init__(self, data_node, True, provenance)
         DataMixin.__init__(self, name_path=name_path)
         if local_paths is not None:
-            local_paths = [op.absname_path(op.realname_path(p)) for p in local_paths]
+            local_paths = [op.abspath(op.realpath(p)) for p in local_paths]
         self._local_paths = local_paths
         self.order = order
         self.resource_uris = resource_uris
@@ -946,9 +946,9 @@ class Provenance():
             excluded
         """
         if include is not None:
-            include_res = [self._gen_prov_name_path_regex(p) for p in include]
+            include_res = [self._gen_prov_path_regex(p) for p in include]
         if exclude is not None:
-            exclude_res = [self._gen_prov_name_path_regex(p) for p in exclude]
+            exclude_res = [self._gen_prov_path_regex(p) for p in exclude]
         diff = DeepDiff(self._prov, other._prov, ignore_order=True)
         # Create regular expresssions for the include and exclude name_paths in
         # the format that deepdiff uses for nested dictionary/lists
@@ -974,7 +974,7 @@ class Provenance():
         return filtered_diff
 
     @classmethod
-    def _gen_prov_name_path_regex(self, local_path):
+    def _gen_prov_path_regex(self, local_path):
         if isinstance(local_path, str):
             if local_path.startswith('/'):
                 local_path = local_path[1:]
