@@ -1,15 +1,15 @@
-from builtins import object
 import os
 import os.path as op
 from abc import abstractmethod, ABCMeta
 from collections import defaultdict
 import numpy as np
-from arcana2.exceptions import (
-    ArcanaUsageError, ArcanaNoConverterError, ArcanaFileFormatError,
-    ArcanaNameError)
-
 from arcana2.utils import split_extension
 import logging
+from pydra import mark
+from arcana2.exceptions import (
+    ArcanaConverterNotAvailableError, ArcanaUsageError, ArcanaNoConverterError, ArcanaFileFormatError,
+    ArcanaNameError)
+from ..item import FileGroup
 
 
 logger = logging.getLogger('arcana')
@@ -45,9 +45,10 @@ class FileFormat(object):
         when saved in a repository
     """
 
-    def __init__(self, name, extension=None, desc='',
-                 directory=False, within_dir_exts=None,
-                 aux_files=None, alternate_names=None):
+    file_group_cls = FileGroup
+
+    def __init__(self, name, extension=None, desc='', directory=False,
+                 within_dir_exts=None, aux_files=None, alternate_names=None):
         if not name.islower():
             raise ArcanaUsageError(
                 "All data format names must be lower case ('{}')"
@@ -56,10 +57,10 @@ class FileFormat(object):
             raise ArcanaUsageError(
                 "Extension for '{}' format can only be None if it is a "
                 "directory".format(name))
-        self._name = name
-        self._extension = extension
-        self._desc = desc
-        self._directory = directory
+        self.name = name
+        self.extension = extension
+        self.desc = desc
+        self.directory = directory
         if within_dir_exts is not None:
             if not directory:
                 raise ArcanaUsageError(
@@ -71,7 +72,7 @@ class FileFormat(object):
         if alternate_names is None:
             alternate_names = []
         self.alternate_names = alternate_names
-        self._aux_files = aux_files if aux_files is not None else {}
+        self.aux_files = aux_files if aux_files is not None else {}
         for sc_name, sc_ext in self.aux_files.items():
             if sc_ext == self.ext:
                 raise ArcanaUsageError(
@@ -82,9 +83,9 @@ class FileFormat(object):
         try:
             return (
                 self._name == other._name
-                and self._extension == other._extension
-                and self._desc == other._desc
-                and self._directory == other._directory
+                and self.extension == other.extension
+                and self.desc == other.desc
+                and self.directory == other.directory
                 and self._within_dir_exts ==
                 other._within_dir_exts
                 and self.alternate_names == other.alternate_names
@@ -95,9 +96,9 @@ class FileFormat(object):
     def __hash__(self):
         return (
             hash(self._name)
-            ^ hash(self._extension)
-            ^ hash(self._desc)
-            ^ hash(self._directory)
+            ^ hash(self.extension)
+            ^ hash(self.desc)
+            ^ hash(self.directory)
             ^ hash(self._within_dir_exts)
             ^ hash(tuple(self.alternate_names))
             ^ hash(tuple(sorted(self.aux_files.items()))))
@@ -116,16 +117,8 @@ class FileFormat(object):
         return self.name
 
     @property
-    def name(self):
-        return self._name
-
-    @property
-    def extension(self):
-        return self._extension
-
-    @property
     def extensions(self):
-        return tuple([self._extension] + sorted(self.aux_file_exts))
+        return tuple([self.extension] + sorted(self.aux_file_exts))
 
     @property
     def ext(self):
@@ -134,18 +127,6 @@ class FileFormat(object):
     @property
     def ext_str(self):
         return self.extension if self.extension is not None else ''
-
-    @property
-    def desc(self):
-        return self._desc
-
-    @property
-    def directory(self):
-        return self._directory
-
-    @property
-    def aux_files(self):
-        return self._aux_files
 
     def default_aux_file_paths(self, primary_path):
         """
@@ -168,7 +149,7 @@ class FileFormat(object):
 
     @property
     def aux_file_exts(self):
-        return frozenset(self._aux_files.values())
+        return frozenset(self.aux_files.values())
 
     @property
     def within_dir_exts(self):
@@ -291,6 +272,13 @@ class FileFormat(object):
     #         else:
     #             return False
 
+    def converter_from(self, format):
+        if format == self:
+            return mark.task(lambda x: x)
+        else:
+            raise ArcanaConverterNotAvailableError(
+                f"Cannot convert between {self} and {format} formats")
+
     def set_converter(self, file_format, converter):
         """
         Register a Converter and the FileFormat that it is able to convert from
@@ -401,7 +389,7 @@ class ImageFormat(FileFormat, metaclass=ABCMeta):
         other_hdr = other_fileset.get_header()
         if include_keys is not None:
             if ignore_keys is not None:
-                raise BananaUsageError(
+                raise ArcanaUsageError(
                     "Doesn't make sense to provide both 'include_keys' ({}) "
                     "and ignore_keys ({}) to headers_equal method"
                     .format(include_keys, ignore_keys))
@@ -411,7 +399,7 @@ class ImageFormat(FileFormat, metaclass=ABCMeta):
         else:
             if self.INCLUDE_HDR_KEYS is not None:
                 if self.IGNORE_HDR_KEYS is not None:
-                    raise BananaUsageError(
+                    raise ArcanaUsageError(
                         "Doesn't make sense to have both 'INCLUDE_HDR_FIELDS'"
                         "and 'IGNORE_HDR_FIELDS' class attributes of class {}"
                         .format(type(self).__name__))

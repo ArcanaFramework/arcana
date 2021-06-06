@@ -714,8 +714,9 @@ class UnresolvedFileGroup(DataItem, DataMixin):
                 if self.format_uris is not None:   
                     for format_name, uri in self.format_uris.items():
                         if format_name in candidate.format_uris:
-                            return FileGroup(format_name=format_name,
-                                             uri=uri, **common_kwargs)
+                            return candidate.file_group_cls(
+                                format_name=format_name, uri=uri,
+                                **common_kwargs)
                 # Perform matching based on file-extensions of local name_paths in
                 # multi-format file-group
                 else:
@@ -737,8 +738,9 @@ class UnresolvedFileGroup(DataItem, DataMixin):
                         except ArcanaFileFormatError:
                             pass
                     if local_path is not None:
-                        return FileGroup(local_path=local_path,
-                                        aux_files=aux_files, **common_kwargs)
+                        return candidate.file_group_cls(
+                            local_path=local_path, aux_files=aux_files,
+                            **common_kwargs)
         # If we get to here none of the candidate formats have matched and
         # we raise and error
         if self.format_uris:

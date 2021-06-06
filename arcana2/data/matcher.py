@@ -4,7 +4,7 @@ import re
 from copy import copy
 from itertools import chain
 from arcana2.exceptions import (
-    ArcanaUsageError, ArcanaInputError,
+    ArcanaUsageError, ArcanaInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError, ArcanaNotBoundToAnalysisError)
 from .base import FileGroupMixin, FieldMixin
 from .item import FileGroup, Field
@@ -112,7 +112,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
         one and only one file_group per <frequency>. If None, the name
         is used instead.
     format : FileFormat
-        File formats that data will be accepted in        
+        File format that data will be 
     is_regex : bool
         Flags whether the name_path is a regular expression or not
     order : int | None
@@ -136,7 +136,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
     is_spec = False
     item_cls = FileGroup
 
-    def __init__(self, frequency, name_path=None, format=None,  
+    def __init__(self, frequency, format, name_path=None,
                  order=None, header_vals=None, is_regex=False,
                  acceptable_quality=None, skip_missing=False):
         FileGroupMixin.__init__(self, name_path, format)
@@ -175,21 +175,39 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                         self.order, self.header_vals, self._acceptable_quality))
 
     def _filtered_matches(self, node, **kwargs):  # noqa pylint: disable=unused-argument
+        # Start off with all file groups in the node
+        matches = list(node.file_groups)
+        # Filter by name
         if self.name_path is not None:
             if self.is_regex:
                 name_path_re = re.compile(self.name_path)
-                matches = [f for f in node.file_groups
-                           if name_path_re.match(f.basename)]
+                matches = [f for f in matches
+                           if name_path_re.match(f.name_path)]
             else:
-                matches = [f for f in node.file_groups
-                           if f.basename == self.name_path]
-        else:
-            matches = list(node.file_groups)
+                matches = [f for f in matches if f.name_path == self.name_path]
         if not matches:
             raise ArcanaInputMissingMatchError(
                 "Did not find any matches for {} in {}. Found:\n    {}"
                 .format(self, node,
                         '\n    '.join(str(f) for f in node.file_groups)))
+        # Filter by available formats
+        filtered = []
+        for unresolved_file_group in node.file_groups:
+            try:
+                file_group = unresolved_file_group.resolve(self.format)
+            except ArcanaFileFormatError:
+                pass
+            else:
+                filtered.append(file_group)
+        if not filtered:
+            raise ArcanaInputMissingMatchError(
+                "Did not find file_groups names matching name_path {} "
+                "in the requested format {} in {}. Found:\n    {}"
+                .format(
+                    self.name_path, self.format, node,
+                    '\n    '.join(str(m) for m in matches)))
+        matches = filtered
+        # Filter by quality
         if self.acceptable_quality is not None:
             filtered = [f for f in matches
                         if f.quality in self.acceptable_quality]
@@ -201,43 +219,17 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                         self.name_path, self.acceptable_quality, node,
                         '\n    '.join(str(m) for m in matches)))
             matches = filtered
-        if self.order is not None:
-            filtered = [d for d in matches if d.order == self.order]
-            if not filtered:
-                raise ArcanaInputMissingMatchError(
-                    "Did not find file_groups names matching name_path {} "
-                    "with an order of {} in {}. Found:\n    {} ".format(
-                        self.name_path, self.order,
-                        '\n    '.join(str(m) for m in matches), node))
-            matches = filtered
-        if self.format is not None:
-            format_matches = [m for m in matches if self.format.matches(m)]
-            if not format_matches:
-                for f in matches:
-                    self.format.matches(f)
-                raise ArcanaInputMissingMatchError(
-                    "Did not find any file_groups that match the file format "
-                    "specified by {} in {}. Found:\n    {}"
-                    .format(self, node,
-                            '\n    '.join(str(f) for f in matches)))
-            matches = format_matches
-        # Matcher matches by dicom tags
+        # Matcher matches by matching header values
         if self.header_vals is not None:
-            if self.valid_formats is None or len(self.valid_formats) != 1:
-                raise ArcanaUsageError(
-                    "Can only match header tags if exactly one valid format "
-                    "is specified ({})".format(self.valid_formats))
-            format = self.valid_formats[0]
             filtered = []
             for file_group in matches:
-                keys, ref_values = zip(*self.header_vals.items())
-                values = tuple(format.dicom_values(file_group, keys))
-                if ref_values == values:
+                if all(file_group.header_value(k) == v
+                       for k, v in self.header_vals.items()):
                     filtered.append(file_group)
             if not filtered:
                 raise ArcanaInputMissingMatchError(
                     "Did not find file_groups names matching name_path {}"
-                    "that matched DICOM tags {} in {}. Found:\n    {}"
+                    "that matched the header values {} in {}. Found:\n    {}"
                     .format(self.name_path, self.header_vals,
                             '\n    '.join(str(m) for m in matches), node))
             matches = filtered

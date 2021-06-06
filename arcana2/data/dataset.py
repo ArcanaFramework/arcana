@@ -26,9 +26,10 @@ class Dataset():
     repository : Repository
         The repository the dataset is stored into. Can be the local file
         system by providing a FileSystemDir repo.
-    frequency_enum : type
-        The enum that describes the tree structure of the dataset. See
-        `arcana2.data.enum.DataFrequency`.
+    matchers : Dict[str, Matcher]
+        A dictionary that maps the name-paths of "columns" in the dataset
+        to match criteria in a Matcher object that select the corresponding
+        items in the dataset
     include_ids : Dict[str, List[str]]
         The IDs to be included in the dataset for each frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
@@ -36,14 +37,19 @@ class Dataset():
         will be used
     """
 
-    def __init__(self, name, repository, frequency_enum, include_ids=None):
+    def __init__(self, name, repository, matchers, include_ids=None):
         self.name = name
         self.repository = repository
-        self.frequency_enum = frequency_enum
-        self.include_ids = {f: None for f in frequency_enum}
+        if wrong_freq:= [m for m in matchers
+                         if not isinstance(m.frequency, self.frequency_enum)]:
+            raise ArcanaUsageError(
+                f"Data frequency of {wrong_freq} matchers does not match that "
+                f"of repository {self.frequency_enum}")
+        self.matchers = matchers
+        self.include_ids = {f: None for f in self.frequency_enum}
         for freq, ids in include_ids:
             try:
-                self.include_ids[frequency_enum[freq]] = list(ids)
+                self.include_ids[self.frequency_enum[freq]] = list(ids)
             except KeyError:
                 raise ArcanaUsageError(
                     f"Unrecognised data frequency '{freq}' (valid "
@@ -227,16 +233,16 @@ class Dataset():
                     f"Unrecognised data frequencies in ID dict '{ids}' (valid "
                     f"{', '.join(self.frequency_enum)})")
 
+    @property
+    def frequency_enum(self):
+        return self.repository.frequency_enum
 
     def source(matchers):
         """
         Returns a Pydra task that downloads/extracts data from the
         repository to be passed to a workflow
 
-        Parameters
-        ----------
-        matchers : Dict[str, Matcher or Spec]
-            A dictionary of Matchers or Specs to map to outputs of the source
+  
 
         Returns
         -------
@@ -450,7 +456,7 @@ class DataNode():
         self._fields[name_path] = UnresolvedField(
             name_path, *args, data_node=self, **kwargs)
 
-    def file_group(self, name_path, file_format=None):
+    def file_group(self, name_path: str, file_format=None):
         """
         Gets the file_group with the ID 'id' produced by the Analysis named
         'analysis' if provided. If a spec is passed instead of a str to the
@@ -467,7 +473,7 @@ class DataNode():
 
         Returns
         -------
-        FileGroup | UnresolvedFileGroup
+        FileGroup or UnresolvedFileGroup
             The file-group corresponding to the given name_path. If a, or
             multiple, candidate file formats are provided then the format of
             the file-group is resolved and a FileGroup object is returned.
