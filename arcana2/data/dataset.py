@@ -26,9 +26,9 @@ class Dataset():
     repository : Repository
         The repository the dataset is stored into. Can be the local file
         system by providing a FileSystemDir repo.
-    matchers : Dict[str, Matcher]
+    selectors : Dict[str, Selector]
         A dictionary that maps the name-paths of "columns" in the dataset
-        to match criteria in a Matcher object that select the corresponding
+        to criteria in a Selector object that select the corresponding
         items in the dataset
     include_ids : Dict[str, List[str]]
         The IDs to be included in the dataset for each frequency. E.g. can be
@@ -37,15 +37,16 @@ class Dataset():
         will be used
     """
 
-    def __init__(self, name, repository, matchers, include_ids=None):
+    def __init__(self, name, repository, selectors, include_ids=None):
         self.name = name
         self.repository = repository
-        if wrong_freq:= [m for m in matchers
+        if wrong_freq:= [m for m in selectors
                          if not isinstance(m.frequency, self.frequency_enum)]:
             raise ArcanaUsageError(
-                f"Data frequency of {wrong_freq} matchers does not match that "
+                f"Data frequency of {wrong_freq} selectors does not match that "
                 f"of repository {self.frequency_enum}")
-        self.matchers = matchers
+        self.selectors = selectors
+        self._columns = {}  # Populated on demand from selector objects
         self.include_ids = {f: None for f in self.frequency_enum}
         for freq, ids in include_ids:
             try:
@@ -237,12 +238,15 @@ class Dataset():
     def frequency_enum(self):
         return self.repository.frequency_enum
 
-    def source(matchers):
+    def source(columns):
         """
         Returns a Pydra task that downloads/extracts data from the
         repository to be passed to a workflow
 
-  
+        Parameters
+        ----------
+        columns : Sequence[str or Tuple[str, FileFormat or dtype]]
+            
 
         Returns
         -------

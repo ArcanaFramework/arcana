@@ -10,9 +10,9 @@ from .base import FileGroupMixin, FieldMixin
 from .item import FileGroup, Field
 
 
-class DataMatcher():
+class DataSelector():
     """
-    Base class for FileGroup and Field Matcher classes
+    Base class for FileGroup and Field Selector classes
     """
 
     def __init__(self, is_regex, order, frequency, skip_missing):
@@ -97,7 +97,7 @@ class DataMatcher():
         return match
 
 
-class FileGroupMatcher(DataMatcher, FileGroupMixin):
+class FileGroupSelector(DataSelector, FileGroupMixin):
     """
     A name_path that describes a single file_group (typically acquired
     rather than generated but not necessarily) within each session.
@@ -140,7 +140,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                  order=None, header_vals=None, is_regex=False,
                  acceptable_quality=None, skip_missing=False):
         FileGroupMixin.__init__(self, name_path, format)
-        DataMatcher.__init__(self, is_regex, order, frequency, skip_missing)
+        DataSelector.__init__(self, is_regex, order, frequency, skip_missing)
         self.header_vals = header_vals
         if isinstance(acceptable_quality, basestring):
             acceptable_quality = (acceptable_quality,)
@@ -150,19 +150,19 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
 
     def __eq__(self, other):
         return (FileGroupMixin.__eq__(self, other) and
-                DataMatcher.__eq__(self, other) and
+                DataSelector.__eq__(self, other) and
                 self.header_vals == other.header_vals and
                 self._acceptable_quality == other._acceptable_quality)
 
     def __hash__(self):
         return (FileGroupMixin.__hash__(self) ^
-                DataMatcher.__hash__(self) ^
+                DataSelector.__hash__(self) ^
                 hash(self.header_vals) ^
                 hash(self._acceptable_quality))
 
     def initkwargs(self):
         dct = FileGroupMixin.initkwargs(self)
-        dct.update(DataMatcher.initkwargs(self))
+        dct.update(DataSelector.initkwargs(self))
         dct['header_vals'] = self.header_vals
         dct['acceptable_quality'] = self.acceptable_quality
         return dct
@@ -219,7 +219,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
                         self.name_path, self.acceptable_quality, node,
                         '\n    '.join(str(m) for m in matches)))
             matches = filtered
-        # Matcher matches by matching header values
+        # Selector matches by matching header values
         if self.header_vals is not None:
             filtered = []
             for file_group in matches:
@@ -251,7 +251,7 @@ class FileGroupMatcher(DataMatcher, FileGroupMixin):
         return {'format': self.format}
 
 
-class FieldMatcher(DataMatcher, FieldMixin):
+class FieldSelector(DataSelector, FieldMixin):
     """
     A name_path that matches a single field (typically acquired rather than
     generated but not necessarily) in each session.
@@ -291,11 +291,11 @@ class FieldMatcher(DataMatcher, FieldMixin):
     def __init__(self, frequency, name_path, dtype=None, order=None, is_regex=False,
                  skip_missing=False, array=False):
         FieldMixin.__init__(self, name_path, dtype, array)
-        DataMatcher.__init__(self, is_regex, order, frequency, skip_missing)
+        DataSelector.__init__(self, is_regex, order, frequency, skip_missing)
 
     def __eq__(self, other):
         return (FieldMixin.__eq__(self, other) and
-                DataMatcher.__eq__(self, other))
+                DataSelector.__eq__(self, other))
 
     @property
     def dtype(self):
@@ -309,11 +309,11 @@ class FieldMatcher(DataMatcher, FieldMixin):
         return dtype
 
     def __hash__(self):
-        return (FieldMixin.__hash__(self) ^ DataMatcher.__hash__(self))
+        return (FieldMixin.__hash__(self) ^ DataSelector.__hash__(self))
 
     def initkwargs(self):
         dct = FieldMixin.initkwargs(self)
-        dct.update(DataMatcher.initkwargs(self))
+        dct.update(DataSelector.initkwargs(self))
         return dct
 
     def _filtered_matches(self, node, **kwargs):

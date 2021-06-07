@@ -323,7 +323,7 @@ class FileSystemDir(Repository):
 
     @classmethod
     def _list_node_dir_contents(cls, path, is_leaf):
-        # Matcher out hidden files (i.e. starting with '.')
+        # Selector out hidden files (i.e. starting with '.')
         if not is_leaf:
             path += cls.NODE_DIR
         filtered = []
