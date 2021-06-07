@@ -255,7 +255,7 @@ class FileSystemDir(Repository):
                 json.dump(dct, f, indent=2)
 
     # root_dir=None, all_namespace=None,
-    def construct_dataset(self, dataset: Dataset, **kwargs):
+    def populate_tree(self, dataset: Dataset, **kwargs):
         """
         Find all data within a repository, registering file_groups, fields and
         provenance with the found_file_group, found_field and found_provenance

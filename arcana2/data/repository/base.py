@@ -90,7 +90,7 @@ class Repository(metaclass=ABCMeta):
         manage it here
         """
 
-    def dataset(self, name, **kwargs):
+    def dataset(self, name, selectors=None, **kwargs):
         """
         Returns a dataset from the XNAT repository
 
@@ -98,12 +98,14 @@ class Repository(metaclass=ABCMeta):
         ----------
         name : str
             The name, path or ID of the dataset within the repository
+        **kwargs : Dict[str, Any]
+            Keyword args passed on to the `populate_tree` method when it is
+            called implicitly as nodes of the dataset are accessed
         """
-        return Dataset(name, repository=self,
-                       frequency_enum=self.frequency_enum, **kwargs)
+        return Dataset(name, repository=self, selectors=selectors, **kwargs)
 
     @abstractmethod
-    def construct_dataset(self, dataset, ids=None, **kwargs):
+    def populate_tree(self, dataset, ids=None, **kwargs):
         """
         Find all data within a repository, registering file_groups, fields and
         provenance with the found_file_group, found_field and found_provenance

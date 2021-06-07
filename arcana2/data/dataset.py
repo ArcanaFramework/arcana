@@ -5,6 +5,7 @@ from copy import copy
 from collections import defaultdict
 from itertools import chain
 from collections import OrderedDict
+from pydra import mark, Workflow
 from .item import UnresolvedFileGroup, UnresolvedField
 from arcana2.exceptions import (
     ArcanaError, ArcanaNameError, ArcanaDataTreeConstructionError,
@@ -35,16 +36,20 @@ class Dataset():
         used to limit the subject IDs in a project to the sub-set that passed
         QC. If a frequency is omitted or its value is None, then all available
         will be used
+    **populate_kwargs : Dict[str, Any]
+        Keyword arguments passed on to the `populate_tree` method of the
+        repository class when it is called
     """
 
-    def __init__(self, name, repository, selectors, include_ids=None):
+    def __init__(self, name, repository, selectors, include_ids=None,
+                 **populate_kwargs):
         self.name = name
         self.repository = repository
         if wrong_freq:= [m for m in selectors
                          if not isinstance(m.frequency, self.frequency_enum)]:
             raise ArcanaUsageError(
-                f"Data frequency of {wrong_freq} selectors does not match that "
-                f"of repository {self.frequency_enum}")
+                f"Data frequencies of {wrong_freq} selectors does not match "
+                f"that of repository {self.frequency_enum}")
         self.selectors = selectors
         self._columns = {}  # Populated on demand from selector objects
         self.include_ids = {f: None for f in self.frequency_enum}
@@ -55,8 +60,8 @@ class Dataset():
                 raise ArcanaUsageError(
                     f"Unrecognised data frequency '{freq}' (valid "
                     f"{', '.join(self.frequency_enum)})")
-        # Add root node for tree
-        self.root_node = DataNode(self.root_frequency, {}, self)
+        self._root_node = None  # Lazy loading of data tree info from repo
+        self._populate_kwargs = populate_kwargs
 
     def __repr__(self):
         return (f"Dataset(name='{self.name}', repository={self.repository}, "
@@ -90,8 +95,18 @@ class Dataset():
             'ids': {str(freq): tuple(ids) for freq, ids in self.nodes.items()}}
 
     @property
-    def root_frequency(self):
-        return self.frequency_enum(0)
+    def root_node(self):
+        """Lazily loads the data tree from the repository on demand
+
+        Returns
+        -------
+        DataNode
+            The root node of the data tree
+        """
+        if self._root_node is None:
+            self._root_node = DataNode(self.root_frequency, {}, self)
+            self.repository.populate_tree(self, **self._populate_kwargs)
+        return self._root_node
 
     def __ne__(self, other):
         return not (self == other)
@@ -238,21 +253,35 @@ class Dataset():
     def frequency_enum(self):
         return self.repository.frequency_enum
 
-    def source(columns):
+    @property
+    def root_frequency(self):
+        return self.frequency_enum(0)
+
+    def source(frequency, inputs):
         """
         Returns a Pydra task that downloads/extracts data from the
         repository to be passed to a workflow
 
         Parameters
         ----------
-        columns : Sequence[str or Tuple[str, FileFormat or dtype]]
-            
+        frequency : DataFrequency
+            The frequency of the outputs to sink, i.e. which level in the
+            data tree the outputs are to be placed
+        inputs : Sequence[str or Tuple[str, FileFormat or dtype]]
+            The name of the columns to source from the dataset. If the
+            file format or data type needs to be converted from what it is
+            in the dataset a Tuple[str, FileFormat or dtype] can be provided
+            instead of the name, consisting of the name and the desired
+            file-format/datatype.
 
         Returns
         -------
         pydra.task
             A Pydra task to that downloads/extracts the requested data
         """
+        workflow = Workflow(name='source')
+        
+        
         raise NotImplemented
         # Protect against iterators
         columns = {
@@ -302,21 +331,23 @@ class Dataset():
         return outputs
 
 
-    def sink(outputs):
+    def sink(frequency, outputs):
         """
-        Returns a Pydra task that uploads/moves data to the
-        repository to be passed to a workflow
+        Returns a Pydra task that uploads/moves data to the repository
 
         Parameters
         ----------
-        outputs : Dict[str, Spec]
-            A dictionary containing Spec objects that specify where to put the
-            data in the repository
+        frequency : DataFrequency
+            The frequency of the outputs to sink, i.e. which level in the
+            data tree the outputs are to be placed
+        outputs : Sequence[Tuple[str, FileFormat or dtype]]
+            A list of tuples specifying the output name path and the format/
+            dtype the output will be expected/saved in
 
         Returns
         -------
         pydra.task
-            A Pydra task to that downloads/extracts the requested data
+            A Pydra task to that uploads/moves data into 
         """
         raise NotImplemented
         super(RepositorySink, self).__init__(columns)

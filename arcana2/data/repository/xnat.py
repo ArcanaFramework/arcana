@@ -428,10 +428,10 @@ class Xnat(Repository):
             checksums['.'] = checksums.pop(primary)
         return checksums
 
-    def construct_dataset(self, dataset: Dataset, **kwargs):
+    def populate_tree(self, dataset: Dataset, **kwargs):
         """
         Find all file_groups, fields and provenance provenances within an XNAT
-        project
+        project and create data tree within dataset
 
         Parameters
         ----------
