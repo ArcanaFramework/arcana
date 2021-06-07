@@ -1,4 +1,3 @@
-import weakref
 from itertools import itemgetter
 import logging
 from copy import copy
@@ -208,7 +207,7 @@ class Dataset():
                     f"Inconsistent IDs provided for nodes in {frequency} "
                     f"in data tree ({ids_tuple} and {existing_tuple})")
         node_dict[ids_tuple] = node
-        node._supranodes[self.frequency_enum(0)] = weakref.ref(self.root_node)
+        node.supranodes[self.frequency_enum(0)] = self.root_node
         # Insert nodes for basis layers if not already present and link them
         # with inserted node
         for supra_freq in frequency.layers:
@@ -222,7 +221,7 @@ class Dataset():
             except ArcanaNameError:
                 supranode = self.add_node(supra_freq, **supra_ids)
             # Set reference to level node in new node
-            node.__supranodes[supra_freq] = weakref.ref(supranode)
+            node.supranodes[supra_freq] = supranode
             supranode.subnodes[frequency][sub_ids] = node
         return node
 
@@ -461,8 +460,8 @@ class DataNode():
         self._fields = OrderedDict()
         self._provenances = OrderedDict()
         self.subnodes = defaultdict(dict)
-        self._supranodes = {}  # Refs to level (e.g. session -> subject)
-        self._dataset = weakref.ref(dataset)
+        self.supranodes = {}  # Refs to level (e.g. session -> subject)
+        self._dataset = dataset
         
 
     def __eq__(self, other):
@@ -548,7 +547,7 @@ class DataNode():
                            self, name_path, "', '".join(self._fields)))
 
     def supranode(self, frequency):
-        node = self.__supranodes[frequency]()
+        node = self.supranodes[frequency]
         if node is None:
             raise ArcanaError(
                 f"Node referenced by {self} for {frequency} no longer exists")
@@ -565,14 +564,6 @@ class DataNode():
     @property
     def items(self):
         return chain(self.file_groups, self.fields)
-
-    @property
-    def dataset(self):
-        dataset = self._dataset()
-        if dataset is None:
-            raise ArcanaError(
-                "Dataset referenced by data node no longer exists")
-        return dataset
 
     def __ne__(self, other):
         return not (self == other)

@@ -1,6 +1,5 @@
 import os
 import os.path as op
-import weakref
 from itertools import chain
 import hashlib
 import json
@@ -27,8 +26,7 @@ class DataItem():
     is_spec = False
 
     def __init__(self, data_node, exists, provenance):
-        self._data_node = (
-            weakref.ref(data_node) if data_node is not None else None)
+        self.data_node = data_node
         self.exists = exists
         if not isinstance(provenance, Provenance):
             provenance = Provenance(provenance)
@@ -60,16 +58,6 @@ class DataItem():
                          .format(sub_indent, self._provenance,
                                  other._provenance))
         return mismatch
-
-    @property
-    def data_node(self):
-        if self.data_node is None:
-            data_node = None
-        else:
-            data_node = self.data_node()
-            if data_node is None:
-                raise ArcanaError("Referenced data_node no longer exists")
-        return data_node
 
     @property
     def provenance(self):
