@@ -1,5 +1,5 @@
 from .item import FileGroup, Field
-from .enum import Clinical, Salience
+from .frequency import Clinical, Salience
 from .spec import (
     FileGroupSpec, FieldSpec, DataSpec)
 from .base import FieldMixin, FileGroupMixin, DataMixin

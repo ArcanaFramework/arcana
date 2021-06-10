@@ -20,7 +20,7 @@ from arcana2.exceptions import (
     ArcanaInsufficientRepoDepthError)
 from arcana2.utils import get_class_info, HOSTNAME, split_extension
 from ..dataset import Dataset
-from ..enum import Clinical, DataFrequency
+from ..frequency import Clinical, DataFrequency
 from .base import Repository
 
 

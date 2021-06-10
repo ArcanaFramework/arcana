@@ -1,6 +1,5 @@
-from arcana2.exceptions import ArcanaNameError
+from enum import Enum
 from .base import FileGroupMixin, FieldMixin
-from .item import FileGroup, Field
 
 
 
@@ -181,3 +180,39 @@ class FieldSpec(FieldMixin, DataSpec):
         dct = FieldMixin.initkwargs(self)
         dct.update(DataSpec.initkwargs(self))
         return dct
+
+class Salience(Enum):
+    """An enum that holds the salience levels options that can be used when
+    specifying data. Salience is used to indicate whether it would be best to
+    store the data in the data repository or whether it can be just stored in
+    the local file-system and discarded after it has been used. This choice
+    is ultimately specified by the user by defining a salience threshold for
+    a repository.
+
+    The salience is also used when providing information on what derivatives
+    are available to avoid cluttering help menus
+    """
+    
+    primary = (5, 'Primary input data, e.g. data from scanner')
+    publication = (4, 'Results that would typically be used as main '
+                   'outputs in publications')
+    supporting = (3, 'Derivatives that would typically only be kept to support'
+                  ' the main results')
+    qa = (2, 'Derivatives that would typically be only kept for quality '
+          'assurance of analysis workflows')
+    debug = (1, 'Derivatives that would typically only need to be checked '
+             'when debugging analysis workflows')
+    temp = (0, "Data only temporarily stored to pass between pipelines")
+
+    def __init__(self, level, desc):
+        self.level = level
+        self.desc = desc
+
+    def __lt__(self, other):
+        return self.level < other.level
+
+    def __le__(self, other):
+        return self.level <= other.level
+
+    def __str__(self):
+        return self.name

@@ -155,7 +155,7 @@ class FileGroup(DataItem, FileGroupMixin):
                             "', '".join(self.format.aux_files.keys())))
         self._local_path = local_path
         self.aux_files = aux_files if aux_files is not None else {}
-        self.uri = uri
+        self._uri = uri
         self._order = order
         self.checksums = checksums
         self.format_name = format_name
@@ -274,19 +274,27 @@ class FileGroup(DataItem, FileGroupMixin):
     def set_local_path(self, local_path, aux_files=None):
         if local_path is not None:
             local_path = op.abspath(op.realpath(local_path))
-            self._exists = True
+            self.exists = True
         self._local_path = local_path
         if aux_files is None:
-            self._aux_files = dict(
+            self.aux_files = dict(
                 self.format.default_aux_file_paths(local_path))
+            if self.exists:
+                if dont_exist:= [
+                        f'{n}: {p}' for n, p in self._aux_files.items()
+                        if not op.exists(p)]:
+                    raise ArcanaUsageError(
+                        "Auxiliary files implicitly expected alongside "
+                        f"primary path {local_path} (" + ', '.join(dont_exist)
+                        + ") do not exist")
         else:
             if set(self.format.aux_files.keys()) != set(aux_files.keys()):
                 raise ArcanaUsageError(
-                    "Keys of provided side cars ('{}') don't match format "
-                    "('{}')".format("', '".join(aux_files.keys()),
-                                    "', '".join(self.format.aux_files.keys())))
+                    "Keys of provided auxiliary files ('{}') don't match format"
+                    " ('{}')".format("', '".join(aux_files.keys()),
+                                     "', '".join(self.format.aux_files.keys())))
             self.aux_files = aux_files
-        self._checksums = self.calculate_checksums()
+        self.checksums = self.calculate_checksums()
         self.put()  # Push to dataset
 
     @local_path.setter
@@ -306,6 +314,11 @@ class FileGroup(DataItem, FileGroupMixin):
                            for root, _, files in os.walk(self.local_path)))
         else:
             return chain([self.local_path], self.aux_files.values())
+
+    @property
+    def value(self):
+        """For duck-typing with Field in source tasks"""
+        return self.local_path
 
     @property
     def fname(self):

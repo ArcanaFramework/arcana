@@ -91,6 +91,10 @@ class ArcanaInputMissingMatchError(ArcanaInputError):
     pass
 
 
+class ArcanaMultipleMatchesInputError(ArcanaInputError):
+    pass
+
+
 class ArcanaOutputNotProducedException(ArcanaException):
     """
     Raised when a given spec is not produced due to switches and inputs

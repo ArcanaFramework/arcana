@@ -4,7 +4,7 @@ import re
 from copy import copy
 from itertools import chain
 from arcana2.exceptions import (
-    ArcanaUsageError, ArcanaInputError, ArcanaFileFormatError,
+    ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError, ArcanaNotBoundToAnalysisError)
 from .base import FileGroupMixin, FieldMixin
 from .item import FileGroup, Field
@@ -41,37 +41,37 @@ class DataSelector():
         dct['skip_missing'] = self.skip_missing
         return dct
 
-    def match(self, dataset, **kwargs):
-        matches = []
-        errors = []
-        for data_node in dataset[self.frequency]:
-            try:
-                try:
-                    matches.append(self.match_node(data_node, **kwargs))
-                except ArcanaInputMissingMatchError as e:
-                    if self.skip_missing:
-                        # Insert a non-existant item placeholder in-place of
-                        # the the missing item
-                        matches.append(self.item_cls(
-                            self.name_path,
-                            data_node=data_node,
-                            exists=False,
-                            **self._specific_kwargs))
-                    else:
-                        raise e
-            except ArcanaInputError as e:
-                errors.append(e)
-        # Collate potentially multiple errors into a single error message
-        if errors:
-            if all(isinstance(e, ArcanaInputMissingMatchError)
-                   for e in errors):
-                ErrorClass = ArcanaInputMissingMatchError
-            else:
-                ErrorClass = ArcanaInputError
-            raise ErrorClass('\n'.join(str(e) for e in errors))
-        return matches
+    # def match(self, dataset, **kwargs):
+    #     matches = []
+    #     errors = []
+    #     for data_node in dataset[self.frequency]:
+    #         try:
+    #             try:
+    #                 matches.append(self.match_node(data_node, **kwargs))
+    #             except ArcanaInputMissingMatchError as e:
+    #                 if self.skip_missing:
+    #                     # Insert a non-existant item placeholder in-place of
+    #                     # the the missing item
+    #                     matches.append(self.item_cls(
+    #                         self.name_path,
+    #                         data_node=data_node,
+    #                         exists=False,
+    #                         **self._specific_kwargs))
+    #                 else:
+    #                     raise e
+    #         except ArcanaInputError as e:
+    #             errors.append(e)
+    #     # Collate potentially multiple errors into a single error message
+    #     if errors:
+    #         if all(isinstance(e, ArcanaInputMissingMatchError)
+    #                for e in errors):
+    #             ErrorClass = ArcanaInputMissingMatchError
+    #         else:
+    #             ErrorClass = ArcanaInputError
+    #         raise ErrorClass('\n'.join(str(e) for e in errors))
+    #     return matches
 
-    def match_node(self, node, **kwargs):
+    def match(self, node, **kwargs):
         # Get names matching name_path
         matches = self._filtered_matches(node, **kwargs)
         # Select the file_group from the matches
@@ -90,7 +90,7 @@ class DataSelector():
         elif len(matches) == 1:
             match = matches[0]
         else:
-            raise ArcanaInputError(
+            raise ArcanaMultipleMatchesInputError(
                 "Found multiple matches for {} in {}:\n    {}"
                 .format(self, node,
                         '\n    '.join(str(m) for m in matches)))
@@ -135,6 +135,7 @@ class FileGroupSelector(DataSelector, FileGroupMixin):
 
     is_spec = False
     item_cls = FileGroup
+    dtype = str  # For duck-typing with FieldSelectors. Returns the local path
 
     def __init__(self, frequency, format, name_path=None,
                  order=None, header_vals=None, is_regex=False,

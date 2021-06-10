@@ -23,7 +23,7 @@ from arcana2.exceptions import (
 from ..item import Provenance
 from arcana2.utils import dir_modtime, get_class_info, parse_value
 from ..dataset import Dataset
-from ..enum import Clinical
+from ..frequency import Clinical
 
 
 

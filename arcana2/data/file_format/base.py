@@ -155,6 +155,25 @@ class FileFormat(object):
     def within_dir_exts(self):
         return self._within_dir_exts
 
+    @classmethod
+    def aux_interface_name(self, file_group_name, aux_name):
+        """Standardised method for naming aux files in Pydra Task/Workflow
+        interfaces
+
+        Parameters
+        ----------
+        file_group_name : str
+            Name of the file group in the task/workflow interface
+        aux_name : str
+            The name of the aux file
+
+        Returns
+        -------
+        str
+            The combined name for the aux file within an interface
+        """
+        return f"{file_group_name}___{aux_name}"
+
     def converter_from(self, file_format, **kwargs):
         if file_format == self:
             return IdentityConverter(file_format, self)

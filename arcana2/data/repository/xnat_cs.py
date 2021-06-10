@@ -8,7 +8,7 @@ from arcana2.exceptions import (
     ArcanaRepositoryError)
 from arcana2.utils import split_extension
 from arcana2.exceptions import ArcanaUsageError
-from ..enum import Clinical
+from ..frequency import Clinical
 from .xnat import Xnat
 
 

@@ -1,13 +1,17 @@
 from itertools import itemgetter
 import logging
+import typing as ty
 from copy import copy
 from collections import defaultdict
 from itertools import chain
 from collections import OrderedDict
-from pydra import mark, Workflow
-from .item import UnresolvedFileGroup, UnresolvedField
+from pydra import Workflow, mark
+from .item import UnresolvedFileGroup, UnresolvedField, DataItem
+from .frequency import DataFrequency
+from .selector import DataSelector
+from .file_format import FileFormat
 from arcana2.exceptions import (
-    ArcanaError, ArcanaNameError, ArcanaDataTreeConstructionError,
+    ArcanaError, ArcanaInputError, ArcanaNameError, ArcanaDataTreeConstructionError,
     ArcanaUsageError)
 
 logger = logging.getLogger('arcana')
@@ -50,7 +54,6 @@ class Dataset():
                 f"Data frequencies of {wrong_freq} selectors does not match "
                 f"that of repository {self.frequency_enum}")
         self.selectors = selectors
-        self._columns = {}  # Populated on demand from selector objects
         self.include_ids = {f: None for f in self.frequency_enum}
         for freq, ids in include_ids:
             try:
@@ -65,6 +68,13 @@ class Dataset():
     def __repr__(self):
         return (f"Dataset(name='{self.name}', repository={self.repository}, "
                 f"include_ids={self.include_ids})")
+
+    def __enter__(self):
+        self.repository.__enter__()
+        return self
+
+    def __exit__(self):
+        self.repository.__exit__()
 
     def __eq__(self, other):
         return (self.name == other.name
@@ -106,6 +116,14 @@ class Dataset():
             self._root_node = DataNode(self.root_frequency, {}, self)
             self.repository.populate_tree(self, **self._populate_kwargs)
         return self._root_node
+
+    @property
+    def file_selectors(self):
+        return (s for s in self.selectors if s.is_file_group)
+
+    @property
+    def field_selectors(self):
+        return (s for s in self.selectors if s.is_field)
 
     def __ne__(self, other):
         return not (self == other)
@@ -157,6 +175,9 @@ class Dataset():
                 f"{ids_tuple} not present in data tree "
                 "({})".format(
                     str(i) for i in self.root_node.subnodes[frequency]))
+
+    def nodes(self, frequency):
+        return self.root_node.subnodes[frequency]
 
     def add_node(self, frequency, ids):
         """Adds a node to the dataset, creating references to upper and lower
@@ -256,32 +277,155 @@ class Dataset():
     def root_frequency(self):
         return self.frequency_enum(0)
 
-    def source(frequency, inputs):
+    def connect(self, workflow, frequency, inputs, outputs, skip_missing=False):
         """
-        Returns a Pydra task that downloads/extracts data from the
-        repository to be passed to a workflow
+        Connects a workflow to the dataset by prepending nodes to select,
+        download and convert (if necessary) downloads/extracts data from the
+        repository to be passed to a workflow, and convert (if necessary) and
+        upload data back into the dataset.
 
         Parameters
         ----------
+        workflow : pydra.Workflow
+            The workflow to connect to the dataset
         frequency : DataFrequency
-            The frequency of the outputs to sink, i.e. which level in the
-            data tree the outputs are to be placed
-        inputs : Sequence[str or Tuple[str, FileFormat or dtype]]
-            The name of the columns to source from the dataset. If the
-            file format or data type needs to be converted from what it is
-            in the dataset a Tuple[str, FileFormat or dtype] can be provided
-            instead of the name, consisting of the name and the desired
-            file-format/datatype.
+            The frequency of the output columns to generate within the dataset,
+            i.e. are they to be present, per session, subject, timepoint or
+            singular within the dataset.
+        inputs : Dict[str, str or Tuple[str, FileFormat or dtype]]
+            A mapping from the name the columns in the dataset to the inputs
+            of the workflow. If the input needs to be converted before it
+            can be passed to the workflow, the requiref file format can be
+            passed with the workflow input name in a tuple
+        outputs : Dict[str, Tuple[str, FileFormat or dtype]]
+            A mapping from the name the outputs of the workflow to the name
+            of the dataset column and file format to store it in.
+        skip_missing : bool
+            Whether to quietly skip data nodes which don't have matches for the
+            requested input columns (otherwise raise an error)
 
         Returns
         -------
         pydra.task
             A Pydra task to that downloads/extracts the requested data
         """
-        workflow = Workflow(name='source')
+
+        if invalid_inputs:= [i for i in inputs if i not in self.selectors]:
+            raise ArcanaUsageError(
+                f"Inputs '{'\', \''.join(invalid_inputs)}' are not present in "
+                f"the dataset ('{'\', \''.join(self.selectors)}'")
+        # Fill out inputs dictionary so that all inputs have a specified
+        # file format
+        for name, inpt in list(inputs.items()):
+            if not isinstance(inpt, tuple):
+                selector = self.selector[inpt]
+                inputs[name] = (
+                    inpt, (selector.format
+                           if selector.is_file_group else selector.dtype))
+
+        # We implement the source in multiple nodes of a nested workflow to
+        # handle the selection, download and format conversions in separate
+        # nodes
+        outer_workflow = Workflow(name='source')
+
+        @mark.task
+        @mark.annotate(
+            {'dataset': Dataset,
+             'frequency': DataFrequency,
+             'column_names': ty.Dict[str, ty.Union(FileFormat, type)],
+             'skip_missing': bool,
+             'return': {
+                'items': ty.Sequence[ty.Dict[str, DataItem]]}})
+        def select(dataset, frequency, input_names, skip_missing):
+            items = []
+            for node in dataset.nodes(frequency):
+                node_items = []
+                items.append(node_items)
+                try:
+                    for inpt in input_names:
+                        node_items.append(dataset.selectors[inpt].match(node))
+                except ArcanaInputError:
+                    if not skip_missing:
+                        raise                    
+            return items
         
-        
-        raise NotImplemented
+        outer_workflow.add(select(name='select',
+                                  dataset=self,
+                                  input_names=list(inputs),
+                                  skip_missing=skip_missing,
+                                  frequency=frequency).split('items'))
+
+        # Generate return spec for `download` task including file-groups and
+        # their auxiliary files
+        return_spec = {}
+        for col_name in column_names:
+            selector = self.selectors[col_name]
+            if selector.is_file_group:
+                return_spec[col_name] = str  # The path to the primary file/dir
+                col_format = selector.format
+                for aux in col_format.aux_files:
+                    return_spec[
+                        col_format.aux_interface_name(col_name, aux)] = str
+            else:
+                return_spec[col_name] = selector.dtypeinptinpt
+
+        @mark.task
+        @mark.annotate(
+            {'dataset': Dataset,
+             'node_items': ty.Sequence[DataItem],
+             'return': return_spec})
+        def download(dataset, node_items):
+            paths_and_values = []
+            with dataset:
+                for item in node_items:
+                    item.get()
+                    if item.is_file_group:
+                        paths_and_values.append(item.local_path)
+                        paths_and_values.extend(item.aux_files.values())
+                    else:
+                        paths_and_values.append(item.value)
+            return tuple(paths_and_values)
+
+        workflow.add(download(name='download',
+                              node_items=workflow.select_items.lzout.items))
+
+        # Do format conversions if required
+        for col_name, required_format in zip(column_names, column_formats):
+            selector = self.selectors[col_name]            
+            current_format = self.selectors[col_name].format
+            if required_format != current_format:
+                # Get converter node
+                converter = required_format.converter(current_format)
+                converter_name = f"{col_name}_converter"
+                # Map auxiliary files to converter interface
+                aux_conns = {}
+                for aux_name in current_format.aux_files:
+                    aux_conns[aux_name] = getattr(
+                        workflow.download.lzout,
+                        current_format.aux_interface_name(col_name, aux_name))
+                # Insert converter
+                workflow.add(converter(
+                    name=converter_name,
+                    in_file=getattr(workflow.download.lzout, col_name)
+                    **aux_conns))
+                # Map converter output to workflow output
+                converter_task = getattr(workflow, converter_name)
+                workflow.set_output(
+                    (col_name, converter_task.lzout.out_file))
+                # Map auxiliary files to workflow output
+                for aux_name in required_format.aux_files:
+                    workflow.set_output((
+                        col_name,
+                        getattr(converter_task.lzout,
+                                required_format.aux_interface_name(col_name,
+                                                                   aux_name))))
+            else:
+                # Map download directly to output (i.e. without conversion)
+                workflow.set_output(
+                    (col_name, getattr(workflow.download.lzout, col_name)))
+
+        return workflow
+
         # Protect against iterators
         columns = {
             n: self.column(m) for n, v in inputs.items()}
@@ -490,12 +634,21 @@ class DataNode():
         self._fields[name_path] = UnresolvedField(
             name_path, *args, data_node=self, **kwargs)
 
+    def __getitem__(self, name):
+        """Get's the item that matches the dataset's selector
+
+        Parameters
+        ----------
+        name : str
+            Name of the selector in the parent Dataset that is used to select
+            a file-group or field in the node
+        """
+        return self._dataset.selectors[name].match(self)
+
     def file_group(self, name_path: str, file_format=None):
         """
-        Gets the file_group with the ID 'id' produced by the Analysis named
-        'analysis' if provided. If a spec is passed instead of a str to the
-        name argument, then the analysis will be set from the spec iff it is
-        derived
+        Gets the file_group at the name_path, different from the mapped path
+        corresponding to the dataset's selectors
 
         Parameters
         ----------
@@ -518,8 +671,8 @@ class DataNode():
         except KeyError:
             raise ArcanaNameError(
                 name_path,
-                (f"{self} doesn't have a file_group at the name_path {name_path} "
-                 "(available '{}')".format("', '".join(self.file_groups))))
+                f"{self} doesn't have a file_group at the name_path "
+                f"{name_path} (available '{'\', \''.join(self.file_groups)}'")
         else:
             if file_format is not None:
                 file_group = file_group.resolve_format(file_format)
@@ -637,3 +790,4 @@ class MultiDataset(Dataset):
 
     def __init__(self):
         raise NotImplemented
+
