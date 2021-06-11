@@ -1,14 +1,17 @@
 import os
 import os.path as op
+import shutil
+import typing as ty
 from abc import abstractmethod, ABCMeta
 from collections import defaultdict
 import numpy as np
 from arcana2.utils import split_extension
 import logging
-from pydra import mark
+from pydra import mark, Workflow
+from pydra.engine.task import FunctionTask
+from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import (
-    ArcanaConverterNotAvailableError, ArcanaUsageError, ArcanaNoConverterError, ArcanaFileFormatError,
-    ArcanaNameError)
+    ArcanaFileFormatError, ArcanaUsageError, ArcanaNoConverterError)
 from ..item import FileGroup
 
 
@@ -43,12 +46,13 @@ class FileFormat(object):
     alternate_names : List[str]
         A list of alternate names that might be used to refer to the format
         when saved in a repository
+    file_group_cls : FileGroup
+        The class that is used when the format of a file-group is resolved
     """
 
-    file_group_cls = FileGroup
-
     def __init__(self, name, extension=None, desc='', directory=False,
-                 within_dir_exts=None, aux_files=None, alternate_names=None):
+                 within_dir_exts=None, aux_files=None, alternate_names=None,
+                 file_group_cls=FileGroup):
         if not name.islower():
             raise ArcanaUsageError(
                 "All data format names must be lower case ('{}')"
@@ -71,6 +75,7 @@ class FileFormat(object):
         self._converters = {}
         if alternate_names is None:
             alternate_names = []
+        self.file_group_cls = file_group_cls
         self.alternate_names = alternate_names
         self.aux_files = aux_files if aux_files is not None else {}
         for sc_name, sc_ext in self.aux_files.items():
@@ -174,24 +179,91 @@ class FileFormat(object):
         """
         return f"{file_group_name}___{aux_name}"
 
-    def converter_from(self, file_format, **kwargs):
-        if file_format == self:
-            return IdentityConverter(file_format, self)
+    def converter(self, file_format):
         try:
-            matching_format, converter_cls = self._converters[file_format.name]
+            return self._converters[file_format]
         except KeyError:
             raise ArcanaNoConverterError(
-                "There is no converter to convert {} to {} (available: {})"
-                .format(file_format, self,
-                        ', '.join(
-                            '{} <- {}'.format(k, v)
-                            for k, v in self._converters.items())))
-        if file_format != matching_format:
-            raise ArcanaNoConverterError(
-                "{} matches the name of a format that {} can be converted from"
-                " but is not the identical".format(file_format,
-                                                   matching_format))
-        return converter_cls(file_format, self, **kwargs)
+                f"No converter set for conversion between {self} and "
+                f"{file_format}")
+
+    def input_spec_fields(self):
+        return ['in_file'] + list(self.aux_files)
+
+    def output_spec_fields(self):
+        return ['out_file'] + list(self.aux_files)
+
+    def set_converter(self, file_format, task, inputs=None, outputs=None,
+                      **kwargs):
+        """Creates a small workflow that maps the inputs of a task interface
+        that actually performs the conversion the names used for the
+        input and output auxiliary files by the file format objects.
+
+        Parameters
+        ----------
+        file_format : FileFormater
+            The file format to convert from
+        task : pydra.engine.core.TaskBase
+            The task that actually performs the conversion
+        inputs : Dict[str, str]
+            Maps the auxiliary file names in the format to convert from and
+            the 'in_file' (for primary) onto the appropriate fields in the
+            converter's input spec
+        outputs : [type]
+            Maps the auxiliary file names and 'in_file' (for primary) onto
+            the appropriate fields in the converter's output spec
+        """
+        in_fields = ['in_file'] + list(file_format.aux_files)
+        out_fields = ['out_file'] + list(self.aux_files)
+
+        # Set defaults for inputs and outputs
+        if inputs is None:
+            inputs = {'in_file': 'in_file'}
+        if outputs is None:
+            outputs = {'out_file': 'out_file'}
+
+        # Create a workflow to perform the conversion
+        wf = Workflow(input_spec=in_fields)
+
+        def collect_files(fformat: FileFormat, in_file: str,
+                          aux_fields: ty.Sequence[str], **kwargs):
+            """Copies files into the CWD renaming so the basenames match except
+            for extensions"""
+            shutil.copyfile(in_file, 'file' + fformat.extension)
+            for name in aux_fields:
+                shutil.copyfile(kwargs[name], 'file' + fformat.aux_files[name])
+            return ['in_file'] + aux_fields
+
+        # Add task collect the input paths to a common directory (as we assume
+        # the converter expects)
+        wf.add(
+            FunctionTask(
+                collect_files,
+                input_spec=SpecInfo(
+                    name='CollectFilesInputs', bases=(BaseSpec,), fields=(
+                        [('fformat', FileFormat)]
+                        + [(f, str) for f in in_fields])),
+                output_spec=SpecInfo(
+                    name='CollectFilesOutputs', bases=(BaseSpec,), fields=[
+                        ('out_file', str)]))(
+            name='collect_files',
+            fformat=file_format,
+            in_file=list(file_format.aux_files),
+            **{f: getattr(wf.inputs.lzout, f) for f in in_fields}))
+
+        # Add the actual converter node
+        conv_kwargs = {inputs[f]:
+                       getattr(wf.collect_files.lzout, f) for f in in_fields}
+        conv_kwargs.update(kwargs)
+        wf.add(task(name='converter', **conv_kwargs))
+
+        # Set the outputs of the workflow
+        wf.set_output(
+            [(o, getattr(wf.converter.lzout, outputs[o]))
+             for o in out_fields])
+
+        # Save the converter for when it is required
+        self._converters[file_format] = wf
 
     @property
     def convertable_from(self):
@@ -291,25 +363,12 @@ class FileFormat(object):
     #         else:
     #             return False
 
-    def converter_from(self, format):
-        if format == self:
-            return mark.task(lambda x: x)
-        else:
-            raise ArcanaConverterNotAvailableError(
-                f"Cannot convert between {self} and {format} formats")
-
-    def set_converter(self, file_format, converter):
-        """
-        Register a Converter and the FileFormat that it is able to convert from
-
-        Parameters
-        ----------
-        converter : Converter
-            The converter to register
-        file_format : FileFormat
-            The file format that can be converted into this format
-        """
-        self._converters[file_format.name] = (file_format, converter)
+    # def converter_from(self, format):
+    #     if format == self:
+    #         return mark.task(lambda x: x)
+    #     else:
+    #         raise ArcanaConverterNotAvailableError(
+    #             f"Cannot convert between {self} and {format} formats")
 
     def aux(self, aux_name):
         """
@@ -352,7 +411,7 @@ class FileFormatAuxFile(object):
         return getattr(self._file_format, attr)
 
 
-class ImageFormat(FileFormat, metaclass=ABCMeta):
+class Image(FileFormat, metaclass=ABCMeta):
 
     INCLUDE_HDR_KEYS = None
     IGNORE_HDR_KEYS = None
@@ -530,4 +589,3 @@ class Converter(object):
     def __repr__(self):
         return "{}(input_format={}, output_format={})".format(
             type(self).__name__, self.input_format, self.output_format)
-
