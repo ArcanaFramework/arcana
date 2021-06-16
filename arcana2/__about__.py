@@ -2,17 +2,14 @@
 __version__ = '2.0.0a'
 
 __authors__ = [
-    ("Thomas G. Close", "tom.g.close@gmail.com"),
-    ("Francesco Sforazzini", "francesco.sforazzini@gmail.com"),
-    ("Phillip G. D. Ward", "phillipgdward@gmail.com"),
-    ("Zhaolin Chen", "zhaolin.chen@monash.edu"),
-    ("Wojtek Goscinski", "wojtek.goscinski@monash.edu"),
-    ("Gary F. Egan", "gary.egan@monash.edu")]
+    ("Thomas G. Close", "tom.g.close@gmail.com")]
 
 install_requires = [
     'xnat>=0.3.17',
     'pydra>=0.14.1',
     'pydicom>=1.0.2',
+    'pydra-mrtrix3',
+    'pydra-dcm2niix',
     # 'networkx>=2.2',
     # 'fasteners>=0.7.0',
     # 'future>=0.16.0',

@@ -489,10 +489,10 @@ class Dataset():
                 # Insert converter
                 split_workflow.add(converter(
                     name=converter_name,
-                    to_convert=sourced))
+                    in_file=sourced))
                 # Map converter output to workflow output
                 converted = getattr(split_workflow,
-                                              converter_name).lzout.converted
+                                    converter_name).lzout.out_file
             else:
                 converted = sourced
             if input_map is not None:
@@ -518,10 +518,10 @@ class Dataset():
                 # Insert converter
                 split_workflow.add(converter(
                     name=converter_name,
-                    to_convert=wf_output))
+                    in_file=wf_output))
                 # Map converter output to workflow output
                 wf_sink[col_name] = getattr(split_workflow,
-                                            converter_name).lzout.converted
+                                            converter_name).lzout.out_file
             else:
                 # Map download directly to output (i.e. without conversion)
                 wf_sink[col_name] = wf_output

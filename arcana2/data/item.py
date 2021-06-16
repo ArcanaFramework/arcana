@@ -223,12 +223,12 @@ class FileGroup(DataItem, FileGroupMixin):
                 "Cannot access cache-path of {} as it hasn't been derived yet"
                 .format(self))
         if self._file_path is None:
-            if self.dataset is not None:
+            if self.data_node is not None:
                 self.get()  # Retrieve from dataset
             else:
                 raise ArcanaError(
-                    "Neither cache-name_path nor dataset has been set for "
-                    "FileGroup('{}')".format(self.name_path))
+                    f"File path hasn't been set and {self} isn't part "
+                    "of a dataset")
         return self._file_path
 
     def set_file_path(self, file_path, aux_files=None):
@@ -239,33 +239,32 @@ class FileGroup(DataItem, FileGroupMixin):
             raise ArcanaUsageError(
                 f"Format of file-group {self.name_path} must be set before"
                 f" local path ({file_path})")
-        file_path = op.abspath(op.realpath(file_path))
+        self._file_path = file_path = op.abspath(file_path)
         self.exists = True
-        if aux_files is None:
-            aux_files = {}
-        elif set(aux_files.keys()) != set(self.format.aux_files.keys()):
-            raise ArcanaUsageError(
-                "Provided side cars for '{}' but expected '{}'"
-                .format("', '".join(aux_files.keys()),
-                        "', '".join(self.format.aux_files.keys())))
-        self._file_path = file_path
         if aux_files is None:
             self.aux_files = dict(
                 self.format.default_aux_file_paths(file_path))
             if self.exists:
-                if dont_exist:= [
-                        f'{n}: {p}' for n, p in self._aux_files.items()
+                if missing_aux_files:= [
+                        f'{n}: {p}' for n, p in self.aux_files.items()
                         if not op.exists(p)]:
                     raise ArcanaUsageError(
                         "Auxiliary files implicitly expected alongside "
-                        f"primary path {file_path} (" + ', '.join(dont_exist)
-                        + ") do not exist")
+                        "primary path '{}' ('{}') do not exist".format(
+                            file_path, "', '".join(missing_aux_files)))
         else:
             if set(self.format.aux_files.keys()) != set(aux_files.keys()):
                 raise ArcanaUsageError(
-                    "Keys of provided auxiliary files ('{}') don't match format"
-                    " ('{}')".format("', '".join(aux_files.keys()),
-                                     "', '".join(self.format.aux_files.keys())))
+                    "Keys of provided auxiliary files ('{}') don't match "
+                    "format ('{}')".format(
+                        "', '".join(aux_files.keys()),
+                        "', '".join(self.format.aux_files.keys())))
+            if missing_aux_files:= [f for f in aux_files.values()
+                                    if not op.exists(f)]:
+                raise ArcanaUsageError(
+                    "Attempting to set paths of auxiliary files for {self} "
+                    "that don't exist ('{}')".format(
+                        "', '".join(missing_aux_files)))
             self.aux_files = aux_files
         if self.data_node:
             self.checksums = self.calculate_checksums()
@@ -277,34 +276,40 @@ class FileGroup(DataItem, FileGroupMixin):
 
     @property
     def file_paths(self):
-        "Iterates through all files in the group and returns their cache name_paths"
-
+        "Iterates through all files in the group and returns their file paths"
         if self.format is None:
             raise ArcanaFileFormatError(
-                "Cannot get name_paths of file_group ({}) that hasn't had its format "
-                "set".format(self))
+                f"Cannot get name_paths of {self} that hasn't had its format "
+                "set")
         if self.format.directory:
             return chain(*((op.join(root, f) for f in files)
                            for root, _, files in os.walk(self.file_path)))
         else:
             return chain([self.file_path], self.aux_files.values())
 
-    def copy_to(self, path):
+    def copy_to(self, path: str, symlink: bool=False):
         """Copies the file-group to the new path, with auxiliary files saved
-        alongside the primary path.
+        alongside the primary-file path.
 
         Parameters
         ----------
         path : str
-            Path to save the file-group to excluding file extension
+            Path to save the file-group to excluding file extensions
+        symlink : bool
+            Use symbolic links instead of copying files to new location
         """
-        if self.format.directory:
-            shutil.copytree(self.file_path, path)
+        if symlink:
+            copy_dir = copy_file = os.symlink
         else:
-            shutil.copyfile(self.file_path, path + self.format.ext)
+            copy_file = shutil.copyfile
+            copy_dir = shutil.copytree
+        if self.format.directory:
+            copy_dir(self.file_path, path)
+        else:
+            copy_file(self.file_path, path + self.format.ext)
             for aux_name, aux_path in self.aux_files.items():
-                shutil.copyfile(aux_path,
-                                path + self.format.aux_files[aux_name])
+                copy_file(aux_path, path + self.format.aux_files[aux_name])
+        return self.format.file_group_cls.from_path(path)
 
     # @property
     # def value(self):

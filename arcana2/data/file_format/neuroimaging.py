@@ -5,48 +5,42 @@ import os.path as op
 import json
 import pydicom
 import numpy as np
-from arcana.data.file_format import FileFormat, Converter
-from banana.interfaces.mrtrix import MRConvert
-from banana.requirement import (
-    dcm2niix_req, mrtrix_req, matlab_req)
-from banana.interfaces.converters import Dcm2niix, TwixReader
-from banana.exceptions import BananaUsageError
 import nibabel
-# Import base file formats from Arcana for convenience
-from arcana.data.file_format import (
-    text_format, directory_format, zip_format, targz_format,
-    png_format, jpg_format, gif_format, json_format,
-    UnzipConverter, UnTarGzConverter, IdentityConverter)
+from pydra.tasks.mrtrix3.utils import MRConvert
+from pydra.tasks.dcm2niix import Dcm2Niix
+from .base import FileFormat, identity_converter
+from ..item import FileGroup
+from arcana2.exceptions import ArcanaUsageError
 
 
-class Dcm2niixConverter(Converter):
+# class Dcm2niixConverter(Converter):
 
-    interface = Dcm2niix(compression='y')
-    input = 'input_dir'
-    output = 'converted'
-    requirements = [dcm2niix_req.v('1.0.20190720')]
-
-
-class MrtrixConverter(Converter):
-
-    input = 'in_file'
-    output = 'out_file'
-    requirements = [mrtrix_req.v(3)]
-
-    @property
-    def interface(self):
-        return MRConvert(
-            out_ext=self.output_format.extension,
-            quiet=True)
+#     interface = Dcm2niix(compression='y')
+#     input = 'input_dir'
+#     output = 'converted'
+#     requirements = [dcm2niix_req.v('1.0.20190720')]
 
 
-class TwixConverter(Converter):
+# class MrtrixConverter(Converter):
 
-    input = 'in_file'
-    output = 'out_file'
-    output_aux_files = {'ref': 'ref_file', 'json': 'hdr_file'}
-    requirements = [matlab_req.v('R2018a')]
-    interface = TwixReader()
+#     input = 'in_file'
+#     output = 'out_file'
+#     requirements = [mrtrix_req.v(3)]
+
+#     @property
+#     def interface(self):
+#         return MRConvert(
+#             out_ext=self.output_format.extension,
+#             quiet=True)
+
+
+# class TwixConverter(Converter):
+
+#     input = 'in_file'
+#     output = 'out_file'
+#     output_aux_files = {'ref': 'ref_file', 'json': 'hdr_file'}
+#     requirements = [matlab_req.v('R2018a')]
+#     interface = TwixReader()
 
 
 
@@ -57,7 +51,7 @@ class TwixConverter(Converter):
 # =====================================================================
 
 
-class ImageFormat(FileFormat, metaclass=ABCMeta):
+class BaseImage(FileGroup, metaclass=ABCMeta):
 
     INCLUDE_HDR_KEYS = None
     IGNORE_HDR_KEYS = None
@@ -113,7 +107,7 @@ class ImageFormat(FileFormat, metaclass=ABCMeta):
         other_hdr = other_fileset.get_header()
         if include_keys is not None:
             if ignore_keys is not None:
-                raise BananaUsageError(
+                raise ArcanaUsageError(
                     "Doesn't make sense to provide both 'include_keys' ({}) "
                     "and ignore_keys ({}) to headers_equal method"
                     .format(include_keys, ignore_keys))
@@ -123,7 +117,7 @@ class ImageFormat(FileFormat, metaclass=ABCMeta):
         else:
             if self.INCLUDE_HDR_KEYS is not None:
                 if self.IGNORE_HDR_KEYS is not None:
-                    raise BananaUsageError(
+                    raise ArcanaUsageError(
                         "Doesn't make sense to have both 'INCLUDE_HDR_FIELDS'"
                         "and 'IGNORE_HDR_FIELDS' class attributes of class {}"
                         .format(type(self).__name__))
@@ -163,7 +157,7 @@ class ImageFormat(FileFormat, metaclass=ABCMeta):
                                - other_fileset.get_array()) ** 2))
 
 
-class NiftiFormat(ImageFormat):
+class NiftiImage(BaseImage):
 
     def get_header(self, fileset):
         return dict(nibabel.load(fileset.path).header)
@@ -180,7 +174,7 @@ class NiftiFormat(ImageFormat):
         return self.get_header(fileset)['dim'][1:4]
 
 
-class NiftixFormat(NiftiFormat):
+class NiftixImage(NiftiImage):
 
     def get_header(self, fileset):
         hdr = super().get_header(fileset)
@@ -189,7 +183,7 @@ class NiftixFormat(NiftiFormat):
         return hdr
 
 
-class DicomFormat(ImageFormat):
+class DicomImage(BaseImage):
 
     SERIES_NUMBER_TAG = ('0020', '0011')
 
@@ -255,7 +249,7 @@ class DicomFormat(ImageFormat):
         return dct
 
 
-class MrtrixImageFormat(ImageFormat):
+class MrtrixImage(BaseImage):
 
     def _load_header_and_array(self, fileset):
         with open(fileset.path, 'rb') as f:
@@ -306,57 +300,82 @@ class MrtrixImageFormat(ImageFormat):
 
 
 # NeuroImaging data formats
-dicom_format = DicomFormat(name='dicom', extension=None,
-                           directory=True, within_dir_exts=['.dcm'],
-                           resource_names={'xnat': ['DICOM', 'secondary']})
-nifti_gz_x_format = NiftixFormat(name='extended_nifti_gz', extension='.nii.gz',
-                                 aux_files={'json': '.json'},
-                                 resource_names={'xnat': ['NIFTI_GZ_X',
-                                                          'NIFTIX_GZ']})
-nifti_format = NiftiFormat(name='nifti', extension='.nii',
-                           resource_names={'xnat': ['NIFTI', 'NiFTI']})
+dicom_format = FileFormat(name='dicom', extension=None,
+                          directory=True, within_dir_exts=['.dcm'],
+                          alternate_names=['DICOM', 'secondary'],
+                          file_group_cls=DicomImage)
+# NIfTI file format gzipped with BIDS side car
+nifti_gz_x_format = FileFormat(name='extended_nifti_gz', extension='.nii.gz',
+                               aux_files={'json': '.json'},
+                               alternate_names=['NIFTI_GZ_X', 'NIFTIX_GZ'],
+                               file_group_cls=NiftixImage)
+nifti_format = FileFormat(name='nifti', extension='.nii',
+                          alternate_names=['NIFTI', 'NiFTI'],
+                          file_format_cls=NiftiImage)
 
-nifti_gz_format = NiftiFormat(name='nifti_gz', extension='.nii.gz',
-                              resource_names={'xnat': ['NIFTI_GZ',
-                                                       'NiFTI_GZ']})
-analyze_format = NiftiFormat(name='analyze', extension='.img',
+nifti_gz_format = FileFormat(name='nifti_gz', extension='.nii.gz',
+                             alternate_names=['NIFTI_GZ', 'NiFTI_GZ'],
+                             file_format_cls=NiftiImage)
+analyze_format = FileFormat(name='analyze', extension='.img',
                              aux_files={'header': '.hdr'})
-mrtrix_image_format = MrtrixImageFormat(name='mrtrix_image', extension='.mif',
-                                        resource_names={'xnat': ['MIF',
-                                                                 'MRTRIX']})
+mrtrix_image_format = FileFormat(name='mrtrix_image', extension='.mif',
+                                 alternate_names=['MIF', 'MRTRIX'],
+                                 file_group_cls=MrtrixImage)
 
 # Set converters between image formats
 
-nifti_gz_x_format.set_converter(dicom_format, Dcm2niixConverter)
+nifti_gz_x_format.set_converter(dicom_format, Dcm2Niix, compress='y',
+                                out_dir='.')
 
-nifti_format.set_converter(dicom_format, Dcm2niixConverter)
-nifti_format.set_converter(analyze_format, MrtrixConverter)
-nifti_format.set_converter(nifti_gz_format, MrtrixConverter)
-nifti_format.set_converter(mrtrix_image_format, MrtrixConverter)
+nifti_format.set_converter(dicom_format, Dcm2Niix, out_dir='.')
+nifti_format.set_converter(analyze_format, MRConvert,
+                           out_file='file.nii')
+nifti_format.set_converter(nifti_gz_format, MRConvert,
+                           out_file='file.nii')
+nifti_format.set_converter(mrtrix_image_format, MRConvert,
+                           out_file='file.nii')
+nifti_format.set_converter(nifti_gz_x_format, MRConvert,
+                           out_file='file.nii')
 
-nifti_gz_format.set_converter(dicom_format, Dcm2niixConverter)
-nifti_gz_format.set_converter(nifti_format, MrtrixConverter)
-nifti_gz_format.set_converter(analyze_format, MrtrixConverter)
-nifti_gz_format.set_converter(mrtrix_image_format, MrtrixConverter)
-nifti_gz_format.set_converter(nifti_gz_x_format, IdentityConverter)
+nifti_gz_format.set_converter(dicom_format, Dcm2Niix, compress='y',
+                              out_dir='.')
+nifti_gz_format.set_converter(nifti_format, MRConvert,
+                              out_file="file.nii.gz")
+nifti_gz_format.set_converter(analyze_format, MRConvert,
+                              out_file="file.nii.gz")
+nifti_gz_format.set_converter(mrtrix_image_format, MRConvert,
+                              out_file="file.nii.gz")
+nifti_gz_format.set_converter(nifti_gz_x_format, identity_converter)
 
-analyze_format.set_converter(dicom_format, MrtrixConverter)
-analyze_format.set_converter(nifti_format, MrtrixConverter)
-analyze_format.set_converter(nifti_gz_format, MrtrixConverter)
-analyze_format.set_converter(mrtrix_image_format, MrtrixConverter)
+analyze_format.set_converter(dicom_format, MRConvert,
+                             out_file="file.hdr")
+analyze_format.set_converter(nifti_format, MRConvert,
+                             out_file="file.hdr")
+analyze_format.set_converter(nifti_gz_format, MRConvert,
+                             out_file="file.hdr")
+analyze_format.set_converter(mrtrix_image_format, MRConvert,
+                             out_file="file.hdr")
+analyze_format.set_converter(nifti_gz_x_format, MRConvert,
+                             out_file="file.hdr")
 
-mrtrix_image_format.set_converter(dicom_format, MrtrixConverter)
-mrtrix_image_format.set_converter(nifti_format, MrtrixConverter)
-mrtrix_image_format.set_converter(nifti_gz_format, MrtrixConverter)
-mrtrix_image_format.set_converter(analyze_format, MrtrixConverter)
+mrtrix_image_format.set_converter(dicom_format, MRConvert,
+                                  out_file='file.mif')
+mrtrix_image_format.set_converter(nifti_format, MRConvert,
+                                  out_file='file.mif')
+mrtrix_image_format.set_converter(nifti_gz_format, MRConvert,
+                                  out_file='file.mif')
+mrtrix_image_format.set_converter(analyze_format, MRConvert,
+                                  out_file='file.mif')
+mrtrix_image_format.set_converter(nifti_gz_x_format, MRConvert,
+                                  out_file='file.mif')
 
 STD_IMAGE_FORMATS = [dicom_format, nifti_format, nifti_gz_format,
                      nifti_gz_x_format, analyze_format, mrtrix_image_format]
 
-multi_nifti_gz_format = FileFormat(name='multi_nifti_gz', extension=None,
-                                   directory=True, within_dir_exts=['.nii.gz'])
-multi_nifti_gz_format.set_converter(zip_format, UnzipConverter)
-multi_nifti_gz_format.set_converter(targz_format, UnTarGzConverter)
+# multi_nifti_gz_format = FileFormat(name='multi_nifti_gz', extension=None,
+#                                    directory=True, within_dir_exts=['.nii.gz'])
+# multi_nifti_gz_format.set_converter(zip_format, UnzipConverter)
+# multi_nifti_gz_format.set_converter(targz_format, UnTarGzConverter)
 
 # Tractography formats
 mrtrix_track_format = FileFormat(name='mrtrix_track', extension='.tck')
@@ -391,13 +410,13 @@ list_mode_format = FileFormat(name='pet_list_mode', extension='.bf')
 
 twix_vb_format = FileFormat(
     name='twix_vb', extension='.dat',
-    resource_names={'xnat': ['DAT', 'KSPACE']},
+    alternate_names={'xnat': ['DAT', 'KSPACE']},
     desc=("The format that k-space data is saved in from Siemens scanners "
           "with system version vB to (at least) vE"))
 
 custom_kspace_format = FileFormat(
     name='custom_kspace', extension='.ks',
-    resource_names={'xnat': ['CUSTOM_KSPACE']},
+    alternate_names={'xnat': ['CUSTOM_KSPACE']},
     aux_files={'ref': '.ref', 'json': '.json'},
     desc=("""A custom format for saving k-space data in binary amd JSON files.
 
@@ -429,7 +448,7 @@ custom_kspace_format = FileFormat(
     larmor_freq : float
         The central larmor frequency of the scanner"""))
 
-custom_kspace_format.set_converter(twix_vb_format, TwixConverter)
+# custom_kspace_format.set_converter(twix_vb_format, TwixConverter)
 
 KSPACE_FORMATS = [twix_vb_format, custom_kspace_format]
 
@@ -451,6 +470,8 @@ for file_format in copy(globals()).values():
 # be used in pipeline input specs that need to use MRConvert instead
 # of Dcm2niix (i.e. motion-detection pipeline)
 mrconvert_nifti_format = deepcopy(nifti_format)
-mrconvert_nifti_format.set_converter(dicom_format, MrtrixConverter)
+mrconvert_nifti_format.set_converter(dicom_format, MRConvert,
+                                     out_file='file.nii')
 mrconvert_nifti_gz_format = deepcopy(nifti_gz_format)
-mrconvert_nifti_gz_format.set_converter(dicom_format, MrtrixConverter)
+mrconvert_nifti_gz_format.set_converter(dicom_format, MRConvert,
+                                        out_file='file.nii.gz')
