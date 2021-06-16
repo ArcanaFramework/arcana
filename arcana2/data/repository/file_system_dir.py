@@ -159,7 +159,7 @@ class FileSystemDir(Repository):
         return prov
 
     def _get_file_group_provenance(self, file_group):
-        if file_group.local_path is not None:
+        if file_group.file_path is not None:
             prov = Provenance.load(self.prov_json_path(file_group))
         else:
             prov = None
@@ -207,7 +207,7 @@ class FileSystemDir(Repository):
         Inserts or updates a file_group in the repository
         """
         target_path = self.file_group_path(file_group)
-        source_path = file_group.local_path
+        source_path = file_group.file_path
         # Create target directory if it doesn't exist already
         dname = op.dirname(target_path)
         if not op.exists(dname):
@@ -298,7 +298,7 @@ class FileSystemDir(Repository):
             for bname, fnames in matching.items():
                 node.add_file_group(
                     name_path=bname,
-                    local_paths=[op.join(dpath, f) for f in fnames],
+                    file_paths=[op.join(dpath, f) for f in fnames],
                     provenance=load_prov(dpath, bname))
             # Add fields
             if has_fields:

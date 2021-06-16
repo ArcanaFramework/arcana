@@ -228,7 +228,7 @@ class FileFormat(object):
         def collect_files(file_group, **kwargs):
             """Copies files into the CWD renaming so the basenames match except
             for extensions"""
-            shutil.copyfile(file_group.local_path, 'file' + file_group.fformat.extension)
+            shutil.copyfile(file_group.file_path, 'file' + file_group.fformat.extension)
             for name in aux_fields:
                 shutil.copyfile(kwargs[name], 'file' + fformat.aux_files[name])
             return ['in_file'] + aux_fields
@@ -375,12 +375,12 @@ class FileFormat(object):
         """
         return FileFormatAuxFile(self, aux_name)
 
-    def from_path(self, local_path, **kwargs):
+    def from_path(self, file_path, **kwargs):
         """Creates a FileGroup object from a path on the file-system
 
         Parameters
         ----------
-        local_path : str
+        file_path : str
             Path to primary file or directory of the file-group
 
         Returns
@@ -395,10 +395,10 @@ class FileFormat(object):
         ArcanaNameError
             [description]
         """
-        name_path = op.basename(local_path)
-        if not op.isdir(local_path):
+        name_path = op.basename(file_path)
+        if not op.isdir(file_path):
             name_path = split_extension(name_path)[0]
-        return self.file_group_cls(name_path, local_path=local_path, **kwargs)
+        return self.file_group_cls(name_path, file_path=file_path, **kwargs)
 
 
 class FileFormatAuxFile(object):
