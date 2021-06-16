@@ -4,6 +4,7 @@ from itertools import chain
 import hashlib
 import json
 import re
+import shutil
 from copy import deepcopy
 from pprint import pformat
 from datetime import datetime
@@ -134,59 +135,18 @@ class FileGroup(DataItem, FileGroupMixin):
                  data_node=None, derived=False):
         FileGroupMixin.__init__(self, name_path=name_path, format=format)
         DataItem.__init__(self, data_node, exists, provenance, derived)
-        if aux_files is not None:
-            if local_path is None:
-                raise ArcanaUsageError(
-                    "Side cars can only be provided to a FileGroup __init__ "
-                    "of '{}' ({}) if the local cache name_path is also".format(
-                        self.name_path, aux_files))
-            if format is None:
-                raise ArcanaUsageError(
-                    "Side cars provided to '{}' file_group ({}) but format is "
-                    "not specified".format(self.name_path, aux_files))
         if local_path is not None:
-            local_path = op.abslocal_path(op.realpath(local_path))
-            if aux_files is None:
-                aux_files = {}
-            elif set(aux_files.keys()) != set(self.format.aux_files.keys()):
-                raise ArcanaUsageError(
-                    "Provided side cars for '{}' but expected '{}'"
-                    .format("', '".join(aux_files.keys()),
-                            "', '".join(self.format.aux_files.keys())))
-        self._local_path = local_path
-        self.aux_files = aux_files if aux_files is not None else {}
+            self.set_local_path(local_path, aux_files)
+        elif aux_files is not None:
+            raise ArcanaUsageError(
+                "Auxiliary files can only be provided to a FileGroup __init__ "
+                f"of '{self.name_path}' ({aux_files}) if the local path is as "
+                "well")
         self._uri = uri
         self._order = order
         self.checksums = checksums
         self.format_name = format_name
         self.quality = quality
-
-    # def __getattr__(self, attr):
-    #     """
-    #     For the convenience of being able to make calls on a file_group that are
-    #     dependent on its format, e.g.
-
-    #         >>> file_group = FileGroup('a_name', format=AnImageFormat())
-    #         >>> file_group.get_header()
-
-    #     we capture missing attributes and attempt to redirect them to methods
-    #     of the format class that take the file_group as the first argument
-    #     """
-    #     try:
-    #         frmt = self.__dict__['_format']
-    #     except KeyError:
-    #         frmt = None
-    #     else:
-    #         try:
-    #             format_attr = getattr(frmt, attr)
-    #         except AttributeError:
-    #             pass
-    #         else:
-    #             if callable(format_attr):
-    #                 return lambda *args, **kwargs: format_attr(self, *args,
-    #                                                            **kwargs)
-    #     raise AttributeError("FileGroups of '{}' format don't have a '{}' "
-    #                          "attribute".format(frmt, attr))
 
     def __eq__(self, other):
         eq = (FileGroupMixin.__eq__(self, other)
@@ -272,9 +232,22 @@ class FileGroup(DataItem, FileGroupMixin):
         return self._local_path
 
     def set_local_path(self, local_path, aux_files=None):
-        if local_path is not None:
-            local_path = op.abspath(op.realpath(local_path))
-            self.exists = True
+        if not op.exists(local_path):
+            raise ArcanaUsageError(
+                f"Attempting to set a path that doesn't exist ({local_path})")
+        if format is None:
+            raise ArcanaUsageError(
+                f"Format of file-group {self.name_path} must be set before"
+                f" local path ({local_path})")
+        local_path = op.abspath(op.realpath(local_path))
+        self.exists = True
+        if aux_files is None:
+            aux_files = {}
+        elif set(aux_files.keys()) != set(self.format.aux_files.keys()):
+            raise ArcanaUsageError(
+                "Provided side cars for '{}' but expected '{}'"
+                .format("', '".join(aux_files.keys()),
+                        "', '".join(self.format.aux_files.keys())))
         self._local_path = local_path
         if aux_files is None:
             self.aux_files = dict(
@@ -294,8 +267,9 @@ class FileGroup(DataItem, FileGroupMixin):
                     " ('{}')".format("', '".join(aux_files.keys()),
                                      "', '".join(self.format.aux_files.keys())))
             self.aux_files = aux_files
-        self.checksums = self.calculate_checksums()
-        self.put()  # Push to dataset
+        if self.data_node:
+            self.checksums = self.calculate_checksums()
+            self.put()  # Push to dataset
 
     @local_path.setter
     def local_path(self, local_path):
@@ -315,10 +289,27 @@ class FileGroup(DataItem, FileGroupMixin):
         else:
             return chain([self.local_path], self.aux_files.values())
 
-    @property
-    def value(self):
-        """For duck-typing with Field in source tasks"""
-        return self.local_path
+    def copy_to(self, path):
+        """Copies the file-group to the new path, with auxiliary files saved
+        alongside the primary path.
+
+        Parameters
+        ----------
+        path : str
+            Path to save the file-group to excluding file extension
+        """
+        if self.format.directory:
+            shutil.copytree(self.local_path, path)
+        else:
+            shutil.copyfile(self.local_path, path + self.format.ext)
+            for aux_name, aux_path in self.aux_files.items():
+                shutil.copyfile(aux_path,
+                                path + self.format.aux_files[aux_name])
+
+    # @property
+    # def value(self):
+    #     """For duck-typing with Field in source tasks"""
+    #     return self.local_path
 
     @property
     def fname(self):
@@ -395,18 +386,6 @@ class FileGroup(DataItem, FileGroupMixin):
                     fhash.update(chunk)
             checksums[op.relpath(fpath, self.name_path)] = fhash.hexdigest()
         return checksums
-
-    @classmethod
-    def from_path(cls, local_path, **kwargs):
-        if not op.exists(local_path):
-            raise ArcanaUsageError(
-                "Attempting to read FileGroup from name_path '{}' but it "
-                "does not exist".format(local_path))
-        if op.isdir(local_path):
-            name_path = op.basename(local_path)
-        else:
-            name_path = split_extension(op.basename(local_path))[0]
-        return cls(name_path, local_path=name_path, **kwargs)
 
     def initkwargs(self):
         dct = FileGroupMixin.initkwargs(self)

@@ -59,7 +59,7 @@ class DataSelector():
     #                         **self._specific_kwargs))
     #                 else:
     #                     raise e
-    #         except ArcanaInputError as e:
+    #         except ArcanaSelectionError as e:
     #             errors.append(e)
     #     # Collate potentially multiple errors into a single error message
     #     if errors:
@@ -67,7 +67,7 @@ class DataSelector():
     #                for e in errors):
     #             ErrorClass = ArcanaInputMissingMatchError
     #         else:
-    #             ErrorClass = ArcanaInputError
+    #             ErrorClass = ArcanaSelectionError
     #         raise ErrorClass('\n'.join(str(e) for e in errors))
     #     return matches
 

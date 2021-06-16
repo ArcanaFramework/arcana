@@ -225,11 +225,10 @@ class FileFormat(object):
         # Create a workflow to perform the conversion
         wf = Workflow(input_spec=in_fields)
 
-        def collect_files(fformat: FileFormat, in_file: str,
-                          aux_fields: ty.Sequence[str], **kwargs):
+        def collect_files(file_group, **kwargs):
             """Copies files into the CWD renaming so the basenames match except
             for extensions"""
-            shutil.copyfile(in_file, 'file' + fformat.extension)
+            shutil.copyfile(file_group.local_path, 'file' + file_group.fformat.extension)
             for name in aux_fields:
                 shutil.copyfile(kwargs[name], 'file' + fformat.aux_files[name])
             return ['in_file'] + aux_fields
@@ -375,6 +374,31 @@ class FileFormat(object):
         Returns a FileFormatAuxFile that points directly to the auxiliary file
         """
         return FileFormatAuxFile(self, aux_name)
+
+    def from_path(self, local_path, **kwargs):
+        """Creates a FileGroup object from a path on the file-system
+
+        Parameters
+        ----------
+        local_path : str
+            Path to primary file or directory of the file-group
+
+        Returns
+        -------
+        FileGroup
+            The file-group constructed from the local path
+
+        Raises
+        ------
+        ArcanaUsageError
+            If path does not exists
+        ArcanaNameError
+            [description]
+        """
+        name_path = op.basename(local_path)
+        if not op.isdir(local_path):
+            name_path = split_extension(name_path)[0]
+        return self.file_group_cls(name_path, local_path=local_path, **kwargs)
 
 
 class FileFormatAuxFile(object):
