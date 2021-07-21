@@ -357,10 +357,10 @@ class BaseTestCase(TestCase):
             "{} was not created".format(file_group))
 
     def assertField(self, name, ref_value, namespace, subject=None,
-                    timepoint=None, tree_level='per_session',
+                    timepoint=None, frequency='per_session',
                     to_places=None):
         esc_name = namespace + '_' + name
-        output_dir = self.get_session_dir(subject, timepoint, tree_level)
+        output_dir = self.get_session_dir(subject, timepoint, frequency)
         try:
             with open(op.join(output_dir,
                               LocalFileSystemDirRepo.FIELDS_FNAME)) as f:
@@ -396,13 +396,13 @@ class BaseTestCase(TestCase):
 
     def assertStatEqual(self, stat, file_group_name, target, namespace,
                         subject=None, timepoint=None,
-                        tree_level='per_session'):
+                        frequency='per_session'):
         val = float(sp.check_output(
             'mrstats {} -output {}'.format(
                 self.output_file_path(
                     file_group_name, namespace,
                     subject=subject, timepoint=timepoint,
-                    tree_level=tree_level),
+                    frequency=frequency),
                 stat),
             shell=True))
         self.assertEqual(
@@ -431,27 +431,27 @@ class BaseTestCase(TestCase):
                      thresh_stdev=stdev_threshold, a=out_path, b=ref_path)))
 
     def get_session_dir(self, subject=None, timepoint=None,
-                        tree_level='per_session', namespace=None):
-        if subject is None and tree_level in ('per_session', 'per_subject'):
+                        frequency='per_session', namespace=None):
+        if subject is None and frequency in ('per_session', 'per_subject'):
             subject = self.SUBJECT
-        if timepoint is None and tree_level in ('per_session', 'per_timepoint'):
+        if timepoint is None and frequency in ('per_session', 'per_timepoint'):
             timepoint = self.VISIT
-        if tree_level == 'per_session':
+        if frequency == 'per_session':
             assert subject is not None
             assert timepoint is not None
             path = op.join(self.project_dir, subject, timepoint)
-        elif tree_level == 'per_subject':
+        elif frequency == 'per_subject':
             assert subject is not None
             assert timepoint is None
             path = op.join(
                 self.project_dir, subject,
                 LocalFileSystemDirRepo.SUMMARY_NAME)
-        elif tree_level == 'per_timepoint':
+        elif frequency == 'per_timepoint':
             assert timepoint is not None
             assert subject is None
             path = op.join(self.project_dir,
                            LocalFileSystemDirRepo.SUMMARY_NAME, timepoint)
-        elif tree_level == 'per_dataset':
+        elif frequency == 'per_dataset':
             assert subject is None
             assert timepoint is None
             path = op.join(self.project_dir,
@@ -470,10 +470,10 @@ class BaseTestCase(TestCase):
                 os.remove(op.join(self.get_session_dir(), fname))
 
     def output_file_path(self, fname, namespace, subject=None, timepoint=None,
-                         tree_level='per_session', **kwargs):
+                         frequency='per_session', **kwargs):
         return op.join(
             self.get_session_dir(subject=subject, timepoint=timepoint,
-                                 tree_level=tree_level,
+                                 frequency=frequency,
                                  namespace=namespace, **kwargs),
             fname)
 

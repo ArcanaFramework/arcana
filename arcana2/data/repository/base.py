@@ -220,7 +220,7 @@ class RepositoryInterface(BaseInterface):
         # Protect against iterators
         columns = list(columns)
         # Check for consistent frequencies in columns
-        frequencies = set(c.tree_level for c in columns)
+        frequencies = set(c.frequency for c in columns)
         if len(frequencies) > 1:
             raise ArcanaError(
                 "Attempting to sink multiple frequencies in {}"
@@ -228,7 +228,7 @@ class RepositoryInterface(BaseInterface):
         elif frequencies:
             # NB: Exclude very rare case where pipeline doesn't have inputs,
             #     would only really happen in unittests
-            self._tree_level = next(iter(frequencies))
+            self._frequency = next(iter(frequencies))
         # Extract set of datasets used to source/sink from/to
         self.datasets = set(chain(*(
             (i.dataset for i in c if i.dataset is not None)
@@ -262,8 +262,8 @@ class RepositoryInterface(BaseInterface):
         return chain(self.file_group_columns, self.field_columns)
 
     @property
-    def tree_level(self):
-        return self._tree_level
+    def frequency(self):
+        return self._frequency
 
     @classmethod
     def _add_trait(cls, spec, name, trait_type):
@@ -466,7 +466,7 @@ class RepositorySink(RepositoryInterface):
             prov = copy(self._prov)
             prov['inputs'] = input_checksums
             prov['outputs'] = output_checksums
-            provenance = Provenance(self._pipeline_name, self.tree_level, subject_id,
+            provenance = Provenance(self._pipeline_name, self.frequency, subject_id,
                             timepoint_id, self._namespace, prov)
             for dataset in self.datasets:
                 dataset.put_provenance(provenance)

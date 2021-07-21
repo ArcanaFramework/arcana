@@ -255,10 +255,10 @@ class TestMultiSubjectOnXnatMixin(CreateXnatProjectMixin):
         return self.project + '_' + subject
 
     def get_session_dir(self, subject=None, timepoint=None,
-                        tree_level='per_session'):
-        if subject is None and tree_level in ('per_session', 'per_subject'):
+                        frequency='per_session'):
+        if subject is None and frequency in ('per_session', 'per_subject'):
             subject = self.SUBJECT
-        if timepoint is None and tree_level in ('per_session', 'per_timepoint'):
+        if timepoint is None and frequency in ('per_session', 'per_timepoint'):
             timepoint = self.VISIT
         session_path = op.join(self.output_cache_dir, '{}_{}'.format(subject,
                                                                      timepoint))
@@ -268,17 +268,17 @@ class TestMultiSubjectOnXnatMixin(CreateXnatProjectMixin):
         return session_path
 
     def output_file_path(self, fname, namespace, subject=None, timepoint=None,
-                         tree_level='per_session'):
+                         frequency='per_session'):
         try:
             acq_path = self.BASE_CLASS.output_file_path(
                 self, fname, namespace, subject=subject, timepoint=timepoint,
-                tree_level=tree_level, derived=False)
+                frequency=frequency, derived=False)
         except KeyError:
             acq_path = None
         try:
             proc_path = self.BASE_CLASS.output_file_path(
                 self, fname, namespace, subject=subject, timepoint=timepoint,
-                tree_level=tree_level, derived=True)
+                frequency=frequency, derived=True)
         except KeyError:
             proc_path = None
         if acq_path is not None and op.exists(acq_path):

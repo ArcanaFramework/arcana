@@ -75,7 +75,7 @@ class Xnat(Repository):
         to avoid having to retrieve metadata for them, and potentially speeding
         up the initialisation of the Analysis. Note that if the processing
         relies on summary derivatives (i.e. of 'per_timepoint/subject/analysis'
-        tree_level) then the filter should match all sessions in the Analysis's
+        frequency) then the filter should match all sessions in the Analysis's
         subject_ids and timepoint_ids.
     id_maps : Dict[DataFrequency, Dict[DataFrequency, str]] or Callable
         Either a dictionary of dictionaries that is used to extract IDs from
@@ -560,7 +560,7 @@ class Xnat(Repository):
                 continue
             value = value.replace('&quot;', '"')
             name = js['data_fields']['name']
-            # field_names = set([(name, None, timepoint_id, tree_level)])
+            # field_names = set([(name, None, timepoint_id, frequency)])
             # # Potentially add the field twice, once
             # # as a field name in its own right (for externally created fields)
             # # and second as a field name prefixed by an analysis name. Would
@@ -569,7 +569,7 @@ class Xnat(Repository):
             # # be little harm in having the field referenced twice, the only
             # # issue being with pattern matching
             # field_names.add(self.unescape_name(name, timepoint_id=timepoint_id,
-            #                                         tree_level=tree_level))
+            #                                         frequency=frequency))
             # for name, namespace, field_timepoint_id, field_freq in field_names:
             name, dn = self._unescape_name_and_get_node(name, data_node)
             dn.add_field(name=name, value=value **kwargs)
