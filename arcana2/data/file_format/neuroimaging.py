@@ -311,11 +311,11 @@ nifti_gz_x_format = FileFormat(name='extended_nifti_gz', extension='.nii.gz',
                                file_group_cls=NiftixImage)
 nifti_format = FileFormat(name='nifti', extension='.nii',
                           alternate_names=['NIFTI', 'NiFTI'],
-                          file_format_cls=NiftiImage)
+                          file_group_cls=NiftiImage)
 
 nifti_gz_format = FileFormat(name='nifti_gz', extension='.nii.gz',
                              alternate_names=['NIFTI_GZ', 'NiFTI_GZ'],
-                             file_format_cls=NiftiImage)
+                             file_group_cls=NiftiImage)
 analyze_format = FileFormat(name='analyze', extension='.img',
                              aux_files={'header': '.hdr'})
 mrtrix_image_format = FileFormat(name='mrtrix_image', extension='.mif',
@@ -465,13 +465,13 @@ for file_format in copy(globals()).values():
         std_formats.append(file_format.name)
 
 
-# Since the conversion from DICOM->NIfTI is unfortunately slightly
-# different between MRConvert and Dcm2niix, these data formats can
-# be used in pipeline input specs that need to use MRConvert instead
-# of Dcm2niix (i.e. motion-detection pipeline)
-mrconvert_nifti_format = deepcopy(nifti_format)
-mrconvert_nifti_format.set_converter(dicom_format, MRConvert,
-                                     out_file='file.nii')
-mrconvert_nifti_gz_format = deepcopy(nifti_gz_format)
-mrconvert_nifti_gz_format.set_converter(dicom_format, MRConvert,
-                                        out_file='file.nii.gz')
+# # Since the conversion from DICOM->NIfTI is unfortunately slightly
+# # different between MRConvert and Dcm2niix, these data formats can
+# # be used in pipeline input specs that need to use MRConvert instead
+# # of Dcm2niix (i.e. motion-detection pipeline)
+# mrconvert_nifti_format = deepcopy(nifti_format)
+# mrconvert_nifti_format.set_converter(dicom_format, MRConvert,
+#                                      out_file='file.nii')
+# mrconvert_nifti_gz_format = deepcopy(nifti_gz_format)
+# mrconvert_nifti_gz_format.set_converter(dicom_format, MRConvert,
+#                                         out_file='file.nii.gz')

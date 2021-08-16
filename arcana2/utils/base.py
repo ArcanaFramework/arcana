@@ -10,7 +10,7 @@ from nipype.interfaces.matlab import MatlabCommand
 import shutil
 import tempfile
 from arcana2.exceptions import ArcanaUsageError
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from collections.abc import Iterable
 from importlib import import_module
 
@@ -27,6 +27,24 @@ try:
         HOSTNAME = HOSTNAME.decode('utf-8')
 except sp.CalledProcessError:
     HOSTNAME = None
+
+
+@contextmanager
+def set_cwd(path):
+    """Sets the current working directory to `path` and back to original 
+    working directory on exit
+
+    Parameters
+    ----------
+    path : str
+        The file system path to set as the current working directory
+    """
+    pwd = os.getcwd()
+    os.chdir(path)
+    try:
+        yield path
+    finally:
+        os.chdir(pwd)
 
 
 def dir_modtime(dpath):

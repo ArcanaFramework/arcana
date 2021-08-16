@@ -56,14 +56,15 @@ class FileSystemDir(Repository):
         is organised into directories for matching members between groups and
         then the groups in sub-directories containing sub-directories.
     id_maps : Dict[DataFrequency, Dict[DataFrequency, str]] or Callable
-        Either a dictionary of dictionaries that is used to extract IDs from
-        subject and session labels. Keys of the outer dictionary correspond to
-        the frequency to extract (typically group and/or subject) and the keys
-        of the inner dictionary the frequency to extract from (i.e.
-        subject or session). The values of the inner dictionary are regular
-        expression patterns that match the ID to extract in the 'ID' regular
-        expression group. Otherwise, it is a function with signature
-        `f(ids)` that returns a dictionary with the mapped IDs included
+        Either a dictionary of dictionaries that is used to extract subject,
+        visit and group IDs from subject and session labels. Keys of the outer
+        dictionary correspond to the frequency to extract (typically group
+        and/or subject) and the keys of the inner dictionary the frequency to
+        extract from (i.e. subject or session). The values of the inner
+        dictionary are regular expression patterns that match the ID to
+        extract in the 'ID' regular expression group. Otherwise, it is a
+        function with signature `f(ids)` that returns a dictionary with the
+        mapped IDs included.
     """
 
     type = 'file_system_dir'

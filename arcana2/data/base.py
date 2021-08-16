@@ -1,6 +1,3 @@
-from enum import Enum
-from .file_format import FileFormat
-from copy import copy
 from logging import getLogger
 from arcana2.exceptions import ArcanaUsageError
 from future.types import newstr

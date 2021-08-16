@@ -1,7 +1,7 @@
 from .item import FileGroup, Field
-from .frequency import Clinical, Salience
+from .frequency import Clinical
 from .spec import (
-    FileGroupSpec, FieldSpec, DataSpec)
+    FileGroupSpec, FieldSpec, DataSpec, Salience)
 from .base import FieldMixin, FileGroupMixin, DataMixin
 from .selector import FileGroupSelector, FieldSelector, DataSelector
 from .file_format import FileFormat, Converter

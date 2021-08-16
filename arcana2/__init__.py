@@ -22,9 +22,8 @@ from .__about__ import __version__, __authors__
 #     Analysis, AnalysisMetaClass, MultiAnalysis, MultiAnalysisMetaClass,
     # SubCompSpec, Parameter, ParamSpec, SwitchSpec)
 from .data import (
-    FileGroupSpec, FileGroupMatcher, FieldSpec, FieldMatcher)
-from .data.file_format import FileFormat
-from .data import FileGroup, Field, FileGroupColumn, FieldColumn
+    FileGroup, Field, FileGroupSpec, FileGroupSelector, FieldSpec,
+    FieldSelector, FileFormat)
 # from .processor import (
 #     SingleProc, MultiProc, SlurmProc)
 # from .environment import StaticEnv, ModulesEnv

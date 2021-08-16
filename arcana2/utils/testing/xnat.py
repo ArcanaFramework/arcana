@@ -294,7 +294,7 @@ class TestMultiSubjectOnXnatMixin(CreateXnatProjectMixin):
 
 
 def filter_resources(names, timepoint=None, analysis=None):
-    """Matchers out the names of resources to exclude provenance and
+    """Selectors out the names of resources to exclude provenance and
     md5"""
     filtered = []
     for name in names:

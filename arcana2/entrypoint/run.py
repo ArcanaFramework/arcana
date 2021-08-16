@@ -1,12 +1,11 @@
 from itertools import zip_longest
 import re
-from argparse import ArgumentParser
 from typing import Sequence
 from pydra import ShellCommandTask, Workflow
 from arcana2.data import (
-    FileGroupMatcher, FieldMatcher, FileGroupSpec, FieldSpec)
+    FileGroupSelector, FieldSelector, FileGroupSpec, FieldSpec)
 from arcana2.data import file_format as ff
-from arcana2.exceptions import ArcanaRequirementVersionsError, ArcanaUsageError
+from arcana2.exceptions import ArcanaUsageError
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids
 from .base import BaseRepoCmd
@@ -70,7 +69,7 @@ class BaseRunCmd(BaseRepoCmd):
         # Create file-group matchers
         inputs = {}
         input_paths = {}
-        defaults = (None, None, ff.niftix_gz, None, None, None, 'session')
+        defaults = (None, None, None, None, None, None, 'session')
         for i, inpt in enumerate(args.input):
             nargs = len(inpt)
             if nargs > 7:
@@ -86,8 +85,8 @@ class BaseRunCmd(BaseRepoCmd):
                     f"Path must be provided to Input {i} ({inpt})")
             name = sanitize_path(path)
             input_paths[name] = path
-            inputs[path] = FileGroupMatcher(
-                pattern=pattern, format=ff.get_file_format(format_name),
+            inputs[path] = FileGroupSelector(
+                pattern=pattern, format=getattr(ff, format_name),
                 frequency='per_' + freq, order=order, header_vals=header_vals,
                 is_regex=True, acceptable_quality=quality)
 
@@ -106,7 +105,7 @@ class BaseRunCmd(BaseRepoCmd):
             path, field_name, dtype, freq = inpt + defaults[nargs - 2:]
             name = sanitize_path(path)
             input_paths[name] = path
-            inputs[path] = FieldMatcher(pattern=field_name, dtype=dtype,
+            inputs[path] = FieldSelector(pattern=field_name, dtype=dtype,
                                         frequency='per_' + freq)
 
         outputs = {}
@@ -242,7 +241,7 @@ class BaseRunCmd(BaseRepoCmd):
     """
 
 
-class RunAppCmd():
+class RunAppCmd(BaseRunCmd):
 
     desc = ("Runs an app against a dataset stored in a repository. The app "
             "needs to be wrapped in a Pydra interface that is on the Python "

@@ -24,12 +24,7 @@ class BaseRepoCmd():
                 f"Repository type not provided to '--repository' option")
         nargs = len(args)
         if repo_type == 'file_system':
-            if unrecognised := [a for a in args
-                                if a not in FileSystemDir.POSSIBLE_LEVELS]:
-                raise ArcanaUsageError(
-                    f"Unrecognised levels {unrecognised} for FileSystemDir "
-                    f"repo (allowed {FileSystemDir.POSSIBLE_LEVELS}")
-            repo = FileSystemDir(levels=args)
+            repository = FileSystemDir(base_dir=args[0], frequencies=args[1:])
         elif repo_type == 'xnat':
             if nargs < 1 or nargs > 3:
                 raise ArcanaUsageError(

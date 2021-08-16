@@ -1,46 +1,7 @@
 from .base import FileFormat, Converter
 from nipype.interfaces.utility import IdentityInterface
-from arcana2.utils.interfaces import (
-    ZipDir, UnzipDir, TarGzDir, UnTarGzDir)
-
-class IdentityConverter(Converter):
-
-    requirements = []
-    interface = IdentityInterface(['i'])
-    input = 'i'
-    output = 'i'
-
-
-class UnzipConverter(Converter):
-
-    interface = UnzipDir()
-    mem_gb = 12
-    input = 'zipped'
-    output = 'unzipped'
-
-
-class ZipConverter(Converter):
-
-    interface = ZipDir()
-    mem_gb = 12
-    input = 'dirname'
-    output = 'zipped'
-
-
-class TarGzConverter(Converter):
-
-    interface = TarGzDir()
-    mem_gb = 12
-    input = 'dirname'
-    output = 'zipped'
-
-
-class UnTarGzConverter(Converter):
-
-    interface = UnTarGzDir()
-    mem_gb = 12
-    input = 'gzipped'
-    output = 'gunzipped'
+from arcana2.tasks.archive import (
+    create_tar, extract_tar, create_zip, extract_zip)
 
 
 # General formats
@@ -63,7 +24,7 @@ jpg = FileFormat(name='jpg', extension='.jpg')
 pdf_format = FileFormat(name='pdf', extension='.pdf')
 
 # Set Converters
-directory.set_converter(zip, UnzipConverter)
-directory.set_converter(targz, UnTarGzConverter)
-targz.set_converter(directory, TarGzConverter)
-zip.set_converter(directory, ZipConverter)
+directory.set_converter(zip, extract_zip)
+directory.set_converter(targz, extract_zip)
+targz.set_converter(directory, create_tar, compression='gz')
+zip.set_converter(directory, extract_zip)

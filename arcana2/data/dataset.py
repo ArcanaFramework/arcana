@@ -1,4 +1,4 @@
-from itertools import itemgetter
+from operator import itemgetter
 import logging
 import typing as ty
 from copy import copy
@@ -63,8 +63,8 @@ class Dataset():
         self.derivatives = derivatives if derivatives else {}
         if overlapping:= (set(self.selectors) & set(self.derivatives)):
             raise ArcanaUsageError(
-                "Name-path clashes between selectors and derivatives "
-                f"('{'\', \''.join(overlapping)}') ")
+                "Name-path clashes between selectors and derivatives ("
+                "', '".join(overlapping) + "')")
         self.include_ids = {f: None for f in self.frequency_enum}
         for freq, ids in include_ids:
             try:
@@ -392,14 +392,16 @@ class Dataset():
 
         if invalid_inputs:= set(input_names) - set(self.column_names):
             raise ArcanaUsageError(
-                f"Workflow inputs '{'\', \''.join(invalid_inputs)}' are not "
-                f"present in the dataset ('{'\', \''.join(self.column_names)}'")
+                "Workflow inputs '" + "', '".join(invalid_inputs)
+                + "' are not present in the dataset ('"
+                + "', '".join(self.column_names) + "')")
 
         if invalid_outputs:= set(output_names) - set(self.derivatvies):
             raise ArcanaUsageError(
-                f"Workflow outputs '{'\', \''.join(invalid_outputs)}' are not "
-                f"present in the dataset derivatives ('"
-                + "', '".join(self.derivatives) + ")")
+                "Workflow outputs '"
+                + "', '".join(invalid_outputs)
+                + "' are not present in the dataset derivatives ('"
+                + "', '".join(self.derivatives) + "')")
 
         frequencies = set(self.column(o).frequency for o in workflow.outputs)
         if len(frequencies) > 1:
@@ -411,10 +413,10 @@ class Dataset():
         if unrecognised_formats:= set(formats) - (set(input_names) |
                                                   set(output_names)):
             raise ArcanaUsageError(
-                f"Unrecognised formats '{'\', \''.join(unrecognised_formats)}'"
-                "that are not referenced by the workflow ("
-                + "', '".join(set(input_names) |
-                              set(output_names)) + ')')
+                "Unrecognised formats '"
+                + "', '".join(unrecognised_formats)
+                + "'that are not referenced by the workflow ("
+                + "', '".join(set(input_names) | set(output_names)) + ')')
 
         # We create an outer workflow that splits over data nodes at the
         # of the specified frequency and includes nodes to source inputs,
@@ -657,7 +659,8 @@ class DataNode():
             raise ArcanaNameError(
                 name_path,
                 f"{self} doesn't have a file_group at the name_path "
-                f"{name_path} (available '{'\', \''.join(self.file_groups)}'")
+                f"{name_path} (available '"
+                + "', '".join(self.file_groups) + "')")
         else:
             if file_format is not None:
                 file_group = file_group.resolve_format(file_format)
