@@ -53,6 +53,9 @@ class ArcanaUsageError(ArcanaError):
     pass
 
 
+class ArcanaBadlyFormattedIDError(ArcanaUsageError):
+    pass
+
 class ArcanaDesignError(ArcanaError):
     pass
 

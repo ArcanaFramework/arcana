@@ -4,11 +4,12 @@ from typing import Sequence
 from pydra import ShellCommandTask, Workflow
 from arcana2.data import (
     FileGroupSelector, FieldSelector, FileGroupSpec, FieldSpec)
+from arcana2.data.repository.file_system_dir import single_dataset
 from arcana2.data import file_format as ff
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids
-from .base import BaseRepoCmd
+from .base import BaseDatasetCmd
 from .util import resolve_class
 
 
@@ -17,17 +18,12 @@ sanitize_path_re = re.compile(r'[^a-zA-Z\d]')
 def sanitize_path(path):
     return sanitize_path_re.sub(path, '_')
 
-class BaseRunCmd(BaseRepoCmd):
+class BaseRunCmd(BaseDatasetCmd):
     """Abstract base class for RunCmds
     """
 
     @classmethod
     def construct_parser(cls, parser):
-        parser.add_argument(
-            'dataset_name',
-            help=("Name of the dataset in the repository. For XNAT "
-                  "repositories this is the project name, for file-system "
-                  "repositories this is the path to the root directory"))
         super().construct_parser(parser)
         parser.add_argument(
             '--input', '-i', action='append', default=[], nargs='+',
@@ -83,10 +79,16 @@ class BaseRunCmd(BaseRepoCmd):
             if not path:
                 raise ArcanaUsageError(
                     f"Path must be provided to Input {i} ({inpt})")
+            if not pattern:
+                raise ArcanaUsageError(
+                    f"Pattern must be provided to Input {i} ({inpt})")
+            if not format_name:
+                raise ArcanaUsageError(
+                    f"Datatype must be provided to Input {i} ({inpt})")
             name = sanitize_path(path)
             input_paths[name] = path
             inputs[path] = FileGroupSelector(
-                pattern=pattern, format=getattr(ff, format_name),
+                name_path=pattern, format=getattr(ff, format_name),
                 frequency='per_' + freq, order=order, header_vals=header_vals,
                 is_regex=True, acceptable_quality=quality)
 
@@ -158,7 +160,7 @@ class BaseRunCmd(BaseRepoCmd):
         else:
             ids = args.ids
 
-        repository = cls.init_repository(args.repository)
+        repository, dataset_name = cls.init_repository(args)
 
         (inputs, outputs,
          input_paths, output_paths) = cls.parse_inputs_and_outputs(args)
@@ -166,14 +168,14 @@ class BaseRunCmd(BaseRepoCmd):
         frequency = cls.parse_frequency(args)
 
         workflow = Workflow(name=cls.app_name(args))
-        workflow.add(repository.source(dataset_name=args.dataset_name,
+        workflow.add(repository.source(dataset_name=dataset_name,
                                        inputs=inputs,
                                        id=ids,
                                        frequency=frequency))
 
         app_outs = cls.add_app_task(workflow, args, input_paths, output_paths)
             
-        workflow.add(repository.sink(dataset_name=args.dataset_name,
+        workflow.add(repository.sink(dataset_name=dataset_name,
                                      outputs=outputs,
                                      frequency=frequency,
                                      id=workflow.source.lzout.id,
@@ -332,6 +334,13 @@ class RunAppCmd(BaseRunCmd):
         The NAME argument is the name of the input in the Pydra
         interface that wraps the app"""
 
+    INPUT_ARG = "NAME"
+
+
+    @classmethod
+    def parse_frequency(cls, args):
+        return args.frequency
+
 
 class RunBidsAppCmd(BaseRunCmd):
 
@@ -355,9 +364,9 @@ class RunBidsAppCmd(BaseRunCmd):
     @classmethod
     def parse_frequency(cls, args):
         if args.analysis_level == 'particpant':
-            frequency = 'per_session'
+            frequency = 'session'
         elif args.analysis_level == 'group':
-            frequency = 'per_group'
+            frequency = 'group'
         else:
             raise ArcanaUsageError(
                 "Unrecognised analysis level '{}'".format(args.analysis_level))
@@ -388,12 +397,10 @@ class RunBidsAppCmd(BaseRunCmd):
             name = args.entrypoint
         return name
 
+    INPUT_ARG = "PATH"
 
     PATH_DESC = """
-        By default the PATH argument is taken to the name of the
-        input in the Pydra interface used by the app. If '--bids'
-        flag is used, the PATH argument is taken to be the path
-        to place the input within the constructed BIDS dataset,
+        The PATH to place the input within the constructed BIDS dataset,
         with the file extension and subject and session sub-dirs
         entities omitted, e.g:
 

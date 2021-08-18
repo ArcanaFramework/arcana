@@ -64,10 +64,10 @@ class Clinical(DataFrequency):
     # Root node of the dataset
     dataset = 0b000  # singular within the dataset
 
-    # "Layers" of the data tree structure
+    # Primary "layers" of the data tree structure
     group = 0b100  # subject groups
-    member = 0b010  # subjects relative to their group membership.
-                    # Matched pairs of test and control subjects will share the
+    member = 0b010  # subjects relative to their group membership, i.e.
+                    # matched pairs of test and control subjects will share the
                     # same member IDs
     timepoint = 0b001  # time-points in longitudinal studies
 
@@ -75,12 +75,12 @@ class Clinical(DataFrequency):
     subject = 0b110 # uniquely identified subject within in the dataset.
                     # As opposed to 'member', which specifies a subject in
                     # relation to its group (i.e. one subject for each member
-                    # in each group). For datasets with only one group, then
-                    # subject and member can be the same.
+                    # in each group). For datasets with only one study group,
+                    # then subject and member are equivalent
     session = 0b111  # a single session (i.e. a single timepoint of a subject)
 
     # Lesser used combinations
     group_timepoint = 0b101  # iterate over group and timepoints, i.e.
                              # matched members are combined 
-    subject_timepoint = 0b011 # iterate over each subject and timepoint
-                              # combinations, groups are combined
+    member_timepoint = 0b011 # iterate over each matched member and timepoint
+                             # combination, groups are combined

@@ -8,7 +8,9 @@ from itertools import chain
 from typing import Sequence
 from copy import copy
 from arcana2.utils import ExitStack, PATH_SUFFIX, FIELD_SUFFIX, CHECKSUM_SUFFIX
-from arcana2.exceptions import ArcanaError, ArcanaDesignError, ArcanaUsageError
+from arcana2.exceptions import (
+    ArcanaError, ArcanaDesignError, ArcanaUsageError,
+    ArcanaBadlyFormattedIDError)
 from ..item import Provenance
 from ..dataset import Dataset
 
@@ -26,20 +28,27 @@ class Repository(metaclass=ABCMeta):
 
     Parameters
     ----------
-    id_maps : Dict[DataFrequency, Dict[DataFrequency, str]] or Callable
-        Either a dictionary of dictionaries that is used to extract IDs from
-        subject and session labels. Keys of the outer dictionary correspond to
-        the frequency to extract (typically group and/or subject) and the keys
-        of the inner dictionary the frequency to extract from (i.e.
-        subject or session). The values of the inner dictionary are regular
-        expression patterns that match the ID to extract in the 'ID' regular
-        expression group. Otherwise, it is a function with signature
-        `f(ids)` that returns a dictionary with the mapped IDs included
+    id_inference : Dict[DataFrequency, (DataFrequency, str)] or Callable
+        Specifies how IDs of primary data frequencies that not explicitly
+        provided are inferred from the IDs that are. For example, given a set
+        of subject IDs contain the ID of the group that they belong to in them
+
+            CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
+
+        the group ID can be extracted by providing a dictionary with tuple
+        values containing the ID type of the ID to infer it from and a regex
+        that extracts the target ID from the provided ID (in the first group).
+
+            id_inference={
+                Clincal.group: (Clinical.subject, r'([a-zA-Z]+).*')}
+
+        Alternatively, a general function with signature `f(ids)` that returns
+        a dictionary with the mapped IDs can be provided instead.
     """
 
-    def __init__(self, id_maps=None):
+    def __init__(self, id_inference=None):
         self._connection_depth = 0
-        self.id_maps = id_maps
+        self.id_inference = id_inference
 
     def __enter__(self):
         # This allows the repository to be used within nested contexts
@@ -60,22 +69,19 @@ class Repository(metaclass=ABCMeta):
     def standardise_name(self, name):
         return name
 
-    def map_ids(self, ids):
-        if callable(self.id_maps):
-            return self.id_maps(ids)
+    def infer_ids(self, ids):
         ids = copy(ids)
-        for source_freq, id in ids.items():
-            for target_freq, pattern in self.id_maps[source_freq].items():
-                match = re.match(pattern, id)
+        if callable(self.id_inference):
+            return self.id_inference(ids)
+        for target, (source, regex) in self.id_inference.items():
+            if target not in ids and source in ids:
+                match = re.match(regex, ids[source])
                 if match is None:
-                    raise ArcanaUsageError(
-                        f"Cannot map {id} using pattern {pattern}, no match")
-                try:
-                    ids[target_freq] = match.group('ID')
-                except KeyError:
-                    raise ArcanaUsageError(
-                        f"ID map pattern {pattern} does not have 'ID' group "
-                        f"when mapping {id}")
+                    raise ArcanaBadlyFormattedIDError(
+                        f"{target} ID could not be extracted from {source} ID "
+                        f"('{ids[source]}') with provided regular expression "
+                        f"'{regex}'")
+                ids[target] = match.group(1)
         return ids
 
     def connect(self):

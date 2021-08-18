@@ -1,10 +1,7 @@
 /.project
 /.pydevproject
 *.pyc
-/test/data/repository
-/test/data/dataset
-/test/data/cache
-/test/data/work
+/test/data/*
 *.pklz
 *~
 .DS_Store

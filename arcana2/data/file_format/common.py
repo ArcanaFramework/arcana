@@ -11,6 +11,7 @@ json = FileFormat(name='json', extension='.json')
 
 # Compressed formats
 zip = FileFormat(name='zip', extension='.zip')
+tar = FileFormat(name='targz', extension='.tar')
 targz = FileFormat(name='targz', extension='.tar.gz')
 
 standard_formats = [text, json, directory, zip, targz]
@@ -25,6 +26,8 @@ pdf_format = FileFormat(name='pdf', extension='.pdf')
 
 # Set Converters
 directory.set_converter(zip, extract_zip)
-directory.set_converter(targz, extract_zip)
+directory.set_converter(targz, extract_tar)
+directory.set_converter(tar, extract_tar)
+tar.set_converter(directory, create_tar)
 targz.set_converter(directory, create_tar, compression='gz')
 zip.set_converter(directory, extract_zip)

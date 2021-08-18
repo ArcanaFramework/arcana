@@ -77,7 +77,7 @@ class Xnat(Repository):
         relies on summary derivatives (i.e. of 'per_timepoint/subject/analysis'
         frequency) then the filter should match all sessions in the Analysis's
         subject_ids and timepoint_ids.
-    id_maps : Dict[DataFrequency, Dict[DataFrequency, str]] or Callable
+    id_inference : Dict[DataFrequency, Dict[DataFrequency, str]] or Callable
         Either a dictionary of dictionaries that is used to extract IDs from
         subject and session labels. Keys of the outer dictionary correspond to
         the frequency to extract (typically group and/or subject) and the keys
@@ -97,8 +97,8 @@ class Xnat(Repository):
 
     def __init__(self, server, cache_dir, user=None, password=None,
                  check_md5=True, race_cond_delay=30,
-                 session_filter=None, id_maps=default_id_map):
-        super().__init__(id_maps)
+                 session_filter=None, id_inference=default_id_map):
+        super().__init__(id_inference)
         if not isinstance(server, str):
             raise ArcanaUsageError(
                 "Invalid server url {}".format(server))
@@ -108,7 +108,7 @@ class Xnat(Repository):
         self._cached_datasets = {}        
         self.user = user
         self.password = password
-        self.id_maps = id_maps
+        self.id_inference = id_inference
         self._race_cond_delay = race_cond_delay
         self.check_md5 = check_md5
         self.session_filter = session_filter
@@ -473,7 +473,7 @@ class Xnat(Repository):
                 subject_xids.add(subject_xid)
                 subject_id = subject_xids_to_labels[subject_xid]
                 session_label = session_json['data_fields']['label']
-                ids = self.map_ids({Clinical.subject: subject_id,
+                ids = self.infer_ids({Clinical.subject: subject_id,
                                     Clinical.session: session_label})
                 # Add node for session
                 data_node = dataset.add_node(Clinical.session, ids)
@@ -489,7 +489,7 @@ class Xnat(Repository):
             # Get subject level resources and fields
             for subject_xid in subject_xids:
                 subject_id = subject_xids_to_labels[subject_xid]
-                ids = self.map_ids({Clinical.subject: subject_id})
+                ids = self.infer_ids({Clinical.subject: subject_id})
                 data_node = dataset.add_node(Clinical.subject, ids)
                 subject_uri = ('/data/archive/projects/{}/subjects/{}'
                                .format(project_id, subject_id))

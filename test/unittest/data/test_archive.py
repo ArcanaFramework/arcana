@@ -26,7 +26,7 @@ class TestArchive(TestCase):
         return super().setUp()
 
     def tearDown(self) -> None:
-        # shutil.rmtree(self.base_dir)
+        shutil.rmtree(self.base_dir)
         return super().tearDown()
 
     def test_tar_roundtrip(self):

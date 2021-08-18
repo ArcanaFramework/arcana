@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from collections import defaultdict
 import stat
 import shutil
+import types
 import logging
 import json
 from copy import copy
@@ -26,9 +27,9 @@ from .base import Repository
 
 logger = logging.getLogger('arcana')
 
-def default_id_map(self, ids):
+def default_id_inference(self, ids):
     ids = copy(ids)
-    for prev_freq, freq in zip(self.frequencies[:-1], self.frequencies[1:]):
+    for prev_freq, freq in zip(self.hierarchy[:-1], self.hierarchy[1:]):
         layer_freq = self.frequency_enum(freq.value & ~prev_freq.value)
         ids[layer_freq] = ids[freq]
 
@@ -44,27 +45,46 @@ class FileSystemDir(Repository):
     base_dir : str
         Path to the base directory of the "repository", i.e. datasets are
         arranged by name as sub-directories of the base dir.
-    frequencies : Sequence[DataFrequency]
-        The frequencies that each sub-directory layers corresponds to.
-        Each frequency in the list should contain the layers of the previous
-        frequencies [Clinical.dataset, Clinical.group,
-        Clinical.subject, Clinical.session] would specify a 3-level
-        directory structure, with the first level sorting by study group, the
-        second by member ID (position within group) and then the study
-        timepoint. Alternatively, [Clinical.dataset, Clinical.member,
-        Clinical.subject] would specify a 2-level structure where the data
-        is organised into directories for matching members between groups and
-        then the groups in sub-directories containing sub-directories.
-    id_maps : Dict[DataFrequency, Dict[DataFrequency, str]] or Callable
-        Either a dictionary of dictionaries that is used to extract subject,
-        visit and group IDs from subject and session labels. Keys of the outer
-        dictionary correspond to the frequency to extract (typically group
-        and/or subject) and the keys of the inner dictionary the frequency to
-        extract from (i.e. subject or session). The values of the inner
-        dictionary are regular expression patterns that match the ID to
-        extract in the 'ID' regular expression group. Otherwise, it is a
-        function with signature `f(ids)` that returns a dictionary with the
-        mapped IDs included.
+    hierarchy : Sequence[DataFrequency]
+        The hierarchy that the sub-directories are organised in terms of their
+        "data frequencies". For example,
+
+            hierarchy=[Clinical.group, Clinical.subject, Clinical.session]
+
+        designates a directory structure with three layers, the top level
+        of sub-directories corresponding to the groups in the study
+        (e.g. "control" and "test"), the next layer corresponding to the
+        members in each group, and the final layer the time-points for each
+        session the subject was scanned.
+
+        Alternatively,
+
+            hierarchy=[Clinical.member, Clinical.session]
+
+        Would specify a 2-level directory structure with the a directory in
+        the top layer for each matched members (i.e. test & control pairs) each
+        containing sub-directories for each subject in the match.
+        
+        Note that binary string for each subsequent frequency in the hierarchy
+        should be a superset of the ones that come before it, e.g.
+
+            (100, 110, 111), (010, 110, 111), or (001, 101, 111)
+    id_inference : Dict[DataFrequency, (DataFrequency, str)] or Callable
+        Specifies how IDs of primary data frequencies that not explicitly
+        provided are inferred from the IDs that are. For example, given a set
+        of subject IDs contain the ID of the group that they belong to in them
+
+            CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
+
+        the group ID can be extracted by providing a dictionary with tuple
+        values containing the ID type of the ID to infer it from and a regex
+        that extracts the target ID from the provided ID (in the first group).
+
+            id_inference={
+                Clincal.group: (Clinical.subject, r'([a-zA-Z]+).*')}
+
+        Alternatively, a general function with signature `f(ids)` that returns
+        a dictionary with the mapped IDs can be provided instead.
     """
 
     type = 'file_system_dir'
@@ -75,36 +95,58 @@ class FileSystemDir(Repository):
     PROV_KEY = 'provenance'
     VALUE_KEY = 'value'
 
-    def __init__(self, base_dir, frequencies, id_maps=default_id_map):
-        super().__init__(id_maps)
-        self.base_dir = base_dir
-        self.frequencies = list(frequencies)
-        if not len(self.frequencies):
+    def __init__(self, base_dir, hierarchy, frequency_enum=None,
+                 id_inference=None):
+        if id_inference is None:
+            id_inference = default_id_inference
+        super().__init__(id_inference)
+        self.base_dir = os.path.abspath(base_dir)
+        if not isinstance(hierarchy, Iterable) or isinstance(hierarchy, str):
+            hierarchy = [hierarchy]
+        else:
+            hierarchy = list(hierarchy)
+        if not hierarchy:
             raise ArcanaUsageError(
-                "At least one layer must be provided to FileSystemDir")
-        self.frequency_enum = type(self.frequencies[0])
-        for prev_freq, freq in zip(self.frequencies[:-1],
-                                   self.frequencies[1:]):
-            if not isinstance(freq, type(prev_freq)):
+                "At least one frequency layer must be provided to "
+                "FileSystemDir init")
+        if not frequency_enum:
+            frequency_enum = type(hierarchy[0])
+        self.frequency_enum = frequency_enum
+        # Check data frequencies match provided frequency enum
+        parsed_freqs = []
+        for freq in hierarchy:
+            if isinstance(freq, str):
+                try:
+                    freq = frequency_enum[freq]
+                except KeyError:
+                    pass  # This error will be picked up in following clause
+            if not isinstance(freq, frequency_enum):
                 raise ArcanaUsageError(
-                    "Mismatching data frequencies provided to FileSystemDir. "
-                    "The must all be of the same Enum class "
-                    f"({freq} and {prev_freq})")
-            if (freq.value | prev_freq.value) != freq.value:
+                    f"'{freq}' is not a valid frequency in enum class "
+                    f"{frequency_enum}")
+            parsed_freqs.append(freq)
+        hierarchy = parsed_freqs
+        # Check subsequent frequency layers are supersets of previous
+        for prev_freq, freq in zip(hierarchy[:-1], hierarchy[1:]):
+            if (freq.value ^ prev_freq.value) & prev_freq.value != 0:
                 raise ArcanaUsageError(
-                    "Subsequent frequencies in list provided to FileSystemDir "
-                    "must have a superset of layers to previous frequencies "
+                    "The frequencies of subsequent sub-directory layers "
+                    "hierarchy must further specify previous layers "
                     f"({freq}: {freq.layers} and "
                     f"{prev_freq}: {prev_freq.layers})")
+        # Ensure root frequency (i.e. dataset) is present in list of frequencies
+        if not hierarchy[0] != self.frequency_enum(0):
+            hierarchy = self.frequency_enum(0) + hierarchy
+        self.hierarchy = hierarchy
 
 
     def __repr__(self):
         return (f"{type(self).__name__}(base_dir={self.base_dir}, "
-                f"frequencies={self.frequencies})")
+                f"hierarchy={self.hierarchy})")
 
     def __eq__(self, other):
         try:
-            return (self.frequencies == other.frequencies
+            return (self.hierarchy == other.hierarchy
                     and self.base_dir == other.base_dir)
         except AttributeError:
             return False
@@ -115,7 +157,7 @@ class FileSystemDir(Repository):
             'type': get_class_info(type(self)),
             'host': HOSTNAME,
             'base_dir': self.base_dir,
-            'frequencies': [str(l) for l in self.frequencies]}
+            'frequencies': [str(l) for l in self.hierarchy]}
 
     def __hash__(self):
         return hash(self.type)
@@ -281,13 +323,13 @@ class FileSystemDir(Repository):
                 dpath = op.join(dpath, dname)
                 ids += [dname]
             # First ID can be omitted
-            node_freq = self.frequencies[len(ids)]  # last freq
-            ids_dict = dict(zip(self.frequencies, ids))
-            ids_dict = self.map_ids(ids_dict)
+            node_freq = self.hierarchy[len(ids)]  # last freq
+            ids_dict = dict(zip(self.hierarchy, ids))
+            ids_dict = self.infer_ids(ids_dict)
             node = dataset.add_node(node_freq, ids_dict)
             # Check if node is a leaf (i.e. lowest level in directory
             # structure)
-            is_leaf_node = node_freq == self.frequencies[-1]
+            is_leaf_node = node_freq == self.hierarchy[-1]
             filtered, has_fields = self._list_node_dir_contents(
                 dpath, is_leaf=is_leaf_node)
             # Group files and sub-dirs that match except for extensions
@@ -341,7 +383,7 @@ class FileSystemDir(Repository):
 
     def node_path(self, data_node):
         return op.join(self.base_dir,
-                       *(data_node.ids[f] for f in self.frequencies))
+                       *(data_node.ids[f] for f in self.hierarchy))
 
     def file_group_path(self, file_group):
         return op.join(self.node_path(file_group.data_node)
@@ -355,7 +397,7 @@ class FileSystemDir(Repository):
                                  
 
 
-def single_dataset(path: str, frequencies: Iterable[DataFrequency]=(
+def single_dataset(path: str, hierarchy: Iterable[DataFrequency]=(
         Clinical.dataset,
         Clinical.subject,
         Clinical.session), **kwargs) -> Dataset:
@@ -371,7 +413,6 @@ def single_dataset(path: str, frequencies: Iterable[DataFrequency]=(
         layers of the tree. By default expects a 2 levels of sub-directories:
         outer directory->dataset, first-level->subject, second-level->session
     """
-    if not isinstance(frequencies, Iterable):
-        frequencies = [frequencies]
-    return FileSystemDir(op.abspath(op.join(path, '..')),
-                         frequencies, **kwargs).dataset(op.basename(path))
+
+    return FileSystemDir(op.join(path, '..'), **kwargs).dataset(
+        op.basename(path))
