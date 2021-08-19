@@ -25,31 +25,7 @@ class BaseRunCmd(BaseDatasetCmd):
     @classmethod
     def construct_parser(cls, parser):
         super().construct_parser(parser)
-        parser.add_argument(
-            '--input', '-i', action='append', default=[], nargs='+',
-            metavar=(cls.INPUT_ARG, 'PATTERN', 'FORMAT', 'ORDER', 'QUALITY',
-                     'DICOM_TAGS', 'FREQUENCY'),
-            help=cls.INPUT_HELP.format(path_desc=cls.PATH_DESC))
-        parser.add_argument(
-            '--field_input', action='append', default=[], nargs='+',
-            metavar=(cls.INPUT_ARG, 'FIELD_NAME', 'DTYPE', 'FREQUENCY'),
-            help=cls.FIELD_INPUT_HELP.format(path_desc=cls.FIELD_PATH_DESC))
-        parser.add_argument(
-            '--output', '-o', action='append', default=[], nargs=2,
-            metavar=(cls.INPUT_ARG, 'OUTPUT_NAME', 'FORMAT', 'FREQUENCY'),
-            help=("The outputs produced by the app to be stored in the "
-                  "repository."))
-        parser.add_argument(
-            '--field_output', action='append', default=[], nargs=2,
-            metavar=(cls.INPUT_ARG, 'OUTPUT_NAME', 'DTYPE', 'FREQUENCY'),
-            help=("The field outputs produced by the app to be stored in the "
-                  "repository"))
-        parser.add_argument(
-            '--ids', nargs='+', default=None, metavar='ID',
-            help=("The IDs to include in "
-                  "the analysis. If a single value with a '/' is provided "
-                  "then it is interpreted as a text file containing a list "
-                  "of IDs"))
+ 
         parser.add_argument(
             '--container', nargs=2, default=None,
             metavar=('ENGINE', 'IMAGE'),
@@ -59,94 +35,6 @@ class BaseRunCmd(BaseDatasetCmd):
             '--dry_run', action='store_true', default=False,
             help=("Set up the workflow to test inputs but don't run the app"))
 
-
-    @classmethod
-    def parse_inputs_and_outputs(cls, args):
-        # Create file-group matchers
-        inputs = {}
-        input_paths = {}
-        defaults = (None, None, None, None, None, None, 'session')
-        for i, inpt in enumerate(args.input):
-            nargs = len(inpt)
-            if nargs > 7:
-                raise ArcanaUsageError(
-                    f"Input {i} has too many input args, {nargs} instead "
-                    f"of max 7 ({inpt})")
-            (path, pattern, format_name, order,
-             quality, header_vals, freq) = [
-                a if a != '*' else d
-                for a, d in zip_longest(inpt, defaults, fillvalue='*')]
-            if not path:
-                raise ArcanaUsageError(
-                    f"Path must be provided to Input {i} ({inpt})")
-            if not pattern:
-                raise ArcanaUsageError(
-                    f"Pattern must be provided to Input {i} ({inpt})")
-            if not format_name:
-                raise ArcanaUsageError(
-                    f"Datatype must be provided to Input {i} ({inpt})")
-            name = sanitize_path(path)
-            input_paths[name] = path
-            inputs[path] = FileGroupSelector(
-                name_path=pattern, format=getattr(ff, format_name),
-                frequency='per_' + freq, order=order, header_vals=header_vals,
-                is_regex=True, acceptable_quality=quality)
-
-        # Create field matchers
-        defaults = (str, 'session')
-        for i, inpt in enumerate(args.field_input):
-            nargs = len(inpt)
-            if len(inpt) < 2:
-                raise ArcanaUsageError(
-                    f"Output {i} requires at least 2 args, "
-                    f"found {nargs} ({inpt})")
-            if len(inpt) > 4:
-                raise ArcanaUsageError(
-                    f"Output {i} has too many input args, {nargs} "
-                    f"instead of max 4 ({inpt})")
-            path, field_name, dtype, freq = inpt + defaults[nargs - 2:]
-            name = sanitize_path(path)
-            input_paths[name] = path
-            inputs[path] = FieldSelector(pattern=field_name, dtype=dtype,
-                                        frequency='per_' + freq)
-
-        outputs = {}
-        output_paths = {}
-        # Create outputs
-        defaults = (ff.niftix_gz, 'session')
-        for i, output in enumerate(args.field_output):
-            nargs = len(output)
-            if nargs < 2:
-                raise ArcanaUsageError(
-                    f"Field Output {i} requires at least 2 args, "
-                    f"found {nargs} ({output})")
-            if nargs> 4:
-                raise ArcanaUsageError(
-                    f"Field Output {i} has too many input args, {nargs} "
-                    f"instead of max 4 ({output})")
-            path, name, file_format, freq = inpt + defaults[nargs - 2:]
-            output_paths[name] = path
-            outputs[name] = FileGroupSpec(format=ff.get_format(file_format),
-                                          frequency='per_' + freq)
-
-        
-        # Create field outputs
-        defaults = (str, 'session')
-        for i, inpt in enumerate(args.field_input):
-            nargs = len(output)
-            if nargs < 2:
-                raise ArcanaUsageError(
-                    f"Field Input {i} requires at least 2 args, "
-                    f"found {nargs} ({inpt})")
-            if nargs > 4:
-                raise ArcanaUsageError(
-                    f"Field Input {i} has too many input args, {nargs} "
-                    f"instead of max 4 ({inpt})")
-            path, name, dtype, freq = inpt + defaults[nargs - 2:]
-            output_paths[name] = path
-            outputs[name] = FieldSpec(dtype=dtype, frequency='per_' + freq)
-
-        return inputs, outputs, input_paths, output_paths
 
 
     @classmethod
@@ -160,26 +48,24 @@ class BaseRunCmd(BaseDatasetCmd):
         else:
             ids = args.ids
 
-        repository, dataset_name = cls.init_repository(args)
-
         (inputs, outputs,
-         input_paths, output_paths) = cls.parse_inputs_and_outputs(args)
+         input_names, output_names) = cls.parse_inputs_and_outputs(args)
+
+        dataset = cls.get_dataset(args, inputs, outputs)
 
         frequency = cls.parse_frequency(args)
 
-        workflow = Workflow(name=cls.app_name(args))
-        workflow.add(repository.source(dataset_name=dataset_name,
-                                       inputs=inputs,
-                                       id=ids,
-                                       frequency=frequency))
+        workflow = Workflow(
+            name=cls.app_name(args), input_spec=['ids'], ids=ids).split('ids')
+        workflow.add(dataset.source_task(inputs=input_names,
+                                         id=workflow.lzin.ids,
+                                         frequency=frequency))
 
-        app_outs = cls.add_app_task(workflow, args, input_paths, output_paths)
+        app_outs = cls.add_app_task(workflow, args, input_names, output_names)
             
-        workflow.add(repository.sink(dataset_name=dataset_name,
-                                     outputs=outputs,
-                                     frequency=frequency,
-                                     id=workflow.source.lzout.id,
-                                     **app_outs))
+        workflow.add(dataset.sink_task(outputs=outputs,
+                                       id=workflow.lzin.ids,
+                                       **app_outs))
 
         if not args.dry_run:
             workflow.run()
