@@ -35,18 +35,6 @@ tag_parse_re = re.compile(r'\((\d+),(\d+)\)')
 RELEVANT_DICOM_TAG_TYPES = set(('UI', 'CS', 'DA', 'TM', 'SH', 'LO',
                                 'PN', 'ST', 'AS'))
 
-def default_id_map(self, ids):
-    ids = copy(ids)
-    try:
-        ids[Clinical.member] = ids[Clinical.subject]
-    except KeyError:
-        pass
-    try:
-        ids[Clinical.timepoint] = ids[Clinical.session]
-    except KeyError:
-        pass
-    return ids
-
 class Xnat(Repository):
     """
     A 'Repository' class for XNAT repositories
@@ -77,15 +65,6 @@ class Xnat(Repository):
         relies on summary derivatives (i.e. of 'per_timepoint/subject/analysis'
         frequency) then the filter should match all sessions in the Analysis's
         subject_ids and timepoint_ids.
-    id_inference : Dict[DataFrequency, Dict[DataFrequency, str]] or Callable
-        Either a dictionary of dictionaries that is used to extract IDs from
-        subject and session labels. Keys of the outer dictionary correspond to
-        the frequency to extract (typically group and/or subject) and the keys
-        of the inner dictionary the frequency to extract from (i.e.
-        subject or session). The values of the inner dictionary are regular
-        expression patterns that match the ID to extract in the 'ID' regular
-        expression group. Otherwise, it is a function with signature
-        `f(ids)` that returns a dictionary with the mapped IDs included
     """
 
     type = 'xnat'
@@ -94,11 +73,11 @@ class Xnat(Repository):
     PROV_SUFFIX = '.__prov__.json'
     FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
+    DEFAULT_FREQUENCY_ENUM = Clinical
 
     def __init__(self, server, cache_dir, user=None, password=None,
-                 check_md5=True, race_cond_delay=30,
-                 session_filter=None, id_inference=default_id_map):
-        super().__init__(id_inference)
+                 check_md5=True, race_cond_delay=30, session_filter=None):
+        super().__init__()
         if not isinstance(server, str):
             raise ArcanaUsageError(
                 "Invalid server url {}".format(server))
@@ -108,7 +87,6 @@ class Xnat(Repository):
         self._cached_datasets = {}        
         self.user = user
         self.password = password
-        self.id_inference = id_inference
         self._race_cond_delay = race_cond_delay
         self.check_md5 = check_md5
         self.session_filter = session_filter
@@ -158,10 +136,6 @@ class Xnat(Repository):
             raise ArcanaError("XNAT repository has been disconnected before "
                               "exiting outer context")
         return self._login
-
-    @property
-    def frequency_enum(self):
-        return Clinical
 
     @property
     def server(self):
@@ -473,8 +447,8 @@ class Xnat(Repository):
                 subject_xids.add(subject_xid)
                 subject_id = subject_xids_to_labels[subject_xid]
                 session_label = session_json['data_fields']['label']
-                ids = self.infer_ids({Clinical.subject: subject_id,
-                                    Clinical.session: session_label})
+                ids = dataset.infer_ids({Clinical.subject: subject_id,
+                                         Clinical.session: session_label})
                 # Add node for session
                 data_node = dataset.add_node(Clinical.session, ids)
                 session_uri = (
@@ -489,7 +463,7 @@ class Xnat(Repository):
             # Get subject level resources and fields
             for subject_xid in subject_xids:
                 subject_id = subject_xids_to_labels[subject_xid]
-                ids = self.infer_ids({Clinical.subject: subject_id})
+                ids = dataset.infer_ids({Clinical.subject: subject_id})
                 data_node = dataset.add_node(Clinical.subject, ids)
                 subject_uri = ('/data/archive/projects/{}/subjects/{}'
                                .format(project_id, subject_id))

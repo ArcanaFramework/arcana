@@ -171,10 +171,10 @@ class FileGroupSelector(DataSelector, FileGroupMixin):
     def __repr__(self):
         return ("{}(name_path='{}', format={}, frequency={}, name_path={}, "
                 "is_regex={}, order={}, header_vals={}, acceptable_quality={})"
-                .format(self.__class__.__name__, self.name_path, self._format,
+                .format(self.__class__.__name__, self.name_path, self.format,
                         self.frequency, self.name_path, self.is_regex,
                         self.order, self.header_vals,
-                        self._acceptable_quality))
+                        self.acceptable_quality))
 
     def _filtered_matches(self, node, **kwargs):  # noqa pylint: disable=unused-argument
         # Start off with all file groups in the node

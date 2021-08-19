@@ -18,13 +18,16 @@ class DataFrequency(Enum):
     def __str__(self):
         return self.name
 
-    def layers(self):
-        """Returns the layers in the data tree the frequency consists of, e.g.
+    def basis(self):
+        """Returns the basis frequencies in the data tree.
+        For example in `Clinical` data trees, the following frequencies can
+        be decomposed into the following basis frequencies:
 
-            dataset -> 
-            subject -> subject
-            group_subject -> group + subject
-            session -> group + subject + timepoint
+            dataset -> []
+            group -> [group]
+            subject -> [group, member]
+            group_timepoint -> [group, timepoint]
+            session -> [group, member, timepoint]
         """
         val = self.value
         # Check which bits are '1', and append them to the list of levels
@@ -50,9 +53,23 @@ class DataFrequency(Enum):
     def __le__(self, other):
         return self.value <= other.value
 
+    def __add__(self, other):
+        return type(self)(self.value + other.value)
+
+    def __subtract__(self, other):
+        return type(self)(self.value - other.value)
+
     @classmethod
     def default(cls):
         return max(cls)
+
+    @classmethod
+    def layers(cls):
+        layer = cls(0)
+        yield layer
+        for b in max(cls).basis():
+            layer += b.value
+            yield layer
 
 
 class Clinical(DataFrequency):

@@ -2,21 +2,12 @@ from itertools import zip_longest
 import re
 from typing import Sequence
 from pydra import ShellCommandTask, Workflow
-from arcana2.data import (
-    FileGroupSelector, FieldSelector, FileGroupSpec, FieldSpec)
 from arcana2.data.repository.file_system_dir import single_dataset
-from arcana2.data import file_format as ff
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids
 from .base import BaseDatasetCmd
 from .util import resolve_class
-
-
-sanitize_path_re = re.compile(r'[^a-zA-Z\d]')
-
-def sanitize_path(path):
-    return sanitize_path_re.sub(path, '_')
 
 class BaseRunCmd(BaseDatasetCmd):
     """Abstract base class for RunCmds
@@ -25,7 +16,6 @@ class BaseRunCmd(BaseDatasetCmd):
     @classmethod
     def construct_parser(cls, parser):
         super().construct_parser(parser)
- 
         parser.add_argument(
             '--container', nargs=2, default=None,
             metavar=('ENGINE', 'IMAGE'),
@@ -34,7 +24,6 @@ class BaseRunCmd(BaseDatasetCmd):
         parser.add_argument(
             '--dry_run', action='store_true', default=False,
             help=("Set up the workflow to test inputs but don't run the app"))
-
 
 
     @classmethod
@@ -48,85 +37,24 @@ class BaseRunCmd(BaseDatasetCmd):
         else:
             ids = args.ids
 
-        (inputs, outputs,
-         input_names, output_names) = cls.parse_inputs_and_outputs(args)
-
-        dataset = cls.get_dataset(args, inputs, outputs)
+        dataset, input_names, output_names = cls.get_dataset(args)
 
         frequency = cls.parse_frequency(args)
 
         workflow = Workflow(
             name=cls.app_name(args), input_spec=['ids'], ids=ids).split('ids')
         workflow.add(dataset.source_task(inputs=input_names,
-                                         id=workflow.lzin.ids,
-                                         frequency=frequency))
+                                         frequency=frequency,
+                                         id=workflow.lzin.ids))
 
         app_outs = cls.add_app_task(workflow, args, input_names, output_names)
             
-        workflow.add(dataset.sink_task(outputs=outputs,
+        workflow.add(dataset.sink_task(outputs=output_names,
                                        id=workflow.lzin.ids,
                                        **app_outs))
 
         if not args.dry_run:
             workflow.run()
-
-    
-    INPUT_HELP = """
-        A file-group input to provide to the app that is matched by the 
-        provided criteria.
-        {path_desc}
-
-        The criteria used to match the file-group (e.g. scan) in the
-        repository follows the PATH arg in the following order:
-
-            pattern   - regular expression (in Python syntax) of
-                        file-group or field name
-            format    - the name or extension of the file-format the
-                        input is required in. Implicit conversions will
-                        be attempted when required. The default is
-                        'niftix_gz', which is the g-zipped NIfTI image file
-                        + JSON side-car required for BIDS
-            order     - the order of the scan in the session to select
-                        if more than one match the other criteria. E.g.
-                        an order of '2' with a pattern of '.*bold.*' could
-                        match the second T1-weighted scan in the session
-            quality   - the minimum usuable quality to be considered.
-                        Can be one of 'usable', 'questionable' or
-                        'unusable'
-            header_vals  - semicolon-separated list of header_vals values
-                        in NAME:VALUE form. For DICOM headers
-                        NAME is the numeric values of the DICOM tag, e.g
-                        (0008,0008) -> 00080008
-            frequency - The frequency of the file-group within the dataset.
-                        Can be either 'dataset', 'group', 'subject',
-                        'timepoint', 'session', 'unique_subject', 'group_visit'
-                        or 'subject_timepoint'. Typically only required for
-                        derivatives
-
-        Trailing args can be dropped if default, 
-
-            e.g. --input in_file 't1_mprage.*'
-            
-        Preceding args that aren't required can be replaced by '*', 
-
-            --input in_file.nii.gz 't1_mprage.*' * * questionable"""
-
-
-    FIELD_INPUT_HELP = """
-        A field input to provide to the app.
-        {path_desc}
-
-        The DTYPE arg can be either 'float', 'int' or
-        'string' (default) and defines the datatype the field
-        will be transformed into. '[]' can be appended if the field
-        is an array that is stored as a comma-separated list in
-        the repository.
-        
-        The FREQUENCY arg specifies the frequency of the file-group
-        within the dataset. It can be either 'dataset', 'group',
-        'subject', 'timepoint' or 'session'. Typically only required for
-        derivatives
-    """
 
 
 class RunAppCmd(BaseRunCmd):
@@ -220,8 +148,6 @@ class RunAppCmd(BaseRunCmd):
         The NAME argument is the name of the input in the Pydra
         interface that wraps the app"""
 
-    INPUT_ARG = "NAME"
-
 
     @classmethod
     def parse_frequency(cls, args):
@@ -282,8 +208,6 @@ class RunBidsAppCmd(BaseRunCmd):
         else:
             name = args.entrypoint
         return name
-
-    INPUT_ARG = "PATH"
 
     PATH_DESC = """
         The PATH to place the input within the constructed BIDS dataset,

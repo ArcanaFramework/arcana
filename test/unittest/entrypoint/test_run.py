@@ -30,19 +30,17 @@ class TestRunApp(TestCase):
         args = mock.Mock()
 
         args.app = 'pydra.tasks.dcm2niix.Dcm2Niix'
-        args.dataset_name = 'test-repo'
-        args.repository = [
-            'file_system', os.path.join(TEST_DATA_DIR)]
+        args.dataset_name = os.path.join(TEST_DATA_DIR, 'test-repo')
+        args.repository = ['file_system']
         args.input = [('in_dir', 'sample-dicom', 'dicom')]
+        args.output = [('out_file', 'output-nifti', 'niftix_gz')]
         args.field_input = []
-        args.output = [('output-nifti', 'niftix_gz')]
         args.field_output = []
         args.ids = None
         args.container = None
         args.id_inference = None
-        args.enum_class = 'Clinical'
+        args.dataset_structure = 'Clinical'
         args.dry_run = False
-        args.hierarchy = ['session']
         args.frequency = 'session'
         args.app_arg = []
 
