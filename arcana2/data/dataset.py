@@ -50,19 +50,20 @@ class Dataset():
     structure : Enum
         The DataFrequency enum that defines the frequencies (e.g. per-session,
         per-subject,...) present in the dataset.
-    id_inference : Dict[DataFrequency, (DataFrequency, str)] or Callable
+    id_inference : Sequence[(DataFrequency, str)] or Callable
         Specifies how IDs of primary data frequencies that not explicitly
         provided are inferred from the IDs that are. For example, given a set
-        of subject IDs contain the ID of the group that they belong to in them
+        of subject IDs that combination of the ID of the group that they belong
+        to and their member IDs (i.e. matched test/controls have same member ID)
 
             CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
 
-        the group ID can be extracted by providing a dictionary with tuple
-        values containing the ID type of the ID to infer it from and a regex
-        that extracts the target ID from the provided ID (in the first group).
+        the group ID can be extracted by providing the a list of tuples 
+        containing ID to source the inferred IDs from coupled with a regular
+        expression with named groups 
 
-            id_inference={
-                Clincal.group: (Clinical.subject, r'([a-zA-Z]+).*')}
+            id_inference=[(Clinical.subject,
+                           r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')}
 
         Alternatively, a general function with signature `f(ids)` that returns
         a dictionary with the mapped IDs can be provided instead.
@@ -588,7 +589,7 @@ class Dataset():
 
         return outer_workflow
 
-    def source_task(self, inputs, frequency, id):
+    def workflow(self, inputs, outputs, frequency, ids):
         """Generate a Pydra task that sources the specified inputs from the
         dataset
 
@@ -601,7 +602,23 @@ class Dataset():
         id : str
             The ID of the node to draw the inputs from
         """
-        raise NotImplementedError
+
+        @mark.task
+        def source():
+            outputs = []
+            with self:
+                for file_group_column in self.file_group_columns:
+                    file_group = file_group_column.item(subject_id, timepoint_id)
+                    file_group.get()
+                    outputs[file_group_column.name + PATH_SUFFIX] = file_group.path
+                    outputs[file_group_column.name
+                            + CHECKSUM_SUFFIX] = file_group.checksums
+                for field_column in self.field_columns:
+                    field = field_column.item(subject_id, timepoint_id)
+                    field.get()
+                    outputs[field_column.name + FIELD_SUFFIX] = field.value
+            return outputs
+        return source
 
     def sink_task(self, outputs, id):
         """Generate a Pydra task that sinks the specified outputs to the
@@ -838,15 +855,14 @@ class DataNode():
         ids = copy(ids)
         if callable(self.id_inference):
             return self.id_inference(ids)
-        for target, (source, regex) in self.id_inference.items():
-            if target not in ids and source in ids:
-                match = re.match(regex, ids[source])
-                if match is None:
-                    raise ArcanaBadlyFormattedIDError(
-                        f"{target} ID could not be extracted from {source} ID "
-                        f"('{ids[source]}') with provided regular expression "
-                        f"'{regex}'")
-                ids[target] = match.group(1)
+        for source, regex in self.id_inference:
+            match = re.match(regex, ids[source])
+            if match is None:
+                raise ArcanaBadlyFormattedIDError(
+                    f"{source} ID '{ids[source]}', does not match ID inference"
+                    f" pattern '{regex}'")
+            for target, id in match.groupdict.items():
+                ids[self.structure[target]] = id
         return ids
 
 

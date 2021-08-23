@@ -46,11 +46,21 @@ class BaseDatasetCmd():
             help=("The field outputs produced by the app to be stored in the "
                   "repository"))
         parser.add_argument(
-            '--ids', nargs='+', default=None, metavar='ID',
-            help=("The IDs to include in "
-                  "the analysis. If a single value with a '/' is provided "
-                  "then it is interpreted as a text file containing a list "
-                  "of IDs"))
+            '--include_ids', nargs='+', default=None, metavar=('FREQ', 'ID'),
+            action='append',
+            help=("The IDs to include in the dataset. First value is the "
+                  "frequency of the ID (e.g. 'group', 'subject', 'session') "
+                  "followed by the IDs to be included in the dataset. "
+                  "If the second arg contains '/' then it is interpreted as "
+                  "the path to a text file containing a list of IDs"))
+        parser.add_argument(
+            '--exclude_ids', nargs='+', default=None, metavar=('FREQ', 'ID'),
+            action='append',
+            help=("The IDs to exclude from the dataset. First value is the "
+                  "frequency of the ID (e.g. 'group', 'subject', 'session') "
+                  "followed by the IDs to be included in the dataset. "
+                  "If the second arg contains '/' then it is interpreted as "
+                  "the path to a text file containing a list of IDs"))        
         parser.add_argument(
             '--repository', '-r', nargs='+', default=['file_system'],
             metavar='ARG',
@@ -68,23 +78,22 @@ class BaseDatasetCmd():
                   "consists of the typical dataset>group>subject>session "
                   "data tree used in clinical trials/studies"))
         parser.add_argument(
-            '--id_inference', nargs=3, metavar=('TARGET, SOURCE', 'REGEX'),
+            '--id_inference', nargs=2, metavar=('SOURCE', 'REGEX'),
             action='append',
             help="""Specifies how IDs of primary data frequencies that not explicitly
 provided are inferred from the IDs that are. For example, given a set
-of subject IDs contain the ID of the group that they belong to in them
+of subject IDs that are a combination of the ID of the group that they belong
+to and their member IDs (i.e. matched test/controls have same member ID), e.g.
 
     CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
 
-the group ID can be extracted by providing a dictionary with tuple
-values containing the ID type of the ID to infer it from and a regex
-that extracts the target ID from the provided ID (in the first group).
+the group ID can be extracted by providing the ID to source it from
+(i.e. subject) and a regular expression (Python regex syntax)with a named
+groups corresponding to the inferred IDs
 
-    id_inference={
-        Clincal.group: (Clinical.subject, r'([a-zA-Z]+).*')}
+    --id_inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
 
-Alternatively, a general function with signature `f(Dict[DataFrequency, str])`
-that returns a dictionary with the inferred IDs inserted can be provided instead.""")
+""")
 
     @classmethod
     def get_dataset(cls, args):
@@ -132,12 +141,26 @@ that returns a dictionary with the inferred IDs inserted can be provided instead
         else:
             id_inference = None
 
+
+        def parse_ids(ids_args):
+            parsed_ids = {}
+            for iargs in ids_args:
+                freq = dataset_structure[iargs.pop(0)]
+                if len(iargs) == 1 and '/' in iargs[0]:
+                    with open(args.ids[0]) as f:
+                        ids = f.read().split()
+                else:
+                    ids = args.ids
+                parsed_ids[freq] = ids
+            return parsed_ids
         
         return (repository.dataset(args.dataset_name,
                                    selectors=inputs,
                                    derivatives=outputs,
                                    structure=dataset_structure,
-                                   id_inference=id_inference),
+                                   id_inference=id_inference,
+                                   include_ids=parse_ids(args.include_ids),
+                                   exclude_ids=parse_ids(args.exclude_ids)),
                 input_names,
                 output_names)
 

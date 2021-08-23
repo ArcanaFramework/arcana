@@ -29,20 +29,14 @@ class BaseRunCmd(BaseDatasetCmd):
     @classmethod
     def run(cls, args):
 
-        if args.ids is None:
-            ids = None
-        elif len(args.ids) == 1 and '/' in args.ids[0]:
-            with open(args.ids[0]) as f:
-                ids = f.read().split()
-        else:
-            ids = args.ids
-
         dataset, input_names, output_names = cls.get_dataset(args)
 
         frequency = cls.parse_frequency(args)
 
         workflow = Workflow(
-            name=cls.app_name(args), input_spec=['ids'], ids=ids).split('ids')
+            name=cls.app_name(args), input_spec=['ids'],
+            ids=dataset.ids(frequency)).split('ids')
+
         workflow.add(dataset.source_task(inputs=input_names,
                                          frequency=frequency,
                                          id=workflow.lzin.ids))
