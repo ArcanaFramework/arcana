@@ -20,7 +20,7 @@ class DataFrequency(Enum):
 
     def basis(self):
         """Returns the basis frequencies in the data tree.
-        For example in `Clinical` data trees, the following frequencies can
+        For example in `ClinicalTrial` data trees, the following frequencies can
         be decomposed into the following basis frequencies:
 
             dataset -> []
@@ -72,7 +72,7 @@ class DataFrequency(Enum):
             yield layer
 
 
-class Clinical(DataFrequency):
+class ClinicalTrial(DataFrequency):
     """
     An enum that specifies the data frequencies within a data tree of a typical
     clinical research study with groups, subjects and timepoints.

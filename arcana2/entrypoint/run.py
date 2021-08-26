@@ -1,13 +1,22 @@
 from itertools import zip_longest
 import re
 from typing import Sequence
-from pydra import ShellCommandTask, Workflow
+from pydra import ShellCommandTask
 from arcana2.data.repository.file_system_dir import single_dataset
+from arcana2.data import (
+    FileGroupSelector, FieldSelector, FileGroupSpec, FieldSpec)
+from arcana2.data import file_format as ff
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.__about__ import __version__
-from arcana2.tasks.bids import construct_bids, extract_bids
+from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
 from .base import BaseDatasetCmd
 from .util import resolve_class
+
+
+sanitize_path_re = re.compile(r'[^a-zA-Z\d]')
+
+def sanitize_path(path):
+    return sanitize_path_re.sub(path, '_')
 
 class BaseRunCmd(BaseDatasetCmd):
     """Abstract base class for RunCmds
@@ -22,33 +31,196 @@ class BaseRunCmd(BaseDatasetCmd):
             help=("The container engine ('docker'|'singularity') and the image"
                   " to run the app in"))
         parser.add_argument(
+            '--input', '-i', action='append', default=[], nargs='+',
+            metavar=(cls.VAR_ARG, 'PATH', 'FORMAT', 'ORDER', 'QUALITY',
+                     'METADATA', 'FREQUENCY'),
+            help=cls.INPUT_HELP.format(var_desc=cls.VAR_DESC))
+        parser.add_argument(
+            '--output', '-o', action='append', default=[], nargs=3,
+            metavar=(cls.VAR_ARG, 'STORE_AT', 'FORMAT'),
+            help=cls.OUTPUT_HELP.format(var_desc=cls.VAR_DESC))
+        parser.add_argument(
+            '--required_format', action='append', default=[], nargs=2,
+            metavar=('INPUT', 'FORMAT'),
+            help=("The file format the app requires the input in. Only needed "
+                  "when it differs from the format provided in the input"))
+        parser.add_argument(
+            '--produced_format', action='append', default=[], nargs=2,
+            metavar=('OUTPUT', 'FORMAT'),
+            help=("The file format the app produces the output in. Only needed"
+                  " when it differs from the format to be stored in the "
+                  "dataset."))
+        parser.add_argument(
+            '--ids', nargs='+', default=None,
+            help=("IDs of the nodes to process (i.e. for the frequency that "
+                  "the app runs at)."))
+        parser.add_argument(
             '--dry_run', action='store_true', default=False,
             help=("Set up the workflow to test inputs but don't run the app"))
-
 
     @classmethod
     def run(cls, args):
 
-        dataset, input_names, output_names = cls.get_dataset(args)
+        dataset = cls.get_dataset(args)
+        inputs = cls.parse_inputs(args)
+        outputs = cls.parse_outputs(args)
 
-        frequency = cls.parse_frequency(args)
+        workflow = dataset.workflow(
+            inputs=inputs,
+            outputs=outputs,
+            frequency=cls.parse_frequency(args),
+            required_formats=cls.parse_required_formats(args),
+            produced_formats=cls.parse_produced_formats(args),
+            ids=args.ids)
 
-        workflow = Workflow(
-            name=cls.app_name(args), input_spec=['ids'],
-            ids=dataset.ids(frequency)).split('ids')
-
-        workflow.add(dataset.source_task(inputs=input_names,
-                                         frequency=frequency,
-                                         id=workflow.lzin.ids))
-
-        app_outs = cls.add_app_task(workflow, args, input_names, output_names)
-            
-        workflow.add(dataset.sink_task(outputs=output_names,
-                                       id=workflow.lzin.ids,
-                                       **app_outs))
+        cls.add_app_task(workflow, args)
 
         if not args.dry_run:
             workflow.run()
+
+    @classmethod
+    def parse_inputs(cls, args):
+
+        frequency = cls.parse_frequency(args)
+        frequency_enum = type(frequency)
+        # Create file-group matchers
+        inputs = {}
+        defaults = (None, None, None, None, None, None, 'session')
+        for i, inpt in enumerate(args.input):
+            nargs = len(inpt)
+            if nargs > 7:
+                raise ArcanaUsageError(
+                    f"Input {i} has too many input args, {nargs} instead "
+                    f"of max 7 ({inpt})")
+            (var, pattern, file_format, order, quality, header_vals, freq) = [
+                a if a != '*' else d
+                for a, d in zip_longest(inpt, defaults, fillvalue='*')]
+            if not var:
+                raise ArcanaUsageError(
+                    f"{cls.VAR_ARG} must be provided for input {i} ({inpt})")
+            if not pattern:
+                raise ArcanaUsageError(
+                    f"Path must be provided for input {i} ({inpt})")
+            if not file_format:
+                raise ArcanaUsageError(
+                    f"Datatype must be provided for input {i} ({inpt})")
+            inputs[var] = FileGroupSelector(
+                name_path=pattern, format=ff.get_format(file_format),
+                frequency=frequency_enum[freq], order=order,
+                header_vals=header_vals, is_regex=True,
+                acceptable_quality=quality)
+        return inputs
+
+    @classmethod
+    def parse_outputs(cls, args):
+        frequency = cls.parse_frequency(args)
+        # Create outputs
+        outputs = {}
+        defaults = (ff.niftix_gz, None)
+        for i, output in enumerate(args.field_output):
+            nargs = len(output)
+            if nargs < 2:
+                raise ArcanaUsageError(
+                    f"Field Output {i} requires at least 2 args, "
+                    f"found {nargs} ({output})")
+            if nargs> 4:
+                raise ArcanaUsageError(
+                    f"Field Output {i} has too many input args, {nargs} "
+                    f"instead of max 4 ({output})")
+            (var, store_at, file_format) = output + defaults[nargs - 2:]
+            outputs[var] = FileGroupSpec(
+                path=store_at,
+                format=ff.get_format(file_format),
+                frequency=frequency)
+        return outputs
+
+    @classmethod
+    def parse_required_formats(cls, args):
+        required = {}
+        for inpt, frmt in args.required_format:
+            required[inpt] = ff.get_format(frmt)
+        return required
+
+    @classmethod
+    def parse_produced_formats(cls, args):
+        produced = {}
+        for inpt, frmt in args.produced_format:
+            produced[inpt] = ff.get_format(frmt)
+        return produced
+
+        # # Create field outputs
+        # defaults = (str, 'session')
+        # for i, inpt in enumerate(args.field_input):
+        #     nargs = len(output)
+        #     if nargs < 2:
+        #         raise ArcanaUsageError(
+        #             f"Field Input {i} requires at least 2 args, "
+        #             f"found {nargs} ({inpt})")
+        #     if nargs > 4:
+        #         raise ArcanaUsageError(
+        #             f"Field Input {i} has too many input args, {nargs} "
+        #             f"instead of max 4 ({inpt})")
+        #     path, name, dtype, freq = inpt + defaults[nargs - 2:]
+        #     output_names[name] = path
+        #     outputs[name] = FieldSpec(dtype=dtype,
+        #                               frequency=frequency_enum[freq])
+
+
+    INPUT_HELP = """
+        A file-group input to provide to the app that is matched by the 
+        provided criteria.
+        {var_desc}
+
+        PATH the name regular expression (in Python syntax) of file-group or
+        field name
+
+        FORMAT is the name or extension of the file-format the
+        input is stored in in the dataset. 
+
+        REQUIRED_FORMAT is the format that the app requires the input in.
+        If different from the FORMAT, an implicit conversions will
+                        be attempted when required. The default is
+                        'niftix_gz', which is the g-zipped NIfTI image file
+                        + JSON side-car required for BIDS 
+
+        Alternative criteria can be used to match the file-group (e.g. scan)
+        
+        ORDER is the order of the scan in the session to select if more than
+        one match the other criteria. E.g. an order of '2' with a pattern of
+        '.*bold.*' could match the second T1-weighted scan in the session
+        
+        QUALITY is the the minimum usuable quality to be considered for a match.
+        Can be one of 'usable', 'questionable' or 'unusable'
+
+        semicolon-separated list of header_vals values
+                        in NAME:VALUE form. For DICOM headers
+                        NAME is the numeric values of the DICOM tag, e.g
+                        (0008,0008) -> 00080008
+            frequency - The frequency of the file-group within the dataset.
+                        Can be either 'dataset', 'group', 'subject',
+                        'timepoint', 'session', 'unique_subject', 'group_visit'
+                        or 'subject_timepoint'. Typically only required for
+                        derivatives
+
+        Trailing args can be dropped if default, 
+
+            e.g. --input in_file 't1_mprage.*'
+            
+        Preceding args that aren't required can be replaced by '*', 
+
+            --input in_file.nii.gz 't1_mprage.*' * * questionable"""
+
+
+    OUTPUT_HELP = """The outputs produced by the app to be stored in the "
+        repository.
+        {var_desc}
+
+        The STORE_AT arg specifies where the output should be stored within
+        the data node of the dataset in the repository.
+
+        FORMAT is the name of the file-format the file will be stored at in
+        the dataset.
+        """
 
 
 class RunAppCmd(BaseRunCmd):
@@ -63,28 +235,30 @@ class RunAppCmd(BaseRunCmd):
             'app',
             help=("The path to a Pydra interface that wraps the app "
                   "convenience the 'pydra.tasks' prefix can be omitted "
-                  "(e.g. fsl.preprocess.first.First)"))
+                  "(e.g. fsl.preprocess.first.First)"))        
         parser.add_argument(
             '--frequency', '-f', default='session',
             help=("The level at which the analysis is performed. One of (per) "
                   "dataset, group, subject, timepoint, group_timepoint or "
-                  "session"))        
-        super().construct_parser(parser)
+                  "session"))
         parser.add_argument(
-            '--app_arg', '-a', nargs=2, metavar=('NAME', 'VAL'),
+            '--app_arg', '-a', metavar=('FLAG',),
             action='append', default=[],
-            help=("Flag to pass to the app interface."))
+            help=("Flag to pass to the app interface"))
+        super().construct_parser(parser)
 
     @classmethod
-    def add_app_task(cls, workflow, args, input_paths, output_paths):
+    def add_app_task(cls, workflow, args, inputs, outputs):
         task_cls = resolve_class(args.app, prefixes=['pydra.tasks'])
-        app_args = cls.parse_app_args(args, task_cls)
-        app_args.update((n, getattr(workflow.source.lzout, 'n'))
-                        for n in input_paths)
-        workflow.add(task_cls(name='app',
-                              **app_args))
-        return {n: getattr(workflow.app.lzout, n) for n in output_paths}
 
+        app_args = cls.parse_app_args(args, task_cls)
+        for inpt in inputs:
+            app_args[inpt] = getattr(workflow.lzin, inpt)
+
+        workflow.add(task_cls(name='app', **app_args))
+
+        for output in outputs:
+            setattr(workflow.sink, output, getattr(workflow.app.lzout, output))
 
     @classmethod
     def parse_app_args(cls, args, task_cls):
@@ -134,18 +308,17 @@ class RunAppCmd(BaseRunCmd):
     def app_name(cls, args):
         return args.app.split('.')[-1].lower()
 
-    PATH_DESC = """
-        The NAME argument is the name of the input in the Pydra
-        interface that wraps the app."""
+    VAR_ARG = 'INTERFACE_NAME'
 
-    FIELD_PATH_DESC = """
-        The NAME argument is the name of the input in the Pydra
-        interface that wraps the app"""
+    PATH = f"""
+        The {VAR_ARG} is the attribute in the Pydra interface to connect
+        the input to.
+    """
 
 
     @classmethod
     def parse_frequency(cls, args):
-        return args.frequency
+        return cls.parse_frequency_enum(args)[args.frequency]
 
 
 class RunBidsAppCmd(BaseRunCmd):
@@ -161,39 +334,32 @@ class RunBidsAppCmd(BaseRunCmd):
             '--analysis_level', default='participant',
             help=("The level at which the analysis is performed. One of (per) "
                   "dataset, group, subject, timepoint or session"))
-        super().construct_parser(parser)
         parser.add_argument(
             '--flags', '-f', default='',
             help=("Arbitrary flags to pass onto the BIDS app (enclose in "
                   "quotation marks)"))
+        super().construct_parser(parser)
+
+
 
     @classmethod
-    def parse_frequency(cls, args):
-        if args.analysis_level == 'particpant':
-            frequency = 'session'
-        elif args.analysis_level == 'group':
-            frequency = 'group'
-        else:
-            raise ArcanaUsageError(
-                "Unrecognised analysis level '{}'".format(args.analysis_level))
+    def add_app_task(cls, workflow, args, inputs, outputs):
 
-    @classmethod
-    def add_app_task(cls, workflow, args, input_paths, output_paths):
         workflow.add(construct_bids(name='construct_bids',
-                     input_paths=input_paths))
-        args = [args.analysis_level]
-        if args.ids:
-            args.append('--participant_label ' + ' '.join(args.ids))
-        args.append(args.flags)
-        workflow.add(ShellCommandTask(
-            name='app',
-            executable=args.entrypoint,
-            args=' '.join(args),
-            container_info=args.container))
+                                    inputs=workflow.lzin.inputs))
+
+        workflow.add(bids_app(name='app',
+                              app_name=args.app,
+                              bids_dir=workflow.construct_bids.lzout.bids_dir,
+                              analysis_level=args.analysis_level,
+                              ids=args.ids,
+                              flags=args.flags))
+
         workflow.add(extract_bids(name='extract_bids',
-                                  output_paths=output_paths))
-        return {n: getattr(workflow.extract_bids.lzout, n)
-                for n in output_paths}
+                                  bids_dir=workflow.app.lzout.bids_dir,
+                                  outputs=workflow.lzin.outputs))
+
+        workflow.sink.outputs = workflow.extract_bids.lzout.outputs
 
     @classmethod
     def app_name(cls, args):
@@ -203,32 +369,26 @@ class RunBidsAppCmd(BaseRunCmd):
             name = args.entrypoint
         return name
 
-    PATH_DESC = """
-        The PATH to place the input within the constructed BIDS dataset,
-        with the file extension and subject and session sub-dirs
-        entities omitted, e.g:
+
+    VAR_ARG = 'INTERFACE_NAME'
+
+    VAR_DESC = f"""
+        The {VAR_ARG} is the path the that the file/field should be
+        located within the constructed BIDS dataset with the file extension
+        and subject and session sub-dirs entities omitted, e.g:
 
             anat/T1w
 
         for Session 1 of Subject 1 would be placed at the path
             
-            sub-01/anat/ses-01/sub-01_ses-01_T1w.nii.gz
-    """
+            sub-01/ses-01/anat/sub-01_ses-01_T1w.nii.gz
 
-    FIELD_PATH_DESC = """
-        By default the PATH argument is taken to the name of the
-        input in the Pydra interface of the app. If '--bids' flag
-        is used, the PATH argument is taken to be the path to
-        JSON file within the constructed BIDS dataset to place the
-        field, omitting subect, session dirs and entities, and the
-        '.json' extension, appended by the path to the field within
-        the JSON using JSON path syntax path e.g.
+        Field datatypes should also specify where they are stored in the
+        corresponding JSON side-cars using JSON path syntax, e.g.
 
             anat/T1w$ImageOrientationPatientDICOM[1]
 
-        for Session 1 of Subject 1 would be placed in the second
-        element of the "ImageOrientationPatientDICOM" array in
-            
-            sub-01/anat/ses-01/sub-01_ses-01_T1w.json
+        will be stored as the second item in the
+        'ImageOrientationPatientDICOM' array in the JSON side car at
 
-                    anat/T1w"""
+            sub-01/ses-01/anat/sub-01_ses-01_T1w.json"""

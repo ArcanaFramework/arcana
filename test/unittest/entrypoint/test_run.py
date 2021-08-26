@@ -39,7 +39,7 @@ class TestRunApp(TestCase):
         args.ids = None
         args.container = None
         args.id_inference = None
-        args.dataset_structure = 'Clinical'
+        args.frequency_enum = 'ClinicalTrial'
         args.dry_run = False
         args.frequency = 'session'
         args.app_arg = []

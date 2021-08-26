@@ -21,7 +21,7 @@ from arcana2.exceptions import (
     ArcanaInsufficientRepoDepthError)
 from arcana2.utils import get_class_info, HOSTNAME, split_extension
 from ..dataset import Dataset
-from ..frequency import Clinical, DataFrequency
+from ..frequency import ClinicalTrial, DataFrequency
 from .base import Repository
 
 
@@ -300,7 +300,7 @@ class FileSystemDir(Repository):
                                  
 
 
-def single_dataset(path: str, tree_structure: DataFrequency=Clinical,
+def single_dataset(path: str, tree_structure: DataFrequency=ClinicalTrial,
                    **kwargs) -> Dataset:
     """
     Creates a Dataset from a file system path to a directory

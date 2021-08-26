@@ -8,7 +8,7 @@ from arcana2.exceptions import (
     ArcanaRepositoryError)
 from arcana2.utils import split_extension
 from arcana2.exceptions import ArcanaUsageError
-from ..frequency import Clinical
+from ..frequency import ClinicalTrial
 from .xnat import Xnat
 
 
@@ -38,10 +38,10 @@ class XnatCS(Xnat):
 
 
 def make_command_json(image_name, analysis_cls, inputs, outputs,
-                      parameters, desc, frequency=Clinical.session,
+                      parameters, desc, frequency=ClinicalTrial.session,
                       docker_index="https://index.docker.io/v1/"):
 
-    if frequency != Clinical.session:
+    if frequency != ClinicalTrial.session:
         raise NotImplementedError(
             "Support for frequencies other than '{}' haven't been "
             "implemented yet".format(frequency))
@@ -112,7 +112,7 @@ def make_command_json(image_name, analysis_cls, inputs, outputs,
             params=' '.join('-p {} #{}_PARAM#'.format(p, p.upper())
                             for p in parameters)))
 
-    if frequency == Clinical.session:
+    if frequency == ClinicalTrial.session:
         cmd_inputs.append(
             {
                 "name": "session-id",
