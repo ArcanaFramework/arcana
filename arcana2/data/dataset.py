@@ -16,11 +16,11 @@ from arcana2.exceptions import (
 from .item import UnresolvedFileGroup, UnresolvedField, DataItem
 from .frequency import DataFrequency
 from .file_format import FileFormat
+from .selector import DataSelector
 from .spec import FileGroupSpec, FieldSpec
 
 
 logger = logging.getLogger('arcana')
-
 
 class Dataset():
     """
@@ -280,7 +280,10 @@ class Dataset():
                     str(i) for i in self.root_node.subnodes[frequency]))
 
     def nodes(self, frequency):
-        return self.root_node.subnodes[frequency]
+        return self.root_node.subnodes[frequency].values()
+        
+    def node_ids(self, frequency):
+        return self.root_node.subnodes[frequency].keys()
 
     def add_node(self, frequency, ids):
         """Adds a node to the dataset, creating references to upper and lower
@@ -601,52 +604,148 @@ class Dataset():
 
         return outer_workflow
 
-    def workflow(self, inputs, outputs, frequency, ids):
+    def workflow(self, name, inputs, outputs, frequency, ids,
+                 required_formats=None, produced_formats=None):
         """Generate a Pydra task that sources the specified inputs from the
         dataset
 
         Parameters
         ----------
+        name : str
+            A name for the workflow (must be globally unique)
         inputs : Sequence[str]
             The inputs to be sourced from the dataset
+        outputs : Sequence[str]
+            The outputs to be sinked into the dataset
         frequency : DataFrequency
             The frequency of the nodes to draw the inputs from
-        id : str
-            The ID of the node to draw the inputs from
+        ids : Sequence[str]
+            The sequence of IDs of the data nodes to include in the workflow
+        required_formats : Dict[str, FileFormat]
+            The required file formats for any inputs that need to be converted
+            before they are used by the workflow
+        produced_formats : Dict[str, FileFormat]
+            The produced file formats for any outputs that need to be converted
+            before storing in the dataset
         """
+
+        if ids is None:
+            ids = list(self.data_nodes(frequency))
+            
+        workflow = Workflow(name=name, input_spec=['id'],
+                            inputs=[(ids,)]).split('ids')
+
+        inputs_spec = {
+            i: (DataItem if (frequency == i.frequency
+                             or frequency.is_child(i.frequency))
+                else ty.Sequence[DataItem])
+            for i in inputs}
+
+        outputs_spec = {o: DataItem for o in outputs}
 
         @mark.task
-        def source():
+        @mark.annotate(
+            {'dataset': Dataset,
+             'frequency': DataFrequency,
+             'id': str,
+             'inputs': ty.Sequence[DataSelector],
+             'return': inputs_spec})
+        def retrieve(dataset, id, frequency, inputs):
+            """Selects the items from the dataset corresponding to the input 
+            selectors and retrieves them from the repository to a cache on 
+            the host"""
             outputs = []
-            with self:
-                for file_group_column in self.file_group_columns:
-                    file_group = file_group_column.item(
-                        subject_id, timepoint_id)
-                    file_group.get()
-                    outputs[file_group_column.name +
-                            PATH_SUFFIX] = file_group.path
-                    outputs[file_group_column.name
-                            + CHECKSUM_SUFFIX] = file_group.checksums
-                for field_column in self.field_columns:
-                    field = field_column.item(subject_id, timepoint_id)
-                    field.get()
-                    outputs[field_column.name + FIELD_SUFFIX] = field.value
-            return outputs
-        return source
+            data_node = dataset.node(frequency, id)
+            with dataset.repository:
+                for inpt in inputs:
+                    item = inpt.match(data_node)
+                    item.get()  # download to host if required
+                    outputs.append(item)
+            return tuple(outputs)
 
-    def sink_task(self, outputs, id):
-        """Generate a Pydra task that sinks the specified outputs to the
-        dataset
+        workflow.add(retrieve(
+            name='retrieve', frequency=frequency, inputs=inputs,
+            id=workflow.lzin.id))
 
-        Parameters
-        ----------
-        outputs : Sequence[str]
-            The outputs to be stored in the dataset, must be of the same
-            frequency (e.g. all per-subject or all per-session)
-        id : str
-            The ID of the node to draw the inputs from
-        """
-        raise NotImplementedError
+        selected = {i: getattr(workflow.source.lzout, i) for i in inputs}
+
+        # Do format conversions if required
+        for inpt_name, required_format in required_formats.items():
+            inpt_format = inputs[inpt_name].format
+            if required_format != inpt_format:
+                cname = f"{inpt_name}_input_converter"
+                converter_task = required_format.converter(inpt_format)(
+                    name=cname, to_convert=selected[inpt_name])
+                if inputs_spec[inpt_name] == ty.Sequence[DataItem]:
+                    # Iterate over all items in the sequence and convert them
+                    converter_task.split('to_convert')
+                # Insert converter
+                workflow.add(converter_task)
+                # Map converter output to workflow output
+                selected[inpt_name] = getattr(workflow, cname).lzout.converted
+
+        
+
+        # Can't use a decorated function as we need to allow for dynamic
+        # arguments
+        workflow.add(
+            FunctionTask(
+                identity,
+                input_spec=SpecInfo(
+                    name='SourceInputs', bases=(BaseSpec,),
+                    fields=list(inputs_spec.items())),
+                output_spec=SpecInfo(
+                    name='SourceOutputs', bases=(BaseSpec,),
+                    fields=list(inputs_spec.items())))(name='source',
+                                                       **selected))
+
+        # Can't use a decorated function as we need to allow for dynamic
+        # arguments
+        workflow.add(
+            FunctionTask(
+                identity,
+                input_spec=SpecInfo(
+                    name='SinkInputs', bases=(BaseSpec,),
+                    fields=list(outputs_spec.items())),
+                output_spec=SpecInfo(
+                    name='SinkOutputs', bases=(BaseSpec,),
+                    fields=list(outputs_spec.items()))))(name='sink')
+
+        sinked = {o: getattr(workflow.sink, o) for o in outputs}
+
+        # Do format conversions if required
+        for outpt_name, produced_format in produced_formats.items():
+            outpt_format = outputs[outpt_name].format
+            if produced_format != outpt_format:
+                cname = f"{outpt_name}_input_converter"
+                # Insert converter
+                workflow.add(outpt_format.converter(produced_format)(
+                    name=cname, to_convert=sinked[outpt_name]))
+                # Map converter output to workflow output
+                sinked[outpt_name] = getattr(workflow, cname).lzout.converted        
+
+        def store(data_node, **to_sink):
+            with data_node.dataset:
+                for col_name, item in to_sink.items():
+                    node_item = data_node.set_item(col_name, item)
+                    node_item.put()
+            return data_node
+
+        # Can't use a decorated function as we need to allow for dynamic
+        # arguments
+        workflow.add(
+            FunctionTask(
+                store,
+                input_spec=SpecInfo(
+                    name='SinkInputs', bases=(BaseSpec,), fields=(
+                        [('dataset', Dataset)] + list(outputs_spec.items()))),
+                output_spec=SpecInfo(
+                    name='SinkOutputs', bases=(BaseSpec,), fields=[
+                        ('data_node', DataNode)]))(name='store', **sinked))
+
+        workflow.set_output(('data_nodes', store.lzout.data_node))
+
+        return workflow
 
 
 class DataNode():
@@ -888,3 +987,8 @@ class MultiDataset(Dataset):
 
     def __init__(self):
         raise NotImplemented
+
+
+def identity(**kwargs):
+    "Returns the keyword arguments as a tuple"
+    return tuple(kwargs.values())

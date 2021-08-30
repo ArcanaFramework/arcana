@@ -80,7 +80,30 @@ class BaseRunCmd(BaseDatasetCmd):
 
     @classmethod
     def parse_inputs(cls, args):
+        """Parses input arguments into dictionary of DataSelectors
 
+        Parameters
+        ----------
+        args : ArgumentParser.namespace
+            The parsed arguments from a ArgumentParser.parse_args() method
+
+        Returns
+        -------
+        Dict[str, DataSelector]
+            A dictionary of the specified inputs with the data-selectors to 
+            chose the relevant files/fields from the dataset
+
+        Raises
+        ------
+        ArcanaUsageError
+            If too many arguments are provided to the `--input` arg (max 7)
+        ArcanaUsageError
+            If the VAR_ARG is not provided to the input
+        ArcanaUsageError
+            If a path pattern is not provided
+        ArcanaUsageError
+            If a file_format is not provided
+        """
         frequency = cls.parse_frequency(args)
         frequency_enum = type(frequency)
         # Create file-group matchers
@@ -113,20 +136,25 @@ class BaseRunCmd(BaseDatasetCmd):
 
     @classmethod
     def parse_outputs(cls, args):
+        """Parses output arguments into dictionary of DataSpecs
+
+        Parameters
+        ----------
+        args : ArgumentParser.namespace
+            The parsed arguments from a ArgumentParser.parse_args() method
+
+        Returns
+        -------
+        Dict[str, DataSelector]
+            A dictionary of the specified outputs with the data-specs that
+            specify where outputs are stored in the dataset
+        """
         frequency = cls.parse_frequency(args)
         # Create outputs
         outputs = {}
         defaults = (ff.niftix_gz, None)
         for i, output in enumerate(args.field_output):
             nargs = len(output)
-            if nargs < 2:
-                raise ArcanaUsageError(
-                    f"Field Output {i} requires at least 2 args, "
-                    f"found {nargs} ({output})")
-            if nargs> 4:
-                raise ArcanaUsageError(
-                    f"Field Output {i} has too many input args, {nargs} "
-                    f"instead of max 4 ({output})")
             (var, store_at, file_format) = output + defaults[nargs - 2:]
             outputs[var] = FileGroupSpec(
                 path=store_at,
@@ -253,7 +281,7 @@ class RunAppCmd(BaseRunCmd):
 
         app_args = cls.parse_app_args(args, task_cls)
         for inpt in inputs:
-            app_args[inpt] = getattr(workflow.lzin, inpt)
+            app_args[inpt] = getattr(workflow.source, inpt)
 
         workflow.add(task_cls(name='app', **app_args))
 

@@ -71,6 +71,24 @@ class DataFrequency(Enum):
             layer += b.value
             yield layer
 
+    def is_child(self, parent):
+        """Checks to see whether all bases of the data frequency appear in the
+        child frequency. For example, 'subject' is a parent of 'session' but
+        'group' is not a parent of 'timepoint' and 'subject' is not a parent
+        of 'group'.
+
+        Parameters
+        ----------
+        other : [type]
+            [description]
+
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        return bool(set(parent.basis) - set(self.basis))
+
 
 class ClinicalTrial(DataFrequency):
     """
@@ -85,7 +103,8 @@ class ClinicalTrial(DataFrequency):
     group = 0b100  # subject groups
     member = 0b010  # subjects relative to their group membership, i.e.
                     # matched pairs of test and control subjects will share the
-                    # same member IDs
+                    # same member IDs. Equivalent to subjects in dataset with
+                    # only one group.
     timepoint = 0b001  # time-points in longitudinal studies
 
     # Commonly used combinations

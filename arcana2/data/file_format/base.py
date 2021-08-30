@@ -228,7 +228,7 @@ class FileFormat(object):
 
         def converter(name, **kwargs):
             # Create a workflow to perform the conversion
-            wf = Workflow(name=name, input_spec=['in_file'])
+            wf = Workflow(name=name, input_spec=['to_convert'])
 
             @mark.task
             @mark.annotate(
@@ -244,7 +244,7 @@ class FileFormat(object):
 
             # Add task collect the input paths to a common directory (as we
             # assume the converter expects)
-            wf.add(get_paths(name='get_paths', in_file=wf.lzin.in_file))
+            wf.add(get_paths(name='get_paths', in_file=wf.lzin.to_convert))
 
             # Add the actual converter node
             conv_kwargs = {inputs[i]:
@@ -267,7 +267,7 @@ class FileFormat(object):
                 file_path = file_paths.pop('path')
                 aux_files = file_paths if file_paths else None
                 return self.from_path(file_path, aux_files=aux_files,
-                                    format=file_format)
+                                      format=file_format)
 
             # Can't use the mark.annotate decorator with kwarg signature
             collect_paths.__annotations__.update(collect_path_annotations)
@@ -282,7 +282,7 @@ class FileFormat(object):
                     for o in outputs}))
 
             # Set the outputs of the workflow
-            wf.set_output(('out_file', wf.collect_paths.lzout.file_group))
+            wf.set_output(('converted', wf.collect_paths.lzout.file_group))
 
             return wf
 
