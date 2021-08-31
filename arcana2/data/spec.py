@@ -47,7 +47,6 @@ class DataSpec():
                                  other.frequency))
         return mismatch
 
-
 class FileGroupSpec(FileGroupMixin, DataSpec):
     """
     A specification for a file group within a analysis to be derived from a

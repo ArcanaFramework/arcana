@@ -17,7 +17,7 @@ from .item import UnresolvedFileGroup, UnresolvedField, DataItem
 from .frequency import DataFrequency
 from .file_format import FileFormat
 from .selector import DataSelector
-from .spec import FileGroupSpec, FieldSpec
+from .spec import FileGroupSpec, FieldSpec, DataSpec
 
 
 logger = logging.getLogger('arcana')
@@ -85,6 +85,7 @@ class Dataset():
                 f"that of repository {self.frequency_enum}")
         self.selectors = selectors
         self.derivatives = derivatives if derivatives else {}
+        self.workflows = {}
         if overlapping := (set(self.selectors) & set(self.derivatives)):
             raise ArcanaUsageError(
                 "Name-path clashes between selectors and derivatives ("
@@ -379,233 +380,9 @@ class Dataset():
     def root_frequency(self):
         return self.frequency_enum(0)
 
-    def connect(self, workflow, input_map=None, output_map=None, formats=None,
-                skip_missing=False):
-        """
-        Connects a workflow to the dataset by prepending nodes to select,
-        download and convert (if necessary) data and connect it to the input
-        of the workflow, then stores the output of the workflow back in the
-        dataset.
-
-        Parameters
-        ----------
-        workflow : pydra.Workflow
-            The workflow to connect to the dataset.
-        input_map : Dict[str, str]
-            Mapping from a column names (values) to inputs of the workflow
-            (keys). If an auxiliary file is required the name of the
-            aux file is appended to the column name after a '.', e.g.
-            magnitude.json
-        output_map : Dict[str, str]
-            Mapping from outputs of the workflow (values) to column names
-            (keys). If an auxiliary file is generated in a non-standard path,
-            (i.e. exactly the same path as the primary file except for file
-            extension), the path to the aux file can be specified explicitly by
-            appending name of the aux file to the column name after a '.',
-            e.g. magnitude.json
-        formats : Dict[str, FileFormat or type]
-            Specify columns that need to be converted to/from the format
-            that is stored in the dataset to interoperate with the workflow
-        skip_missing : bool
-            Whether to quietly skip data nodes which don't have matches for the
-            requested input columns (otherwise raise an error)
-
-        Returns
-        -------
-        pydra.Workflow
-            An outer workflow that wraps the given workflow and connects it to
-            the dataset
-        """
-
-        if input_map is not None:
-            input_names = [c.split('.')[0] for c in input_map.values()]
-        else:
-            input_names = workflow.input_names
-
-        if output_map is not None:
-            output_names = [c.split('.')[0] for c in output_map]
-        else:
-            output_names = workflow.output_names
-
-        if invalid_inputs := set(input_names) - set(self.column_names):
-            raise ArcanaUsageError(
-                "Workflow inputs '" + "', '".join(invalid_inputs)
-                + "' are not present in the dataset ('"
-                + "', '".join(self.column_names) + "')")
-
-        if invalid_outputs := set(output_names) - set(self.derivatvies):
-            raise ArcanaUsageError(
-                "Workflow outputs '"
-                + "', '".join(invalid_outputs)
-                + "' are not present in the dataset derivatives ('"
-                + "', '".join(self.derivatives) + "')")
-
-        frequencies = set(self.column(o).frequency for o in workflow.outputs)
-        if len(frequencies) > 1:
-            raise ArcanaUsageError(
-                "Inconsitent frequencies found in workflow outputs: "
-                + ", ".join(frequencies))
-        frequency = next(iter(frequencies))
-
-        if unrecognised_formats := set(formats) - (set(input_names) |
-                                                   set(output_names)):
-            raise ArcanaUsageError(
-                "Unrecognised formats '"
-                + "', '".join(unrecognised_formats)
-                + "'that are not referenced by the workflow ("
-                + "', '".join(set(input_names) | set(output_names)) + ')')
-
-        # We create an outer workflow that splits over data nodes at the
-        # of the specified frequency and includes nodes to source inputs,
-        # convert formats and sink outputs of the inner workflow
-        outer_workflow = Workflow(
-            name=f'{workflow.name}_connected_to_{self.name}')
-
-        @mark.task
-        @mark.annotate(
-            {'dataset': Dataset,
-             'frequency': DataFrequency,
-             'input_names': ty.Sequence[str],
-             'skip_missing': bool,
-             'return': {
-                 'data_nodes': ty.Sequence[DataNode]}})
-        def select(dataset, frequency, input_names, skip_missing):
-            "Selects inputs from the dataset using the provided `selectors`"
-            selected_nodes = []
-            for node in dataset.nodes(frequency):
-                try:
-                    for inpt in input_names:
-                        dataset.column(inpt).match(node)
-                except ArcanaSelectionError:
-                    if not skip_missing:
-                        raise
-                selected_nodes.append(node)
-            return selected_nodes
-
-        outer_workflow.add(select(name='select',
-                                  dataset=self,
-                                  input_names=list(workflow.inputs),
-                                  skip_missing=skip_missing,
-                                  frequency=frequency))
-
-        # Create a workflow that sits between the outer workflow
-        # but outside the "inner" workflow provided to the method. This
-        # workflow will be split over the data-nodes returned by the select
-        # task
-        split_workflow = Workflow(input_spec=['data_node'])
-
-        @mark.task
-        @mark.annotate(
-            {'data_node': DataNode,
-             'column_names': ty.Sequence[str],
-             'return': {i: DataItem for i in input_names}})
-        def source(data_node, column_names):
-            outputs = []
-            with data_node.dataset:
-                for col_name in column_names:
-                    item = data_node.item(col_name)
-                    item.get()
-                    outputs.append(item)
-            return tuple(outputs)
-
-        split_workflow.add(source(
-            name='source', data_node=workflow.lzin.data_node,
-            column_names=input_names))
-
-        # Do format conversions if required
-        wf_source = {}
-        for col_name in input_names:
-            sourced = getattr(workflow.download.lzout, col_name)
-            col_format = self.column(col_name).format
-            try:
-                required_format = formats[col_name]
-            except KeyError:
-                required_format = col_format
-            if required_format != col_format:
-                # Get converter node
-                converter = required_format.converter(col_format)
-                converter_name = f"{col_name}_input_converter"
-                # Insert converter
-                split_workflow.add(converter(
-                    name=converter_name,
-                    in_file=sourced))
-                # Map converter output to workflow output
-                converted = getattr(split_workflow,
-                                    converter_name).lzout.out_file
-            else:
-                converted = sourced
-            if input_map is not None:
-                pass
-                # Map download directly to output (i.e. without conversion)
-            wf_source[col_name] = sourced
-
-        split_workflow.add(workflow(**wf_source))
-
-        # Do format conversions if required
-        wf_sink = {}
-        for col_name in output_names:
-            wf_output = getattr(workflow.lzout, col_name)
-            col_format = self.column(col_name).format
-            try:
-                produced_format = formats[col_name]
-            except KeyError:
-                produced_format = col_format
-            if produced_format != col_format:
-                # Get converter node
-                converter = col_format.converter(produced_format)
-                converter_name = f"{col_name}_output_converter"
-                # Insert converter
-                split_workflow.add(converter(
-                    name=converter_name,
-                    in_file=wf_output))
-                # Map converter output to workflow output
-                wf_sink[col_name] = getattr(split_workflow,
-                                            converter_name).lzout.out_file
-            else:
-                # Map download directly to output (i.e. without conversion)
-                wf_sink[col_name] = wf_output
-
-        def sink(data_node, **to_sink):
-            with data_node.dataset:
-                for col_name, item in to_sink.items():
-                    node_item = data_node.set_item(col_name, item)
-                    node_item.put()
-            return data_node
-
-        # Can't use a decorated function as we need to allow for dynamic
-        # arguments
-        sink_task = FunctionTask(
-            sink,
-            input_spec=SpecInfo(
-                name='SinkInputs', bases=(BaseSpec,), fields=(
-                    [('dataset', Dataset)]
-                    + [(s, DataItem) for s in wf_sink])),
-            output_spec=SpecInfo(
-                name='SinkOutputs', bases=(BaseSpec,), fields=[
-                    ('data_node', DataNode)]))
-
-        split_workflow.add(sink_task(
-            name='sink', data_node=split_workflow.lzin.data_node, **wf_sink))
-
-        split_workflow.set_output(('data_node',
-                                   split_workflow.sink.lzout.data_node))
-
-        split_workflow_name = f'{workflow.name}_per_{frequency}'
-
-        outer_workflow.add(
-            split_workflow(
-                name=split_workflow_name,
-                data_node=outer_workflow.select.lzout.data_nodes)
-            .split('data_node').combine('data_node'))
-
-        outer_workflow.set_output(
-            ('data_nodes',
-             getattr(outer_workflow, split_workflow_name).lzout.data_node))
-
-        return outer_workflow
-
     def workflow(self, name, inputs, outputs, frequency, ids,
-                 required_formats=None, produced_formats=None):
+                 required_formats=None, produced_formats=None,
+                 overwrite=False):
         """Generate a Pydra task that sources the specified inputs from the
         dataset
 
@@ -613,9 +390,9 @@ class Dataset():
         ----------
         name : str
             A name for the workflow (must be globally unique)
-        inputs : Sequence[str]
+        inputs : Sequence[DataSelector]
             The inputs to be sourced from the dataset
-        outputs : Sequence[str]
+        outputs : Sequence[DataSpec]
             The outputs to be sinked into the dataset
         frequency : DataFrequency
             The frequency of the nodes to draw the inputs from
@@ -641,33 +418,61 @@ class Dataset():
                 else ty.Sequence[DataItem])
             for i in inputs}
 
+        self.selectors.update()
+
+        for inpt_name, selector in inputs.items():
+            if inpt_name in self.selectors:
+                if overwrite:
+                    logger.info(
+                        f"Overwriting selector '{inpt_name}'")
+                else:
+                    raise ArcanaUsageError(
+                        f"Attempting to overwriting '{inpt_name}' selector "
+                        f"with output from workflow '{name}'. Use 'overwrite' "
+                        "option if this is desired")
+            self.selectors[inpt_name] = selector
+
         outputs_spec = {o: DataItem for o in outputs}
+
+        for out_name, out_spec in outputs.items():
+            if out_name in self.derivatives:
+                if overwrite:
+                    logger.info(
+                        f"Overwriting derivative '{out_name}' with workflow "
+                        f"'{name}'")
+                else:
+                    raise ArcanaUsageError(
+                        f"Attempting to overwriting '{out_name}' derivative "
+                        f"with workflow '{name}'. Use 'overwrite' option "
+                        "if this is desired")
+            self.derivatives[out_name] = out_spec
+            self.workflows[out_name] = workflow
 
         @mark.task
         @mark.annotate(
             {'dataset': Dataset,
              'frequency': DataFrequency,
              'id': str,
-             'inputs': ty.Sequence[DataSelector],
+             'input_names': ty.Sequence[str],
              'return': inputs_spec})
-        def retrieve(dataset, id, frequency, inputs):
+        def retrieve(dataset, frequency, id, input_names):
             """Selects the items from the dataset corresponding to the input 
             selectors and retrieves them from the repository to a cache on 
             the host"""
             outputs = []
             data_node = dataset.node(frequency, id)
             with dataset.repository:
-                for inpt in inputs:
-                    item = inpt.match(data_node)
+                for inpt_name in input_names:
+                    item = data_node[inpt_name]
                     item.get()  # download to host if required
                     outputs.append(item)
             return tuple(outputs)
 
         workflow.add(retrieve(
-            name='retrieve', frequency=frequency, inputs=inputs,
-            id=workflow.lzin.id))
+            name='retrieve', dataset=self, frequency=frequency,
+            inputs=list(inputs), id=workflow.lzin.id))
 
-        selected = {i: getattr(workflow.source.lzout, i) for i in inputs}
+        retrieved = {i: getattr(workflow.retrieve.lzout, i) for i in inputs}
 
         # Do format conversions if required
         for inpt_name, required_format in required_formats.items():
@@ -675,16 +480,14 @@ class Dataset():
             if required_format != inpt_format:
                 cname = f"{inpt_name}_input_converter"
                 converter_task = required_format.converter(inpt_format)(
-                    name=cname, to_convert=selected[inpt_name])
+                    name=cname, to_convert=retrieved[inpt_name])
                 if inputs_spec[inpt_name] == ty.Sequence[DataItem]:
                     # Iterate over all items in the sequence and convert them
                     converter_task.split('to_convert')
                 # Insert converter
                 workflow.add(converter_task)
                 # Map converter output to workflow output
-                selected[inpt_name] = getattr(workflow, cname).lzout.converted
-
-        
+                retrieved[inpt_name] = getattr(workflow, cname).lzout.converted
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
@@ -697,7 +500,7 @@ class Dataset():
                 output_spec=SpecInfo(
                     name='SourceOutputs', bases=(BaseSpec,),
                     fields=list(inputs_spec.items())))(name='source',
-                                                       **selected))
+                                                       **retrieved))
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
@@ -724,11 +527,13 @@ class Dataset():
                 # Map converter output to workflow output
                 sinked[outpt_name] = getattr(workflow, cname).lzout.converted        
 
-        def store(data_node, **to_sink):
-            with data_node.dataset:
-                for col_name, item in to_sink.items():
-                    node_item = data_node.set_item(col_name, item)
-                    node_item.put()
+        def store(dataset, frequency, id, **to_sink):
+            data_node = dataset.node(frequency, id)
+            with dataset.repository:
+                for outpt_name, outpt_value in to_sink.items():
+                    node_item = data_node[outpt_name]
+                    node_item.value = outpt_value
+                    node_item.put() # Store value/path in repository
             return data_node
 
         # Can't use a decorated function as we need to allow for dynamic
@@ -738,10 +543,19 @@ class Dataset():
                 store,
                 input_spec=SpecInfo(
                     name='SinkInputs', bases=(BaseSpec,), fields=(
-                        [('dataset', Dataset)] + list(outputs_spec.items()))),
+                        [('data_node', DataNode),
+                         ('frequency', DataFrequency),
+                         ('id', str)
+                         ('outputs', ty.Dict[str, DataSpec])]
+                        + list(outputs_spec.items()))),
                 output_spec=SpecInfo(
                     name='SinkOutputs', bases=(BaseSpec,), fields=[
-                        ('data_node', DataNode)]))(name='store', **sinked))
+                        ('data_node', DataNode)]))(
+                            name='store',
+                            dataset=self,
+                            frequency=frequency,
+                            id=workflow.lzin.id,
+                            **sinked))
 
         workflow.set_output(('data_nodes', store.lzout.data_node))
 
@@ -766,8 +580,7 @@ class DataNode():
     def __init__(self, frequency, ids, dataset):
         self.ids = ids
         self.frequency = frequency
-        self._file_groups = OrderedDict()
-        self._fields = OrderedDict()
+        self._items = {}
         self._provenances = OrderedDict()
         self.subnodes = defaultdict(dict)
         self.supranodes = {}
@@ -805,11 +618,28 @@ class DataNode():
         Parameters
         ----------
         name : str
-            Name of the selector in the parent Dataset that is used to select
-            a file-group or field in the node
+            Name of the selector or registered derivative in the parent Dataset
+            that is used to select a file-group or field in the node
         """
-
-        return self._dataset.selectors[name].match(self)
+        try:
+            item = self._items[name]
+        except KeyError:
+            if name in self.dataset.selectors:
+                item = self.dataset.selectors[name].match(self)
+            elif name in self.dataset.derivatives:
+                try:
+                    # Check to see if derivative was created previously
+                    item = self.dataset.derivatives[name].match(self)
+                except KeyError:
+                    # Create new derivative
+                    item = self.dataset.derivatives[name].create_item(self)
+            else:
+                raise ArcanaNameError(
+                    name,
+                    f"'{name}' is not the name of a \"column\" (either as a "
+                    f"selected input or derived) in the {self.dataset}")
+            self._items[name] = item
+        return item
 
     def file_group(self, name_path: str, file_format=None):
         """
@@ -865,6 +695,10 @@ class DataNode():
                 name_path, ("{} doesn't have a field named '{}' "
                             "(available '{}')").format(
                     self, name_path, "', '".join(self._fields)))
+
+    @property
+    def dataset(self):
+        return self._dataset
 
     @property
     def file_groups(self):
