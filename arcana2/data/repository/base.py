@@ -66,7 +66,7 @@ class Repository(metaclass=ABCMeta):
         ----------
         name : str
             The name, path or ID of the dataset within the repository
-        selectors : Dict[Str, DataSelector]
+        selectors : Dict[Str, DataCriteria]
             A dictionary that maps "name-paths" of input "columns" in the
             dataset to criteria in a Selector object that select the
             corresponding items in the dataset

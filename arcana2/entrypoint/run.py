@@ -80,7 +80,7 @@ class BaseRunCmd(BaseDatasetCmd):
 
     @classmethod
     def parse_inputs(cls, args):
-        """Parses input arguments into dictionary of DataSelectors
+        """Parses input arguments into dictionary of DataCriterias
 
         Parameters
         ----------
@@ -89,7 +89,7 @@ class BaseRunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        Dict[str, DataSelector]
+        Dict[str, DataCriteria]
             A dictionary of the specified inputs with the data-selectors to 
             chose the relevant files/fields from the dataset
 
@@ -131,7 +131,7 @@ class BaseRunCmd(BaseDatasetCmd):
                 name_path=pattern, format=ff.get_format(file_format),
                 frequency=frequency_enum[freq], order=order,
                 header_vals=header_vals, is_regex=True,
-                acceptable_quality=quality)
+                quality_threshold=quality)
         return inputs
 
     @classmethod
@@ -145,7 +145,7 @@ class BaseRunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        Dict[str, DataSelector]
+        Dict[str, DataCriteria]
             A dictionary of the specified outputs with the data-specs that
             specify where outputs are stored in the dataset
         """

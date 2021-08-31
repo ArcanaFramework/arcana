@@ -6,6 +6,7 @@ from copy import copy
 from collections import defaultdict
 from itertools import chain
 from collections import OrderedDict
+import attr
 from pydra import Workflow, mark
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
@@ -13,14 +14,15 @@ from arcana2.exceptions import (
     ArcanaError, ArcanaSelectionError, ArcanaNameError,
     ArcanaDataTreeConstructionError, ArcanaUsageError,
     ArcanaBadlyFormattedIDError)
-from .item import UnresolvedFileGroup, UnresolvedField, DataItem
-from .frequency import DataFrequency
+from .item import DataItem, UnresolvedDataItem
+from .enum import DataFrequency
 from .file_format import FileFormat
-from .selector import DataSelector
-from .spec import FileGroupSpec, FieldSpec, DataSpec
+from .selector import DataCriteria
+from .spec import DataSpec
 
 
 logger = logging.getLogger('arcana')
+
 
 class Dataset():
     """
@@ -168,26 +170,18 @@ class Dataset():
             self.repository.populate_tree(self, **self._populate_kwargs)
         return self._root_node
 
-    @property
-    def file_selectors(self):
-        return (s for s in self.selectors if s.is_file_group)
-
-    @property
-    def field_selectors(self):
-        return (s for s in self.selectors if s.is_field)
-
     def __ne__(self, other):
         return not (self == other)
 
-    def column_spec(self, name_path):
+    def column_spec(self, name):
         try:
-            return self.selectors[name_path]
+            return self.selectors[name]
         except KeyError:
             try:
-                return self.derivatives[name_path]
+                return self.derivatives[name]
             except KeyError:
                 raise ArcanaNameError(
-                    f"No column with the name path '{name_path}' "
+                    f"No column with the name path '{name}' "
                     "(available {})".format("', '".join(
                         list(self.selectors) + list(self.derivatives))))
 
@@ -222,15 +216,12 @@ class Dataset():
             self.frequency_enum[str(frequency)]
         except KeyError:
             raise ArcanaUsageError(
-                f"Frequency '{frequency} does not match frequency_enum of dataset "
-                f"({', '.join(str(f) for f in self.frequency_enum)})")
+                f"Frequency '{frequency} does not match frequency_enum of "
+                "dataset ({})".format(
+                    ', '.join(str(f) for f in self.frequency_enum)))
         if path is None:
             path = name
-        if hasattr(format, 'file_group_cls'):
-            spec = FileGroupSpec(path, format, frequency, **kwargs)
-        else:
-            spec = FieldSpec(path, format, frequency)
-        self.derivatives[name] = spec
+        self.derivatives[name] = DataSpec(path, format, frequency, **kwargs)
 
     def node(self, frequency, ids=None, **id_kwargs):
         """Returns the node associated with the given frequency and ids dict
@@ -390,7 +381,7 @@ class Dataset():
         ----------
         name : str
             A name for the workflow (must be globally unique)
-        inputs : Sequence[DataSelector]
+        inputs : Sequence[DataCriteria]
             The inputs to be sourced from the dataset
         outputs : Sequence[DataSpec]
             The outputs to be sinked into the dataset
@@ -561,223 +552,6 @@ class Dataset():
 
         return workflow
 
-
-class DataNode():
-    """A "node" in a data tree where file-groups and fields can be placed, e.g.
-    a session or subject.
-
-    Parameters
-    ----------
-    frequency : DataFrequency
-        The frequency of the node
-    ids : Dict[DataFrequency, str]
-        The ids for each provided frequency need to specify the data node
-        within the tree
-    root : DataNode
-        A reference to the root of the data tree
-    """
-
-    def __init__(self, frequency, ids, dataset):
-        self.ids = ids
-        self.frequency = frequency
-        self._items = {}
-        self._provenances = OrderedDict()
-        self.subnodes = defaultdict(dict)
-        self.supranodes = {}
-        self._dataset = dataset
-
-    def __eq__(self, other):
-        if not (isinstance(other, type(self))
-                or isinstance(self, type(other))):
-            return False
-        return (tuple(self._file_groups) == tuple(other._file_groups)
-                and tuple(self._fields) == tuple(other._fields)
-                and tuple(self._provenances) == tuple(other._provenances))
-
-    def __hash__(self):
-        return (hash(tuple(self._file_groups)) ^ hash(tuple(self._fields))
-                ^ hash(tuple(self._provenances)))
-
-    def add_file_group(self, name_path, *args, **kwargs):
-        if name_path in self._file_groups:
-            raise ArcanaNameError(
-                f"{name_path} conflicts with existing file-group")
-        self._file_groups[name_path] = UnresolvedFileGroup(
-            name_path, *args, data_node=self, **kwargs)
-
-    def add_field(self, name_path, *args, **kwargs):
-        if name_path in self._fields:
-            raise ArcanaNameError(
-                f"{name_path} conflicts with existing field")
-        self._fields[name_path] = UnresolvedField(
-            name_path, *args, data_node=self, **kwargs)
-
-    def __getitem__(self, name):
-        """Get's the item that matches the dataset's selector
-
-        Parameters
-        ----------
-        name : str
-            Name of the selector or registered derivative in the parent Dataset
-            that is used to select a file-group or field in the node
-        """
-        try:
-            item = self._items[name]
-        except KeyError:
-            if name in self.dataset.selectors:
-                item = self.dataset.selectors[name].match(self)
-            elif name in self.dataset.derivatives:
-                try:
-                    # Check to see if derivative was created previously
-                    item = self.dataset.derivatives[name].match(self)
-                except KeyError:
-                    # Create new derivative
-                    item = self.dataset.derivatives[name].create_item(self)
-            else:
-                raise ArcanaNameError(
-                    name,
-                    f"'{name}' is not the name of a \"column\" (either as a "
-                    f"selected input or derived) in the {self.dataset}")
-            self._items[name] = item
-        return item
-
-    def file_group(self, name_path: str, file_format=None):
-        """
-        Gets the file_group at the name_path, different from the mapped path
-        corresponding to the dataset's selectors
-
-        Parameters
-        ----------
-        name_path : str
-            The name_path to the file_group within the tree node, e.g. anat/T1w
-        file_format : FileFormat | Sequence[FileFormat] | None
-            A file format, or sequence of file formats, which are used to
-            resolve the format of the file-group
-
-        Returns
-        -------
-        FileGroup or UnresolvedFileGroup
-            The file-group corresponding to the given name_path. If a, or
-            multiple, candidate file formats are provided then the format of
-            the file-group is resolved and a FileGroup object is returned.
-            Otherwise, an UnresolvedFileGroup is returned instead.
-        """
-        try:
-            file_group = self._file_groups[name_path]
-        except KeyError:
-            raise ArcanaNameError(
-                name_path,
-                f"{self} doesn't have a file_group at the name_path "
-                f"{name_path} (available '"
-                + "', '".join(self.file_groups) + "')")
-        else:
-            if file_format is not None:
-                file_group = file_group.resolve_format(file_format)
-        return file_group
-
-    def field(self, name_path):
-        """
-        Gets the field named 'name_path'
-
-        Parameters
-        ----------
-        name_path : str
-            The name_path of the field within the node
-        """
-        # if isinstance(name, FieldMixin):
-        #     if namespace is None and name.derived:
-        #         namespace = name.analysis.name
-        #     name = name.name
-        try:
-            return self._fields[name_path]
-        except KeyError:
-            raise ArcanaNameError(
-                name_path, ("{} doesn't have a field named '{}' "
-                            "(available '{}')").format(
-                    self, name_path, "', '".join(self._fields)))
-
-    @property
-    def dataset(self):
-        return self._dataset
-
-    @property
-    def file_groups(self):
-        return self._file_groups.values()
-
-    @property
-    def fields(self):
-        return self._fields.values()
-
-    @property
-    def items(self):
-        return chain(self.file_groups, self.fields)
-
-    def __ne__(self, other):
-        return not (self == other)
-
-    @property
-    def ids_tuple(self):
-        return self.dataset.ids_tuple(self.ids)
-
-    def find_mismatch(self, other, indent=''):
-        """
-        Highlights where two nodes differ in a human-readable form
-
-        Parameters
-        ----------
-        other : TreeNode
-            The node to compare
-        indent : str
-            The white-space with which to indent output string
-
-        Returns
-        -------
-        mismatch : str
-            The human-readable mismatch string
-        """
-        if self != other:
-            mismatch = "\n{}{}".format(indent, type(self).__name__)
-        else:
-            mismatch = ''
-        sub_indent = indent + '  '
-        if len(list(self.file_groups)) != len(list(other.file_groups)):
-            mismatch += ('\n{indent}mismatching summary file_group lengths '
-                         '(self={} vs other={}): '
-                         '\n{indent}  self={}\n{indent}  other={}'
-                         .format(len(list(self.file_groups)),
-                                 len(list(other.file_groups)),
-                                 list(self.file_groups),
-                                 list(other.file_groups),
-                                 indent=sub_indent))
-        else:
-            for s, o in zip(self.file_groups, other.file_groups):
-                mismatch += s.find_mismatch(o, indent=sub_indent)
-        if len(list(self.fields)) != len(list(other.fields)):
-            mismatch += ('\n{indent}mismatching summary field lengths '
-                         '(self={} vs other={}): '
-                         '\n{indent}  self={}\n{indent}  other={}'
-                         .format(len(list(self.fields)),
-                                 len(list(other.fields)),
-                                 list(self.fields),
-                                 list(other.fields),
-                                 indent=sub_indent))
-        else:
-            for s, o in zip(self.fields, other.fields):
-                mismatch += s.find_mismatch(o, indent=sub_indent)
-        if len(list(self.provenances)) != len(list(other.provenances)):
-            mismatch += ('\n{indent}mismatching summary provenance lengths '
-                         '(self={} vs other={}): '
-                         '\n{indent}  self={}\n{indent}  other={}'
-                         .format(len(list(self.provenances)),
-                                 len(list(other.provenances)),
-                                 list(self.provenances),
-                                 list(other.provenances),
-                                 indent=sub_indent))
-        else:
-            for s, o in zip(self.provenances, other.provenances):
-                mismatch += s.find_mismatch(o, indent=sub_indent)
-        return mismatch
-
     def infer_ids(self, ids):
         """Infers IDs of primary data frequencies from those are provided from
         the `id_inference` dictionary passed to the dataset init.
@@ -810,6 +584,82 @@ class DataNode():
             for target, id in match.groupdict.items():
                 ids[self.frequency_enum[target]] = id
         return ids
+
+
+@attr.s
+class DataNode():
+    """A "node" in a data tree where file-groups and fields can be placed, e.g.
+    a session or subject.
+
+    Parameters
+    ----------
+    frequency : DataFrequency
+        The frequency of the node
+    ids : Dict[DataFrequency, str]
+        The ids for each provided frequency need to specify the data node
+        within the tree
+    root : DataNode
+        A reference to the root of the data tree
+    """
+
+    ids = attr.ib()
+    frequency = attr.ib(type=DataFrequency)
+    subnodes = attr.ib(factory=lambda: defaultdict(dict))
+    supranodes = attr.ib(factory=dict)
+    _items = attr.ib(factory=dict)
+    unresolved = attr.ib(factory=list)
+    _dataset = attr.ib(type=Dataset)
+
+    def __getitem__(self, name):
+        """Get's the item that matches the dataset's selector
+
+        Parameters
+        ----------
+        name : str
+            Name of the selector or registered derivative in the parent Dataset
+            that is used to select a file-group or field in the node
+
+        Returns
+        -------
+        DataItem
+            The item matching the provided name, specified by either a
+            selector or derivative registered with the dataset
+        """
+        try:
+            item = self._items[name]
+        except KeyError:
+            if name in self.dataset.selectors:
+                item = self.dataset.selectors[name].match(self)
+            elif name in self.dataset.derivatives:
+                try:
+                    # Check to see if derivative was created previously
+                    item = self.dataset.derivatives[name].match(self)
+                except KeyError:
+                    # Create new derivative
+                    item = self.dataset.derivatives[name].create_item(self)
+            else:
+                raise ArcanaNameError(
+                    name,
+                    f"'{name}' is not the name of a \"column\" (either as a "
+                    f"selected input or derived) in the {self.dataset}")
+            self._items[name] = item
+        return item
+
+    @property
+    def dataset(self):
+        return self._dataset
+
+    @property
+    def items(self):
+        return self._items.items()
+
+    @property
+    def ids_tuple(self):
+        return self.dataset.ids_tuple(self.ids)
+
+    def register(self, path, *args, **kwargs):
+        self.unresolved.append(UnresolvedDataItem(path, *args, data_node=self,
+                                                  **kwargs))
 
 
 class MultiDataset(Dataset):

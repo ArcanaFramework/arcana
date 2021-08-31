@@ -113,7 +113,7 @@ class ArcanaFileFormatError(ArcanaError):
     pass
 
 
-class ArcanaNoMatchingFileFormatError(ArcanaException):
+class ArcanaUnresolvableFormatException(ArcanaException):
     pass
 
 

@@ -9,18 +9,21 @@ from copy import deepcopy
 from pprint import pformat
 from datetime import datetime
 from deepdiff import DeepDiff
+import attr
 from arcana2.exceptions import ArcanaError, ArcanaUsageError
 from collections.abc import Iterable
 from arcana2.utils import split_extension, parse_value
 from arcana2.exceptions import (
     ArcanaError, ArcanaFileFormatError, ArcanaUsageError, ArcanaNameError,
     ArcanaDataNotDerivedYetError, ArcanaUriAlreadySetException,
-    ArcanaNoMatchingFileFormatError)
+    ArcanaUnresolvableFormatException)
 # from .file_format import FileFormat
 from .base import FileGroupMixin, FieldMixin, DataMixin
+from .enum import DataQuality
+from .file_format import FileFormat
+
 
 HASH_CHUNK_SIZE = 2 ** 20  # 1MB
-
 
 class DataItem():
 
@@ -603,7 +606,15 @@ class Field(DataItem, FieldMixin):
             self.dataset.put_field(self)
 
 
-class UnresolvedFileGroup(DataItem, DataMixin):
+def normalise_paths(file_paths):
+    "Convert all file paths to absolute real paths"
+    if file_paths:
+        file_paths = [op.abspath(op.realpath(p)) for p in file_paths]
+    return file_paths
+
+
+@attr.s(auto_attribs=True)
+class UnresolvedDataItem(DataItem, DataMixin):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
@@ -620,186 +631,157 @@ class UnresolvedFileGroup(DataItem, DataMixin):
         distinguish multiple file_groups with the same scan type in the
         same session, e.g. scans taken before and after a task. For
         datasets where this isn't stored (i.e. Local), id can be None
-    format_uris : Dict[str, str] | None
+    quality : DataQuality
+        The quality label assigned to the file_group (e.g. as is saved on XNAT)
+    file_paths : Sequence[str] | None
+        Path to the file-group in the local cache
+    uris : Dict[str, str] | None
         For repositories where the name of the file format is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
         format identification. It is stored here along with URIs corresponding
         to each resource
-    quality : str
-        The quality label assigned to the file_group (e.g. as is saved on XNAT)
-    file_paths : Sequence[str] | None
-        Path to the file-group in the local cache
-    data_node : DataNode
-        The data node that the field belongs to
+    value : str
+        The value assigned to the unresolved data item (for fields instead of 
+        file groups)
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
+    data_node : DataNode
+        The data node that the field belongs to
     """
 
-    def __init__(self, name_path, order=None, format_uris=None, quality=None,
-                 file_paths=None, provenance=None, data_node=None):
-        DataItem.__init__(self, data_node, True, provenance)
-        DataMixin.__init__(self, name_path=name_path)
-        if file_paths is not None:
-            file_paths = [op.abspath(op.realpath(p)) for p in file_paths]
-        self.file_paths = file_paths
-        self.order = order
-        self.format_uris = format_uris
-        self.quality = quality
-        self._matched = {}
+    path: str
+    order: int = attr.ib(default=None)
+    quality: DataQuality = attr.ib(default=DataQuality.usable),
+    file_paths: list = attr.ib(factory=list, converter=normalise_paths)
+    uris: list = attr.ib(factory=list)
+    value: str = attr.ib(default=None)
+    provenance = attr.ib(default=None)
+    data_node = attr.ib(default=None)
+    _matched = attr.ib(factory=dict, init=False)
 
-    def resolve(self, candidates):
+    def resolve(self, dtype):
         """
         Detects the format of the file-group from a list of possible
         candidates and returns a corresponding FileGroup object. If multiple
         candidates match the potential files, e.g. NiFTI-X (see dcm2niix) and
         NiFTI, then the first matching candidate is selected.
 
-        If 'format_uris' were specified when the multi-format file-group was
+        If 'uris' were specified when the multi-format file-group was
         created then that is used to select between the candidates. Otherwise
         the file extensions of the local name_paths, and extensions of the files
         within the directory will be used instead.
 
         Parameters
         ----------
-        candidates : FileFormat | Sequence[FileFormat]
+        dtype : FileFormat or type
             A list of file-formats to try to match. The first matching format
             in the sequence will be used to create a file-group
 
         Returns
         -------
-        FileGroup
-            The file-group in the first matching format
+        DataItem
+            The data item resolved into the requested format
+
+        Raises
+        ------
+        ArcanaUnresolvableFormatException
+            If 
         """
-        # Ensure candidates is a list of file formats
-        if not isinstance(candidates, Iterable):
-            candidates = [candidates]
-        else:
-            candidates = list(candidates)
         # If multiple formats are specified via resource names
-        common_kwargs = {
-            'name_path': self.name_path,
+        
+        if not (self.uris or self.file_paths):
+            raise ArcanaError(
+                "Either uris or local name_paths must be provided "
+                f"to UnresolvedFileGroup('{self.name_path}') in before "
+                "attempting to resolve a file-groups format")
+        try:
+            # Attempt to access previously saved
+            item = self._matched[format]
+        except KeyError:
+            if isinstance(dtype, FileFormat):
+                item = self._resolve_file(dtype)
+            else:
+                item = self._resolve_field(dtype)
+        return item
+
+    def _resolve_file(self, dtype):
+        # Perform matching based on resource names in multi-format
+        # file-group
+        if self.uris is not None:   
+            for dtype_name, uri in self.uris.items():
+                if dtype_name in dtype.names:
+                    item = dtype(uri=uri, **self.kwargs)
+            if item is None:
+                raise ArcanaUnresolvableFormatException(
+                    f"Could not file a matching resource in {self} for"
+                    f" the given dtype ({dtype.name}), found "
+                    f"('{'\', \''.join(self.uris)}')")
+        # Perform matching based on file-extensions of local name_paths
+        # in multi-format file-group
+        else:
+            file_path = None
+            aux_files = []
+            if dtype.directory:
+                if (len(self.file_paths) == 1
+                    and op.isdir(self.file_paths[0])
+                    and (dtype.within_dir_exts is None
+                        or (dtype.within_dir_exts == frozenset(
+                            split_extension(f)[1]
+                            for f in os.listdir(self.file_paths)
+                            if not f.startswith('.'))))):
+                    file_path = self.file_paths[0]
+            else:
+                try:
+                    file_path, aux_files = dtype.assort_files(
+                        self.file_paths)[0]
+                except ArcanaFileFormatError:
+                    pass
+            if file_path is not None:
+                item = dtype(
+                    file_path=file_path, aux_files=aux_files,
+                    **self.kwargs)
+            else:
+                raise ArcanaUnresolvableFormatException(
+                    f"Paths in {self} ({'\', \''.join(self.file_paths)}) "
+                    f"did not match the naming conventions expected by "
+                    f"dtype {dtype.name} , found "
+                    f"{'\', \''.join(self.uris)}")
+        return item
+
+    def _resolve_field(self, dtype):
+        if self.value is None:
+            raise ArcanaUnresolvableFormatException(
+                f"Cannot resolve {self} to {dtype} as it does not "
+                "have a value")
+        try:
+            if dtype._name == 'Sequence':
+                if len(dtype.__args__) > 1:
+                    raise ArcanaUsageError(
+                        f"Sequence datatypes with more than one arg "
+                        "are not supported ({dtype})")
+                subtype = dtype.__args__[0]
+                value = [subtype(v)
+                            for v in self.value[1:-1].split(',')]
+            else:
+                    value = dtype(self.value)
+        except ValueError:
+            raise ArcanaUnresolvableFormatException(
+                    f"Could not convert value of {self} ({self.value}) "
+                    f"to dtype {dtype}")
+        else:
+            item = DataItem(value=value, **self.kwargs)
+        return item
+
+    @property
+    def kwargs(self):
+        return {
+            'path': self.path,
             'frequency': self.frequency,
             'order': self.order,
             'dataset': self.dataset,
-            'exists': True,
             'quality': self.quality}
-        if not (self.format_uris or self.file_paths):
-            raise ArcanaError(
-                "Either format_uris or local name_paths must be provided "
-                f"to UnresolvedFileGroup('{self.name_path}') in before "
-                "attempting to resolve a file-groups format")
-        for candidate in candidates:
-            try:
-                # Attempt to access previously saved
-                return self._matched[candidate]
-            except KeyError:
-                # Perform matching based on resource names in multi-format
-                # file-group
-                if self.format_uris is not None:   
-                    for format_name, uri in self.format_uris.items():
-                        if format_name in candidate.format_uris:
-                            return candidate.file_group_cls(
-                                format_name=format_name, uri=uri,
-                                **common_kwargs)
-                # Perform matching based on file-extensions of local name_paths in
-                # multi-format file-group
-                else:
-                    file_path = None
-                    aux_files = []
-                    if candidate.directory:
-                        if (len(self.file_paths) == 1
-                            and op.isdir(self.file_paths[0])
-                            and (candidate.within_dir_exts is None
-                                or (candidate.within_dir_exts == frozenset(
-                                    split_extension(f)[1]
-                                    for f in os.listdir(self.file_paths)
-                                    if not f.startswith('.'))))):
-                            file_path = self.file_paths[0]
-                    else:
-                        try:
-                            file_path, aux_files = candidate.assort_files(
-                                self.file_paths)[0]
-                        except ArcanaFileFormatError:
-                            pass
-                    if file_path is not None:
-                        return candidate.file_group_cls(
-                            file_path=file_path, aux_files=aux_files,
-                            **common_kwargs)
-        # If we get to here none of the candidate formats have matched and
-        # we raise and error
-        if self.format_uris:
-            error_msg = (
-                "Could not find a matching resource in {} for any of the "
-                "candidates ({}), found ('{}')".format(
-                    self,
-                    ', '.join(str(c)for c in candidates),
-                    "', '".join(self.format_uris)))
-        else:
-            error_msg = (
-                "Paths in {} ({}) did not match the naming conventions "
-                "expected by any of the candidates formats ({}), found ('{}')"
-                .format(self,
-                        ', '.join(self.file_paths),
-                        ', '.join(str(c)for c in candidates),
-                        "', '".join(self.format_uris)))
-        raise ArcanaNoMatchingFileFormatError(error_msg)
 
-class UnresolvedField():
-    """A field stored in unknown datatype. Can create a Field
-    object by the 'resolve' method.
-    
-
-    Parameters
-    ----------
-    name_path : str
-        The name_path to the relative location of the file group, i.e. excluding
-        information about which node in the data tree it belongs to
-    value : str
-        The value of the field (in a generic datatype)
-    data_node : DataNode
-        The data node that the field belongs to
-    provenance : Provenance | None
-        The provenance for the pipeline that generated the file-group,
-        if applicable
-    """
-
-    def __init__(self, name_path, value=None, data_node=None, provenance=None):
-        DataItem.__init__(self, data_node, True, provenance)
-        DataMixin.__init__(self, name_path=name_path)
-        self.value = value
-
-    def resolve(self, dtype, array=False):
-        """
-        Detects the format of the file-group from a list of possible
-        candidates and returns a corresponding FileGroup object. If multiple
-        candidates match the potential files, e.g. NiFTI-X (see dcm2niix) and
-        NiFTI, then the first matching candidate is selected.
-
-        If 'format_uris' were specified when the multi-format file-group was
-        created then that is used to select between the candidates. Otherwise
-        the file extensions of the local name_paths, and extensions of the files
-        within the directory will be used instead.
-
-        Parameters
-        ----------
-        dtype : type
-            The dtype of the field
-        array : bool
-            Whether the field should be treated as an array (i.e. split on ',')
-
-        Returns
-        -------
-        Field
-            The field with resolved datatype
-        """
-        if array:
-            value = [dtype(v) for v in self.value[1:-1].split(',')]
-        else:
-            value = dtype(self.value)
-        return Field(name_path=self.name_path, value=value, dtype=dtype, array=array,
-                     data_node=self.data_node, provenance=self.provenance)
-        
 
 class Provenance():
     """

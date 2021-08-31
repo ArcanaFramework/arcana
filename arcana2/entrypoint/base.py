@@ -2,7 +2,7 @@
 import re
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.data.repository import FileSystemDir, Xnat, XnatCS
-import arcana2.data.frequency
+import arcana2.data.enum
 
 class BaseDatasetCmd():
 
@@ -125,5 +125,5 @@ class BaseDatasetCmd():
 
     @classmethod
     def parse_frequency_enum(cls, args):
-        frequency_enum = getattr(arcana2.data.frequency,
+        frequency_enum = getattr(arcana2.data.enum,
                                  args.frequency_enum)
