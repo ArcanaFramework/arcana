@@ -17,7 +17,7 @@ from arcana2.exceptions import (
 from .item import DataItem, UnresolvedDataItem
 from .enum import DataFrequency
 from .file_format import FileFormat
-from .selector import DataCriteria
+from .criteria import DataCriteria
 from .spec import DataSpec
 
 
