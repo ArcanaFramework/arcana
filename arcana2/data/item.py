@@ -167,7 +167,7 @@ class FileGroup(DataItem):
 
     @property
     def file_paths(self):
-        "Iterates through all files in the group and returns their file paths")
+        "Iterates through all files in the group and returns their file paths"
         if self.dtype.directory:
             return chain(*((op.join(root, f) for f in files)
                            for root, _, files in os.walk(self.file_path)))

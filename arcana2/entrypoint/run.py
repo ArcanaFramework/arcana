@@ -1,10 +1,7 @@
 from itertools import zip_longest
 import re
 from typing import Sequence
-from pydra import ShellCommandTask
-from arcana2.data.repository.file_system_dir import single_dataset
-from arcana2.data import (
-    FileGroupSelector, FieldSelector, FileGroupSpec, FieldSpec)
+from arcana2.data import DataSelector, DataSpec
 from arcana2.data import file_format as ff
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.__about__ import __version__
@@ -127,7 +124,7 @@ class BaseRunCmd(BaseDatasetCmd):
             if not file_format:
                 raise ArcanaUsageError(
                     f"Datatype must be provided for input {i} ({inpt})")
-            inputs[var] = FileGroupSelector(
+            inputs[var] = DataSelector(
                 name_path=pattern, format=ff.get_format(file_format),
                 frequency=frequency_enum[freq], order=order,
                 header_vals=header_vals, is_regex=True,
@@ -153,12 +150,12 @@ class BaseRunCmd(BaseDatasetCmd):
         # Create outputs
         outputs = {}
         defaults = (ff.niftix_gz, None)
-        for i, output in enumerate(args.field_output):
+        for output in args.field_output:
             nargs = len(output)
             (var, store_at, file_format) = output + defaults[nargs - 2:]
-            outputs[var] = FileGroupSpec(
+            outputs[var] = DataSpec(
                 path=store_at,
-                format=ff.get_format(file_format),
+                dtype=ff.get_format(file_format),
                 frequency=frequency)
         return outputs
 

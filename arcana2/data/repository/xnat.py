@@ -2,6 +2,7 @@ import os
 import os.path as op
 import tempfile
 import stat
+import typing as ty
 from glob import glob
 import time
 import logging
@@ -73,7 +74,7 @@ class Xnat(Repository):
     password: str = attr.ib(default=None)
     check_md5: bool = attr.ib(default=True)
     race_condition_delay: int = attr.ib(default=30)
-    _cached_datasets = attr.ib(factory=dict, init=False)
+    _cached_datasets: ty.Dict[str, Dataset]= attr.ib(factory=dict, init=False)
     _login = attr.ib(default=None, init=False)
 
     type = 'xnat'
@@ -82,17 +83,6 @@ class Xnat(Repository):
     FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
     DEFAULT_FREQUENCY_ENUM = ClinicalTrial
-
-    # def __getstate__(self):
-    #     dct = self.__dict__.copy()
-    #     del dct['_login']
-    #     del dct['_connection_depth']
-    #     return dct
-
-    # def __setstate__(self, state):
-    #     self.__dict__.update(state)
-    #     self._login = None
-    #     self._connection_depth = 0
 
     @property
     def prov(self):
@@ -652,7 +642,8 @@ class Xnat(Repository):
         """
         with self:
             xproject = self.login.projects[data_node.dataset.name]
-            if data_node.frequency not in (ClinicalTrial.subject, ClinicalTrial.session):
+            if data_node.frequency not in (ClinicalTrial.subject,
+                                           ClinicalTrial.session):
                 return xproject
             subj_label = data_node.ids[ClinicalTrial.subject]
             try:
