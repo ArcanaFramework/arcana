@@ -80,7 +80,7 @@ class BaseRunCmd(BaseDatasetCmd):
 
     @classmethod
     def parse_inputs(cls, args):
-        """Parses input arguments into dictionary of DataCriterias
+        """Parses input arguments into dictionary of DataSelectors
 
         Parameters
         ----------
@@ -89,7 +89,7 @@ class BaseRunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        Dict[str, DataCriteria]
+        Dict[str, DataSelector]
             A dictionary of the specified inputs with the data-selectors to 
             chose the relevant files/fields from the dataset
 
@@ -145,7 +145,7 @@ class BaseRunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        Dict[str, DataCriteria]
+        Dict[str, DataSelector]
             A dictionary of the specified outputs with the data-specs that
             specify where outputs are stored in the dataset
         """

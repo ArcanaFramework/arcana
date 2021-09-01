@@ -1,28 +1,28 @@
 from operator import itemgetter
 import logging
 import typing as ty
+import os.path
 import re
 from copy import copy
+from abc import ABCMeta, abstractmethod
 from collections import defaultdict
-from itertools import chain
-from collections import OrderedDict
 import attr
 from pydra import Workflow, mark
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import (
-    ArcanaError, ArcanaSelectionError, ArcanaNameError,
-    ArcanaDataTreeConstructionError, ArcanaUsageError,
-    ArcanaBadlyFormattedIDError)
-from .item import DataItem, UnresolvedDataItem
-from .enum import DataFrequency
+    ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
+    ArcanaBadlyFormattedIDError, 
+    ArcanaUnresolvableFormatException, ArcanaFileFormatError,
+    ArcanaError)
+from arcana2.utils import split_extension
 from .file_format import FileFormat
-from .criteria import DataCriteria
+from .item import DataItem
+from .enum import DataFrequency, DataQuality
 from .spec import DataSpec
 
 
 logger = logging.getLogger('arcana')
-
 
 class Dataset():
     """
@@ -36,7 +36,7 @@ class Dataset():
         repository it is stored (e.g. FS directory path or project name)
     repository : Repository
         The repository the dataset is stored into. Can be the local file
-        system by providing a FileSystemDir repo.
+        system by providing a FileSystem repo.
     selectors : Dict[str, Selector]
         A dictionary that maps "name-paths" of input "columns" in the dataset
         to criteria in a Selector object that select the corresponding
@@ -73,6 +73,15 @@ class Dataset():
         Keyword arguments passed on to the `populate_tree` method of the
         repository class when it is called
     """
+
+    # name: str
+    # repository = attr.ib()
+    # frequency_enum = attr.ib()
+    # selectors = attr.ib(factory=list)
+    # derivatives = attr.ib(factory=list)
+    # included = attr.ib(default=None)
+    # excluded = attr.ib(default=None)
+    # id_inference: ty.Sequence[ty.Tuple(DataFrequency, str)] or ty.Callable = attr.ib(default=None)
 
     def __init__(self, name, repository, selectors, frequency_enum,
                  derivatives=None, included=None, excluded=None,
@@ -133,6 +142,7 @@ class Dataset():
         return (self.name == other.name
                 and self.repository == other.repository
                 and self.included == other.included
+                and self.excluded == other.excluded
                 and self.root_node == other.root_node
                 and self.frequency_enum == other.frequency_enum)
 
@@ -140,6 +150,7 @@ class Dataset():
         return (hash(self.name)
                 ^ hash(self.repository)
                 ^ hash(self.included)
+                ^ hash(self.excluded)
                 ^ hash(self.root_node)
                 ^ hash(self.frequency_enum))
 
@@ -381,7 +392,7 @@ class Dataset():
         ----------
         name : str
             A name for the workflow (must be globally unique)
-        inputs : Sequence[DataCriteria]
+        inputs : Sequence[DataSelector]
             The inputs to be sourced from the dataset
         outputs : Sequence[DataSpec]
             The outputs to be sinked into the dataset
@@ -657,9 +668,245 @@ class DataNode():
     def ids_tuple(self):
         return self.dataset.ids_tuple(self.ids)
 
-    def register(self, path, *args, **kwargs):
-        self.unresolved.append(UnresolvedDataItem(path, *args, data_node=self,
-                                                  **kwargs))
+    def add_file_group(self, path, *args, **kwargs):
+        self.unresolved.append(UnresolvedFileGroup(path, *args, data_node=self,
+                                                   **kwargs))
+
+    def add_field(self, path, value, **kwargs):
+        self.unresolved.append(UnresolvedField(path, value, data_node=self,
+                                               **kwargs))
+
+    def get_file_group_paths(self, file_group):
+        return self.dataset.repository.get_file_group_paths(file_group, self)
+
+    def get_field_value(self, field):
+        return self.dataset.repository.get_field_value(field, self)
+
+    def put_file_group(self, file_group):
+        self.dataset.repository.put_file_group(file_group, self)
+
+    def put_field(self, field):
+        self.dataset.repository.put_field(field, self)
+
+
+@attr.s
+class UnresolvedDataItem(metaclass=ABCMeta):
+    """A file-group stored in, potentially multiple, unknown file formats.
+    File formats are resolved by providing a list of candidates to the
+    'resolve' method
+
+    Parameters
+    ----------
+    path : str
+        The name_path to the relative location of the file group, i.e. excluding
+        information about which node in the data tree it belongs to
+    order : int | None
+        The ID of the file_group in the session. To be used to
+        distinguish multiple file_groups with the same scan type in the
+        same session, e.g. scans taken before and after a task. For
+        datasets where this isn't stored (i.e. Local), id can be None
+    quality : DataQuality
+        The quality label assigned to the file_group (e.g. as is saved on XNAT)
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the file-group,
+        if applicable
+    data_node : DataNode
+        The data node that the field belongs to
+    """
+
+    path: str = attr.ib()
+    order: int = attr.ib(default=None)
+    quality: DataQuality = attr.ib(default=DataQuality.usable)
+    data_node = attr.ib(default=None)
+    _matched = attr.ib(factory=dict, init=False)
+
+    def resolve(self, dtype):
+        """
+        Detects the format of the file-group from a list of possible
+        candidates and returns a corresponding FileGroup object. If multiple
+        candidates match the potential files, e.g. NiFTI-X (see dcm2niix) and
+        NiFTI, then the first matching candidate is selected.
+
+        If 'uris' were specified when the multi-format file-group was
+        created then that is used to select between the candidates. Otherwise
+        the file extensions of the local name_paths, and extensions of the files
+        within the directory will be used instead.
+
+        Parameters
+        ----------
+        dtype : FileFormat or type
+            A list of file-formats to try to match. The first matching format
+            in the sequence will be used to create a file-group
+
+        Returns
+        -------
+        DataItem
+            The data item resolved into the requested format
+
+        Raises
+        ------
+        ArcanaUnresolvableFormatException
+            If 
+        """
+        # If multiple formats are specified via resource names
+        
+        if not (self.uris or self.file_paths):
+            raise ArcanaError(
+                "Either uris or local name_paths must be provided "
+                f"to UnresolvedFileGroup('{self.name_path}') in before "
+                "attempting to resolve a file-groups format")
+        try:
+            # Attempt to access previously saved
+            item = self._matched[format]
+        except KeyError:
+            if isinstance(dtype, FileFormat):
+                item = self._resolve(dtype)
+            else:
+                item = self._resolve(dtype)
+        return item
+
+    @abstractmethod
+    def _resolve(self, dtype):
+        raise NotImplementedError
+
+
+def normalise_paths(file_paths):
+    "Convert all file paths to absolute real paths"
+    if file_paths:
+        file_paths = [os.path.abspath(os.path.realpath(p)) for p in file_paths]
+    return file_paths
+
+
+@attr.s
+class UnresolvedFileGroup(UnresolvedDataItem):
+    """A file-group stored in, potentially multiple, unknown file formats.
+    File formats are resolved by providing a list of candidates to the
+    'resolve' method
+
+    Parameters
+    ----------
+    name_path : str
+        The name_path to the relative location of the file group, i.e. excluding
+        information about which node in the data tree it belongs to
+    order : int | None
+        The ID of the file_group in the session. To be used to
+        distinguish multiple file_groups with the same scan type in the
+        same session, e.g. scans taken before and after a task. For
+        datasets where this isn't stored (i.e. Local), id can be None
+    quality : DataQuality
+        The quality label assigned to the file_group (e.g. as is saved on XNAT)
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the file-group,
+        if applicable
+    data_node : DataNode
+        The data node that the field belongs to
+    file_paths : Sequence[str] | None
+        Path to the file-group in the local cache
+    uris : Dict[str, str] | None
+        For repositories where the name of the file format is saved with the
+        data (i.e. XNAT), the name of the resource enables straightforward
+        format identification. It is stored here along with URIs corresponding
+        to each resource        
+    """
+
+    file_paths: list = attr.ib(factory=list, converter=normalise_paths)
+    uris: list = attr.ib(factory=list)
+
+    def _resolve(self, dtype):
+        # Perform matching based on resource names in multi-format
+        # file-group
+        if self.uris is not None:   
+            for dtype_name, uri in self.uris.items():
+                if dtype_name in dtype.names:
+                    item = dtype(uri=uri, **self.kwargs)
+            if item is None:
+                raise ArcanaUnresolvableFormatException(
+                    f"Could not file a matching resource in {self} for"
+                    f" the given dtype ({dtype.name}), found "
+                    f"('{'\', \''.join(self.uris)}')")
+        # Perform matching based on file-extensions of local name_paths
+        # in multi-format file-group
+        else:
+            file_path = None
+            side_cars = []
+            if dtype.directory:
+                if (len(self.file_paths) == 1
+                    and os.path.isdir(self.file_paths[0])
+                    and (dtype.within_dir_exts is None
+                        or (dtype.within_dir_exts == frozenset(
+                            split_extension(f)[1]
+                            for f in os.listdir(self.file_paths)
+                            if not f.startswith('.'))))):
+                    file_path = self.file_paths[0]
+            else:
+                try:
+                    file_path, side_cars = dtype.assort_files(
+                        self.file_paths)[0]
+                except ArcanaFileFormatError:
+                    pass
+            if file_path is not None:
+                item = dtype(
+                    file_path=file_path, side_cars=side_cars,
+                    **self.kwargs)
+            else:
+                raise ArcanaUnresolvableFormatException(
+                    f"Paths in {self} ({'\', \''.join(self.file_paths)}) "
+                    f"did not match the naming conventions expected by "
+                    f"dtype {dtype.name} , found "
+                    f"{'\', \''.join(self.uris)}")
+        return item
+
+
+@attr.s
+class UnresolvedField(UnresolvedDataItem):
+    """A file-group stored in, potentially multiple, unknown file formats.
+    File formats are resolved by providing a list of candidates to the
+    'resolve' method
+
+    Parameters
+    ----------
+    path : str
+        The name_path to the relative location of the file group, i.e. excluding
+        information about which node in the data tree it belongs to
+    value : str
+        The value assigned to the unresolved data item (for fields instead of 
+        file groups)
+    order : int | None
+        The ID of the file_group in the session. To be used to
+        distinguish multiple file_groups with the same scan type in the
+        same session, e.g. scans taken before and after a task. For
+        datasets where this isn't stored (i.e. Local), id can be None
+    quality : DataQuality
+        The quality label assigned to the file_group (e.g. as is saved on XNAT)
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the file-group,
+        if applicable
+    data_node : DataNode
+        The data node that the field belongs to
+    """
+
+    value = attr.ib()
+
+    def _resolve(self, dtype):
+        try:
+            if dtype._name == 'Sequence':
+                if len(dtype.__args__) > 1:
+                    raise ArcanaUsageError(
+                        f"Sequence datatypes with more than one arg "
+                        "are not supported ({dtype})")
+                subtype = dtype.__args__[0]
+                value = [subtype(v)
+                            for v in self.value[1:-1].split(',')]
+            else:
+                    value = dtype(self.value)
+        except ValueError:
+            raise ArcanaUnresolvableFormatException(
+                    f"Could not convert value of {self} ({self.value}) "
+                    f"to dtype {dtype}")
+        else:
+            item = DataItem(value=value, **self.kwargs)
+        return item
+
 
 
 class MultiDataset(Dataset):

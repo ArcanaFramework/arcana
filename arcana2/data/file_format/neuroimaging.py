@@ -38,7 +38,7 @@ from arcana2.exceptions import ArcanaUsageError
 
 #     input = 'in_file'
 #     output = 'out_file'
-#     output_aux_files = {'ref': 'ref_file', 'json': 'hdr_file'}
+#     output_side_cars = {'ref': 'ref_file', 'json': 'hdr_file'}
 #     requirements = [matlab_req.v('R2018a')]
 #     interface = TwixReader()
 
@@ -306,7 +306,7 @@ dicom = FileFormat(name='dicom', extension=None,
                    file_group_cls=DicomImage)
 # NIfTI file format gzipped with BIDS side car
 niftix_gz = FileFormat(name='niftix_gz', extension='.nii.gz',
-                       aux_files={'json': '.json'},
+                       side_cars={'json': '.json'},
                        alternate_names=['NIFTI_GZ_X', 'NIFTIX_GZ'],
                        file_group_cls=NiftixImage)
 nifti = FileFormat(name='nifti', extension='.nii',
@@ -317,7 +317,7 @@ nifti_gz = FileFormat(name='nifti_gz', extension='.nii.gz',
                       alternate_names=['NIFTI_GZ', 'NiFTI_GZ'],
                       file_group_cls=NiftiImage)
 analyze = FileFormat(name='analyze', extension='.img',
-                     aux_files={'header': '.hdr'})
+                     side_cars={'header': '.hdr'})
 mrtrix_image = FileFormat(name='mrtrix_image', extension='.mif',
                           alternate_names=['MIF', 'MRTRIX'],
                           file_group_cls=MrtrixImage)
@@ -397,7 +397,7 @@ twix_vb = FileFormat(
 custom_kspace = FileFormat(
     name='custom_kspace', extension='.ks',
     alternate_names={'xnat': ['CUSTOM_KSPACE']},
-    aux_files={'ref': '.ref', 'json': '.json'},
+    side_cars={'ref': '.ref', 'json': '.json'},
     desc=("""A custom format for saving k-space data in binary amd JSON files.
 
     Binary files

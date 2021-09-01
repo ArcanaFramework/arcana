@@ -8,22 +8,21 @@ import logging
 import errno
 import json
 import re
-from copy import copy
 from zipfile import ZipFile, BadZipfile
 import shutil
+import attr
 from tqdm import tqdm
 import xnat
 from arcana2.utils import JSON_ENCODING
 from arcana2.utils import makedirs
-from arcana2.data import FileGroup, Field
 from .base import Repository
 from arcana2.exceptions import (
     ArcanaError, ArcanaNameError, ArcanaUsageError, ArcanaFileFormatError,
-    ArcanaRepositoryError, ArcanaWrongRepositoryError)
+    ArcanaWrongRepositoryError)
 from ..item import Provenance
 from arcana2.utils import dir_modtime, get_class_info, parse_value
 from ..dataset import Dataset
-from ..frequency import ClinicalTrial
+from ..enum import ClinicalTrial
 
 
 
@@ -35,6 +34,7 @@ tag_parse_re = re.compile(r'\((\d+),(\d+)\)')
 RELEVANT_DICOM_TAG_TYPES = set(('UI', 'CS', 'DA', 'TM', 'SH', 'LO',
                                 'PN', 'ST', 'AS'))
 
+@attr.s
 class Xnat(Repository):
     """
     A 'Repository' class for XNAT repositories
@@ -67,62 +67,32 @@ class Xnat(Repository):
         subject_ids and timepoint_ids.
     """
 
-    type = 'xnat'
+    server: str = attr.ib()
+    cache_dir: str = attr.ib()
+    user: str = attr.ib(default=None)
+    password: str = attr.ib(default=None)
+    check_md5: bool = attr.ib(default=True)
+    race_condition_delay: int = attr.ib(default=30)
+    _cached_datasets = attr.ib(factory=dict, init=False)
+    _login = attr.ib(default=None, init=False)
 
+    type = 'xnat'
     MD5_SUFFIX = '.md5.json'
     PROV_SUFFIX = '.__prov__.json'
     FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
     DEFAULT_FREQUENCY_ENUM = ClinicalTrial
 
-    def __init__(self, server, cache_dir, user=None, password=None,
-                 check_md5=True, race_cond_delay=30, session_filter=None):
-        super().__init__()
-        if not isinstance(server, str):
-            raise ArcanaUsageError(
-                "Invalid server url {}".format(server))
-        self._server = server
-        self.cache_dir = cache_dir
-        makedirs(self.cache_dir, exist_ok=True)
-        self._cached_datasets = {}        
-        self.user = user
-        self.password = password
-        self._race_cond_delay = race_cond_delay
-        self.check_md5 = check_md5
-        self.session_filter = session_filter
-        self._login = None
+    # def __getstate__(self):
+    #     dct = self.__dict__.copy()
+    #     del dct['_login']
+    #     del dct['_connection_depth']
+    #     return dct
 
-    def __hash__(self):
-        return (hash(self.server)
-                ^ hash(self.cache_dir)
-                ^ hash(self._race_cond_delay)
-                ^ hash(self.check_md5))
-
-    def __repr__(self):
-        return ("{}(server={}, cache_dir={})"
-                .format(type(self).__name__,
-                        self.server, self.cache_dir))
-
-    def __eq__(self, other):
-        try:
-            return (self.server == other.server
-                    and self.cache_dir == other.cache_dir
-                    and self.cache_dir == other.cache_dir
-                    and self._race_cond_delay == other._race_cond_delay
-                    and self.check_md5 == other.check_md5)
-        except AttributeError:
-            return False  # For comparison with other types
-
-    def __getstate__(self):
-        dct = self.__dict__.copy()
-        del dct['_login']
-        del dct['_connection_depth']
-        return dct
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self._login = None
-        self._connection_depth = 0
+    # def __setstate__(self, state):
+    #     self.__dict__.update(state)
+    #     self._login = None
+    #     self._connection_depth = 0
 
     @property
     def prov(self):
@@ -136,10 +106,6 @@ class Xnat(Repository):
             raise ArcanaError("XNAT repository has been disconnected before "
                               "exiting outer context")
         return self._login
-
-    @property
-    def server(self):
-        return self._server
 
     def dataset_cache_dir(self, dataset_name):
         return op.join(self.cache_dir, dataset_name)

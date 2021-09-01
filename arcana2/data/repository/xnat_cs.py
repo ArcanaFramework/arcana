@@ -1,14 +1,8 @@
-import os
-import os.path as op
 import logging
-import json
-from arcana2.data import FileGroup, Field
-from ..item import Provenance
-from arcana2.exceptions import (
-    ArcanaRepositoryError)
-from arcana2.utils import split_extension
+import attr
+from arcana2.exceptions import ArcanaRepositoryError
 from arcana2.exceptions import ArcanaUsageError
-from ..frequency import ClinicalTrial
+from ..enum import ClinicalTrial
 from .xnat import Xnat
 
 
@@ -21,6 +15,7 @@ COMMAND_INPUT_TYPES = {
     float: 'number'}
 
 
+@attr.s
 class XnatCS(Xnat):
     """
     A 'Repository' class for data stored within a XNAT repository and accessed

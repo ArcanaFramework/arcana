@@ -1,7 +1,7 @@
 
 import re
 from arcana2.exceptions import ArcanaUsageError
-from arcana2.data.repository import FileSystemDir, Xnat, XnatCS
+from arcana2.data.repository import FileSystem, Xnat, XnatCS
 import arcana2.data.enum
 
 class BaseDatasetCmd():
@@ -72,7 +72,7 @@ class BaseDatasetCmd():
         repo_type = repo_args.pop(0)
         nargs = len(repo_args)
         if repo_type == 'file_system':
-            repository = FileSystemDir()
+            repository = FileSystem()
         elif repo_type == 'xnat':
             if nargs < 1 or nargs > 3:
                 raise ArcanaUsageError(

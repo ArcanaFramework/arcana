@@ -1,34 +1,25 @@
 import os
 import os.path as op
 import errno
-from typing import List
-from itertools import chain, zip_longest
-from collections.abc import Iterable
 from collections import defaultdict
-import stat
 import shutil
-import types
 import logging
 import json
-from copy import copy
+import attr
 from fasteners import InterProcessLock
-from arcana2.data import FileGroup, Field
 from arcana2.data.item import Provenance
-from arcana2.exceptions import (
-    ArcanaError, ArcanaUsageError,
-    ArcanaRepositoryError,
-    ArcanaMissingDataException,
-    ArcanaInsufficientRepoDepthError)
+from arcana2.exceptions import ArcanaMissingDataException
 from arcana2.utils import get_class_info, HOSTNAME, split_extension
 from ..dataset import Dataset
-from ..frequency import ClinicalTrial, DataFrequency
+from ..enum import ClinicalTrial, DataFrequency
 from .base import Repository
 
 
 logger = logging.getLogger('arcana')
 
 
-class FileSystemDir(Repository):
+@attr.s
+class FileSystem(Repository):
     """
     A Repository class for data stored hierarchically within sub-directories
     of a file-system directory. The depth and which layer in the data tree
@@ -42,7 +33,7 @@ class FileSystemDir(Repository):
 
     """
 
-    type = 'file_system_dir'
+    type = 'file_system'
     NODE_DIR = '__node__'
     PROV_SUFFIX = '.__prov__.json'
     FIELDS_FNAME = '__fields__.json'
@@ -69,17 +60,17 @@ class FileSystemDir(Repository):
         # Don't need to cache file_group as it is already local as long
         # as the path is set
         primary_path = self.file_group_path(file_group)
-        aux_files = file_group.format.default_aux_file_paths(primary_path)
+        side_cars = file_group.format.default_aux_file_paths(primary_path)
         if not op.exists(primary_path):
             raise ArcanaMissingDataException(
                 "{} does not exist in {}"
                 .format(file_group, self))
-        for aux_name, aux_path in aux_files.items():
+        for aux_name, aux_path in side_cars.items():
             if not op.exists(aux_path):
                 raise ArcanaMissingDataException(
                     "{} is missing '{}' side car in {}"
                     .format(file_group, aux_name, self))
-        return primary_path, aux_files
+        return primary_path, side_cars
 
     def get_field(self, field):
         """
@@ -161,7 +152,7 @@ class FileSystemDir(Repository):
             for aux_name, aux_path in file_group.format.default_aux_file_paths(
                     target_path).items():
                 shutil.copyfile(
-                    file_group.format.aux_files[aux_name], aux_path)
+                    file_group.format.side_cars[aux_name], aux_path)
         elif op.isdir(source_path):
             if op.exists(target_path):
                 shutil.rmtree(target_path)
@@ -314,5 +305,5 @@ def single_dataset(path: str, tree_structure: DataFrequency=ClinicalTrial,
         repositories
     """
 
-    return FileSystemDir(op.join(path, '..'), **kwargs).dataset(
+    return FileSystem(op.join(path, '..'), **kwargs).dataset(
         op.basename(path), tree_structure)

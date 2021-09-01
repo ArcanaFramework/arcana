@@ -16,7 +16,7 @@ import logging
 import arcana
 from arcana2.data import FileGroup, FileGroupSlice
 from arcana2.utils import classproperty
-from arcana2.repository import Dataset, LocalFileSystemDirRepo
+from arcana2.repository import Dataset, LocalFileSystemRepo
 from arcana2.processor import SingleProc
 from arcana2.environment import StaticEnv
 from arcana2.exceptions import ArcanaError
@@ -151,7 +151,7 @@ class BaseTestCase(TestCase):
                     .format(file_group, self))
         if fields is not None:
             with open(op.join(session_dir,
-                              LocalFileSystemDirRepo.FIELDS_FNAME), 'w',
+                              LocalFileSystemRepo.FIELDS_FNAME), 'w',
                       **JSON_ENCODING) as f:
                 json.dump(fields, f, indent=2)
 
@@ -363,7 +363,7 @@ class BaseTestCase(TestCase):
         output_dir = self.get_session_dir(subject, timepoint, frequency)
         try:
             with open(op.join(output_dir,
-                              LocalFileSystemDirRepo.FIELDS_FNAME)) as f:
+                              LocalFileSystemRepo.FIELDS_FNAME)) as f:
                 fields = json.load(f)
         except IOError as e:
             if e.errno == errno.ENOENT:
@@ -445,18 +445,18 @@ class BaseTestCase(TestCase):
             assert timepoint is None
             path = op.join(
                 self.project_dir, subject,
-                LocalFileSystemDirRepo.SUMMARY_NAME)
+                LocalFileSystemRepo.SUMMARY_NAME)
         elif frequency == 'per_timepoint':
             assert timepoint is not None
             assert subject is None
             path = op.join(self.project_dir,
-                           LocalFileSystemDirRepo.SUMMARY_NAME, timepoint)
+                           LocalFileSystemRepo.SUMMARY_NAME, timepoint)
         elif frequency == 'per_dataset':
             assert subject is None
             assert timepoint is None
             path = op.join(self.project_dir,
-                           LocalFileSystemDirRepo.SUMMARY_NAME,
-                           LocalFileSystemDirRepo.SUMMARY_NAME)
+                           LocalFileSystemRepo.SUMMARY_NAME,
+                           LocalFileSystemRepo.SUMMARY_NAME)
         else:
             assert False
         if namespace is not None:
@@ -483,7 +483,7 @@ class BaseTestCase(TestCase):
 
 class BaseMultiSubjectTestCase(BaseTestCase):
 
-    SUMMARY_NAME = LocalFileSystemDirRepo.SUMMARY_NAME
+    SUMMARY_NAME = LocalFileSystemRepo.SUMMARY_NAME
     DATASET_CONTENTS = None
     input_tree = None
 
@@ -501,12 +501,12 @@ class BaseMultiSubjectTestCase(BaseTestCase):
                 session_path = op.dirname(file_group.path)
                 self._make_dir(session_path)
                 contents = self.DATASET_CONTENTS[file_group.name]
-                if file_group.format.aux_files:
-                    file_group._aux_files = {}
+                if file_group.format.side_cars:
+                    file_group._side_cars = {}
                     for (aux_name,
                          aux_path) in file_group.format.default_aux_file_paths(
                              file_group._path).items():
-                        file_group._aux_files[aux_name] = aux_path
+                        file_group._side_cars[aux_name] = aux_path
                         with open(aux_path, 'w') as f:
                             f.write(str(contents[aux_name]))
                     contents = contents['.']
@@ -514,7 +514,7 @@ class BaseMultiSubjectTestCase(BaseTestCase):
                     f.write(str(contents))
                 if file_group.derived:
                     self._make_dir(op.join(session_path,
-                                           LocalFileSystemDirRepo.PROV_DIR))
+                                           LocalFileSystemRepo.PROV_DIR))
             for field in node.fields:
                 fields_path = self.local_dataset.repository.fields_json_path(
                     field, self.local_dataset)
@@ -530,7 +530,7 @@ class BaseMultiSubjectTestCase(BaseTestCase):
                     json.dump(dct, f, indent=2)
                 if field.derived:
                     self._make_dir(op.join(op.dirname(fields_path),
-                                           LocalFileSystemDirRepo.PROV_DIR))
+                                           LocalFileSystemRepo.PROV_DIR))
 
     @property
     def subject_ids(self):

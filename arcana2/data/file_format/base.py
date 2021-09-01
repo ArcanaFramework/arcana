@@ -38,7 +38,7 @@ class FileFormat(object):
         A list of extensions that are found within the top level of
         the directory (for directory formats). Used to identify
         formats from paths.
-    aux_files : dict[str, str]
+    side_cars : dict[str, str]
         A dictionary of side cars (e.g. header or NIfTI json side cars) aside
         from the primary file, along with their expected extension.
         Automatically they will be assumed to be located adjancent to the
@@ -52,7 +52,7 @@ class FileFormat(object):
     """
 
     def __init__(self, name, extension=None, desc='', directory=False,
-                 within_dir_exts=None, aux_files=None, alternate_names=None,
+                 within_dir_exts=None, side_cars=None, alternate_names=None,
                  file_group_cls=FileGroup):
         if not name.islower():
             raise ArcanaUsageError(
@@ -78,8 +78,8 @@ class FileFormat(object):
             alternate_names = []
         self.file_group_cls = file_group_cls
         self.alternate_names = alternate_names
-        self.aux_files = aux_files if aux_files is not None else {}
-        for sc_name, sc_ext in self.aux_files.items():
+        self.side_cars = side_cars if side_cars is not None else {}
+        for sc_name, sc_ext in self.side_cars.items():
             if sc_ext == self.ext:
                 raise ArcanaUsageError(
                     "Extension for side car '{}' cannot be the same as the "
@@ -95,7 +95,7 @@ class FileFormat(object):
                 and self._within_dir_exts ==
                 other._within_dir_exts
                 and self.alternate_names == other.alternate_names
-                and self.aux_files == other.aux_files)
+                and self.side_cars == other.side_cars)
         except AttributeError:
             return False
 
@@ -107,7 +107,7 @@ class FileFormat(object):
             ^ hash(self.directory)
             ^ hash(self._within_dir_exts)
             ^ hash(tuple(self.alternate_names))
-            ^ hash(tuple(sorted(self.aux_files.items()))))
+            ^ hash(tuple(sorted(self.side_cars.items()))))
 
     def __ne__(self, other):
         return not self == other
@@ -151,11 +151,11 @@ class FileFormat(object):
             A dictionary of auxiliary file names and default paths
         """
         return dict((n, primary_path[:-len(self.ext)] + ext)
-                    for n, ext in self.aux_files.items())
+                    for n, ext in self.side_cars.items())
 
     @property
     def aux_file_exts(self):
-        return frozenset(self.aux_files.values())
+        return frozenset(self.side_cars.values())
 
     @property
     def within_dir_exts(self):
@@ -189,10 +189,10 @@ class FileFormat(object):
                 f"{file_format}")
 
     def input_spec_fields(self):
-        return ['in_file'] + list(self.aux_files)
+        return ['in_file'] + list(self.side_cars)
 
     def output_spec_fields(self):
-        return ['out_file'] + list(self.aux_files)
+        return ['out_file'] + list(self.side_cars)
 
     def set_converter(self, file_format, task_interface, inputs=None,
                       outputs=None, **default_kwargs):
@@ -259,14 +259,14 @@ class FileFormat(object):
                 'path': str,
                 'return': {
                     'file_group': FileGroup}}
-            collect_path_annotations.update({n: str for n in self.aux_files})
+            collect_path_annotations.update({n: str for n in self.side_cars})
 
             def collect_paths(file_format, **file_paths):
                 """Copies files into the CWD renaming so the basenames match
                 except for extensions"""
                 file_path = file_paths.pop('path')
-                aux_files = file_paths if file_paths else None
-                return self.from_path(file_path, aux_files=aux_files,
+                side_cars = file_paths if file_paths else None
+                return self.from_path(file_path, side_cars=side_cars,
                                       format=file_format)
 
             # Can't use the mark.annotate decorator with kwarg signature
@@ -312,7 +312,7 @@ class FileFormat(object):
         -------
         primary_file : str
             Path to the selected primary file
-        aux_files : dict[str, str]
+        side_cars : dict[str, str]
             A dictionary mapping the auxiliary file name to the selected path
         """
         by_ext = defaultdict(list)
@@ -334,8 +334,8 @@ class FileFormat(object):
                 .format("', '".join(primary_file), self))
         else:
             primary_file = primary_file[0]
-        aux_files = {}
-        for aux_name, aux_ext in self.aux_files.items():
+        side_cars = {}
+        for aux_name, aux_ext in self.side_cars.items():
             aux = by_ext[aux_ext]
             if not aux:
                 raise ArcanaFileFormatError(
@@ -347,8 +347,8 @@ class FileFormat(object):
                     ("Multiple potential files for '{}' auxiliary file ext. "
                      + "({}) of {}".format("', '".join(aux), self)))
             else:
-                aux_files[aux_name] = aux[0]
-        return primary_file, aux_files
+                side_cars[aux_name] = aux[0]
+        return primary_file, side_cars
 
     # def matches(self, file_group):
     #     """
@@ -376,8 +376,8 @@ class FileFormat(object):
     #     else:
     #         if op.isfile(file_group.path):
     #             all_paths = [file_group.path]
-    #             if file_group._potential_aux_files is not None:
-    #                 all_paths += file_group._potential_aux_files
+    #             if file_group._potential_side_cars is not None:
+    #                 all_paths += file_group._potential_side_cars
     #             try:
     #                 primary_path = self.assort_files(all_paths)[0]
     #             except ArcanaFileFormatError:
@@ -617,12 +617,12 @@ class Converter(object):
         return NotImplementedError
 
     @property
-    def output_aux_files(self):
+    def output_side_cars(self):
         return {}
 
     def output_aux(self, aux_name):
         try:
-            return self.output_aux_files[aux_name]
+            return self.output_side_cars[aux_name]
         except KeyError:
             raise ArcanaNameError(
                 aux_name,
