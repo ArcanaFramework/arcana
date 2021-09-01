@@ -599,12 +599,12 @@ class DataNode():
 
     Parameters
     ----------
-    frequency : DataFrequency
-        The frequency of the node
     ids : Dict[DataFrequency, str]
         The ids for each provided frequency need to specify the data node
         within the tree
-    root : DataNode
+    frequency : DataFrequency
+        The frequency of the node
+    dataset : Dataset
         A reference to the root of the data tree
     """
 
@@ -714,7 +714,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     order: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=DataQuality.usable)
     data_node: DataNode = attr.ib(default=None)
-    _matched = attr.ib(factory=dict, init=False)
+    _matched: ty.Dict[str, DataItem] = attr.ib(factory=dict, init=False)
 
     def resolve(self, dtype):
         """
@@ -805,8 +805,9 @@ class UnresolvedFileGroup(UnresolvedDataItem):
         to each resource        
     """
 
-    file_paths: list = attr.ib(factory=list, converter=normalise_paths)
-    uris: list = attr.ib(factory=list)
+    file_paths: ty.Sequence[str] = attr.ib(factory=list,
+                                           converter=normalise_paths)
+    uris: ty.Sequence[str] = attr.ib(factory=list, converter=list)
 
     def _resolve(self, dtype):
         # Perform matching based on resource names in multi-format
@@ -881,7 +882,8 @@ class UnresolvedField(UnresolvedDataItem):
         The data node that the field belongs to
     """
 
-    value = attr.ib()
+    value: (int or float or str or ty.Sequence[int] or ty.Sequence[float]
+            or ty.Sequence[str]) = attr.ib()
 
     def _resolve(self, dtype):
         try:
