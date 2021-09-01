@@ -1,6 +1,8 @@
+from __future__ import annotations
 from operator import itemgetter
 import logging
 import typing as ty
+from enum import EnumMeta
 import os.path
 import re
 from copy import copy
@@ -20,10 +22,14 @@ from .file_format import FileFormat
 from .item import DataItem
 from .enum import DataFrequency, DataQuality
 from .spec import DataSpec
+from .selector import DataSelector
+from . import repository
 
 
 logger = logging.getLogger('arcana')
 
+
+@attr.s
 class Dataset():
     """
     A representation of a "dataset", the complete collection of data
@@ -49,6 +55,10 @@ class Dataset():
         used to limit the subject IDs in a project to the sub-set that passed
         QC. If a frequency is omitted or its value is None, then all available
         will be used
+    excluded : Dict[DataFrequency, List[str]]
+        The IDs to be excluded in the dataset for each frequency. E.g. can be
+        used to exclude specific subjects that failed QC. If a frequency is
+        omitted or its value is None, then all available will be used
     frequency_enum : Enum
         The DataFrequency enum that defines the frequencies (e.g. per-session,
         per-subject,...) present in the dataset.
@@ -74,58 +84,43 @@ class Dataset():
         repository class when it is called
     """
 
-    # name: str
-    # repository = attr.ib()
-    # frequency_enum = attr.ib()
-    # selectors = attr.ib(factory=list)
-    # derivatives = attr.ib(factory=list)
-    # included = attr.ib(default=None)
-    # excluded = attr.ib(default=None)
-    # id_inference: ty.Sequence[ty.Tuple(DataFrequency, str)] or ty.Callable = attr.ib(default=None)
+    name: str = attr.ib()
+    repository: repository.Repository = attr.ib()
+    frequency_enum: EnumMeta  = attr.ib()
+    selectors: ty.Sequence[DataSelector] = attr.ib(factory=list)
+    derivatives: ty.Sequence[DataSpec] = attr.ib(factory=list)
+    included: ty.Dict[DataFrequency, ty.List[str]] = attr.ib(factory=dict)
+    excluded: ty.Dict[DataFrequency, ty.List[str]] = attr.ib(factory=dict)
+    id_inference: (ty.Sequence[ty.Tuple(DataFrequency, str)]
+                   or ty.Callable) = attr.ib(factory=list, converter=list)
+    populate_kwargs: ty.Dict[str, ty.Any] = attr.ib(factory=dict)
+    _root_node: DataNode = attr.ib(default=None, init=False)
 
-    def __init__(self, name, repository, selectors, frequency_enum,
-                 derivatives=None, included=None, excluded=None,
-                 id_inference=None, **populate_kwargs):
-        self.name = name
-        self.frequency_enum = frequency_enum
-        self.repository = repository
+
+    @selectors.validator
+    def selectors_validator(self, _, selectors):
         if wrong_freq := [m for m in selectors.values()
                           if not isinstance(m.frequency, self.frequency_enum)]:
             raise ArcanaUsageError(
                 f"Data frequencies of {wrong_freq} selectors does not match "
                 f"that of repository {self.frequency_enum}")
-        self.selectors = selectors
-        self.derivatives = derivatives if derivatives else {}
-        self.workflows = {}
-        if overlapping := (set(self.selectors) & set(self.derivatives)):
+
+    @derivatives.validator
+    def derivatives_validator(self, _, derivatives):
+        if overlapping := (set(self.selectors) & set(derivatives)):
             raise ArcanaUsageError(
                 "Name-path clashes between selectors and derivatives ("
                 "', '".join(overlapping) + "')")
 
-        def parse_id_filters(arg):
-            dct = {f: None for f in self.frequency_enum}
-            if arg:
-                for freq, ids in arg:
-                    try:
-                        dct[self.frequency_enum[freq]] = list(ids)
-                    except KeyError:
-                        raise ArcanaUsageError(
-                            f"Unrecognised data frequency '{freq}' (valid "
-                            f"{', '.join(self.frequency_enum)})")
-            return dct
-
-        self.included = parse_id_filters(included)
-        self.excluded = parse_id_filters(excluded)
+    @excluded.validator
+    def excluded_validator(self, _, excluded):
         if both:= [f for f in self.included
                    if (self.included[f] is not None
-                       and self.excluded[f] is not None)]:
+                       and excluded[f] is not None)]:
             raise ArcanaUsageError(
                     "Cannot provide both 'included' and 'excluded' arguments "
-                    "for frequencies ('{}') to Dataset __init__".format(
-                        "', '".join(both)))
-        self._root_node = None  # Lazy loading of data tree info from repo
-        self._populate_kwargs = populate_kwargs
-        self.id_inference = id_inference
+                    "for frequencies ('{}') to Dataset".format(
+                        "', '".join(both)))   
 
     def __repr__(self):
         return (f"Dataset(name='{self.name}', repository={self.repository}, "
@@ -613,13 +608,14 @@ class DataNode():
         A reference to the root of the data tree
     """
 
-    ids = attr.ib()
-    frequency = attr.ib(type=DataFrequency)
-    subnodes = attr.ib(factory=lambda: defaultdict(dict))
-    supranodes = attr.ib(factory=dict)
-    _items = attr.ib(factory=dict)
+    ids: ty.Dict[DataFrequency, str] = attr.ib()
+    frequency: DataFrequency = attr.ib()
+    subnodes: ty.DefaultDict[str, ty.Dict] = attr.ib(
+        factory=lambda: defaultdict(dict))
+    supranodes: ty.DefaultDict[str, ty.Dict] = attr.ib(factory=dict)
     unresolved = attr.ib(factory=list)
-    _dataset = attr.ib(type=Dataset)
+    _items = attr.ib(factory=dict, init=False)
+    _dataset: Dataset = attr.ib()
 
     def __getitem__(self, name):
         """Get's the item that matches the dataset's selector
@@ -717,7 +713,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     path: str = attr.ib()
     order: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=DataQuality.usable)
-    data_node = attr.ib(default=None)
+    data_node: DataNode = attr.ib(default=None)
     _matched = attr.ib(factory=dict, init=False)
 
     def resolve(self, dtype):

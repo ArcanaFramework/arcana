@@ -279,6 +279,8 @@ class FileGroup(DataItem):
                     f"Attempting to set paths of auxiliary files for {self} "
                     "that don't exist ('{}')".format(
                         "', '".join(missing_side_cars)))
+
+
 @attr.s
 class Field(DataItem):
     """
@@ -324,7 +326,7 @@ class Field(DataItem):
         return float(self.value)
 
     def __str__(self):
-        if self.dtype._name == 'Sequence':
+        if self.dtype.__args__:  # Sequence type
             val = '[' + ','.join(self._to_str(v) for v in self.value) + ']'
         else:
             val = self._to_str(self.value)
