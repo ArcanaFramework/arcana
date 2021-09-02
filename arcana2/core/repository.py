@@ -36,8 +36,8 @@ class Repository(metaclass=ABCMeta):
         if self._connection_depth == 0:
             self.disconnect()
 
-    def dataset(self, name, selectors, derivatives=None, structure=None,
-                **kwargs):
+    def dataset(self, name, selectors=None, derivatives=None,
+                data_structure=None, **kwargs):
         """
         Returns a dataset from the XNAT repository
 
@@ -52,39 +52,38 @@ class Repository(metaclass=ABCMeta):
         derivatives : Dict[str, Spec]
             A dictionary that maps "name-paths" of derivatives analysis
             workflows to be stored in the dataset
-        structure : Enum
+        data_structure : EnumMeta
             The DataFrequency enum that defines the frequencies (e.g.
             per-session, per-subject,...) present in the dataset.                       
         **kwargs:
             Keyword args passed on to the Dataset init method
         """
-        if not structure:
+        if not data_structure:
             try:
-                structure = self.DEFAULT_FREQUENCY_ENUM
+                data_structure = self.DEFAULT_DATA_STRUCTURE
             except AttributeError:
                 raise ArcanaUsageError(
-                    "'structure' kwarg must be specified for datasets in "
+                    "'data_structure' kwarg must be specified for datasets in "
                     f"{type(self)} repositories")
         return dataset.Dataset(name, repository=self, selectors=selectors,
-                               derivatives=derivatives, structure=structure,
-                               **kwargs)
+                               derivatives=derivatives,
+                               data_structure=data_structure, **kwargs)
 
     @abstractmethod
-    def populate_nodes(self, dataset, ids=None):
+    def populate_nodes(self, dataset):
         """
         Find all data nodes for a dataset in the repository and populate the
-        Dataset object using its `add_node` method
+        Dataset object using its `add_node` method. The data nodes can be
+        populated with items as they are created using the methods
+        `add_file_group` and `add_field`, otherwise this can be performed in
+        the `populate_items` method for lazy loading (for performance).
 
         Parameters
         ----------
         dataset : Dataset
             The dataset to populate with nodes
-        ids : Dict[DataFrequency, str]
-            List of subject IDs with which to filter the tree with. If
-            None all are returned
         """
 
-    @abstractmethod
     def populate_items(self, data_node):
         """
         Find all data within a data node and populate the DataNode object with

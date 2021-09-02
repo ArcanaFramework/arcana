@@ -6,7 +6,7 @@ from collections import defaultdict
 from abc import ABCMeta, abstractmethod
 from arcana2.exceptions import (
     ArcanaUsageError, ArcanaUnresolvableFormatException, ArcanaFileFormatError,
-    ArcanaError, ArcanaNameError)
+    ArcanaError, ArcanaNameError, ArcanaWrongFrequencyError)
 from arcana2.core.utils import split_extension
 from ..file_format import FileFormat
 from .item import DataItem
@@ -40,14 +40,13 @@ class DataNode():
     _unresolved = attr.ib(default=None)
     _items = attr.ib(factory=dict, init=False)
 
-
     def __getitem__(self, name):
         """Get's the item that matches the dataset's selector
 
         Parameters
         ----------
         name : str
-            Name of the selector or registered derivative in the parent Dataset
+            Name of the selected item or derivative, specified per dataset,
             that is used to select a file-group or field in the node
 
         Returns
@@ -60,19 +59,28 @@ class DataNode():
             item = self._items[name]
         except KeyError:
             if name in self.dataset.selectors:
-                item = self.dataset.selectors[name].match(self)
+                selector = self.dataset.selectors[name]
+                frequency = selector.frequency
+                item = selector.match(self)
             elif name in self.dataset.derivatives:
+                spec = self.dataset.derivatives[name]
+                frequency = spec.frequency
                 try:
                     # Check to see if derivative was created previously
-                    item = self.dataset.derivatives[name].match(self)
+                    item = spec.match(self)
                 except KeyError:
                     # Create new derivative
-                    item = self.dataset.derivatives[name].create_item(self)
+                    item = spec.create_item(self)
             else:
                 raise ArcanaNameError(
                     name,
                     f"'{name}' is not the name of a \"column\" (either as a "
                     f"selected input or derived) in the {self.dataset}")
+            if frequency != self.frequency:
+                raise ArcanaWrongFrequencyError(
+                    name,
+                    f"'{name}'' is only present in \"{frequency}\" nodes "
+                    f"column where as {self} is of {self.frequency} frequency")
             self._items[name] = item
         return item
 
@@ -88,18 +96,23 @@ class DataNode():
     def unresolved(self):
         if self._unresolved is None:
             self.dataset.repository.populate_items(self)
+        return self._unresolved
 
     @property
     def ids_tuple(self):
         return self.dataset.ids_tuple(self.ids)
 
-    def add_file_group(self, path, *args, **kwargs):
-        self.unresolved.append(UnresolvedFileGroup(path, *args, data_node=self,
-                                                   **kwargs))
+    def add_file_group(self, path, **kwargs):
+        if self._unresolved is None:
+            self._unresolved = []
+        self._unresolved.append(UnresolvedFileGroup(
+            path=path, data_node=self, **kwargs))
 
     def add_field(self, path, value, **kwargs):
-        self.unresolved.append(UnresolvedField(path, value, data_node=self,
-                                               **kwargs))
+        if self._unresolved is None:
+            self._unresolved = []
+        self._unresolved.append(UnresolvedField(
+            path=path, value=value, data_node=self, **kwargs))
 
     def get_file_group_paths(self, file_group):
         return self.dataset.repository.get_file_group_paths(file_group, self)
@@ -142,7 +155,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     quality: DataQuality = attr.ib(default=DataQuality.usable)
     _matched: ty.Dict[str, DataItem] = attr.ib(factory=dict, init=False)
 
-    def resolve(self, dtype, data_node):
+    def resolve(self, dformat, data_node):
         """
         Detects the format of the file-group from a list of possible
         candidates and returns a corresponding FileGroup object. If multiple
@@ -156,7 +169,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
 
         Parameters
         ----------
-        dtype : FileFormat or type
+        dformat : FileFormat or type
             A list of file-formats to try to match. The first matching format
             in the sequence will be used to create a file-group
 
@@ -181,14 +194,14 @@ class UnresolvedDataItem(metaclass=ABCMeta):
             # Attempt to access previously saved
             item = self._matched[format]
         except KeyError:
-            if isinstance(dtype, FileFormat):
-                item = self._resolve(dtype, data_node)
+            if isinstance(dformat, FileFormat):
+                item = self._resolve(dformat, data_node)
             else:
-                item = self._resolve(dtype, data_node)
+                item = self._resolve(dformat, data_node)
         return item
 
     @abstractmethod
-    def _resolve(self, dtype):
+    def _resolve(self, dformat):
         raise NotImplementedError
 
     @property
@@ -244,47 +257,47 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                                            converter=normalise_paths)
     uris: ty.Sequence[str] = attr.ib(factory=list, converter=list)
 
-    def _resolve(self, dtype, data_node):
+    def _resolve(self, dformat, data_node):
         # Perform matching based on resource names in multi-format
         # file-group
         if self.uris is not None:   
-            for dtype_name, uri in self.uris.items():
-                if dtype_name in dtype.names:
-                    item = dtype(uri=uri, **self.item_kwargs)
+            for dformat_name, uri in self.uris.items():
+                if dformat_name in dformat.names:
+                    item = dformat(uri=uri, **self.item_kwargs)
             if item is None:
                 raise ArcanaUnresolvableFormatException(
                     f"Could not file a matching resource in {self} for"
-                    f" the given dtype ({dtype.name}), found "
+                    f" the given dformat ({dformat.name}), found "
                     "('{}')".format("', '".join(self.uris)))
         # Perform matching based on file-extensions of local name_paths
         # in multi-format file-group
         else:
             file_path = None
             side_cars = []
-            if dtype.directory:
+            if dformat.directory:
                 if (len(self.file_paths) == 1
                     and os.path.isdir(self.file_paths[0])
-                    and (dtype.within_dir_exts is None
-                        or (dtype.within_dir_exts == frozenset(
+                    and (dformat.within_dir_exts is None
+                        or (dformat.within_dir_exts == frozenset(
                             split_extension(f)[1]
                             for f in os.listdir(self.file_paths)
                             if not f.startswith('.'))))):
                     file_path = self.file_paths[0]
             else:
                 try:
-                    file_path, side_cars = dtype.assort_files(
+                    file_path, side_cars = dformat.assort_files(
                         self.file_paths)[0]
                 except ArcanaFileFormatError:
                     pass
             if file_path is not None:
-                item = dtype(
+                item = dformat(
                     file_path=file_path, side_cars=side_cars,
                     **self.item_kwargs)
             else:
                 raise ArcanaUnresolvableFormatException(
                     f"Paths in {self} (" + "', '".join(self.file_paths) + ") "
                     f"did not match the naming conventions expected by "
-                    f"dtype {dtype.name} , found:" + '\n    '.join(self.uris))
+                    f"dformat {dformat.name} , found:" + '\n    '.join(self.uris))
         return item
 
 
@@ -319,22 +332,22 @@ class UnresolvedField(UnresolvedDataItem):
     value: (int or float or str or ty.Sequence[int] or ty.Sequence[float]
             or ty.Sequence[str]) = attr.ib(default=None)
 
-    def _resolve(self, dtype, data_node):
+    def _resolve(self, dformat, data_node):
         try:
-            if dtype._name == 'Sequence':
-                if len(dtype.__args__) > 1:
+            if dformat._name == 'Sequence':
+                if len(dformat.__args__) > 1:
                     raise ArcanaUsageError(
                         f"Sequence datatypes with more than one arg "
-                        "are not supported ({dtype})")
-                subtype = dtype.__args__[0]
+                        "are not supported ({dformat})")
+                subtype = dformat.__args__[0]
                 value = [subtype(v)
                             for v in self.value[1:-1].split(',')]
             else:
-                    value = dtype(self.value)
+                    value = dformat(self.value)
         except ValueError:
             raise ArcanaUnresolvableFormatException(
                     f"Could not convert value of {self} ({self.value}) "
-                    f"to dtype {dtype}")
+                    f"to dformat {dformat}")
         else:
             item = DataItem(value=value, **self.item_kwargs)
         return item

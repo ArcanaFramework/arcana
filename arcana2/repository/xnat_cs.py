@@ -2,7 +2,7 @@ import logging
 import attr
 from arcana2.exceptions import ArcanaRepositoryError
 from arcana2.exceptions import ArcanaUsageError
-from ..enum import ClinicalTrial
+from arcana2.core.data.enum import ClinicalTrial
 from .xnat import Xnat
 
 
@@ -77,7 +77,7 @@ def make_command_json(image_name, analysis_cls, inputs, outputs,
         cmd_inputs.append({
             "name": param,
             "description": desc,
-            "type": COMMAND_INPUT_TYPES[spec.dtype],
+            "type": COMMAND_INPUT_TYPES[spec.dformat],
             "default-value": (spec.default
                                 if spec.default is not None else ""),
             "required": spec.default is None,

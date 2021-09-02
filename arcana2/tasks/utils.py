@@ -1,6 +1,7 @@
 from pydra.engine.task import FunctionTask
 from pydra import mark
-from pydra.engine.specs import BaseSpec, SpecInfo, FunctionTask
+from pydra.engine.specs import BaseSpec, SpecInfo
+from pydra.engine.task import FunctionTask
 from arcana2.core.data.item import DataItem, FileGroup
 from arcana2.core.data.node import DataNode
 

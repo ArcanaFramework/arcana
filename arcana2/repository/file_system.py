@@ -7,12 +7,12 @@ import logging
 import json
 import attr
 from fasteners import InterProcessLock
-from arcana2.core.data.item import Provenance
+from arcana2.core.data.provenance import DataProvenance
 from arcana2.exceptions import ArcanaMissingDataException
 from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
-from ..core.data.set import Dataset
-from ..core.data.enum import ClinicalTrial, DataFrequency
-from ..core.repository import Repository
+from arcana2.core.data.set import Dataset
+from arcana2.core.data.enum import ClinicalTrial, DataFrequency
+from arcana2.core.repository import Repository
 
 
 logger = logging.getLogger('arcana')
@@ -41,19 +41,7 @@ class FileSystem(Repository):
     PROV_KEY = 'provenance'
     VALUE_KEY = 'value'
 
-    def __repr__(self):
-        return (f"{type(self).__name__}")
-
-    @property
-    def provenance(self):
-        return {
-            'type': get_class_info(type(self)),
-            'host': HOSTNAME}
-
-    def __hash__(self):
-        return hash(self.type)
-
-    def get_file_group(self, file_group):
+    def get_file_group_paths(self, file_group):
         """
         Set the path of the file_group from the repository
         """
@@ -72,7 +60,7 @@ class FileSystem(Repository):
                     .format(file_group, aux_name, self))
         return primary_path, side_cars
 
-    def get_field(self, field):
+    def get_field_value(self, field):
         """
         Update the value of the field from the repository
         """
@@ -80,61 +68,10 @@ class FileSystem(Repository):
         if isinstance(val, dict):
             val = val[self.VALUE_KEY]
         if field.array:
-            val = [field.dtype(v) for v in val]
+            val = [field.dformat(v) for v in val]
         else:
-            val = field.dtype(val)
+            val = field.dformat(val)
         return val
-
-    def get_provenance(self, item):
-        if item.is_file_group:
-            prov = self._get_file_group_provenance(item)
-        else:
-            prov = self._get_field_provenance(item)
-        return prov
-
-    def _get_file_group_provenance(self, file_group):
-        if file_group.file_path is not None:
-            prov = Provenance.load(self.prov_json_path(file_group))
-        else:
-            prov = None
-        return prov
-
-    def _get_field_provenance(self, field):
-        """
-        Loads the fields provenance from the JSON dictionary
-        """
-        val_dct = self._get_field_val(field)
-        if isinstance(val_dct, dict):
-            prov = val_dct.get(self.PROV_KEY)
-        else:
-            prov = None
-        return prov
-
-    def _get_field_val(self, field):
-        """
-        Load fields JSON, locking to prevent read/write conflicts
-        Would be better if only checked if locked to allow
-        concurrent reads but not possible with multi-process
-        locks (in my understanding at least).
-        """
-        fpath = self.fields_json_path(field)
-        try:
-            with InterProcessLock(fpath + self.LOCK_SUFFIX,
-                                  logger=logger), open(fpath, 'r') as f:
-                dct = json.load(f)
-            val_dct = dct[field.name]
-            return val_dct
-        except (KeyError, IOError) as e:
-            try:
-                # Check to see if the IOError wasn't just because of a
-                # missing file
-                if e.errno != errno.ENOENT:
-                    raise
-            except AttributeError:
-                pass
-            raise ArcanaMissingDataException(
-                "{} does not exist in the local repository {}"
-                .format(field.name, self))
 
     def put_file_group(self, file_group):
         """
@@ -204,7 +141,7 @@ class FileSystem(Repository):
         def load_prov(dpath, bname):
             prov_path = op.join(dpath, bname + self.PROV_SUFFIX)
             if op.exists(prov_path):
-                prov = Provenance.load(prov_path)
+                prov = DataProvenance.load(prov_path)
             else:
                 prov = None
             return prov
@@ -256,6 +193,12 @@ class FileSystem(Repository):
                 
         construct_node(op.join(self.base_dir, dataset.name))
 
+    @property
+    def provenance(self):
+        return {
+            'type': get_class_info(type(self)),
+            'host': HOSTNAME}
+
     @classmethod
     def _list_node_dir_contents(cls, path, is_leaf):
         # Selector out hidden files (i.e. starting with '.')
@@ -287,6 +230,57 @@ class FileSystem(Repository):
 
     def prov_json_path(self, file_group):
         return self.file_group_path(file_group) + self.PROV_SUFFX
+
+    def get_provenance(self, item):
+        if item.is_file_group:
+            prov = self._get_file_group_provenance(item)
+        else:
+            prov = self._get_field_provenance(item)
+        return prov
+
+    def _get_file_group_provenance(self, file_group):
+        if file_group.file_path is not None:
+            prov = Provenance.load(self.prov_json_path(file_group))
+        else:
+            prov = None
+        return prov
+
+    def _get_field_provenance(self, field):
+        """
+        Loads the fields provenance from the JSON dictionary
+        """
+        val_dct = self._get_field_val(field)
+        if isinstance(val_dct, dict):
+            prov = val_dct.get(self.PROV_KEY)
+        else:
+            prov = None
+        return prov
+
+    def _get_field_val(self, field):
+        """
+        Load fields JSON, locking to prevent read/write conflicts
+        Would be better if only checked if locked to allow
+        concurrent reads but not possible with multi-process
+        locks (in my understanding at least).
+        """
+        fpath = self.fields_json_path(field)
+        try:
+            with InterProcessLock(fpath + self.LOCK_SUFFIX,
+                                  logger=logger), open(fpath, 'r') as f:
+                dct = json.load(f)
+            val_dct = dct[field.name]
+            return val_dct
+        except (KeyError, IOError) as e:
+            try:
+                # Check to see if the IOError wasn't just because of a
+                # missing file
+                if e.errno != errno.ENOENT:
+                    raise
+            except AttributeError:
+                pass
+            raise ArcanaMissingDataException(
+                "{} does not exist in the local repository {}"
+                .format(field.name, self))
                                  
 
 

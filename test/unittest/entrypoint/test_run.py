@@ -39,6 +39,8 @@ class TestRunApp(TestCase):
         args.ids = None
         args.container = None
         args.id_inference = None
+        args.included = []
+        args.excluded = []
         args.data_structure = 'ClinicalTrial'
         args.dry_run = False
         args.frequency = 'session'

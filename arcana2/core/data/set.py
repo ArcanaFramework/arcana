@@ -12,7 +12,7 @@ from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
     ArcanaBadlyFormattedIDError)
-from arcana2.core.utils import split_extension
+from arcana2.core.utils import to_list, to_dict
 from .item import DataItem
 from .enum import DataFrequency
 from .spec import DataSpec
@@ -74,21 +74,21 @@ class Dataset():
 
         Alternatively, a general function with signature `f(ids)` that returns
         a dictionary with the mapped IDs can be provided instead.
-    **populate_kwargs : Dict[str, Any]
-        Keyword arguments passed on to the `populate_tree` method of the
-        repository class when it is called
     """
 
     name: str = attr.ib()
     repository: repository.Repository = attr.ib()
     data_structure: EnumMeta  = attr.ib()
-    selectors: ty.Sequence[DataSelector] = attr.ib(factory=list)
-    derivatives: ty.Sequence[DataSpec] = attr.ib(factory=list)
-    included: ty.Dict[DataFrequency, ty.List[str]] = attr.ib(factory=dict)
-    excluded: ty.Dict[DataFrequency, ty.List[str]] = attr.ib(factory=dict)
+    selectors: ty.Sequence[DataSelector] or NoneType = attr.ib(
+        factory=list, converter=to_list)
+    derivatives: ty.Sequence[DataSpec] or NoneType = attr.ib(
+        factory=list, converter=to_list)
+    included: ty.Dict[DataFrequency, ty.List[str]] = attr.ib(
+        factory=dict, converter=to_dict)
+    excluded: ty.Dict[DataFrequency, ty.List[str]] = attr.ib(
+        factory=dict, converter=to_dict)
     id_inference: (ty.Sequence[ty.Tuple(DataFrequency, str)]
-                   or ty.Callable) = attr.ib(factory=list, converter=list)
-    populate_kwargs: ty.Dict[str, ty.Any] = attr.ib(factory=dict)
+                   or ty.Callable) = attr.ib(factory=list, converter=to_list)
     _root_node: DataNode = attr.ib(default=None, init=False)
 
 
@@ -127,22 +127,6 @@ class Dataset():
 
     def __exit__(self):
         self.repository.__exit__()
-
-    def __eq__(self, other):
-        return (self.name == other.name
-                and self.repository == other.repository
-                and self.included == other.included
-                and self.excluded == other.excluded
-                and self.root_node == other.root_node
-                and self.data_structure == other.data_structure)
-
-    def __hash__(self):
-        return (hash(self.name)
-                ^ hash(self.repository)
-                ^ hash(self.included)
-                ^ hash(self.excluded)
-                ^ hash(self.root_node)
-                ^ hash(self.data_structure))
 
     def __getitem__(self, key):
         if key == self.data_structure(0):

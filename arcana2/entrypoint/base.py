@@ -1,8 +1,11 @@
 
 import re
 from arcana2.exceptions import ArcanaUsageError
-from arcana2.core.repository import FileSystem, Xnat, XnatCS
+from arcana2.repository.file_system import FileSystem
+from arcana2.repository.xnat import Xnat
+from arcana2.repository.xnat_cs import XnatCS
 import arcana2.core.data.enum
+
 
 class BaseDatasetCmd():
 
@@ -24,7 +27,7 @@ class BaseDatasetCmd():
                   "\txnat: SERVER_URL, USERNAME, PASSWORD\n"
                   "\txnat_cs: SUBJECT TIMEPOINT\n"))
         parser.add_argument(
-            '--included', nargs=2, default=None, metavar=('FREQ', 'ID'),
+            '--included', nargs=2, default=[], metavar=('FREQ', 'ID'),
             action='append',
             help=("The nodes to include in the dataset. First value is the "
                   "frequency of the ID (e.g. 'group', 'subject', 'session') "
@@ -32,7 +35,7 @@ class BaseDatasetCmd():
                   "If the second arg contains '/' then it is interpreted as "
                   "the path to a text file containing a list of IDs"))
         parser.add_argument(
-            '--excluded', nargs=2, default=None, metavar=('FREQ', 'ID'),
+            '--excluded', nargs=2, default=[], metavar=('FREQ', 'ID'),
             action='append',
             help=("The nodes to exclude from the dataset. First value is the "
                   "frequency of the ID (e.g. 'group', 'subject', 'session') "
@@ -125,5 +128,4 @@ class BaseDatasetCmd():
 
     @classmethod
     def parse_data_structure(cls, args):
-        data_structure = getattr(arcana2.core.data.enum,
-                                 args.data_structure)
+        return getattr(arcana2.core.data.enum, args.data_structure)

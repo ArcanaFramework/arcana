@@ -1,13 +1,13 @@
 from itertools import zip_longest
 import re
 from typing import Sequence
-from arcana2.data import DataSelector, DataSpec
-from arcana2.data import file_format as ff
+from arcana2.core.data.selector import DataSelector
+from arcana2.core.data.spec import DataSpec
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
 from .base import BaseDatasetCmd
-from .util import resolve_class
+from arcana2.core.utils import resolve_class, resolve_dformat
 
 
 sanitize_path_re = re.compile(r'[^a-zA-Z\d]')
@@ -112,7 +112,7 @@ class BaseRunCmd(BaseDatasetCmd):
                 raise ArcanaUsageError(
                     f"Input {i} has too many input args, {nargs} instead "
                     f"of max 7 ({inpt})")
-            (var, pattern, file_format, order, quality, header_vals, freq) = [
+            (var, pattern, file_format, order, quality, metadata, freq) = [
                 a if a != '*' else d
                 for a, d in zip_longest(inpt, defaults, fillvalue='*')]
             if not var:
@@ -125,9 +125,9 @@ class BaseRunCmd(BaseDatasetCmd):
                 raise ArcanaUsageError(
                     f"Datatype must be provided for input {i} ({inpt})")
             inputs[var] = DataSelector(
-                name_path=pattern, format=ff.get_format(file_format),
+                path=pattern, dformat=resolve_dformat(file_format),
                 frequency=data_structure[freq], order=order,
-                header_vals=header_vals, is_regex=True,
+                metadata=metadata, is_regex=True,
                 quality_threshold=quality)
         return inputs
 
@@ -149,13 +149,11 @@ class BaseRunCmd(BaseDatasetCmd):
         frequency = cls.parse_frequency(args)
         # Create outputs
         outputs = {}
-        defaults = (ff.niftix_gz, None)
-        for output in args.field_output:
-            nargs = len(output)
-            (var, store_at, file_format) = output + defaults[nargs - 2:]
+        for output in args.output:
+            var, store_at, dformat = output
             outputs[var] = DataSpec(
                 path=store_at,
-                dtype=ff.get_format(file_format),
+                dformat=resolve_dformat(dformat),
                 frequency=frequency)
         return outputs
 
@@ -163,14 +161,14 @@ class BaseRunCmd(BaseDatasetCmd):
     def parse_required_formats(cls, args):
         required = {}
         for inpt, frmt in args.required_format:
-            required[inpt] = ff.get_format(frmt)
+            required[inpt] = resolve_dformat(frmt)
         return required
 
     @classmethod
     def parse_produced_formats(cls, args):
         produced = {}
         for inpt, frmt in args.produced_format:
-            produced[inpt] = ff.get_format(frmt)
+            produced[inpt] = resolve_dformat(frmt)
         return produced
 
         # # Create field outputs
@@ -185,9 +183,9 @@ class BaseRunCmd(BaseDatasetCmd):
         #         raise ArcanaUsageError(
         #             f"Field Input {i} has too many input args, {nargs} "
         #             f"instead of max 4 ({inpt})")
-        #     path, name, dtype, freq = inpt + defaults[nargs - 2:]
+        #     path, name, dformat, freq = inpt + defaults[nargs - 2:]
         #     output_names[name] = path
-        #     outputs[name] = FieldSpec(dtype=dtype,
+        #     outputs[name] = FieldSpec(dformat=dformat,
         #                               frequency=data_structure[freq])
 
 

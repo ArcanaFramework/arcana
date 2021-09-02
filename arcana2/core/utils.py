@@ -1,17 +1,15 @@
 from typing import Sequence
 import subprocess as sp
-import importlib
+import pkgutil
+import re
+from importlib import import_module
 from itertools import zip_longest
 import os.path
-import errno
 # from nipype.interfaces.matlab import MatlabCommand
-import shutil
 from contextlib import contextmanager
 from collections.abc import Iterable
-from importlib import import_module
-import tempfile
 import logging
-from arcana2.exceptions import ArcanaUsageError
+from arcana2.exceptions import ArcanaUsageError, ArcanaNameError
 
 
 PATH_SUFFIX = '_path'
@@ -38,6 +36,22 @@ def set_loggers(loggers):
         formatter = logging.Formatter("%(levelname)s - %(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
+
+
+def to_list(arg):
+    if arg is None:
+        arg = []
+    else:
+        arg = list(arg)
+    return arg
+
+
+def to_dict(arg):
+    if arg is None:
+        arg = {}
+    else:
+        arg = dict(arg)
+    return arg
 
 
 def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
@@ -88,6 +102,40 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
                 class_str, "', '".join(prefixes)))
     return cls
 
+def resolve_dformat(name):
+    """Resolves a in a sub-module of arcana2.file_format based on its
+    name
+
+    Parameters
+    ----------
+    name : str
+        The name of the format
+
+    Returns
+    -------
+    FileFormat or type
+        The resolved file format or type
+    """
+    if re.match(r'int|float|str|list\[(int|float|str)\]', name):
+        return eval(name)
+    import arcana2.file_format
+    dformat = None
+    module_names = [
+        i.name for i in pkgutil.iter_modules(
+            [os.path.dirname(arcana2.file_format.__file__)])]
+    for module_name in module_names:
+        module = import_module('arcana2.file_format.' + module_name)
+        try:
+            dformat = getattr(module, name)
+        except AttributeError:
+            pass
+    if dformat is None:
+        raise ArcanaNameError(
+            name,
+            f"Could not find format {name} in installed modules:\n"
+            + "\n    ".join(module_names))
+    return dformat
+    
 
 @contextmanager
 def set_cwd(path):
@@ -163,7 +211,7 @@ def lower(s):
 
 
 
-def parse_single_value(value, dtype=None):
+def parse_single_value(value, dformat=None):
     """
     Tries to convert to int, float and then gives up and assumes the value
     is of type string. Useful when excepting values that may be string
@@ -182,12 +230,12 @@ def parse_single_value(value, dtype=None):
     elif not isinstance(value, (int, float, bool)):
         raise ArcanaUsageError(
             "Unrecognised type for single value {}".format(value))
-    if dtype is not None:
-        value = dtype(value)
+    if dformat is not None:
+        value = dformat(value)
     return value
 
 
-def parse_value(value, dtype=None):
+def parse_value(value, dformat=None):
     # Split strings with commas into lists
     if isinstance(value, str):
         if value.startswith('[') and value.endswith(']'):
@@ -199,15 +247,15 @@ def parse_value(value, dtype=None):
         except TypeError:
             pass
     if isinstance(value, list):
-        value = [parse_single_value(v, dtype=dtype) for v in value]
+        value = [parse_single_value(v, dformat=dformat) for v in value]
         # Check to see if datatypes are consistent
-        dtypes = set(type(v) for v in value)
-        if len(dtypes) > 1:
+        dformats = set(type(v) for v in value)
+        if len(dformats) > 1:
             raise ArcanaUsageError(
                 "Inconsistent datatypes in values array ({})"
                 .format(value))
     else:
-        value = parse_single_value(value, dtype=dtype)
+        value = parse_single_value(value, dformat=dformat)
     return value
 
 
@@ -224,7 +272,7 @@ def find_mismatch(first, second, indent=''):
     """
     Finds where two objects differ, iterating down into nested containers
     (i.e. dicts, lists and tuples) They can be nested containers
-    any combination of primary dtypes, str, int, float, dict and lists
+    any combination of primary dformats, str, int, float, dict and lists
 
     Parameters
     ----------
@@ -281,11 +329,11 @@ def find_mismatch(first, second, indent=''):
 def extract_package_version(package_name):
     version = None
     try:
-        module = importlib.import_module(package_name)
+        module = import_module(package_name)
     except ImportError:
         if package_name.startswith('py'):
             try:
-                module = importlib.import_module(package_name[2:])
+                module = import_module(package_name[2:])
             except ImportError:
                 pass
     else:

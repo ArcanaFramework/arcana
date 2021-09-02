@@ -1,2 +1,2 @@
-from .common import *
+from .general import *
 from .neuroimaging import *

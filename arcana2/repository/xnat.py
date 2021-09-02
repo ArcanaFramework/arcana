@@ -15,15 +15,14 @@ import attr
 from tqdm import tqdm
 import xnat
 from arcana2.core.utils import JSON_ENCODING
-from arcana2.core.utils import makedirs
-from .base import Repository
+from arcana2.core.repository import Repository
 from arcana2.exceptions import (
     ArcanaError, ArcanaNameError, ArcanaUsageError, ArcanaFileFormatError,
     ArcanaWrongRepositoryError)
-from ..item import Provenance
+from arcana2.core.data.provenance import DataProvenance
 from arcana2.core.utils import dir_modtime, get_class_info, parse_value
-from ..dataset import Dataset
-from ..enum import ClinicalTrial
+from arcana2.core.data.set import Dataset
+from arcana2.core.data.enum import ClinicalTrial
 
 
 
@@ -82,7 +81,7 @@ class Xnat(Repository):
     PROV_SUFFIX = '.__prov__.json'
     FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
-    DEFAULT_FREQUENCY_ENUM = ClinicalTrial
+    DEFAULT_DATA_STRUCTURE = ClinicalTrial
 
     @property
     def prov(self):
@@ -291,10 +290,10 @@ class Xnat(Repository):
         self._check_repository(field)
         val = field.value
         if field.array:
-            if field.dtype is str:
+            if field.dformat is str:
                 val = ['"{}"'.format(v) for v in val]
             val = '[' + ','.join(str(v) for v in val) + ']'
-        if field.dtype is str:
+        if field.dformat is str:
             val = '"{}"'.format(val)
         with self:
             xsession = self.get_xnode(field)
@@ -781,4 +780,3 @@ class Xnat(Repository):
             uri = re.sub(r'(?<=/subjects/)[^/]+', subject_id, uri)
 
         return uri
-        

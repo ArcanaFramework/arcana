@@ -70,6 +70,9 @@ class NamedArcanaError(ArcanaError):
 class ArcanaNameError(NamedArcanaError):
     pass
 
+class ArcanaWrongFrequencyError(NamedArcanaError):
+    pass
+
 
 class ArcanaIndexError(ArcanaError):
 
