@@ -17,7 +17,7 @@ class DataSelector():
         A regex name_path to match the file_group names with. Must match
         one and only one file_group per <frequency>. If None, the name
         is used instead.
-    dformat : FileFormat or type
+    data_format : FileFormat or type
         File format that data will be 
     frequency : DataFrequency
         The frequency of the file-group within the dataset tree, e.g. per
@@ -41,7 +41,7 @@ class DataSelector():
     """
 
     path = attr.ib(type=str)
-    dformat = attr.ib()
+    data_format = attr.ib()
     frequency = attr.ib(type=DataFrequency)
     quality_threshold = attr.ib(type=DataQuality, default=DataQuality.usable)
     order = attr.ib(type=int, default=None)
@@ -52,7 +52,7 @@ class DataSelector():
         criteria = [
             (match_path, self.path if not self.is_regex else None),
             (match_path_regex, self.path if self.is_regex else None),
-            (match_dformat, self.dformat),
+            (match_data_format, self.data_format),
             (match_quality, self.quality_threshold),
             (match_metadata, self.metadata)]
         matches = list(node.unresolved)
@@ -89,10 +89,10 @@ def match_path(item, path):
     "at the path {}"
     return item == path
 
-def match_dformat(item, dformat):
+def match_data_format(item, data_format):
     "that can be resolved to the requested format '{}'"
     try:
-        item.resolve(dformat)
+        item.resolve(data_format)
     except ArcanaFileFormatError:
         return False
     else:

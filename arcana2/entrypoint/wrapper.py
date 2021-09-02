@@ -55,7 +55,7 @@ class Wrap4XnatCSCmd():
         if args.switch:
             for name, val in args.switch:
                 spec = analysis_class.param_spec(name)
-                switches[name] = spec.dformat(val)
+                switches[name] = spec.data_format(val)
 
         mock_analysis = analysis_class.mock(inputs=inputs,
                                             switches=switches)

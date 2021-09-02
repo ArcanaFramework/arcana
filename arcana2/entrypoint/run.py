@@ -7,7 +7,7 @@ from arcana2.exceptions import ArcanaUsageError
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
 from .base import BaseDatasetCmd
-from arcana2.core.utils import resolve_class, resolve_dformat
+from arcana2.core.utils import resolve_class, resolve_data_format
 
 
 sanitize_path_re = re.compile(r'[^a-zA-Z\d]')
@@ -125,7 +125,7 @@ class BaseRunCmd(BaseDatasetCmd):
                 raise ArcanaUsageError(
                     f"Datatype must be provided for input {i} ({inpt})")
             inputs[var] = DataSelector(
-                path=pattern, dformat=resolve_dformat(file_format),
+                path=pattern, data_format=resolve_data_format(file_format),
                 frequency=data_structure[freq], order=order,
                 metadata=metadata, is_regex=True,
                 quality_threshold=quality)
@@ -150,10 +150,10 @@ class BaseRunCmd(BaseDatasetCmd):
         # Create outputs
         outputs = {}
         for output in args.output:
-            var, store_at, dformat = output
+            var, store_at, data_format = output
             outputs[var] = DataSpec(
                 path=store_at,
-                dformat=resolve_dformat(dformat),
+                data_format=resolve_data_format(data_format),
                 frequency=frequency)
         return outputs
 
@@ -161,14 +161,14 @@ class BaseRunCmd(BaseDatasetCmd):
     def parse_required_formats(cls, args):
         required = {}
         for inpt, frmt in args.required_format:
-            required[inpt] = resolve_dformat(frmt)
+            required[inpt] = resolve_data_format(frmt)
         return required
 
     @classmethod
     def parse_produced_formats(cls, args):
         produced = {}
         for inpt, frmt in args.produced_format:
-            produced[inpt] = resolve_dformat(frmt)
+            produced[inpt] = resolve_data_format(frmt)
         return produced
 
         # # Create field outputs
@@ -183,9 +183,9 @@ class BaseRunCmd(BaseDatasetCmd):
         #         raise ArcanaUsageError(
         #             f"Field Input {i} has too many input args, {nargs} "
         #             f"instead of max 4 ({inpt})")
-        #     path, name, dformat, freq = inpt + defaults[nargs - 2:]
+        #     path, name, data_format, freq = inpt + defaults[nargs - 2:]
         #     output_names[name] = path
-        #     outputs[name] = FieldSpec(dformat=dformat,
+        #     outputs[name] = FieldSpec(data_format=data_format,
         #                               frequency=data_structure[freq])
 
 

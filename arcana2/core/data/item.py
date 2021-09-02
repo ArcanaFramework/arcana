@@ -47,7 +47,7 @@ class DataItem(metaclass=ABCMeta):
     """
 
     path: str = attr.ib()
-    dformat: type or FileFormat = attr.ib()
+    data_format: type or FileFormat = attr.ib()
     uri: str = attr.ib(default=None)
     index: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=None)
@@ -169,7 +169,7 @@ class FileGroup(DataItem):
     @property
     def file_paths(self):
         "Iterates through all files in the group and returns their file paths"
-        if self.dformat.directory:
+        if self.data_format.directory:
             return chain(*((op.join(root, f) for f in files)
                            for root, _, files in os.walk(self.file_path)))
         else:
@@ -212,8 +212,8 @@ class FileGroup(DataItem):
             The other file_group to compare to
         """
         self._check_exists()
-        if hasattr(self.dformat, 'contents_equal'):
-            equal = self.dformat.contents_equal(self, other, **kwargs)
+        if hasattr(self.data_format, 'contents_equal'):
+            equal = self.data_format.contents_equal(self, other, **kwargs)
         else:
             equal = (self.checksums == other.checksums)
         return equal
@@ -258,7 +258,7 @@ class FileGroup(DataItem):
     def default_side_cars(self):
         if self.file_path is None:
             return None
-        return self.dformat.default_aux_file_paths(self.file_path)
+        return self.data_format.default_aux_file_paths(self.file_path)
 
     @side_cars.validator
     def validate_side_cars(self, _, side_cars):
@@ -268,12 +268,12 @@ class FileGroup(DataItem):
                     "Auxiliary files can only be provided to a FileGroup "
                     f"of '{self.path}' ({side_cars}) if the local path is "
                     "as well")
-            if set(self.dformat.side_cars.keys()) != set(side_cars.keys()):
+            if set(self.data_format.side_cars.keys()) != set(side_cars.keys()):
                 raise ArcanaUsageError(
                     "Keys of provided auxiliary files ('{}') don't match "
                     "format ('{}')".format(
                         "', '".join(side_cars.keys()),
-                        "', '".join(self.dformat.side_cars.keys())))
+                        "', '".join(self.data_format.side_cars.keys())))
             if missing_side_cars:= [f for f in side_cars.values()
                                     if not op.exists(f)]:
                 raise ArcanaUsageError(
@@ -292,7 +292,7 @@ class Field(DataItem):
     name_path : str
         The name_path to the relative location of the field, i.e. excluding
         information about which node in the data tree it belongs to
-    dformat : type
+    data_format : type
         The datatype of the value. Can be one of (float, int, str)
     derived : bool
         Whether or not the value belongs in the derived session or not
@@ -327,14 +327,14 @@ class Field(DataItem):
         return float(self.value)
 
     def __str__(self):
-        if self.dformat.__args__:  # Sequence type
+        if self.data_format.__args__:  # Sequence type
             val = '[' + ','.join(self._to_str(v) for v in self.value) + ']'
         else:
             val = self._to_str(self.value)
         return val
 
     def _to_str(self, val):
-        if self.dformat is str:
+        if self.data_format is str:
             val = '"{}"'.format(val)
         else:
             val = str(val)

@@ -290,10 +290,10 @@ class Xnat(Repository):
         self._check_repository(field)
         val = field.value
         if field.array:
-            if field.dformat is str:
+            if field.data_format is str:
                 val = ['"{}"'.format(v) for v in val]
             val = '[' + ','.join(str(v) for v in val) + ']'
-        if field.dformat is str:
+        if field.data_format is str:
             val = '"{}"'.format(val)
         with self:
             xsession = self.get_xnode(field)

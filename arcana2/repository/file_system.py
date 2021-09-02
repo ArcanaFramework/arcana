@@ -68,9 +68,9 @@ class FileSystem(Repository):
         if isinstance(val, dict):
             val = val[self.VALUE_KEY]
         if field.array:
-            val = [field.dformat(v) for v in val]
+            val = [field.data_format(v) for v in val]
         else:
-            val = field.dformat(val)
+            val = field.data_format(val)
         return val
 
     def put_file_group(self, file_group):

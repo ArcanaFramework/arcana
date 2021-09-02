@@ -165,7 +165,7 @@ def put_file_group(file_group, xsession):
 
 
 def put_field(field, xsession):
-    if field.dformat is str:
+    if field.data_format is str:
         value = '"{}"'.format(field.value)
     else:
         value = field.value

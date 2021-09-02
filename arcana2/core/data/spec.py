@@ -13,7 +13,7 @@ class DataSpec():
     path : str
         The path to the relative location the corresponding data items will be
         stored within the nodes of the data tree.
-    format : FileFormat or type
+    data_format : FileFormat or type
         The file format used to store the file_group. Can be one of the
         recognised formats
     frequency : DataFrequency
@@ -36,7 +36,7 @@ class DataSpec():
 
     path = attr.ib(type=str)
     frequency = attr.ib(type=DataFrequency)
-    format = attr.ib()
+    data_format = attr.ib()
     desc = attr.ib(type=str)
     salience = attr.ib(type=DataSalience, default=DataSalience.supplementary)
     category = attr.ib(type=str, default=None)

@@ -155,7 +155,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     quality: DataQuality = attr.ib(default=DataQuality.usable)
     _matched: ty.Dict[str, DataItem] = attr.ib(factory=dict, init=False)
 
-    def resolve(self, dformat, data_node):
+    def resolve(self, data_format, data_node):
         """
         Detects the format of the file-group from a list of possible
         candidates and returns a corresponding FileGroup object. If multiple
@@ -169,7 +169,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
 
         Parameters
         ----------
-        dformat : FileFormat or type
+        data_format : FileFormat or type
             A list of file-formats to try to match. The first matching format
             in the sequence will be used to create a file-group
 
@@ -194,14 +194,14 @@ class UnresolvedDataItem(metaclass=ABCMeta):
             # Attempt to access previously saved
             item = self._matched[format]
         except KeyError:
-            if isinstance(dformat, FileFormat):
-                item = self._resolve(dformat, data_node)
+            if isinstance(data_format, FileFormat):
+                item = self._resolve(data_format, data_node)
             else:
-                item = self._resolve(dformat, data_node)
+                item = self._resolve(data_format, data_node)
         return item
 
     @abstractmethod
-    def _resolve(self, dformat):
+    def _resolve(self, data_format):
         raise NotImplementedError
 
     @property
@@ -257,47 +257,47 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                                            converter=normalise_paths)
     uris: ty.Sequence[str] = attr.ib(factory=list, converter=list)
 
-    def _resolve(self, dformat, data_node):
+    def _resolve(self, data_format, data_node):
         # Perform matching based on resource names in multi-format
         # file-group
         if self.uris is not None:   
-            for dformat_name, uri in self.uris.items():
-                if dformat_name in dformat.names:
-                    item = dformat(uri=uri, **self.item_kwargs)
+            for data_format_name, uri in self.uris.items():
+                if data_format_name in data_format.names:
+                    item = data_format(uri=uri, **self.item_kwargs)
             if item is None:
                 raise ArcanaUnresolvableFormatException(
                     f"Could not file a matching resource in {self} for"
-                    f" the given dformat ({dformat.name}), found "
+                    f" the given data_format ({data_format.name}), found "
                     "('{}')".format("', '".join(self.uris)))
         # Perform matching based on file-extensions of local name_paths
         # in multi-format file-group
         else:
             file_path = None
             side_cars = []
-            if dformat.directory:
+            if data_format.directory:
                 if (len(self.file_paths) == 1
                     and os.path.isdir(self.file_paths[0])
-                    and (dformat.within_dir_exts is None
-                        or (dformat.within_dir_exts == frozenset(
+                    and (data_format.within_dir_exts is None
+                        or (data_format.within_dir_exts == frozenset(
                             split_extension(f)[1]
                             for f in os.listdir(self.file_paths)
                             if not f.startswith('.'))))):
                     file_path = self.file_paths[0]
             else:
                 try:
-                    file_path, side_cars = dformat.assort_files(
+                    file_path, side_cars = data_format.assort_files(
                         self.file_paths)[0]
                 except ArcanaFileFormatError:
                     pass
             if file_path is not None:
-                item = dformat(
+                item = data_format(
                     file_path=file_path, side_cars=side_cars,
                     **self.item_kwargs)
             else:
                 raise ArcanaUnresolvableFormatException(
                     f"Paths in {self} (" + "', '".join(self.file_paths) + ") "
                     f"did not match the naming conventions expected by "
-                    f"dformat {dformat.name} , found:" + '\n    '.join(self.uris))
+                    f"data_format {data_format.name} , found:" + '\n    '.join(self.uris))
         return item
 
 
@@ -332,22 +332,22 @@ class UnresolvedField(UnresolvedDataItem):
     value: (int or float or str or ty.Sequence[int] or ty.Sequence[float]
             or ty.Sequence[str]) = attr.ib(default=None)
 
-    def _resolve(self, dformat, data_node):
+    def _resolve(self, data_format, data_node):
         try:
-            if dformat._name == 'Sequence':
-                if len(dformat.__args__) > 1:
+            if data_format._name == 'Sequence':
+                if len(data_format.__args__) > 1:
                     raise ArcanaUsageError(
                         f"Sequence datatypes with more than one arg "
-                        "are not supported ({dformat})")
-                subtype = dformat.__args__[0]
+                        "are not supported ({data_format})")
+                subtype = data_format.__args__[0]
                 value = [subtype(v)
                             for v in self.value[1:-1].split(',')]
             else:
-                    value = dformat(self.value)
+                    value = data_format(self.value)
         except ValueError:
             raise ArcanaUnresolvableFormatException(
                     f"Could not convert value of {self} ({self.value}) "
-                    f"to dformat {dformat}")
+                    f"to data_format {data_format}")
         else:
             item = DataItem(value=value, **self.item_kwargs)
         return item

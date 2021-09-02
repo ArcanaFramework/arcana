@@ -549,7 +549,7 @@ class Image(FileFormat, metaclass=ABCMeta):
                                                equal_nan=True):
                                 diff.append(key)
                         except TypeError:
-                            # Fallback to a straight comparison for some dformats
+                            # Fallback to a straight comparison for some data_formats
                             if value != other_value:
                                 diff.append(key)
                 elif value != other_value:

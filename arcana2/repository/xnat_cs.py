@@ -77,7 +77,7 @@ def make_command_json(image_name, analysis_cls, inputs, outputs,
         cmd_inputs.append({
             "name": param,
             "description": desc,
-            "type": COMMAND_INPUT_TYPES[spec.dformat],
+            "type": COMMAND_INPUT_TYPES[spec.data_format],
             "default-value": (spec.default
                                 if spec.default is not None else ""),
             "required": spec.default is None,
