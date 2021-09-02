@@ -185,6 +185,15 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     def _resolve(self, dtype):
         raise NotImplementedError
 
+    @property
+    def item_kwargs(self):
+        return {
+            'path': self.path,
+            'frequency': self.frequency,
+            'order': self.order,
+            'dataset': self.dataset,
+            'quality': self.quality}
+
 
 def normalise_paths(file_paths):
     "Convert all file paths to absolute real paths"
@@ -235,7 +244,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
         if self.uris is not None:   
             for dtype_name, uri in self.uris.items():
                 if dtype_name in dtype.names:
-                    item = dtype(uri=uri, **self.kwargs)
+                    item = dtype(uri=uri, **self.item_kwargs)
             if item is None:
                 raise ArcanaUnresolvableFormatException(
                     f"Could not file a matching resource in {self} for"
@@ -264,7 +273,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
             if file_path is not None:
                 item = dtype(
                     file_path=file_path, side_cars=side_cars,
-                    **self.kwargs)
+                    **self.item_kwargs)
             else:
                 raise ArcanaUnresolvableFormatException(
                     f"Paths in {self} (" + "', '".join(self.file_paths) + ") "
@@ -321,5 +330,5 @@ class UnresolvedField(UnresolvedDataItem):
                     f"Could not convert value of {self} ({self.value}) "
                     f"to dtype {dtype}")
         else:
-            item = DataItem(value=value, **self.kwargs)
+            item = DataItem(value=value, **self.item_kwargs)
         return item
