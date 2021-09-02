@@ -10,8 +10,8 @@ from fasteners import InterProcessLock
 from arcana2.core.data.item import Provenance
 from arcana2.exceptions import ArcanaMissingDataException
 from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
-from ..core.dataset import Dataset
-from ..enum import ClinicalTrial, DataFrequency
+from ..core.data.set import Dataset
+from ..core.data.enum import ClinicalTrial, DataFrequency
 from ..core.repository import Repository
 
 
@@ -188,8 +188,7 @@ class FileSystem(Repository):
             with open(fpath, 'w') as f:
                 json.dump(dct, f, indent=2)
 
-    # root_dir=None, all_namespace=None,
-    def populate_tree(self, dataset: Dataset, **kwargs):
+    def populate_nodes(self, dataset: Dataset):
         """
         Find all data within a repository, registering file_groups, fields and
         provenance with the found_file_group, found_field and found_provenance

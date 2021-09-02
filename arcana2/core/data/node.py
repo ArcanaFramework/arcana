@@ -30,13 +30,14 @@ class DataNode():
         A reference to the root of the data tree
     """
 
-    _dataset: dataset.Dataset = attr.ib()
+    dataset: dataset.Dataset = attr.ib()
     ids: ty.Dict[DataFrequency, str] = attr.ib()
     frequency: DataFrequency = attr.ib()
+    path: str = attr.ib()
     subnodes: ty.DefaultDict[str, ty.Dict] = attr.ib(
         factory=lambda: defaultdict(dict))
     supranodes: ty.DefaultDict[str, ty.Dict] = attr.ib(factory=dict)
-    _unresolved = attr.ib(factory=list)
+    _unresolved = attr.ib(default=None)
     _items = attr.ib(factory=dict, init=False)
 
 
@@ -82,6 +83,11 @@ class DataNode():
     @property
     def items(self):
         return self._items.items()
+
+    @property
+    def unresolved(self):
+        if self._unresolved is None:
+            self.dataset.repository.populate_items(self)
 
     @property
     def ids_tuple(self):

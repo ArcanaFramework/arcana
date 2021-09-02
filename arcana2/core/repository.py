@@ -36,21 +36,6 @@ class Repository(metaclass=ABCMeta):
         if self._connection_depth == 0:
             self.disconnect()
 
-    def standardise_name(self, name):
-        return name
-
-    def connect(self):
-        """
-        If a connection session is required to the repository,
-        manage it here
-        """
-
-    def disconnect(self):
-        """
-        If a connection session is required to the repository,
-        manage it here
-        """
-
     def dataset(self, name, selectors, derivatives=None, structure=None,
                 **kwargs):
         """
@@ -65,8 +50,8 @@ class Repository(metaclass=ABCMeta):
             dataset to criteria in a Selector object that select the
             corresponding items in the dataset
         derivatives : Dict[str, Spec]
-            A dictionary that maps "name-paths" of derivatives analysis workflows
-            to be stored in the dataset
+            A dictionary that maps "name-paths" of derivatives analysis
+            workflows to be stored in the dataset
         structure : Enum
             The DataFrequency enum that defines the frequencies (e.g.
             per-session, per-subject,...) present in the dataset.                       
@@ -85,25 +70,37 @@ class Repository(metaclass=ABCMeta):
                                **kwargs)
 
     @abstractmethod
-    def populate_tree(self, dataset, ids=None, **kwargs):
+    def populate_nodes(self, dataset, ids=None):
         """
-        Find all data within a repository, registering file_groups, fields and
-        provenance with the found_file_group, found_field and found_provenance
-        methods, respectively
+        Find all data nodes for a dataset in the repository and populate the
+        Dataset object using its `add_node` method
 
         Parameters
         ----------
         dataset : Dataset
-            The dataset to return the data for
+            The dataset to populate with nodes
         ids : Dict[DataFrequency, str]
             List of subject IDs with which to filter the tree with. If
             None all are returned
         """
 
     @abstractmethod
+    def populate_items(self, data_node):
+        """
+        Find all data within a data node and populate the DataNode object with
+        them using the `add_file_group` and `add_field` methods.
+        
+        Parameters
+        ----------
+        data_node : DataNode
+            The data node to populate with items
+        """        
+
+    @abstractmethod
     def get_file_group_paths(self, file_group):
         """
-        Cache the file_group locally if required
+        Cache the file_group locally (if required) and return the locations
+        of the cached primary file and side cars
 
         Parameters
         ----------
@@ -121,7 +118,7 @@ class Repository(metaclass=ABCMeta):
     @abstractmethod
     def get_field_value(self, field):
         """
-        Extract the value of the field from the repository
+        Extract and return the value of the field from the repository
 
         Parameters
         ----------
@@ -132,27 +129,6 @@ class Repository(metaclass=ABCMeta):
         -------
         value : int | float | str | list[int] | list[float] | list[str]
             The value of the Field
-        """
-
-    def get_checksums(self, file_group):
-        """
-        Returns the checksums for the files in the file_group that are stored in
-        the repository. If no checksums are stored in the repository then this
-        method should be left to return None and the checksums will be
-        calculated by downloading the files and taking calculating the digests
-
-        Parameters
-        ----------
-        file_group : FileGroup
-            The file_group to return the checksums for
-
-        Returns
-        -------
-        checksums : dct[str, str]
-            A dictionary with keys corresponding to the relative paths of all
-            files in the file_group from the base path and values equal to the MD5
-            hex digest. The primary file in the file-set (i.e. the one that the
-            path points to) should be specified by '.'.
         """
 
     @abstractmethod
@@ -175,4 +151,38 @@ class Repository(metaclass=ABCMeta):
         ----------
         field : Field
             The field to insert into the repository
+        """
+
+    def get_checksums(self, file_group):
+        """
+        Returns the checksums for the files in the file_group that are stored
+        in the repository. If no checksums are stored in the repository then
+        this method should be left to return None and the checksums will be
+        calculated by downloading the files and taking calculating the digests
+
+        Parameters
+        ----------
+        file_group : FileGroup
+            The file_group to return the checksums for
+
+        Returns
+        -------
+        checksums : dct[str, str]
+            A dictionary with keys corresponding to the relative paths of all
+            files in the file_group from the base path and values equal to the
+            MD5 hex digest. The primary file in the file-set (i.e. the one that
+            the path points to) should be specified by '.'.
+        """
+        return None
+
+    def connect(self):
+        """
+        If a connection session is required to the repository,
+        manage it here
+        """
+
+    def disconnect(self):
+        """
+        If a connection session is required to the repository,
+        manage it here
         """

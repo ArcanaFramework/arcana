@@ -54,7 +54,7 @@ class Dataset():
         The IDs to be excluded in the dataset for each frequency. E.g. can be
         used to exclude specific subjects that failed QC. If a frequency is
         omitted or its value is None, then all available will be used
-    frequency_enum : Enum
+    frequency_enum : EnumMeta
         The DataFrequency enum that defines the frequencies (e.g. per-session,
         per-subject,...) present in the dataset.
     id_inference : Sequence[(DataFrequency, str)] or Callable
