@@ -33,8 +33,8 @@ class BaseRunCmd(BaseDatasetCmd):
                      'METADATA', 'FREQUENCY'),
             help=cls.INPUT_HELP.format(var_desc=cls.VAR_DESC))
         parser.add_argument(
-            '--output', '-o', action='append', default=[], nargs=3,
-            metavar=(cls.VAR_ARG, 'STORE_AT', 'FORMAT'),
+            '--output', '-o', action='append', default=[], nargs=4,
+            metavar=(cls.VAR_ARG, 'STORE_AT', 'FORMAT', 'DESC'),
             help=cls.OUTPUT_HELP.format(var_desc=cls.VAR_DESC))
         parser.add_argument(
             '--required_format', action='append', default=[], nargs=2,
@@ -63,6 +63,7 @@ class BaseRunCmd(BaseDatasetCmd):
         outputs = cls.parse_outputs(args)
 
         workflow = dataset.workflow(
+            name=cls.workflow_name(args),
             inputs=inputs,
             outputs=outputs,
             frequency=cls.parse_frequency(args),
@@ -150,10 +151,11 @@ class BaseRunCmd(BaseDatasetCmd):
         # Create outputs
         outputs = {}
         for output in args.output:
-            var, store_at, data_format = output
+            var, store_at, data_format, desc = output
             outputs[var] = DataSpec(
                 path=store_at,
                 data_format=resolve_data_format(data_format),
+                desc=desc,
                 frequency=frequency)
         return outputs
 
@@ -243,6 +245,9 @@ class BaseRunCmd(BaseDatasetCmd):
 
         FORMAT is the name of the file-format the file will be stored at in
         the dataset.
+
+        DESC is a short description (remember to enclose it in quotes) of what
+        the output is
         """
 
 
@@ -338,10 +343,13 @@ class RunAppCmd(BaseRunCmd):
         the input to.
     """
 
-
     @classmethod
     def parse_frequency(cls, args):
         return cls.parse_data_structure(args)[args.frequency]
+
+    @classmethod
+    def workflow_name(cls, args):
+        return args.app.replace('.', '_')
 
 
 class RunBidsAppCmd(BaseRunCmd):
@@ -362,8 +370,6 @@ class RunBidsAppCmd(BaseRunCmd):
             help=("Arbitrary flags to pass onto the BIDS app (enclose in "
                   "quotation marks)"))
         super().construct_parser(parser)
-
-
 
     @classmethod
     def add_app_task(cls, workflow, args, inputs, outputs):
@@ -392,6 +398,9 @@ class RunBidsAppCmd(BaseRunCmd):
             name = args.entrypoint
         return name
 
+    @classmethod
+    def workflow_name(cls, args):
+        return args.container.replace('/', '_')
 
     VAR_ARG = 'INTERFACE_NAME'
 

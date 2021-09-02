@@ -32,7 +32,7 @@ class DataFrequency(Enum):
         val = self.value
         # Check which bits are '1', and append them to the list of levels
         cls = type(self)
-        return [cls(b) for b in sorted(self._nonzero_bits(val))]
+        return [cls(b) for b in sorted(self._nonzero_bits(val), reverse=True)]
 
     def _nonzero_bits(self, v=None):
         if v is None:
@@ -59,6 +59,12 @@ class DataFrequency(Enum):
     def __subtract__(self, other):
         return type(self)(self.value - other.value)
 
+    def __and__(self, other):
+        return type(self)(self.value & other.value)
+
+    def __or__(self, other):
+        return type(self)(self.value | other.value)
+
     @classmethod
     def default(cls):
         return max(cls)
@@ -68,7 +74,7 @@ class DataFrequency(Enum):
         layer = cls(0)
         yield layer
         for b in max(cls).basis():
-            layer += b.value
+            layer |= b
             yield layer
 
     def is_child(self, parent):

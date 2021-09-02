@@ -10,6 +10,7 @@ from arcana2.exceptions import (
 from arcana2.core.utils import split_extension
 from ..file_format import FileFormat
 from .item import DataItem
+from .provenance import DataProvenance
 from .enum import DataQuality, DataFrequency
 from . import set as dataset
 
@@ -106,13 +107,13 @@ class DataNode():
         if self._unresolved is None:
             self._unresolved = []
         self._unresolved.append(UnresolvedFileGroup(
-            path=path, data_node=self, **kwargs))
+            path=path, **kwargs))
 
     def add_field(self, path, value, **kwargs):
         if self._unresolved is None:
             self._unresolved = []
         self._unresolved.append(UnresolvedField(
-            path=path, value=value, data_node=self, **kwargs))
+            path=path, value=value, **kwargs))
 
     def get_file_group_paths(self, file_group):
         return self.dataset.repository.get_file_group_paths(file_group, self)
@@ -153,6 +154,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     path: str = attr.ib()
     order: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=DataQuality.usable)
+    provenance: DataProvenance = attr.ib(default=None)
     _matched: ty.Dict[str, DataItem] = attr.ib(factory=dict, init=False)
 
     def resolve(self, data_format, data_node):

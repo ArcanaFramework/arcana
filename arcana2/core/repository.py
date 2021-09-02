@@ -70,7 +70,7 @@ class Repository(metaclass=ABCMeta):
                                data_structure=data_structure, **kwargs)
 
     @abstractmethod
-    def populate_nodes(self, dataset):
+    def construct_tree(self, dataset):
         """
         Find all data nodes for a dataset in the repository and populate the
         Dataset object using its `add_node` method. The data nodes can be

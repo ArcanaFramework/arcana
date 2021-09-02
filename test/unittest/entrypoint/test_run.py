@@ -4,8 +4,7 @@ from unittest import mock, TestCase
 from unittest.mock import Mock
 # from pydra.mark import annotate, task
 
-TEST_DATA_DIR = os.path.join(os.path.dirname(os.path.__file__), '..', '..',
-                             'data')
+TEST_DATA_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'data')
 
 # @task
 # @annotate({
@@ -33,7 +32,8 @@ class TestRunApp(TestCase):
         args.dataset_name = os.path.join(TEST_DATA_DIR, 'test-repo')
         args.repository = ['file_system']
         args.input = [('in_dir', 'sample-dicom', 'dicom')]
-        args.output = [('out_file', 'output-nifti', 'niftix_gz')]
+        args.output = [('out_file', 'output-nifti', 'niftix_gz',
+                        'converted NIfTI file + JSON side car')]
         args.field_input = []
         args.field_output = []
         args.ids = None
@@ -41,7 +41,10 @@ class TestRunApp(TestCase):
         args.id_inference = None
         args.included = []
         args.excluded = []
+        args.required_format = []
+        args.produced_format = []
         args.data_structure = 'ClinicalTrial'
+        args.data_layers = ['session']
         args.dry_run = False
         args.frequency = 'session'
         args.app_arg = []

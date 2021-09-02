@@ -66,6 +66,14 @@ class BaseDatasetCmd():
         --id_inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
 
 """)
+        parser.add_argument(
+            '--data_layers', nargs='+', default=None,
+            help=("The data frequencies that are present in the data tree. "
+                  "For some repository types this is fixed (e.g. XNAT) but "
+                  "for more flexible (e.g. FileSystem) the number of layers "
+                  "in the data tree, and what each layer corresponds to, "
+                  "needs to specified. Defaults to all the layers in the "
+                  "data structure"))
 
     @classmethod
     def get_dataset(cls, args):
@@ -108,6 +116,11 @@ class BaseDatasetCmd():
 
         data_structure = cls.parse_data_structure(args)
 
+        if args.data_layers:
+            data_layers = [data_structure[l] for l in args.data_layers]
+        else:
+            data_layers = None
+
         def parse_ids(ids_args):
             parsed_ids = {}
             for iargs in ids_args:
@@ -124,7 +137,8 @@ class BaseDatasetCmd():
                                   data_structure=data_structure,
                                   id_inference=id_inference,
                                   included=parse_ids(args.included),
-                                  excluded=parse_ids(args.excluded))
+                                  excluded=parse_ids(args.excluded),
+                                  layers=data_layers)
 
     @classmethod
     def parse_data_structure(cls, args):

@@ -8,7 +8,7 @@ import json
 import attr
 from fasteners import InterProcessLock
 from arcana2.core.data.provenance import DataProvenance
-from arcana2.exceptions import ArcanaMissingDataException
+from arcana2.exceptions import ArcanaMissingDataException, ArcanaUsageError
 from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana2.core.data.set import Dataset
 from arcana2.core.data.enum import ClinicalTrial, DataFrequency
@@ -125,7 +125,7 @@ class FileSystem(Repository):
             with open(fpath, 'w') as f:
                 json.dump(dct, f, indent=2)
 
-    def populate_nodes(self, dataset: Dataset):
+    def construct_tree(self, dataset: Dataset):
         """
         Find all data within a repository, registering file_groups, fields and
         provenance with the found_file_group, found_field and found_provenance
@@ -136,7 +136,6 @@ class FileSystem(Repository):
         dataset : Dataset
             The dataset to construct the tree structure for
         """
-        layers = list(dataset.structure.layers())
 
         def load_prov(dpath, bname):
             prov_path = op.join(dpath, bname + self.PROV_SUFFIX)
@@ -146,19 +145,21 @@ class FileSystem(Repository):
                 prov = None
             return prov
 
-        def construct_node(dpath, ids=[], dname=None):
+        def construct_node(dpath, ids=None, dname=None):
+            if ids is None:
+                ids = []
             "Recursive function to traverse data tree"
             if dname is not None:
                 dpath = op.join(dpath, dname)
                 ids += [dname]
             # First ID can be omitted
-            node_freq = layers[len(ids)]  # last freq
-            ids_dict = dict(zip(layers, ids))
+            node_freq = dataset.layers[len(ids)]  # last freq
+            ids_dict = dict(zip(dataset.layers, ids))
             ids_dict = dataset.infer_ids(ids_dict)
             node = dataset.add_node(node_freq, ids_dict)
             # Check if node is a leaf (i.e. lowest level in directory
             # structure)
-            is_leaf_node = node_freq == layers[-1]
+            is_leaf_node = (node_freq == dataset.layers[-1])
             filtered, has_fields = self._list_node_dir_contents(
                 dpath, is_leaf=is_leaf_node)
             # Group files and sub-dirs that match except for extensions
@@ -169,7 +170,7 @@ class FileSystem(Repository):
             # Add file groups
             for bname, fnames in matching.items():
                 node.add_file_group(
-                    name_path=bname,
+                    path=bname,
                     file_paths=[op.join(dpath, f) for f in fnames],
                     provenance=load_prov(dpath, bname))
             # Add fields
@@ -190,8 +191,11 @@ class FileSystem(Repository):
                     if (not sub_dir.startswith('.')
                             and sub_dir != self.NODE_DIR):
                         construct_node(dpath, ids=ids, dname=sub_dir)
-                
-        construct_node(op.join(self.base_dir, dataset.name))
+        if not os.path.exists(dataset.name):
+            raise ArcanaUsageError(
+                f"Could not find a directory at '{dataset.name}' to be the "
+                "root node of the dataset")
+        construct_node(dataset.name)
 
     @property
     def provenance(self):
@@ -240,7 +244,7 @@ class FileSystem(Repository):
 
     def _get_file_group_provenance(self, file_group):
         if file_group.file_path is not None:
-            prov = Provenance.load(self.prov_json_path(file_group))
+            prov = DataProvenance.load(self.prov_json_path(file_group))
         else:
             prov = None
         return prov
