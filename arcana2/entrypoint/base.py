@@ -40,7 +40,7 @@ class BaseDatasetCmd():
                   "If the second arg contains '/' then it is interpreted as "
                   "the path to a text file containing a list of IDs"))    
         parser.add_argument(
-            '--frequency_enum', type=str, default='ClinicalTrial',
+            '--data_structure', type=str, default='ClinicalTrial',
             help=("The enum that specifies the data structure of the dataset. "
                   "Defaults to `ClinicalTrial`, which "
                   "consists of the typical dataset>group>subject>session "
@@ -103,12 +103,12 @@ class BaseDatasetCmd():
         else:
             id_inference = None
 
-        frequency_enum = cls.parse_frequency_enum(args)
+        data_structure = cls.parse_data_structure(args)
 
         def parse_ids(ids_args):
             parsed_ids = {}
             for iargs in ids_args:
-                freq = frequency_enum[iargs.pop(0)]
+                freq = data_structure[iargs.pop(0)]
                 if len(iargs) == 1 and '/' in iargs[0]:
                     with open(args.ids[0]) as f:
                         ids = f.read().split()
@@ -118,12 +118,12 @@ class BaseDatasetCmd():
             return parsed_ids
         
         return repository.dataset(args.dataset_name,
-                                  frequency_enum=frequency_enum,
+                                  data_structure=data_structure,
                                   id_inference=id_inference,
                                   included=parse_ids(args.included),
                                   excluded=parse_ids(args.excluded))
 
     @classmethod
-    def parse_frequency_enum(cls, args):
-        frequency_enum = getattr(arcana2.core.data.enum,
-                                 args.frequency_enum)
+    def parse_data_structure(cls, args):
+        data_structure = getattr(arcana2.core.data.enum,
+                                 args.data_structure)

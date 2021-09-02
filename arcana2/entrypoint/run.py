@@ -102,7 +102,7 @@ class BaseRunCmd(BaseDatasetCmd):
             If a file_format is not provided
         """
         frequency = cls.parse_frequency(args)
-        frequency_enum = type(frequency)
+        data_structure = type(frequency)
         # Create file-group matchers
         inputs = {}
         defaults = (None, None, None, None, None, None, 'session')
@@ -126,7 +126,7 @@ class BaseRunCmd(BaseDatasetCmd):
                     f"Datatype must be provided for input {i} ({inpt})")
             inputs[var] = DataSelector(
                 name_path=pattern, format=ff.get_format(file_format),
-                frequency=frequency_enum[freq], order=order,
+                frequency=data_structure[freq], order=order,
                 header_vals=header_vals, is_regex=True,
                 quality_threshold=quality)
         return inputs
@@ -188,7 +188,7 @@ class BaseRunCmd(BaseDatasetCmd):
         #     path, name, dtype, freq = inpt + defaults[nargs - 2:]
         #     output_names[name] = path
         #     outputs[name] = FieldSpec(dtype=dtype,
-        #                               frequency=frequency_enum[freq])
+        #                               frequency=data_structure[freq])
 
 
     INPUT_HELP = """
@@ -343,7 +343,7 @@ class RunAppCmd(BaseRunCmd):
 
     @classmethod
     def parse_frequency(cls, args):
-        return cls.parse_frequency_enum(args)[args.frequency]
+        return cls.parse_data_structure(args)[args.frequency]
 
 
 class RunBidsAppCmd(BaseRunCmd):

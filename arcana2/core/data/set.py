@@ -54,7 +54,7 @@ class Dataset():
         The IDs to be excluded in the dataset for each frequency. E.g. can be
         used to exclude specific subjects that failed QC. If a frequency is
         omitted or its value is None, then all available will be used
-    frequency_enum : EnumMeta
+    data_structure : EnumMeta
         The DataFrequency enum that defines the frequencies (e.g. per-session,
         per-subject,...) present in the dataset.
     id_inference : Sequence[(DataFrequency, str)] or Callable
@@ -81,7 +81,7 @@ class Dataset():
 
     name: str = attr.ib()
     repository: repository.Repository = attr.ib()
-    frequency_enum: EnumMeta  = attr.ib()
+    data_structure: EnumMeta  = attr.ib()
     selectors: ty.Sequence[DataSelector] = attr.ib(factory=list)
     derivatives: ty.Sequence[DataSpec] = attr.ib(factory=list)
     included: ty.Dict[DataFrequency, ty.List[str]] = attr.ib(factory=dict)
@@ -89,16 +89,16 @@ class Dataset():
     id_inference: (ty.Sequence[ty.Tuple(DataFrequency, str)]
                    or ty.Callable) = attr.ib(factory=list, converter=list)
     populate_kwargs: ty.Dict[str, ty.Any] = attr.ib(factory=dict)
-    _root_node: node.DataNode = attr.ib(default=None, init=False)
+    _root_node: DataNode = attr.ib(default=None, init=False)
 
 
     @selectors.validator
     def selectors_validator(self, _, selectors):
         if wrong_freq := [m for m in selectors.values()
-                          if not isinstance(m.frequency, self.frequency_enum)]:
+                          if not isinstance(m.frequency, self.data_structure)]:
             raise ArcanaUsageError(
                 f"Data frequencies of {wrong_freq} selectors does not match "
-                f"that of repository {self.frequency_enum}")
+                f"that of repository {self.data_structure}")
 
     @derivatives.validator
     def derivatives_validator(self, _, derivatives):
@@ -134,7 +134,7 @@ class Dataset():
                 and self.included == other.included
                 and self.excluded == other.excluded
                 and self.root_node == other.root_node
-                and self.frequency_enum == other.frequency_enum)
+                and self.data_structure == other.data_structure)
 
     def __hash__(self):
         return (hash(self.name)
@@ -142,10 +142,10 @@ class Dataset():
                 ^ hash(self.included)
                 ^ hash(self.excluded)
                 ^ hash(self.root_node)
-                ^ hash(self.frequency_enum))
+                ^ hash(self.data_structure))
 
     def __getitem__(self, key):
-        if key == self.frequency_enum(0):
+        if key == self.data_structure(0):
             return self.root_node
         else:
             return self.root_node.subnodes[key]
@@ -214,12 +214,12 @@ class Dataset():
             [description]
         """
         try:
-            self.frequency_enum[str(frequency)]
+            self.data_structure[str(frequency)]
         except KeyError:
             raise ArcanaUsageError(
-                f"Frequency '{frequency} does not match frequency_enum of "
+                f"Frequency '{frequency} does not match data_structure of "
                 "dataset ({})".format(
-                    ', '.join(str(f) for f in self.frequency_enum)))
+                    ', '.join(str(f) for f in self.data_structure)))
         if path is None:
             path = name
         self.derivatives[name] = DataSpec(path, format, frequency, **kwargs)
@@ -254,9 +254,9 @@ class Dataset():
             ids = {}
         else:
             ids = copy(ids)
-        ids.update = {self.frequency_enum(f): i for f, i in id_kwargs.items()}
+        ids.update = {self.data_structure(f): i for f, i in id_kwargs.items()}
         # Parse str to frequency enums
-        frequency = self.frequency_enum[str(frequency)]
+        frequency = self.data_structure[str(frequency)]
         if frequency == self.root_freq:
             if ids:
                 raise ArcanaUsageError(
@@ -299,12 +299,12 @@ class Dataset():
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
-        if not isinstance(frequency, self.frequency_enum):
+        if not isinstance(frequency, self.data_structure):
             raise ArcanaDataTreeConstructionError(
                 f"Provided frequency {frequency} is not of "
-                f"{self.frequency_enum} type")
+                f"{self.data_structure} type")
         # Check conversion to frequency cls
-        ids = {self.frequency_enum[str(f)]: i for f, i in ids.items()}
+        ids = {self.data_structure[str(f)]: i for f, i in ids.items()}
         # Create new data node
         node = DataNode(frequency, ids, self)
         basis_ids = {ids[f] for f in frequency.layers if f in ids}
@@ -327,7 +327,7 @@ class Dataset():
                     f"Inconsistent IDs provided for nodes in {frequency} "
                     f"in data tree ({ids_tuple} and {existing_tuple})")
         node_dict[ids_tuple] = node
-        node.supranodes[self.frequency_enum(0)] = self.root_node
+        node.supranodes[self.data_structure(0)] = self.root_node
         # Insert nodes for basis layers if not already present and link them
         # with inserted node
         for supra_freq in frequency.layers:
@@ -361,16 +361,16 @@ class Dataset():
             A tuple sorted in order of provided frequencies
         """
         try:
-            return tuple((self.frequency_enum[str(f)], i)
+            return tuple((self.data_structure[str(f)], i)
                          for f, i in sorted(ids.items(), key=itemgetter(1)))
         except KeyError:
             raise ArcanaUsageError(
                 f"Unrecognised data frequencies in ID dict '{ids}' (valid "
-                f"{', '.join(self.frequency_enum)})")
+                f"{', '.join(self.data_structure)})")
 
     @property
     def root_frequency(self):
-        return self.frequency_enum(0)
+        return self.data_structure(0)
 
     def workflow(self, name, inputs, outputs, frequency, ids,
                  required_formats=None, produced_formats=None,
@@ -583,7 +583,7 @@ class Dataset():
                     f"{source} ID '{ids[source]}', does not match ID inference"
                     f" pattern '{regex}'")
             for target, id in match.groupdict.items():
-                ids[self.frequency_enum[target]] = id
+                ids[self.data_structure[target]] = id
         return ids
 
 
