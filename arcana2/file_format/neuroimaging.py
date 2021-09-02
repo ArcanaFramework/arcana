@@ -8,9 +8,10 @@ import numpy as np
 import nibabel
 from pydra.tasks.mrtrix3.utils import MRConvert
 from pydra.tasks.dcm2niix import Dcm2Niix
-from .base import FileFormat, identity_converter
-from ..item import FileGroup
 from arcana2.exceptions import ArcanaUsageError
+from arcana2.tasks.utils import identity_converter
+from arcana2.core.file_format import FileFormat
+from arcana2.core.data.item import FileGroup
 
 
 # class Dcm2niixConverter(Converter):

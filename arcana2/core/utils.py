@@ -1,18 +1,17 @@
 from typing import Sequence
-from past.builtins import basestring
-from future.utils import PY3, PY2
 import subprocess as sp
 import importlib
 from itertools import zip_longest
 import os.path
 import errno
-from nipype.interfaces.matlab import MatlabCommand
+# from nipype.interfaces.matlab import MatlabCommand
 import shutil
-import tempfile
-from arcana2.exceptions import ArcanaUsageError
-from contextlib import ExitStack, contextmanager
+from contextlib import contextmanager
 from collections.abc import Iterable
 from importlib import import_module
+import tempfile
+import logging
+from arcana2.exceptions import ArcanaUsageError
 
 
 PATH_SUFFIX = '_path'
@@ -22,11 +21,72 @@ CHECKSUM_SUFFIX = '_checksum'
 package_dir = os.path.join(os.path.dirname(__file__), '..')
 
 try:
-    HOSTNAME = sp.check_output('hostname').strip()
-    if PY3:
-        HOSTNAME = HOSTNAME.decode('utf-8')
+    HOSTNAME = sp.check_output('hostname').strip().decode('utf-8')
 except sp.CalledProcessError:
     HOSTNAME = None
+JSON_ENCODING = {'encoding': 'utf-8'}    
+
+def set_loggers(loggers):
+
+    # Overwrite earlier (default) versions of logger levels with later options
+    loggers = dict(loggers)
+
+    for name, level in loggers.items():
+        logger = logging.getLogger(name)
+        logger.setLevel(level)
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter("%(levelname)s - %(message)s")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
+
+def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
+    """
+    Resolves a class from the '.' delimted module + class name string
+
+    Parameters
+    ----------
+    class_str : str
+        Path to class preceded by module path, e.g. main_pkg.sub_pkg.MyClass
+    prefixes : Sequence[str]
+        List of allowable module prefixes to try to append if the fully
+        resolved path fails, e.g. ['pydra.tasks'] would allow
+        'fsl.preprocess.first.First' to resolve to
+        pydra.tasks.fsl.preprocess.first.First
+
+    Returns
+    -------
+    type:
+        The resolved class
+    """
+    parts = class_str.split('.')
+    module_name = '.'.join(parts[:-1])
+    class_name = parts[-1]
+    cls = None
+    for prefix in [None] + list(prefixes):
+        if prefix is not None:
+            mod_name = prefix + '.' + module_name
+        else:
+            mod_name = module_name
+        if not mod_name:
+            continue
+        mod_name = mod_name.strip('.')
+        try:
+            module = import_module(mod_name)
+        except ModuleNotFoundError:
+            continue
+        else:
+            try:
+                cls = getattr(module, class_name)
+            except AttributeError:
+                continue
+            else:
+                break
+    if cls is None:
+        raise ArcanaUsageError(
+            "Did not find class at '{}' or any sub paths of '{}'".format(
+                class_str, "', '".join(prefixes)))
+    return cls
 
 
 @contextmanager
@@ -101,19 +161,6 @@ def lower(s):
     return s.lower()
 
 
-if PY3:
-    JSON_ENCODING = {'encoding': 'utf-8'}
-    from os import makedirs  # @UnusedImport
-else:
-    JSON_ENCODING = {}
-
-    # Implement makedirs with 'exist_ok' kwarg for Python 2
-    def makedirs(path, exist_ok=False, **kwargs):
-        try:
-            os.makedirs(path, **kwargs)
-        except OSError as e:
-            if not (exist_ok and e.errno == errno.EEXIST):
-                raise
 
 
 def parse_single_value(value, dtype=None):
@@ -122,7 +169,7 @@ def parse_single_value(value, dtype=None):
     is of type string. Useful when excepting values that may be string
     representations of numerical values
     """
-    if isinstance(value, basestring):
+    if isinstance(value, str):
         try:
             if value.startswith('"') and value.endswith('"'):
                 value = str(value[1:-1])
@@ -142,7 +189,7 @@ def parse_single_value(value, dtype=None):
 
 def parse_value(value, dtype=None):
     # Split strings with commas into lists
-    if isinstance(value, basestring):
+    if isinstance(value, str):
         if value.startswith('[') and value.endswith(']'):
             value = value[1:-1].split(',')
     else:
@@ -164,24 +211,12 @@ def parse_value(value, dtype=None):
     return value
 
 
-def run_matlab_cmd(cmd):
-    delim = '????????'  # A string that won't occur in the Matlab splash
-    matlab_cmd = MatlabCommand(
-        script=("fprintf('{}'); fprintf({}); exit;".format(delim, cmd)))
-    tmp_dir = tempfile.mkdtemp()
-    try:
-        result = matlab_cmd.run(cwd=tmp_dir)
-        return result.runtime.stdout.split(delim)[1]
-    finally:
-        shutil.rmtree(tmp_dir)
-
-
 def iscontainer(*items):
     """
     Checks whether all the provided items are containers (i.e of class list,
     dict, tuple, etc...)
     """
-    return all(isinstance(i, Iterable) and not isinstance(i, basestring)
+    return all(isinstance(i, Iterable) and not isinstance(i, str)
                for i in items)
 
 

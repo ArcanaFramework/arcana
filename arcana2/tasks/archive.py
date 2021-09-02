@@ -5,7 +5,7 @@ import zipfile
 from pydra import mark
 from pydra.engine.specs import (
     MultiInputObj, MultiOutputObj, File, Directory)
-from arcana2.utils import set_cwd
+from arcana2.core.utils import set_cwd
 from arcana2.exceptions import ArcanaUsageError
 
 

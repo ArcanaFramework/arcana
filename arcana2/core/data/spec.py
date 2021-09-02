@@ -38,6 +38,6 @@ class DataSpec():
     frequency = attr.ib(type=DataFrequency)
     format = attr.ib()
     desc = attr.ib(type=str)
-    salience = attr.ib(type=DataSalience, default=DataSalience.default)
-    category = attr.ib(type=str)
+    salience = attr.ib(type=DataSalience, default=DataSalience.supplementary)
+    category = attr.ib(type=str, default=None)
     converters = attr.ib(factory=list)

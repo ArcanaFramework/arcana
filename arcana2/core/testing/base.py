@@ -2,23 +2,22 @@ from __future__ import print_function
 from past.builtins import basestring
 import os.path as op
 import os
-from arcana2.utils import makedirs
+from arcana2.core.utils import makedirs
 import subprocess as sp
 import shutil
 from unittest import TestCase
 import errno
 import sys
 import json
-from arcana2.utils import JSON_ENCODING
+from arcana2.core.utils import JSON_ENCODING
 import filecmp
 from copy import deepcopy
 import logging
-import arcana
-from arcana2.data import FileGroup, FileGroupSlice
-from arcana2.utils import classproperty
-from arcana2.repository import Dataset, LocalFileSystemRepo
-from arcana2.processor import SingleProc
-from arcana2.environment import StaticEnv
+import arcana2
+from arcana2.core.data.item import FileGroup
+from arcana2.core.utils import classproperty
+from arcana2.core.data.set import Dataset
+from arcana2.repository.file_system import FileSystem
 from arcana2.exceptions import ArcanaError
 from arcana2.exceptions import ArcanaUsageError
 
@@ -151,7 +150,7 @@ class BaseTestCase(TestCase):
                     .format(file_group, self))
         if fields is not None:
             with open(op.join(session_dir,
-                              LocalFileSystemRepo.FIELDS_FNAME), 'w',
+                              FileSystem.FIELDS_FNAME), 'w',
                       **JSON_ENCODING) as f:
                 json.dump(fields, f, indent=2)
 

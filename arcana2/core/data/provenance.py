@@ -7,7 +7,7 @@ from deepdiff import DeepDiff
 from arcana2.exceptions import ArcanaError, ArcanaUsageError
 
 
-class Provenance():
+class DataProvenance():
     """
     A representation of the information required to describe the provenance of
     analysis derivatives. Provenances the provenance information relevant to a
@@ -106,7 +106,7 @@ class Provenance():
         """
         with open(file_path) as f:
             dct = json.load(f)
-        return Provenance(dct)
+        return DataProvenance(dct)
 
     def mismatches(self, other, include=None, exclude=None):
         """

@@ -1,6 +1,4 @@
 from __future__ import absolute_import
-from builtins import range
-from builtins import object
 import string
 import random
 import os
@@ -10,11 +8,11 @@ import re
 from copy import copy
 import pydicom
 import xnat
-from arcana2.utils.testing import BaseTestCase
-from arcana2.data.repository.xnat import XnatRepo
-from arcana2.data.dataset import Dataset
+from arcana2.core.testing import BaseTestCase
+from arcana2.repository.xnat import Xnat
+from arcana2.core.data.set import Dataset
 from arcana2.exceptions import ArcanaError
-from arcana2.data.file_format import text_format
+from arcana2.file_format.general import text_format
 import logging
 
 
@@ -156,7 +154,7 @@ def put_file_group(file_group, xsession):
     xfile_group = xsession.xnat_session.classes.MrScanData(
         id=id_, type=file_group.basename, parent=xsession)
     resource = xfile_group.create_resource(
-        file_group.format.resource_names(XnatRepo.type)[0])
+        file_group.format.resource_names(Xnat.type)[0])
     if file_group.format.directory:
         for fname in os.listdir(file_group.path):
             resource.upload(
@@ -183,13 +181,13 @@ class TestMultiSubjectOnXnatMixin(CreateXnatProjectMixin):
 
     def setUp(self):
         self._clean_up()
-        self._dataset = XnatRepo(
+        self._dataset = Xnat(
             server=SERVER, cache_dir=self.cache_dir).dataset(self.project)
 
         self._create_project()
         self.BASE_CLASS.setUp(self)
         # local_dataset = Dataset(self.project_dir, depth=self.dataset_depth)
-        temp_dataset = XnatRepo(SERVER, '/tmp').dataset(self.project)
+        temp_dataset = Xnat(SERVER, '/tmp').dataset(self.project)
         with temp_dataset.repository:
             login = temp_dataset.repository.login
             xproject = login.projects[self.project]
@@ -307,7 +305,7 @@ def filter_resources(names, timepoint=None, analysis=None):
     return sorted(filtered)
 
 def add_metadata_resources(names, md5=False):
-    names = names + [XnatRepo.PROV_RESOURCE]
+    names = names + [Xnat.PROV_RESOURCE]
     if md5:
-        names.extend(n + XnatRepo.MD5_SUFFIX for n in names)
+        names.extend(n + Xnat.MD5_SUFFIX for n in names)
     return sorted(names)

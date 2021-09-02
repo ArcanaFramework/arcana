@@ -1,5 +1,4 @@
-from .base import FileFormat, Converter
-from nipype.interfaces.utility import IdentityInterface
+from arcana2.core.file_format import FileFormat
 from arcana2.tasks.archive import (
     create_tar, extract_tar, create_zip, extract_zip)
 
@@ -30,4 +29,4 @@ directory.set_converter(targz, extract_tar)
 directory.set_converter(tar, extract_tar)
 tar.set_converter(directory, create_tar)
 targz.set_converter(directory, create_tar, compression='gz')
-zip.set_converter(directory, extract_zip)
+zip.set_converter(directory, create_zip)

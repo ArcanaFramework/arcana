@@ -7,12 +7,12 @@ import logging
 import json
 import attr
 from fasteners import InterProcessLock
-from arcana2.data.item import Provenance
+from arcana2.core.data.item import Provenance
 from arcana2.exceptions import ArcanaMissingDataException
-from arcana2.utils import get_class_info, HOSTNAME, split_extension
-from ..dataset import Dataset
+from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
+from ..core.dataset import Dataset
 from ..enum import ClinicalTrial, DataFrequency
-from .base import Repository
+from ..core.repository import Repository
 
 
 logger = logging.getLogger('arcana')

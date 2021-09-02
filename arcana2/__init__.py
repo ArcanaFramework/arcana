@@ -16,16 +16,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import os
 from .__about__ import __version__, __authors__
-# from .analysis import (
-#     Analysis, AnalysisMetaClass, MultiAnalysis, MultiAnalysisMetaClass,
-    # SubCompSpec, Parameter, ParamSpec, SwitchSpec)
-from .data import (
-    FileGroup, Field, FileGroupSpec, FileGroupSelector, FieldSpec,
-    FieldSelector, FileFormat)
-# from .processor import (
-#     SingleProc, MultiProc, SlurmProc)
-# from .environment import StaticEnv, ModulesEnv
+from .core.data.item import FileGroup, Field
+from .core.data.spec import DataSpec
+from .core.data.selector import DataSelector
+from .core.data.set import Dataset
 # Should be set explicitly in all FSL interfaces, but this squashes the warning
-os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'
+# os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'

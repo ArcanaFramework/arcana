@@ -7,14 +7,15 @@ import shutil
 from abc import ABCMeta, abstractmethod
 import attr
 from arcana2.exceptions import ArcanaError, ArcanaUsageError
-from arcana2.utils import split_extension, parse_value
+from arcana2.core.utils import split_extension, parse_value
 from arcana2.exceptions import (
     ArcanaError, ArcanaFileFormatError, ArcanaUsageError, ArcanaNameError,
     ArcanaDataNotDerivedYetError, ArcanaUriAlreadySetException)
 # from .file_format import FileFormat
 from .enum import DataQuality
-from .file_format import FileFormat
-from .provenance import Provenance
+from ..file_format import FileFormat
+from .provenance import DataProvenance
+
 
 @attr.s
 class DataItem(metaclass=ABCMeta):
@@ -52,7 +53,7 @@ class DataItem(metaclass=ABCMeta):
     quality: DataQuality = attr.ib(default=None)
     data_node = attr.ib(default=None)
     exists: bool = attr.ib(default=True)
-    provenance: Provenance = attr.ib(default=None)
+    provenance: DataProvenance = attr.ib(default=None)
 
     @abstractmethod
     def get(self):
@@ -241,7 +242,7 @@ class FileGroup(DataItem):
                 copy_file(aux_path, path + self.format.side_cars[aux_name])
         return self.format.file_group_cls.from_path(path)
 
-    @file_path.validate
+    @file_path.validator
     def validate_file_path(self, _, file_path):
         if file_path is not None:
             if not op.exists(file_path):
@@ -259,7 +260,7 @@ class FileGroup(DataItem):
             return None
         return self.dtype.default_aux_file_paths(self.file_path)
 
-    @side_cars.validate
+    @side_cars.validator
     def validate_side_cars(self, _, side_cars):
         if side_cars is not None:
             if self.file_path is None:
@@ -304,7 +305,7 @@ class Field(DataItem):
         if applicable
     """
 
-    value = attr.ib(converter=parse_value)
+    value: int or float or str = attr.ib(converter=parse_value, default=None)
 
     def get(self):
         self._check_exists()

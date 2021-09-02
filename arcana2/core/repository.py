@@ -2,7 +2,7 @@ import logging
 from abc import abstractmethod, ABCMeta
 import attr
 from arcana2.exceptions import ArcanaUsageError
-from .dataset import Dataset
+from .data import set as dataset
 
 
 logger = logging.getLogger('arcana')
@@ -80,8 +80,9 @@ class Repository(metaclass=ABCMeta):
                 raise ArcanaUsageError(
                     "'structure' kwarg must be specified for datasets in "
                     f"{type(self)} repositories")
-        return Dataset(name, repository=self, selectors=selectors,
-                       derivatives=derivatives, structure=structure, **kwargs)
+        return dataset.Dataset(name, repository=self, selectors=selectors,
+                               derivatives=derivatives, structure=structure,
+                               **kwargs)
 
     @abstractmethod
     def populate_tree(self, dataset, ids=None, **kwargs):

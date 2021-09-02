@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import neurodocker as nd
+from arcana2.core.utils import set_loggers, resolve_class
 
 
 class Wrap4XnatCSCmd():

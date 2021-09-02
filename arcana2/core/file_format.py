@@ -1,19 +1,14 @@
-import os
 import os.path as op
-import shutil
-import typing as ty
 from abc import abstractmethod, ABCMeta
 from collections import defaultdict
 import numpy as np
-from arcana2.utils import split_extension
+from arcana2.core.utils import split_extension
 import logging
 from pydra import mark, Workflow
-from pydra.engine.task import FunctionTask
-from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import (
     ArcanaFileFormatError, ArcanaUsageError, ArcanaNoConverterError,
     ArcanaNameError)
-from ..item import FileGroup
+import arcana2.core.data.item
 
 
 logger = logging.getLogger('arcana')
@@ -53,7 +48,7 @@ class FileFormat(object):
 
     def __init__(self, name, extension=None, desc='', directory=False,
                  within_dir_exts=None, side_cars=None, alternate_names=None,
-                 file_group_cls=FileGroup):
+                 file_group_cls=None):
         if not name.islower():
             raise ArcanaUsageError(
                 "All data format names must be lower case ('{}')"
@@ -76,7 +71,8 @@ class FileFormat(object):
         self._converters = {}
         if alternate_names is None:
             alternate_names = []
-        self.file_group_cls = file_group_cls
+        self.file_group_cls = (file_group_cls if file_group_cls is not None
+                               else arcana2.core.data.item.FileGroup)
         self.alternate_names = alternate_names
         self.side_cars = side_cars if side_cars is not None else {}
         for sc_name, sc_ext in self.side_cars.items():
@@ -641,11 +637,3 @@ class Converter(object):
         return "{}(input_format={}, output_format={})".format(
             type(self).__name__, self.input_format, self.output_format)
 
-
-@mark.task
-@mark.annotate({
-    'in_file': FileGroup,
-    'return': {
-        'out_file': FileGroup}})
-def identity_converter(in_file):
-    return in_file

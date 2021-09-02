@@ -14,14 +14,14 @@ import shutil
 import attr
 from tqdm import tqdm
 import xnat
-from arcana2.utils import JSON_ENCODING
-from arcana2.utils import makedirs
+from arcana2.core.utils import JSON_ENCODING
+from arcana2.core.utils import makedirs
 from .base import Repository
 from arcana2.exceptions import (
     ArcanaError, ArcanaNameError, ArcanaUsageError, ArcanaFileFormatError,
     ArcanaWrongRepositoryError)
 from ..item import Provenance
-from arcana2.utils import dir_modtime, get_class_info, parse_value
+from arcana2.core.utils import dir_modtime, get_class_info, parse_value
 from ..dataset import Dataset
 from ..enum import ClinicalTrial
 
