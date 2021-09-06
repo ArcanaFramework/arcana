@@ -4,7 +4,7 @@ from enum import Enum
 from arcana2.exceptions import ArcanaBadlyFormattedIDError, ArcanaUsageError
 
 
-class DataHierarchy(Enum):
+class DataStructure(Enum):
     """
     Base class for tree structure enums. The values for each member of the 
     enum should be a binary string that specifies the relationship between
@@ -108,12 +108,12 @@ class DataHierarchy(Enum):
 
         Parameters
         ----------
-        layers : Sequence[DataHierarchy]
+        layers : Sequence[DataStructure]
             The sequence of layers to diff
 
         Returns
         -------
-        list[DataHierarchy]
+        list[DataStructure]
             The sequence of frequencies that each layer adds
         """
         covered = cls(0)
@@ -139,11 +139,11 @@ class DataHierarchy(Enum):
 
         Parameters
         ----------
-        ids : list[(DataHierarchy or str, str)]
+        ids : list[(DataStructure or str, str)]
             Sequence of IDs specifying a the layer structure in the data tree
             and the IDs of each of the branches that lead to a specific data
             node
-        id_inference : list[(DataHierarchy, str)]
+        id_inference : list[(DataStructure, str)]
             Specifies how IDs of primary data frequencies that not explicitly
             provided are inferred from the IDs that are. For example, given a
             set of subject IDs that combination of the ID of the group that
@@ -164,7 +164,7 @@ class DataHierarchy(Enum):
 
         Returns
         -------
-        Dict[DataHierarchy, str]
+        Dict[DataStructure, str]
             A copied ID dictionary with inferred IDs inserted into it
 
         Raises
@@ -198,10 +198,11 @@ class DataHierarchy(Enum):
         return inferred_ids
 
 
-class Clinical(DataHierarchy):
+class Clinical(DataStructure):
     """
-    An enum that specifies the data frequencies within a data tree of a typical
-    clinical research study with groups, subjects and timepoints.
+    An enum that specifies the data hierarcy of data trees typical of
+    clinical research, i.e. subjects split into groups scanned at different
+    timepoints (in longitudinal studies).
     """
 
     # Root node of the dataset

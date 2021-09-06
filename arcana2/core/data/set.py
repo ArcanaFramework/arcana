@@ -14,7 +14,7 @@ from arcana2.exceptions import (
     ArcanaBadlyFormattedIDError)
 from arcana2.core.utils import to_list, to_dict
 from .item import DataItem
-from .enum import DataHierarchy
+from .enum import DataStructure
 from .spec import DataSpec
 from .selector import DataSelector
 from .. import repository
@@ -45,25 +45,39 @@ class Dataset():
     derivatives : Dict[str, Spec]
         A dictionary that maps "name-paths" of derivatives analysis workflows
         to be stored in the dataset
-    included : Dict[DataHierarchy, List[str]]
+    included : Dict[DataStructure, List[str]]
         The IDs to be included in the dataset for each frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
         QC. If a frequency is omitted or its value is None, then all available
         will be used
-    excluded : Dict[DataHierarchy, List[str]]
+    excluded : Dict[DataStructure, List[str]]
         The IDs to be excluded in the dataset for each frequency. E.g. can be
         used to exclude specific subjects that failed QC. If a frequency is
         omitted or its value is None, then all available will be used
     data_structure : EnumMeta
-        The DataHierarchy enum that defines the frequencies (e.g. per-session,
-        per-subject,...) present in the dataset.
-    layers : list[DataHierarchy] or None
+        The DataStructure enum that defines the potential frequencies
+        (e.g. per-session, per-subject,...) of nodes in the dataset.
+    layers : list[DataStructure] or None
         The data frequencies from the data structure that are explicitly in the
         data tree. Only relevant for repositories with flexible tree structures
-        (e.g. FileSystem). E.g. if a file-system dataset (i.e. directory) has
-        two layers, corresponding to subjects and sessions it would be
-        [Clinical.subject, Clinical.session]
-    id_inference : Sequence[(DataHierarchy, str)] or Callable
+        (e.g. FileSystem). E.g. if a FileSystem dataset (i.e. directory) has
+        two layers of sub-directories, the first layer of sub-directories named
+        by subjects, and the second directory layer named by timepoint for
+        the session data stored within it then the layers would be
+
+            [Clinical.subject, Clinical.timepoint]
+
+        Alternatively, in some repositories (e.g. XNAT) the second subdirectory
+        layer may be named with session ID that is unique in the project, in
+        which case the layer structure would instead be
+
+            [Clinical.subject, Clinical.session]
+        
+        However, in this case the timepoint component of the session ID will
+        need to be extracted using the `id_inference` arg.
+
+        Other hierarchies 
+    id_inference : Sequence[(DataStructure, str)] or Callable
         Specifies how IDs of primary data frequencies that not explicitly
         provided are inferred from the IDs that are. For example, given a set
         of subject IDs that combination of the ID of the group that they belong
@@ -89,12 +103,12 @@ class Dataset():
         factory=list, converter=to_list)
     derivatives: list[DataSpec] or None = attr.ib(
         factory=list, converter=to_list)
-    included: dict[DataHierarchy, ty.List[str]] = attr.ib(
+    included: dict[DataStructure, ty.List[str]] = attr.ib(
         factory=dict, converter=to_dict)
-    excluded: dict[DataHierarchy, ty.List[str]] = attr.ib(
+    excluded: dict[DataStructure, ty.List[str]] = attr.ib(
         factory=dict, converter=to_dict)
-    layers: list[DataHierarchy] = attr.ib()
-    id_inference: (list[tuple[DataHierarchy, str]]
+    layers: list[DataStructure] = attr.ib()
+    id_inference: (list[tuple[DataStructure, str]]
                    or ty.Callable) = attr.ib(factory=list, converter=to_list)
     _root_node: DataNode = attr.ib(default=None, init=False)
 
@@ -138,7 +152,7 @@ class Dataset():
             raise ArcanaUsageError(
                 "{} are not part of the {} data structure"
                 .format(', '.join(not_valid), self.data_structure))
-        upper_layers = 
+        self.data_structure.diff_layers(layers)
 
     def __enter__(self):
         self.repository.__enter__()
@@ -229,9 +243,9 @@ class Dataset():
 
         Parameters
         ----------
-        frequency : DataHierarchy or str
+        frequency : DataStructure or str
             The frequency of the node
-        ids : Dict[DataHierarchy, str], optional
+        ids : Dict[DataStructure, str], optional
             The IDs corresponding to the node to return
         **id_kwargs : Dict[str, str]
             Additional IDs corresponding to the node to return passed as
@@ -284,9 +298,9 @@ class Dataset():
 
         Parameters
         ----------
-        frequency : DataHierarchy
+        frequency : DataStructure
             The frequency of the data_node
-        ids : Dict[DataHierarchy, str]
+        ids : Dict[DataStructure, str]
             The IDs of the node and all branching points the data tree
             above it. The keys should match the Enum used provided for the
             'frequency
@@ -351,13 +365,13 @@ class Dataset():
 
         Parameters
         ----------
-        ids : Dict[DataHierarchy | str, str]
+        ids : Dict[DataStructure | str, str]
             A dictionary with IDs for each frequency that specifies the
             nodes position within the data tree
 
         Returns
         -------
-        Tuple[(DataHierarchy, str)]
+        Tuple[(DataStructure, str)]
             A tuple sorted in order of provided frequencies
         """
         try:
@@ -382,7 +396,7 @@ class Dataset():
             The inputs to be sourced from the dataset
         outputs : Sequence[DataSpec]
             The outputs to be sinked into the dataset
-        frequency : DataHierarchy
+        frequency : DataStructure
             The frequency of the nodes to draw the inputs from
         ids : Sequence[str]
             The sequence of IDs of the data nodes to include in the workflow
@@ -439,7 +453,7 @@ class Dataset():
         @mark.task
         @mark.annotate(
             {'dataset': Dataset,
-             'frequency': DataHierarchy,
+             'frequency': DataStructure,
              'id': str,
              'input_names': ty.Sequence[str],
              'return': inputs_spec})
@@ -532,7 +546,7 @@ class Dataset():
                 input_spec=SpecInfo(
                     name='SinkInputs', bases=(BaseSpec,), fields=(
                         [('data_node', DataNode),
-                         ('frequency', DataHierarchy),
+                         ('frequency', DataStructure),
                          ('id', str)
                          ('outputs', ty.Dict[str, DataSpec])]
                         + list(outputs_spec.items()))),

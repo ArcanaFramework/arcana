@@ -11,7 +11,7 @@ from arcana2.core.data.provenance import DataProvenance
 from arcana2.exceptions import ArcanaMissingDataException, ArcanaUsageError
 from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana2.core.data.set import Dataset
-from arcana2.core.data.enum import Clinical, DataHierarchy
+from arcana2.core.data.enum import Clinical, DataStructure
 from arcana2.core.repository import Repository
 
 
@@ -288,7 +288,7 @@ class FileSystem(Repository):
                                  
 
 
-def single_dataset(path: str, tree_structure: DataHierarchy=Clinical,
+def single_dataset(path: str, tree_structure: DataStructure=Clinical,
                    **kwargs) -> Dataset:
     """
     Creates a Dataset from a file system path to a directory
