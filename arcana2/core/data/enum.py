@@ -1,7 +1,10 @@
+from copy import copy
+import re
 from enum import Enum
+from arcana2.exceptions import ArcanaBadlyFormattedIDError, ArcanaUsageError
 
 
-class DataStructure(Enum):
+class DataHierarchy(Enum):
     """
     Base class for tree structure enums. The values for each member of the 
     enum should be a binary string that specifies the relationship between
@@ -65,17 +68,20 @@ class DataStructure(Enum):
     def __or__(self, other):
         return type(self)(self.value | other.value)
 
+    def __invert__(self):
+        return type(self)(~self.value)
+
     @classmethod
     def default(cls):
         return max(cls)
 
-    @classmethod
-    def layers(cls):
-        layer = cls(0)
-        yield layer
-        for b in max(cls).basis():
-            layer |= b
-            yield layer
+    # @classmethod
+    # def layers(cls):
+    #     layer = cls(0)
+    #     yield layer
+    #     for b in max(cls).basis():
+    #         layer |= b
+    #         yield layer
 
     def is_child(self, parent):
         """Checks to see whether all bases of the data frequency appear in the
@@ -95,8 +101,104 @@ class DataStructure(Enum):
         """
         return bool(set(parent.basis) - set(self.basis))
 
+    @classmethod
+    def diff_layers(cls, layers):
+        """Returns the difference between layers of a given data hierarcy
+        
 
-class Clinical(DataStructure):
+        Parameters
+        ----------
+        layers : Sequence[DataHierarchy]
+            The sequence of layers to diff
+
+        Returns
+        -------
+        list[DataHierarchy]
+            The sequence of frequencies that each layer adds
+        """
+        covered = cls(0)
+        diffs = []
+        for i, layer in enumerate(layers):
+            diff = layer - covered
+            if not diff:
+                raise ArcanaUsageError(
+                    f"{layer} does not add any additional basis layers to "
+                    f"previous layers {layers[i:]}")
+            diffs.append(diff)
+            covered != layer
+        if covered != max(cls):
+            raise ArcanaUsageError(
+                f"{layers} do not cover the following basis frequencies "
+                + ', '.join(str(m) for m in (~covered).basis()))
+        return diffs
+
+    @classmethod
+    def infer_ids(cls, ids, id_inference):
+        """Infers IDs of primary data frequencies from those are provided from
+        the `id_inference` dictionary passed to the dataset init.
+
+        Parameters
+        ----------
+        ids : list[(DataHierarchy or str, str)]
+            Sequence of IDs specifying a the layer structure in the data tree
+            and the IDs of each of the branches that lead to a specific data
+            node
+        id_inference : list[(DataHierarchy, str)]
+            Specifies how IDs of primary data frequencies that not explicitly
+            provided are inferred from the IDs that are. For example, given a
+            set of subject IDs that combination of the ID of the group that
+            they belong to and their member IDs (i.e. matched test/controls
+            have same member ID)
+
+                CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
+
+            the group ID can be extracted by providing the a list of tuples
+            containing ID to source the inferred IDs from coupled with a
+            regular expression with named groups
+
+                id_inference=[(Clinical.subject,
+                            r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')}
+
+            Alternatively, a general function with signature `f(ids)` that
+            returns a dictionary with the mapped IDs can be provided instead.
+
+        Returns
+        -------
+        Dict[DataHierarchy, str]
+            A copied ID dictionary with inferred IDs inserted into it
+
+        Raises
+        ------
+        ArcanaBadlyFormattedIDError
+            raised if one of the IDs doesn't match the pattern in the
+            `id_inference`
+        ArcanaUsageError
+            raised if one of the groups specified in the ID inference reg-ex
+            doesn't match a valid frequency in the data structure
+        """
+        inferred_ids = {}
+        for source, regex in id_inference:
+            match = re.match(regex, ids[str(source)])
+            if match is None:
+                raise ArcanaBadlyFormattedIDError(
+                    f"{source} ID '{ids[source]}', does not match ID inference"
+                    f" pattern '{regex}'")
+            for target, id in match.groupdict.items():
+                try:
+                    freq = cls[target]
+                except KeyError:
+                    raise ArcanaUsageError(
+                        f"Group '{target}' specified in ID inference regular "
+                        f"expression {regex} is not part of {cls}")
+                if freq in inferred_ids:
+                    raise ArcanaUsageError(
+                        f"ID '{target}' is specified twice in the ID inference"
+                        f" regular sexpression {id_inference}")
+                inferred_ids[freq] = id
+        return inferred_ids
+
+
+class Clinical(DataHierarchy):
     """
     An enum that specifies the data frequencies within a data tree of a typical
     clinical research study with groups, subjects and timepoints.
@@ -105,11 +207,11 @@ class Clinical(DataStructure):
     # Root node of the dataset
     dataset = 0b000  # singular within the dataset
 
-    # Bases of the data tree structure
+    # Basis frequencies in the data tree structure
     member = 0b001  # subjects relative to their group membership, i.e.
-                   # matched pairs of test and control subjects shoudl share
-                   # the same member IDs. group = 0b010  # subject groups
-                   # (e.g. test & control)
+                    # matched pairs of test and control subjects should share
+                    # the same member IDs.
+    group = 0b010  # subject groups (e.g. test & control)
     timepoint = 0b100  # timepoints in longitudinal studies
 
     # Combinations

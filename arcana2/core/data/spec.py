@@ -1,5 +1,5 @@
 import attr
-from .enum import DataStructure, DataSalience
+from .enum import DataHierarchy, DataSalience
 
 
 @attr.s
@@ -16,7 +16,7 @@ class DataSpec():
     data_format : FileFormat or type
         The file format used to store the file_group. Can be one of the
         recognised formats
-    frequency : DataStructure
+    frequency : DataHierarchy
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
     desc : str
@@ -35,7 +35,7 @@ class DataSpec():
     """
 
     path = attr.ib(type=str)
-    frequency = attr.ib(type=DataStructure)
+    frequency = attr.ib(type=DataHierarchy)
     data_format = attr.ib()
     desc = attr.ib(type=str)
     salience = attr.ib(type=DataSalience, default=DataSalience.supplementary)
