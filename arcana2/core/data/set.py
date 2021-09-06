@@ -57,13 +57,13 @@ class Dataset():
     data_structure : EnumMeta
         The DataStructure enum that defines the potential frequencies
         (e.g. per-session, per-subject,...) of nodes in the dataset.
-    layers : list[DataStructure] or None
+    hierarchy : list[DataStructure] or None
         The data frequencies from the data structure that are explicitly in the
         data tree. Only relevant for repositories with flexible tree structures
         (e.g. FileSystem). E.g. if a FileSystem dataset (i.e. directory) has
-        two layers of sub-directories, the first layer of sub-directories named
+        two hierarchy of sub-directories, the first layer of sub-directories named
         by subjects, and the second directory layer named by timepoint for
-        the session data stored within it then the layers would be
+        the session data stored within it then the hierarchy would be
 
             [Clinical.subject, Clinical.timepoint]
 
@@ -107,7 +107,7 @@ class Dataset():
         factory=dict, converter=to_dict)
     excluded: dict[DataStructure, ty.List[str]] = attr.ib(
         factory=dict, converter=to_dict)
-    layers: list[DataStructure] = attr.ib()
+    hierarchy: list[DataStructure] = attr.ib()
     id_inference: (list[tuple[DataStructure, str]]
                    or ty.Callable) = attr.ib(factory=list, converter=to_list)
     _root_node: DataNode = attr.ib(default=None, init=False)
@@ -117,7 +117,7 @@ class Dataset():
         if wrong_freq := [m for m in selectors.values()
                           if not isinstance(m.frequency, self.data_structure)]:
             raise ArcanaUsageError(
-                f"Data layers of {wrong_freq} selectors does not match "
+                f"Data hierarchy of {wrong_freq} selectors does not match "
                 f"that of repository {self.data_structure}")
 
     @derivatives.validator
@@ -137,22 +137,22 @@ class Dataset():
                     "for frequencies ('{}') to Dataset".format(
                         "', '".join(both)))
 
-    @layers.default
-    def layers_default(self):
+    @hierarchy.default
+    def hierarchy_default(self):
         """Default to a single layer that includes all the basis frequencies
         e.g. 'session' for Clinical data structure (which includes the 'group'
         'member' and 'timepoint' "basis" frequencies)
         """
         return [max(self.data_structure)]
 
-    @layers.validator
-    def layers_validator(self, _, layers):
-        if not_valid := [f for f in layers
+    @hierarchy.validator
+    def hierarchy_validator(self, _, hierarchy):
+        if not_valid := [f for f in hierarchy
                          if not isinstance(f, self.data_structure)]:
             raise ArcanaUsageError(
                 "{} are not part of the {} data structure"
                 .format(', '.join(not_valid), self.data_structure))
-        self.data_structure.diff_layers(layers)
+        self.data_structure.diff_hierarchy(hierarchy)
 
     def __enter__(self):
         self.repository.__enter__()
@@ -294,7 +294,7 @@ class Dataset():
 
     def add_node(self, frequency, ids):
         """Adds a node to the dataset, creating references to upper and lower
-        layers in the data tree.
+        hierarchy in the data tree.
 
         Parameters
         ----------
@@ -321,7 +321,7 @@ class Dataset():
         ids = {self.data_structure[str(f)]: i for f, i in ids.items()}
         # Create new data node
         node = DataNode(frequency, ids, self)
-        basis_ids = {f: ids[f] for f in frequency.layers() if f in ids}
+        basis_ids = {f: ids[f] for f in frequency.hierarchy() if f in ids}
         ids_tuple = tuple(basis_ids.items())
         node_dict = self.root_node.subnodes[frequency]
         if node_dict:
@@ -342,14 +342,14 @@ class Dataset():
                     f"in data tree ({ids_tuple} and {existing_tuple})")
         node_dict[ids_tuple] = node
         node.supranodes[self.data_structure(0)] = self.root_node
-        # Insert nodes for basis layers if not already present and link them
+        # Insert nodes for basis hierarchy if not already present and link them
         # with inserted node
-        for supra_freq in frequency.layers():
+        for supra_freq in frequency.hierarchy():
             # Select relevant IDs from those provided
             supra_ids = {
-                str(f): ids[f] for f in supra_freq.layers() if f in ids}
+                str(f): ids[f] for f in supra_freq.hierarchy() if f in ids}
             sub_ids = tuple((f, i) for f, i in ids_tuple
-                            if f not in supra_freq.layers())
+                            if f not in supra_freq.hierarchy())
             try:
                 supranode = self.node(supra_freq, **supra_ids)
             except ArcanaNameError:

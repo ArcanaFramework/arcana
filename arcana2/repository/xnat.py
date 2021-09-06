@@ -710,7 +710,7 @@ class Xnat(Repository):
                                             Clinical.session):
             name = ('___'
                     + '___'.join(f'{l}__{item.data_node.ids[l]}'
-                                 for l in item.data_node.frequency.layers)
+                                 for l in item.data_node.frequency.hierarchy)
                     + '___')
         return name
 

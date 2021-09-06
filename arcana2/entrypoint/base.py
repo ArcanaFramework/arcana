@@ -67,12 +67,12 @@ class BaseDatasetCmd():
 
 """)
         parser.add_argument(
-            '--data_layers', nargs='+', default=None,
+            '--data_hierarchy', nargs='+', default=None,
             help=("The data frequencies that are present in the data tree. "
                   "For some repository types this is fixed (e.g. XNAT) but "
-                  "for more flexible (e.g. FileSystem) the number of layers "
+                  "for more flexible (e.g. FileSystem) the number of hierarchy "
                   "in the data tree, and what each layer corresponds to, "
-                  "needs to specified. Defaults to all the layers in the "
+                  "needs to specified. Defaults to all the hierarchy in the "
                   "data structure"))
 
     @classmethod
@@ -116,10 +116,10 @@ class BaseDatasetCmd():
 
         data_structure = cls.parse_data_structure(args)
 
-        if args.data_layers:
-            data_layers = [data_structure[l] for l in args.data_layers]
+        if args.data_hierarchy:
+            data_hierarchy = [data_structure[l] for l in args.data_hierarchy]
         else:
-            data_layers = None
+            data_hierarchy = None
 
         def parse_ids(ids_args):
             parsed_ids = {}
@@ -138,7 +138,7 @@ class BaseDatasetCmd():
                                   id_inference=id_inference,
                                   included=parse_ids(args.included),
                                   excluded=parse_ids(args.excluded),
-                                  layers=data_layers)
+                                  hierarchy=data_hierarchy)
 
     @classmethod
     def parse_data_structure(cls, args):

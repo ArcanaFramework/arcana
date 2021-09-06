@@ -23,7 +23,7 @@ class FileSystem(Repository):
     """
     A Repository class for data stored hierarchically within sub-directories
     of a file-system directory. The depth and which layer in the data tree
-    the sub-directories correspond to is defined by the `layers` argument.
+    the sub-directories correspond to is defined by the `hierarchy` argument.
 
     Parameters
     ----------
@@ -153,13 +153,13 @@ class FileSystem(Repository):
                 dpath = op.join(dpath, dname)
                 ids += [dname]
             # First ID can be omitted
-            node_freq = dataset.layers[len(ids)]  # last freq
-            ids_dict = dict(zip(dataset.layers, ids))
+            node_freq = dataset.hierarchy[len(ids)]  # last freq
+            ids_dict = dict(zip(dataset.hierarchy, ids))
             ids_dict = dataset.infer_ids(ids_dict)
             node = dataset.add_node(node_freq, ids_dict)
             # Check if node is a leaf (i.e. lowest level in directory
             # structure)
-            is_leaf_node = (node_freq == dataset.layers[-1])
+            is_leaf_node = (node_freq == dataset.hierarchy[-1])
             filtered, has_fields = self._list_node_dir_contents(
                 dpath, is_leaf=is_leaf_node)
             # Group files and sub-dirs that match except for extensions
@@ -223,7 +223,7 @@ class FileSystem(Repository):
     def node_path(self, data_node):
         return op.join(
             data_node.dataset.name,
-            *(data_node.ids[f] for f in data_node.frequency.layers()))
+            *(data_node.ids[f] for f in data_node.frequency.hierarchy()))
 
     def file_group_path(self, file_group):
         return op.join(self.node_path(file_group.data_node)
