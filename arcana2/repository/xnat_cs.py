@@ -2,7 +2,7 @@ import logging
 import attr
 from arcana2.exceptions import ArcanaRepositoryError
 from arcana2.exceptions import ArcanaUsageError
-from arcana2.core.data.enum import ClinicalTrial
+from arcana2.core.data.enum import Clinical
 from .xnat import Xnat
 
 
@@ -33,10 +33,10 @@ class XnatCS(Xnat):
 
 
 def make_command_json(image_name, analysis_cls, inputs, outputs,
-                      parameters, desc, frequency=ClinicalTrial.session,
+                      parameters, desc, frequency=Clinical.session,
                       docker_index="https://index.docker.io/v1/"):
 
-    if frequency != ClinicalTrial.session:
+    if frequency != Clinical.session:
         raise NotImplementedError(
             "Support for frequencies other than '{}' haven't been "
             "implemented yet".format(frequency))
@@ -107,7 +107,7 @@ def make_command_json(image_name, analysis_cls, inputs, outputs,
             params=' '.join('-p {} #{}_PARAM#'.format(p, p.upper())
                             for p in parameters)))
 
-    if frequency == ClinicalTrial.session:
+    if frequency == Clinical.session:
         cmd_inputs.append(
             {
                 "name": "session-id",

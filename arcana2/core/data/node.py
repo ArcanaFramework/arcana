@@ -11,7 +11,7 @@ from arcana2.core.utils import split_extension
 from ..file_format import FileFormat
 from .item import DataItem
 from .provenance import DataProvenance
-from .enum import DataQuality, DataFrequency
+from .enum import DataQuality, DataStructure
 from . import set as dataset
 
 
@@ -22,18 +22,18 @@ class DataNode():
 
     Parameters
     ----------
-    ids : Dict[DataFrequency, str]
+    ids : Dict[DataStructure, str]
         The ids for each provided frequency need to specify the data node
         within the tree
-    frequency : DataFrequency
+    frequency : DataStructure
         The frequency of the node
     dataset : Dataset
         A reference to the root of the data tree
     """
 
     dataset: dataset.Dataset = attr.ib()
-    ids: ty.Dict[DataFrequency, str] = attr.ib()
-    frequency: DataFrequency = attr.ib()
+    ids: ty.Dict[DataStructure, str] = attr.ib()
+    frequency: DataStructure = attr.ib()
     path: str = attr.ib()
     subnodes: ty.DefaultDict[str, ty.Dict] = attr.ib(
         factory=lambda: defaultdict(dict))

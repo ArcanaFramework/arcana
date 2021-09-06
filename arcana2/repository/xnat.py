@@ -22,7 +22,7 @@ from arcana2.exceptions import (
 from arcana2.core.data.provenance import DataProvenance
 from arcana2.core.utils import dir_modtime, get_class_info, parse_value
 from arcana2.core.data.set import Dataset
-from arcana2.core.data.enum import ClinicalTrial
+from arcana2.core.data.enum import Clinical
 
 
 
@@ -81,7 +81,7 @@ class Xnat(Repository):
     PROV_SUFFIX = '.__prov__.json'
     FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
-    DEFAULT_DATA_STRUCTURE = ClinicalTrial
+    DEFAULT_DATA_STRUCTURE = Clinical
 
     @property
     def prov(self):
@@ -402,10 +402,10 @@ class Xnat(Repository):
                 subject_xids.add(subject_xid)
                 subject_id = subject_xids_to_labels[subject_xid]
                 session_label = session_json['data_fields']['label']
-                ids = dataset.infer_ids({ClinicalTrial.subject: subject_id,
-                                         ClinicalTrial.session: session_label})
+                ids = dataset.infer_ids({Clinical.subject: subject_id,
+                                         Clinical.session: session_label})
                 # Add node for session
-                data_node = dataset.add_node(ClinicalTrial.session, ids)
+                data_node = dataset.add_node(Clinical.session, ids)
                 session_uri = (
                     '/data/archive/projects/{}/subjects/{}/experiments/{}'
                     .format(project_id, subject_id, session_label))
@@ -418,8 +418,8 @@ class Xnat(Repository):
             # Get subject level resources and fields
             for subject_xid in subject_xids:
                 subject_id = subject_xids_to_labels[subject_xid]
-                ids = dataset.infer_ids({ClinicalTrial.subject: subject_id})
-                data_node = dataset.add_node(ClinicalTrial.subject, ids)
+                ids = dataset.infer_ids({Clinical.subject: subject_id})
+                data_node = dataset.add_node(Clinical.subject, ids)
                 subject_uri = ('/data/archive/projects/{}/subjects/{}'
                                .format(project_id, subject_id))
                 subject_json = self.login.get_json(subject_uri)['items'][0]
@@ -641,18 +641,18 @@ class Xnat(Repository):
         """
         with self:
             xproject = self.login.projects[data_node.dataset.name]
-            if data_node.frequency not in (ClinicalTrial.subject,
-                                           ClinicalTrial.session):
+            if data_node.frequency not in (Clinical.subject,
+                                           Clinical.session):
                 return xproject
-            subj_label = data_node.ids[ClinicalTrial.subject]
+            subj_label = data_node.ids[Clinical.subject]
             try:
                 xsubject = xproject.subjects[subj_label]
             except KeyError:
                 xsubject = self.login.classes.SubjectData(
                     label=subj_label, parent=xproject)
-            if data_node.frequency == ClinicalTrial.subject:
+            if data_node.frequency == Clinical.subject:
                 return xsubject
-            sess_label = data_node.ids[ClinicalTrial.session]
+            sess_label = data_node.ids[Clinical.session]
             try:
                 xsession = xsubject.experiments[sess_label]
             except KeyError:
@@ -706,8 +706,8 @@ class Xnat(Repository):
             The derived name
         """
         name = '__'.join(item.name_path)
-        if item.data_node.frequency not in (ClinicalTrial.subject,
-                                            ClinicalTrial.session):
+        if item.data_node.frequency not in (Clinical.subject,
+                                            Clinical.session):
             name = ('___'
                     + '___'.join(f'{l}__{item.data_node.ids[l]}'
                                  for l in item.data_node.frequency.layers)
@@ -727,9 +727,9 @@ class Xnat(Repository):
         -------
         name : `str`
             The unescaped name of an item
-        frequency : ClinicalTrial
+        frequency : Clinical
             The frequency of the node
-        ids : Dict[ClinicalTrial, str]
+        ids : Dict[Clinical, str]
             A dictionary of IDs for the node
         """
         ids = {}
@@ -737,10 +737,10 @@ class Xnat(Repository):
         freq_value = 0b0
         for part in id_parts:
             layer_freq_str, id = part.split('__')
-            layer_freq = ClinicalTrial[layer_freq_str]
+            layer_freq = Clinical[layer_freq_str]
             ids[layer_freq] = id
             freq_value != layer_freq
-        frequency = ClinicalTrial(freq_value)
+        frequency = Clinical(freq_value)
         name_path = '/'.join(id_parts[-1].split('__'))
         return name_path, frequency, ids
 

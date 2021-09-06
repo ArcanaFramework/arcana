@@ -3,7 +3,7 @@ import attr
 from arcana2.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError)
-from .enum import DataFrequency, DataQuality
+from .enum import DataStructure, DataQuality
 
 
 @attr.s
@@ -19,7 +19,7 @@ class DataSelector():
         is used instead.
     data_format : FileFormat or type
         File format that data will be 
-    frequency : DataFrequency
+    frequency : DataStructure
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
     quality_threshold : str | list[str] | None
@@ -42,7 +42,7 @@ class DataSelector():
 
     path = attr.ib(type=str)
     data_format = attr.ib()
-    frequency = attr.ib(type=DataFrequency)
+    frequency = attr.ib(type=DataStructure)
     quality_threshold = attr.ib(type=DataQuality, default=DataQuality.usable)
     order = attr.ib(type=int, default=None)
     metadata = attr.ib(default=None)

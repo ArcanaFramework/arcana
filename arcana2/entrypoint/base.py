@@ -43,9 +43,9 @@ class BaseDatasetCmd():
                   "If the second arg contains '/' then it is interpreted as "
                   "the path to a text file containing a list of IDs"))    
         parser.add_argument(
-            '--data_structure', type=str, default='ClinicalTrial',
+            '--data_structure', type=str, default='Clinical',
             help=("The enum that specifies the data structure of the dataset. "
-                  "Defaults to `ClinicalTrial`, which "
+                  "Defaults to `Clinical`, which "
                   "consists of the typical dataset>group>subject>session "
                   "data tree used in clinical trials/studies"))
         parser.add_argument(

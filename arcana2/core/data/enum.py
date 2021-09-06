@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class DataFrequency(Enum):
+class DataStructure(Enum):
     """
     Base class for tree structure enums. The values for each member of the 
     enum should be a binary string that specifies the relationship between
@@ -20,7 +20,7 @@ class DataFrequency(Enum):
 
     def basis(self):
         """Returns the basis frequencies in the data tree.
-        For example in `ClinicalTrial` data trees, the following frequencies can
+        For example in `Clinical` data trees, the following frequencies can
         be decomposed into the following basis frequencies:
 
             dataset -> []
@@ -96,7 +96,7 @@ class DataFrequency(Enum):
         return bool(set(parent.basis) - set(self.basis))
 
 
-class ClinicalTrial(DataFrequency):
+class Clinical(DataStructure):
     """
     An enum that specifies the data frequencies within a data tree of a typical
     clinical research study with groups, subjects and timepoints.
@@ -122,8 +122,6 @@ class ClinicalTrial(DataFrequency):
     batch = 0b110  # data from separate groups at separate timepoints
     matched_datapoint = 0b101 # matched members (e.g. test & control) across
                               # all groups and timepoints
-
-
 
 
 class DataSalience(Enum):

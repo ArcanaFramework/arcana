@@ -53,7 +53,7 @@ class Repository(metaclass=ABCMeta):
             A dictionary that maps "name-paths" of derivatives analysis
             workflows to be stored in the dataset
         data_structure : EnumMeta
-            The DataFrequency enum that defines the frequencies (e.g.
+            The DataStructure enum that defines the frequencies (e.g.
             per-session, per-subject,...) present in the dataset.                       
         **kwargs:
             Keyword args passed on to the Dataset init method
