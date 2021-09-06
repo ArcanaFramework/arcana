@@ -105,27 +105,23 @@ class ClinicalTrial(DataFrequency):
     # Root node of the dataset
     dataset = 0b000  # singular within the dataset
 
-    # Primary "layers" of the data tree structure
-    group = 0b100  # subject groups
-    member = 0b010  # subjects relative to their group membership, i.e.
-                    # matched pairs of test and control subjects will share the
-                    # same member IDs. Equivalent to subjects in dataset with
-                    # only one group.
-    timepoint = 0b001  # time-points in longitudinal studies
+    # Bases of the data tree structure
+    member = 0b001  # subjects relative to their group membership, i.e.
+                   # matched pairs of test and control subjects shoudl share
+                   # the same member IDs. group = 0b010  # subject groups
+                   # (e.g. test & control)
+    timepoint = 0b100  # timepoints in longitudinal studies
 
-    # Commonly used combinations
-    subject = 0b110 # uniquely identified subject within in the dataset.
+    # Combinations
+    session = 0b111  # a single session (i.e. a single timepoint of a subject)
+    subject = 0b011 # uniquely identified subject within in the dataset.
                     # As opposed to 'member', which specifies a subject in
                     # relation to its group (i.e. one subject for each member
                     # in each group). For datasets with only one study group,
                     # then subject and member are equivalent
-    session = 0b111  # a single session (i.e. a single timepoint of a subject)
-
-    # Lesser used combinations
-    group_timepoint = 0b101  # iterate over group and timepoints, i.e.
-                             # matched members are combined 
-    member_timepoint = 0b011 # iterate over each matched member and timepoint
-                             # combination, groups are combined
+    batch = 0b110  # data from separate groups at separate timepoints
+    matched_datapoint = 0b101 # matched members (e.g. test & control) across
+                              # all groups and timepoints
 
 
 
