@@ -1,5 +1,7 @@
 from copy import copy
-import re
+import functools
+import typing as ty
+from operator import __or__
 from enum import Enum
 from arcana2.exceptions import ArcanaBadlyFormattedIDError, ArcanaUsageError
 
@@ -28,9 +30,12 @@ class DataStructure(Enum):
 
             dataset -> []
             group -> [group]
+            member -> [member]
+            timepoint -> [timepoint]
             subject -> [group, member]
-            group_timepoint -> [group, timepoint]
-            session -> [group, member, timepoint]
+            batch -> [timepoint, group]
+            matchedpoint -> [timepoint, member]
+            session -> [timepoint, group, member]
         """
         val = self.value
         # Check which bits are '1', and append them to the list of levels
@@ -50,17 +55,17 @@ class DataStructure(Enum):
     def is_basis(self):
         return len(self._nonzero_bits()) == 1
 
+    def __eq__(self, other):
+        return self.value == other.value
+
     def __lt__(self, other):
         return self.value < other.value
 
     def __le__(self, other):
         return self.value <= other.value
 
-    def __add__(self, other):
-        return type(self)(self.value + other.value)
-
-    def __subtract__(self, other):
-        return type(self)(self.value - other.value)
+    def __xor__(self, other):
+        return type(self)(self.value ^ other.value)
 
     def __and__(self, other):
         return type(self)(self.value & other.value)
@@ -70,6 +75,11 @@ class DataStructure(Enum):
 
     def __invert__(self):
         return type(self)(~self.value)
+
+    @classmethod
+    def union(cls, freqs: ty.Sequence[Enum]):
+        "Returns the union between data frequency values"
+        return map(functools.partial(__or__, x=cls(0)), freqs)
 
     @classmethod
     def default(cls):
@@ -83,119 +93,22 @@ class DataStructure(Enum):
     #         layer |= b
     #         yield layer
 
-    def is_child(self, parent):
-        """Checks to see whether all bases of the data frequency appear in the
-        child frequency. For example, 'subject' is a parent of 'session' but
-        'group' is not a parent of 'timepoint' and 'subject' is not a parent
-        of 'group'.
+    def is_parent(self, child):
+        """Checks to see whether the current frequency is a "parent" of the
+        other data frequency, i.e. all the base frequency of self appear in
+        the "child".
 
         Parameters
         ----------
-        other : [type]
-            [description]
+        child : DataFrequency
+            The data frequency to check parent/child relationship with
 
         Returns
         -------
-        [type]
-            [description]
+        bool
+            True if self is parent of child
         """
-        return bool(set(parent.basis) - set(self.basis))
-
-    @classmethod
-    def diff_layers(cls, layers):
-        """Returns the difference between layers of a given data hierarcy
-        
-
-        Parameters
-        ----------
-        layers : Sequence[DataStructure]
-            The sequence of layers to diff
-
-        Returns
-        -------
-        list[DataStructure]
-            The sequence of frequencies that each layer adds
-        """
-        covered = cls(0)
-        diffs = []
-        for i, layer in enumerate(layers):
-            diff = layer - covered
-            if not diff:
-                raise ArcanaUsageError(
-                    f"{layer} does not add any additional basis layers to "
-                    f"previous layers {layers[i:]}")
-            diffs.append(diff)
-            covered != layer
-        if covered != max(cls):
-            raise ArcanaUsageError(
-                f"{layers} do not cover the following basis frequencies "
-                + ', '.join(str(m) for m in (~covered).basis()))
-        return diffs
-
-    @classmethod
-    def infer_ids(cls, ids, id_inference):
-        """Infers IDs of primary data frequencies from those are provided from
-        the `id_inference` dictionary passed to the dataset init.
-
-        Parameters
-        ----------
-        ids : list[(DataStructure or str, str)]
-            Sequence of IDs specifying a the layer structure in the data tree
-            and the IDs of each of the branches that lead to a specific data
-            node
-        id_inference : list[(DataStructure, str)]
-            Specifies how IDs of primary data frequencies that not explicitly
-            provided are inferred from the IDs that are. For example, given a
-            set of subject IDs that combination of the ID of the group that
-            they belong to and their member IDs (i.e. matched test/controls
-            have same member ID)
-
-                CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
-
-            the group ID can be extracted by providing the a list of tuples
-            containing ID to source the inferred IDs from coupled with a
-            regular expression with named groups
-
-                id_inference=[(Clinical.subject,
-                            r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')}
-
-            Alternatively, a general function with signature `f(ids)` that
-            returns a dictionary with the mapped IDs can be provided instead.
-
-        Returns
-        -------
-        Dict[DataStructure, str]
-            A copied ID dictionary with inferred IDs inserted into it
-
-        Raises
-        ------
-        ArcanaBadlyFormattedIDError
-            raised if one of the IDs doesn't match the pattern in the
-            `id_inference`
-        ArcanaUsageError
-            raised if one of the groups specified in the ID inference reg-ex
-            doesn't match a valid frequency in the data structure
-        """
-        inferred_ids = {}
-        for source, regex in id_inference:
-            match = re.match(regex, ids[str(source)])
-            if match is None:
-                raise ArcanaBadlyFormattedIDError(
-                    f"{source} ID '{ids[source]}', does not match ID inference"
-                    f" pattern '{regex}'")
-            for target, id in match.groupdict.items():
-                try:
-                    freq = cls[target]
-                except KeyError:
-                    raise ArcanaUsageError(
-                        f"Group '{target}' specified in ID inference regular "
-                        f"expression {regex} is not part of {cls}")
-                if freq in inferred_ids:
-                    raise ArcanaUsageError(
-                        f"ID '{target}' is specified twice in the ID inference"
-                        f" regular sexpression {id_inference}")
-                inferred_ids[freq] = id
-        return inferred_ids
+        return (self & child) == self and child != self
 
 
 class Clinical(DataStructure):
@@ -223,7 +136,7 @@ class Clinical(DataStructure):
                     # in each group). For datasets with only one study group,
                     # then subject and member are equivalent
     batch = 0b110  # data from separate groups at separate timepoints
-    matched_datapoint = 0b101 # matched members (e.g. test & control) across
+    matchedpoint = 0b101 # matched members (e.g. test & control) across
                               # all groups and timepoints
 
 

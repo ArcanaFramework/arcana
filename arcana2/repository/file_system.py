@@ -136,6 +136,10 @@ class FileSystem(Repository):
         dataset : Dataset
             The dataset to construct the tree structure for
         """
+        if not os.path.exists(dataset.name):
+            raise ArcanaUsageError(
+                f"Could not find a directory at '{dataset.name}' to be the "
+                "root node of the dataset")        
 
         def load_prov(dpath, bname):
             prov_path = op.join(dpath, bname + self.PROV_SUFFIX)
@@ -145,21 +149,18 @@ class FileSystem(Repository):
                 prov = None
             return prov
 
-        def construct_node(dpath, ids=None, dname=None):
-            if ids is None:
-                ids = []
+        def construct_node(dpath, tree_path=None, dname=None):
+            if tree_path is None:
+                tree_path = []
             "Recursive function to traverse data tree"
             if dname is not None:
                 dpath = op.join(dpath, dname)
-                ids += [dname]
+                tree_path += [dname]
             # First ID can be omitted
-            node_freq = dataset.hierarchy[len(ids)]  # last freq
-            ids_dict = dict(zip(dataset.hierarchy, ids))
-            ids_dict = dataset.infer_ids(ids_dict)
-            node = dataset.add_node(node_freq, ids_dict)
+            node = dataset.new_node(tree_path)
             # Check if node is a leaf (i.e. lowest level in directory
             # structure)
-            is_leaf_node = (node_freq == dataset.hierarchy[-1])
+            is_leaf_node = (node.frequency == dataset.hierarchy[-1])
             filtered, has_fields = self._list_node_dir_contents(
                 dpath, is_leaf=is_leaf_node)
             # Group files and sub-dirs that match except for extensions
@@ -190,11 +191,8 @@ class FileSystem(Repository):
                 for sub_dir in os.listdir(dpath):
                     if (not sub_dir.startswith('.')
                             and sub_dir != self.NODE_DIR):
-                        construct_node(dpath, ids=ids, dname=sub_dir)
-        if not os.path.exists(dataset.name):
-            raise ArcanaUsageError(
-                f"Could not find a directory at '{dataset.name}' to be the "
-                "root node of the dataset")
+                        construct_node(dpath, tree_path, dname=sub_dir)
+
         construct_node(dataset.name)
 
     @property

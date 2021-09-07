@@ -1,18 +1,21 @@
 from __future__ import annotations
 import os.path
+import re
+from itertools import combinations
 import typing as ty
 import attr
 from collections import defaultdict
 from abc import ABCMeta, abstractmethod
+import arcana2.core.data.set
 from arcana2.exceptions import (
     ArcanaUsageError, ArcanaUnresolvableFormatException, ArcanaFileFormatError,
-    ArcanaError, ArcanaNameError, ArcanaWrongFrequencyError)
+    ArcanaError, ArcanaNameError, ArcanaWrongFrequencyError,
+    ArcanaBadlyFormattedIDError, ArcanaDataTreeConstructionError)
 from arcana2.core.utils import split_extension
 from ..file_format import FileFormat
 from .item import DataItem
 from .provenance import DataProvenance
-from .enum import DataQuality, DataStructure
-from . import set as dataset
+from .enum import DataQuality, DataStructure, DataFrequency
 
 
 @attr.s
@@ -23,7 +26,7 @@ class DataNode():
     Parameters
     ----------
     ids : Dict[DataStructure, str]
-        The ids for each provided frequency need to specify the data node
+        The ids for the frequency of the node and all "parent" frequencies
         within the tree
     frequency : DataStructure
         The frequency of the node
@@ -31,13 +34,13 @@ class DataNode():
         A reference to the root of the data tree
     """
 
-    dataset: dataset.Dataset = attr.ib()
+    dataset: arcana2.core.data.set.Dataset = attr.ib()
     ids: ty.Dict[DataStructure, str] = attr.ib()
     frequency: DataStructure = attr.ib()
-    path: str = attr.ib()
-    subnodes: ty.DefaultDict[str, ty.Dict] = attr.ib(
+    children: ty.DefaultDict[DataStructure,
+                             ty.Dict[str or tuple[str], str]] = attr.ib(
         factory=lambda: defaultdict(dict))
-    supranodes: ty.DefaultDict[str, ty.Dict] = attr.ib(factory=dict)
+    parents: ty.DefaultDict[DataStructure] = attr.ib(factory=dict)
     _unresolved = attr.ib(default=None)
     _items = attr.ib(factory=dict, init=False)
 
@@ -86,8 +89,12 @@ class DataNode():
         return item
 
     @property
-    def dataset(self):
-        return self._dataset
+    def id(self):
+        return self.ids[self.frequency]
+
+    @property
+    def label(self):
+        return self.path[-1]
 
     @property
     def items(self):
@@ -299,7 +306,8 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                 raise ArcanaUnresolvableFormatException(
                     f"Paths in {self} (" + "', '".join(self.file_paths) + ") "
                     f"did not match the naming conventions expected by "
-                    f"data_format {data_format.name} , found:" + '\n    '.join(self.uris))
+                    f"data_format {data_format.name} , found:"
+                    + '\n    '.join(self.uris))
         return item
 
 

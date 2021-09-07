@@ -53,8 +53,6 @@ class ArcanaUsageError(ArcanaError):
     pass
 
 
-class ArcanaBadlyFormattedIDError(ArcanaUsageError):
-    pass
 
 class ArcanaDesignError(ArcanaError):
     pass
@@ -194,3 +192,6 @@ class ArcanaUriAlreadySetException(ArcanaException):
 
 class ArcanaDataTreeConstructionError(ArcanaError):
     "Error in constructing data tree by repository construct_tree method"
+
+class ArcanaBadlyFormattedIDError(ArcanaDataTreeConstructionError):
+    "Error attempting to extract an ID from a tree path using a user provided regex"

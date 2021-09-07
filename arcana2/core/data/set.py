@@ -1,18 +1,19 @@
 from __future__ import annotations
-from operator import itemgetter
+from operator import itemgetter, __or__
+from itertools import combinations
 import logging
 import typing as ty
 from enum import EnumMeta
 import re
 from copy import copy
 import attr
+from attr.converters import default_if_none
 from pydra import Workflow, mark
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
     ArcanaBadlyFormattedIDError)
-from arcana2.core.utils import to_list, to_dict
 from .item import DataItem
 from .enum import DataStructure
 from .spec import DataSpec
@@ -38,50 +39,48 @@ class Dataset():
     repository : Repository
         The repository the dataset is stored into. Can be the local file
         system by providing a FileSystem repo.
+    structure : EnumMeta
+        The DataStructure enum that defines the potential frequencies
+        (e.g. per-session, per-subject,...) of nodes in the dataset.
+    hierarchy : list[DataStructure] or None
+        The data frequencies from the data structure that are explicitly in the
+        data tree. For example, if a FileSystem dataset (i.e. directory) has
+        two layer hierarchy of sub-directories, the first layer of
+        sub-directories named by unique subject ID, and the second directory
+        layer named by study time-point then the hierarchy would be
+
+            [Clinical.subject, Clinical.timepoint]
+
+        Alternatively, in some repositories (e.g. XNAT) the second layer in the
+        hierarchy may be named with session ID that is unique in the project,
+        in which case the layer structure would instead be
+
+            [Clinical.subject, Clinical.session]
+        
+        In such cases, if there are multiple timepoints component of the
+        session ID will need to be extracted using the `id_inference` arg.
+
+        In other datasets the layers could be organised such that the tree
+        first splits on longitudinal time-points, then a second layer labelled
+        by member ID, with the final layer containing sessions of matched
+        members across different study groups (i.e. test & control group):
+
+            [Clinical.timepoint, Clinical.member, Clinical.group]
     selectors : Dict[str, Selector]
         A dictionary that maps "name-paths" of input "columns" in the dataset
         to criteria in a Selector object that select the corresponding
         items in the dataset
     derivatives : Dict[str, Spec]
         A dictionary that maps "name-paths" of derivatives analysis workflows
-        to be stored in the dataset
-    included : Dict[DataStructure, List[str]]
-        The IDs to be included in the dataset for each frequency. E.g. can be
-        used to limit the subject IDs in a project to the sub-set that passed
-        QC. If a frequency is omitted or its value is None, then all available
-        will be used
-    excluded : Dict[DataStructure, List[str]]
-        The IDs to be excluded in the dataset for each frequency. E.g. can be
-        used to exclude specific subjects that failed QC. If a frequency is
-        omitted or its value is None, then all available will be used
-    data_structure : EnumMeta
-        The DataStructure enum that defines the potential frequencies
-        (e.g. per-session, per-subject,...) of nodes in the dataset.
-    hierarchy : list[DataStructure] or None
-        The data frequencies from the data structure that are explicitly in the
-        data tree. Only relevant for repositories with flexible tree structures
-        (e.g. FileSystem). E.g. if a FileSystem dataset (i.e. directory) has
-        two hierarchy of sub-directories, the first layer of sub-directories named
-        by subjects, and the second directory layer named by timepoint for
-        the session data stored within it then the hierarchy would be
+        to be stored in the dataset            
+    id_inference : Dict[DataStructure, str]
+        Not all IDs will appear explicitly within the hierarchy of the data
+        tree, and some will need to be inferred by extracting components of
+        more specific lables.
 
-            [Clinical.subject, Clinical.timepoint]
-
-        Alternatively, in some repositories (e.g. XNAT) the second subdirectory
-        layer may be named with session ID that is unique in the project, in
-        which case the layer structure would instead be
-
-            [Clinical.subject, Clinical.session]
-        
-        However, in this case the timepoint component of the session ID will
-        need to be extracted using the `id_inference` arg.
-
-        Other hierarchies 
-    id_inference : Sequence[(DataStructure, str)] or Callable
-        Specifies how IDs of primary data frequencies that not explicitly
-        provided are inferred from the IDs that are. For example, given a set
-        of subject IDs that combination of the ID of the group that they belong
-        to and their member IDs (i.e. matched test/controls have same member ID)
+        For example, given a set of subject IDs that combination of the ID of
+        the group that they belong to and the member ID within that group
+        (i.e. matched test & control would have same member ID)
 
             CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
 
@@ -94,31 +93,41 @@ class Dataset():
 
         Alternatively, a general function with signature `f(ids)` that returns
         a dictionary with the mapped IDs can be provided instead.
+    included : Dict[DataStructure, List[str]]
+        The IDs to be included in the dataset per frequency. E.g. can be
+        used to limit the subject IDs in a project to the sub-set that passed
+        QC. If a frequency is omitted or its value is None, then all available
+        will be used
+    excluded : Dict[DataStructure, List[str]]
+        The IDs to be excluded in the dataset per frequency. E.g. can be
+        used to exclude specific subjects that failed QC. If a frequency is
+        omitted or its value is None, then all available will be used
     """
 
     name: str = attr.ib()
     repository: repository.Repository = attr.ib()
-    data_structure: EnumMeta  = attr.ib()
-    selectors: list[DataSelector] or None = attr.ib(
-        factory=list, converter=to_list)
-    derivatives: list[DataSpec] or None = attr.ib(
-        factory=list, converter=to_list)
-    included: dict[DataStructure, ty.List[str]] = attr.ib(
-        factory=dict, converter=to_dict)
-    excluded: dict[DataStructure, ty.List[str]] = attr.ib(
-        factory=dict, converter=to_dict)
+    structure: EnumMeta  = attr.ib()
     hierarchy: list[DataStructure] = attr.ib()
+    selectors: list[DataSelector] or None = attr.ib(
+        factory=list, converter=default_if_none)
+    derivatives: list[DataSpec] or None = attr.ib(
+        factory=list, converter=default_if_none)
     id_inference: (list[tuple[DataStructure, str]]
-                   or ty.Callable) = attr.ib(factory=list, converter=to_list)
-    _root_node: DataNode = attr.ib(default=None, init=False)
+                   or ty.Callable) = attr.ib(factory=list,
+                                             converter=default_if_none)
+    included: dict[DataStructure, ty.List[str]] = attr.ib(
+        factory=dict, converter=default_if_none)
+    excluded: dict[DataStructure, ty.List[str]] = attr.ib(
+        factory=dict, converter=default_if_none)
+    _root_node: DataNode = attr.ib(default=None, init=False)    
 
     @selectors.validator
     def selectors_validator(self, _, selectors):
         if wrong_freq := [m for m in selectors.values()
-                          if not isinstance(m.frequency, self.data_structure)]:
+                          if not isinstance(m.frequency, self.structure)]:
             raise ArcanaUsageError(
                 f"Data hierarchy of {wrong_freq} selectors does not match "
-                f"that of repository {self.data_structure}")
+                f"that of repository {self.structure}")
 
     @derivatives.validator
     def derivatives_validator(self, _, derivatives):
@@ -143,16 +152,31 @@ class Dataset():
         e.g. 'session' for Clinical data structure (which includes the 'group'
         'member' and 'timepoint' "basis" frequencies)
         """
-        return [max(self.data_structure)]
+        return [max(self.structure)]
 
     @hierarchy.validator
     def hierarchy_validator(self, _, hierarchy):
         if not_valid := [f for f in hierarchy
-                         if not isinstance(f, self.data_structure)]:
+                         if not isinstance(f, self.structure)]:
             raise ArcanaUsageError(
                 "{} are not part of the {} data structure"
-                .format(', '.join(not_valid), self.data_structure))
-        self.data_structure.diff_hierarchy(hierarchy)
+                .format(', '.join(not_valid), self.structure))
+        # Check that all data frequencies are "covered" by the hierarchy and
+        # each subsequent
+        covered = self.structure(0)
+        for i, layer in enumerate(hierarchy):
+            diff = layer - covered
+            if not diff:
+                raise ArcanaUsageError(
+                    f"{layer} does not add any additional basis layers to "
+                    f"previous layers {hierarchy[i:]}")
+            covered |= layer
+        if covered != max(self.structure):
+            raise ArcanaUsageError(
+                f"The data hierarchy {hierarchy} does not cover the following "
+                f"basis frequencies "
+                + ', '.join(str(m) for m in (~covered).basis()) +
+                f"f the {self.structure} data structure")
 
     def __enter__(self):
         self.repository.__enter__()
@@ -162,10 +186,10 @@ class Dataset():
         self.repository.__exit__()
 
     def __getitem__(self, key):
-        if key == self.data_structure(0):
+        if key == self.structure(0):
             return self.root_node
         else:
-            return self.root_node.subnodes[key]
+            return self.root_node.children[key]
 
     @property
     def prov(self):
@@ -184,7 +208,7 @@ class Dataset():
             The root node of the data tree
         """
         if self._root_node is None:
-            self._root_node = DataNode(self.data_structure(0), {}, self)
+            self._root_node = DataNode(self.structure(0), {}, self)
             self.repository.construct_tree(self)
         return self._root_node
 
@@ -228,27 +252,27 @@ class Dataset():
             [description]
         """
         try:
-            self.data_structure[str(frequency)]
+            self.structure[str(frequency)]
         except KeyError:
             raise ArcanaUsageError(
-                f"Frequency '{frequency} does not match data_structure of "
+                f"Frequency '{frequency} does not match structure of "
                 "dataset ({})".format(
-                    ', '.join(str(f) for f in self.data_structure)))
+                    ', '.join(str(f) for f in self.structure)))
         if path is None:
             path = name
         self.derivatives[name] = DataSpec(path, format, frequency, **kwargs)
 
-    def node(self, frequency, ids=None, **id_kwargs):
+    def node(self, frequency, id=None, **id_kwargs):
         """Returns the node associated with the given frequency and ids dict
 
         Parameters
         ----------
         frequency : DataStructure or str
             The frequency of the node
-        ids : Dict[DataStructure, str], optional
-            The IDs corresponding to the node to return
+        id : str or Tuple[str], optional
+            The ID of the node to 
         **id_kwargs : Dict[str, str]
-            Additional IDs corresponding to the node to return passed as
+            Alternatively to providing `id`, ID corresponding to the node to return passed as
             kwargs
 
         Returns
@@ -264,123 +288,184 @@ class Dataset():
         ArcanaNameError
             If there is no node corresponding to the given ids
         """
-        if ids is None:
-            ids = {}
-        else:
-            ids = copy(ids)
-        ids.update({self.data_structure(f): i for f, i in id_kwargs.items()})
         # Parse str to frequency enums
-        frequency = self.data_structure[str(frequency)]
         if not frequency.value:
-            if ids:
+            if id is not None:
                 raise ArcanaUsageError(
-                    f"Root nodes don't have any IDs ({ids})")
+                    f"Root nodes don't have any IDs ({id})")
             return self.root_node
-        ids_tuple = self.make_ids_tuple(ids)
-        try:
-            return self.root_node.subnodes[frequency][ids_tuple]
-        except KeyError:
-            raise ArcanaNameError(
-                ids_tuple,
-                f"{ids_tuple} not present in data tree "
-                "({})".format(
-                    str(i) for i in self.root_node.subnodes[frequency]))
+        if id_kwargs:
+            if id is not None:
+                raise ArcanaUsageError(
+                    f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
+                    f"provided to `node` method of {self}")
+            # Convert to the DataStructure of the dataset
+            node = self.root_node
+            for freq, id in id_kwargs.items():
+                try:
+                    children_dict = node.children[self.structure[freq]]
+                except KeyError:
+                    raise ArcanaNameError(
+                        freq, f"{freq} is not a child frequency of {node}")
+                try:
+                    node = children_dict[id]
+                except KeyError:
+                    raise ArcanaNameError(
+                        id, f"{id} ({freq}) not a child node of {node}")
+        else:
+            try:
+                return self.root_node.children[frequency][id]
+            except KeyError:
+                raise ArcanaNameError(
+                    id, f"{id} not present in data tree "
+                    f"({list(self.node_ids)})")
 
     def nodes(self, frequency):
-        return self.root_node.subnodes[frequency].values()
+        return self.root_node.children[frequency].values()
         
     def node_ids(self, frequency):
-        return self.root_node.subnodes[frequency].keys()
+        return self.root_node.children[frequency].keys()
 
-    def add_node(self, frequency, ids):
+    def new_node(self, tree_path):
+        """Creates a new node at a the path down the tree of the dataset as
+        well as all "parent" nodes upstream in the data tree
+
+        Parameters
+        ----------
+        tree_path : Sequence[str]
+            The sequence of labels for each layer in the hierarchy of the
+            dataset leading to the current node
+
+        Raises
+        ------
+        ArcanaBadlyFormattedIDError
+            raised if one of the IDs doesn't match the pattern in the
+            `id_inference`
+        ArcanaDataTreeConstructionError
+            raised if one of the groups specified in the ID inference reg-ex
+            doesn't match a valid frequency in the data structure
+        """
+        # Get basis frequencies covered at the given depth of the
+        if not tree_path:
+            raise ArcanaDataTreeConstructionError(
+                f"Number of layers ({tree_path}) exceeds hierarchy of "
+                f"self ({self.hierarchy})")
+        try:
+            frequency = self.hierarchy[len(tree_path) - 1]
+        except IndexError:
+            raise ArcanaDataTreeConstructionError(
+                f"Number of layers ({tree_path}) exceeds hierarchy of "
+                f"self ({self.hierarchy})")
+        # Get all data frequencies at the depth of the node to create
+        frequency = self.structure.union(self.hierarchy[:len(tree_path)])
+        basis_freqs = frequency.basis()
+        all_freqs = [self.structure.union(c)
+                     for c in combinations(basis_freqs)]
+        # Infer the IDs directly from the layer labels
+        ids = {f: None for f in all_freqs} # Set a default ID of None for each
+                                           # data frequency present at this
+                                           # layer in the hierarchy
+        parent_freq = self.structure(0) # Calculate the freqs at each
+                                        # layer
+        for layer, label in zip(self.hierarchy, tree_path):
+            ids[layer] = label
+            try:
+                regex = self.id_inference[layer]
+            except KeyError:
+                # If the layer introduces completely new bases then the basis
+                # with the least significant bit (the order of the bits in the
+                # DataStructure class should be arranged to account for this)
+                # can be considered be considered to be equivalent to the label.
+                # E.g. Given a hierarchy of [Clinical.subject, Clinical.session]
+                # no groups are assumed to be present by default (although this
+                # can be overridden by the `id_inference` attr) and the `member`
+                # ID is assumed to be equivalent to the `subject` ID. Conversely,
+                # the timepoint can't be inferred from the `session` ID, since
+                # the session ID could be expected to contain the `member` and
+                # `group` ID in it, and should be explicitly extracted by
+                # providing a regex to `id_inference`, e.g. 
+                #
+                #       session ID: MRH010_CONTROL03_MR02
+                #
+                # with the '02' part representing as the timepoint can be
+                # extracted with the
+                #
+                #       id_inference={
+                #           Clinical.session: r'.*(?P<timepoint>0-9+)$'}   
+                if not (layer & parent_freq):
+                    ids[layer.basis()[-1]] = label
+            else:
+                match = re.match(regex, label)
+                if match is None:
+                    raise ArcanaBadlyFormattedIDError(
+                        f"{layer} label '{label}', does not match ID inference"
+                        f" pattern '{regex}'")
+                new_freqs = layer - parent_freq
+                for target_freq, target_id in match.groupdict.items():
+                    if (target_freq & new_freqs) != target_freq:
+                        raise ArcanaUsageError(
+                            f"Inferred ID target, {target_freq}, is not a "
+                            f"data frequency added by layer {layer}")
+                    if ids[target_freq] is not None:
+                        raise ArcanaUsageError(
+                            f"ID '{target_freq}' is specified twice in the ID "
+                            f"inference of {tree_path} ({ids[target_freq]} "
+                            f"and {target_id} from {regex}")
+                    ids[target_freq] = target_id
+            parent_freq |= layer
+        # Create composite IDs for non-basis frequencies if they are not
+        # explicitly in the layer structure
+        for freq in all_freqs:
+            if freq not in basis_freqs and ids[freq] is None:
+                ids[freq] = tuple(ids[b] for b in freq.basis())
+        self._add_node(DataNode(self, ids, frequency))
+
+    def _add_node(self, node):
         """Adds a node to the dataset, creating references to upper and lower
         hierarchy in the data tree.
 
         Parameters
         ----------
-        frequency : DataStructure
-            The frequency of the data_node
-        ids : Dict[DataStructure, str]
-            The IDs of the node and all branching points the data tree
-            above it. The keys should match the Enum used provided for the
-            'frequency
+        node: DataNode
+            The node to add into the data tree
 
         Raises
         ------
         ArcanaDataTreeConstructionError
-            If frequency is not of self.frequency.cls
-        ArcanaDataTreeConstructionError
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
-        if not isinstance(frequency, self.data_structure):
-            raise ArcanaDataTreeConstructionError(
-                f"Provided frequency {frequency} is not of "
-                f"{self.data_structure} type")
-        # Check conversion to frequency cls
-        ids = {self.data_structure[str(f)]: i for f, i in ids.items()}
         # Create new data node
-        node = DataNode(frequency, ids, self)
-        basis_ids = {f: ids[f] for f in frequency.hierarchy() if f in ids}
-        ids_tuple = tuple(basis_ids.items())
-        node_dict = self.root_node.subnodes[frequency]
-        if node_dict:
-            if ids_tuple in node_dict:
-                raise ArcanaDataTreeConstructionError(
-                    f"ID clash ({ids_tuple}) between nodes inserted into data "
-                    "tree")
-            existing_tuple = next(iter(node_dict))
-            if not ids_tuple or not existing_tuple:
-                raise ArcanaDataTreeConstructionError(
-                    f"IDs provided for some {frequency} nodes but not others"
-                    f"in data tree ({ids_tuple} and {existing_tuple})")
-            new_freqs = tuple(zip(ids_tuple))[0]
-            exist_freqs = tuple(zip(existing_tuple))[0]
-            if new_freqs != exist_freqs:
-                raise ArcanaDataTreeConstructionError(
-                    f"Inconsistent IDs provided for nodes in {frequency} "
-                    f"in data tree ({ids_tuple} and {existing_tuple})")
-        node_dict[ids_tuple] = node
-        node.supranodes[self.data_structure(0)] = self.root_node
-        # Insert nodes for basis hierarchy if not already present and link them
-        # with inserted node
-        for supra_freq in frequency.hierarchy():
-            # Select relevant IDs from those provided
-            supra_ids = {
-                str(f): ids[f] for f in supra_freq.hierarchy() if f in ids}
-            sub_ids = tuple((f, i) for f, i in ids_tuple
-                            if f not in supra_freq.hierarchy())
-            try:
-                supranode = self.node(supra_freq, **supra_ids)
-            except ArcanaNameError:
-                supranode = self.add_node(supra_freq, supra_ids)
-            # Set reference to level node in new node
-            node.supranodes[supra_freq] = supranode
-            supranode.subnodes[frequency][sub_ids] = node
+        node_dict = self.root_node.children[node.frequency]
+        if node.id in node_dict:
+            raise ArcanaDataTreeConstructionError(
+                f"ID clash ({node.id}) between nodes inserted into data "
+                "tree")
+        node_dict[node.id] = node
+        # Insert root node
+        node.parents[self.structure(0)] = self.root_node
+        # Insert parent nodes if not already present and link them with inserted node
+        for supra_freq, supra_id in node.ids.items():
+            diff_freq = node.frequency - supra_freq
+            if diff_freq:
+                try:
+                    supranode = self.node(supra_freq, supra_id)
+                except ArcanaNameError:
+                    supra_ids = {f: i for f, i in node.ids.items()
+                                 if f.is_parent(supra_freq)}
+                    supranode = self._add_node(DataNode(self, supra_ids,
+                                                        supra_freq))
+                # Set reference to level node in new node
+                node.parents[supra_freq] = supranode
+                diff_id = node.ids[diff_freq]
+                children_dict = supranode.children[diff_freq]
+                if diff_id in children_dict:
+                    raise ArcanaDataTreeConstructionError(
+                        f"ID clash ({diff_id}) between nodes inserted into "
+                        f"data tree in {diff_freq} children of {supranode} "
+                        f"({children_dict[diff_id]} and {node})")
+                children_dict[diff_id] = node
         return node
-
-    def make_ids_tuple(self, ids):
-        """Generates a tuple in consistent order from the passed ids that can
-        be used as a key in a dictionary
-
-        Parameters
-        ----------
-        ids : Dict[DataStructure | str, str]
-            A dictionary with IDs for each frequency that specifies the
-            nodes position within the data tree
-
-        Returns
-        -------
-        Tuple[(DataStructure, str)]
-            A tuple sorted in order of provided frequencies
-        """
-        try:
-            return tuple((self.data_structure[str(f)], i)
-                         for f, i in sorted(ids.items(), key=itemgetter(1)))
-        except KeyError:
-            raise ArcanaUsageError(
-                f"Unrecognised data frequencies in ID dict '{ids}' (valid "
-                f"{', '.join(self.data_structure)})")
 
     def workflow(self, name, inputs, outputs, frequency, ids,
                  required_formats=None, produced_formats=None,
