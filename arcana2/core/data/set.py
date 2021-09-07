@@ -66,6 +66,10 @@ class Dataset():
         members across different study groups (i.e. test & control group):
 
             [Clinical.timepoint, Clinical.member, Clinical.group]
+
+        Note frequencies specified in the hierarchy must span the given
+        structure, i.e. the "bitwise or" of all layers must be equal 1 across
+        all bits (e.g. 0b111)
     selectors : Dict[str, Selector]
         A dictionary that maps "name-paths" of input "columns" in the dataset
         to criteria in a Selector object that select the corresponding
