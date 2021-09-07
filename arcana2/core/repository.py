@@ -36,8 +36,8 @@ class Repository(metaclass=ABCMeta):
         if self._connection_depth == 0:
             self.disconnect()
 
-    def dataset(self, name, selectors=None, derivatives=None,
-                data_structure=None, **kwargs):
+    def dataset(self, name, sources=None, sinks=None,
+                structure=None, **kwargs):
         """
         Returns a dataset from the XNAT repository
 
@@ -45,29 +45,29 @@ class Repository(metaclass=ABCMeta):
         ----------
         name : str
             The name, path or ID of the dataset within the repository
-        selectors : Dict[Str, DataSelector]
+        sources : Dict[Str, DataSource]
             A dictionary that maps "name-paths" of input "columns" in the
             dataset to criteria in a Selector object that select the
             corresponding items in the dataset
-        derivatives : Dict[str, Spec]
-            A dictionary that maps "name-paths" of derivatives analysis
+        sinks : Dict[str, Spec]
+            A dictionary that maps "name-paths" of sinks analysis
             workflows to be stored in the dataset
-        data_structure : EnumMeta
+        structure : EnumMeta
             The DataStructure enum that defines the frequencies (e.g.
             per-session, per-subject,...) present in the dataset.                       
         **kwargs:
             Keyword args passed on to the Dataset init method
         """
-        if not data_structure:
+        if not structure:
             try:
-                data_structure = self.DEFAULT_DATA_STRUCTURE
+                structure = self.DEFAULT_DATA_STRUCTURE
             except AttributeError:
                 raise ArcanaUsageError(
                     "'data_structure' kwarg must be specified for datasets in "
                     f"{type(self)} repositories")
-        return dataset.Dataset(name, repository=self, selectors=selectors,
-                               derivatives=derivatives,
-                               data_structure=data_structure, **kwargs)
+        return dataset.Dataset(name, repository=self, sources=sources,
+                               sinks=sinks,
+                               structure=structure, **kwargs)
 
     @abstractmethod
     def construct_tree(self, dataset):

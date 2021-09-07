@@ -1,8 +1,8 @@
 from itertools import zip_longest
 import re
 from typing import Sequence
-from arcana2.core.data.selector import DataSelector
-from arcana2.core.data.spec import DataSpec
+from arcana2.core.data.source import DataSource
+from arcana2.core.data.sink import DataSink
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
@@ -78,7 +78,7 @@ class BaseRunCmd(BaseDatasetCmd):
 
     @classmethod
     def parse_inputs(cls, args):
-        """Parses input arguments into dictionary of DataSelectors
+        """Parses input arguments into dictionary of DataSources
 
         Parameters
         ----------
@@ -87,8 +87,8 @@ class BaseRunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        Dict[str, DataSelector]
-            A dictionary of the specified inputs with the data-selectors to 
+        Dict[str, DataSource]
+            A dictionary of the specified inputs with the data-sources to 
             chose the relevant files/fields from the dataset
 
         Raises
@@ -125,7 +125,7 @@ class BaseRunCmd(BaseDatasetCmd):
             if not file_format:
                 raise ArcanaUsageError(
                     f"Datatype must be provided for input {i} ({inpt})")
-            inputs[var] = DataSelector(
+            inputs[var] = DataSource(
                 path=pattern, data_format=resolve_data_format(file_format),
                 frequency=data_structure[freq], order=order,
                 metadata=metadata, is_regex=True,
@@ -134,7 +134,7 @@ class BaseRunCmd(BaseDatasetCmd):
 
     @classmethod
     def parse_outputs(cls, args):
-        """Parses output arguments into dictionary of DataSpecs
+        """Parses output arguments into dictionary of DataSinks
 
         Parameters
         ----------
@@ -143,7 +143,7 @@ class BaseRunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        Dict[str, DataSelector]
+        Dict[str, DataSource]
             A dictionary of the specified outputs with the data-specs that
             specify where outputs are stored in the dataset
         """
@@ -152,7 +152,7 @@ class BaseRunCmd(BaseDatasetCmd):
         outputs = {}
         for output in args.output:
             var, store_at, data_format, desc = output
-            outputs[var] = DataSpec(
+            outputs[var] = DataSink(
                 path=store_at,
                 data_format=resolve_data_format(data_format),
                 desc=desc,

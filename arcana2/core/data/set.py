@@ -16,8 +16,8 @@ from arcana2.exceptions import (
     ArcanaBadlyFormattedIDError)
 from .item import DataItem
 from .enum import DataStructure
-from .spec import DataSpec
-from .selector import DataSelector
+from .sink import DataSink
+from .source import DataSource
 from .. import repository
 from .node import DataNode
 
@@ -70,12 +70,12 @@ class Dataset():
         Note frequencies specified in the hierarchy must span the given
         structure, i.e. the "bitwise or" of all layers must be equal 1 across
         all bits (e.g. 0b111)
-    selectors : Dict[str, Selector]
+    sources : Dict[str, Selector]
         A dictionary that maps "name-paths" of input "columns" in the dataset
         to criteria in a Selector object that select the corresponding
         items in the dataset
-    derivatives : Dict[str, Spec]
-        A dictionary that maps "name-paths" of derivatives analysis workflows
+    sinks : Dict[str, Spec]
+        A dictionary that maps "name-paths" of sinks analysis workflows
         to be stored in the dataset            
     id_inference : Dict[DataStructure, str]
         Not all IDs will appear explicitly within the hierarchy of the data
@@ -112,9 +112,9 @@ class Dataset():
     repository: repository.Repository = attr.ib()
     structure: EnumMeta  = attr.ib()
     hierarchy: list[DataStructure] = attr.ib()
-    selectors: list[DataSelector] or None = attr.ib(
+    sources: list[DataSource] or None = attr.ib(
         factory=list, converter=default_if_none)
-    derivatives: list[DataSpec] or None = attr.ib(
+    sinks: list[DataSink] or None = attr.ib(
         factory=list, converter=default_if_none)
     id_inference: (list[tuple[DataStructure, str]]
                    or ty.Callable) = attr.ib(factory=list,
@@ -125,19 +125,19 @@ class Dataset():
         factory=dict, converter=default_if_none)
     _root_node: DataNode = attr.ib(default=None, init=False)    
 
-    @selectors.validator
-    def selectors_validator(self, _, selectors):
-        if wrong_freq := [m for m in selectors.values()
+    @sources.validator
+    def sources_validator(self, _, sources):
+        if wrong_freq := [m for m in sources.values()
                           if not isinstance(m.frequency, self.structure)]:
             raise ArcanaUsageError(
-                f"Data hierarchy of {wrong_freq} selectors does not match "
+                f"Data hierarchy of {wrong_freq} sources does not match "
                 f"that of repository {self.structure}")
 
-    @derivatives.validator
-    def derivatives_validator(self, _, derivatives):
-        if overlapping := (set(self.selectors) & set(derivatives)):
+    @sinks.validator
+    def sinks_validator(self, _, sinks):
+        if overlapping := (set(self.sources) & set(sinks)):
             raise ArcanaUsageError(
-                "Name-path clashes between selectors and derivatives ("
+                "Name-path clashes between sources and sinks ("
                 "', '".join(overlapping) + "')")
 
     @excluded.validator
@@ -218,37 +218,37 @@ class Dataset():
 
     def column_spec(self, name):
         try:
-            return self.selectors[name]
+            return self.sources[name]
         except KeyError:
             try:
-                return self.derivatives[name]
+                return self.sinks[name]
             except KeyError:
                 raise ArcanaNameError(
                     f"No column with the name path '{name}' "
                     "(available {})".format("', '".join(
-                        list(self.selectors) + list(self.derivatives))))
+                        list(self.sources) + list(self.sinks))))
 
     @property
     def column_names(self):
-        return list(self.selectors) + list(self.derivatives)
+        return list(self.sources) + list(self.sinks)
 
-    def add_derivative(self, name, frequency, format, path=None,
+    def add_sink(self, name, frequency, format, path=None,
                        **kwargs):
-        """Add a placeholder for a derivative in the dataset. This can
+        """Add a placeholder for a sink in the dataset. This can
         then be referenced when connecting workflow outputs
 
         Parameters
         ----------
         name : str
             The name used to reference the dataset "column" for the
-            derivative
+            sink
         frequency : [type]
-            The frequency of the derivative within the dataset
+            The frequency of the sink within the dataset
         format : FileFormat or type
             The file-format (for file-groups) or datatype (for fields)
-            that the derivative will be stored in within the dataset
+            that the sink will be stored in within the dataset
         path : str, default `name`
-            The location of the derivative within the dataset
+            The location of the sink within the dataset
 
         Raises
         ------
@@ -264,7 +264,7 @@ class Dataset():
                     ', '.join(str(f) for f in self.structure)))
         if path is None:
             path = name
-        self.derivatives[name] = DataSpec(path, format, frequency, **kwargs)
+        self.sinks[name] = DataSink(path, format, frequency, **kwargs)
 
     def node(self, frequency, id=None, **id_kwargs):
         """Returns the node associated with the given frequency and ids dict
@@ -481,9 +481,9 @@ class Dataset():
         ----------
         name : str
             A name for the workflow (must be globally unique)
-        inputs : Sequence[DataSelector]
+        inputs : Sequence[DataSource]
             The inputs to be sourced from the dataset
-        outputs : Sequence[DataSpec]
+        outputs : Sequence[DataSink]
             The outputs to be sinked into the dataset
         frequency : DataStructure
             The frequency of the nodes to draw the inputs from
@@ -509,34 +509,34 @@ class Dataset():
                 else ty.Sequence[DataItem])
             for i in inputs}
 
-        self.selectors.update()
+        self.sources.update()
 
-        for inpt_name, selector in inputs.items():
-            if inpt_name in self.selectors:
+        for inpt_name, source in inputs.items():
+            if inpt_name in self.sources:
                 if overwrite:
                     logger.info(
-                        f"Overwriting selector '{inpt_name}'")
+                        f"Overwriting source '{inpt_name}'")
                 else:
                     raise ArcanaUsageError(
-                        f"Attempting to overwriting '{inpt_name}' selector "
+                        f"Attempting to overwriting '{inpt_name}' source "
                         f"with output from workflow '{name}'. Use 'overwrite' "
                         "option if this is desired")
-            self.selectors[inpt_name] = selector
+            self.sources[inpt_name] = source
 
         outputs_spec = {o: DataItem for o in outputs}
 
         for out_name, out_spec in outputs.items():
-            if out_name in self.derivatives:
+            if out_name in self.sinks:
                 if overwrite:
                     logger.info(
-                        f"Overwriting derivative '{out_name}' with workflow "
+                        f"Overwriting sink '{out_name}' with workflow "
                         f"'{name}'")
                 else:
                     raise ArcanaUsageError(
-                        f"Attempting to overwriting '{out_name}' derivative "
+                        f"Attempting to overwriting '{out_name}' sink "
                         f"with workflow '{name}'. Use 'overwrite' option "
                         "if this is desired")
-            self.derivatives[out_name] = out_spec
+            self.sinks[out_name] = out_spec
             self.workflows[out_name] = workflow
 
         @mark.task
@@ -548,7 +548,7 @@ class Dataset():
              'return': inputs_spec})
         def retrieve(dataset, frequency, id, input_names):
             """Selects the items from the dataset corresponding to the input 
-            selectors and retrieves them from the repository to a cache on 
+            sources and retrieves them from the repository to a cache on 
             the host"""
             outputs = []
             data_node = dataset.node(frequency, id)
@@ -637,7 +637,7 @@ class Dataset():
                         [('data_node', DataNode),
                          ('frequency', DataStructure),
                          ('id', str)
-                         ('outputs', ty.Dict[str, DataSpec])]
+                         ('outputs', ty.Dict[str, DataSink])]
                         + list(outputs_spec.items()))),
                 output_spec=SpecInfo(
                     name='SinkOutputs', bases=(BaseSpec,), fields=[

@@ -10,7 +10,7 @@ from arcana2.exceptions import ArcanaError, ArcanaUsageError
 class DataProvenance():
     """
     A representation of the information required to describe the provenance of
-    analysis derivatives. Provenances the provenance information relevant to a
+    analysis sinks. Provenances the provenance information relevant to a
     specific session, i.e. the general configuration of the pipeline and file
     checksums|field values of the pipeline inputs used to derive the outputs in
     a given session (or timepoint, subject, analysis summary). It also provenances
@@ -69,7 +69,7 @@ class DataProvenance():
             Path to save the generated JSON file
         inputs : dict[str, str | list[str] | list[list[str]]] | None
             Checksums of all pipeline inputs used by the pipeline. For inputs
-            of matching frequency to the output derivative associated with the
+            of matching frequency to the output sink associated with the
             provenance object, the values of the dictionary will be single
             checksums. If the output is of lower frequency they will be lists
             of checksums or in the case of 'per_session' inputs to 'per_dataset'

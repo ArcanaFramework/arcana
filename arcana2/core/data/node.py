@@ -45,35 +45,35 @@ class DataNode():
     _items = attr.ib(factory=dict, init=False)
 
     def __getitem__(self, name):
-        """Get's the item that matches the dataset's selector
+        """Get's the item that matches the dataset's source
 
         Parameters
         ----------
         name : str
-            Name of the selected item or derivative, specified per dataset,
+            Name of the selected item or sink, specified per dataset,
             that is used to select a file-group or field in the node
 
         Returns
         -------
         DataItem
             The item matching the provided name, specified by either a
-            selector or derivative registered with the dataset
+            source or sink registered with the dataset
         """
         try:
             item = self._items[name]
         except KeyError:
-            if name in self.dataset.selectors:
-                selector = self.dataset.selectors[name]
-                frequency = selector.frequency
-                item = selector.match(self)
-            elif name in self.dataset.derivatives:
-                spec = self.dataset.derivatives[name]
+            if name in self.dataset.sources:
+                source = self.dataset.sources[name]
+                frequency = source.frequency
+                item = source.match(self)
+            elif name in self.dataset.sinks:
+                spec = self.dataset.sinks[name]
                 frequency = spec.frequency
                 try:
-                    # Check to see if derivative was created previously
+                    # Check to see if sink was created previously
                     item = spec.match(self)
                 except KeyError:
-                    # Create new derivative
+                    # Create new sink
                     item = spec.create_item(self)
             else:
                 raise ArcanaNameError(

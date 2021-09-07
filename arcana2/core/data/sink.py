@@ -3,7 +3,7 @@ from .enum import DataStructure, DataSalience
 
 
 @attr.s
-class DataSpec():
+class DataSink():
     """
     A specification for a file group within a analysis to be derived from a
     processing pipeline.

@@ -18,8 +18,8 @@ limitations under the License.
 """
 from .__about__ import __version__, __authors__
 from .core.data.item import FileGroup, Field
-from .core.data.spec import DataSpec
-from .core.data.selector import DataSelector
+from .core.data.sink import DataSink
+from .core.data.source import DataSource
 from .core.data.set import Dataset
 # Should be set explicitly in all FSL interfaces, but this squashes the warning
 # os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'

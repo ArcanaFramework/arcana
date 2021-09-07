@@ -60,7 +60,7 @@ class Wrap4XnatCSCmd():
         mock_analysis = analysis_class.mock(inputs=inputs,
                                             switches=switches)
 
-        pipeline_stack = mock_analysis.pipeline_stack(*args.derivatives)
+        pipeline_stack = mock_analysis.pipeline_stack(*args.sinks)
 
         requirements = defaultdict(set)
         for pipeline in pipeline_stack:
@@ -105,7 +105,7 @@ class Wrap4XnatCSCmd():
             else:
                 docker_index = "https://index.docker.io/v1/"
             cmd = XnatCSRepo.command_json(
-                args.image_name, analysis_class, inputs, args.derivatives,
+                args.image_name, analysis_class, inputs, args.sinks,
                 parameters, args.description, docker_index=docker_index)
             print(json.dumps(cmd, indent=2))
             cmd_label = json.dumps(cmd).replace('"', r'\"').replace('$', r'\$')

@@ -40,7 +40,7 @@ class DataItem(metaclass=ABCMeta):
     data_node : DataNode
         The data node within a dataset that the file-group belongs to
     exists : bool
-        Whether the file_group exists or is just a placeholder for a derivative
+        Whether the file_group exists or is just a placeholder for a sink
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable        
@@ -115,7 +115,7 @@ class FileGroup(DataItem):
     data_node : DataNode
         The data node within a dataset that the file-group belongs to
     exists : bool
-        Whether the file_group exists or is just a placeholder for a derivative
+        Whether the file_group exists or is just a placeholder for a sink
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
@@ -299,7 +299,7 @@ class Field(DataItem):
     data_node : DataNode
         The data node that the field belongs to
     exists : bool
-        Whether the field exists or is just a placeholder for a derivative
+        Whether the field exists or is just a placeholder for a sink
     provenance : Provenance | None
         The provenance for the pipeline that generated the field,
         if applicable

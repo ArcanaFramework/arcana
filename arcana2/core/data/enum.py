@@ -148,7 +148,7 @@ class DataSalience(Enum):
     is ultimately specified by the user by defining a salience threshold for
     a repository.
 
-    The salience is also used when providing information on what derivatives
+    The salience is also used when providing information on what sinks
     are available to avoid cluttering help menus
     """
     

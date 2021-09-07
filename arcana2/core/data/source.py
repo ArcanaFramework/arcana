@@ -7,7 +7,7 @@ from .enum import DataStructure, DataQuality
 
 
 @attr.s
-class DataSelector():
+class DataSource():
     """
     Specifies the criteria by which an item is selected from a data node
 

@@ -272,7 +272,7 @@ class BaseTestCase(TestCase):
             The class to initialise
         name : str
             Name of the analysis
-        inputs : List[DataSpec]
+        inputs : List[DataSink]
             List of inputs to the analysis
         dataset : Dataset | None
             The dataset to use (a default local dataset is used if one
