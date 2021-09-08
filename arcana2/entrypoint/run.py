@@ -61,20 +61,22 @@ class BaseRunCmd(BaseDatasetCmd):
         dataset = cls.get_dataset(args)
         inputs = cls.parse_inputs(args)
         outputs = cls.parse_outputs(args)
+        frequency = cls.parse_frequency(args)
 
         workflow = dataset.workflow(
             name=cls.workflow_name(args),
             inputs=inputs,
             outputs=outputs,
-            frequency=cls.parse_frequency(args),
+            frequency=frequency,
             required_formats=cls.parse_required_formats(args),
-            produced_formats=cls.parse_produced_formats(args),
-            ids=args.ids)
+            produced_formats=cls.parse_produced_formats(args))
 
-        cls.add_app_task(workflow, args)
+        cls.add_app_task(workflow, args, inputs, outputs)
 
         if not args.dry_run:
-            workflow.run()
+            if args.ids is None:
+                ids = list(dataset.nodes(frequency))
+            workflow(id=ids)
 
     @classmethod
     def parse_inputs(cls, args):
@@ -103,7 +105,7 @@ class BaseRunCmd(BaseDatasetCmd):
             If a file_format is not provided
         """
         frequency = cls.parse_frequency(args)
-        data_structure = type(frequency)
+        dimensions = type(frequency)
         # Create file-group matchers
         inputs = {}
         defaults = (None, None, None, None, None, None, 'session')
@@ -127,7 +129,7 @@ class BaseRunCmd(BaseDatasetCmd):
                     f"Datatype must be provided for input {i} ({inpt})")
             inputs[var] = DataSource(
                 path=pattern, data_format=resolve_data_format(file_format),
-                frequency=data_structure[freq], order=order,
+                frequency=dimensions[freq], order=order,
                 metadata=metadata, is_regex=True,
                 quality_threshold=quality)
         return inputs
@@ -188,7 +190,7 @@ class BaseRunCmd(BaseDatasetCmd):
         #     path, name, data_format, freq = inpt + defaults[nargs - 2:]
         #     output_names[name] = path
         #     outputs[name] = FieldSpec(data_format=data_format,
-        #                               frequency=data_structure[freq])
+        #                               frequency=dimensions[freq])
 
 
     INPUT_HELP = """
@@ -281,7 +283,7 @@ class RunAppCmd(BaseRunCmd):
 
         app_args = cls.parse_app_args(args, task_cls)
         for inpt in inputs:
-            app_args[inpt] = getattr(workflow.source, inpt)
+            app_args[inpt] = getattr(workflow.source.lzout, inpt)
 
         workflow.add(task_cls(name='app', **app_args))
 
@@ -306,7 +308,7 @@ class RunAppCmd(BaseRunCmd):
             Arg names and their values to pass to the app
         """
         app_args = {}
-        for name, val in args.arg:
+        for name, val in args.app_arg:
             try:
                 arg_spec = next(s for s in task_cls.input_spec.fields
                                 if s[0] == name)
@@ -345,7 +347,7 @@ class RunAppCmd(BaseRunCmd):
 
     @classmethod
     def parse_frequency(cls, args):
-        return cls.parse_data_structure(args)[args.frequency]
+        return cls.parse_dimensions(args)[args.frequency]
 
     @classmethod
     def workflow_name(cls, args):

@@ -43,8 +43,8 @@ class BaseDatasetCmd():
                   "If the second arg contains '/' then it is interpreted as "
                   "the path to a text file containing a list of IDs"))    
         parser.add_argument(
-            '--data_structure', type=str, default='Clinical',
-            help=("The enum that specifies the data structure of the dataset. "
+            '--dimensions', type=str, default='Clinical',
+            help=("The enum that specifies the data dimensions of the dataset. "
                   "Defaults to `Clinical`, which "
                   "consists of the typical dataset>group>subject>session "
                   "data tree used in clinical trials/studies"))
@@ -67,13 +67,13 @@ class BaseDatasetCmd():
 
 """)
         parser.add_argument(
-            '--data_hierarchy', nargs='+', default=None,
+            '--hierarchy', nargs='+', default=None,
             help=("The data frequencies that are present in the data tree. "
                   "For some repository types this is fixed (e.g. XNAT) but "
                   "for more flexible (e.g. FileSystem) the number of hierarchy "
                   "in the data tree, and what each layer corresponds to, "
                   "needs to specified. Defaults to all the hierarchy in the "
-                  "data structure"))
+                  "data dimensions"))
 
     @classmethod
     def get_dataset(cls, args):
@@ -114,17 +114,17 @@ class BaseDatasetCmd():
         else:
             id_inference = None
 
-        data_structure = cls.parse_data_structure(args)
+        dimensions = cls.parse_dimensions(args)
 
-        if args.data_hierarchy:
-            data_hierarchy = [data_structure[l] for l in args.data_hierarchy]
+        if args.hierarchy:
+            hierarchy = [dimensions[l] for l in args.hierarchy]
         else:
-            data_hierarchy = None
+            hierarchy = [max(dimensions)]
 
         def parse_ids(ids_args):
             parsed_ids = {}
             for iargs in ids_args:
-                freq = data_structure[iargs.pop(0)]
+                freq = dimensions[iargs.pop(0)]
                 if len(iargs) == 1 and '/' in iargs[0]:
                     with open(args.ids[0]) as f:
                         ids = f.read().split()
@@ -134,12 +134,11 @@ class BaseDatasetCmd():
             return parsed_ids
         
         return repository.dataset(args.dataset_name,
-                                  data_structure=data_structure,
+                                  hierarchy=hierarchy,
                                   id_inference=id_inference,
                                   included=parse_ids(args.included),
-                                  excluded=parse_ids(args.excluded),
-                                  hierarchy=data_hierarchy)
+                                  excluded=parse_ids(args.excluded))
 
     @classmethod
-    def parse_data_structure(cls, args):
-        return getattr(arcana2.core.data.enum, args.data_structure)
+    def parse_dimensions(cls, args):
+        return getattr(arcana2.core.data.enum, args.dimensions)

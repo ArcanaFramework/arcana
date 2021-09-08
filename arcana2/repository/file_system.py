@@ -11,7 +11,7 @@ from arcana2.core.data.provenance import DataProvenance
 from arcana2.exceptions import ArcanaMissingDataException, ArcanaUsageError
 from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana2.core.data.set import Dataset
-from arcana2.core.data.enum import Clinical, DataDimensions
+from arcana2.core.data.enum import Clinical, DataDimension
 from arcana2.core.repository import Repository
 
 
@@ -34,12 +34,17 @@ class FileSystem(Repository):
     """
 
     type = 'file_system'
-    NODE_DIR = '__node__'
-    PROV_SUFFIX = '.__prov__.json'
+    PROV_SUFFIX = '.prov'
     FIELDS_FNAME = '__fields__.json'
     LOCK_SUFFIX = '.lock'
-    PROV_KEY = 'provenance'
-    VALUE_KEY = 'value'
+    PROV_KEY = '__provenance__'
+    VALUE_KEY = '__value__'
+
+    @property
+    def provenance(self):
+        return {
+            'type': get_class_info(type(self)),
+            'host': HOSTNAME}
 
     def get_file_group_paths(self, file_group):
         """
@@ -127,101 +132,87 @@ class FileSystem(Repository):
 
     def construct_tree(self, dataset: Dataset):
         """
-        Find all data within a repository, registering file_groups, fields and
-        provenance with the found_file_group, found_field and found_provenance
-        methods, respectively
+        Find all nodes within the dataset stored in the repository and
+        construct the data tree within the dataset
 
         Parameters
         ----------
         dataset : Dataset
-            The dataset to construct the tree structure for
+            The dataset to construct the tree dimensions for
         """
         if not os.path.exists(dataset.name):
             raise ArcanaUsageError(
                 f"Could not find a directory at '{dataset.name}' to be the "
-                "root node of the dataset")        
+                "root node of the dataset")
 
-        def load_prov(dpath, bname):
-            prov_path = op.join(dpath, bname + self.PROV_SUFFIX)
-            if op.exists(prov_path):
-                prov = DataProvenance.load(prov_path)
-            else:
-                prov = None
-            return prov
+        for dpath, _, _ in os.walk(dataset.name):
+            tree_path = os.path.split(os.path.relpath(dpath, dataset.name))
+            if len(tree_path) == len(dataset.hierarchy):
+                dataset.add_leaf_node(tree_path)
 
-        def construct_node(dpath, tree_path=None, dname=None):
-            if tree_path is None:
-                tree_path = []
-            "Recursive function to traverse data tree"
-            if dname is not None:
-                dpath = op.join(dpath, dname)
-                tree_path += [dname]
-            # First ID can be omitted
-            node = dataset.new_node(tree_path)
-            # Check if node is a leaf (i.e. lowest level in directory
-            # structure)
-            is_leaf_node = (node.frequency == dataset.hierarchy[-1])
-            filtered, has_fields = self._list_node_dir_contents(
-                dpath, is_leaf=is_leaf_node)
-            # Group files and sub-dirs that match except for extensions
-            matching = defaultdict(set)
-            for fname in filtered:
-                basename = fname.split('.')[0]
-                matching[basename].add(fname)
-            # Add file groups
-            for bname, fnames in matching.items():
-                node.add_file_group(
-                    path=bname,
-                    file_paths=[op.join(dpath, f) for f in fnames],
-                    provenance=load_prov(dpath, bname))
-            # Add fields
-            if has_fields:
-                with open(op.join(dpath, self.FIELDS_FNAME), 'r') as f:
-                    dct = json.load(f)
-                for name, value in dct.items():
-                    if isinstance(value, dict):
-                        prov = value[self.PROV_KEY]
-                        value = value[self.VALUE_KEY]
-                    else:
-                        prov = None
-                    node.add_field(name_path=name, value=value,
-                                   provenance=prov)
-            # Add sub-directory nodes
-            if not is_leaf_node:
-                for sub_dir in os.listdir(dpath):
-                    if (not sub_dir.startswith('.')
-                            and sub_dir != self.NODE_DIR):
-                        construct_node(dpath, tree_path, dname=sub_dir)
-
-        construct_node(dataset.name)
-
-    @property
-    def provenance(self):
-        return {
-            'type': get_class_info(type(self)),
-            'host': HOSTNAME}
-
-    @classmethod
-    def _list_node_dir_contents(cls, path, is_leaf):
-        # Selector out hidden files (i.e. starting with '.')
-        if not is_leaf:
-            path += cls.NODE_DIR
+    def populate_items(self, data_node):
+        # First ID can be omitted
+        dpath = self.node_path(data_node)
+        if not op.exists(dpath):
+            return
+        # Filter contents of directory to omit fields JSON and provenance
         filtered = []
-        has_fields = False
-        if op.exists(path):
-            contents = os.listdir(path)
-            for item in contents:
-                if (item.startswith('.') or item == cls.FIELDS_FNAME
-                        or item.endswith(cls.PROV_SUFFIX)):
-                    continue
+        for item in os.listdir(dpath):
+            if not (item.startswith('.')
+                    or item == self.FIELDS_FNAME
+                    or item.endswith(self.PROV_SUFFIX)):
                 filtered.append(item)
-            has_fields = cls.FIELDS_FNAME in contents
-        return filtered, has_fields
+        # Group files and sub-dirs that match except for extensions
+        matching = defaultdict(set)
+        for fname in filtered:
+            basename = fname.split('.')[0]
+            matching[basename].add(fname)
+        # Add file groups
+        for bname, fnames in matching.items():
+            data_node.add_file_group(
+                path=bname,
+                file_paths=[op.join(dpath, f) for f in fnames],
+                provenance=DataProvenance.load(
+                    op.join(dpath, bname + self.PROV_SUFFIX),
+                    ignore_missing=True))
+        # Add fields
+        try:
+            with open(op.join(dpath, self.FIELDS_FNAME), 'r') as f:
+                dct = json.load(f)
+        except FileNotFoundError:
+            pass
+        else:
+            for name, value in dct.items():
+                if isinstance(value, dict):
+                    prov = value[self.PROV_KEY]
+                    value = value[self.VALUE_KEY]
+                else:
+                    prov = None
+                data_node.add_field(name_path=name, value=value,
+                                    provenance=prov)
 
-    def node_path(self, data_node):
-        return op.join(
-            data_node.dataset.name,
-            *(data_node.ids[f] for f in data_node.frequency.hierarchy()))
+    def node_path(self, node):
+        tree_path = []
+        accounted_freq = node.dataset.dimensions(0)
+        for layer in node.dataset.hierarchy:
+            if not (layer.is_parent(node.frequency)
+                    or layer == node.frequency):
+                break
+            tree_path.append(node.ids[layer])
+            accounted_freq |= layer
+        # If not "leaf node" then 
+        if node.frequency != max(node.dataset.dimensions):
+            unaccounted_freq = node.frequency - (node.frequency
+                                                 & accounted_freq)
+            unaccounted_id = node.ids[unaccounted_freq]
+            if unaccounted_id is None:
+                tree_path.append(f'__{unaccounted_freq}__')
+            elif isinstance(unaccounted_id, str):
+                tree_path.append(f'__{unaccounted_freq}_{unaccounted_id}__')
+            else:
+                tree_path.append(f'__{unaccounted_freq}_'
+                                 + '_'.join(unaccounted_id) + '__')
+        return op.join(node.dataset.name, *tree_path)
 
     def file_group_path(self, file_group):
         return op.join(self.node_path(file_group.data_node)
@@ -286,7 +277,7 @@ class FileSystem(Repository):
                                  
 
 
-def single_dataset(path: str, tree_structure: DataDimensions=Clinical,
+def single_dataset(path: str, tree_dimensions: DataDimension=Clinical,
                    **kwargs) -> Dataset:
     """
     Creates a Dataset from a file system path to a directory
@@ -295,10 +286,10 @@ def single_dataset(path: str, tree_structure: DataDimensions=Clinical,
     ----------
     path : str
         Path to directory containing the dataset
-    tree_structure : type
-        The enum class that defines the directory tree structure of the
+    tree_dimensions : type
+        The enum class that defines the directory tree dimensions of the
         repositories
     """
 
     return FileSystem(op.join(path, '..'), **kwargs).dataset(
-        op.basename(path), tree_structure)
+        op.basename(path), tree_dimensions)

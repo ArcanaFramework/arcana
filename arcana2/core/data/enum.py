@@ -6,9 +6,9 @@ from enum import Enum
 from arcana2.exceptions import ArcanaBadlyFormattedIDError, ArcanaUsageError
 
 
-class DataDimensions(Enum):
+class DataDimension(Enum):
     """
-    Base class for all "data dimensions" enums. DataDimensions enums specify
+    Base class for all "data dimensions" enums. DataDimension enums specify
     the relationships between nodes of a dataset.
 
     For example in imaging studies, scannings sessions are typically organised
@@ -19,7 +19,7 @@ class DataDimensions(Enum):
     time-point can still be represented in the same space, and just be of
     depth=1 along those dimensions.
 
-    All dimensions should be included as members of a DataDimensions subclass
+    All dimensions should be included as members of a DataDimension subclass
     enum with orthogonal binary vector values, e.g.
 
         member = 0b001
@@ -59,9 +59,11 @@ class DataDimensions(Enum):
         return self.name
 
     def basis(self):
-        """Returns the basis vectors in the data tree.
+        """Returns the basis dimensions in the data tree that the given
+        enum-member projects into.
+
         For example in `Clinical` data trees, the following frequencies can
-        be decomposed into the following basis frequencies:
+        be decomposed into the following basis dims:
 
             dataset -> []
             group -> [group]
@@ -111,22 +113,26 @@ class DataDimensions(Enum):
     def __invert__(self):
         return type(self)(~self.value)
 
+    def __add__(self, other):
+        return type(self)(self.value + other.value)
+
+    def __subtract__(self, other):
+        return type(self)(self.value - other.value)
+
+    def __hash__(self):
+        return self.value
+
     @classmethod
     def union(cls, freqs: ty.Sequence[Enum]):
         "Returns the union between data frequency values"
-        return map(functools.partial(__or__, x=cls(0)), freqs)
+        union = cls(0)
+        for f in freqs:
+            union |= f
+        return union
 
     @classmethod
     def default(cls):
         return max(cls)
-
-    # @classmethod
-    # def layers(cls):
-    #     layer = cls(0)
-    #     yield layer
-    #     for b in max(cls).basis():
-    #         layer |= b
-    #         yield layer
 
     def is_parent(self, child):
         """Checks to see whether the current frequency is a "parent" of the
@@ -135,7 +141,7 @@ class DataDimensions(Enum):
 
         Parameters
         ----------
-        child : DataFrequency
+        child : DataDimension
             The data frequency to check parent/child relationship with
 
         Returns
@@ -146,7 +152,7 @@ class DataDimensions(Enum):
         return (self & child) == self and child != self
 
 
-class Clinical(DataDimensions):
+class Clinical(DataDimension):
     """
     An enum that specifies the data hierarcy of data trees typical of
     clinical research, i.e. subjects split into groups scanned at different
@@ -156,7 +162,7 @@ class Clinical(DataDimensions):
     # Root node of the dataset
     dataset = 0b000  # singular within the dataset
 
-    # Basis frequencies in the data tree structure
+    # Basis frequencies in the data tree dimensions
     member = 0b001  # subjects relative to their group membership, i.e.
                     # matched pairs of test and control subjects should share
                     # the same member IDs.

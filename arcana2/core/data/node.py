@@ -15,7 +15,7 @@ from arcana2.core.utils import split_extension
 from ..file_format import FileFormat
 from .item import DataItem
 from .provenance import DataProvenance
-from .enum import DataQuality, DataDimensions, DataFrequency
+from .enum import DataQuality, DataDimension, DataDimension
 
 
 @attr.s
@@ -25,22 +25,22 @@ class DataNode():
 
     Parameters
     ----------
-    ids : Dict[DataDimensions, str]
+    ids : Dict[DataDimension, str]
         The ids for the frequency of the node and all "parent" frequencies
         within the tree
-    frequency : DataDimensions
+    frequency : DataDimension
         The frequency of the node
     dataset : Dataset
         A reference to the root of the data tree
     """
 
     dataset: arcana2.core.data.set.Dataset = attr.ib()
-    ids: ty.Dict[DataDimensions, str] = attr.ib()
-    frequency: DataDimensions = attr.ib()
-    children: ty.DefaultDict[DataDimensions,
+    ids: ty.Dict[DataDimension, str] = attr.ib()
+    frequency: DataDimension = attr.ib()
+    children: ty.DefaultDict[DataDimension,
                              ty.Dict[str or tuple[str], str]] = attr.ib(
         factory=lambda: defaultdict(dict))
-    parents: ty.DefaultDict[DataDimensions] = attr.ib(factory=dict)
+    parents: ty.DefaultDict[DataDimension] = attr.ib(factory=dict)
     _unresolved = attr.ib(default=None)
     _items = attr.ib(factory=dict, init=False)
 

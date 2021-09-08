@@ -36,8 +36,7 @@ class Repository(metaclass=ABCMeta):
         if self._connection_depth == 0:
             self.disconnect()
 
-    def dataset(self, name, sources=None, sinks=None,
-                structure=None, **kwargs):
+    def dataset(self, name, sources=None, sinks=None, hierarchy=None, **kwargs):
         """
         Returns a dataset from the XNAT repository
 
@@ -52,22 +51,22 @@ class Repository(metaclass=ABCMeta):
         sinks : Dict[str, Spec]
             A dictionary that maps "name-paths" of sinks analysis
             workflows to be stored in the dataset
-        structure : EnumMeta
-            The DataDimensions enum that defines the frequencies (e.g.
+        dimensions : EnumMeta
+            The DataDimension enum that defines the frequencies (e.g.
             per-session, per-subject,...) present in the dataset.                       
         **kwargs:
             Keyword args passed on to the Dataset init method
         """
-        if not structure:
+        if not hierarchy:
             try:
-                structure = self.DEFAULT_DATA_STRUCTURE
+                hierarchy = self.DEFAULT_HIERARCHY
             except AttributeError:
                 raise ArcanaUsageError(
-                    "'data_structure' kwarg must be specified for datasets in "
+                    "'hierarchy' kwarg must be specified for datasets in "
                     f"{type(self)} repositories")
         return dataset.Dataset(name, repository=self, sources=sources,
                                sinks=sinks,
-                               structure=structure, **kwargs)
+                               hierarchy=hierarchy, **kwargs)
 
     @abstractmethod
     def construct_tree(self, dataset):

@@ -3,7 +3,7 @@ import attr
 from arcana2.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError)
-from .enum import DataDimensions, DataQuality, DataSalience
+from .enum import DataDimension, DataQuality, DataSalience
 
 # @attr.s
 # class DataSpec():
@@ -19,7 +19,7 @@ from .enum import DataDimensions, DataQuality, DataSalience
 #         is used instead.
 #     data_format : FileFormat or type
 #         File format that data will be 
-#     frequency : DataDimensions
+#     frequency : DataDimension
 #         The frequency of the file-group within the dataset tree, e.g. per
 #         'session', 'subject', 'timepoint', 'group', 'dataset'
 #     """
@@ -38,7 +38,7 @@ class DataSource():
         is used instead.
     data_format : FileFormat or type
         File format that data will be 
-    frequency : DataDimensions
+    frequency : DataDimension
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
     quality_threshold : DataQuality
@@ -57,7 +57,9 @@ class DataSource():
     is_regex : bool
         Flags whether the name_path is a regular expression or not
     """
-
+    path = attr.ib(type=str)
+    data_format = attr.ib()
+    frequency = attr.ib(type=DataDimension)
     quality_threshold = attr.ib(type=DataQuality, default=DataQuality.usable)
     order = attr.ib(type=int, default=None)
     metadata = attr.ib(default=None)
@@ -140,7 +142,7 @@ class DataSink():
     format : FileFormat or type
         The file format or data type used to store the corresponding items
         in the repository dataset.
-    frequency : DataDimensions
+    frequency : DataDimension
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
     desc : str
@@ -156,7 +158,7 @@ class DataSink():
 
     path = attr.ib(type=str)
     data_format = attr.ib()
-    frequency = attr.ib(type=DataDimensions)
+    frequency = attr.ib(type=DataDimension)
     desc = attr.ib(type=str)
     salience = attr.ib(type=DataSalience, default=DataSalience.supplementary)
     category = attr.ib(type=str, default=None)

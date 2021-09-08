@@ -88,25 +88,31 @@ class DataProvenance():
                     .format(pformat(self.dct)))
 
     @classmethod
-    def load(cls, file_path):
+    def load(cls, file_path, ignore_missing=False):
         """
         Loads a saved provenance object from a JSON file
 
         Parameters
         ----------
-        name_path : str
-            Path to the provenance file
         file_path : str
             The name_path to a local file containing the provenance JSON
+        ignore_missing : bool
+            Return None if the file doesn't exist
 
         Returns
         -------
         provenance : Provenance
             The loaded provenance provenance
         """
-        with open(file_path) as f:
-            dct = json.load(f)
-        return DataProvenance(dct)
+        try:
+            with open(file_path) as f:
+                dct = json.load(f)
+        except FileNotFoundError:
+            if ignore_missing:
+                return None
+            raise
+        else:
+            return DataProvenance(dct)
 
     def mismatches(self, other, include=None, exclude=None):
         """

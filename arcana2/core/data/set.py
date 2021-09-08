@@ -15,7 +15,7 @@ from arcana2.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
     ArcanaBadlyFormattedIDError)
 from .item import DataItem
-from .enum import DataDimensions
+from .enum import DataDimension
 from .spec import DataSink, DataSource
 from .. import repository
 from .node import DataNode
@@ -38,45 +38,42 @@ class Dataset():
     repository : Repository
         The repository the dataset is stored into. Can be the local file
         system by providing a FileSystem repo.
-    structure : EnumMeta
-        The DataDimensions enum that defines the potential frequencies
-        (e.g. per-session, per-subject,...) of nodes in the dataset.
-    hierarchy : list[DataDimensions] or None
-        The data frequencies from the data structure that are explicitly in the
-        data tree. For example, if a FileSystem dataset (i.e. directory) has
+    hierarchy : Sequence[DataDimension]
+        The data frequencies that are explicitly present in the data tree.
+        For example, if a FileSystem dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
-        sub-directories named by unique subject ID, and the second directory
-        layer named by study time-point then the hierarchy would be
+        sub-directories labelled by unique subject ID, and the second directory
+        layer labelled by study time-point then the hierarchy would be
 
             [Clinical.subject, Clinical.timepoint]
 
         Alternatively, in some repositories (e.g. XNAT) the second layer in the
-        hierarchy may be named with session ID that is unique in the project,
-        in which case the layer structure would instead be
+        hierarchy may be named with session ID that is unique across the project,
+        in which case the layer dimensions would instead be
 
             [Clinical.subject, Clinical.session]
         
-        In such cases, if there are multiple timepoints component of the
-        session ID will need to be extracted using the `id_inference` arg.
+        In such cases, if there are multiple timepoints, the timepoint ID of the
+        session will need to be extracted using the `id_inference` argument.
 
-        In other datasets the layers could be organised such that the tree
-        first splits on longitudinal time-points, then a second layer labelled
-        by member ID, with the final layer containing sessions of matched
-        members across different study groups (i.e. test & control group):
+        Alternatively, the hierarchy could be organised such that the tree
+        first splits on longitudinal time-points, then a second directory layer
+        labelled by member ID, with the final layer containing sessions of
+        matched members labelled by their groups (e.g. test & control):
 
             [Clinical.timepoint, Clinical.member, Clinical.group]
 
-        Note frequencies specified in the hierarchy must span the given
-        structure, i.e. the "bitwise or" of all layers must be equal 1 across
-        all bits (e.g. 0b111)
-    sources : Dict[str, Selector]
-        A dictionary that maps "name-paths" of input "columns" in the dataset
-        to criteria in a Selector object that select the corresponding
-        items in the dataset
-    sinks : Dict[str, Spec]
-        A dictionary that maps "name-paths" of sinks analysis workflows
-        to be stored in the dataset            
-    id_inference : Dict[DataDimensions, str]
+        Note that the combination of layers in the hierarchy must span the
+        space defined in the DataDimension enum, i.e. the "bitwise or" of the
+        layer values of the hierarchy must be 1 across all bits
+        (e.g. Clinical.session: 0b111).
+    sources : Dict[str, DataSource]
+        The DataSources to add to the dataset and the names to refer to them
+        by.
+    sinks : Dict[str, DataSink]
+        The DataSinks to add to the dataset and with the name to refer to them
+        by.
+    id_inference : Dict[DataDimension, str]
         Not all IDs will appear explicitly within the hierarchy of the data
         tree, and some will need to be inferred by extracting components of
         more specific lables.
@@ -96,12 +93,12 @@ class Dataset():
 
         Alternatively, a general function with signature `f(ids)` that returns
         a dictionary with the mapped IDs can be provided instead.
-    included : Dict[DataDimensions, List[str]]
+    included : Dict[DataDimension, List[str]]
         The IDs to be included in the dataset per frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
         QC. If a frequency is omitted or its value is None, then all available
         will be used
-    excluded : Dict[DataDimensions, List[str]]
+    excluded : Dict[DataDimension, List[str]]
         The IDs to be excluded in the dataset per frequency. E.g. can be
         used to exclude specific subjects that failed QC. If a frequency is
         omitted or its value is None, then all available will be used
@@ -109,28 +106,28 @@ class Dataset():
 
     name: str = attr.ib()
     repository: repository.Repository = attr.ib()
-    structure: EnumMeta  = attr.ib()
-    hierarchy: list[DataDimensions] = attr.ib()
-    sources: list[DataSource] or None = attr.ib(
-        factory=list, converter=default_if_none)
-    sinks: list[DataSink] or None = attr.ib(
-        factory=list, converter=default_if_none)
-    id_inference: (list[tuple[DataDimensions, str]]
-                   or ty.Callable) = attr.ib(factory=list,
-                                             converter=default_if_none)
-    included: dict[DataDimensions, ty.List[str]] = attr.ib(
-        factory=dict, converter=default_if_none)
-    excluded: dict[DataDimensions, ty.List[str]] = attr.ib(
-        factory=dict, converter=default_if_none)
-    _root_node: DataNode = attr.ib(default=None, init=False)    
+    hierarchy: list[DataDimension] = attr.ib()
+    sources: dict[str, DataSource] or None = attr.ib(
+        factory=dict, converter=default_if_none(factory=dict))
+    sinks: dict[str, DataSink] or None = attr.ib(
+        factory=dict, converter=default_if_none(factory=dict))
+    id_inference: (list[tuple[DataDimension, str]]
+                   or ty.Callable) = attr.ib(
+                       factory=list, converter=default_if_none(factory=list))
+    included: dict[DataDimension, ty.List[str]] = attr.ib(
+        factory=dict, converter=default_if_none(factory=dict))
+    excluded: dict[DataDimension, ty.List[str]] = attr.ib(
+        factory=dict, converter=default_if_none(factory=dict))
+    workflows: dict[str, Workflow] = attr.ib(factory=dict)
+    _root_node: DataNode = attr.ib(default=None, init=False)  
 
     @sources.validator
     def sources_validator(self, _, sources):
         if wrong_freq := [m for m in sources.values()
-                          if not isinstance(m.frequency, self.structure)]:
+                          if not isinstance(m.frequency, self.dimensions)]:
             raise ArcanaUsageError(
                 f"Data hierarchy of {wrong_freq} sources does not match "
-                f"that of repository {self.structure}")
+                f"that of repository {self.dimensions}")
 
     @sinks.validator
     def sinks_validator(self, _, sinks):
@@ -149,24 +146,19 @@ class Dataset():
                     "for frequencies ('{}') to Dataset".format(
                         "', '".join(both)))
 
-    @hierarchy.default
-    def hierarchy_default(self):
-        """Default to a single layer that includes all the basis frequencies
-        e.g. 'session' for Clinical data structure (which includes the 'group'
-        'member' and 'timepoint' "basis" frequencies)
-        """
-        return [max(self.structure)]
-
     @hierarchy.validator
     def hierarchy_validator(self, _, hierarchy):
-        if not_valid := [f for f in hierarchy
-                         if not isinstance(f, self.structure)]:
+        if not hierarchy:
             raise ArcanaUsageError(
-                "{} are not part of the {} data structure"
-                .format(', '.join(not_valid), self.structure))
+                f"hierarchy provided to {self} cannot be empty")            
+        if not_valid := [f for f in hierarchy
+                         if not isinstance(f, self.dimensions)]:
+            raise ArcanaUsageError(
+                "{} are not part of the {} data dimensions"
+                .format(', '.join(not_valid), self.dimensions))
         # Check that all data frequencies are "covered" by the hierarchy and
         # each subsequent
-        covered = self.structure(0)
+        covered = self.dimensions(0)
         for i, layer in enumerate(hierarchy):
             diff = layer - covered
             if not diff:
@@ -174,12 +166,12 @@ class Dataset():
                     f"{layer} does not add any additional basis layers to "
                     f"previous layers {hierarchy[i:]}")
             covered |= layer
-        if covered != max(self.structure):
+        if covered != max(self.dimensions):
             raise ArcanaUsageError(
                 f"The data hierarchy {hierarchy} does not cover the following "
                 f"basis frequencies "
                 + ', '.join(str(m) for m in (~covered).basis()) +
-                f"f the {self.structure} data structure")
+                f"f the {self.dimensions} data dimensions")
 
     def __enter__(self):
         self.repository.__enter__()
@@ -189,10 +181,14 @@ class Dataset():
         self.repository.__exit__()
 
     def __getitem__(self, key):
-        if key == self.structure(0):
+        if key == self.dimensions(0):
             return self.root_node
         else:
             return self.root_node.children[key]
+
+    @property
+    def dimensions(self):
+        return type(self.hierarchy[0])
 
     @property
     def prov(self):
@@ -211,7 +207,7 @@ class Dataset():
             The root node of the data tree
         """
         if self._root_node is None:
-            self._root_node = DataNode(self.structure(0), {}, self)
+            self._root_node = DataNode(self.dimensions(0), {}, self)
             self.repository.construct_tree(self)
         return self._root_node
 
@@ -255,12 +251,12 @@ class Dataset():
             [description]
         """
         try:
-            self.structure[str(frequency)]
+            self.dimensions[str(frequency)]
         except KeyError:
             raise ArcanaUsageError(
-                f"Frequency '{frequency} does not match structure of "
+                f"Frequency '{frequency} does not match dimensions of "
                 "dataset ({})".format(
-                    ', '.join(str(f) for f in self.structure)))
+                    ', '.join(str(f) for f in self.dimensions)))
         if path is None:
             path = name
         self.sinks[name] = DataSink(path, format, frequency, **kwargs)
@@ -270,7 +266,7 @@ class Dataset():
 
         Parameters
         ----------
-        frequency : DataDimensions or str
+        frequency : DataDimension or str
             The frequency of the node
         id : str or Tuple[str], optional
             The ID of the node to 
@@ -303,11 +299,11 @@ class Dataset():
                 raise ArcanaUsageError(
                     f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
                     f"provided to `node` method of {self}")
-            # Convert to the DataDimensions of the dataset
+            # Convert to the DataDimension of the dataset
             node = self.root_node
             for freq, id in id_kwargs.items():
                 try:
-                    children_dict = node.children[self.structure[freq]]
+                    children_dict = node.children[self.dimensions[freq]]
                 except KeyError:
                     raise ArcanaNameError(
                         freq, f"{freq} is not a child frequency of {node}")
@@ -330,7 +326,7 @@ class Dataset():
     def node_ids(self, frequency):
         return self.root_node.children[frequency].keys()
 
-    def new_node(self, tree_path):
+    def add_leaf_node(self, tree_path):
         """Creates a new node at a the path down the tree of the dataset as
         well as all "parent" nodes upstream in the data tree
 
@@ -338,7 +334,7 @@ class Dataset():
         ----------
         tree_path : Sequence[str]
             The sequence of labels for each layer in the hierarchy of the
-            dataset leading to the current node
+            dataset leading to the current node.
 
         Raises
         ------
@@ -347,30 +343,18 @@ class Dataset():
             `id_inference`
         ArcanaDataTreeConstructionError
             raised if one of the groups specified in the ID inference reg-ex
-            doesn't match a valid frequency in the data structure
+            doesn't match a valid frequency in the data dimensions
         """
         # Get basis frequencies covered at the given depth of the
-        if not tree_path:
+        if len(tree_path) != len(self.hierarchy):
             raise ArcanaDataTreeConstructionError(
-                f"Number of layers ({tree_path}) exceeds hierarchy of "
-                f"self ({self.hierarchy})")
-        try:
-            frequency = self.hierarchy[len(tree_path) - 1]
-        except IndexError:
-            raise ArcanaDataTreeConstructionError(
-                f"Number of layers ({tree_path}) exceeds hierarchy of "
-                f"self ({self.hierarchy})")
-        # Get all data frequencies at the depth of the node to create
-        frequency = self.structure.union(self.hierarchy[:len(tree_path)])
-        basis_freqs = frequency.basis()
-        all_freqs = [self.structure.union(c)
-                     for c in combinations(basis_freqs)]
-        # Infer the IDs directly from the layer labels
-        ids = {f: None for f in all_freqs} # Set a default ID of None for each
-                                           # data frequency present at this
-                                           # layer in the hierarchy
-        parent_freq = self.structure(0) # Calculate the freqs at each
-                                        # layer
+                f"Tree path ({tree_path}) should have the same length as "
+                f"the hierarchy ({self.hierarchy}) of {self}")
+        # Set a default ID of None for all parent frequencies that could be
+        # inferred from a node at this depth
+        ids = {f: None for f in self.dimensions}
+        # Calculate the combined freqs after each layer is added
+        frequency = self.dimensions(0)
         for layer, label in zip(self.hierarchy, tree_path):
             ids[layer] = label
             try:
@@ -378,7 +362,7 @@ class Dataset():
             except KeyError:
                 # If the layer introduces completely new bases then the basis
                 # with the least significant bit (the order of the bits in the
-                # DataDimensions class should be arranged to account for this)
+                # DataDimension class should be arranged to account for this)
                 # can be considered be considered to be equivalent to the label.
                 # E.g. Given a hierarchy of [Clinical.subject, Clinical.session]
                 # no groups are assumed to be present by default (although this
@@ -396,7 +380,7 @@ class Dataset():
                 #
                 #       id_inference={
                 #           Clinical.session: r'.*(?P<timepoint>0-9+)$'}   
-                if not (layer & parent_freq):
+                if not (layer & frequency):
                     ids[layer.basis()[-1]] = label
             else:
                 match = re.match(regex, label)
@@ -404,7 +388,7 @@ class Dataset():
                     raise ArcanaBadlyFormattedIDError(
                         f"{layer} label '{label}', does not match ID inference"
                         f" pattern '{regex}'")
-                new_freqs = layer - parent_freq
+                new_freqs = layer - (layer & frequency)
                 for target_freq, target_id in match.groupdict.items():
                     if (target_freq & new_freqs) != target_freq:
                         raise ArcanaUsageError(
@@ -416,17 +400,18 @@ class Dataset():
                             f"inference of {tree_path} ({ids[target_freq]} "
                             f"and {target_id} from {regex}")
                     ids[target_freq] = target_id
-            parent_freq |= layer
+            frequency |= layer
+        assert(frequency == max(self.dimensions))
         # Create composite IDs for non-basis frequencies if they are not
-        # explicitly in the layer structure
-        for freq in all_freqs:
-            if freq not in basis_freqs and ids[freq] is None:
+        # explicitly in the layer dimensions
+        for freq in (set(self.dimensions) - set(frequency.basis())):
+            if ids[freq] is None:
                 ids[freq] = tuple(ids[b] for b in freq.basis())
-        self._add_node(DataNode(self, ids, frequency))
+        self.add_node(self, ids, frequency)
 
-    def _add_node(self, node):
-        """Adds a node to the dataset, creating references to upper and lower
-        hierarchy in the data tree.
+    def add_node(self, ids, frequency):
+        """Adds a node to the dataset, creating all parent "aggregate" nodes
+        (e.g. for each subject, group or timepoint) where required
 
         Parameters
         ----------
@@ -439,6 +424,7 @@ class Dataset():
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
+        node = DataNode(self, ids, frequency)
         # Create new data node
         node_dict = self.root_node.children[node.frequency]
         if node.id in node_dict:
@@ -447,31 +433,32 @@ class Dataset():
                 "tree")
         node_dict[node.id] = node
         # Insert root node
-        node.parents[self.structure(0)] = self.root_node
-        # Insert parent nodes if not already present and link them with inserted node
-        for supra_freq, supra_id in node.ids.items():
-            diff_freq = node.frequency - supra_freq
+        node.parents[self.dimensions(0)] = self.root_node
+        # Insert parent nodes if not already present and link them with
+        # inserted node
+        for parent_freq, parent_id in node.ids.items():
+            diff_freq = node.frequency - parent_freq
             if diff_freq:
                 try:
-                    supranode = self.node(supra_freq, supra_id)
+                    parent_node = self.node(parent_freq, parent_id)
                 except ArcanaNameError:
-                    supra_ids = {f: i for f, i in node.ids.items()
-                                 if f.is_parent(supra_freq)}
-                    supranode = self._add_node(DataNode(self, supra_ids,
-                                                        supra_freq))
+                    parent_ids = {f: i for f, i in node.ids.items()
+                                  if f.is_parent(parent_freq)}
+                    parent_node = self.add_node(DataNode(self, parent_ids,
+                                                         parent_freq))
                 # Set reference to level node in new node
-                node.parents[supra_freq] = supranode
+                node.parents[parent_freq] = parent_node
                 diff_id = node.ids[diff_freq]
-                children_dict = supranode.children[diff_freq]
+                children_dict = parent_node.children[diff_freq]
                 if diff_id in children_dict:
                     raise ArcanaDataTreeConstructionError(
                         f"ID clash ({diff_id}) between nodes inserted into "
-                        f"data tree in {diff_freq} children of {supranode} "
+                        f"data tree in {diff_freq} children of {parent_node} "
                         f"({children_dict[diff_id]} and {node})")
                 children_dict[diff_id] = node
         return node
 
-    def workflow(self, name, inputs, outputs, frequency, ids,
+    def workflow(self, name, inputs, outputs, frequency,
                  required_formats=None, produced_formats=None,
                  overwrite=False):
         """Generate a Pydra task that sources the specified inputs from the
@@ -481,11 +468,11 @@ class Dataset():
         ----------
         name : str
             A name for the workflow (must be globally unique)
-        inputs : Sequence[DataSource]
+        inputs : Dict[str, DataSource]
             The inputs to be sourced from the dataset
-        outputs : Sequence[DataSink]
+        outputs : Dict[str, DataSink]
             The outputs to be sinked into the dataset
-        frequency : DataDimensions
+        frequency : DataDimension
             The frequency of the nodes to draw the inputs from
         ids : Sequence[str]
             The sequence of IDs of the data nodes to include in the workflow
@@ -496,20 +483,14 @@ class Dataset():
             The produced file formats for any outputs that need to be converted
             before storing in the dataset
         """
-
-        if ids is None:
-            ids = list(self.nodes(frequency))
             
-        workflow = Workflow(name=name, input_spec=['id'],
-                            inputs=[(ids,)]).split('ids')
+        workflow = Workflow(name=name, input_spec=['id']).split('id')
 
         inputs_spec = {
-            i: (DataItem if (frequency == i.frequency
-                             or frequency.is_child(i.frequency))
+            i: (DataItem if (frequency == s.frequency
+                             or frequency.is_child(s.frequency))
                 else ty.Sequence[DataItem])
-            for i in inputs}
-
-        self.sources.update()
+            for i, s in inputs.items()}
 
         for inpt_name, source in inputs.items():
             if inpt_name in self.sources:
@@ -542,7 +523,7 @@ class Dataset():
         @mark.task
         @mark.annotate(
             {'dataset': Dataset,
-             'frequency': DataDimensions,
+             'frequency': DataDimension,
              'id': str,
              'input_names': ty.Sequence[str],
              'return': inputs_spec})
@@ -582,30 +563,32 @@ class Dataset():
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
+
         workflow.add(
             FunctionTask(
-                identity,
+                name='source',
+                func=identity,
                 input_spec=SpecInfo(
                     name='SourceInputs', bases=(BaseSpec,),
                     fields=list(inputs_spec.items())),
                 output_spec=SpecInfo(
                     name='SourceOutputs', bases=(BaseSpec,),
-                    fields=list(inputs_spec.items())))(name='source',
-                                                       **retrieved))
+                    fields=list(inputs_spec.items())),
+                **retrieved))
 
         # Can't use a decorated function as we need to allow for dynamic
-        # arguments
-        workflow.add(
-            FunctionTask(
-                identity,
-                input_spec=SpecInfo(
-                    name='SinkInputs', bases=(BaseSpec,),
-                    fields=list(outputs_spec.items())),
-                output_spec=SpecInfo(
-                    name='SinkOutputs', bases=(BaseSpec,),
-                    fields=list(outputs_spec.items()))))(name='sink')
+        # arguments 
+        workflow.add(FunctionTask(
+            name='sink',
+            func=identity,
+            input_spec=SpecInfo(
+                name='SinkInputs', bases=(BaseSpec,),
+                fields=list(outputs_spec.items())),
+            output_spec=SpecInfo(
+                name='SinkOutputs', bases=(BaseSpec,),
+                fields=list(outputs_spec.items()))))
 
-        sinked = {o: getattr(workflow.sink, o) for o in outputs}
+        sinked = {o: getattr(workflow.sink.lzout, o) for o in outputs}
 
         # Do format conversions if required
         for outpt_name, produced_format in produced_formats.items():
@@ -635,26 +618,24 @@ class Dataset():
                 input_spec=SpecInfo(
                     name='SinkInputs', bases=(BaseSpec,), fields=(
                         [('data_node', DataNode),
-                         ('frequency', DataDimensions),
-                         ('id', str)
+                         ('frequency', DataDimension),
+                         ('id', str),
                          ('outputs', ty.Dict[str, DataSink])]
                         + list(outputs_spec.items()))),
                 output_spec=SpecInfo(
                     name='SinkOutputs', bases=(BaseSpec,), fields=[
-                        ('data_node', DataNode)]))(
-                            name='store',
-                            dataset=self,
-                            frequency=frequency,
-                            id=workflow.lzin.id,
-                            **sinked))
+                        ('data_node', DataNode)]),
+                name='store',
+                dataset=self,
+                frequency=frequency,
+                id=workflow.lzin.id,
+                **sinked))
 
-        workflow.set_output(('data_nodes', store.lzout.data_node))
-
+        workflow.set_output(('data_nodes', workflow.store.lzout.data_node))
         return workflow
 
-
 @attr.s
-class SplitDataset(Dataset):
+class SplitDataset():
     """A dataset created by combining multiple datasets into a conglomerate
 
     Parameters

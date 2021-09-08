@@ -81,7 +81,7 @@ class Xnat(Repository):
     PROV_SUFFIX = '.__prov__.json'
     FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
-    DEFAULT_DATA_STRUCTURE = Clinical
+    DEFAULT_HIERARCHY = [Clinical.subject, Clinical.session]
 
     @property
     def prov(self):
@@ -370,7 +370,7 @@ class Xnat(Repository):
         # Add derived timepoint IDs to list of timepoint ids to filter
         project_id = dataset.name
         # Note we prefer the use of raw REST API calls here for performance
-        # reasons over using XnatPy's data structures.
+        # reasons over using XnatPy's data dimensionss.
         with self:
             # Get per_dataset level derivatives and fields
             project_uri = '/data/archive/projects/{}'.format(project_id)
