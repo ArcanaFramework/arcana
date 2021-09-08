@@ -3,7 +3,26 @@ import attr
 from arcana2.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError)
-from .enum import DataStructure, DataQuality
+from .enum import DataDimensions, DataQuality, DataSalience
+
+# @attr.s
+# class DataSpec():
+#     """
+#     Specifies a data item that is present in all nodes of `frequency` in a
+#     dataset criteria by which an item is selected from a data node
+
+#     Parameters
+#     ----------
+#     path : str
+#         A regex name_path to match the file_group names with. Must match
+#         one and only one file_group per <frequency>. If None, the name
+#         is used instead.
+#     data_format : FileFormat or type
+#         File format that data will be 
+#     frequency : DataDimensions
+#         The frequency of the file-group within the dataset tree, e.g. per
+#         'session', 'subject', 'timepoint', 'group', 'dataset'
+#     """
 
 
 @attr.s
@@ -19,13 +38,12 @@ class DataSource():
         is used instead.
     data_format : FileFormat or type
         File format that data will be 
-    frequency : DataStructure
+    frequency : DataDimensions
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
-    quality_threshold : str | list[str] | None
-        An acceptable quality label, or list thereof, to accept, i.e. if a
-        file_group's quality label is not in the list it will be ignored. If a
-        scan wasn't labelled the value of its qualtiy will be None.
+    quality_threshold : DataQuality
+        The acceptable quality (or above) that should be considered. Data items
+        will be considered missing
     order : int | None
         To be used to distinguish multiple file_groups that match the
         name_path in the same session. The order of the file_group within the
@@ -40,9 +58,6 @@ class DataSource():
         Flags whether the name_path is a regular expression or not
     """
 
-    path = attr.ib(type=str)
-    data_format = attr.ib()
-    frequency = attr.ib(type=DataStructure)
     quality_threshold = attr.ib(type=DataQuality, default=DataQuality.usable)
     order = attr.ib(type=int, default=None)
     metadata = attr.ib(default=None)
@@ -109,3 +124,39 @@ def match_quality(item, threshold):
 def match_metadata(item, metadata):
     "with the header values {}"
     return all(item.metadata(k) == v for k, v in metadata.items())
+
+
+@attr.s
+class DataSink():
+    """
+    A specification for a file group within a analysis to be derived from a
+    processing pipeline.
+
+    Parameters
+    ----------
+    path : str
+        The path to the relative location the corresponding data items will be
+        stored within the nodes of the data tree.
+    format : FileFormat or type
+        The file format or data type used to store the corresponding items
+        in the repository dataset.
+    frequency : DataDimensions
+        The frequency of the file-group within the dataset tree, e.g. per
+        'session', 'subject', 'timepoint', 'group', 'dataset'
+    desc : str
+        Description of what the field represents
+    salience : Salience
+        The salience of the specified file-group, i.e. whether it would be
+        typically of interest for publication outputs or whether it is just
+        a temporary file in a workflow, and stages in between
+    category : str
+        A name for a category of file_group specs. Used improve human searching
+        of available options
+    """
+
+    path = attr.ib(type=str)
+    data_format = attr.ib()
+    frequency = attr.ib(type=DataDimensions)
+    desc = attr.ib(type=str)
+    salience = attr.ib(type=DataSalience, default=DataSalience.supplementary)
+    category = attr.ib(type=str, default=None)

@@ -1,8 +1,8 @@
 from itertools import zip_longest
 import re
 from typing import Sequence
-from arcana2.core.data.source import DataSource
-from arcana2.core.data.sink import DataSink
+from arcana2.core.data.spec import DataSource
+from arcana2.core.data.spec import DataSink
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app

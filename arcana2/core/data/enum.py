@@ -6,25 +6,60 @@ from enum import Enum
 from arcana2.exceptions import ArcanaBadlyFormattedIDError, ArcanaUsageError
 
 
-class DataStructure(Enum):
+class DataDimensions(Enum):
     """
-    Base class for tree structure enums. The values for each member of the 
-    enum should be a binary string that specifies the relationship between
-    the different "data frequencies" present in the dataset.
+    Base class for all "data dimensions" enums. DataDimensions enums specify
+    the relationships between nodes of a dataset.
 
-    Frequencies that have only one non-zero bit in their binary values
-    correspond to a layer in the data tree (e.g. subject, timepoint).
-    frequency sits below in the data tree. Each bit corresponds to a layer,
-    e.g. 'group', 'subject' and 'timepoint', and if they are present in the
-    binary string it signifies that the data is specific to a particular
-    branch at that layer (i.e. specific group, subject or timepoint). 
+    For example in imaging studies, scannings sessions are typically organised
+    by analysis group (e.g. test & control), membership within the group (i.e
+    matched subjects) and time-points (for longitudinal studies). We can
+    visualise the nodes arranged in a 3-D grid along the `group`, `member`, and
+    `timepoint` dimensions. Note that datasets that only contain one group or
+    time-point can still be represented in the same space, and just be of
+    depth=1 along those dimensions.
+
+    All dimensions should be included as members of a DataDimensions subclass
+    enum with orthogonal binary vector values, e.g.
+
+        member = 0b001
+        group = 0b010
+        timepoint = 0b100
+
+    In this space, an imaging session node is uniquely defined by its member,
+    group and timepoint ID. The most commonly present dimension should be given
+    the least frequent bit (e.g. imaging datasets will not always have
+    different groups or time-points but will always have different members
+    (equivalent to subjects when there is one group).
+    
+    In addition to the data items stored in the data nodes for each session,
+    some items only vary along a particular dimension of the grid. The
+    "frequency" of these nodes can be specified using the "basis" members
+    (i.e. member, group, timepoint) in contrast to the `session` frequency,
+    which is the combination of all three
+
+        session = 0b111
+
+    Additionally, some data is stored in aggregated nodes that across a plane
+    of the grid. These frequencies should also be added to the enum (all
+    combinations of the basis frequencies must be included) and given intuitive
+    names if possible, e.g.
+    
+        subject = 0b011 - uniquely identified subject within in the dataset.
+        batch = 0b110 - separate group+timepoint combinations
+        matchedpoint = 0b101 - matched members and time-points aggregated across groups
+
+    Finally, for items that are singular across the whole dataset there should
+    also be a dataset-wide member with value=0:
+
+        dataset = 0b000
     """
 
     def __str__(self):
         return self.name
 
     def basis(self):
-        """Returns the basis frequencies in the data tree.
+        """Returns the basis vectors in the data tree.
         For example in `Clinical` data trees, the following frequencies can
         be decomposed into the following basis frequencies:
 
@@ -37,10 +72,10 @@ class DataStructure(Enum):
             matchedpoint -> [timepoint, member]
             session -> [timepoint, group, member]
         """
-        val = self.value
         # Check which bits are '1', and append them to the list of levels
         cls = type(self)
-        return [cls(b) for b in sorted(self._nonzero_bits(val), reverse=True)]
+        return [cls(b)
+                for b in sorted(self._nonzero_bits(self.value), reverse=True)]
 
     def _nonzero_bits(self, v=None):
         if v is None:
@@ -111,7 +146,7 @@ class DataStructure(Enum):
         return (self & child) == self and child != self
 
 
-class Clinical(DataStructure):
+class Clinical(DataDimensions):
     """
     An enum that specifies the data hierarcy of data trees typical of
     clinical research, i.e. subjects split into groups scanned at different

@@ -53,7 +53,7 @@ class Repository(metaclass=ABCMeta):
             A dictionary that maps "name-paths" of sinks analysis
             workflows to be stored in the dataset
         structure : EnumMeta
-            The DataStructure enum that defines the frequencies (e.g.
+            The DataDimensions enum that defines the frequencies (e.g.
             per-session, per-subject,...) present in the dataset.                       
         **kwargs:
             Keyword args passed on to the Dataset init method

@@ -15,9 +15,8 @@ from arcana2.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
     ArcanaBadlyFormattedIDError)
 from .item import DataItem
-from .enum import DataStructure
-from .sink import DataSink
-from .source import DataSource
+from .enum import DataDimensions
+from .spec import DataSink, DataSource
 from .. import repository
 from .node import DataNode
 
@@ -40,9 +39,9 @@ class Dataset():
         The repository the dataset is stored into. Can be the local file
         system by providing a FileSystem repo.
     structure : EnumMeta
-        The DataStructure enum that defines the potential frequencies
+        The DataDimensions enum that defines the potential frequencies
         (e.g. per-session, per-subject,...) of nodes in the dataset.
-    hierarchy : list[DataStructure] or None
+    hierarchy : list[DataDimensions] or None
         The data frequencies from the data structure that are explicitly in the
         data tree. For example, if a FileSystem dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
@@ -77,7 +76,7 @@ class Dataset():
     sinks : Dict[str, Spec]
         A dictionary that maps "name-paths" of sinks analysis workflows
         to be stored in the dataset            
-    id_inference : Dict[DataStructure, str]
+    id_inference : Dict[DataDimensions, str]
         Not all IDs will appear explicitly within the hierarchy of the data
         tree, and some will need to be inferred by extracting components of
         more specific lables.
@@ -97,12 +96,12 @@ class Dataset():
 
         Alternatively, a general function with signature `f(ids)` that returns
         a dictionary with the mapped IDs can be provided instead.
-    included : Dict[DataStructure, List[str]]
+    included : Dict[DataDimensions, List[str]]
         The IDs to be included in the dataset per frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
         QC. If a frequency is omitted or its value is None, then all available
         will be used
-    excluded : Dict[DataStructure, List[str]]
+    excluded : Dict[DataDimensions, List[str]]
         The IDs to be excluded in the dataset per frequency. E.g. can be
         used to exclude specific subjects that failed QC. If a frequency is
         omitted or its value is None, then all available will be used
@@ -111,17 +110,17 @@ class Dataset():
     name: str = attr.ib()
     repository: repository.Repository = attr.ib()
     structure: EnumMeta  = attr.ib()
-    hierarchy: list[DataStructure] = attr.ib()
+    hierarchy: list[DataDimensions] = attr.ib()
     sources: list[DataSource] or None = attr.ib(
         factory=list, converter=default_if_none)
     sinks: list[DataSink] or None = attr.ib(
         factory=list, converter=default_if_none)
-    id_inference: (list[tuple[DataStructure, str]]
+    id_inference: (list[tuple[DataDimensions, str]]
                    or ty.Callable) = attr.ib(factory=list,
                                              converter=default_if_none)
-    included: dict[DataStructure, ty.List[str]] = attr.ib(
+    included: dict[DataDimensions, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none)
-    excluded: dict[DataStructure, ty.List[str]] = attr.ib(
+    excluded: dict[DataDimensions, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none)
     _root_node: DataNode = attr.ib(default=None, init=False)    
 
@@ -266,18 +265,18 @@ class Dataset():
             path = name
         self.sinks[name] = DataSink(path, format, frequency, **kwargs)
 
-    def node(self, frequency, id=None, **id_kwargs):
+    def node(self, frequency=None, id=None, **id_kwargs):
         """Returns the node associated with the given frequency and ids dict
 
         Parameters
         ----------
-        frequency : DataStructure or str
+        frequency : DataDimensions or str
             The frequency of the node
         id : str or Tuple[str], optional
             The ID of the node to 
         **id_kwargs : Dict[str, str]
-            Alternatively to providing `id`, ID corresponding to the node to return passed as
-            kwargs
+            Alternatively to providing `id`, ID corresponding to the node to
+            return passed as kwargs
 
         Returns
         -------
@@ -292,6 +291,7 @@ class Dataset():
         ArcanaNameError
             If there is no node corresponding to the given ids
         """
+        node = self.root_node
         # Parse str to frequency enums
         if not frequency.value:
             if id is not None:
@@ -303,7 +303,7 @@ class Dataset():
                 raise ArcanaUsageError(
                     f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
                     f"provided to `node` method of {self}")
-            # Convert to the DataStructure of the dataset
+            # Convert to the DataDimensions of the dataset
             node = self.root_node
             for freq, id in id_kwargs.items():
                 try:
@@ -378,7 +378,7 @@ class Dataset():
             except KeyError:
                 # If the layer introduces completely new bases then the basis
                 # with the least significant bit (the order of the bits in the
-                # DataStructure class should be arranged to account for this)
+                # DataDimensions class should be arranged to account for this)
                 # can be considered be considered to be equivalent to the label.
                 # E.g. Given a hierarchy of [Clinical.subject, Clinical.session]
                 # no groups are assumed to be present by default (although this
@@ -485,7 +485,7 @@ class Dataset():
             The inputs to be sourced from the dataset
         outputs : Sequence[DataSink]
             The outputs to be sinked into the dataset
-        frequency : DataStructure
+        frequency : DataDimensions
             The frequency of the nodes to draw the inputs from
         ids : Sequence[str]
             The sequence of IDs of the data nodes to include in the workflow
@@ -542,7 +542,7 @@ class Dataset():
         @mark.task
         @mark.annotate(
             {'dataset': Dataset,
-             'frequency': DataStructure,
+             'frequency': DataDimensions,
              'id': str,
              'input_names': ty.Sequence[str],
              'return': inputs_spec})
@@ -635,7 +635,7 @@ class Dataset():
                 input_spec=SpecInfo(
                     name='SinkInputs', bases=(BaseSpec,), fields=(
                         [('data_node', DataNode),
-                         ('frequency', DataStructure),
+                         ('frequency', DataDimensions),
                          ('id', str)
                          ('outputs', ty.Dict[str, DataSink])]
                         + list(outputs_spec.items()))),
@@ -653,15 +653,17 @@ class Dataset():
         return workflow
 
 
-class MultiDataset(Dataset):
+@attr.s
+class SplitDataset(Dataset):
     """A dataset created by combining multiple datasets into a conglomerate
 
     Parameters
     ----------
     """
 
-    def __init__(self):
-        raise NotImplemented
+    source_dataset: Dataset = attr.ib()
+    sink_dataset: Dataset = attr.ib()
+
 
 
 def identity(**kwargs):
