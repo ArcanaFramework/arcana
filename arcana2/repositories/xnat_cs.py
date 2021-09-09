@@ -2,7 +2,7 @@ import logging
 import attr
 from arcana2.exceptions import ArcanaRepositoryError
 from arcana2.exceptions import ArcanaUsageError
-from arcana2.core.data.enum import Clinical
+from arcana2.dimensions.clinical import Clinical
 from .xnat import Xnat
 
 

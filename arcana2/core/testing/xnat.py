@@ -9,10 +9,10 @@ from copy import copy
 import pydicom
 import xnat
 from arcana2.core.testing import BaseTestCase
-from arcana2.repository.xnat import Xnat
+from arcana2.repositories.xnat import Xnat
 from arcana2.core.data.set import Dataset
 from arcana2.exceptions import ArcanaError
-from arcana2.file_format.general import text_format
+from arcana2.file_formats.general import text_format
 import logging
 
 

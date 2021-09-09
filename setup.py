@@ -24,6 +24,8 @@ setup(
     long_description=open('README.rst').read(),
     install_requires=install_requires,
     tests_require=tests_require,
+    entry_points={
+        'console_scripts': ['arcana = arcana2.entrypoint.main:MainCmd.run']},
     extras_require={
         'test': tests_require},
     classifiers=[

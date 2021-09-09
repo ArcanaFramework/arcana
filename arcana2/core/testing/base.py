@@ -17,7 +17,7 @@ import arcana2
 from arcana2.core.data.item import FileGroup
 from arcana2.core.utils import classproperty
 from arcana2.core.data.set import Dataset
-from arcana2.repository.file_system import FileSystem
+from arcana2.repositories.file_system import FileSystem
 from arcana2.exceptions import ArcanaError
 from arcana2.exceptions import ArcanaUsageError
 

@@ -1,0 +1,3 @@
+[console_scripts]
+arcana = arcana2.entrypoint.main:MainCmd.run
+

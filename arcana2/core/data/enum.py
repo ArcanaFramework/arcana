@@ -1,9 +1,6 @@
-from copy import copy
-import functools
 import typing as ty
 from operator import __or__
 from enum import Enum
-from arcana2.exceptions import ArcanaBadlyFormattedIDError, ArcanaUsageError
 
 
 class DataDimension(Enum):
@@ -150,35 +147,6 @@ class DataDimension(Enum):
             True if self is parent of child
         """
         return (self & child) == self and child != self
-
-
-class Clinical(DataDimension):
-    """
-    An enum that specifies the data hierarcy of data trees typical of
-    clinical research, i.e. subjects split into groups scanned at different
-    timepoints (in longitudinal studies).
-    """
-
-    # Root node of the dataset
-    dataset = 0b000  # singular within the dataset
-
-    # Basis frequencies in the data tree dimensions
-    member = 0b001  # subjects relative to their group membership, i.e.
-                    # matched pairs of test and control subjects should share
-                    # the same member IDs.
-    group = 0b010  # subject groups (e.g. test & control)
-    timepoint = 0b100  # timepoints in longitudinal studies
-
-    # Combinations
-    session = 0b111  # a single session (i.e. a single timepoint of a subject)
-    subject = 0b011 # uniquely identified subject within in the dataset.
-                    # As opposed to 'member', which specifies a subject in
-                    # relation to its group (i.e. one subject for each member
-                    # in each group). For datasets with only one study group,
-                    # then subject and member are equivalent
-    batch = 0b110  # data from separate groups at separate timepoints
-    matchedpoint = 0b101 # matched members (e.g. test & control) across
-                              # all groups and timepoints
 
 
 class DataSalience(Enum):

@@ -29,24 +29,19 @@ class BaseRunCmd(BaseDatasetCmd):
                   " to run the app in"))
         parser.add_argument(
             '--input', '-i', action='append', default=[], nargs='+',
-            metavar=(cls.VAR_ARG, 'PATH', 'FORMAT', 'ORDER', 'QUALITY',
-                     'METADATA', 'FREQUENCY'),
+            # metavar=(cls.VAR_ARG, 'PATH', 'FORMAT', 'ORDER', 'QUALITY',
+            #          'METADATA', 'FREQUENCY'),
             help=cls.INPUT_HELP.format(var_desc=cls.VAR_DESC))
         parser.add_argument(
-            '--output', '-o', action='append', default=[], nargs=4,
-            metavar=(cls.VAR_ARG, 'STORE_AT', 'FORMAT', 'DESC'),
+            '--output', '-o', action='append', default=[], nargs=3,
+            metavar=(cls.VAR_ARG, 'STORE_AT', 'FORMAT'),
             help=cls.OUTPUT_HELP.format(var_desc=cls.VAR_DESC))
         parser.add_argument(
-            '--required_format', action='append', default=[], nargs=2,
-            metavar=('INPUT', 'FORMAT'),
-            help=("The file format the app requires the input in. Only needed "
-                  "when it differs from the format provided in the input"))
-        parser.add_argument(
-            '--produced_format', action='append', default=[], nargs=2,
-            metavar=('OUTPUT', 'FORMAT'),
-            help=("The file format the app produces the output in. Only needed"
-                  " when it differs from the format to be stored in the "
-                  "dataset."))
+            '--workflow_format', action='append', default=[], nargs=2,
+            metavar=('NAME', 'FORMAT'),
+            help=("The file format the app requires the input in/provides "
+                  "outputs in. Only required when the format differs from the "
+                  "format stored in the dataset"))
         parser.add_argument(
             '--ids', nargs='+', default=None,
             help=("IDs of the nodes to process (i.e. for the frequency that "
@@ -68,15 +63,16 @@ class BaseRunCmd(BaseDatasetCmd):
             inputs=inputs,
             outputs=outputs,
             frequency=frequency,
-            required_formats=cls.parse_required_formats(args),
-            produced_formats=cls.parse_produced_formats(args))
+            workflow_formats=cls.parse_workflow_formats(args))
 
         cls.add_app_task(workflow, args, inputs, outputs)
 
         if not args.dry_run:
             if args.ids is None:
-                ids = list(dataset.nodes(frequency))
+                ids = list(dataset.node_ids(frequency))
             workflow(id=ids)
+
+        return workflow
 
     @classmethod
     def parse_inputs(cls, args):
@@ -153,27 +149,20 @@ class BaseRunCmd(BaseDatasetCmd):
         # Create outputs
         outputs = {}
         for output in args.output:
-            var, store_at, data_format, desc = output
+            var, store_at, data_format = output
             outputs[var] = DataSink(
                 path=store_at,
                 data_format=resolve_data_format(data_format),
-                desc=desc,
                 frequency=frequency)
         return outputs
 
     @classmethod
-    def parse_required_formats(cls, args):
-        required = {}
-        for inpt, frmt in args.required_format:
-            required[inpt] = resolve_data_format(frmt)
-        return required
+    def parse_workflow_formats(cls, args):
+        formats = {}
+        for name, frmt in args.workflow_format:
+            formats[name] = resolve_data_format(frmt)
+        return formats
 
-    @classmethod
-    def parse_produced_formats(cls, args):
-        produced = {}
-        for inpt, frmt in args.produced_format:
-            produced[inpt] = resolve_data_format(frmt)
-        return produced
 
         # # Create field outputs
         # defaults = (str, 'session')
@@ -247,9 +236,6 @@ class BaseRunCmd(BaseDatasetCmd):
 
         FORMAT is the name of the file-format the file will be stored at in
         the dataset.
-
-        DESC is a short description (remember to enclose it in quotes) of what
-        the output is
         """
 
 
@@ -340,7 +326,7 @@ class RunAppCmd(BaseRunCmd):
 
     VAR_ARG = 'INTERFACE_NAME'
 
-    PATH = f"""
+    VAR_DESC = f"""
         The {VAR_ARG} is the attribute in the Pydra interface to connect
         the input to.
     """
@@ -404,7 +390,7 @@ class RunBidsAppCmd(BaseRunCmd):
     def workflow_name(cls, args):
         return args.container.replace('/', '_')
 
-    VAR_ARG = 'INTERFACE_NAME'
+    VAR_ARG = 'BIDS_PATH'
 
     VAR_DESC = f"""
         The {VAR_ARG} is the path the that the file/field should be

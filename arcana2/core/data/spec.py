@@ -145,20 +145,13 @@ class DataSink():
     frequency : DataDimension
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
-    desc : str
-        Description of what the field represents
     salience : Salience
         The salience of the specified file-group, i.e. whether it would be
         typically of interest for publication outputs or whether it is just
         a temporary file in a workflow, and stages in between
-    category : str
-        A name for a category of file_group specs. Used improve human searching
-        of available options
     """
 
     path = attr.ib(type=str)
     data_format = attr.ib()
     frequency = attr.ib(type=DataDimension)
-    desc = attr.ib(type=str)
     salience = attr.ib(type=DataSalience, default=DataSalience.supplementary)
-    category = attr.ib(type=str, default=None)

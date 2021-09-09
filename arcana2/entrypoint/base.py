@@ -1,10 +1,10 @@
 
-import re
+from importlib import import_module
 from arcana2.exceptions import ArcanaUsageError
-from arcana2.repository.file_system import FileSystem
-from arcana2.repository.xnat import Xnat
-from arcana2.repository.xnat_cs import XnatCS
-import arcana2.core.data.enum
+from arcana2.repositories.file_system import FileSystem
+from arcana2.repositories.xnat import Xnat
+from arcana2.repositories.xnat_cs import XnatCS
+import arcana2.dimensions
 
 
 class BaseDatasetCmd():
@@ -43,7 +43,7 @@ class BaseDatasetCmd():
                   "If the second arg contains '/' then it is interpreted as "
                   "the path to a text file containing a list of IDs"))    
         parser.add_argument(
-            '--dimensions', type=str, default='Clinical',
+            '--dimensions', type=str, default='clinical.Clinical',
             help=("The enum that specifies the data dimensions of the dataset. "
                   "Defaults to `Clinical`, which "
                   "consists of the typical dataset>group>subject>session "
@@ -141,4 +141,11 @@ class BaseDatasetCmd():
 
     @classmethod
     def parse_dimensions(cls, args):
-        return getattr(arcana2.core.data.enum, args.dimensions)
+        try:
+            module_name, dim_name = args.dimensions.split('.')
+        except ValueError:
+            raise ArcanaUsageError(
+                f"Value provided to '--dimensions' arg ({args.dimensions}) "
+                "needs to include module, e.g. clinical.Clinical")
+        module = import_module('.'.join(('arcana2.dimensions', module_name)))
+        return getattr(module, dim_name)

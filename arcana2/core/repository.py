@@ -64,9 +64,12 @@ class Repository(metaclass=ABCMeta):
                 raise ArcanaUsageError(
                     "'hierarchy' kwarg must be specified for datasets in "
                     f"{type(self)} repositories")
-        return dataset.Dataset(name, repository=self, sources=sources,
+        return dataset.Dataset(name,
+                               repository=self,
+                               sources=sources,
                                sinks=sinks,
-                               hierarchy=hierarchy, **kwargs)
+                               hierarchy=hierarchy,
+                               **kwargs)
 
     @abstractmethod
     def construct_tree(self, dataset):
