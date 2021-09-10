@@ -113,11 +113,14 @@ class DataDimension(Enum):
     def __add__(self, other):
         return type(self)(self.value + other.value)
 
-    def __subtract__(self, other):
+    def __sub__(self, other):
         return type(self)(self.value - other.value)
 
     def __hash__(self):
         return self.value
+
+    def __bool__(self):
+        return bool(self.value)
 
     @classmethod
     def union(cls, freqs: ty.Sequence[Enum]):

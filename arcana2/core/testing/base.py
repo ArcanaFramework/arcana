@@ -56,16 +56,16 @@ class BaseTestCase(TestCase):
 
     @classproperty
     @classmethod
-    def test_data_dir(cls):
+    def test_ref_data_dir(cls):
         try:
-            return cls._test_data_dir
+            return cls._test_ref_data_dir
         except AttributeError:
             try:
-                cls._test_data_dir = os.environ['ARCANA_TEST_DATA']
-                makedirs(cls._test_data_dir, exist_ok=True)
+                cls._test_ref_data_dir = os.environ['ARCANA_TEST_DATA']
+                makedirs(cls._test_ref_data_dir, exist_ok=True)
             except KeyError:
-                cls._test_data_dir = op.join(cls.BASE_TEST_DIR, 'data')
-            return cls._test_data_dir
+                cls._test_ref_data_dir = op.join(cls.BASE_TEST_DIR, 'data')
+            return cls._test_ref_data_dir
 
     @classproperty
     @classmethod
@@ -75,17 +75,17 @@ class BaseTestCase(TestCase):
     @classproperty
     @classmethod
     def dataset_path(cls):
-        return op.join(cls.test_data_dir, 'dataset')
+        return op.join(cls.test_ref_data_dir, 'dataset')
 
     @classproperty
     @classmethod
     def work_path(cls):
-        return op.join(cls.test_data_dir, 'work')
+        return op.join(cls.test_ref_data_dir, 'work')
 
     @classproperty
     @classmethod
     def cache_path(cls):
-        return op.join(cls.test_data_dir, 'cache')
+        return op.join(cls.test_ref_data_dir, 'cache')
 
     @classproperty
     @classmethod

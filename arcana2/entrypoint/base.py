@@ -3,8 +3,6 @@ from importlib import import_module
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.repositories.file_system import FileSystem
 from arcana2.repositories.xnat import Xnat
-from arcana2.repositories.xnat_cs import XnatCS
-import arcana2.dimensions
 
 
 class BaseDatasetCmd():
@@ -94,16 +92,6 @@ class BaseDatasetCmd():
                 server=args[0],
                 user=args[1] if nargs > 1 else None,
                 password=args[2] if nargs > 2 else None)
-        elif repo_type == 'xnat_cs':
-            if nargs < 1 or nargs > 3:
-                raise ArcanaUsageError(
-                    f"Incorrect number of arguments passed to an Xnat "
-                    f"repository ({args}), at least 1 (LEVEL) and no more "
-                    f"than 3 are required (LEVEL, SUBJECT, VISIT)")
-            repository = XnatCS(
-                level=args[0],
-                ids={'subject': args[1] if nargs > 1 else None,
-                     'timepoint': args[2] if nargs > 2 else None})
         else:
             raise ArcanaUsageError(
                 f"Unrecognised repository type provided as first argument "

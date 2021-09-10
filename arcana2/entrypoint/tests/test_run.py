@@ -5,12 +5,12 @@ from argparse import ArgumentParser
 from arcana2.entrypoint.run import RunAppCmd
 
 
-def test_run_app(test_data):
+def test_run_app(test_dicom_dataset_dir):
     parser = ArgumentParser()
     RunAppCmd.construct_parser(parser)
     args = parser.parse_args([
         'pydra.tasks.dcm2niix.Dcm2Niix',
-        os.path.join(test_data, 'test-repo'),
+        test_dicom_dataset_dir,
         '--repository', 'file_system',
         '--input', 'in_dir', 'sample-dicom', 'dicom',
         '--output', 'out_file', 'output-nifti', 'niftix_gz',

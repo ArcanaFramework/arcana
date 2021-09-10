@@ -146,7 +146,11 @@ class FileSystem(Repository):
                 "root node of the dataset")
 
         for dpath, _, _ in os.walk(dataset.name):
+            if dpath == dataset.name:
+                continue
             tree_path = os.path.split(os.path.relpath(dpath, dataset.name))
+            if not tree_path[0]:
+                tree_path = tree_path[1:]
             if len(tree_path) == len(dataset.hierarchy):
                 dataset.add_leaf_node(tree_path)
 

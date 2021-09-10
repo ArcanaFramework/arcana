@@ -11,7 +11,7 @@ TEST_DIR = '__test__'
 
 
 @pytest.fixture(scope="module")
-def base_dir(test_data):
+def base_dir():
     base_dir = tempfile.mkdtemp()
     yield base_dir
     shutil.rmtree(base_dir)

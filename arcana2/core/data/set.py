@@ -111,9 +111,8 @@ class Dataset():
         factory=dict, converter=default_if_none(factory=dict))
     sinks: dict[str, DataSink] or None = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
-    id_inference: (list[tuple[DataDimension, str]]
-                   or ty.Callable) = attr.ib(
-                       factory=list, converter=default_if_none(factory=list))
+    id_inference: (dict[DataDimension, str] or ty.Callable) = attr.ib(
+        factory=dict, converter=default_if_none(factory=dict))
     included: dict[DataDimension, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
     excluded: dict[DataDimension, ty.List[str]] = attr.ib(
@@ -184,6 +183,10 @@ class Dataset():
         return type(self.hierarchy[0])
 
     @property
+    def root_freq(self):
+        return self.dimensions(0)
+
+    @property
     def prov(self):
         return {
             'name': self.name,
@@ -200,7 +203,8 @@ class Dataset():
             The root node of the data tree
         """
         if self._root_node is None:
-            self._root_node = DataNode(self.dimensions(0), {}, self)
+            self._root_node = DataNode({self.root_freq: None}, self.root_freq,
+                                       self)
             self.repository.construct_tree(self)
         return self._root_node
 
@@ -282,7 +286,7 @@ class Dataset():
         """
         node = self.root_node
         # Parse str to frequency enums
-        if not frequency.value:
+        if not frequency:
             if id is not None:
                 raise ArcanaUsageError(
                     f"Root nodes don't have any IDs ({id})")
@@ -311,12 +315,16 @@ class Dataset():
             except KeyError:
                 raise ArcanaNameError(
                     id, f"{id} not present in data tree "
-                    f"({list(self.node_ids)})")
+                    f"({list(self.node_ids(frequency))})")
 
     def nodes(self, frequency):
+        if frequency == self.root_freq:
+            return [self.root_node]
         return self.root_node.children[frequency].values()
         
     def node_ids(self, frequency):
+        if frequency == self.root_freq:
+            return [None]
         return self.root_node.children[frequency].keys()
 
     def add_leaf_node(self, tree_path):
@@ -372,7 +380,7 @@ class Dataset():
                 # extracted with the
                 #
                 #       id_inference={
-                #           Clinical.session: r'.*(?P<timepoint>0-9+)$'}   
+                #           Clinical.session: r'.*(?P<timepoint>0-9+)$'}
                 if not (layer & frequency):
                     ids[layer.basis()[-1]] = label
             else:
@@ -399,8 +407,12 @@ class Dataset():
         # explicitly in the layer dimensions
         for freq in (set(self.dimensions) - set(frequency.basis())):
             if ids[freq] is None:
-                ids[freq] = tuple(ids[b] for b in freq.basis())
-        self.add_node(self, ids, frequency)
+                id = tuple(ids[b] for b in freq.basis() if ids[b] is not None)
+                if id:
+                    if len(id) == 1:
+                        id = id[0]
+                    ids[freq] = id
+        self.add_node(ids, frequency)
 
     def add_node(self, ids, frequency):
         """Adds a node to the dataset, creating all parent "aggregate" nodes
@@ -417,7 +429,7 @@ class Dataset():
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
-        node = DataNode(self, ids, frequency)
+        node = DataNode(ids, frequency, self)
         # Create new data node
         node_dict = self.root_node.children[node.frequency]
         if node.id in node_dict:
@@ -430,19 +442,19 @@ class Dataset():
         # Insert parent nodes if not already present and link them with
         # inserted node
         for parent_freq, parent_id in node.ids.items():
-            diff_freq = node.frequency - parent_freq
-            if diff_freq:
+            diff_freq = node.frequency - (parent_freq & node.frequency)
+            if diff_freq and parent_freq:  # Don't need to insert root node again
                 try:
                     parent_node = self.node(parent_freq, parent_id)
                 except ArcanaNameError:
                     parent_ids = {f: i for f, i in node.ids.items()
-                                  if f.is_parent(parent_freq)}
-                    parent_node = self.add_node(DataNode(self, parent_ids,
-                                                         parent_freq))
+                                  if (f.is_parent(parent_freq)
+                                      or f == parent_freq)}
+                    parent_node = self.add_node(parent_ids, parent_freq)
                 # Set reference to level node in new node
                 node.parents[parent_freq] = parent_node
                 diff_id = node.ids[diff_freq]
-                children_dict = parent_node.children[diff_freq]
+                children_dict = parent_node.children[frequency]
                 if diff_id in children_dict:
                     raise ArcanaDataTreeConstructionError(
                         f"ID clash ({diff_id}) between nodes inserted into "

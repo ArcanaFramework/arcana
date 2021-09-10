@@ -1,7 +1,5 @@
 from __future__ import annotations
 import os.path
-import re
-from itertools import combinations
 import typing as ty
 import attr
 from collections import defaultdict
@@ -9,8 +7,7 @@ from abc import ABCMeta, abstractmethod
 import arcana2.core.data.set
 from arcana2.exceptions import (
     ArcanaUsageError, ArcanaUnresolvableFormatException, ArcanaFileFormatError,
-    ArcanaError, ArcanaNameError, ArcanaWrongFrequencyError,
-    ArcanaBadlyFormattedIDError, ArcanaDataTreeConstructionError)
+    ArcanaError, ArcanaNameError, ArcanaWrongFrequencyError)
 from arcana2.core.utils import split_extension
 from ..file_format import FileFormat
 from .item import DataItem
@@ -34,9 +31,9 @@ class DataNode():
         A reference to the root of the data tree
     """
 
-    dataset: arcana2.core.data.set.Dataset = attr.ib()
     ids: ty.Dict[DataDimension, str] = attr.ib()
     frequency: DataDimension = attr.ib()
+    dataset: arcana2.core.data.set.Dataset = attr.ib()    
     children: ty.DefaultDict[DataDimension,
                              ty.Dict[str or tuple[str], str]] = attr.ib(
         factory=lambda: defaultdict(dict))
