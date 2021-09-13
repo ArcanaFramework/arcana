@@ -34,7 +34,7 @@
             "type": "python",
             "request": "launch",
             "purpose": ["debug-test"],
-            "console": "integratedTerminal",
+            "console": "internalConsole",
             "justMyCode": true,
             "env": {
                 "_PYTEST_RAISE": "1"

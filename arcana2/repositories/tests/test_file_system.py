@@ -56,7 +56,7 @@ TEST_SETS = [
         [td.bc, td.ad],
         [2, 2, 2, 2],
         ['file1.img', 'file1.hdr', 'file2.hdr'],
-        {td.bcd: r'b\d+c(?P<c>\d+)d\d+'}
+        {td.bc: r'b(?P<b>\d+)c\d+'}
     ),
     # (
     #     'redundant',
@@ -70,7 +70,8 @@ TEST_SETS = [
         [td.abc, td.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         [2, 2],
         ['doubledir', 'file1.x', 'file1.y', 'file1.z'],
-        {td.abcd: r'a(?P<a>\d+)b\d+c\d+(?P<d>\d+)'})]
+        {td.abc: r'a(?P<a>\d+)b\d+c\d+',
+         td.abcd: r'a\d+b\d+c\d+d(?P<d>\d+)'})]
 
 
 @pytest.mark.parametrize('dataset_args', TEST_SETS)
@@ -87,22 +88,19 @@ def _create_dataset(name, hierarchy, dim_lengths, files, id_inference,
     "Creates a dataset from parameters in TEST_SETS"
 
     def create_layer_dirs(layer_path, layer_stack, ids=None):
-        ids = copy(ids) if ids else {}
         "Recursive creation of layer structure"
         if layer_stack:  # non-leaf node
             layer, dim_length = layer_stack[0]
             for i in range(dim_length):
-                ids[str(layer)[-1]] = i + 1
                 dname = ''
+                layer_ids = copy(ids) if ids else {}
                 for c in str(layer):
-                    dname += c
-                    try:
-                        dname += str(ids[c])
-                    except KeyError:
-                        pass
+                    if c not in layer_ids:
+                        layer_ids[c] = i + 1
+                    dname += f'{c}{layer_ids[c]}'
                 dpath = os.path.join(layer_path, dname)
                 os.mkdir(dpath)
-                create_layer_dirs(dpath, layer_stack[1:], ids)
+                create_layer_dirs(dpath, layer_stack[1:], layer_ids)
         else:  # leaf node
             for fname in files:
                 fpath = os.path.join(layer_path, fname)

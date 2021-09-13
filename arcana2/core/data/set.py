@@ -4,6 +4,7 @@ from itertools import combinations
 import logging
 import typing as ty
 from enum import EnumMeta
+from itertools import chain
 import re
 from copy import copy
 import attr
@@ -13,7 +14,7 @@ from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
-    ArcanaBadlyFormattedIDError)
+    ArcanaBadlyFormattedIDError, ArcanaWrongDataDimensionsError)
 from .item import DataItem
 from .enum import DataDimension
 from .spec import DataSink, DataSource
@@ -152,7 +153,7 @@ class Dataset():
                 f"hierarchy provided to {self} cannot be empty")            
         if not_valid := [f for f in hierarchy
                          if not isinstance(f, self.dimensions)]:
-            raise ArcanaUsageError(
+            raise ArcanaWrongDataDimensionsError(
                 "{} are not part of the {} data dimensions"
                 .format(', '.join(not_valid), self.dimensions))
         # Check that all data frequencies are "covered" by the hierarchy and
@@ -247,13 +248,7 @@ class Dataset():
         ArcanaUsageError
             [description]
         """
-        try:
-            self.dimensions[str(frequency)]
-        except KeyError:
-            raise ArcanaUsageError(
-                f"Frequency '{frequency} does not match dimensions of "
-                "dataset ({})".format(
-                    ', '.join(str(f) for f in self.dimensions)))
+        frequency = self._parse_freq(frequency)
         if path is None:
             path = name
         self.sinks[name] = DataSink(path, format, frequency, **kwargs)
@@ -291,6 +286,7 @@ class Dataset():
                 raise ArcanaUsageError(
                     f"Root nodes don't have any IDs ({id})")
             return self.root_node
+        frequency = self._parse_freq(frequency)
         if id_kwargs:
             if id is not None:
                 raise ArcanaUsageError(
@@ -317,12 +313,17 @@ class Dataset():
                     id, f"{id} not present in data tree "
                     f"({list(self.node_ids(frequency))})")
 
-    def nodes(self, frequency):
+    def nodes(self, frequency=None):
+        if frequency is None:
+            return chain(
+                *(d.values() for d in self.root_node.children.values()))
+        frequency = self._parse_freq(frequency)
         if frequency == self.root_freq:
             return [self.root_node]
         return self.root_node.children[frequency].values()
         
     def node_ids(self, frequency):
+        frequency = self._parse_freq(frequency)
         if frequency == self.root_freq:
             return [None]
         return self.root_node.children[frequency].keys()
@@ -390,7 +391,8 @@ class Dataset():
                         f"{layer} label '{label}', does not match ID inference"
                         f" pattern '{regex}'")
                 new_freqs = layer - (layer & frequency)
-                for target_freq, target_id in match.groupdict.items():
+                for target_freq, target_id in match.groupdict().items():
+                    target_freq = self.dimensions[target_freq]
                     if (target_freq & new_freqs) != target_freq:
                         raise ArcanaUsageError(
                             f"Inferred ID target, {target_freq}, is not a "
@@ -429,6 +431,7 @@ class Dataset():
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
+        frequency = self._parse_freq(frequency)
         node = DataNode(ids, frequency, self)
         # Create new data node
         node_dict = self.root_node.children[node.frequency]
@@ -488,6 +491,8 @@ class Dataset():
         """
         if frequency is None:
             frequency = max(self.dimensions)
+        else:
+            frequency = self._parse_freq(frequency)
         if workflow_formats is None:
             workflow_formats = {}
             
@@ -648,6 +653,20 @@ class Dataset():
 
         workflow.set_output(('data_nodes', workflow.store.lzout.data_node))
         return workflow
+
+    def _parse_freq(self, freq):
+        """Parses the data frequency, converting from string if necessary and
+        checks it matches the dimensions of the dataset"""
+        try:
+            if isinstance(freq, str):
+                freq = self.dimensions[freq]
+            elif not isinstance(freq, self.dimensions):
+                raise KeyError
+        except KeyError:
+            raise ArcanaWrongDataDimensionsError(
+                f"{freq} is not a valid dimension for {self} "
+                f"({self.dimensions})")
+        return freq
 
 @attr.s
 class SplitDataset():
