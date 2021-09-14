@@ -5,25 +5,6 @@ from arcana2.exceptions import (
     ArcanaInputMissingMatchError)
 from .enum import DataDimension, DataQuality, DataSalience
 
-# @attr.s
-# class DataSpec():
-#     """
-#     Specifies a data item that is present in all nodes of `frequency` in a
-#     dataset criteria by which an item is selected from a data node
-
-#     Parameters
-#     ----------
-#     path : str
-#         A regex name_path to match the file_group names with. Must match
-#         one and only one file_group per <frequency>. If None, the name
-#         is used instead.
-#     data_format : FileFormat or type
-#         File format that data will be 
-#     frequency : DataDimension
-#         The frequency of the file-group within the dataset tree, e.g. per
-#         'session', 'subject', 'timepoint', 'group', 'dataset'
-#     """
-
 
 @attr.s
 class DataSource():
@@ -69,10 +50,10 @@ class DataSource():
         criteria = [
             (match_path, self.path if not self.is_regex else None),
             (match_path_regex, self.path if self.is_regex else None),
-            (match_data_format, self.data_format),
             (match_quality, self.quality_threshold),
             (match_metadata, self.metadata)]
-        matches = list(node.unresolved)
+        # Get all items that match the data format of the source
+        matches = node.resolved(self.data_format)
         for func, arg in criteria:
             if arg is not None:
                 filtered = [m for m in matches if func(m, arg)]
@@ -94,7 +75,7 @@ class DataSource():
                 "Found multiple matches " + self._error_msg(node, matches))
         else:
             match = matches[0]
-        return match
+        return match.resolve(self.data_format)
 
     def _error_msg(self, node, matches):
         return (
@@ -104,16 +85,7 @@ class DataSource():
 
 def match_path(item, path):
     "at the path {}"
-    return item == path
-
-def match_data_format(item, data_format):
-    "that can be resolved to the requested format '{}'"
-    try:
-        item.resolve(data_format)
-    except ArcanaFileFormatError:
-        return False
-    else:
-        return True
+    return item.path == path
 
 def match_path_regex(item, pattern):
     "with a path that matched the pattern {}"
@@ -155,3 +127,15 @@ class DataSink():
     data_format = attr.ib()
     frequency = attr.ib(type=DataDimension)
     salience = attr.ib(type=DataSalience, default=DataSalience.supplementary)
+
+    def match(self, node):
+        matches = [i for i in node.resolved(self.data_format)
+                   if i.path == self.path]
+        if not matches:
+            raise ArcanaInputMissingMatchError(
+                f"Did not find any items matching path {self.path} of format "
+                f"{self.data_format}")
+        elif len(matches) > 1:
+            raise ArcanaMultipleMatchesInputError(
+                "Found multiple matches " + self._error_msg(node, matches))
+        return matches[0]

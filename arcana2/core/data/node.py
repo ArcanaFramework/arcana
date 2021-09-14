@@ -11,6 +11,7 @@ from arcana2.exceptions import (
 from arcana2.core.utils import split_extension
 from ..file_format import FileFormat
 from .item import DataItem
+from .spec import DataSource
 from .provenance import DataProvenance
 from .enum import DataQuality, DataDimension, DataDimension
 
@@ -37,53 +38,44 @@ class DataNode():
     children: ty.DefaultDict[DataDimension,
                              ty.Dict[str or tuple[str], str]] = attr.ib(
         factory=lambda: defaultdict(dict))
-    parents: ty.DefaultDict[DataDimension] = attr.ib(factory=dict)
     _unresolved = attr.ib(default=None)
     _items = attr.ib(factory=dict, init=False)
 
-    def __getitem__(self, name):
-        """Get's the item that matches the dataset's source
+    def __getitem__(self, column_name):
+        """Get's the item  for the current
+        node if item's frequency matches
 
         Parameters
         ----------
-        name : str
-            Name of the selected item or sink, specified per dataset,
-            that is used to select a file-group or field in the node
+        column_name : str
+            Name of a selected column in the dataset
 
         Returns
         -------
-        DataItem
-            The item matching the provided name, specified by either a
-            source or sink registered with the dataset
+        DataItem or Sequence[DataItem]
+            The item matching the provided name specified by the column name
+            if the column is of matching or ancestor frequency, or list of
+            items if a descendent or unrelated frequency.
         """
         try:
-            item = self._items[name]
+            return self._items[column_name]
         except KeyError:
-            if name in self.dataset.sources:
-                source = self.dataset.sources[name]
-                frequency = source.frequency
-                item = source.match(self)
-            elif name in self.dataset.sinks:
-                spec = self.dataset.sinks[name]
-                frequency = spec.frequency
-                try:
-                    # Check to see if sink was created previously
-                    item = spec.match(self)
-                except KeyError:
-                    # Create new sink
-                    item = spec.create_item(self)
+            spec = self.dataset.column_specs[column_name]
+            if spec.frequency == self.frequency:
+                item = self._items[column_name] = spec.match(self)
+                return item
             else:
-                raise ArcanaNameError(
-                    name,
-                    f"'{name}' is not the name of a \"column\" (either as a "
-                    f"selected input or derived) in the {self.dataset}")
-            if frequency != self.frequency:
-                raise ArcanaWrongFrequencyError(
-                    name,
-                    f"'{name}'' is only present in \"{frequency}\" nodes "
-                    f"column where as {self} is of {self.frequency} frequency")
-            self._items[name] = item
-        return item
+                try:
+                    return self.dataset.node(
+                        spec.frequency, self.ids[spec.frequency])[column_name]
+                except KeyError:
+                    # If frequency is not a ancestor node then return the
+                    # items in the children of the node (if they are child
+                    # nodes) or the whole dataset
+                    try:
+                        return self.children[spec.frequency].values()
+                    except KeyError:
+                        return self.dataset.column(spec.frequency)
 
     @property
     def id(self):
@@ -102,6 +94,23 @@ class DataNode():
         if self._unresolved is None:
             self.dataset.repository.populate_items(self)
         return self._unresolved
+
+    def resolved(self, format):
+        """
+        Items in the node that are able to be resolved to the given format
+
+        Parameters
+        ----------
+        format : FileFormat or type
+            The file format or type to reolve the item to
+        """
+        matches = []
+        for potential in self.unresolved:
+            try:
+                matches.append(potential.resolve(format))
+            except ArcanaFileFormatError:
+                pass
+        return matches
 
     @property
     def ids_tuple(self):

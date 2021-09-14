@@ -1,4 +1,8 @@
+import os
 import os.path
+import operator as op
+from itertools import product
+from functools import reduce
 from copy import copy
 import pytest
 from arcana2.repositories.file_system import FileSystem
@@ -42,84 +46,71 @@ TEST_SETS = [
     ), (
         'one_layer',
         [td.abcd],
-        [2, 2, 2, 2],
+        [1, 1, 1, 5],
         ['file1.nii.gz', 'file1.json', 'file2.nii', 'file2.json'],
         {}
     ), (
-        'skip',
+        'skip_single',
         [td.a, td.bc, td.d],
-        [2, 2, 2, 2],
+        [2, 1, 2, 3],
         ['doubledir1', 'doubledir2'],
         {}
     ), (
         'skip_with_inference',
         [td.bc, td.ad],
-        [2, 2, 2, 2],
+        [2, 3, 2, 4],
         ['file1.img', 'file1.hdr', 'file2.hdr'],
-        {td.bc: r'b(?P<b>\d+)c\d+'}
-    ),
-    # (
-    #     'redundant',
-    #     [td.abc, td.abcd],
-    #     [2, 2, 2, 2],
-    #     ['doubledir', 'file1.x', 'file1.y', 'file1.z'],
-    #     {}
-    # ),
-    (
-        'resolved_redundant',
+        {td.bc: r'b(?P<b>\d+)c\d+',
+         td.ad: r'a(?P<a>\d+)d\d+'}
+    ), (
+        'redundant',
         [td.abc, td.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [2, 2],
+        [3, 4, 5, 6],
         ['doubledir', 'file1.x', 'file1.y', 'file1.z'],
-        {td.abc: r'a(?P<a>\d+)b\d+c\d+',
+        {td.abc: r'a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)',
          td.abcd: r'a\d+b\d+c\d+d(?P<d>\d+)'})]
 
 
 @pytest.mark.parametrize('dataset_args', TEST_SETS)
 def test_construct_tree(dataset_args, work_dir):
     dataset = _create_dataset(*dataset_args, work_dir=work_dir)
-    for i, layer in enumerate(dataset.hierarchy):
-        assert len(dataset.nodes(layer)) == dataset.dim_lengths[i], (
-            f"{layer} doesn't match {len(dataset.nodes(layer))} vs "
-            f"{dataset.dim_lengths[i]}")
+    for freq in TestDimension:
+        # For all non-zero bases in the frequency, multiply the dim lengths
+        # together to get the combined number of nodes expected for that
+        # frequency
+        num_nodes = reduce(
+            op.mul, (l for l, b in zip(dataset.dim_lengths, freq) if b), 1)
+        assert len(dataset.nodes(freq)) == num_nodes, (
+            f"{freq} doesn't match {len(dataset.nodes(freq))} vs {num_nodes}")
 
 
 def _create_dataset(name, hierarchy, dim_lengths, files, id_inference,
                     work_dir):
     "Creates a dataset from parameters in TEST_SETS"
 
-    def create_layer_dirs(layer_path, layer_stack, ids=None):
-        "Recursive creation of layer structure"
-        if layer_stack:  # non-leaf node
-            layer, dim_length = layer_stack[0]
-            for i in range(dim_length):
-                dname = ''
-                layer_ids = copy(ids) if ids else {}
-                for c in str(layer):
-                    if c not in layer_ids:
-                        layer_ids[c] = i + 1
-                    dname += f'{c}{layer_ids[c]}'
-                dpath = os.path.join(layer_path, dname)
-                os.mkdir(dpath)
-                create_layer_dirs(dpath, layer_stack[1:], layer_ids)
-        else:  # leaf node
-            for fname in files:
-                fpath = os.path.join(layer_path, fname)
-                # Make double
-                if fname.startswith('doubledir'):
-                    os.mkdir(fpath)
-                    fname = 'dir'
-                    fpath = os.path.join(fpath, fname)
-                if fname.startswith('dir'):
-                    os.mkdir(fpath)
-                    fname = 'test.txt'
-                    fpath = os.path.join(fpath, fname)
-                with open(fpath, 'w') as f:
-                    f.write(f'test {fname}')
-
     dataset_path = os.path.join(work_dir, name)
-    # Create test directory according to parameters
     os.mkdir(dataset_path)
-    create_layer_dirs(dataset_path, list(zip(hierarchy, dim_lengths)))
+
+    for id_tple in product(*(list(range(d)) for d in dim_lengths)):
+        ids = dict(zip(TestDimension.basis(), id_tple))
+        dpath = dataset_path
+        for layer in hierarchy:
+            dname = ''.join(f'{b}{ids[b]}' for b in layer.nonzero_basis())
+            dpath = os.path.join(dpath, dname)
+        os.makedirs(dpath)
+        for fname in files:
+            fpath = os.path.join(dpath, fname)
+            # Make double
+            if fname.startswith('doubledir'):
+                os.mkdir(fpath)
+                fname = 'dir'
+                fpath = os.path.join(fpath, fname)
+            if fname.startswith('dir'):
+                os.mkdir(fpath)
+                fname = 'test.txt'
+                fpath = os.path.join(fpath, fname)
+            with open(fpath, 'w') as f:
+                f.write(f'test {fname}')
 
     dataset = FileSystem().dataset(dataset_path, hierarchy=hierarchy,
                                    id_inference=id_inference)

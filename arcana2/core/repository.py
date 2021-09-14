@@ -36,7 +36,7 @@ class Repository(metaclass=ABCMeta):
         if self._connection_depth == 0:
             self.disconnect()
 
-    def dataset(self, name, sources=None, sinks=None, hierarchy=None, **kwargs):
+    def dataset(self, name, hierarchy=None, **kwargs):
         """
         Returns a dataset from the XNAT repository
 
@@ -66,8 +66,6 @@ class Repository(metaclass=ABCMeta):
                     f"{type(self)} repositories")
         return dataset.Dataset(name,
                                repository=self,
-                               sources=sources,
-                               sinks=sinks,
                                hierarchy=hierarchy,
                                **kwargs)
 

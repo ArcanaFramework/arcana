@@ -1,11 +1,27 @@
 import os
 from tempfile import mkdtemp
 import shutil
+import logging
 import pytest
 from arcana2.core.data.spec import DataSource, DataSink
 from arcana2.repositories import FileSystem
 from arcana2.dimensions.clinical import Clinical
 from arcana2.file_formats import dicom, niftix_gz
+
+# Set DEBUG logging for unittests
+logger = logging.getLogger('arcana')
+logger.setLevel(logging.DEBUG)
+fch = logging.FileHandler('./test.log')
+fch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fch.setFormatter(formatter)
+logger.addHandler(fch)
+
+sch = logging.StreamHandler()
+sch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+sch.setFormatter(formatter)
+logger.addHandler(sch)
 
 
 TEST_DATA_DIR = os.path.realpath(

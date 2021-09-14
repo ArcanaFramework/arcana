@@ -55,7 +55,11 @@ class DataDimension(Enum):
     def __str__(self):
         return self.name
 
-    def basis(self):
+    @classmethod
+    def basis(cls):
+        return max(cls).nonzero_basis()
+
+    def nonzero_basis(self):
         """Returns the basis dimensions in the data tree that the given
         enum-member projects into.
 
@@ -73,18 +77,23 @@ class DataDimension(Enum):
         """
         # Check which bits are '1', and append them to the list of levels
         cls = type(self)
-        return [cls(b)
-                for b in sorted(self._nonzero_bits(self.value), reverse=True)]
+        return [cls(b) for b in sorted(self.nonzero_bits(), reverse=True)]
 
-    def _nonzero_bits(self, v=None):
-        if v is None:
-            v = self.value
+    def nonzero_bits(self):
+        v = self.value
         nonzero = []
         while v:
             w = v & (v - 1)
             nonzero.append(w ^ v)
             v = w
         return nonzero
+
+    def __iter__(self):
+        "Iterate over bit string"
+        bit = (max(type(self)).value + 1) >> 1
+        while bit > 0:
+            yield bool(self.value & bit)
+            bit >>= 1
 
     def is_basis(self):
         return len(self._nonzero_bits()) == 1
