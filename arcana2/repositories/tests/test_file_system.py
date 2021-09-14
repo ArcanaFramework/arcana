@@ -60,8 +60,8 @@ TEST_SETS = [
         [td.bc, td.ad],
         [2, 3, 2, 4],
         ['file1.img', 'file1.hdr', 'file2.hdr'],
-        {td.bc: r'b(?P<b>\d+)c\d+',
-         td.ad: r'a(?P<a>\d+)d\d+'}
+        {td.bc: r'b(?P<b>\d+)c(?P<c>\d+)',
+         td.ad: r'a(?P<a>\d+)d(?P<d>\d+)'}
     ), (
         'redundant',
         [td.abc, td.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint

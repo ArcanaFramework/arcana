@@ -545,7 +545,7 @@ class Dataset():
             for i, s in inputs.items()}
 
         for inpt_name, source in inputs.items():
-            if inpt_name in self.sources:
+            if inpt_name in self.column_specs:
                 if overwrite:
                     logger.info(
                         f"Overwriting source '{inpt_name}'")
