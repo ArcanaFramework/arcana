@@ -143,7 +143,7 @@ class DataDimension(Enum):
     def default(cls):
         return max(cls)
 
-    def is_parent(self, child):
+    def is_parent(self, child, if_match=False):
         """Checks to see whether the current frequency is a "parent" of the
         other data frequency, i.e. all the base frequency of self appear in
         the "child".
@@ -152,13 +152,15 @@ class DataDimension(Enum):
         ----------
         child : DataDimension
             The data frequency to check parent/child relationship with
+        if_match : bool
+            Treat matching frequencies as "parents" of each other
 
         Returns
         -------
         bool
             True if self is parent of child
         """
-        return (self & child) == self and child != self
+        return ((self & child) == self) and (child != self or if_match)
 
 
 class DataSalience(Enum):

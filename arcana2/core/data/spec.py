@@ -9,7 +9,8 @@ from .enum import DataDimension, DataQuality, DataSalience
 @attr.s
 class DataSource():
     """
-    Specifies the criteria by which an item is selected from a data node
+    Specifies the criteria by which an item is selected from a data node to
+    be a data source.
 
     Parameters
     ----------
@@ -32,8 +33,8 @@ class DataSource():
         changes to the IDs within the session if for example there are
         two scans of the same type taken before and after a task.
     metadata : Dict[str, str]
-        To be used to distinguish multiple file_groups that match the
-        name_path in the same node. The provided dictionary contains
+        To be used to distinguish multiple items that match the
+        the other criteria. The provided dictionary contains
         header values that must match the stored header_vals exactly.   
     is_regex : bool
         Flags whether the name_path is a regular expression or not
@@ -54,6 +55,7 @@ class DataSource():
             (match_metadata, self.metadata)]
         # Get all items that match the data format of the source
         matches = node.resolved(self.data_format)
+        # Apply all filters to find items that match criteria
         for func, arg in criteria:
             if arg is not None:
                 filtered = [m for m in matches if func(m, arg)]
@@ -62,6 +64,7 @@ class DataSource():
                         "Did not find any items " + func.__doc__.format(arg)
                         + self._error_msg(node, matches))
                 matches = filtered
+        # Select a single item from the ones that match the criteria
         if self.order is not None:
             try:
                 match = matches[self.order]
