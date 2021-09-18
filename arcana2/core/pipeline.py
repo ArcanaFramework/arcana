@@ -12,6 +12,7 @@ from arcana2.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.item import DataItem
 from .data.spec import DataSink, DataSource
 from .data.set import Dataset
+from .data.format import FileFormat
 from .data.enum import DataDimension
 from .data.spec import DataSource, DataSink
 
@@ -31,10 +32,10 @@ class Pipeline():
 
     workflow: Workflow = attr.ib()
     dataset: Dataset = attr.ib()
-    input_names: list[str] = attr.ib()
-    output_names: list[str] = attr.ib()
-    lzin: SimpleNamespace = attr.ib(default=SimpleNamespace)
     frequency: DataDimension = attr.ib()
+    inputs: list[tuple[str], FileFormat] = attr.ib(factory=list)
+    outputs: list[tuple[str], FileFormat] = attr.ib(factory=list)
+    lzin: SimpleNamespace = attr.ib(default=SimpleNamespace)
 
     def __getattr__(self, varname):
         """Delegate any missing attributes to wrapped workflow"""
@@ -53,7 +54,7 @@ class Pipeline():
             setattr(self.outputs.inputs, name, conn)
 
     @classmethod
-    def factory(cls, name, dataset, input_names, output_names, frequency=None,
+    def factory(cls, name, dataset, inputs, outputs, frequency=None,
                 overwrite=False):
         """Generate a new pipeline connected with its inputs and outputs
         connected to sources/sinks in the dataset
@@ -64,12 +65,12 @@ class Pipeline():
             Name of the pipeline
         dataset : Dataset
             The dataset to connect the pipeline to
-        input_names : Sequence[str or tuple[str, FileFormat]]
+        inputs : Sequence[str or tuple[str, FileFormat]]
             List of column names (i.e. either data sources or sinks) to be
             connected to the inputs of the pipeline. If the pipelines requires
             the input to be in a format to the source, then it can be specified
             in a tuple (NAME, FORMAT)
-        output_names : Sequence[str or tuple[str, FileFormat]]
+        outputs : Sequence[str or tuple[str, FileFormat]]
             List of sink names to be connected to the outputs of the pipeline
             If teh the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)
@@ -97,61 +98,71 @@ class Pipeline():
         else:
             frequency = dataset._parse_freq(frequency)
 
-        input_names = list(input_names)
-        output_names = list(output_names)
+        inputs = list(inputs)
+        outputs = list(outputs)
 
-        # Strip required formats
-        input_formats = dict(i for i in input_names if not isinstance(i, str))
-        input_names = [i if isinstance(i, str) else i[0] for i in input_names]
+        # Separate required formats and input names
+        input_formats = dict(i for i in inputs if not isinstance(i, str))
+        input_names = [i if isinstance(i, str) else i[0] for i in inputs]
 
-        # Strip produced formats
-        output_formats = dict(o for o in output_names if not isinstance(o, str))
-        output_names = [o if isinstance(o, str) else o[0] for o in output_names]
+        # Separate produced formats and output names
+        output_formats = dict(o for o in outputs if not isinstance(o, str))
+        output_names = [o if isinstance(o, str) else o[0] for o in outputs]
 
         # Create the outer workflow to link the analysis workflow with the
         # data node iteration and repository connection nodes
         wf = Workflow(name=name, input_spec=['ids'])
 
-        pipeline = Pipeline(wf, dataset, input_names, output_names, frequency)
+        pipeline = Pipeline(wf, dataset, frequency=frequency)
 
         # Add sinks for the output of the workflow
         sources = {}
-        for input in input_names:
+        for input_name in input_names:
             try:
-                source = dataset.column_specs[input]
+                source = dataset.column_specs[input_name]
             except KeyError:
                 raise ArcanaNameError(
-                    input,
-                    f"{input} is not the name of a source in {dataset}")
-            sources[input] = source
+                    input_name,
+                    f"{input_name} is not the name of a source in {dataset}")
+            sources[input_name] = source
+            try:
+                required_format = input_formats[input_name]
+            except KeyError:
+                required_format = source.data_format
+            pipeline.inputs.append((input_name, required_format))
 
         # Add sinks for the output of the workflow
         sinks = {}
-        for output in output_names:
+        for output_name in output_names:
             try:
-                sink = dataset.column_specs[output]
+                sink = dataset.column_specs[output_name]
             except KeyError:
                 raise ArcanaNameError(
-                    output,
-                    f"{output} is not the name of a sink in {dataset}")
+                    output_name,
+                    f"{output_name} is not the name of a sink in {dataset}")
             if sink.pipeline is not None:
                 if overwrite:
                     logger.info(
-                        f"Overwriting pipeline of sink '{output}' "
+                        f"Overwriting pipeline of sink '{output_name}' "
                         f"{sink.pipeline} with {pipeline}")
                 else:
                     raise ArcanaUsageError(
-                        f"Attempting to overwrite pipeline of '{output}' sink "
-                        f"({sink.pipeline}) . Use 'overwrite' option if this "
-                        "is desired")
+                        f"Attempting to overwrite pipeline of '{output_name}' "
+                        f"sink ({sink.pipeline}) . Use 'overwrite' option if "
+                        "this is desired")
             sink.pipeline = pipeline
-            sinks[output] = sink
+            sinks[output_name] = sink
+            try:
+                produced_format = output_formats[output_name]
+            except KeyError:
+                produced_format = sink.data_format
+            pipeline.outputs.append((output_name, produced_format))
 
         # Generate list of nodes to process checking existing outputs
         wf.add(to_process(
             dataset=dataset,
             frequency=frequency,
-            outputs=output_names,
+            outputs=outputs,
             requested_ids=wf.lzin.ids,
             name='to_process'))
 
@@ -174,16 +185,16 @@ class Pipeline():
             {'dataset': Dataset,
              'frequency': DataDimension,
              'id': str,
-             'input_names': ty.Sequence[str],
+             'inputs': ty.Sequence[str],
              'return': source_output_spec})
-        def source(dataset, frequency, id, input_names):
+        def source(dataset, frequency, id, inputs):
             """Selects the items from the dataset corresponding to the input 
             sources and retrieves them from the repository to a cache on 
             the host"""
             outputs = []
             data_node = dataset.node(frequency, id)
             with dataset.repository:
-                for inpt_name in input_names:
+                for inpt_name in inputs:
                     item = data_node[inpt_name]
                     item.get()  # download to host if required
                     outputs.append(item)
@@ -195,53 +206,44 @@ class Pipeline():
 
         # Set the inputs
         for input_name in input_names:
-            setattr(pipeline.inputs, input_name,
+            setattr(pipeline.lzin, input_name,
                     getattr(wf.per_node.source.lzout, input_name))
 
         # Do input format conversions if required
-        for input_name in input_names:
+        for input_name, required_format in pipeline.inputs:
             stored_format = dataset.column_specs[input_name].data_format
-            try:
-                required_format = input_formats[input_name]
-            except KeyError:
-                required_format = stored_format
             if required_format != stored_format:
                 cname = f"{input_name}_input_converter"
                 converter_task = required_format.converter(stored_format)(
                     name=cname,
-                    to_convert=getattr(pipeline.inputs, input_name))
+                    to_convert=getattr(pipeline.lzin, input_name))
                 if source_output_spec[input_name] == ty.Sequence[DataItem]:
                     # Iterate over all items in the sequence and convert them
                     converter_task.split('to_convert')
                 # Insert converter
                 wf.per_node.add(converter_task)
                 # Map converter output to workflow output
-                setattr(pipeline.inputs, input_name,
+                setattr(pipeline.lzin, input_name,
                         getattr(wf.per_node, cname).lzout.converted)
 
         # Create identity node to accept connections from user-
-        output_fields = [(o, ty.Any) for o in output_names]
         wf.per_node(
             FunctionTask(
                 identity,
                 input_spec=SpecInfo(
                     name=f'{name}Inputs', bases=(BaseSpec,),
-                    fields=output_fields),
+                    fields=[(o, ty.Any) for o in output_names]),
                 output_spec=SpecInfo(
                     name=f'{name}Outputs', bases=(BaseSpec,),
-                    fields=output_fields),
+                    fields=[(o, ty.Any) for o in output_names]),
                 name='outputs'))
 
         # Set format converters where required
         to_sink = {o: getattr(wf.per_node.outputs, o) for o in output_names}
 
         # Do output format conversions if required
-        for output_name in output_names:
+        for output_name, produced_format in pipeline.outputs:
             stored_format = dataset.column_specs[output_name].data_format
-            try:
-                produced_format = output_formats[output_name]
-            except KeyError:
-                produced_format = stored_format
             if produced_format != stored_format:
                 cname = f"{output_name}_output_converter"
                 # Insert converter

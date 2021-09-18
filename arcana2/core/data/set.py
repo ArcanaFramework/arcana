@@ -198,7 +198,7 @@ class Dataset():
             self.repository.construct_tree(self)
         return self._root_node
 
-    def add_source(self, name, path, frequency, format, overwrite=False,
+    def add_source(self, name, path, format, frequency=None, overwrite=False,
                    **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -224,7 +224,7 @@ class Dataset():
         self._add_spec(name, DataSource(path, format, frequency, **kwargs),
                        overwrite)
 
-    def add_sink(self, name, path, frequency, format, overwrite=False,
+    def add_sink(self, name, path, format, frequency=None, overwrite=False,
                  **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -534,8 +534,7 @@ class Dataset():
                 children_dict[diff_id] = node
         return node
 
-    def new_pipeline(self, name, inputs=None, outputs=None, frequency=None,
-                     **kwargs):
+    def new_pipeline(self, name, inputs, outputs, frequency=None, **kwargs):
         """Generate a Pydra task that sources the specified inputs from the
         dataset
 
@@ -545,24 +544,25 @@ class Dataset():
             A name for the workflow (must be globally unique)
         workflow : pydra.Workflow
             The Pydra workflow to add to the repository
-        inputs : Dict[str, str]
-            A dictionary that maps the workflow inputs (keys) to a column spec
-            in the dataset (can be either a source or a sink)
-        formats : Dict[str, FileFormat]
-            The required and produced data formats for the inputs and outputs
-            of the workflow, respectively. Inputs in the same format as they
-            are stored in the repository can be omitted.
-        frequency : DataDimension or None
-            The frequency of the nodes to draw the inputs from. Defaults to the
-            the lowest level of the tree (i.e. max(self.dimensions))
-        outputs : Dict[str, DataSink]
-            Explicitly set outputs of the workflow to a specific path in the
-            dataset. Otherwise they will be stored at WORKFLOW_NAME/OUTPUT_NAME
-        overwrite : bool
-            Whether to overwrite existing sinks in the dataset
+        inputs : Sequence[str or tuple[str, FileFormat]]
+            List of column names (i.e. either data sources or sinks) to be
+            connected to the inputs of the pipeline. If the pipelines requires
+            the input to be in a format to the source, then it can be specified
+            in a tuple (NAME, FORMAT)
+        outputs : Sequence[str or tuple[str, FileFormat]]
+            List of sink names to be connected to the outputs of the pipeline
+            If teh the input to be in a specific format, then it can be provided in
+            a tuple (NAME, FORMAT)
+        frequency : DataDimension, optional
+            The frequency of the pipeline, i.e. the frequency of the
+            derivatvies within the dataset, e.g. per-session, per-subject, etc,
+            by default None
+        **kwargs : Dict[str, Any]
+            Keyword arguments passed to Pipeline.factory()
         """
         frequency = self._parse_freq(frequency)
-        return Pipeline.factory()
+        return Pipeline.factory(name=name, inputs=inputs, outputs=outputs,
+                                frequency=frequency, **kwargs)
         
 
     def derive(self, *names, ids=None):

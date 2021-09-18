@@ -52,8 +52,8 @@ class BaseRunCmd(BaseDatasetCmd):
     def run(cls, args):
 
         dataset = cls.get_dataset(args)
-        inputs = cls.add_inputs_to_dataset(args, dataset)
-        outputs = cls.add_outputs_to_dataset(args, dataset)
+        inputs = cls.add_input_sources(args, dataset)
+        outputs = cls.add_output_sinks(args, dataset)
         frequency = cls.parse_frequency(args)
 
         pipeline = dataset.new_pipeline(
@@ -68,7 +68,7 @@ class BaseRunCmd(BaseDatasetCmd):
             dataset.derive(*outputs, id=args.ids)
 
     @classmethod
-    def add_inputs_to_dataset(cls, dataset, args):
+    def add_input_sources(cls, dataset, args):
         """Parses input arguments into dictionary of DataSources
 
         Parameters
@@ -78,9 +78,8 @@ class BaseRunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        Dict[str, DataSource]
-            A dictionary of the specified inputs with the data-sources to 
-            chose the relevant files/fields from the dataset
+        list[tuple[str, FileFormat]]
+            A sequence of input names and their required formats
 
         Raises
         ------
@@ -93,43 +92,45 @@ class BaseRunCmd(BaseDatasetCmd):
         ArcanaUsageError
             If a file_format is not provided
         """
-        frequency = cls.parse_frequency(args)
-        dimensions = type(frequency)
         # Create file-group matchers
         inputs = []
-        defaults = (None, None, None, None, None, None, 'session')
         for i, inpt in enumerate(args.input):
             nargs = len(inpt)
-            if nargs > 7:
+            if nargs > 8:
                 raise ArcanaUsageError(
                     f"Input {i} has too many input args, {nargs} instead "
-                    f"of max 7 ({inpt})")
-            (var, pattern, file_format, order, quality, metadata, freq) = [
-                a if a != '*' else d
-                for a, d in zip_longest(inpt, defaults, fillvalue='*')]
+                    f"of max 8 ({inpt})")
+            (var, pattern, data_format_name, required_format_name, order,
+             quality, metadata, freq) = [
+                a if a != '*' else None for a in inpt]
             if not var:
                 raise ArcanaUsageError(
                     f"{cls.VAR_ARG} must be provided for input {i} ({inpt})")
             if not pattern:
                 raise ArcanaUsageError(
                     f"Path must be provided for input {i} ({inpt})")
-            if not file_format:
+            if not data_format_name:
                 raise ArcanaUsageError(
                     f"Datatype must be provided for input {i} ({inpt})")
+            data_format = resolve_data_format(data_format_name)
+            if required_format_name is not None:
+                required_format = resolve_data_format(required_format_name)
+            else:
+                required_format = data_format
             dataset.add_source(
                 name=var,
                 path=pattern,
-                format=resolve_data_format(file_format),
-                frequency=dimensions[freq],
+                format=data_format,
+                frequency=freq,
                 order=order,
                 metadata=metadata,
                 is_regex=True,
                 quality_threshold=quality)
-            inputs.append(var)
+            inputs.append((var, required_format))
         return inputs
 
     @classmethod
-    def add_outputs_to_dataset(cls, args, dataset):
+    def add_output_sinks(cls, args, dataset):
         """Parses output arguments into dictionary of DataSinks
 
         Parameters
@@ -139,45 +140,24 @@ class BaseRunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        Dict[str, DataSource]
-            A dictionary of the specified outputs with the data-specs that
-            specify where outputs are stored in the dataset
+        list[tuple[str, FileFormat]]
+            A sequence of input names and the formats they are produced in
         """
         frequency = cls.parse_frequency(args)
         # Create outputs
-        outputs = {}
+        outputs = []
         for output in args.output:
-            var, store_at, data_format = output
+            var, store_at, data_format_name = output[:3]
+            data_format = resolve_data_format(data_format_name)
+            produced_format = (resolve_data_format(output[3])
+                               if len(output) == 4 else data_format)
             dataset.add_sink(
                 name=var,
                 path=store_at,
-                data_format=resolve_data_format(data_format),
+                data_format=data_format,
                 frequency=frequency)
+            outputs.append((var, produced_format))
         return outputs
-
-    @classmethod
-    def parse_workflow_formats(cls, args):
-        formats = {}
-        for name, frmt in args.workflow_format:
-            formats[name] = resolve_data_format(frmt)
-        return formats
-
-        # # Create field outputs
-        # defaults = (str, 'session')
-        # for i, inpt in enumerate(args.field_input):
-        #     nargs = len(output)
-        #     if nargs < 2:
-        #         raise ArcanaUsageError(
-        #             f"Field Input {i} requires at least 2 args, "
-        #             f"found {nargs} ({inpt})")
-        #     if nargs > 4:
-        #         raise ArcanaUsageError(
-        #             f"Field Input {i} has too many input args, {nargs} "
-        #             f"instead of max 4 ({inpt})")
-        #     path, name, data_format, freq = inpt + defaults[nargs - 2:]
-        #     output_names[name] = path
-        #     outputs[name] = FieldSpec(data_format=data_format,
-        #                               frequency=dimensions[freq])
 
 
     INPUT_HELP = """
@@ -234,6 +214,9 @@ class BaseRunCmd(BaseDatasetCmd):
 
         FORMAT is the name of the file-format the file will be stored at in
         the dataset.
+
+        PRODUCED_FORMAT is the name of the file-format that the file be produced
+        by the workflow in
         """
 
 
@@ -266,15 +249,19 @@ class RunAppCmd(BaseRunCmd):
         
         task_cls = resolve_class(args.app, prefixes=['pydra.tasks'])
 
-        app_args = cls.parse_app_args(args, task_cls)
-        app_args.update({i: getattr(pipeline.lzin, i) for i in inputs})
+        # Add the app task
+        pipeline.add(task_cls(name='app',
+                              **cls.parse_app_args(args, task_cls)))
 
-        workflow.add(task_cls(name='app', **app_args))
+        # Connect inputs
+        for input in pipeline.inputs:
+            setattr(pipeline.app, input, getattr(pipeline.lzin, input))
 
-        for output in outputs:
-            workflow.set_output((output, getattr(workflow.app.lzout, output)))
+        # Connect outputs
+        for output in pipeline.outputs:
+            pipeline.set_output((output, getattr(pipeline.app.lzout, output)))
 
-        return workflow
+        return pipeline
 
     @classmethod
     def parse_app_args(cls, args, task_cls):
@@ -351,8 +338,8 @@ class RunBidsAppCmd(BaseRunCmd):
             help=("The entrypoint of the BIDS app"))
         parser.add_argument(
             '--analysis_level', default='participant',
-            help=("The level at which the analysis is performed. One of (per) "
-                  "dataset, group, subject, timepoint or session"))
+            help=("The level at which the analysis is performed. Either "
+                  "'participant' or 'group'"))
         parser.add_argument(
             '--flags', '-f', default='',
             help=("Arbitrary flags to pass onto the BIDS app (enclose in "
@@ -360,23 +347,29 @@ class RunBidsAppCmd(BaseRunCmd):
         super().construct_parser(parser)
 
     @classmethod
-    def add_app_task(cls, workflow, args, inputs, outputs):
+    def construct_pipeline(cls, args, pipeline):
 
-        workflow.add(construct_bids(name='construct_bids',
-                                    inputs=workflow.lzin.inputs))
+        pipeline.add(
+            construct_bids(
+                name='construct_bids',
+                inputs=pipeline.lzin))
 
-        workflow.add(bids_app(name='app',
-                              app_name=args.app,
-                              bids_dir=workflow.construct_bids.lzout.bids_dir,
-                              analysis_level=args.analysis_level,
-                              ids=args.ids,
-                              flags=args.flags))
+        pipeline.add(
+            bids_app(
+                name='app',
+                app_name=args.app,
+                bids_dir=pipeline.construct_bids.lzout.bids_dir,
+                analysis_level=args.analysis_level,
+                ids=args.ids,
+                flags=args.flags))
 
-        workflow.add(extract_bids(name='extract_bids',
-                                  bids_dir=workflow.app.lzout.bids_dir,
-                                  outputs=workflow.lzin.outputs))
+        pipeline.add(
+            extract_bids(
+                name='extract_bids',
+                bids_dir=pipeline.app.lzout.bids_dir,
+                outputs=pipeline.lzin))
 
-        workflow.sink.outputs = workflow.extract_bids.lzout.outputs
+        pipeline.set_output()
 
     @classmethod
     def app_name(cls, args):
@@ -389,6 +382,11 @@ class RunBidsAppCmd(BaseRunCmd):
     @classmethod
     def workflow_name(cls, args):
         return args.container.replace('/', '_')
+
+    @classmethod
+    def parse_frequency(cls, args):
+        return 'session' if args.analysis_level == 'participant' else 'group'
+
 
     VAR_ARG = 'BIDS_PATH'
 
