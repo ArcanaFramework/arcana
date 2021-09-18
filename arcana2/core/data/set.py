@@ -1,9 +1,6 @@
 from __future__ import annotations
-from operator import itemgetter, __or__
-from itertools import combinations
 import logging
 import typing as ty
-from enum import EnumMeta
 from itertools import chain
 import re
 from copy import copy
@@ -14,11 +11,13 @@ from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
-    ArcanaBadlyFormattedIDError, ArcanaWrongDataDimensionsError)
+    ArcanaBadlyFormattedIDError, ArcanaWrongDataDimensionsError,
+    ArcanaError)
 from .item import DataItem
 from .enum import DataDimension
 from .spec import DataSink, DataSource
 from .. import repository
+from ..pipeline import Pipeline
 from .node import DataNode
 
 
@@ -199,7 +198,34 @@ class Dataset():
             self.repository.construct_tree(self)
         return self._root_node
 
-    def add_source(self, name, frequency, format, path, **kwargs):
+    def add_source(self, name, path, frequency, format, overwrite=False,
+                   **kwargs):
+        """Specify a data source in the dataset, which can then be referenced
+        when connecting workflow inputs.
+
+        Parameters
+        ----------
+        name : str
+            The name used to reference the dataset "column" for the
+            source
+        path : str, default `name`
+            The location of the source within the dataset
+        frequency : [type]
+            The frequency of the source within the dataset
+        format : FileFormat or type
+            The file-format (for file-groups) or datatype (for fields)
+            that the source will be stored in within the dataset
+        overwrite : bool
+            Whether to overwrite existing columns
+        **kwargs : dict[str, Any]
+            Additional kwargs to pass to DataSource.__init__
+        """
+        frequency = self._parse_freq(frequency)
+        self._add_spec(name, DataSource(path, format, frequency, **kwargs),
+                       overwrite)
+
+    def add_sink(self, name, path, frequency, format, overwrite=False,
+                 **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
 
@@ -208,38 +234,31 @@ class Dataset():
         name : str
             The name used to reference the dataset "column" for the
             sink
+        path : str, default `name`
+            The location of the sink within the dataset
         frequency : [type]
             The frequency of the sink within the dataset
         format : FileFormat or type
             The file-format (for file-groups) or datatype (for fields)
             that the sink will be stored in within the dataset
-        path : str, default `name`
-            The location of the sink within the dataset
         """
         frequency = self._parse_freq(frequency)
-        self.column_spec[name] = DataSource(path, format, frequency, **kwargs)    
+        self._add_spec(name, DataSink(path, format, frequency, **kwargs),
+                       overwrite)
 
-    def add_sink(self, name, frequency, format, path=None, **kwargs):
-        """Add a data sink to the dataset, which can then be referenced when
-        connecting workflow outputs.
-
-        Parameters
-        ----------
-        name : str
-            The name used to reference the dataset "column" for the
-            sink
-        frequency : [type]
-            The frequency of the sink within the dataset
-        format : FileFormat or type
-            The file-format (for file-groups) or datatype (for fields)
-            that the sink will be stored in within the dataset
-        path : str, default `name`
-            The location of the sink within the dataset
-        """
-        frequency = self._parse_freq(frequency)
-        if path is None:
-            path = name
-        self.column_spec[name] = DataSink(path, format, frequency, **kwargs)
+    def _add_spec(self, name, spec, overwrite):
+        if name in self.column_specs:
+            if overwrite:
+                logger.info(
+                    f"Overwriting {self.column_specs[name]} with {spec} in "
+                    f"{self}")
+            else:
+                raise ArcanaNameError(
+                    name,
+                    f"Name clash attempting to add {spec} to {self} "
+                    f"with {self.column_specs[name]}. Use 'overwrite' option "
+                    "if this is desired")
+        self.column_specs[name] = spec
 
     def node(self, frequency=None, id=None, **id_kwargs):
         """Returns the node associated with the given frequency and ids dict
@@ -301,7 +320,7 @@ class Dataset():
                     id, f"{id} not present in data tree "
                     f"({list(self.node_ids(frequency))})")
 
-    def nodes(self, frequency=None):
+    def nodes(self, frequency=None, ids=None):
         """Return all the IDs in the dataset for a given frequency
 
         Parameters
@@ -309,6 +328,8 @@ class Dataset():
         frequency : DataDimension or None
             The "frequency" of the nodes, e.g. per-session, per-subject. If
             None then all nodes are returned
+        ids : Sequence[str or Tuple[str]]
+            The i
 
         Returns
         -------
@@ -321,7 +342,10 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if frequency == self.root_freq:
             return [self.root_node]
-        return self.root_node.children[frequency].values()
+        nodes = self.root_node.children[frequency].values()
+        if ids is not None:
+            nodes = (n for n in nodes if n in set(ids))
+        return nodes
         
     def node_ids(self, frequency):
         """Return all the IDs in the dataset for a given frequency
@@ -357,7 +381,7 @@ class Dataset():
         spec = self.column_specs[name]
         return (n[name] for n in self.nodes(spec.frequency))
 
-    def columns(self):
+    def columns(self, *names):
         """Iterate over all columns in the dataset
 
         Returns
@@ -365,7 +389,9 @@ class Dataset():
         Sequence[List[DataItem]]
             All columns in the dataset
         """
-        return (list(self.column(n)) for n in self.column_specs)
+        if not names:
+            names = self.column_specs
+        return (list(self.column(n)) for n in names)
 
     def add_leaf_node(self, tree_path):
         """Creates a new node at a the path down the tree of the dataset as
@@ -508,8 +534,8 @@ class Dataset():
                 children_dict[diff_id] = node
         return node
 
-    def add_workflow(self, name, workflow, inputs, formats,
-                     frequency=None, overwrite=False):
+    def new_pipeline(self, name, inputs=None, outputs=None, frequency=None,
+                     **kwargs):
         """Generate a Pydra task that sources the specified inputs from the
         dataset
 
@@ -522,178 +548,42 @@ class Dataset():
         inputs : Dict[str, str]
             A dictionary that maps the workflow inputs (keys) to a column spec
             in the dataset (can be either a source or a sink)
+        formats : Dict[str, FileFormat]
+            The required and produced data formats for the inputs and outputs
+            of the workflow, respectively. Inputs in the same format as they
+            are stored in the repository can be omitted.
         frequency : DataDimension or None
             The frequency of the nodes to draw the inputs from. Defaults to the
             the lowest level of the tree (i.e. max(self.dimensions))
-        formats : Dict[str, FileFormat or Tuple(FileFormat, FileFormat)]
-            The required and produced data formats for the inputs and outputs
-            of the workflow, respectively. Inputs in the same format as they
-            are stored in the repository can be omitted. Outputs that are
-            produced in a different format to what they should be stored in
-            can be specified by a 2-tuple (PRODUCED, STORED).
+        outputs : Dict[str, DataSink]
+            Explicitly set outputs of the workflow to a specific path in the
+            dataset. Otherwise they will be stored at WORKFLOW_NAME/OUTPUT_NAME
         overwrite : bool
             Whether to overwrite existing sinks in the dataset
         """
-        if frequency is None:
-            frequency = max(self.dimensions)
-        else:
-            frequency = self._parse_freq(frequency)
-        # Copy the formats dictionary so it can be modified
-        formats = copy(formats) if formats is not None else {}
-            
-        self.workflows[name] = split_workflow = Workflow(
-            name=name, input_spec=['id']).split('id')
-
+        frequency = self._parse_freq(frequency)
+        return Pipeline.factory()
         
 
-        sink_spec = {o: DataItem for o in workflow.outputs}
+    def derive(self, *names, ids=None):
+        """Generate derivatives from the workflows
 
-        for sink_name in workflow.outputs:
-            if sink_name in self.column_specs:
-                if overwrite:
-                    logger.info(
-                        f"Overwriting sink '{sink_name}' with workflow "
-                        f"'{name}'")
-                else:
-                    raise ArcanaUsageError(
-                        f"Attempting to overwriting '{sink_name}' sink "
-                        f"with workflow '{name}'. Use 'overwrite' option "
-                        "if this is desired")
-            stored_format = formats[sink_name]
-            if isinstance(stored_format, tuple):
-                stored_format, _ = stored_format
-            self.column_specs[sink_name] = DataSource(
-                path=f'{name}/{sink_name}',
-                data_format=stored_format,
-                frequency=frequency)
+        Parameters
+        ----------
+        *names : Sequence[str]
+            Names of the columns corresponding to the items to derive
+        ids : Sequence[str]
+            The IDs of the data nodes in each column to derive
 
-        @mark.task
-        @mark.annotate(
-            {'dataset': Dataset,
-             'frequency': DataDimension,
-             'id': str,
-             'input_names': ty.Sequence[str],
-             'return': {
-                s: (DataItem
-                    if self.column_spec[s].frequency.is_parent(frequency,
-                                                               if_match=True)
-                    else ty.Sequence[DataItem])
-                for s in set(inputs.values())}})
-        def source(dataset, frequency, id, input_names):
-            """Selects the items from the dataset corresponding to the input 
-            sources and retrieves them from the repository to a cache on 
-            the host"""
-            outputs = []
-            data_node = dataset.node(frequency, id)
-            with dataset.repository:
-                for inpt_name in input_names:
-                    item = data_node[inpt_name]
-                    item.get()  # download to host if required
-                    outputs.append(item)
-            return tuple(outputs)
-
-        workflow.add(source(
-            name='source', dataset=self, frequency=frequency,
-            inputs=list(inputs.values()), id=workflow.lzin.id))
-
-        sourced = {i: getattr(workflow.source.lzout, s)
-                   for i, s in inputs.items()}
-
-        # Do format conversions if required
-        for workflow_input, source_name in inputs.items():
-            inpt_format = self.column_specs[source_name].data_format
-            try:
-                required_format = formats[workflow_input]
-            except KeyError:
-                required_format = inpt_format
-            if required_format != inpt_format:
-                cname = f"{workflow_input}_input_converter"
-                converter_task = required_format.converter(inpt_format)(
-                    name=cname, to_convert=sourced[workflow_input])
-                if inputs_spec[inpt_name] == ty.Sequence[DataItem]:
-                    # Iterate over all items in the sequence and convert them
-                    converter_task.split('to_convert')
-                # Insert converter
-                workflow.add(converter_task)
-                # Map converter output to workflow output
-                retrieved[inpt_name] = getattr(workflow, cname).lzout.converted
-
-        # Can't use a decorated function as we need to allow for dynamic
-        # arguments
-
-        workflow.add(
-            FunctionTask(
-                name='source',
-                func=identity,
-                input_spec=SpecInfo(
-                    name='SourceInputs', bases=(BaseSpec,),
-                    fields=list(inputs_spec.items())),
-                output_spec=SpecInfo(
-                    name='SourceOutputs', bases=(BaseSpec,),
-                    fields=list(inputs_spec.items())),
-                **retrieved))
-
-        # Can't use a decorated function as we need to allow for dynamic
-        # arguments 
-        workflow.add(FunctionTask(
-            name='sink',
-            func=identity,
-            input_spec=SpecInfo(
-                name='SinkInputs', bases=(BaseSpec,),
-                fields=list(outputs_spec.items())),
-            output_spec=SpecInfo(
-                name='SinkOutputs', bases=(BaseSpec,),
-                fields=list(outputs_spec.items()))))
-
-        sinked = {o: getattr(workflow.sink.lzout, o) for o in outputs}
-
-        # Do format conversions if required
-        for outpt_name, output in outputs.items():
-            outpt_format = output.data_format
-            try:
-                produced_format = workflow_formats[outpt_format]
-            except KeyError:
-                produced_format = outpt_format
-            if produced_format != outpt_format:
-                cname = f"{outpt_name}_input_converter"
-                # Insert converter
-                workflow.add(outpt_format.converter(produced_format)(
-                    name=cname, to_convert=sinked[outpt_name]))
-                # Map converter output to workflow output
-                sinked[outpt_name] = getattr(workflow, cname).lzout.converted        
-
-        def store(dataset, frequency, id, **to_sink):
-            data_node = dataset.node(frequency, id)
-            with dataset.repository:
-                for outpt_name, outpt_value in to_sink.items():
-                    node_item = data_node[outpt_name]
-                    node_item.value = outpt_value
-                    node_item.put() # Store value/path in repository
-            return data_node
-
-        # Can't use a decorated function as we need to allow for dynamic
-        # arguments
-        workflow.add(
-            FunctionTask(
-                store,
-                input_spec=SpecInfo(
-                    name='SinkInputs', bases=(BaseSpec,), fields=(
-                        [('data_node', DataNode),
-                         ('frequency', DataDimension),
-                         ('id', str),
-                         ('outputs', ty.Dict[str, DataSink])]
-                        + list(outputs_spec.items()))),
-                output_spec=SpecInfo(
-                    name='SinkOutputs', bases=(BaseSpec,), fields=[
-                        ('data_node', DataNode)]),
-                name='store',
-                dataset=self,
-                frequency=frequency,
-                id=workflow.lzin.id,
-                **sinked))
-
-        workflow.set_output(('data_nodes', workflow.store.lzout.data_node))
-        return workflow
+        Returns
+        -------
+        Sequence[List[DataItem]]
+            The derived columns
+        """
+        # TODO: Should construct full stack of required workflows
+        for workflow in set(self.column_spec[n].workflow for n in names):
+            workflow(ids=ids)
+        return self.columns(*names)
 
     def _parse_freq(self, freq):
         """Parses the data frequency, converting from string if necessary and
@@ -709,6 +599,11 @@ class Dataset():
                 f"({self.dimensions})")
         return freq
 
+    @classmethod
+    def _sink_path(cls, workflow_name, sink_name):
+        return f'{workflow_name}/{sink_name}'
+
+
 @attr.s
 class SplitDataset():
     """A dataset created by combining multiple datasets into a conglomerate
@@ -719,9 +614,3 @@ class SplitDataset():
 
     source_dataset: Dataset = attr.ib()
     sink_dataset: Dataset = attr.ib()
-
-
-
-def identity(**kwargs):
-    "Returns the keyword arguments as a tuple"
-    return tuple(kwargs.values())

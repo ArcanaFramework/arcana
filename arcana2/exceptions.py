@@ -13,6 +13,9 @@ class ArcanaError(ArcanaException):
     pass
 
 
+class ArcanaRuntimeError(ArcanaError):
+    pass
+
 class ArcanaNotBoundToAnalysisError(ArcanaError):
     pass
 

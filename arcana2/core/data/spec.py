@@ -1,5 +1,6 @@
 import re
 import attr
+from pydra import Workflow
 from arcana2.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError)
@@ -124,12 +125,16 @@ class DataSink():
         The salience of the specified file-group, i.e. whether it would be
         typically of interest for publication outputs or whether it is just
         a temporary file in a workflow, and stages in between
+    workflow : str
+        The nane of the workflow applied to the dataset to generates the data
+        for the sink
     """
 
-    path = attr.ib(type=str)
+    path: str = attr.ib()
     data_format = attr.ib()
-    frequency = attr.ib(type=DataDimension)
-    salience = attr.ib(type=DataSalience, default=DataSalience.supplementary)
+    frequency: DataDimension = attr.ib()
+    workflow: str = attr.ib(default=None)
+    salience: DataSalience = attr.ib(default=DataSalience.supplementary)
 
     def match(self, node):
         matches = [i for i in node.resolved(self.data_format)

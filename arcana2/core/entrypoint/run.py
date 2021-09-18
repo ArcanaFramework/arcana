@@ -1,6 +1,7 @@
 from itertools import zip_longest
 import re
 from typing import Sequence
+from pydra import Workflow
 from arcana2.core.data.spec import DataSource
 from arcana2.core.data.spec import DataSink
 from arcana2.exceptions import ArcanaUsageError
@@ -29,12 +30,9 @@ class BaseRunCmd(BaseDatasetCmd):
                   " to run the app in"))
         parser.add_argument(
             '--input', '-i', action='append', default=[], nargs='+',
-            # metavar=(cls.VAR_ARG, 'PATH', 'FORMAT', 'ORDER', 'QUALITY',
-            #          'METADATA', 'FREQUENCY'),
             help=cls.INPUT_HELP.format(var_desc=cls.VAR_DESC))
         parser.add_argument(
-            '--output', '-o', action='append', default=[], nargs=3,
-            metavar=(cls.VAR_ARG, 'STORE_AT', 'FORMAT'),
+            '--output', '-o', action='append', default=[], nargs='+',
             help=cls.OUTPUT_HELP.format(var_desc=cls.VAR_DESC))
         parser.add_argument(
             '--workflow_format', action='append', default=[], nargs=2,
@@ -54,28 +52,23 @@ class BaseRunCmd(BaseDatasetCmd):
     def run(cls, args):
 
         dataset = cls.get_dataset(args)
-        inputs = cls.parse_inputs(args)
-        outputs = cls.parse_outputs(args)
+        inputs = cls.add_inputs_to_dataset(args, dataset)
+        outputs = cls.add_outputs_to_dataset(args, dataset)
         frequency = cls.parse_frequency(args)
 
-        workflow = dataset.workflow(
+        pipeline = dataset.new_pipeline(
             name=cls.workflow_name(args),
             inputs=inputs,
             outputs=outputs,
-            frequency=frequency,
-            workflow_formats=cls.parse_workflow_formats(args))
+            frequency=frequency)
 
-        cls.add_app_task(workflow, args, inputs, outputs)
+        cls.construct_pipeline(args, pipeline)
 
         if not args.dry_run:
-            if args.ids is None:
-                ids = list(dataset.node_ids(frequency))
-            workflow(id=ids)
-
-        return workflow
+            dataset.derive(*outputs, id=args.ids)
 
     @classmethod
-    def parse_inputs(cls, args):
+    def add_inputs_to_dataset(cls, dataset, args):
         """Parses input arguments into dictionary of DataSources
 
         Parameters
@@ -103,7 +96,7 @@ class BaseRunCmd(BaseDatasetCmd):
         frequency = cls.parse_frequency(args)
         dimensions = type(frequency)
         # Create file-group matchers
-        inputs = {}
+        inputs = []
         defaults = (None, None, None, None, None, None, 'session')
         for i, inpt in enumerate(args.input):
             nargs = len(inpt)
@@ -123,15 +116,20 @@ class BaseRunCmd(BaseDatasetCmd):
             if not file_format:
                 raise ArcanaUsageError(
                     f"Datatype must be provided for input {i} ({inpt})")
-            inputs[var] = DataSource(
-                path=pattern, data_format=resolve_data_format(file_format),
-                frequency=dimensions[freq], order=order,
-                metadata=metadata, is_regex=True,
+            dataset.add_source(
+                name=var,
+                path=pattern,
+                format=resolve_data_format(file_format),
+                frequency=dimensions[freq],
+                order=order,
+                metadata=metadata,
+                is_regex=True,
                 quality_threshold=quality)
+            inputs.append(var)
         return inputs
 
     @classmethod
-    def parse_outputs(cls, args):
+    def add_outputs_to_dataset(cls, args, dataset):
         """Parses output arguments into dictionary of DataSinks
 
         Parameters
@@ -150,7 +148,8 @@ class BaseRunCmd(BaseDatasetCmd):
         outputs = {}
         for output in args.output:
             var, store_at, data_format = output
-            outputs[var] = DataSink(
+            dataset.add_sink(
+                name=var,
                 path=store_at,
                 data_format=resolve_data_format(data_format),
                 frequency=frequency)
@@ -162,7 +161,6 @@ class BaseRunCmd(BaseDatasetCmd):
         for name, frmt in args.workflow_format:
             formats[name] = resolve_data_format(frmt)
         return formats
-
 
         # # Create field outputs
         # defaults = (str, 'session')
@@ -264,17 +262,19 @@ class RunAppCmd(BaseRunCmd):
         super().construct_parser(parser)
 
     @classmethod
-    def add_app_task(cls, workflow, args, inputs, outputs):
+    def construct_pipeline(cls, args, pipeline):
+        
         task_cls = resolve_class(args.app, prefixes=['pydra.tasks'])
 
         app_args = cls.parse_app_args(args, task_cls)
-        for inpt in inputs:
-            app_args[inpt] = getattr(workflow.source.lzout, inpt)
+        app_args.update({i: getattr(pipeline.lzin, i) for i in inputs})
 
         workflow.add(task_cls(name='app', **app_args))
 
         for output in outputs:
-            setattr(workflow.sink, output, getattr(workflow.app.lzout, output))
+            workflow.set_output((output, getattr(workflow.app.lzout, output)))
+
+        return workflow
 
     @classmethod
     def parse_app_args(cls, args, task_cls):
