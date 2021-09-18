@@ -355,7 +355,7 @@ class RunBidsAppCmd(BaseRunCmd):
         pipeline.add(
             construct_bids(
                 name='construct_bids',
-                inputs=pipeline.lzin))
+                input_names=pipeline.input_names))
 
         pipeline.add(
             bids_app(
@@ -370,7 +370,7 @@ class RunBidsAppCmd(BaseRunCmd):
             extract_bids(
                 name='extract_bids',
                 bids_dir=pipeline.app.lzout.bids_dir,
-                outputs=pipeline.lzin))
+                outputs=pipeline.output_names))
 
         pipeline.set_output()
 
