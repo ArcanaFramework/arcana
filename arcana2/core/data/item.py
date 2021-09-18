@@ -6,14 +6,12 @@ import hashlib
 import shutil
 from abc import ABCMeta, abstractmethod
 import attr
-from arcana2.exceptions import ArcanaError, ArcanaUsageError
-from arcana2.core.utils import split_extension, parse_value
+from arcana2.core.utils import parse_value
 from arcana2.exceptions import (
-    ArcanaError, ArcanaFileFormatError, ArcanaUsageError, ArcanaNameError,
-    ArcanaDataNotDerivedYetError, ArcanaUriAlreadySetException)
-# from .file_format import FileFormat
+    ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
+    ArcanaDataNotDerivedYetError)
 from .enum import DataQuality
-from ..file_format import FileFormat
+from .format import FileFormat
 from .provenance import DataProvenance
 
 

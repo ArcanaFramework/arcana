@@ -133,8 +133,8 @@ class DataSink():
     path: str = attr.ib()
     data_format = attr.ib()
     frequency: DataDimension = attr.ib()
-    workflow: str = attr.ib(default=None)
     salience: DataSalience = attr.ib(default=DataSalience.supplementary)
+    pipeline: str = attr.ib(default=None)
 
     def match(self, node):
         matches = [i for i in node.resolved(self.data_format)

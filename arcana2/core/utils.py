@@ -103,7 +103,7 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     return cls
 
 def resolve_data_format(name):
-    """Resolves a in a sub-module of arcana2.file_formats based on its
+    """Resolves a in a sub-module of arcana2.data_formats based on its
     name
 
     Parameters
@@ -118,13 +118,13 @@ def resolve_data_format(name):
     """
     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
         return eval(name)
-    import arcana2.file_formats
+    import arcana2.data_formats
     data_format = None
     module_names = [
         i.name for i in pkgutil.iter_modules(
-            [os.path.dirname(arcana2.file_formats.__file__)])]
+            [os.path.dirname(arcana2.data_formats.__file__)])]
     for module_name in module_names:
-        module = import_module('arcana2.file_formats.' + module_name)
+        module = import_module('arcana2.data_formats.' + module_name)
         try:
             data_format = getattr(module, name)
         except AttributeError:

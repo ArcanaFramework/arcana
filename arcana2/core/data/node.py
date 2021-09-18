@@ -9,7 +9,7 @@ from arcana2.exceptions import (
     ArcanaUsageError, ArcanaUnresolvableFormatException, ArcanaFileFormatError,
     ArcanaError, ArcanaNameError, ArcanaWrongFrequencyError)
 from arcana2.core.utils import split_extension
-from ..file_format import FileFormat
+from .format import FileFormat
 from .item import DataItem
 from .spec import DataSource
 from .provenance import DataProvenance

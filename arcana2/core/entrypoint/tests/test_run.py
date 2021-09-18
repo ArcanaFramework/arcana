@@ -2,7 +2,7 @@ import os.path
 from unittest.mock import Mock
 import pytest
 from argparse import ArgumentParser
-from arcana2.entrypoint.run import RunAppCmd
+from arcana2.core.entrypoint.run import RunAppCmd
 
 
 def test_run_app(test_dicom_dataset_dir):

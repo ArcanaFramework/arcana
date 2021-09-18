@@ -6,7 +6,7 @@ import pytest
 from arcana2.core.data.spec import DataSource, DataSink
 from arcana2.repositories import FileSystem
 from arcana2.dimensions.clinical import Clinical
-from arcana2.file_formats import dicom, niftix_gz
+from arcana2.data_formats import dicom, niftix_gz
 
 # Set DEBUG logging for unittests
 logger = logging.getLogger('arcana')

@@ -3,21 +3,16 @@ import logging
 import typing as ty
 from itertools import chain
 import re
-from copy import copy
 import attr
 from attr.converters import default_if_none
-from pydra import Workflow, mark
-from pydra.engine.task import FunctionTask
-from pydra.engine.specs import BaseSpec, SpecInfo
+from pydra import Workflow
 from arcana2.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
-    ArcanaBadlyFormattedIDError, ArcanaWrongDataDimensionsError,
-    ArcanaError)
-from .item import DataItem
+    ArcanaBadlyFormattedIDError, ArcanaWrongDataDimensionsError)
 from .enum import DataDimension
 from .spec import DataSink, DataSource
 from .. import repository
-from ..pipeline import Pipeline
+
 from .node import DataNode
 
 
@@ -560,9 +555,11 @@ class Dataset():
         **kwargs : Dict[str, Any]
             Keyword arguments passed to Pipeline.factory()
         """
+        from arcana2.core.pipeline import Pipeline
         frequency = self._parse_freq(frequency)
-        return Pipeline.factory(name=name, inputs=inputs, outputs=outputs,
-                                frequency=frequency, **kwargs)
+        return Pipeline.factory(
+            name=name, inputs=inputs, outputs=outputs, frequency=frequency,
+            dataset=self, **kwargs)
         
 
     def derive(self, *names, ids=None):
@@ -588,6 +585,8 @@ class Dataset():
     def _parse_freq(self, freq):
         """Parses the data frequency, converting from string if necessary and
         checks it matches the dimensions of the dataset"""
+        if freq is None:
+            return max(self.dimensions)
         try:
             if isinstance(freq, str):
                 freq = self.dimensions[freq]

@@ -10,7 +10,7 @@ from pydra.tasks.mrtrix3.utils import MRConvert
 from pydra.tasks.dcm2niix import Dcm2Niix
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.tasks.utils import identity_converter
-from arcana2.core.file_format import FileFormat
+from arcana2.core.data.format import FileFormat
 from arcana2.core.data.item import FileGroup
 
 

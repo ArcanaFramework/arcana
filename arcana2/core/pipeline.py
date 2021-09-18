@@ -1,3 +1,4 @@
+from __future__ import annotations
 import attr
 from pydra import Workflow
 import typing as ty
@@ -10,11 +11,9 @@ from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.item import DataItem
-from .data.spec import DataSink, DataSource
 from .data.set import Dataset
 from .data.format import FileFormat
 from .data.enum import DataDimension
-from .data.spec import DataSource, DataSink
 
 logger = logging.getLogger('arcana')
 
@@ -35,11 +34,14 @@ class Pipeline():
     frequency: DataDimension = attr.ib()
     inputs: list[tuple[str], FileFormat] = attr.ib(factory=list)
     outputs: list[tuple[str], FileFormat] = attr.ib(factory=list)
-    lzin: SimpleNamespace = attr.ib(default=SimpleNamespace)
+    lzin: SimpleNamespace = attr.ib(factory=SimpleNamespace)
 
     def __getattr__(self, varname):
         """Delegate any missing attributes to wrapped workflow"""
         return getattr(self.workflow, varname)
+
+    def __call__(self, *args, **kwargs):
+        return self.workflow(*args, **kwargs)
 
     def set_output(self, *outputs):
         """Connects the outputs of the pipeline to the sink nodes. Uses same
@@ -51,7 +53,15 @@ class Pipeline():
             A list of outputs to add as outputs   
         """
         for name, conn in outputs:
-            setattr(self.outputs.inputs, name, conn)
+            setattr(self.workflow.per_node.outputs.inputs, name, conn)
+
+    @property
+    def input_names(self):
+        return (n for n, _ in self.inputs)
+
+    @property
+    def output_names(self):
+        return (n for n, _ in self.outputs)
 
     @classmethod
     def factory(cls, name, dataset, inputs, outputs, frequency=None,
@@ -227,7 +237,7 @@ class Pipeline():
                         getattr(wf.per_node, cname).lzout.converted)
 
         # Create identity node to accept connections from user-
-        wf.per_node(
+        wf.per_node.add(
             FunctionTask(
                 identity,
                 input_spec=SpecInfo(
@@ -239,7 +249,8 @@ class Pipeline():
                 name='outputs'))
 
         # Set format converters where required
-        to_sink = {o: getattr(wf.per_node.outputs, o) for o in output_names}
+        to_sink = {o: getattr(wf.per_node.outputs.lzout, o)
+                   for o in output_names}
 
         # Do output format conversions if required
         for output_name, produced_format in pipeline.outputs:
@@ -283,8 +294,11 @@ class Pipeline():
                 **to_sink))
 
         wf.per_node.set_output(
-            ('processed', wf.per_node.store.lzout.id),
-            ('couldnt_process', wf.to_process.lzout.cant_process))
+            [('id', wf.per_node.store.lzout.id)])
+
+        wf.set_output(
+            [('processed', wf.per_node.lzout.id),
+             ('couldnt_process', wf.to_process.lzout.cant_process)])
 
         return pipeline
 

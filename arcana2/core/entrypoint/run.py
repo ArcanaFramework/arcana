@@ -1,4 +1,4 @@
-from itertools import zip_longest
+from itertools import zip_longest, repeat
 import re
 from typing import Sequence
 from pydra import Workflow
@@ -19,6 +19,8 @@ def sanitize_path(path):
 class BaseRunCmd(BaseDatasetCmd):
     """Abstract base class for RunCmds
     """
+
+    MAX_INPUT_ARGS = 8
 
     @classmethod
     def construct_parser(cls, parser):
@@ -65,10 +67,10 @@ class BaseRunCmd(BaseDatasetCmd):
         cls.construct_pipeline(args, pipeline)
 
         if not args.dry_run:
-            dataset.derive(*outputs, id=args.ids)
+            pipeline(ids=args.ids)
 
     @classmethod
-    def add_input_sources(cls, dataset, args):
+    def add_input_sources(cls, args, dataset):
         """Parses input arguments into dictionary of DataSources
 
         Parameters
@@ -96,13 +98,14 @@ class BaseRunCmd(BaseDatasetCmd):
         inputs = []
         for i, inpt in enumerate(args.input):
             nargs = len(inpt)
-            if nargs > 8:
+            if nargs > cls.MAX_INPUT_ARGS:
                 raise ArcanaUsageError(
                     f"Input {i} has too many input args, {nargs} instead "
-                    f"of max 8 ({inpt})")
+                    f"of max {cls.MAX_INPUT_ARGS} ({inpt})")
             (var, pattern, data_format_name, required_format_name, order,
              quality, metadata, freq) = [
-                a if a != '*' else None for a in inpt]
+                a if a != '*' else None for a in (
+                    inpt + [None] * (cls.MAX_INPUT_ARGS - len(inpt)))]
             if not var:
                 raise ArcanaUsageError(
                     f"{cls.VAR_ARG} must be provided for input {i} ({inpt})")
@@ -154,7 +157,7 @@ class BaseRunCmd(BaseDatasetCmd):
             dataset.add_sink(
                 name=var,
                 path=store_at,
-                data_format=data_format,
+                format=data_format,
                 frequency=frequency)
             outputs.append((var, produced_format))
         return outputs
@@ -254,11 +257,11 @@ class RunAppCmd(BaseRunCmd):
                               **cls.parse_app_args(args, task_cls)))
 
         # Connect inputs
-        for input in pipeline.inputs:
+        for input in pipeline.input_names:
             setattr(pipeline.app, input, getattr(pipeline.lzin, input))
 
         # Connect outputs
-        for output in pipeline.outputs:
+        for output in pipeline.output_names:
             pipeline.set_output((output, getattr(pipeline.app.lzout, output)))
 
         return pipeline
