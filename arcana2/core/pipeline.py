@@ -1,6 +1,5 @@
 from __future__ import annotations
 import attr
-from pydra import Workflow
 import typing as ty
 from types import SimpleNamespace
 import logging
@@ -34,7 +33,6 @@ class Pipeline():
     frequency: DataDimension = attr.ib()
     inputs: list[tuple[str], FileFormat] = attr.ib(factory=list)
     outputs: list[tuple[str], FileFormat] = attr.ib(factory=list)
-    lzin: SimpleNamespace = attr.ib(factory=SimpleNamespace)
 
     def __getattr__(self, varname):
         """Delegate any missing attributes to wrapped workflow"""

@@ -13,14 +13,25 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Python: Test Run",
+            "name": "Python: Recursion bug",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/test/unittest/entrypoint/test_run.py",
-            "console": "integratedTerminal",
-            "env": {
-                "_PYTEST_RAISE": "1"
-            },
+            "program": "${workspaceFolder}/arcana2/tests/recursion_bug.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: New test",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/arcana2/tests/new_test.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Brand new test",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/arcana2/tests/brand_new_test.py",
+            "console": "integratedTerminal"
         },
         {
             "name": "Debug Tests",
@@ -31,13 +42,6 @@
             "env": {
                 "_PYTEST_RAISE": "1"
             },
-        },
-        {
-            "name": "Python: Test Archive",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/test/unittest/data/test_archive.py",
-            "console": "integratedTerminal"
         },
         {
             "name": "Debug Tests",
