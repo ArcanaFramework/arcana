@@ -46,9 +46,11 @@ RUN mkdir /var/lib/postgresql/data
 RUN chmod 700 /var/lib/postgresql/data
 RUN chown postgres:postgres /run/postgresql /var/lib/postgresql/data
 COPY XNAT.sql /XNAT.sql
+COPY launch-xnat.sh /launch-xnat.sh
 
 USER postgres
 RUN initdb -D /var/lib/postgresql/data
+RUN echo -e "\ndatasource.driver = '/tmp'" >> /var/lib/postgresql/data/postgresql.conf
 USER root
 
 # Set up configuration files
