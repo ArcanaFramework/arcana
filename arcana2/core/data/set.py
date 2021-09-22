@@ -560,7 +560,6 @@ class Dataset():
         return Pipeline.factory(
             name=name, inputs=inputs, outputs=outputs, frequency=frequency,
             dataset=self, **kwargs)
-        
 
     def derive(self, *names, ids=None):
         """Generate derivatives from the workflows

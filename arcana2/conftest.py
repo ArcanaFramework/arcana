@@ -3,8 +3,9 @@ from tempfile import mkdtemp
 import shutil
 import logging
 import pytest
+from pathlib import Path
 from arcana2.core.data.spec import DataSource, DataSink
-from arcana2.repositories import FileSystem
+from arcana2.repositories import FileSystem, Xnat
 from arcana2.dimensions.clinical import Clinical
 from arcana2.data_formats import dicom, niftix_gz
 
@@ -66,8 +67,17 @@ def nifti_outputs():
 @pytest.fixture
 def work_dir():
     work_dir = mkdtemp()
-    yield work_dir
+    yield Path(work_dir)
     shutil.rmtree(work_dir)
+
+
+@pytest.fixture(scope='session')
+def xnat_repo():
+    return Xnat(
+        server=os.getenv('ARCANA_TEST_XNAT_URI', 'http://localhost/'),
+        user=os.getenv('ARCANA_TEST_XNAT_USER', 'admin'),
+        password=os.getenv('ARCANA_TEST_XNAT_PASSWORD', 'admin'),
+        cache_dir=mkdtemp())
 
 
 # For debugging in IDE's don't catch raised exceptions and let the IDE

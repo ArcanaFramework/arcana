@@ -71,22 +71,11 @@ TEST_SETS = [
          td.abcd: r'a\d+b\d+c\d+d(?P<d>\d+)'})]
 
 
-@pytest.mark.parametrize('dataset_args', TEST_SETS)
-def test_construct_tree(dataset_args, work_dir):
-    dataset = _create_dataset(*dataset_args, work_dir=work_dir)
-    for freq in TestDimension:
-        # For all non-zero bases in the frequency, multiply the dim lengths
-        # together to get the combined number of nodes expected for that
-        # frequency
-        num_nodes = reduce(
-            op.mul, (l for l, b in zip(dataset.dim_lengths, freq) if b), 1)
-        assert len(dataset.nodes(freq)) == num_nodes, (
-            f"{freq} doesn't match {len(dataset.nodes(freq))} vs {num_nodes}")
-
-
-def _create_dataset(name, hierarchy, dim_lengths, files, id_inference,
-                    work_dir):
+@pytest.fixture
+def dataset(work_dir, request):
     "Creates a dataset from parameters in TEST_SETS"
+
+    name, hierarchy, dim_lengths, files, id_inference = request.param
 
     dataset_path = os.path.join(work_dir, name)
     os.mkdir(dataset_path)
@@ -117,3 +106,16 @@ def _create_dataset(name, hierarchy, dim_lengths, files, id_inference,
     dataset.dim_lengths = dim_lengths
     dataset.files = files
     return dataset
+
+
+
+@pytest.mark.parametrize('dataset', TEST_SETS, indirect=True)
+def test_construct_tree(dataset):
+    for freq in TestDimension:
+        # For all non-zero bases in the frequency, multiply the dim lengths
+        # together to get the combined number of nodes expected for that
+        # frequency
+        num_nodes = reduce(
+            op.mul, (l for l, b in zip(dataset.dim_lengths, freq) if b), 1)
+        assert len(dataset.nodes(freq)) == num_nodes, (
+            f"{freq} doesn't match {len(dataset.nodes(freq))} vs {num_nodes}")

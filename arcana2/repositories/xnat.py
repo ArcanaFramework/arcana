@@ -120,30 +120,27 @@ class Xnat(Repository):
             sess_kwargs['user'] = self.user
         if self.password is not None:
             sess_kwargs['password'] = self.password
-        self._login = xnat.connect(server=self._server, **sess_kwargs)
+        self._login = xnat.connect(server=self.server, **sess_kwargs)
 
     def disconnect(self):
         self.login.disconnect()
         self._login = None
 
-    def get_file_group(self, file_group):
+    def get_file_group_paths(self, file_group):
         """
-        Caches a single file_group (if the 'cache_path' attribute is
-        accessed and it has not been previously cached for example)
+        Caches a file_group to the local file system and returns the path to
+        the cached files
 
         Parameters
         ----------
         file_group : FileGroup
             The file_group to cache
-        prev_login : xnat.XNATSession
-            An XNATSession object to use for the connection. A new
-            one is created if one isn't provided
 
         Returns
         -------
         primary_path : str
             The name_path of the primary file once it has been cached
-        aux_paths : dict[str, str]
+        side_cars : dict[str, str]
             A dictionary containing a mapping of auxiliary file names to
             name_paths
         """
@@ -217,14 +214,27 @@ class Xnat(Repository):
                                           cache_path)
                     shutil.rmtree(tmp_dir)
         if not file_group.format.directory:
-            primary_path, aux_paths = file_group.format.assort_files(
+            primary_path, side_cars = file_group.format.assort_files(
                 op.join(cache_path, f) for f in os.listdir(cache_path))
         else:
             primary_path = cache_path
-            aux_paths = None
-        return primary_path, aux_paths
+            side_cars = None
+        return primary_path, side_cars
 
-    def get_field(self, field):
+    def get_field_value(self, field):
+        """
+        Retrieves a fields value
+
+        Parameters
+        ----------
+        field : Field
+            The field to retrieve
+
+        Returns
+        -------
+        value : float or int or str of list[float] or list[int] or list[str]
+            The value of the field
+        """
         self._check_repository(field)
         with self:
             xsession = self.get_xnode(field)
@@ -234,6 +244,19 @@ class Xnat(Repository):
         return val
 
     def put_file_group(self, file_group):
+        """
+        Retrieves a fields value
+
+        Parameters
+        ----------
+        field : Field
+            The field to retrieve
+
+        Returns
+        -------
+        value : float or int or str of list[float] or list[int] or list[str]
+            The value of the field
+        """
         if file_group.format is None:
             raise ArcanaFileFormatError(
                 "Format of {} needs to be set before it is uploaded to {}"
@@ -363,7 +386,7 @@ class Xnat(Repository):
             checksums['.'] = checksums.pop(primary)
         return checksums
 
-    def populate_tree(self, dataset: Dataset, **kwargs):
+    def construct_tree(self, dataset: Dataset, **kwargs):
         """
         Find all file_groups, fields and provenance provenances within an XNAT
         project and create data tree within dataset
@@ -373,192 +396,170 @@ class Xnat(Repository):
         dataset : Dataset
             The dataset to construct
         """
-        # Add derived timepoint IDs to list of timepoint ids to filter
-        project_id = dataset.name
-        # Note we prefer the use of raw REST API calls here for performance
-        # reasons over using XnatPy's data dimensionss.
         with self:
             # Get per_dataset level derivatives and fields
-            project_uri = '/data/archive/projects/{}'.format(project_id)
-            project_json = self.login.get_json(project_uri)['items'][0]
-            # Add project and summary nodes to dataset
-            self.add_fields_to_node(dataset.root_node, project_json)
-            self.add_resources_to_node(dataset.root_node, project_json,
-                                       project_uri)
-            # Get map of internal subject IDs to subject labels in project
-            subject_xids_to_labels = {
-                s['ID']: s['label'] for s in self.login.get_json(
-                    '/data/projects/{}/subjects'.format(project_id))[
-                        'ResultSet']['Result']}
-            # Get list of all sessions within project
-            session_xids = [
-                s['ID'] for s in self.login.get_json(
-                    '/data/projects/{}/experiments'.format(project_id))[
-                        'ResultSet']['Result']
-                if (self.session_filter is None
-                    or re.match(self.session_filter, s['label']))]
-            subject_xids = set()
-            for session_xid in tqdm(session_xids,
-                                    "Scanning sessions in '{}' project"
-                                    .format(project_id)):
-                session_json = self.login.get_json(
-                    '/data/projects/{}/experiments/{}'.format(
-                        project_id, session_xid))['items'][0]
-                subject_xid = session_json['data_fields']['subject_ID']
-                subject_xids.add(subject_xid)
-                subject_id = subject_xids_to_labels[subject_xid]
-                session_label = session_json['data_fields']['label']
-                ids = dataset.infer_ids({Clinical.subject: subject_id,
-                                         Clinical.session: session_label})
-                # Add node for session
-                data_node = dataset.add_node(Clinical.session, ids)
-                session_uri = (
-                    '/data/archive/projects/{}/subjects/{}/experiments/{}'
-                    .format(project_id, subject_id, session_label))
-                # Add scans, fields and resources to data node
-                self.add_scans_to_node(data_node, session_json, session_uri,
-                                       ids, **kwargs)
-                self.add_fields_to_node(data_node, session_json, **kwargs)
-                self.add_resources_to_node(data_node, session_json,
-                                           session_uri, **kwargs)
-            # Get subject level resources and fields
-            for subject_xid in subject_xids:
-                subject_id = subject_xids_to_labels[subject_xid]
-                ids = dataset.infer_ids({Clinical.subject: subject_id})
-                data_node = dataset.add_node(Clinical.subject, ids)
-                subject_uri = ('/data/archive/projects/{}/subjects/{}'
-                               .format(project_id, subject_id))
-                subject_json = self.login.get_json(subject_uri)['items'][0]
-                # Add subject level resources and fields to subject node
-                self.add_fields_to_node(data_node, subject_json, **kwargs)
-                self.add_resources_to_node(data_node, subject_json,
-                                           subject_uri, dataset, **kwargs)
+            for exp in self.login.projects[dataset.name].experiments.values():
+                dataset.add_leaf_node([exp.subject.label, exp.label])
 
-    def add_resources_to_node(self, data_node, node_json, node_uri, **kwargs):
-        try:
-            resources_json = next(
-                c['items'] for c in node_json['children']
-                if c['field'] == 'resources/resource')
-        except StopIteration:
-            resources_json = []
-        provenance_resources = []
-        for d in resources_json:
-            label = d['data_fields']['label']
-            resource_uri = '{}/resources/{}'.format(node_uri, label)
-            name, dn = self._unescape_name_and_get_node(name, data_node)
-            format_name = d['data_fields']['format']
-            if name != self.PROV_RESOURCE:
-                # Use the timepoint from the derived name if present
-                dn.add_file_group(
-                    name, resource_uris={format_name: resource_uri}, **kwargs)
-            else:
-                provenance_resources.append((dn, resource_uri))
-        for dn, uri in provenance_resources:
-            self.set_provenance(dn, uri)
+    def populate_items(self, data_node):
+        with self:
+            xnode = self.get_xnode(data_node)
+            # Add scans, fields and resources to data node
+            for xscan in xnode.scans.value():
+                data_node.add_file_group(
+                    name=xscan.type,
+                    order=xscan.id,
+                    quality=xscan.quality,
+                    uris=[r.uri for r in xscan.resources.values()])
+            for name, value in xnode.fields.items():
+                data_node.add_field(name, value)
+            for xresource in xnode.resources.values():
+                data_node.add_file_group(
+                    name=xresource.name,
+                    uris=[xresource.uri])
+            # self.add_scans_to_node(data_node, xnode)
+            # self.add_fields_to_node(data_node, xnode)
+            # self.add_resources_to_node(data_node, xnode)
 
+    # def add_scans_to_node(self, data_node: Dataset, session_json: dict,
+    #                       session_uri: str, **kwargs):
+    #     try:
+    #         scans_json = next(
+    #             c['items'] for c in session_json['children']
+    #             if c['field'] == 'scans/scan')
+    #     except StopIteration:
+    #         return []
+    #     file_groups = []
+    #     for scan_json in scans_json:
+    #         order = scan_json['data_fields']['ID']
+    #         scan_type = scan_json['data_fields'].get('type', '')
+    #         scan_quality = scan_json['data_fields'].get('quality', None)
+    #         try:
+    #             resources_json = next(
+    #                 c['items'] for c in scan_json['children']
+    #                 if c['field'] == 'file')
+    #         except StopIteration:
+    #             resources = set()
+    #         else:
+    #             resources = set(js['data_fields']['label']
+    #                             for js in resources_json)
+    #         data_node.add_file_group(
+    #             name=scan_type, order=order, quality=scan_quality,
+    #             resource_uris={
+    #                 r: f"{session_uri}/scans/{order}/resources/{r}"
+    #                 for r in resources}, **kwargs)
+    #     return file_groups
 
-    def set_provenance(self, data_node, resource_uri):
-        # Download provenance JSON files and parse into
-        # provenances
-        temp_dir = tempfile.mkdtemp()
-        try:
-            with tempfile.TemporaryFile() as temp_zip:
-                self.login.download_stream(
-                    resource_uri + '/files', temp_zip, format='zip')
-                with ZipFile(temp_zip) as zip_file:
-                    zip_file.extractall(temp_dir)
-            for base_dir, _, fnames in os.walk(temp_dir):
-                for fname in fnames:
-                    if fname.endswith('.json'):
-                        name_path = fname[:-len('.json')]
-                        prov = DataProvenance.load(op.join(base_dir,
-                                                        fname))
-                        if fname.starts_with(self.FIELD_PROV_PREFIX):
-                            name_path = name_path[len(self.FIELD_PROV_PREFIX):]
-                            data_node.field(name_path).provenance = prov
-                        else:
-                            data_node.file_group(name_path).provenance = prov
-        finally:
-            shutil.rmtree(temp_dir, ignore_errors=True)
+    # def add_fields_to_node(self, data_node, node_json, **kwargs):
+    #     try:
+    #         fields_json = next(
+    #             c['items'] for c in node_json['children']
+    #             if c['field'] == 'fields/field')
+    #     except StopIteration:
+    #         return []
+    #     for js in fields_json:
+    #         try:
+    #             value = js['data_fields']['field']
+    #         except KeyError:
+    #             continue
+    #         value = value.replace('&quot;', '"')
+    #         name = js['data_fields']['name']
+    #         # field_names = set([(name, None, timepoint_id, frequency)])
+    #         # # Potentially add the field twice, once
+    #         # # as a field name in its own right (for externally created fields)
+    #         # # and second as a field name prefixed by an analysis name. Would
+    #         # # ideally have the generated fields (and file_groups) in a separate
+    #         # # assessor so there was no chance of a conflict but there should
+    #         # # be little harm in having the field referenced twice, the only
+    #         # # issue being with pattern matching
+    #         # field_names.add(self.unescape_name(name, timepoint_id=timepoint_id,
+    #         #                                         frequency=frequency))
+    #         # for name, namespace, field_timepoint_id, field_freq in field_names:
+    #         name, dn = self._unescape_name_and_get_node(name, data_node)
+    #         dn.add_field(name=name, value=value **kwargs)
 
-    def add_fields_to_node(self, data_node, node_json, **kwargs):
-        try:
-            fields_json = next(
-                c['items'] for c in node_json['children']
-                if c['field'] == 'fields/field')
-        except StopIteration:
-            return []
-        for js in fields_json:
-            try:
-                value = js['data_fields']['field']
-            except KeyError:
-                continue
-            value = value.replace('&quot;', '"')
-            name = js['data_fields']['name']
-            # field_names = set([(name, None, timepoint_id, frequency)])
-            # # Potentially add the field twice, once
-            # # as a field name in its own right (for externally created fields)
-            # # and second as a field name prefixed by an analysis name. Would
-            # # ideally have the generated fields (and file_groups) in a separate
-            # # assessor so there was no chance of a conflict but there should
-            # # be little harm in having the field referenced twice, the only
-            # # issue being with pattern matching
-            # field_names.add(self.unescape_name(name, timepoint_id=timepoint_id,
-            #                                         frequency=frequency))
-            # for name, namespace, field_timepoint_id, field_freq in field_names:
-            name, dn = self._unescape_name_and_get_node(name, data_node)
-            dn.add_field(name=name, value=value **kwargs)
+    # def add_resources_to_node(self, data_node, node_json, node_uri, **kwargs):
+    #     try:
+    #         resources_json = next(
+    #             c['items'] for c in node_json['children']
+    #             if c['field'] == 'resources/resource')
+    #     except StopIteration:
+    #         resources_json = []
+    #     provenance_resources = []
+    #     for d in resources_json:
+    #         label = d['data_fields']['label']
+    #         resource_uri = '{}/resources/{}'.format(node_uri, label)
+    #         name, dn = self._unescape_name_and_get_node(name, data_node)
+    #         format_name = d['data_fields']['format']
+    #         if name != self.PROV_RESOURCE:
+    #             # Use the timepoint from the derived name if present
+    #             dn.add_file_group(
+    #                 name, resource_uris={format_name: resource_uri}, **kwargs)
+    #         else:
+    #             provenance_resources.append((dn, resource_uri))
+    #     for dn, uri in provenance_resources:
+    #         self.set_provenance(dn, uri)
 
-    def _unescape_name_and_get_node(self, name, data_node):
-        name, frequency, ids = self.unescape_name(name)
-        if frequency != data_node.frequency:
-            try:
-                data_node = data_node.dataset.node(frequency, ids)
-            except ArcanaNameError:
-                data_node = data_node.dataset.add_node(frequency, ids)
-        return name, data_node
+    # def set_provenance(self, data_node, resource_uri):
+    #     # Download provenance JSON files and parse into
+    #     # provenances
+    #     temp_dir = tempfile.mkdtemp()
+    #     try:
+    #         with tempfile.TemporaryFile() as temp_zip:
+    #             self.login.download_stream(
+    #                 resource_uri + '/files', temp_zip, format='zip')
+    #             with ZipFile(temp_zip) as zip_file:
+    #                 zip_file.extractall(temp_dir)
+    #         for base_dir, _, fnames in os.walk(temp_dir):
+    #             for fname in fnames:
+    #                 if fname.endswith('.json'):
+    #                     name_path = fname[:-len('.json')]
+    #                     prov = DataProvenance.load(op.join(base_dir,
+    #                                                     fname))
+    #                     if fname.starts_with(self.FIELD_PROV_PREFIX):
+    #                         name_path = name_path[len(self.FIELD_PROV_PREFIX):]
+    #                         data_node.field(name_path).provenance = prov
+    #                     else:
+    #                         data_node.file_group(name_path).provenance = prov
+    #     finally:
+    #         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def add_scans_to_node(self, data_node: Dataset, session_json: dict,
-                          session_uri: str, **kwargs):
-        try:
-            scans_json = next(
-                c['items'] for c in session_json['children']
-                if c['field'] == 'scans/scan')
-        except StopIteration:
-            return []
-        file_groups = []
-        for scan_json in scans_json:
-            order = scan_json['data_fields']['ID']
-            scan_type = scan_json['data_fields'].get('type', '')
-            scan_quality = scan_json['data_fields'].get('quality', None)
-            try:
-                resources_json = next(
-                    c['items'] for c in scan_json['children']
-                    if c['field'] == 'file')
-            except StopIteration:
-                resources = set()
-            else:
-                resources = set(js['data_fields']['label']
-                                for js in resources_json)
-            data_node.add_file_group(
-                name=scan_type, order=order, quality=scan_quality,
-                resource_uris={
-                    r: f"{session_uri}/scans/{order}/resources/{r}"
-                    for r in resources}, **kwargs)
-        return file_groups
+    # def _unescape_name_and_get_node(self, name, data_node):
+    #     name, frequency, ids = self.unescape_name(name)
+    #     if frequency != data_node.frequency:
+    #         try:
+    #             data_node = data_node.dataset.node(frequency, ids)
+    #         except ArcanaNameError:
+    #             data_node = data_node.dataset.add_node(frequency, ids)
+    #     return name, data_node
 
-    def extract_subject_id(self, xsubject_label):
+    def new_dataset(self, name):
+        """Create a new dataset within the repository (typically used in
+        testing)
+
+        Parameters
+        ----------
+        name : str
+            A name for the new dataset
         """
-        This assumes that the subject ID is prepended with
-        the project ID.
-        """
-        return xsubject_label.split('_')[1]
+        with self:
+            self.login.put(f'/data/archive/projects/{name}')
+            # Need to force refresh of connection to refresh project list
+            self.connect()
+        
 
-    def extract_timepoint_id(self, xsession_label):
-        """
-        This assumes that the session ID is preprended
-        """
-        return '_'.join(xsession_label.split('_')[2:])
+    # def extract_subject_id(self, xsubject_label):
+    #     """
+    #     This assumes that the subject ID is prepended with
+    #     the project ID.
+    #     """
+    #     return xsubject_label.split('_')[1]
+
+    # def extract_timepoint_id(self, xsession_label):
+    #     """
+    #     This assumes that the session ID is preprended
+    #     """
+    #     return '_'.join(xsession_label.split('_')[2:])
 
     def dicom_header(self, file_group):
         def convert(val, code):
