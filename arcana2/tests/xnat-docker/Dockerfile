@@ -1,5 +1,6 @@
 FROM tomcat:7-jre8-alpine
 
+# User configurable arguments
 ARG XNAT_VER=1.8.2
 ARG XNAT_ROOT=/data/xnat
 ARG XNAT_HOME=/data/xnat/home
@@ -11,8 +12,10 @@ ARG XNAT_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQL9Dialect
 ARG TOMCAT_XNAT_FOLDER=ROOT
 ARG TOMCAT_XNAT_FOLDER_PATH=${CATALINA_HOME}/webapps/${TOMCAT_XNAT_FOLDER}
 
+# Create XNAT config file at $XNAT_HOME/config/xnat-conf.properties
 COPY make-xnat-config.sh /usr/local/bin/make-xnat-config.sh
 
+# Install XNAT
 RUN apk add --no-cache postgresql postgresql-client supervisor wget
 RUN rm -rf ${CATALINA_HOME}/webapps/*
 RUN mkdir -p \
@@ -33,28 +36,32 @@ RUN wget --no-verbose --output-document=/tmp/xnat-web-${XNAT_VER}.war https://ap
 RUN unzip -o -d ${TOMCAT_XNAT_FOLDER_PATH} /tmp/xnat-web-${XNAT_VER}.war
 RUN rm -f /tmp/xnat-web-${XNAT_VER}.war
 RUN apk del wget
-
 RUN mkdir /var/log/tomcat
-
-EXPOSE 8080
-
 ENV XNAT_HOME=${XNAT_HOME} XNAT_DATASOURCE_USERNAME=${XNAT_DATASOURCE_USERNAME} PGPASSWORD=${XNAT_DATASOURCE_PASSWORD}
 
-# Setup postgres
+# Add scripts for configuring XNAT database before launching Tomcat
+COPY launch-xnat.sh /launch-xnat.sh
+COPY XNAT.sql /XNAT.sql
+
+# Skip the new site setup by creating site preferences file
+COPY xnat-prefs-init.ini ${XNAT_HOME}/config/prefs-init.ini
+
+# Expose the default Tomcat port
+EXPOSE 8080
+
+# Setup Postgres
 RUN mkdir /run/postgresql
 RUN mkdir /var/lib/postgresql/data
 RUN chmod 700 /var/lib/postgresql/data
 RUN chown postgres:postgres /run/postgresql /var/lib/postgresql/data
-COPY XNAT.sql /XNAT.sql
-COPY launch-xnat.sh /launch-xnat.sh
 
+# Create postgres DB
 USER postgres
 RUN initdb -D /var/lib/postgresql/data
 RUN echo -e "\ndatasource.driver = '/tmp'" >> /var/lib/postgresql/data/postgresql.conf
 USER root
 
-# Set up configuration files
+# Use supervisord to launch postgres and tomcat
 COPY supervisord.conf /etc/supervisord.conf
-
 CMD ["/usr/bin/supervisord"]
 
