@@ -20,4 +20,5 @@ install_requires = [
 
 
 tests_require = [
-    'pytest-env>=0.6.2']
+    'pytest-env>=0.6.2',
+    'docker>=5.0.2']

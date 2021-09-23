@@ -71,15 +71,6 @@ def work_dir():
     shutil.rmtree(work_dir)
 
 
-@pytest.fixture(scope='session')
-def xnat_repo():
-    return Xnat(
-        server=os.getenv('ARCANA_TEST_XNAT_URI', 'http://localhost/'),
-        user=os.getenv('ARCANA_TEST_XNAT_USER', 'admin'),
-        password=os.getenv('ARCANA_TEST_XNAT_PASSWORD', 'admin'),
-        cache_dir=mkdtemp())
-
-
 # For debugging in IDE's don't catch raised exceptions and let the IDE
 # break at it
 if os.getenv('_PYTEST_RAISE', "0") != "0":

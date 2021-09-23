@@ -532,20 +532,6 @@ class Xnat(Repository):
     #         except ArcanaNameError:
     #             data_node = data_node.dataset.add_node(frequency, ids)
     #     return name, data_node
-
-    def new_dataset(self, name):
-        """Create a new dataset within the repository (typically used in
-        testing)
-
-        Parameters
-        ----------
-        name : str
-            A name for the new dataset
-        """
-        with self:
-            self.login.put(f'/data/archive/projects/{name}')
-            # Need to force refresh of connection to refresh project list
-            self.connect()
         
 
     # def extract_subject_id(self, xsubject_label):
