@@ -15,16 +15,21 @@ from arcana2.repositories import Xnat
 from arcana2.core.utils import set_cwd
 from arcana2.dimensions.clinical import Clinical
 
-DOCKER_BUILD_DIR = Path(__file__).parent / 'xnat-docker'
-DOCKER_IMAGE = 'arcana-xnat-debug'
-DOCKER_HOST = 'localhost'
-DOCKER_XNAT_PORT = '8989'
-DOCKER_XNAT_URI = f'http://{DOCKER_HOST}:{DOCKER_XNAT_PORT}'
-DOCKER_XNAT_USER = 'admin'
-DOCKER_XNAT_PASSWORD = 'admin'
 
-DEFAULT_XNAT_TIMEOUT = 10000
+def test_construct_tree(dataset):
+    for freq in Clinical:
+        # For all non-zero bases in the frequency, multiply the dim lengths
+        # together to get the combined number of nodes expected for that
+        # frequency
+        num_nodes = reduce(
+            op.mul, (l for l, b in zip(dataset.dim_lengths, freq) if b), 1)
+        assert len(dataset.nodes(freq)) == num_nodes, (
+            f"{freq} doesn't match {len(dataset.nodes(freq))} vs {num_nodes}")
 
+
+# -----------------------
+# Test dataset structures
+# -----------------------
 
 TEST_DATASETS = {
     'basic': (  # dataset name
@@ -50,16 +55,18 @@ TEST_DATASETS = {
     }
 
 
-def test_construct_tree(dataset):
-    for freq in Clinical:
-        # For all non-zero bases in the frequency, multiply the dim lengths
-        # together to get the combined number of nodes expected for that
-        # frequency
-        num_nodes = reduce(
-            op.mul, (l for l, b in zip(dataset.dim_lengths, freq) if b), 1)
-        assert len(dataset.nodes(freq)) == num_nodes, (
-            f"{freq} doesn't match {len(dataset.nodes(freq))} vs {num_nodes}")
+# ------------------------------------
+# Pytest fixtures and helper functions
+# ------------------------------------
 
+DOCKER_BUILD_DIR = Path(__file__).parent / 'xnat-docker'
+DOCKER_IMAGE = 'arcana-xnat-debug'
+DOCKER_HOST = 'localhost'
+DOCKER_XNAT_PORT = '8989'
+DOCKER_XNAT_URI = f'http://{DOCKER_HOST}:{DOCKER_XNAT_PORT}'
+DOCKER_XNAT_USER = 'admin'
+DOCKER_XNAT_PASSWORD = 'admin'
+DEFAULT_XNAT_TIMEOUT = 10000
 
 @pytest.fixture(params=TEST_DATASETS.keys())
 def dataset(repository, request):
