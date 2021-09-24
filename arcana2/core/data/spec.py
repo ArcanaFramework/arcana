@@ -79,7 +79,7 @@ class DataSource():
                 "Found multiple matches " + self._error_msg(node, matches))
         else:
             match = matches[0]
-        return match.resolve(self.data_format)
+        return match
 
     def _error_msg(self, node, matches):
         return (

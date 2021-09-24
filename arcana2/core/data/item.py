@@ -6,6 +6,7 @@ import hashlib
 import shutil
 from abc import ABCMeta, abstractmethod
 import attr
+from attr.converters import default_if_none
 from arcana2.core.utils import parse_value
 from arcana2.exceptions import (
     ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
@@ -27,8 +28,8 @@ class DataItem(metaclass=ABCMeta):
         information about which node in the data tree it belongs to
     type : FileFormat or type
         The file format used to store the file_group.
-    index : int | None
-        The index in which the file-group appears in the node it belongs to
+    order : int | None
+        The order in which the file-group appears in the node it belongs to
         (starting at 0). Typically corresponds to the acquisition order for
         scans within an imaging session. Can be used to distinguish between
         scans with the same series description (e.g. multiple BOLD or T1w
@@ -47,8 +48,9 @@ class DataItem(metaclass=ABCMeta):
     path: str = attr.ib()
     data_format: type or FileFormat = attr.ib()
     uri: str = attr.ib(default=None)
-    index: int = attr.ib(default=None)
-    quality: DataQuality = attr.ib(default=None)
+    order: int = attr.ib(default=None)
+    quality: DataQuality = attr.ib(default=None,
+                                   converter=default_if_none(None))
     data_node = attr.ib(default=None)
     exists: bool = attr.ib(default=True)
     provenance: DataProvenance = attr.ib(default=None)
@@ -102,8 +104,8 @@ class FileGroup(DataItem):
         information about which node in the data tree it belongs to
     format : FileFormat
         The file format used to store the file_group.
-    index : int | None
-        The index in which the file-group appears in the node it belongs to
+    order : int | None
+        The order in which the file-group appears in the node it belongs to
         (starting at 0). Typically corresponds to the acquisition order for
         scans within an imaging session. Can be used to distinguish between
         scans with the same series description (e.g. multiple BOLD or T1w
@@ -167,6 +169,10 @@ class FileGroup(DataItem):
     @property
     def file_paths(self):
         "Iterates through all files in the group and returns their file paths"
+        if self.file_path is None:
+            raise ArcanaUsageError(
+                f"{self} has not be retrieved from the repository. Use 'get' "
+                "method first.")
         if self.data_format.directory:
             return chain(*((op.join(root, f) for f in files)
                            for root, _, files in os.walk(self.file_path)))

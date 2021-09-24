@@ -118,6 +118,14 @@ class FileFormat(object):
     def __str__(self):
         return self.name
 
+    def __call__(self, *args, **kwargs):
+        from .item import FileGroup
+        return FileGroup(*args, data_format=self, **kwargs)
+
+    @property
+    def all_names(self):
+        return [self.name] + self.alternate_names
+
     @property
     def extensions(self):
         return tuple([self.extension] + sorted(self.aux_file_exts))
@@ -313,7 +321,10 @@ class FileFormat(object):
         """
         by_ext = defaultdict(list)
         for path in candidates:
-            by_ext[split_extension(path)[1].lower()].append(path)
+            ext = split_extension(path)[1]
+            if ext is not None:
+                ext = ext.lower()
+            by_ext[ext].append(path)
         try:
             primary_file = by_ext[self.ext]
         except KeyError:

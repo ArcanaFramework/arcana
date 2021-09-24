@@ -3,6 +3,7 @@ import os.path
 from datetime import datetime
 import operator as op
 from pathlib import Path
+import time
 import contextlib
 from tempfile import mkdtemp
 from itertools import product
@@ -14,6 +15,8 @@ import xnat
 from arcana2.repositories import Xnat
 from arcana2.core.utils import set_cwd
 from arcana2.dimensions.clinical import Clinical
+from arcana2.data_formats.general import text, directory, json
+from arcana2.data_formats.neuroimaging import niftix_gz, nifti_gz, dicom, nifti
 
 
 def test_construct_tree(dataset):
@@ -27,6 +30,20 @@ def test_construct_tree(dataset):
             f"{freq} doesn't match {len(dataset.nodes(freq))} vs {num_nodes}")
 
 
+def test_populate_items(dataset):
+    source_files = {}
+    for scan_name, _, data_formats in dataset.scans:
+        for data_format, files in data_formats:
+            source_name = scan_name + data_format.name
+            dataset.add_source(source_name, scan_name, data_format)
+            source_files[source_name] = set(files)
+    for node in dataset.nodes(Clinical.session):
+        for scan_name, files in source_files.items():
+            item = node[scan_name]
+            item.get()
+            assert set(item.file_paths) == files
+
+
 # -----------------------
 # Test dataset structures
 # -----------------------
@@ -34,25 +51,36 @@ def test_construct_tree(dataset):
 TEST_DATASETS = {
     'basic': (  # dataset name
         [1, 1, 3],  # number of timepoints, groups and members respectively
-        [('scan1', [ # scan type (ID is index)
-            ('TEXT',  # resource name
-            ['file.txt'])]), # files within the resource
-         ('scan2', [
-            ('NIFTIX_GZ',
-            ['file.nii.gz', 'file.json'])]),
-         ('scan3', [
-            ('FREESURFER',
-            ['doubledir', 'dir', 'file.dat'])]),
-         ('scan4', [
-            ('DICOM',
-            ['file1.dcm', 'file2.dcm', 'file3.dcm']),
-            ('NIFTI',
-            ['file1.nii.gz']),
-            ('BIDS',
-            ['file1.json']),
-            ('SNAPSHOT', ['file1.png'])])],
+        [
+            ('scan1',  # scan type (ID is index)
+             [('text',  ['file.txt'])],  # resource name and files within it
+             [(text, ['file.txt'])]), # formats of the scan
+            ('scan2',
+             [('niftix_gz', ['file.nii.gz', 'file.json'])],
+             [(niftix_gz, ['file.nii.gz', 'file.json'])]),
+            ('scan3',
+             [('freesurfer', ['doubledir', 'dir', 'file.dat'])],
+             [(directory, ['doubledir', 'dir', 'file.dat'])]),
+            ('scan4',
+             [('DICOM', ['file1.dcm', 'file2.dcm', 'file3.dcm']),
+              ('NIFTI', ['file1.nii.gz']),
+              ('BIDS', ['file1.json']),
+              ('SNAPSHOT', ['file1.png'])],
+             [(dicom, ['file1.dcm', 'file2.dcm', 'file3.dcm']),
+              (nifti_gz, ['file1.nii.gz'])])],
         {}),  # id_inference dict
+    'multi': (  # dataset name
+        [2, 3, 4],  # number of timepoints, groups and members respectively
+        [
+            ('scan1',
+             [('TEXT',  # resource name
+              ['file.txt'])],
+             [text])],
+        {Clinical.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
+         Clinical.session: r'timepoint(?P<timepoint>\d+).*'}),  # id_inference dict
     }
+
+GOOD_DATASETS = ['basic', 'multi']
 
 
 # ------------------------------------
@@ -66,17 +94,14 @@ DOCKER_XNAT_PORT = '8989'
 DOCKER_XNAT_URI = f'http://{DOCKER_HOST}:{DOCKER_XNAT_PORT}'
 DOCKER_XNAT_USER = 'admin'
 DOCKER_XNAT_PASSWORD = 'admin'
-DEFAULT_XNAT_TIMEOUT = 10000
+CONNECTION_ATTEMPTS = 20
+CONNECTION_ATTEMPT_SLEEP = 5
+PUT_SUFFIX = '_put'
 
-@pytest.fixture(params=TEST_DATASETS.keys())
+
+@pytest.fixture(params=GOOD_DATASETS)
 def dataset(repository, request):
     return access_dataset(repository, request.param)
-
-
-@pytest.fixture(params=['basic'])
-def dataset_for_put(repository, request):
-    """Datasets used for testing put methods"""
-    return access_dataset(repository, request.param, test_suffix='_put')
 
 
 @pytest.fixture(scope='module')
@@ -106,8 +131,10 @@ def repository():
         # so that they don't clash with datasets generated for previous test
         # runs that haven't been cleaned properly
         run_prefix = datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
-        
-    create_datasets(TEST_DATASETS, run_prefix)
+
+    # Create all datasets that can be reused and don't raise errors
+    for dataset_name in GOOD_DATASETS:
+        create_dataset_in_repo(dataset_name, run_prefix)
     
     repository = Xnat(
         server=DOCKER_XNAT_URI,
@@ -137,66 +164,75 @@ def access_dataset(repository, name, test_suffix=''):
     return dataset
 
 
-def create_datasets(dataset_structures, run_prefix, test_suffix=''):
+def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
     """
     Creates dataset for each entry in dataset_structures
     """
 
-    for dataset_name, (dim_lengths, scans, _) in dataset_structures.items():
+    dim_lengths, scans, _  =  TEST_DATASETS[dataset_name]
+    dataset_name = run_prefix + dataset_name + test_suffix
 
-        dataset_name = run_prefix + dataset_name + test_suffix
+    with connect() as login:
+        login.put(f'/data/archive/projects/{dataset_name}')
+    
+    with connect() as login:
+        xproject = login.projects[dataset_name]
+        xclasses = login.classes
+        for id_tple in product(*(list(range(d)) for d in dim_lengths)):
+            ids = dict(zip(Clinical.basis(), id_tple))
+            # Create subject
+            subject_label = ''.join(
+                f'{b}{ids[b]}' for b in Clinical.subject.nonzero_basis())
+            xsubject = xclasses.SubjectData(label=subject_label,
+                                            parent=xproject)
+            # Create session
+            session_label = ''.join(
+                f'{b}{ids[b]}' for b in Clinical.session.nonzero_basis())
+            xsession = xclasses.MrSessionData(label=session_label,
+                                            parent=xsubject)
+            
+            for i, (sname, resources, _) in enumerate(scans, start=1):
+                # Create scan
+                xscan = xclasses.MrScanData(id=i, type=sname,
+                                            parent=xsession)
+                for rname, fnames in resources:
 
-        with connect() as login:
-            login.put(f'/data/archive/projects/{dataset_name}')
-        # Need to force refresh of connection to refresh project list
-        
-        with connect() as login:
-            xproject = login.projects[dataset_name]
-            xclasses = login.classes
-            for id_tple in product(*(list(range(d)) for d in dim_lengths)):
-                ids = dict(zip(Clinical.basis(), id_tple))
-                # Create subject
-                subject_label = ''.join(
-                    f'{b}{ids[b]}' for b in Clinical.subject.nonzero_basis())
-                xsubject = xclasses.SubjectData(label=subject_label,
-                                                parent=xproject)
-                # Create session
-                session_label = ''.join(
-                    f'{b}{ids[b]}' for b in Clinical.session.nonzero_basis())
-                xsession = xclasses.MrSessionData(label=session_label,
-                                                parent=xsubject)
-                
-                for i, (sname, resources) in enumerate(scans, start=1):
-                    # Create scan
-                    xscan = xclasses.MrScanData(id=i, type=sname,
-                                                parent=xsession)
-                    for rname, fnames in resources:
-
-                        temp_dir = Path(mkdtemp())
-                        # Create the resource
-                        xresource = xscan.create_resource(rname)
-                        # Create the dummy files
-                        for fname in fnames:
-                            fpath = Path(fname)
-                            # Make double
-                            if fname.startswith('doubledir'):
-                                os.mkdir(temp_dir / fpath)
-                                fname = 'dir'
-                                fpath /= fname
-                            if fname.startswith('dir'):
-                                os.mkdir(temp_dir / fpath)
-                                fname = 'test.txt'
-                                fpath /= fname
-                            with open(temp_dir / fpath, 'w') as f:
-                                f.write(f'test {fname}')
-                            xresource.upload(str(temp_dir / fpath), str(fpath))
+                    temp_dir = Path(mkdtemp())
+                    # Create the resource
+                    xresource = xscan.create_resource(rname)
+                    # Create the dummy files
+                    for fname in fnames:
+                        fpath = Path(fname)
+                        # Make double
+                        if fname.startswith('doubledir'):
+                            os.mkdir(temp_dir / fpath)
+                            fname = 'dir'
+                            fpath /= fname
+                        if fname.startswith('dir'):
+                            os.mkdir(temp_dir / fpath)
+                            fname = 'test.txt'
+                            fpath /= fname
+                        with open(temp_dir / fpath, 'w') as f:
+                            f.write(f'test {fname}')
+                        xresource.upload(str(temp_dir / fpath), str(fpath))
 
 
 @contextlib.contextmanager
 def connect():
-    login = xnat.connect(server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
-                         password=DOCKER_XNAT_PASSWORD,
-                         default_timeout=DEFAULT_XNAT_TIMEOUT)
+    # Need to give time for XNAT to get itself ready after it has
+    # started so we try multiple times until giving up
+    attempts = 0
+    for _ in range(1, CONNECTION_ATTEMPTS + 1):
+        try:
+            login = xnat.connect(server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
+                                 password=DOCKER_XNAT_PASSWORD)
+        except xnat.exceptions.XNATError:
+            if attempts == CONNECTION_ATTEMPTS:
+                raise
+            else:
+                time.sleep(CONNECTION_ATTEMPT_SLEEP)
+        else:
+            break
     try:
         yield login
     finally:

@@ -217,8 +217,13 @@ class FileSystem(Repository):
         return op.join(node.dataset.name, *tree_path)
 
     def file_group_path(self, file_group):
-        return op.join(self.node_path(file_group.data_node)
-                        *(file_group.name_path.split('/')))
+        if file_group.file_path:
+            path = file_group.file_path
+        else:
+            path = (op.join(self.node_path(file_group.data_node)
+                            *(file_group.path.split('/')))
+                    + file_group.format.extension)
+        return path
 
     def fields_json_path(self, field):
         return op.join(self.node_path(field.data_node), self.FIELDS_FNAME)

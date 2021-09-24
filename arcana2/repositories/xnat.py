@@ -1,6 +1,5 @@
 import os
 import os.path as op
-import tempfile
 import stat
 import typing as ty
 from glob import glob
@@ -405,18 +404,20 @@ class Xnat(Repository):
         with self:
             xnode = self.get_xnode(data_node)
             # Add scans, fields and resources to data node
-            for xscan in xnode.scans.value():
+            for xscan in xnode.scans.values():
                 data_node.add_file_group(
-                    name=xscan.type,
+                    path=xscan.type,
                     order=xscan.id,
                     quality=xscan.quality,
-                    uris=[r.uri for r in xscan.resources.values()])
+                    uris={r.label: r.uri for r in xscan.resources.values()})
             for name, value in xnode.fields.items():
-                data_node.add_field(name, value)
+                data_node.add_field(
+                    path=name,
+                    value=value)
             for xresource in xnode.resources.values():
                 data_node.add_file_group(
-                    name=xresource.name,
-                    uris=[xresource.uri])
+                    path=xresource.name,
+                    uris={xresource.data_format: xresource.uri})
             # self.add_scans_to_node(data_node, xnode)
             # self.add_fields_to_node(data_node, xnode)
             # self.add_resources_to_node(data_node, xnode)

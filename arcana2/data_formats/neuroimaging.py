@@ -313,9 +313,14 @@ niftix_gz = FileFormat(name='niftix_gz', extension='.nii.gz',
 nifti = FileFormat(name='nifti', extension='.nii',
                    alternate_names=['NIFTI', 'NiFTI'],
                    file_group_cls=NiftiImage)
+# NIfTI file format gzipped with BIDS side car
+niftix = FileFormat(name='niftix', extension='.nii',
+                       side_cars={'json': '.json'},
+                       alternate_names=['NIFTIX'],
+                       file_group_cls=NiftixImage)
 
 nifti_gz = FileFormat(name='nifti_gz', extension='.nii.gz',
-                      alternate_names=['NIFTI_GZ', 'NiFTI_GZ'],
+                      alternate_names=['NIFTI_GZ', 'NiFTI_GZ', 'NIFTI'],
                       file_group_cls=NiftiImage)
 analyze = FileFormat(name='analyze', extension='.img',
                      side_cars={'header': '.hdr'})

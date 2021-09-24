@@ -212,3 +212,11 @@ class DataQuality(Enum):
     artefactual = 25
     unusable = 0
 
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __le__(self, other):
+        return self.value <= other.value
