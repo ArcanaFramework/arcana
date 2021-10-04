@@ -69,12 +69,12 @@ def test_populate_items(dataset):
         for format, files in formats:
             source_name = fg_name + format.name
             dataset.add_source(source_name, fg_name, format)
-            source_files[source_name] = files
+            source_files[source_name] = set(files)
     for node in dataset.nodes(td.abcd):
         for source_name, files in source_files.items():
             item = node[source_name]
             item.get()
-            assert set(item.file_paths) == files
+            assert set(os.path.basename(f) for f in item.file_paths) == files
 
 
 # -----------------------

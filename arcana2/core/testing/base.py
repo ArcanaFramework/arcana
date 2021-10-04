@@ -107,7 +107,7 @@ class BaseTestCase(TestCase):
                     continue
                 file_group = FileGroup.from_path(op.join(self.ref_dir,
                                                     fname))
-                file_group.format = file_group.detect_format(self.REF_FORMATS)
+                file_group.data_format = file_group.detect_format(self.REF_FORMATS)
                 file_groups[file_group.name] = file_group
         else:
             file_groups = getattr(self, 'INPUT_FILESETS', None)
@@ -128,13 +128,13 @@ class BaseTestCase(TestCase):
         os.makedirs(session_dir)
         for name, file_group in list(file_groups.items()):
             if isinstance(file_group, FileGroup):
-                if file_group.format is None:
+                if file_group.data_format is None:
                     raise ArcanaError(
                         "Need to provide format for file_group to add to test "
                         "dataset ({}) in {}".format(file_group, self))
                 dst_path = op.join(session_dir,
-                                   name + file_group.format.ext_str)
-                if file_group.format.directory:
+                                   name + file_group.data_format.ext_str)
+                if file_group.data_format.directory:
                     shutil.copytree(file_group.path, dst_path)
                 else:
                     shutil.copy(file_group.path, dst_path)
@@ -500,10 +500,10 @@ class BaseMultiSubjectTestCase(BaseTestCase):
                 session_path = op.dirname(file_group.path)
                 self._make_dir(session_path)
                 contents = self.DATASET_CONTENTS[file_group.name]
-                if file_group.format.side_cars:
+                if file_group.data_format.side_cars:
                     file_group._side_cars = {}
                     for (aux_name,
-                         aux_path) in file_group.format.default_aux_file_paths(
+                         aux_path) in file_group.data_format.default_aux_file_paths(
                              file_group._path).items():
                         file_group._side_cars[aux_name] = aux_path
                         with open(aux_path, 'w') as f:

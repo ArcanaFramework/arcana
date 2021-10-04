@@ -129,7 +129,7 @@ class TestOnXnatMixin(CreateXnatProjectMixin):
                 label=self.session_label(),
                 parent=xsubject)
             for file_group in self.session.file_groups:
-                file_group.format = file_group.detect_format(self.REF_FORMATS)
+                file_group.data_format = file_group.detect_format(self.REF_FORMATS)
                 put_file_group(file_group, xsession)
             for field in self.session.fields:
                 put_field(field, xsession)
@@ -144,7 +144,7 @@ class TestOnXnatMixin(CreateXnatProjectMixin):
         return xnat.connect(SERVER)
 
 def put_file_group(file_group, xsession):
-    if file_group.format.name == 'dicom':
+    if file_group.data_format.name == 'dicom':
         dcm_files = [f for f in os.listdir(file_group.path)
                      if f.endswith('.dcm')]
         hdr = pydicom.dcmread(op.join(file_group.path, dcm_files[0]))
@@ -154,8 +154,8 @@ def put_file_group(file_group, xsession):
     xfile_group = xsession.xnat_session.classes.MrScanData(
         id=id_, type=file_group.basename, parent=xsession)
     resource = xfile_group.create_resource(
-        file_group.format.resource_names(Xnat.type)[0])
-    if file_group.format.directory:
+        file_group.data_format.resource_names(Xnat.type)[0])
+    if file_group.data_format.directory:
         for fname in os.listdir(file_group.path):
             resource.upload(
                 op.join(file_group.path, fname), fname)
