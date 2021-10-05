@@ -119,6 +119,8 @@ class FileFormat(object):
         return self.name
 
     def __call__(self, *args, **kwargs):
+        """Temporary workaround until FileFormat is retired in place of using
+        separate subclasses for each type"""
         from .item import FileGroup
         return FileGroup(*args, data_format=self, **kwargs)
 

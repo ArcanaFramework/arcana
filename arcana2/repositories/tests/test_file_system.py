@@ -74,7 +74,7 @@ def test_populate_items(dataset):
         for source_name, files in source_files.items():
             item = node[source_name]
             item.get()
-            assert set(os.path.basename(f) for f in item.file_paths) == files
+            assert set(os.path.basename(p) for p in item.paths) == files
 
 
 # -----------------------

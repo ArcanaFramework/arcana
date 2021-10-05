@@ -291,7 +291,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
         # in multi-format file-group
         else:
             file_path = None
-            side_cars = []
+            side_cars = None
             if data_format.directory:
                 if (len(self.file_paths) == 1
                     and os.path.isdir(self.file_paths[0])

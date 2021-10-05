@@ -34,25 +34,26 @@
             "console": "integratedTerminal"
         },
         {
-            "name": "Debug Tests",
+            "name": "Test Config",
             "type": "python",
-            "request": "test",
-            "console": "integratedTerminal",
+            "request": "launch",
+            "purpose": ["debug-test"],
             "justMyCode": true,
+            "console": "integratedTerminal",
             "env": {
                 "_PYTEST_RAISE": "1"
             },
         },
-        {
-            "name": "Debug Tests",
-            "type": "python",
-            "request": "launch",
-            "purpose": ["debug-test"],
-            "console": "internalConsole",
-            "justMyCode": true,
-            "env": {
-                "_PYTEST_RAISE": "1"
-            },
-        }
+        // For legacy Test Explorer
+        // {
+        //     "name": "Debug Tests",
+        //     "type": "python",
+        //     "request": "test",
+        //     "console": "integratedTerminal",
+        //     "justMyCode": true,
+        //     "env": {
+        //         "_PYTEST_RAISE": "1"
+        //     },
+        // },
     ]
 }

@@ -131,11 +131,51 @@ class FileGroup(DataItem):
     """
 
     file_path: str = attr.ib(default=None, converter=op.abspath)
-    side_cars: ty.Dict[str, str] = attr.ib()
+    side_cars: ty.Dict[str, str] = attr.ib(
+        converter=default_if_none(factory=dict))
     checksums: ty.Dict[str, str] = attr.ib(default=None)
 
     HASH_CHUNK_SIZE = 2 ** 20  # 1MB in calc. checksums to avoid mem. issues
 
+    @file_path.validator
+    def validate_file_path(self, _, file_path):
+        if file_path is not None:
+            if not op.exists(file_path):
+                raise ArcanaUsageError(
+                    "Attempting to set a path that doesn't exist "
+                    f"({file_path})")
+            if not self.exists:
+                raise ArcanaUsageError(
+                        "Attempting to set a path to a file group that hasn't "
+                        f"been derived yet ({file_path})")
+
+    @side_cars.default
+    def default_side_cars(self):
+        if self.file_path is None:
+            return {}
+        return self.data_format.default_aux_file_paths(self.file_path)
+
+    @side_cars.validator
+    def validate_side_cars(self, _, side_cars):
+        if side_cars is not None:
+            if self.file_path is None:
+                raise ArcanaUsageError(
+                    "Auxiliary files can only be provided to a FileGroup "
+                    f"of '{self.path}' ({side_cars}) if the local path is "
+                    "as well")
+            if set(self.data_format.side_cars.keys()) != set(side_cars.keys()):
+                raise ArcanaUsageError(
+                    "Keys of provided auxiliary files ('{}') don't match "
+                    "format ('{}')".format(
+                        "', '".join(side_cars.keys()),
+                        "', '".join(self.data_format.side_cars.keys())))
+            if missing_side_cars:= [f for f in side_cars.values()
+                                    if not op.exists(f)]:
+                raise ArcanaUsageError(
+                    f"Attempting to set paths of auxiliary files for {self} "
+                    "that don't exist ('{}')".format(
+                        "', '".join(missing_side_cars)))
+    
     def get(self):
         self._check_exists()
         self._check_part_of_data_node()
@@ -167,6 +207,10 @@ class FileGroup(DataItem):
         attr.validate(self)
 
     @property
+    def paths(self):
+        return chain([self.file_path], self.side_cars.values())
+
+    @property
     def file_paths(self):
         "Iterates through all files in the group and returns their file paths"
         if self.file_path is None:
@@ -177,7 +221,7 @@ class FileGroup(DataItem):
             return chain(*((op.join(root, f) for f in files)
                            for root, _, files in os.walk(self.file_path)))
         else:
-            return chain([self.file_path], self.side_cars.values())
+            return self.paths
 
     def aux_file(self, name):
         return self.side_cars[name]  
@@ -245,45 +289,6 @@ class FileGroup(DataItem):
             for aux_name, aux_path in self.side_cars.items():
                 copy_file(aux_path, path + self.format.side_cars[aux_name])
         return self.format.file_group_cls.from_path(path)
-
-    @file_path.validator
-    def validate_file_path(self, _, file_path):
-        if file_path is not None:
-            if not op.exists(file_path):
-                raise ArcanaUsageError(
-                    "Attempting to set a path that doesn't exist "
-                    f"({file_path})")
-            if not self.exists:
-                raise ArcanaUsageError(
-                        "Attempting to set a path to a file group that hasn't "
-                        f"been derived yet ({file_path})")
-
-    @side_cars.default
-    def default_side_cars(self):
-        if self.file_path is None:
-            return None
-        return self.data_format.default_aux_file_paths(self.file_path)
-
-    @side_cars.validator
-    def validate_side_cars(self, _, side_cars):
-        if side_cars is not None:
-            if self.file_path is None:
-                raise ArcanaUsageError(
-                    "Auxiliary files can only be provided to a FileGroup "
-                    f"of '{self.path}' ({side_cars}) if the local path is "
-                    "as well")
-            if set(self.data_format.side_cars.keys()) != set(side_cars.keys()):
-                raise ArcanaUsageError(
-                    "Keys of provided auxiliary files ('{}') don't match "
-                    "format ('{}')".format(
-                        "', '".join(side_cars.keys()),
-                        "', '".join(self.data_format.side_cars.keys())))
-            if missing_side_cars:= [f for f in side_cars.values()
-                                    if not op.exists(f)]:
-                raise ArcanaUsageError(
-                    f"Attempting to set paths of auxiliary files for {self} "
-                    "that don't exist ('{}')".format(
-                        "', '".join(missing_side_cars)))
 
 
 @attr.s
