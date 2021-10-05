@@ -19,4 +19,4 @@
 .env
 /arcana/arcana2/test.log
 __pycache__
-/test.log
+test.log
