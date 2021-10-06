@@ -131,7 +131,7 @@ class FileGroup(DataItem):
 
     file_path: str = attr.ib(default=None, converter=optional(op.abspath))
     side_cars: ty.Dict[str, str] = attr.ib(
-        converter=default_if_none(factory=dict))
+        converter=optional(factory=dict))
     checksums: ty.Dict[str, str] = attr.ib(default=None)
 
     HASH_CHUNK_SIZE = 2 ** 20  # 1MB in calc. checksums to avoid mem. issues
