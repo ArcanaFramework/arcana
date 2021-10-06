@@ -39,7 +39,7 @@
             "request": "launch",
             "purpose": ["debug-test"],
             "justMyCode": true,
-            "console": "integratedTerminal",
+            "console": "internalConsole",
             "env": {
                 "_PYTEST_RAISE": "1"
             },
