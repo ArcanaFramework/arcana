@@ -246,7 +246,7 @@ class FileFormat(object):
                 except
                 for extensions"""
                 cpy = file_group.copy_to('./file-group', symlink=True)
-                return cpy.file_path
+                return cpy.local_cache
 
             # Add task collect the input paths to a common directory (as we
             # assume the converter expects)
@@ -267,11 +267,11 @@ class FileFormat(object):
                     'file_group': FileGroup}}
             collect_path_annotations.update({n: str for n in self.side_cars})
 
-            def collect_paths(file_format, **file_paths):
+            def collect_paths(file_format, **cache_paths):
                 """Copies files into the CWD renaming so the basenames match
                 except for extensions"""
-                file_path = file_paths.pop('path')
-                side_cars = file_paths if file_paths else None
+                file_path = cache_paths.pop('path')
+                side_cars = cache_paths if cache_paths else None
                 return self.from_path(file_path, side_cars=side_cars,
                                       format=file_format)
 
@@ -434,7 +434,7 @@ class FileFormat(object):
             name_path = split_extension(name_path)[0]
         if not file_path.endswith(self.ext):
             file_path += self.ext
-        return self.file_group_cls(name_path, file_path=file_path, **kwargs)
+        return self.file_group_cls(name_path, local_cache=file_path, **kwargs)
 
 
 class FileFormatAuxFile(object):

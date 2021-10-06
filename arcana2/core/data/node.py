@@ -309,7 +309,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                     pass
             if file_path is not None:
                 item = data_format(
-                    file_path=file_path, side_cars=side_cars,
+                    local_cache=file_path, side_cars=side_cars,
                     **self.item_kwargs)
             else:
                 raise ArcanaUnresolvableFormatException(

@@ -118,7 +118,7 @@ class FileGroup(DataItem):
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
-    file_path : str | None
+    local_cache : str | None
         Path to the file-group on the local file system (i.e. cache for remote
         repositories)
     side_cars : dict[str, str] | None
@@ -129,35 +129,35 @@ class FileGroup(DataItem):
         bys relative file name_paths
     """
 
-    file_path: str = attr.ib(default=None, converter=optional(op.abspath))
+    local_cache: str = attr.ib(default=None, converter=optional(op.abspath))
     side_cars: ty.Dict[str, str] = attr.ib(
-        converter=optional(factory=dict))
+        converter=optional(converter=dict))
     checksums: ty.Dict[str, str] = attr.ib(default=None)
 
     HASH_CHUNK_SIZE = 2 ** 20  # 1MB in calc. checksums to avoid mem. issues
 
-    @file_path.validator
-    def validate_file_path(self, _, file_path):
-        if file_path is not None:
-            if not op.exists(file_path):
+    @local_cache.validator
+    def validate_local_cache(self, _, local_cache):
+        if local_cache is not None:
+            if not op.exists(local_cache):
                 raise ArcanaUsageError(
                     "Attempting to set a path that doesn't exist "
-                    f"({file_path})")
+                    f"({local_cache})")
             if not self.exists:
                 raise ArcanaUsageError(
                         "Attempting to set a path to a file group that hasn't "
-                        f"been derived yet ({file_path})")
+                        f"been derived yet ({local_cache})")
 
     @side_cars.default
     def default_side_cars(self):
-        if self.file_path is None:
+        if self.local_cache is None:
             return {}
-        return self.data_format.default_side_cars(self.file_path)
+        return self.data_format.default_side_cars(self.local_cache)
 
     @side_cars.validator
     def validate_side_cars(self, _, side_cars):
         if side_cars is not None:
-            if self.file_path is None:
+            if self.local_cache is None:
                 raise ArcanaUsageError(
                     "Auxiliary files can only be provided to a FileGroup "
                     f"of '{self.path}' ({side_cars}) if the local path is "
@@ -178,53 +178,53 @@ class FileGroup(DataItem):
     def get(self):
         self._check_exists()
         self._check_part_of_data_node()
-        self.set_file_paths(*self.data_node.get_file_group_paths(self))
+        self.set_cache_paths(*self.data_node.get_file_group_paths(self))
 
     def put(self):
         self._check_part_of_data_node()
-        if self.file_path is None:
+        if self.local_cache is None:
             raise ArcanaUsageError(
                 f"Need to set file path of {self} before it is 'put' in "
                 "dataset")
         self.data_node.put_file_group(self)          
 
-    def set_file_paths(self, file_path, side_cars=None):
+    def set_cache_paths(self, local_cache, side_cars=None):
         """Sets the primary file path and any side-car files
 
         Parameters
         ----------
-        file_path : str
+        local_cache : str
             The path to the primary 
         side_cars : Dict[str, str] or None
             dictionary with name of side-car files as keys (as defined in the
             FileFormat class) and file paths as values
         """
         self.exists = True
-        self.file_path = file_path
+        self.local_cache = local_cache
         if side_cars is None:
             side_cars = self.default_side_cars()
         self.side_cars = side_cars
         attr.validate(self)
 
     @property
-    def paths(self):
-        if self.file_path is None:
+    def cache_paths(self):
+        if self.local_cache is None:
             raise ArcanaUsageError(
                 f"Attempting to access file paths of {self} before they are set")
-        return chain([self.file_path], self.side_cars.values())
+        return chain([self.local_cache], self.side_cars.values())
 
     @property
-    def file_paths(self):
+    def cache_files(self):
         "Iterates through all files in the group and returns their file paths"
-        if self.file_path is None:
+        if self.local_cache is None:
             raise ArcanaUsageError(
                 f"{self} has not be retrieved from the repository. Use 'get' "
                 "method first.")
         if self.data_format.directory:
             return chain(*((op.join(root, f) for f in files)
-                           for root, _, files in os.walk(self.file_path)))
+                           for root, _, files in os.walk(self.local_cache)))
         else:
-            return self.paths
+            return self.cache_paths
 
     def aux_file(self, name):
         return self.side_cars[name]  
@@ -240,14 +240,14 @@ class FileGroup(DataItem):
     def calculate_checksums(self):
         self._check_exists()
         checksums = {}
-        for fpath in self.file_paths:
+        for fpath in self.local_caches:
             fhash = hashlib.md5()
             with open(fpath, 'rb') as f:
                 # Calculate hash in chunks so we don't run out of memory for
                 # large files.
                 for chunk in iter(lambda: f.read(self.HASH_CHUNK_SIZE), b''):
                     fhash.update(chunk)
-            checksums[op.relpath(fpath, self.file_path)] = fhash.hexdigest()
+            checksums[op.relpath(fpath, self.local_cache)] = fhash.hexdigest()
         self.checksums = checksums
 
     def contents_equal(self, other, **kwargs):
@@ -286,9 +286,9 @@ class FileGroup(DataItem):
             copy_file = shutil.copyfile
             copy_dir = shutil.copytree
         if self.format.directory:
-            copy_dir(self.file_path, path)
+            copy_dir(self.local_cache, path)
         else:
-            copy_file(self.file_path, path + self.format.ext)
+            copy_file(self.local_cache, path + self.format.ext)
             for aux_name, aux_path in self.side_cars.items():
                 copy_file(aux_path, path + self.format.side_cars[aux_name])
         return self.format.file_group_cls.from_path(path)

@@ -43,9 +43,9 @@ def test_populate_items(dataset):
             item = node[source_name]
             item.get()
             if item.data_format.directory:
-                item_files = set(os.listdir(item.file_path))
+                item_files = set(os.listdir(item.local_cache))
             else:
-                item_files = set(os.path.basename(p) for p in item.paths)
+                item_files = set(os.path.basename(p) for p in item.cache_paths)
             assert item_files == files
 
 

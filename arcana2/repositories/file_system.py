@@ -83,7 +83,7 @@ class FileSystem(Repository):
         Inserts or updates a file_group in the repository
         """
         target_path = self.file_group_path(file_group)
-        source_path = file_group.file_path
+        source_path = file_group.local_cache
         # Create target directory if it doesn't exist already
         dname = op.dirname(target_path)
         if not op.exists(dname):
@@ -217,8 +217,8 @@ class FileSystem(Repository):
         return op.join(node.dataset.name, *tree_path)
 
     def file_group_path(self, file_group):
-        if file_group.file_path:
-            path = file_group.file_path
+        if file_group.local_cache:
+            path = file_group.local_cache
         else:
             path = (op.join(self.node_path(file_group.data_node)
                             *(file_group.path.split('/')))
@@ -239,7 +239,7 @@ class FileSystem(Repository):
         return prov
 
     def _get_file_group_provenance(self, file_group):
-        if file_group.file_path is not None:
+        if file_group.local_cache is not None:
             prov = DataProvenance.load(self.prov_json_path(file_group))
         else:
             prov = None

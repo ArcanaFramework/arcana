@@ -278,10 +278,10 @@ class Xnat(Repository):
                 shutil.rmtree(cache_path)
             os.makedirs(cache_path, stat.S_IRWXU | stat.S_IRWXG)
             if file_group.data_format.directory:
-                shutil.copytree(file_group.file_path, cache_path)
+                shutil.copytree(file_group.local_cache, cache_path)
             else:
                 # Copy primary file
-                shutil.copyfile(file_group.file_path,
+                shutil.copyfile(file_group.local_cache,
                                 op.join(cache_path, file_group.fname))
                 # Copy auxiliaries
                 for sc_fname, sc_path in file_group.aux_file_fnames_and_paths:
@@ -306,10 +306,10 @@ class Xnat(Repository):
                 parent=xnode, label=name, format=file_group.data_format_name)
             # Upload the files to the new resource                
             if file_group.data_format.directory:
-                for dpath, _, fnames  in os.walk(file_group.file_path):
+                for dpath, _, fnames  in os.walk(file_group.local_cache):
                     for fname in fnames:
                         fpath = op.join(dpath, fname)
-                        frelpath = op.relpath(fpath, file_group.file_path)
+                        frelpath = op.relpath(fpath, file_group.local_cache)
                         xresource.upload(fpath, frelpath)
             else:
                 xresource.upload(file_group.name_path, file_group.fname)

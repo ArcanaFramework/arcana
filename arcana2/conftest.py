@@ -10,16 +10,19 @@ from arcana2.dimensions.clinical import Clinical
 from arcana2.data_formats import dicom, niftix_gz
 
 # Set DEBUG logging for unittests
+
+debug_level = logging.WARNING
+
 logger = logging.getLogger('arcana')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(debug_level)
 fch = logging.FileHandler('./test.log')
-fch.setLevel(logging.DEBUG)
+fch.setLevel(debug_level)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 fch.setFormatter(formatter)
 logger.addHandler(fch)
 
 sch = logging.StreamHandler()
-sch.setLevel(logging.DEBUG)
+sch.setLevel(debug_level)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 sch.setFormatter(formatter)
 logger.addHandler(sch)
