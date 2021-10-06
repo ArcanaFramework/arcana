@@ -35,23 +35,13 @@ class Pipeline():
     outputs: list[tuple[str], FileFormat] = attr.ib(factory=list)
 
     def __getattr__(self, varname):
-        """Delegate any missing attributes to wrapped workflow"""
-        return getattr(self.workflow, varname)
+        """
+        Delegate any missing attributes to nested workflow that operates per
+        node"""
+        return getattr(self.workflow.per_node, varname)
 
     def __call__(self, *args, **kwargs):
         return self.workflow(*args, **kwargs)
-
-    def set_output(self, *outputs):
-        """Connects the outputs of the pipeline to the sink nodes. Uses same
-        syntax as pydra.Workflow.set_output
-
-        Parameters
-        ----------
-        *outputs : Sequence[tuple[str, ?]]
-            A list of outputs to add as outputs   
-        """
-        for name, conn in outputs:
-            setattr(self.workflow.per_node.outputs.inputs, name, conn)
 
     @property
     def input_names(self):
@@ -244,10 +234,10 @@ class Pipeline():
                 output_spec=SpecInfo(
                     name=f'{name}Outputs', bases=(BaseSpec,),
                     fields=[(o, ty.Any) for o in output_names]),
-                name='outputs'))
+                name='sink'))
 
         # Set format converters where required
-        to_sink = {o: getattr(wf.per_node.outputs.lzout, o)
+        to_sink = {o: getattr(wf.per_node.sink.lzout, o)
                    for o in output_names}
 
         # Do output format conversions if required
@@ -260,7 +250,7 @@ class Pipeline():
                     name=cname, to_convert=to_sink[output_name]))
                 # Map converter output to workflow output
                 to_sink[output_name] = getattr(wf.per_node,
-                                               cname).lzout.converted        
+                                               cname).lzout.converted
 
         def store(dataset, frequency, id, **to_sink):
             data_node = dataset.node(frequency, id)
@@ -277,22 +267,22 @@ class Pipeline():
             FunctionTask(
                 store,
                 input_spec=SpecInfo(
-                    name='SinkInputs', bases=(BaseSpec,), fields=(
+                    name='UploadInputs', bases=(BaseSpec,), fields=(
                         [('dataset', Dataset),
                          ('frequency', DataDimension),
                          ('id', str)]
                         + [(s, DataItem) for s in to_sink])),
                 output_spec=SpecInfo(
-                    name='SinkOutputs', bases=(BaseSpec,), fields=[
+                    name='UploadOutputs', bases=(BaseSpec,), fields=[
                         ('id', str)]),
-                name='store',
+                name='upload',
                 dataset=dataset,
                 frequency=frequency,
                 id=wf.per_node.lzin.id,
                 **to_sink))
 
         wf.per_node.set_output(
-            [('id', wf.per_node.store.lzout.id)])
+            [('id', wf.per_node.upload.lzout.id)])
 
         wf.set_output(
             [('processed', wf.per_node.lzout.id),

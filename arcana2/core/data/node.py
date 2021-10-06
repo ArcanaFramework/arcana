@@ -33,7 +33,7 @@ class DataNode():
 
     ids: ty.Dict[DataDimension, str] = attr.ib()
     frequency: DataDimension = attr.ib()
-    dataset: arcana2.core.data.set.Dataset = attr.ib()    
+    dataset: arcana2.core.data.set.Dataset = attr.ib(repr=False)    
     children: ty.DefaultDict[DataDimension,
                              ty.Dict[str or tuple[str], str]] = attr.ib(
         factory=lambda: defaultdict(dict))
@@ -210,7 +210,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
                 "attempting to resolve a file-groups format")
         try:
             # Attempt to access previously saved
-            item = self._matched[format]
+            item = self._matched[data_format]
         except KeyError:
             if isinstance(data_format, FileFormat):
                 item = self._resolve(data_format)

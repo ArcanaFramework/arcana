@@ -69,6 +69,8 @@ class BaseRunCmd(BaseDatasetCmd):
         if not args.dry_run:
             pipeline(ids=args.ids)
 
+        return pipeline
+
     @classmethod
     def add_input_sources(cls, args, dataset):
         """Parses input arguments into dictionary of DataSources
@@ -256,13 +258,15 @@ class RunAppCmd(BaseRunCmd):
         pipeline.add(task_cls(name='app',
                               **cls.parse_app_args(args, task_cls)))
 
-        # Connect inputs
+        # Connect source to inputs
         for input in pipeline.input_names:
-            setattr(pipeline.app, input, getattr(pipeline.lzin, input))
+            setattr(pipeline.app.inputs, input, getattr(pipeline.source.lzout,
+                                                        input))
 
-        # Connect outputs
+        # Connect outputs to sink
         for output in pipeline.output_names:
-            pipeline.set_output((output, getattr(pipeline.app.lzout, output)))
+            setattr(pipeline.sink.inputs, output, getattr(pipeline.app.lzout,
+                                                          output))
 
         return pipeline
 

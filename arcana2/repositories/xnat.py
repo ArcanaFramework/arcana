@@ -149,7 +149,7 @@ class Xnat(Repository):
                 "file format (see FileGroup.formatted)".format(file_group))
         self._check_repository(file_group)
         with self:  # Connect to the XNAT repository if haven't already
-            xnode = self.get_xnode(file_group)
+            xnode = self.get_xnode(file_group.data_node)
             if not file_group.uri:
                 base_uri = self.standard_uri(xnode)
                 if file_group.derived:
@@ -185,6 +185,8 @@ class Xnat(Repository):
                 # The name_path to the directory which the files will be
                 # downloaded to.
                 tmp_dir = cache_path + '.download'
+                xresource = self.login.classes.Resource(uri=file_group.uri,
+                                                        xnat_session=self.login)
                 try:
                     # Attempt to make tmp download directory. This will
                     # fail if another process (or previous attempt) has
@@ -236,7 +238,7 @@ class Xnat(Repository):
         """
         self._check_repository(field)
         with self:
-            xsession = self.get_xnode(field)
+            xsession = self.get_xnode(field.data_node)
             val = xsession.fields[self.escape_name(field)]
             val = val.replace('&quot;', '"')
             val = parse_value(val)
@@ -264,7 +266,7 @@ class Xnat(Repository):
         # Open XNAT session
         with self:
             # Add session for derived scans if not present
-            xnode = self.get_xnode(file_group)
+            xnode = self.get_xnode(file_group.data_node)
             if not file_group.uri:
                 name = self.escape_name(file_group)
                 # Set the uri of the file_group
@@ -324,13 +326,13 @@ class Xnat(Repository):
         if field.data_format is str:
             val = '"{}"'.format(val)
         with self:
-            xsession = self.get_xnode(field)
+            xsession = self.get_xnode(field.data_node)
             xsession.fields[self.escape_name(field)] = val
         if field.provenance:
             self.put_provenance(field)
 
     def put_provenance(self, item):
-        xnode = self.get_xnode(item)
+        xnode = self.get_xnode(item.data_node)
         uri = '{}/resources/{}'.format(self.standard_uri(xnode),
                                        self.PROV_RESOURCE)
         cache_dir = self.cache_path(uri)

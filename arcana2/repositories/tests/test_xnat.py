@@ -41,7 +41,7 @@ def test_populate_items(dataset):
         for scan_name, files in source_files.items():
             item = node[scan_name]
             item.get()
-            assert set(item.file_paths) == files
+            assert set(os.path.basename(p) for p in item.file_paths) == files
 
 
 # -----------------------
@@ -75,7 +75,7 @@ TEST_DATASETS = {
             ('scan1',
              [('TEXT',  # resource name
               ['file.txt'])],
-             [text])],
+             [(text, ['file.txt'])])],
         {Clinical.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
          Clinical.session: r'timepoint(?P<timepoint>\d+).*'}),  # id_inference dict
     }

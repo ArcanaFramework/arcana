@@ -1,5 +1,7 @@
 import re
+import typing as ty
 import attr
+from attr.converters import optional
 from pydra import Workflow
 from arcana2.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
@@ -40,13 +42,14 @@ class DataSource():
     is_regex : bool
         Flags whether the name_path is a regular expression or not
     """
-    path = attr.ib(type=str)
+    path: str = attr.ib()
     data_format = attr.ib()
-    frequency = attr.ib(type=DataDimension)
-    quality_threshold = attr.ib(type=DataQuality, default=DataQuality.usable)
-    order = attr.ib(type=int, default=None)
-    metadata = attr.ib(default=None)
-    is_regex = attr.ib(type=bool, default=False)
+    frequency: DataDimension = attr.ib()
+    quality_threshold: DataQuality = attr.ib(
+        default=None, converter=optional(lambda q: DataQuality[str(q)]))
+    order: int = attr.ib(default=None)
+    metadata: dict[str, ty.Any] = attr.ib(default=None)
+    is_regex: bool = attr.ib(default=False)
 
     def match(self, node):
         criteria = [

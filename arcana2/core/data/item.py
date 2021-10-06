@@ -6,7 +6,7 @@ import hashlib
 import shutil
 from abc import ABCMeta, abstractmethod
 import attr
-from attr.converters import default_if_none
+from attr.converters import default_if_none, optional
 from arcana2.core.utils import parse_value
 from arcana2.exceptions import (
     ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
@@ -49,8 +49,7 @@ class DataItem(metaclass=ABCMeta):
     data_format: type or FileFormat = attr.ib()
     uri: str = attr.ib(default=None)
     order: int = attr.ib(default=None)
-    quality: DataQuality = attr.ib(default=None,
-                                   converter=default_if_none(None))
+    quality: DataQuality = attr.ib(default=DataQuality.usable)
     data_node = attr.ib(default=None)
     exists: bool = attr.ib(default=True)
     provenance: DataProvenance = attr.ib(default=None)
@@ -130,7 +129,7 @@ class FileGroup(DataItem):
         bys relative file name_paths
     """
 
-    file_path: str = attr.ib(default=None, converter=op.abspath)
+    file_path: str = attr.ib(default=None, converter=optional(op.abspath))
     side_cars: ty.Dict[str, str] = attr.ib(
         converter=default_if_none(factory=dict))
     checksums: ty.Dict[str, str] = attr.ib(default=None)
