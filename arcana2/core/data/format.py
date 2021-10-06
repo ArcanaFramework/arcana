@@ -57,7 +57,7 @@ class FileFormat(object):
             raise ArcanaUsageError(
                 "Extension for '{}' format can only be None if it is a "
                 "directory".format(name))
-        self.name = name
+        self.name = name.lower()
         self.extension = extension
         self.desc = desc
         self.directory = directory
@@ -73,7 +73,7 @@ class FileFormat(object):
             alternate_names = []
         self.file_group_cls = (file_group_cls if file_group_cls is not None
                                else arcana2.core.data.item.FileGroup)
-        self.alternate_names = alternate_names
+        self.alternate_names = [n.lower() for n in alternate_names]
         self.side_cars = side_cars if side_cars is not None else {}
         for sc_name, sc_ext in self.side_cars.items():
             if sc_ext == self.ext:

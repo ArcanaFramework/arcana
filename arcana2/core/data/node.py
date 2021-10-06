@@ -36,9 +36,9 @@ class DataNode():
     dataset: arcana2.core.data.set.Dataset = attr.ib(repr=False)    
     children: ty.DefaultDict[DataDimension,
                              ty.Dict[str or tuple[str], str]] = attr.ib(
-        factory=lambda: defaultdict(dict))
-    _unresolved = attr.ib(default=None)
-    _items = attr.ib(factory=dict, init=False)
+        factory=lambda: defaultdict(dict), repr=False)
+    _unresolved = attr.ib(default=None, repr=False)
+    _items = attr.ib(factory=dict, init=False, repr=False)
 
     def __getitem__(self, column_name):
         """Get's the item  for the current
@@ -280,7 +280,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
         if self.uris is not None:
             item = None
             for data_format_name, uri in self.uris.items():
-                if data_format_name in data_format.all_names:
+                if data_format_name.lower() in data_format.all_names:
                     item = data_format(uri=uri, **self.item_kwargs)
             if item is None:
                 raise ArcanaUnresolvableFormatException(

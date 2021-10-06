@@ -411,7 +411,9 @@ class Xnat(Repository):
                     path=xscan.type,
                     order=xscan.id,
                     quality=xscan.quality,
-                    uris={r.label: r.uri for r in xscan.resources.values()})
+                    # Ensure uri uses resource label instead of ID
+                    uris={r.label: '/'.join(r.uri.split('/')[:-1] + [r.label])
+                          for r in xscan.resources.values()})
             for name, value in xnode.fields.items():
                 data_node.add_field(
                     path=name,

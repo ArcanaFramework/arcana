@@ -50,9 +50,9 @@ class DataItem(metaclass=ABCMeta):
     uri: str = attr.ib(default=None)
     order: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=DataQuality.usable)
-    data_node = attr.ib(default=None)
     exists: bool = attr.ib(default=True)
     provenance: DataProvenance = attr.ib(default=None)
+    data_node = attr.ib(default=None)    
 
     @abstractmethod
     def get(self):
@@ -203,10 +203,14 @@ class FileGroup(DataItem):
         self.file_path = file_path
         if side_cars is None:
             side_cars = self.default_side_cars()
+        self.side_cars = side_cars
         attr.validate(self)
 
     @property
     def paths(self):
+        if self.file_path is None:
+            raise ArcanaUsageError(
+                f"Attempting to access file paths of {self} before they are set")
         return chain([self.file_path], self.side_cars.values())
 
     @property

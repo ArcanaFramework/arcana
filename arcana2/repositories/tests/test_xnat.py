@@ -31,17 +31,22 @@ def test_construct_tree(dataset):
 
 
 def test_populate_items(dataset):
-    source_files = {}
-    for scan_name, _, data_formats in dataset.scans:
-        for data_format, files in data_formats:
-            source_name = scan_name + data_format.name
-            dataset.add_source(source_name, scan_name, data_format)
-            source_files[source_name] = set(files)
+    expected_files = {}
+    for scan_name, resources in dataset.scans:
+        for resource_name, data_format, files in resources:
+            if data_format is not None:
+                source_name = scan_name + resource_name
+                dataset.add_source(source_name, scan_name, data_format)
+                expected_files[source_name] = set(files)
     for node in dataset.nodes(Clinical.session):
-        for scan_name, files in source_files.items():
-            item = node[scan_name]
+        for source_name, files in expected_files.items():
+            item = node[source_name]
             item.get()
-            assert set(os.path.basename(p) for p in item.file_paths) == files
+            if item.data_format.directory:
+                item_files = set(os.listdir(item.file_path))
+            else:
+                item_files = set(os.path.basename(p) for p in item.paths)
+            assert item_files == files
 
 
 # -----------------------
@@ -51,31 +56,31 @@ def test_populate_items(dataset):
 TEST_DATASETS = {
     'basic': (  # dataset name
         [1, 1, 3],  # number of timepoints, groups and members respectively
-        [
-            ('scan1',  # scan type (ID is index)
-             [('text',  ['file.txt'])],  # resource name and files within it
-             [(text, ['file.txt'])]), # formats of the scan
-            ('scan2',
-             [('niftix_gz', ['file.nii.gz', 'file.json'])],
-             [(niftix_gz, ['file.nii.gz', 'file.json'])]),
-            ('scan3',
-             [('freesurfer', ['doubledir', 'dir', 'file.dat'])],
-             [(directory, ['doubledir', 'dir', 'file.dat'])]),
-            ('scan4',
-             [('DICOM', ['file1.dcm', 'file2.dcm', 'file3.dcm']),
-              ('NIFTI', ['file1.nii.gz']),
-              ('BIDS', ['file1.json']),
-              ('SNAPSHOT', ['file1.png'])],
-             [(dicom, ['file1.dcm', 'file2.dcm', 'file3.dcm']),
-              (nifti_gz, ['file1.nii.gz'])])],
+        [('scan1',  # scan type (ID is index)
+          [('text', # resource name
+            text,  # Data format
+            ['file.txt'])]),  # name files to place within resource
+         ('scan2',
+          [('niftix_gz',
+            niftix_gz,
+            ['file.nii.gz', 'file.json'])]),
+         ('scan3',
+          [('directory',
+            directory,
+            ['doubledir', 'dir', 'file.dat'])]),
+         ('scan4',
+          [('DICOM', dicom, ['file1.dcm', 'file2.dcm', 'file3.dcm']),
+           ('NIFTI', nifti_gz, ['file1.nii.gz']),
+           ('BIDS', None, ['file1.json']),
+           ('SNAPSHOT', None, ['file1.png'])])],
         {}),  # id_inference dict
     'multi': (  # dataset name
         [2, 3, 4],  # number of timepoints, groups and members respectively
         [
             ('scan1',
              [('TEXT',  # resource name
-              ['file.txt'])],
-             [(text, ['file.txt'])])],
+               text, 
+               ['file.txt'])])],
         {Clinical.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
          Clinical.session: r'timepoint(?P<timepoint>\d+).*'}),  # id_inference dict
     }
@@ -99,7 +104,7 @@ CONNECTION_ATTEMPT_SLEEP = 5
 PUT_SUFFIX = '_put'
 
 
-@pytest.fixture(params=GOOD_DATASETS)
+@pytest.fixture(params=GOOD_DATASETS, scope='module')
 def dataset(repository, request):
     return access_dataset(repository, request.param)
 
@@ -191,11 +196,11 @@ def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
             xsession = xclasses.MrSessionData(label=session_label,
                                             parent=xsubject)
             
-            for i, (sname, resources, _) in enumerate(scans, start=1):
+            for i, (sname, resources) in enumerate(scans, start=1):
                 # Create scan
                 xscan = xclasses.MrScanData(id=i, type=sname,
                                             parent=xsession)
-                for rname, fnames in resources:
+                for rname, _, fnames in resources:
 
                     temp_dir = Path(mkdtemp())
                     # Create the resource

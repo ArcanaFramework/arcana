@@ -59,6 +59,10 @@ class DataSource():
             (match_metadata, self.metadata)]
         # Get all items that match the data format of the source
         matches = node.resolved(self.data_format)
+        if not matches:
+            raise ArcanaInputMissingMatchError(
+                f"Did not find any items matching data format "
+                f"{self.data_format} in {self}")
         # Apply all filters to find items that match criteria
         for func, arg in criteria:
             if arg is not None:
