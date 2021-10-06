@@ -225,7 +225,7 @@ class FileFormat(object):
             Keyword arguments passed through to the task interface on
             initialisation
         """
-
+        from .item import FileGroup
         if inputs is None:
             inputs = {'path': 'in_file'}
 
