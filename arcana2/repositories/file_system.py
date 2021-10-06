@@ -53,7 +53,7 @@ class FileSystem(Repository):
         # Don't need to cache file_group as it is already local as long
         # as the path is set
         primary_path = self.file_group_path(file_group)
-        side_cars = file_group.data_format.default_aux_file_paths(primary_path)
+        side_cars = file_group.data_format.default_side_cars(primary_path)
         if not op.exists(primary_path):
             raise ArcanaMissingDataException(
                 "{} does not exist in {}"
@@ -91,7 +91,7 @@ class FileSystem(Repository):
         if op.isfile(source_path):
             shutil.copyfile(source_path, target_path)
             # Copy side car files into repository
-            for aux_name, aux_path in file_group.data_format.default_aux_file_paths(
+            for aux_name, aux_path in file_group.data_format.default_side_cars(
                     target_path).items():
                 shutil.copyfile(
                     file_group.data_format.side_cars[aux_name], aux_path)

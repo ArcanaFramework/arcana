@@ -152,7 +152,7 @@ class FileGroup(DataItem):
     def default_side_cars(self):
         if self.file_path is None:
             return {}
-        return self.data_format.default_aux_file_paths(self.file_path)
+        return self.data_format.default_side_cars(self.file_path)
 
     @side_cars.validator
     def validate_side_cars(self, _, side_cars):

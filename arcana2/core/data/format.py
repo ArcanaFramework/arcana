@@ -130,7 +130,7 @@ class FileFormat(object):
 
     @property
     def extensions(self):
-        return tuple([self.extension] + sorted(self.aux_file_exts))
+        return tuple([self.extension] + sorted(self.side_car_exts))
 
     @property
     def ext(self):
@@ -140,7 +140,7 @@ class FileFormat(object):
     def ext_str(self):
         return self.extension if self.extension is not None else ''
 
-    def default_aux_file_paths(self, primary_path):
+    def default_side_cars(self, primary_path):
         """
         Get the default paths for auxiliary files relative to the path of the
         primary file, i.e. the same name as the primary path with a different
@@ -160,7 +160,7 @@ class FileFormat(object):
                     for n, ext in self.side_cars.items())
 
     @property
-    def aux_file_exts(self):
+    def side_car_exts(self):
         return frozenset(self.side_cars.values())
 
     @property
@@ -457,7 +457,7 @@ class FileFormatAuxFile(object):
 
     @property
     def extension(self):
-        self._file_format.aux_file_exts(self._aux_name)
+        self._file_format.side_car_exts(self._aux_name)
 
     @property
     def aux_name(self):
