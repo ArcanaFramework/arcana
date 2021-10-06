@@ -362,7 +362,7 @@ class UnresolvedField(UnresolvedDataItem):
                 value = [subtype(v)
                             for v in self.value[1:-1].split(',')]
             else:
-                    value = data_format(self.value)
+                value = data_format(self.value)
         except ValueError:
             raise ArcanaUnresolvableFormatException(
                     f"Could not convert value of {self} ({self.value}) "

@@ -31,8 +31,45 @@ class Pipeline():
     workflow: Workflow = attr.ib()
     dataset: Dataset = attr.ib()
     frequency: DataDimension = attr.ib()
-    inputs: list[tuple[str], FileFormat] = attr.ib(factory=list)
-    outputs: list[tuple[str], FileFormat] = attr.ib(factory=list)
+    inputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
+    outputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
+    _connected: set[str] = attr.ib(factory=set, repr=False)
+
+    @property
+    def lzin(self):
+        """
+        Treat the 'lzout' of the source node as the 'lzin' of the pipeline to
+        allow pipelines to be treated the same as normal Pydra workflow
+        """
+        return self.workflow.source.lzout
+
+    def set_output(self, connections):
+        """Connect the output using the same syntax as used for a Pydra workflow
+
+        Parameters
+        ----------
+        connections : list[tuple(str, ?)] or tuple(str, ?) or dict[str, ?]
+            The connections to set
+
+        Raises
+        ------
+        Exception
+            An exception is raised if the connections are provided in the wrong
+            format
+        """
+        if isinstance(connections, tuple) and len(connections) == 2:
+            connections = [connections]
+        elif isinstance(connections, dict):
+            connections = list(connections.items())
+        elif not (isinstance(connections, list)
+                  and all([len(el) == 2 for el in connections])):
+            raise Exception(
+                "Connections can be a 2-elements tuple, a list of these "
+                "tuples, or dictionary")
+        # Connect "outputs" the pipeline to the 
+        for out_name, node_out in connections:
+            setattr(self.workflow.sink, out_name, node_out)
+            self._connected.add(out_name)
 
     def __getattr__(self, varname):
         """
@@ -41,7 +78,13 @@ class Pipeline():
         return getattr(self.workflow.per_node, varname)
 
     def __call__(self, *args, **kwargs):
+        self.check_connections()
         return self.workflow(*args, **kwargs)
+
+    def check_connections(self):
+        if missing:= set(self.output_names) - self._connected:
+            raise Exception(
+                f"The following outputs haven't been connected: {missing}")
 
     @property
     def input_names(self):
