@@ -190,7 +190,7 @@ class Dataset():
         if self._root_node is None:
             self._root_node = DataNode({self.root_freq: None}, self.root_freq,
                                        self)
-            self.repository.construct_tree(self)
+            self.repository.find_nodes(self)
         return self._root_node
 
     def add_source(self, name, path, format, frequency=None, overwrite=False,
@@ -219,7 +219,7 @@ class Dataset():
         self._add_spec(name, DataSource(path, format, frequency, **kwargs),
                        overwrite)
 
-    def add_sink(self, name, path, format, frequency=None, overwrite=False,
+    def add_sink(self, name, format, path=None, frequency=None, overwrite=False,
                  **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -229,15 +229,19 @@ class Dataset():
         name : str
             The name used to reference the dataset "column" for the
             sink
-        path : str, default `name`
-            The location of the sink within the dataset
         frequency : [type]
             The frequency of the sink within the dataset
+        path : str, default `name`
+            The location of the sink within the dataset            
         format : FileFormat or type
             The file-format (for file-groups) or datatype (for fields)
             that the sink will be stored in within the dataset
+        overwrite : bool
+            Whether to overwrite an existing sink
         """
         frequency = self._parse_freq(frequency)
+        if path is None:
+            path = name
         self._add_spec(name, DataSink(path, format, frequency, **kwargs),
                        overwrite)
 

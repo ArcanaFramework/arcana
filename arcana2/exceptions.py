@@ -194,7 +194,7 @@ class ArcanaUriAlreadySetException(ArcanaException):
 
 
 class ArcanaDataTreeConstructionError(ArcanaError):
-    "Error in constructing data tree by repository construct_tree method"
+    "Error in constructing data tree by repository find_nodes method"
 
 class ArcanaBadlyFormattedIDError(ArcanaDataTreeConstructionError):
     "Error attempting to extract an ID from a tree path using a user provided regex"

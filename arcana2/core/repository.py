@@ -70,13 +70,10 @@ class Repository(metaclass=ABCMeta):
                                **kwargs)
 
     @abstractmethod
-    def construct_tree(self, dataset):
+    def find_nodes(self, dataset):
         """
         Find all data nodes for a dataset in the repository and populate the
-        Dataset object using its `add_node` method. The data nodes can be
-        populated with items as they are created using the methods
-        `add_file_group` and `add_field`, otherwise this can be performed in
-        the `populate_items` method for lazy loading (for performance).
+        Dataset object using its `add_node` method.
 
         Parameters
         ----------
@@ -84,10 +81,10 @@ class Repository(metaclass=ABCMeta):
             The dataset to populate with nodes
         """
 
-    def populate_items(self, data_node):
+    def find_items(self, data_node):
         """
-        Find all data within a data node and populate the DataNode object with
-        them using the `add_file_group` and `add_field` methods.
+        Find all data items within a data node and populate the DataNode object
+        with them using the `add_file_group` and `add_field` methods.
         
         Parameters
         ----------

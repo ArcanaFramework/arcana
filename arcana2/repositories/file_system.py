@@ -130,7 +130,7 @@ class FileSystem(Repository):
             with open(fpath, 'w') as f:
                 json.dump(dct, f, indent=2)
 
-    def construct_tree(self, dataset: Dataset):
+    def find_nodes(self, dataset: Dataset):
         """
         Find all nodes within the dataset stored in the repository and
         construct the data tree within the dataset
@@ -152,7 +152,7 @@ class FileSystem(Repository):
             if len(tree_path) == len(dataset.hierarchy):
                 dataset.add_leaf_node(tree_path)
 
-    def populate_items(self, data_node):
+    def find_items(self, data_node):
         # First ID can be omitted
         dpath = self.node_path(data_node)
         if not op.exists(dpath):

@@ -387,7 +387,7 @@ class Xnat(Repository):
             checksums['.'] = checksums.pop(primary)
         return checksums
 
-    def construct_tree(self, dataset: Dataset, **kwargs):
+    def find_nodes(self, dataset: Dataset, **kwargs):
         """
         Find all file_groups, fields and provenance provenances within an XNAT
         project and create data tree within dataset
@@ -402,7 +402,7 @@ class Xnat(Repository):
             for exp in self.login.projects[dataset.name].experiments.values():
                 dataset.add_leaf_node([exp.subject.label, exp.label])
 
-    def populate_items(self, data_node):
+    def find_items(self, data_node):
         with self:
             xnode = self.get_xnode(data_node)
             # Add scans, fields and resources to data node

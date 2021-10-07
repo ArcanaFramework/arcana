@@ -94,7 +94,7 @@ class DataNode():
     @property
     def unresolved(self):
         if self._unresolved is None:
-            self.dataset.repository.populate_items(self)
+            self.dataset.repository.find_items(self)
         return self._unresolved
 
     def resolved(self, format):

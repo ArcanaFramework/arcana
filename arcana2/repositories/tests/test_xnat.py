@@ -19,7 +19,7 @@ from arcana2.data_formats.general import text, directory, json
 from arcana2.data_formats.neuroimaging import niftix_gz, nifti_gz, dicom, nifti
 
 
-def test_construct_tree(dataset):
+def test_find_nodes(dataset):
     for freq in Clinical:
         # For all non-zero bases in the frequency, multiply the dim lengths
         # together to get the combined number of nodes expected for that
@@ -30,7 +30,7 @@ def test_construct_tree(dataset):
             f"{freq} doesn't match {len(dataset.nodes(freq))} vs {num_nodes}")
 
 
-def test_populate_items(dataset):
+def test_find_items(dataset):
     expected_files = {}
     for scan_name, resources in dataset.scans:
         for resource_name, data_format, files in resources:

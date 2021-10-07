@@ -28,8 +28,8 @@ sch.setFormatter(formatter)
 logger.addHandler(sch)
 
 
-TEST_DATA_DIR = os.path.realpath(
-    os.path.join(os.path.dirname(__file__), "tests", "data"))
+TEST_DATA_DIR = Path(os.path.realpath(
+    os.path.join(os.path.dirname(__file__), "tests", "data")))
 
 
 @pytest.fixture(scope='session')
@@ -39,7 +39,7 @@ def test_ref_data_dir():
 
 @pytest.fixture
 def test_dicom_dataset_dir(test_ref_data_dir):
-    return os.path.join(test_ref_data_dir, 'test-dataset')
+    return Path(test_ref_data_dir) / 'test-dataset'
 
 
 @pytest.fixture
