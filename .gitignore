@@ -20,3 +20,5 @@
 /arcana/arcana2/test.log
 __pycache__
 test.log
+.vscode
+*.egg-info
