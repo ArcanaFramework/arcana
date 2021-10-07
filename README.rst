@@ -13,15 +13,6 @@ Arcana v2.0
   :target: http://arcana.readthedocs.io/en/latest/?badge=latest
   :alt: Documentation Status
 
-
-This work is licensed under a
-`Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License <http://creativecommons.org/licenses/by-nc-sa/4.0/>`_
-
-.. image:: https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png
-  :target: http://creativecommons.org/licenses/by-nc-sa/4.0/
-  :alt: Creative Commons License: Attribution-NonCommercial-ShareAlike 4.0 International
-
-
 Abstraction of Repository-Centric ANAlysis (Arcana2_) v2 is Python framework
 for "repository-centric" analyses of study groups (e.g. NeuroImaging
 studies) built on Pydra_.
@@ -69,3 +60,10 @@ Arcana can be installed for Python 3 using *pip*::
 .. _`Environment Modules`: http://modules.sourceforge.net
 
 
+
+This work is licensed under a
+`Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License <http://creativecommons.org/licenses/by-nc-sa/4.0/>`_
+
+.. image:: https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png
+  :target: http://creativecommons.org/licenses/by-nc-sa/4.0/
+  :alt: Creative Commons License: Attribution-NonCommercial-ShareAlike 4.0 International
