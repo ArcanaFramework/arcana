@@ -157,11 +157,11 @@ class Dataset():
                 + ', '.join(str(m) for m in (~covered).nonzero_basis()) +
                 f"f the {self.dimensions} data dimensions")
 
-    def __getitem__(self, key):
-        if key == self.dimensions(0):
-            return self.root_node
-        else:
-            return self.root_node.children[key]
+    # def __getitem__(self, key):
+    #     if key == self.dimensions(0):
+    #         return self.root_node
+    #     else:
+    #         return self.root_node.children[key]
 
     @property
     def dimensions(self):
@@ -192,6 +192,10 @@ class Dataset():
                                        self)
             self.repository.find_nodes(self)
         return self._root_node
+
+    def refresh(self):
+        """Refresh the dataset nodes"""
+        self._root_node = None
 
     def add_source(self, name, path, format, frequency=None, overwrite=False,
                    **kwargs):
@@ -364,7 +368,7 @@ class Dataset():
             return [None]
         return self.root_node.children[frequency].keys()
 
-    def column(self, name):
+    def __getitem__(self, name):
         """Return all data items across the dataset for a given source or sink
 
         Parameters

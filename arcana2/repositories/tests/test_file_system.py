@@ -1,7 +1,9 @@
 import os
 import os.path
 from tempfile import mkdtemp
+import hashlib
 from pathlib import Path
+from collections import defaultdict
 from dataclasses import dataclass
 import shutil
 import operator as op
@@ -60,7 +62,7 @@ def test_find_nodes(dataset: Dataset):
         # together to get the combined number of nodes expected for that
         # frequency
         num_nodes = reduce(
-            op.mul, (l for l, b in zip(dataset.dim_lengths, freq) if b), 1)
+            op.mul, (l for l, b in zip(dataset.blueprint.dim_lengths, freq) if b), 1)
         assert len(dataset.nodes(freq)) == num_nodes, (
             f"{freq} doesn't match {len(dataset.nodes(freq))} vs {num_nodes}")
 
@@ -76,17 +78,42 @@ def test_get_items(dataset: Dataset):
         for source_name, files in source_files.items():
             item = node[source_name]
             item.get()
-            assert set(os.path.basename(p) for p in item.cache_paths) == files
+            assert set(os.path.basename(p) for p in item.fs_paths) == files
 
 
 def test_put_item(dataset: Dataset, tmp_dir: str):
-    for freq, name, data_format, files in dataset.blueprint.to_insert:
+    test_files = defaultdict(dict)
+    for name, freq, data_format, files in dataset.blueprint.to_insert:
         dataset.add_sink(name=name, format=data_format, frequency=freq)
-        node = next(dataset.nodes(freq))
-        item = node[name]
         for fname in files:
             test_file = create_test_file(fname, tmp_dir / name)
-        item.put()
+            fhash = hashlib.md5()
+            with open(test_file, 'rb') as f:
+                fhash.update(f.read())
+            test_files[name][test_file.relative_to(tmp_dir / name)] = fhash.hexdigest()
+        for node in dataset.nodes(freq):
+            item = node[name]
+            item.set_fs_path(*data_format.assort_files(test_files[name]))
+            item.put()
+    expected_items = defaultdict(dict)
+    for name, freq, data_format, files in dataset.blueprint.to_insert:
+        expected_items[freq][name] = (data_format, set(files))
+    def check_expected():
+        for freq, sinks in expected_items.items():
+            for node in dataset.nodes(freq):
+                for name, (data_format, files) in sinks.items():
+                    item = node[name]
+                    item.get_checksums()
+                    assert item.data_format == data_format
+                    assert item.checksums == test_files[name]
+                    assert set(item.fs_paths) == set(
+                        f.parts[0] for f in test_files[name])
+    check_expected()                    
+    dataset.refresh()
+    check_expected()
+    
+    
+    
 
 # -----------------------
 # Test dataset structures
@@ -95,12 +122,12 @@ def test_put_item(dataset: Dataset, tmp_dir: str):
 @dataclass
 class TestDatasetBlueprint():
 
-    hiearchy: list[DataDimension]
-    layer_sizes: list[int]  # size of layers a-d respectively
+    hierarchy: list[DataDimension]
+    dim_lengths: list[int]  # size of layers a-d respectively
     files: list[str]  # files present at bottom layer
     id_inference: dict[DataDimension, str]  # id_inference dict
     expected_formats: dict[str, tuple[FileFormat, list[str]]]  # expected formats
-    to_insert: list[tuple(DataDimension, str, FileFormat, list[str])]  # files to insert as derivatives
+    to_insert: list[str, tuple[DataDimension, FileFormat, list[str]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {
@@ -115,9 +142,9 @@ TEST_DATASET_BLUEPRINTS = {
             (nifti_gz, ['file2.nii.gz'])],
          'dir1': [
             (directory, ['dir1'])]},
-        [(td.d, 'deriv1', text, ['file1.txt']),  # Derivatives to insert
-         (td.c, 'deriv2', directory, ['dir1', 'dir2', 'file1.png']),
-         (td.bd, 'deriv3', text, ['file1.txt'])]
+        [('deriv1', td.d, text, ['file1.txt']),  # Derivatives to insert
+         ('deriv2', td.c, directory, ['dir1', 'dir2', 'file1.png']),
+         ('deriv3', td.bd, text, ['file1.txt'])]
     ),
     'one_layer': TestDatasetBlueprint(
         [td.abcd],
@@ -132,9 +159,9 @@ TEST_DATASET_BLUEPRINTS = {
             (niftix, ['file2.nii', 'file2.json']),
             (nifti, ['file2.nii']),
             (json, ['file2.json'])]},
-        [(td.abcd, 'deriv1', json, ['file1.json']),
-         (td.bc, 'deriv2', dummy_format, ['file1.x', 'file1.y', 'file1.z']),
-         (td._, 'deriv3', mrtrix_image, ['file1.mif'])]
+        [('deriv1', td.abcd, json, ['file1.json']),
+         ('deriv2', td.bc, dummy_format, ['file1.x', 'file1.y', 'file1.z']),
+         ('deriv3', td._, mrtrix_image, ['file1.mif'])]
     ),
     'skip_single': TestDatasetBlueprint(
         [td.a, td.bc, td.d],
@@ -145,7 +172,7 @@ TEST_DATASET_BLUEPRINTS = {
             (directory, ['doubledir1'])],
          'doubledir2': [
             (directory, ['doubledir2'])]},
-        [(td.ad, 'deriv1', json, ['file1.json'])]
+        [('deriv1', td.ad, json, ['file1.json'])]
     ),
     'skip_with_inference': TestDatasetBlueprint(
         [td.bc, td.ad],
@@ -169,7 +196,7 @@ TEST_DATASET_BLUEPRINTS = {
             (directory, ['doubledir'])],
          'file1': [
             (dummy_format, ['file1.x', 'file1.y', 'file1.z'])]},
-        [(td.d, 'deriv1', json, ['file1.json'])]
+        [('deriv1', td.d, json, ['file1.json'])]
     )}
 
 
@@ -232,7 +259,7 @@ def get_dataset_path(name, base_dir):
 
 def create_test_file(fname, dpath):
     os.makedirs(dpath, exist_ok=True)
-    top_path = fpath = Path(dpath) / fname
+    fpath = Path(dpath) / fname
     # Make double dir
     if fname.startswith('doubledir'):
         os.mkdir(fpath)
@@ -244,4 +271,4 @@ def create_test_file(fname, dpath):
         fpath = fpath / fname
     with open(fpath, 'w') as f:
         f.write(f'test {fname}')
-    return top_path
+    return fpath

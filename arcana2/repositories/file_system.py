@@ -1,5 +1,6 @@
 import os
 import os.path as op
+from pathlib import Path
 import errno
 from collections import defaultdict
 import shutil
@@ -83,20 +84,20 @@ class FileSystem(Repository):
         Inserts or updates a file_group in the repository
         """
         target_path = self.file_group_path(file_group)
-        source_path = file_group.local_cache
+        source_path = file_group.fs_path
         # Create target directory if it doesn't exist already
-        dname = op.dirname(target_path)
-        if not op.exists(dname):
-            shutil.makedirs(dname)
-        if op.isfile(source_path):
+        dname = target_path.parent
+        if not dname.exists():
+            os.makedirs(dname)
+        if source_path.is_file():
             shutil.copyfile(source_path, target_path)
             # Copy side car files into repository
             for aux_name, aux_path in file_group.data_format.default_side_cars(
                     target_path).items():
                 shutil.copyfile(
                     file_group.data_format.side_cars[aux_name], aux_path)
-        elif op.isdir(source_path):
-            if op.exists(target_path):
+        elif source_path.is_dir():
+            if target_path.exists():
                 shutil.rmtree(target_path)
             shutil.copytree(source_path, target_path)
         else:
@@ -146,9 +147,7 @@ class FileSystem(Repository):
                 "root node of the dataset")
 
         for dpath, _, _ in os.walk(dataset.name):
-            if dpath == dataset.name:
-                continue
-            tree_path = os.path.relpath(dpath, dataset.name).split(os.path.sep)
+            tree_path = Path(dpath).relative_to(dataset.name).parts
             if len(tree_path) == len(dataset.hierarchy):
                 dataset.add_leaf_node(tree_path)
 
@@ -194,13 +193,13 @@ class FileSystem(Repository):
                                     provenance=prov)
 
     def node_path(self, node):
-        tree_path = []
+        path = node.dataset.name
         accounted_freq = node.dataset.dimensions(0)
         for layer in node.dataset.hierarchy:
             if not (layer.is_parent(node.frequency)
                     or layer == node.frequency):
                 break
-            tree_path.append(node.ids[layer])
+            path /= node.ids[layer]
             accounted_freq |= layer
         # If not "leaf node" then 
         if node.frequency != max(node.dataset.dimensions):
@@ -208,20 +207,20 @@ class FileSystem(Repository):
                                                  & accounted_freq)
             unaccounted_id = node.ids[unaccounted_freq]
             if unaccounted_id is None:
-                tree_path.append(f'__{unaccounted_freq}__')
+                path /= f'__{unaccounted_freq}__'
             elif isinstance(unaccounted_id, str):
-                tree_path.append(f'__{unaccounted_freq}_{unaccounted_id}__')
+                path /= f'__{unaccounted_freq}_{unaccounted_id}__'
             else:
-                tree_path.append(f'__{unaccounted_freq}_'
-                                 + '_'.join(unaccounted_id) + '__')
-        return op.join(node.dataset.name, *tree_path)
+                path /= (f'__{unaccounted_freq}_'
+                         + '_'.join(unaccounted_id) + '__')
+        return path
 
     def file_group_path(self, file_group):
-        if file_group.local_cache:
-            path = file_group.local_cache
+        if file_group.fs_path:
+            path = file_group.fs_path
         else:
-            path = (op.join(self.node_path(file_group.data_node)
-                            *(file_group.path.split('/')))
+            path = (self.node_path(file_group.data_node).joinpath(
+                        *file_group.path.split('/'))
                     + file_group.data_format.extension)
         return path
 
@@ -239,7 +238,7 @@ class FileSystem(Repository):
         return prov
 
     def _get_file_group_provenance(self, file_group):
-        if file_group.local_cache is not None:
+        if file_group.fs_path is not None:
             prov = DataProvenance.load(self.prov_json_path(file_group))
         else:
             prov = None

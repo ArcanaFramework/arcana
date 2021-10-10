@@ -6,8 +6,8 @@ from collections import defaultdict
 from abc import ABCMeta, abstractmethod
 import arcana2.core.data.set
 from arcana2.exceptions import (
-    ArcanaUsageError, ArcanaUnresolvableFormatException, ArcanaFileFormatError,
-    ArcanaError)
+    ArcanaNameError, ArcanaUsageError, ArcanaUnresolvableFormatException,
+    ArcanaWrongFrequencyError, ArcanaFileFormatError, ArcanaError)
 from arcana2.core.utils import split_extension
 from .format import FileFormat
 from .item import DataItem
@@ -41,8 +41,7 @@ class DataNode():
     _items = attr.ib(factory=dict, init=False, repr=False)
 
     def __getitem__(self, column_name):
-        """Get's the item  for the current
-        node if item's frequency matches
+        """Gets the item for the current node
 
         Parameters
         ----------
@@ -51,30 +50,22 @@ class DataNode():
 
         Returns
         -------
-        DataItem or Sequence[DataItem]
+        DataItem
             The item matching the provided name specified by the column name
-            if the column is of matching or ancestor frequency, or list of
-            items if a descendent or unrelated frequency.
         """
         try:
             return self._items[column_name]
         except KeyError:
             spec = self.dataset.column_specs[column_name]
-            if spec.frequency == self.frequency:
-                item = self._items[column_name] = spec.match(self)
-                return item
-            else:
-                try:
-                    return self.dataset.node(
-                        spec.frequency, self.ids[spec.frequency])[column_name]
-                except KeyError:
-                    # If frequency is not a ancestor node then return the
-                    # items in the children of the node (if they are child
-                    # nodes) or the whole dataset
-                    try:
-                        return self.children[spec.frequency].values()
-                    except KeyError:
-                        return self.dataset.column(spec.frequency)
+            if spec.frequency != self.frequency:
+                return ArcanaWrongFrequencyError(
+                    column_name,
+                    f"'column_name' ({column_name}) is of {spec.frequency} "
+                    f"frequency and therefore not in nodes of {self.frequency}"
+                    " frequency")
+            item = self._items[column_name] = spec.match(self)
+            return item
+            
 
     def __repr__(self):
         return f"{type(self).__name__}(id={self.id}, frequency={self.frequency})"
@@ -87,13 +78,52 @@ class DataNode():
     def label(self):
         return self.path[-1]
 
-    @property
+    def __iter__(self):
+        return iter(self.keys())
+
+    def keys(self):
+        return (n for n, _ in self.items())
+
+    def values(self):
+        return (i for _, i in self.items())
+
     def items(self):
-        return self._items.items()
+        return ((n, self[n]) for n, s in self.dataset.column_specs.items()
+                if s.frequency == self.frequency)
+
+    def column_items(self, column_name):
+        """Get's the item for the current node if item's frequency matches
+        otherwise gets all the items that are related to the current node (
+        i.e. are in child nodes)
+
+        Parameters
+        ----------
+        column_name : str
+            Name of a selected column in the dataset
+
+        Returns
+        -------
+        Sequence[DataItem]
+            The item matching the provided name specified by the column name
+            if the column is of matching or ancestor frequency, or list of
+            items if a descendent or unrelated frequency.
+        """
+        try:
+            return [self[column_name]]
+        except ArcanaWrongFrequencyError:
+            # If frequency is not a ancestor node then return the
+            # items in the children of the node (if they are child
+            # nodes) or the whole dataset
+            spec = self.dataset.column_specs[column_name]
+            try:
+                return self.children[spec.frequency].values()
+            except KeyError:
+                return self.dataset.column(spec.frequency)
 
     @property
     def unresolved(self):
         if self._unresolved is None:
+            self._unresolved = []
             self.dataset.repository.find_items(self)
         return self._unresolved
 
@@ -309,7 +339,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                     pass
             if file_path is not None:
                 item = data_format(
-                    local_cache=file_path, side_cars=side_cars,
+                    fs_path=file_path, side_cars=side_cars,
                     **self.item_kwargs)
             else:
                 raise ArcanaUnresolvableFormatException(

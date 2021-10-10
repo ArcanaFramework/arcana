@@ -147,9 +147,9 @@ class DataSink():
         matches = [i for i in node.resolved(self.data_format)
                    if i.path == self.path]
         if not matches:
-            raise ArcanaInputMissingMatchError(
-                f"Did not find any items matching path {self.path} of format "
-                f"{self.data_format}")
+            # Return a placeholder data item that can be set
+            return self.data_format(path=self.path, data_node=node,
+                                    exists=False)
         elif len(matches) > 1:
             raise ArcanaMultipleMatchesInputError(
                 "Found multiple matches " + self._error_msg(node, matches))

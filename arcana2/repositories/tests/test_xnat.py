@@ -43,9 +43,9 @@ def test_find_items(dataset):
             item = node[source_name]
             item.get()
             if item.data_format.directory:
-                item_files = set(os.listdir(item.local_cache))
+                item_files = set(os.listdir(item.fs_path))
             else:
-                item_files = set(os.path.basename(p) for p in item.cache_paths)
+                item_files = set(os.path.basename(p) for p in item.fs_paths)
             assert item_files == files
 
 

@@ -156,7 +156,7 @@ class FileFormat(object):
         aux_paths : dict[str, str]
             A dictionary of auxiliary file names and default paths
         """
-        return dict((n, primary_path[:-len(self.ext)] + ext)
+        return dict((n, str(primary_path)[:-len(self.ext)] + ext)
                     for n, ext in self.side_cars.items())
 
     @property
@@ -246,7 +246,7 @@ class FileFormat(object):
                 except
                 for extensions"""
                 cpy = file_group.copy_to('./file-group', symlink=True)
-                return cpy.local_cache
+                return cpy.fs_path
 
             # Add task collect the input paths to a common directory (as we
             # assume the converter expects)
@@ -323,7 +323,7 @@ class FileFormat(object):
         """
         by_ext = defaultdict(list)
         for path in candidates:
-            ext = split_extension(path)[1]
+            ext = ''.join(path.suffixes)
             if ext is not None:
                 ext = ext.lower()
             by_ext[ext].append(path)
@@ -434,7 +434,7 @@ class FileFormat(object):
             name_path = split_extension(name_path)[0]
         if not file_path.endswith(self.ext):
             file_path += self.ext
-        return self.file_group_cls(name_path, local_cache=file_path, **kwargs)
+        return self.file_group_cls(name_path, fs_path=file_path, **kwargs)
 
 
 class FileFormatAuxFile(object):
