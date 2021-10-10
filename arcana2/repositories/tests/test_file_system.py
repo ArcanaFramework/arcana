@@ -81,7 +81,7 @@ def test_get_items(dataset: Dataset):
             assert set(os.path.basename(p) for p in item.fs_paths) == files
 
 
-def test_put_item(dataset: Dataset, tmp_dir: str):
+def test_put_items(dataset: Dataset, tmp_dir: str):
     test_files = defaultdict(dict)
     for name, freq, data_format, files in dataset.blueprint.to_insert:
         dataset.add_sink(name=name, format=data_format, frequency=freq)
@@ -108,7 +108,7 @@ def test_put_item(dataset: Dataset, tmp_dir: str):
                     assert item.checksums == test_files[name]
                     assert set(item.fs_paths) == set(
                         f.parts[0] for f in test_files[name])
-    check_expected()                    
+    check_expected()
     dataset.refresh()
     check_expected()
     
@@ -236,8 +236,7 @@ def create_dataset_in_repo(name, base_dir):
         ids = dict(zip(TestDimension.basis(), id_tple))
         dpath = dataset_path
         for layer in blueprint.hierarchy:
-            dname = ''.join(f'{b}{ids[b]}' for b in layer.nonzero_basis())
-            dpath = os.path.join(dpath, dname)
+            dpath /= ''.join(f'{b}{ids[b]}' for b in layer.nonzero_basis())
         os.makedirs(dpath)
         for fname in blueprint.files:
             create_test_file(fname, dpath)
@@ -264,11 +263,11 @@ def create_test_file(fname, dpath):
     if fname.startswith('doubledir'):
         os.mkdir(fpath)
         fname = 'dir'
-        fpath = fpath / fname
+        fpath /= fname
     if fname.startswith('dir'):
         os.mkdir(fpath)
         fname = 'test.txt'
-        fpath = fpath / fname
+        fpath /= fname
     with open(fpath, 'w') as f:
         f.write(f'test {fname}')
     return fpath

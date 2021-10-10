@@ -2,11 +2,15 @@ import os
 import os.path
 from datetime import datetime
 import operator as op
+from dataclasses import dataclass
 from pathlib import Path
+import random
+import hashlib
 import time
 import contextlib
 from tempfile import mkdtemp
 from itertools import product
+from collections import defaultdict
 from functools import reduce
 from copy import copy
 import pytest
@@ -15,6 +19,9 @@ import xnat
 from arcana2.repositories import Xnat
 from arcana2.core.utils import set_cwd
 from arcana2.dimensions.clinical import Clinical
+from arcana2.core.data.enum import DataDimension
+from arcana2.core.data.set import Dataset
+from arcana2.core.data.format import FileFormat
 from arcana2.data_formats.general import text, directory, json
 from arcana2.data_formats.neuroimaging import niftix_gz, nifti_gz, dicom, nifti
 
@@ -25,12 +32,14 @@ def test_find_nodes(dataset):
         # together to get the combined number of nodes expected for that
         # frequency
         num_nodes = reduce(
-            op.mul, (l for l, b in zip(dataset.dim_lengths, freq) if b), 1)
+            op.mul,
+            (l for l, b in zip(dataset.blueprint.dim_lengths, freq) if b),
+            1)
         assert len(dataset.nodes(freq)) == num_nodes, (
             f"{freq} doesn't match {len(dataset.nodes(freq))} vs {num_nodes}")
 
 
-def test_find_items(dataset):
+def test_get_items(dataset):
     expected_files = {}
     for scan_name, resources in dataset.scans:
         for resource_name, data_format, files in resources:
@@ -49,12 +58,54 @@ def test_find_items(dataset):
             assert item_files == files
 
 
+def test_put_items(mutable_dataset: Dataset, tmp_dir: str):
+    test_files = defaultdict(dict)
+    for name, freq, data_format, files in mutable_dataset.blueprint.to_insert:
+        mutable_dataset.add_sink(name=name, format=data_format, frequency=freq)
+        deriv_tmp_dir = tmp_dir / name
+        for fname in files:
+            test_file_path = create_test_file(fname, deriv_tmp_dir)
+            fhash = hashlib.md5()
+            with open(deriv_tmp_dir / test_file_path, 'rb') as f:
+                fhash.update(f.read())
+            test_files[name][test_file_path] = fhash.hexdigest()
+        for node in dataset.nodes(freq):
+            item = node[name]
+            item.set_fs_path(*data_format.assort_files(test_files[name]))
+            item.put()
+    expected_items = defaultdict(dict)
+    for name, freq, data_format, files in mutable_dataset.blueprint.to_insert:
+        expected_items[freq][name] = (data_format, set(files))
+    def check_expected():
+        for freq, sinks in expected_items.items():
+            for node in mutable_dataset.nodes(freq):
+                for name, (data_format, files) in sinks.items():
+                    item = node[name]
+                    item.get_checksums()
+                    assert item.data_format == data_format
+                    assert item.checksums == test_files[name]
+                    assert set(item.fs_paths) == set(
+                        f.parts[0] for f in test_files[name])
+    check_expected()
+    dataset.refresh()
+    check_expected()
+
+
 # -----------------------
 # Test dataset structures
 # -----------------------
 
-TEST_DATASETS = {
-    'basic': (  # dataset name
+@dataclass
+class TestDatasetBlueprint():
+
+    dim_lengths: list[int]
+    scans: list[tuple[str, list[tuple[str, FileFormat, list[str]]]]]
+    id_inference: dict[DataDimension, str]
+    to_insert: list[str, tuple[DataDimension, FileFormat, list[str]]]  # files to insert as derivatives
+
+
+TEST_DATASET_BLUEPRINTS = {
+    'basic': TestDatasetBlueprint(  # dataset name
         [1, 1, 3],  # number of timepoints, groups and members respectively
         [('scan1',  # scan type (ID is index)
           [('text', # resource name
@@ -73,8 +124,9 @@ TEST_DATASETS = {
            ('NIFTI', nifti_gz, ['file1.nii.gz']),
            ('BIDS', None, ['file1.json']),
            ('SNAPSHOT', None, ['file1.png'])])],
-        {}),  # id_inference dict
-    'multi': (  # dataset name
+        {},
+        []),  # id_inference dict
+    'multi': TestDatasetBlueprint(  # dataset name
         [2, 3, 4],  # number of timepoints, groups and members respectively
         [
             ('scan1',
@@ -82,11 +134,18 @@ TEST_DATASETS = {
                text, 
                ['file.txt'])])],
         {Clinical.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
-         Clinical.session: r'timepoint(?P<timepoint>\d+).*'}),  # id_inference dict
-    }
+         Clinical.session: r'timepoint(?P<timepoint>\d+).*'},  # id_inference dict
+        [('deriv1', Clinical.session, text, ['file.txt']),
+         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.timepoint, directory, ['doubledir']),
+         ('deriv4', Clinical.member, text, ['file.txt']),
+         ('deriv5', Clinical.dataset, text, ['file.txt']),
+         ('deriv6', Clinical.batch, text, ['file.txt']),
+         ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
+         ('deriv8', Clinical.group, text, ['file.txt']),])}
 
 GOOD_DATASETS = ['basic', 'multi']
-
+MUTABLE_DATASETS = ['multi']
 
 # ------------------------------------
 # Pytest fixtures and helper functions
@@ -107,6 +166,17 @@ PUT_SUFFIX = '_put'
 @pytest.fixture(params=GOOD_DATASETS, scope='module')
 def dataset(repository, request):
     return access_dataset(repository, request.param)
+
+
+@pytest.fixture(params=MUTABLE_DATASETS, scope='function')
+def mutable_dataset(repository, request):
+    dataset_name = request.param
+    test_suffix = 'MUTABLE' + str(hex(random.getrandbits(32)))[2:]
+    # Need to create a new dataset per function so it can be safely modified
+    # by the test without messing up other tests.
+    create_dataset_in_repo(dataset_name, repository.run_prefix,
+                           test_suffix=test_suffix)
+    return access_dataset(repository, request.param, test_suffix)
 
 
 @pytest.fixture(scope='module')
@@ -159,13 +229,12 @@ def repository():
 
 
 def access_dataset(repository, name, test_suffix=''):
-    dim_lengths, scans, id_inference = TEST_DATASETS[name]
+    blueprint = TEST_DATASET_BLUEPRINTS[name]
     proj_name = repository.run_prefix + name + test_suffix
-    dataset = repository.dataset(proj_name, id_inference=id_inference)
+    dataset = repository.dataset(proj_name, id_inference=blueprint.id_inference)
     # Stash the args used to create the dataset in attributes so they can be
     # used by tests
-    dataset.dim_lengths = dim_lengths
-    dataset.scans = scans
+    dataset.blueprint = blueprint
     return dataset
 
 
@@ -174,7 +243,7 @@ def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
     Creates dataset for each entry in dataset_structures
     """
 
-    dim_lengths, scans, _  =  TEST_DATASETS[dataset_name]
+    blueprint  =  TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_name = run_prefix + dataset_name + test_suffix
 
     with connect() as login:
@@ -183,7 +252,8 @@ def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
     with connect() as login:
         xproject = login.projects[dataset_name]
         xclasses = login.classes
-        for id_tple in product(*(list(range(d)) for d in dim_lengths)):
+        for id_tple in product(*(list(range(d))
+                                 for d in blueprint.dim_lengths)):
             ids = dict(zip(Clinical.basis(), id_tple))
             # Create subject
             subject_label = ''.join(
@@ -196,36 +266,41 @@ def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
             xsession = xclasses.MrSessionData(label=session_label,
                                             parent=xsubject)
             
-            for i, (sname, resources) in enumerate(scans, start=1):
+            for i, (sname, resources) in enumerate(blueprint.scans, start=1):
                 # Create scan
                 xscan = xclasses.MrScanData(id=i, type=sname,
                                             parent=xsession)
                 for rname, _, fnames in resources:
 
-                    temp_dir = Path(mkdtemp())
+                    tmp_dir = Path(mkdtemp())
                     # Create the resource
                     xresource = xscan.create_resource(rname)
                     # Create the dummy files
                     for fname in fnames:
-                        fpath = Path(fname)
-                        # Make double
-                        if fname.startswith('doubledir'):
-                            os.mkdir(temp_dir / fpath)
-                            fname = 'dir'
-                            fpath /= fname
-                        if fname.startswith('dir'):
-                            os.mkdir(temp_dir / fpath)
-                            fname = 'test.txt'
-                            fpath /= fname
-                        with open(temp_dir / fpath, 'w') as f:
-                            f.write(f'test {fname}')
-                        xresource.upload(str(temp_dir / fpath), str(fpath))
+                        fpath = create_test_file(fname, tmp_dir)
+                        xresource.upload(str(tmp_dir / fpath), str(fpath))
+
+
+def create_test_file(fname, tmp_dir):
+    fpath = tmp_dir / fname
+    # Make double dir
+    if fname.startswith('doubledir'):
+        os.mkdir(fpath)
+        fname = 'dir'
+        fpath /= fname
+    if fname.startswith('dir'):
+        os.mkdir(fpath)
+        fname = 'test.txt'
+        fpath /= fname
+    with open(fpath, 'w') as f:
+        f.write(f'test {fname}')
+    return fpath
 
 
 @contextlib.contextmanager
 def connect():
     # Need to give time for XNAT to get itself ready after it has
-    # started so we try multiple times until giving up
+    # started so we try multiple times until giving up trying to connect
     attempts = 0
     for _ in range(1, CONNECTION_ATTEMPTS + 1):
         try:

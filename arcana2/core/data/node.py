@@ -1,6 +1,7 @@
 from __future__ import annotations
-import os.path
+from pathlib import Path
 import typing as ty
+import os
 import attr
 from collections import defaultdict
 from abc import ABCMeta, abstractmethod
@@ -264,7 +265,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
 def normalise_paths(file_paths):
     "Convert all file paths to absolute real paths"
     if file_paths:
-        file_paths = [os.path.abspath(os.path.realpath(p)) for p in file_paths]
+        file_paths = [Path(p).absolute() for p in file_paths]
     return file_paths
 
 
@@ -324,7 +325,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
             side_cars = None
             if data_format.directory:
                 if (len(self.file_paths) == 1
-                    and os.path.isdir(self.file_paths[0])
+                    and self.file_paths[0].is_dir()
                     and (data_format.within_dir_exts is None
                         or (data_format.within_dir_exts == frozenset(
                             split_extension(f)[1]
@@ -344,7 +345,8 @@ class UnresolvedFileGroup(UnresolvedDataItem):
             else:
                 raise ArcanaUnresolvableFormatException(
                     f"Paths in {self.path} in node {self.data_node.frequency}:"
-                    f"{self.data_node.id} ('" + "', '".join(self.file_paths) 
+                    f"{self.data_node.id} ('" + "', '".join(
+                        str(p) for p in self.file_paths) 
                     + "') did not match the naming conventions expected by "
                     f"data_format '{data_format.name}'")
         return item
