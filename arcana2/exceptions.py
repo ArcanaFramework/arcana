@@ -56,6 +56,8 @@ class ArcanaUsageError(ArcanaError):
     pass
 
 
+class ArcanaCacheError(ArcanaError):
+    pass
 
 class ArcanaDesignError(ArcanaError):
     pass

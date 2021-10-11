@@ -161,8 +161,9 @@ class DataNode():
         self._unresolved.append(UnresolvedField(
             path=path, data_node=self, value=value, **kwargs))
 
-    def get_file_group_paths(self, file_group):
-        return self.dataset.repository.get_file_group_paths(file_group)
+    def get_file_group_paths(self, file_group, **kwargs):
+        return self.dataset.repository.get_file_group_paths(file_group,
+                                                            **kwargs)
 
     def get_field_value(self, field):
         return self.dataset.repository.get_field_value(field)

@@ -17,7 +17,7 @@ import xnat
 from arcana2.core.utils import JSON_ENCODING
 from arcana2.core.repository import Repository
 from arcana2.exceptions import (
-    ArcanaError, ArcanaNameError, ArcanaUsageError, ArcanaFileFormatError,
+    ArcanaError, ArcanaCacheError, ArcanaUsageError, ArcanaFileFormatError,
     ArcanaWrongRepositoryError)
 from arcana2.core.data.provenance import DataProvenance
 from arcana2.core.utils import dir_modtime, get_class_info, parse_value
@@ -95,6 +95,12 @@ class Xnat(Repository):
             'type': get_class_info(type(self)),
             'server': self.server}
 
+    @cache_dir.validator
+    def cache_dir_validator(self, _, cache_dir):
+        if not cache_dir.exists():
+            raise ValueError(
+                f"Cache dir, '{cache_dir}' does not exist")
+
     @property
     def login(self):
         if self._login is None:
@@ -123,7 +129,7 @@ class Xnat(Repository):
         self.login.disconnect()
         self._login = None
 
-    def get_file_group_paths(self, file_group):
+    def get_file_group_paths(self, file_group, cache_only=False):
         """
         Caches a file_group to the local file system and returns the path to
         the cached files
@@ -169,20 +175,27 @@ class Xnat(Repository):
             need_to_download = True
             if op.exists(cache_path):
                 if self.check_md5:
-                    try:
-                        with open(cache_path + self.MD5_SUFFIX, 'r') as f:
+                    md5_path = append_suffix(cache_path, self.MD5_SUFFIX)
+                    if md5_path.exists():
+                        with open(md5_path, 'r') as f:
                             cached_checksums = json.load(f)
-                    except IOError:
-                        pass
                     else:
-                        if cached_checksums == file_group.checksums:
-                            need_to_download = False
+                        # Generate local version of checksums
+                        with open(md5_path, 'w', **JSON_ENCODING) as f:
+                            json.dump(file_group.calculate_checksums(), f,
+                                      indent=2)
+                    if cached_checksums == file_group.checksums:
+                        need_to_download = False
                 else:
                     need_to_download = False
             if need_to_download:
+                if cache_only:
+                    raise ArcanaCacheError(
+                        f"Cache mismatch for {file_group} and 'cache_only' "
+                        "set")
                 # The name_path to the directory which the files will be
                 # downloaded to.
-                tmp_dir = cache_path + '.download'
+                tmp_dir = append_suffix(cache_path, '.download')
                 xresource = self.login.classes.Resource(uri=file_group.uri,
                                                         xnat_session=self.login)
                 try:
@@ -266,13 +279,13 @@ class Xnat(Repository):
             # Add session for derived scans if not present
             xnode = self.get_xnode(file_group.data_node)
             if not file_group.uri:
-                name = self.escape_name(file_group)
+                escaped_name = self.escape_name(file_group)
                 # Set the uri of the file_group
                 file_group.uri = '{}/resources/{}'.format(
-                    self.standard_uri(xnode), name)
+                    self.standard_uri(xnode), escaped_name)
             # Delete existing resource (if present)
             try:
-                xresource = xnode.resources[name]
+                xresource = xnode.resources[escaped_name]
             except KeyError:
                 pass
             else:
@@ -282,7 +295,8 @@ class Xnat(Repository):
                 xresource.delete()
             # Create the new resource for the file_group
             xresource = self.login.classes.ResourceCatalog(
-                parent=xnode, label=name, format=file_group.datatype_name)
+                parent=xnode, label=escaped_name,
+                format=file_group.datatype.name)
             # Create cache path
             cache_path = self.cache_path(file_group)
             if cache_path.exists():
@@ -291,24 +305,22 @@ class Xnat(Repository):
             # Upload data and add it to cache
             if file_group.datatype.directory:
                 for dpath, _, fnames  in os.walk(fs_path):
+                    dpath = Path(dpath)
                     for fname in fnames:
-                        fpath = op.join(dpath, fname)
-                        frelpath = op.relpath(fpath, fs_path)
-                        xresource.upload(fpath, frelpath)
+                        fpath = dpath / fname
+                        frelpath = fpath.relative_to(fs_path)
+                        xresource.upload(str(fpath), str(frelpath))
                 shutil.copytree(fs_path, cache_path)
             else:
                 # Upload primary file and add to cache
-                xresource.upload(fs_path, file_group.fname)
-                shutil.copyfile(fs_path, cache_path / file_group.fname)
+                fname = escaped_name + file_group.datatype.extension
+                xresource.upload(str(fs_path), fname)
+                shutil.copyfile(fs_path, cache_path / fname)
                 # Upload side cars and add them to cache
                 for sc_name, sc_path in side_cars:
-                    sc_fname = sc_name + file_group.datatype.side_cars[sc_name]
-                    xresource.upload(sc_path, sc_fname)
+                    sc_fname = escaped_name + file_group.datatype.side_cars[sc_name]
+                    xresource.upload(str(sc_path), sc_fname)
                     shutil.copyfile(sc_path, cache_path / sc_fname)
-            # Save checksums in cache to avoid having to download them later
-            with open(cache_path + self.MD5_SUFFIX, 'w',
-                    **JSON_ENCODING) as f:
-                json.dump(file_group.calculate_checksums(), f, indent=2)
             # Save provenance
             if file_group.provenance:
                 self.put_provenance(file_group)
@@ -418,135 +430,7 @@ class Xnat(Repository):
                 data_node.add_file_group(
                     path=xresource.name,
                     uris={xresource.datatype: xresource.uri})
-            # self.add_scans_to_node(data_node, xnode)
-            # self.add_fields_to_node(data_node, xnode)
-            # self.add_resources_to_node(data_node, xnode)
 
-    # def add_scans_to_node(self, data_node: Dataset, session_json: dict,
-    #                       session_uri: str, **kwargs):
-    #     try:
-    #         scans_json = next(
-    #             c['items'] for c in session_json['children']
-    #             if c['field'] == 'scans/scan')
-    #     except StopIteration:
-    #         return []
-    #     file_groups = []
-    #     for scan_json in scans_json:
-    #         order = scan_json['data_fields']['ID']
-    #         scan_type = scan_json['data_fields'].get('type', '')
-    #         scan_quality = scan_json['data_fields'].get('quality', None)
-    #         try:
-    #             resources_json = next(
-    #                 c['items'] for c in scan_json['children']
-    #                 if c['field'] == 'file')
-    #         except StopIteration:
-    #             resources = set()
-    #         else:
-    #             resources = set(js['data_fields']['label']
-    #                             for js in resources_json)
-    #         data_node.add_file_group(
-    #             name=scan_type, order=order, quality=scan_quality,
-    #             resource_uris={
-    #                 r: f"{session_uri}/scans/{order}/resources/{r}"
-    #                 for r in resources}, **kwargs)
-    #     return file_groups
-
-    # def add_fields_to_node(self, data_node, node_json, **kwargs):
-    #     try:
-    #         fields_json = next(
-    #             c['items'] for c in node_json['children']
-    #             if c['field'] == 'fields/field')
-    #     except StopIteration:
-    #         return []
-    #     for js in fields_json:
-    #         try:
-    #             value = js['data_fields']['field']
-    #         except KeyError:
-    #             continue
-    #         value = value.replace('&quot;', '"')
-    #         name = js['data_fields']['name']
-    #         # field_names = set([(name, None, timepoint_id, frequency)])
-    #         # # Potentially add the field twice, once
-    #         # # as a field name in its own right (for externally created fields)
-    #         # # and second as a field name prefixed by an analysis name. Would
-    #         # # ideally have the generated fields (and file_groups) in a separate
-    #         # # assessor so there was no chance of a conflict but there should
-    #         # # be little harm in having the field referenced twice, the only
-    #         # # issue being with pattern matching
-    #         # field_names.add(self.unescape_name(name, timepoint_id=timepoint_id,
-    #         #                                         frequency=frequency))
-    #         # for name, namespace, field_timepoint_id, field_freq in field_names:
-    #         name, dn = self._unescape_name_and_get_node(name, data_node)
-    #         dn.add_field(name=name, value=value **kwargs)
-
-    # def add_resources_to_node(self, data_node, node_json, node_uri, **kwargs):
-    #     try:
-    #         resources_json = next(
-    #             c['items'] for c in node_json['children']
-    #             if c['field'] == 'resources/resource')
-    #     except StopIteration:
-    #         resources_json = []
-    #     provenance_resources = []
-    #     for d in resources_json:
-    #         label = d['data_fields']['label']
-    #         resource_uri = '{}/resources/{}'.format(node_uri, label)
-    #         name, dn = self._unescape_name_and_get_node(name, data_node)
-    #         format_name = d['data_fields']['format']
-    #         if name != self.PROV_RESOURCE:
-    #             # Use the timepoint from the derived name if present
-    #             dn.add_file_group(
-    #                 name, resource_uris={format_name: resource_uri}, **kwargs)
-    #         else:
-    #             provenance_resources.append((dn, resource_uri))
-    #     for dn, uri in provenance_resources:
-    #         self.set_provenance(dn, uri)
-
-    # def set_provenance(self, data_node, resource_uri):
-    #     # Download provenance JSON files and parse into
-    #     # provenances
-    #     temp_dir = tempfile.mkdtemp()
-    #     try:
-    #         with tempfile.TemporaryFile() as temp_zip:
-    #             self.login.download_stream(
-    #                 resource_uri + '/files', temp_zip, format='zip')
-    #             with ZipFile(temp_zip) as zip_file:
-    #                 zip_file.extractall(temp_dir)
-    #         for base_dir, _, fnames in os.walk(temp_dir):
-    #             for fname in fnames:
-    #                 if fname.endswith('.json'):
-    #                     name_path = fname[:-len('.json')]
-    #                     prov = DataProvenance.load(op.join(base_dir,
-    #                                                     fname))
-    #                     if fname.starts_with(self.FIELD_PROV_PREFIX):
-    #                         name_path = name_path[len(self.FIELD_PROV_PREFIX):]
-    #                         data_node.field(name_path).provenance = prov
-    #                     else:
-    #                         data_node.file_group(name_path).provenance = prov
-    #     finally:
-    #         shutil.rmtree(temp_dir, ignore_errors=True)
-
-    # def _unescape_name_and_get_node(self, name, data_node):
-    #     name, frequency, ids = self.unescape_name(name)
-    #     if frequency != data_node.frequency:
-    #         try:
-    #             data_node = data_node.dataset.node(frequency, ids)
-    #         except ArcanaNameError:
-    #             data_node = data_node.dataset.add_node(frequency, ids)
-    #     return name, data_node
-        
-
-    # def extract_subject_id(self, xsubject_label):
-    #     """
-    #     This assumes that the subject ID is prepended with
-    #     the project ID.
-    #     """
-    #     return xsubject_label.split('_')[1]
-
-    # def extract_timepoint_id(self, xsession_label):
-    #     """
-    #     This assumes that the session ID is preprended
-    #     """
-    #     return '_'.join(xsession_label.split('_')[2:])
 
     def dicom_header(self, file_group):
         def convert(val, code):
@@ -593,7 +477,8 @@ class Xnat(Repository):
             if e.errno != errno.ENOENT:
                 raise e
         shutil.move(data_path, cache_path)
-        with open(cache_path + self.MD5_SUFFIX, 'w', **JSON_ENCODING) as f:
+        with open(str(cache_path) + self.MD5_SUFFIX, 'w',
+                  **JSON_ENCODING) as f:
             json.dump(checksums, f, indent=2)
 
     def _delayed_download(self, tmp_dir, xresource, file_group, cache_path,
@@ -676,7 +561,7 @@ class Xnat(Repository):
             uri = item
         if uri is None:
             raise ArcanaError("URI of item needs to be set before cache path")
-        return self.cache_dir.joinpath(uri.split('/')[3:])
+        return self.cache_dir.joinpath(*uri.split('/')[3:])
 
     def _check_repository(self, item):
         if item.data_node.dataset.repository is not self:
@@ -699,7 +584,7 @@ class Xnat(Repository):
         `str`
             The derived name
         """
-        name = '__'.join(item.name_path)
+        name = '__'.join(item.path.split('/'))
         if item.data_node.frequency not in (Clinical.subject,
                                             Clinical.session):
             name = ('___'
@@ -986,3 +871,9 @@ class Xnat(Repository):
             ]
         }
 
+
+
+
+def append_suffix(path, suffix):
+    "Appends a string suffix to a Path object"
+    return Path(str(path) + suffix)

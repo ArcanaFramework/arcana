@@ -3,6 +3,7 @@ import os.path
 from datetime import datetime
 import operator as op
 from dataclasses import dataclass
+import shutil
 from pathlib import Path
 import random
 import hashlib
@@ -41,7 +42,7 @@ def test_find_nodes(dataset):
 
 def test_get_items(dataset):
     expected_files = {}
-    for scan_name, resources in dataset.scans:
+    for scan_name, resources in dataset.blueprint.scans:
         for resource_name, datatype, files in resources:
             if datatype is not None:
                 source_name = scan_name + resource_name
@@ -58,36 +59,52 @@ def test_get_items(dataset):
             assert item_files == files
 
 
-def test_put_items(mutable_dataset: Dataset, tmp_dir: str):
-    test_files = defaultdict(dict)
+def test_put_items(mutable_dataset: Dataset):
+    all_checksums = {}
+    all_fs_paths = {}
+    tmp_dir = Path(mkdtemp())
     for name, freq, datatype, files in mutable_dataset.blueprint.to_insert:
         mutable_dataset.add_sink(name=name, format=datatype, frequency=freq)
         deriv_tmp_dir = tmp_dir / name
+        # Create test files, calculate checkums and recorded expected paths
+        # for inserted files
+        all_checksums[name] = checksums = {}
+        all_fs_paths[name] = fs_paths = []        
         for fname in files:
-            test_file_path = create_test_file(fname, deriv_tmp_dir)
+            test_file = create_test_file(fname, deriv_tmp_dir)
             fhash = hashlib.md5()
-            with open(deriv_tmp_dir / test_file_path, 'rb') as f:
+            with open(deriv_tmp_dir / test_file, 'rb') as f:
                 fhash.update(f.read())
-            test_files[name][test_file_path] = fhash.hexdigest()
-        for node in dataset.nodes(freq):
+            try:
+                rel_path = str(test_file.relative_to(files[0]))
+            except ValueError:
+                rel_path = '.'.join(test_file.suffixes)                
+            checksums[rel_path] = fhash.hexdigest()
+            fs_paths.append(deriv_tmp_dir / test_file.parts[0])
+        # Insert node into dataset
+        for node in mutable_dataset.nodes(freq):
             item = node[name]
-            item.put(*datatype.assort_files(test_files[name]))
-    expected_items = defaultdict(dict)
-    for name, freq, datatype, files in mutable_dataset.blueprint.to_insert:
-        expected_items[freq][name] = (datatype, set(files))
-    def check_expected():
-        for freq, sinks in expected_items.items():
+            item.put(*datatype.assort_files(fs_paths))
+    def check_inserted():
+        for name, freq, datatype, _ in mutable_dataset.blueprint.to_insert:
             for node in mutable_dataset.nodes(freq):
-                for name, (datatype, files) in sinks.items():
-                    item = node[name]
-                    item.get_checksums()
-                    assert item.datatype == datatype
-                    assert item.checksums == test_files[name]
-                    assert set(item.fs_paths) == set(
-                        f.parts[0] for f in test_files[name])
-    check_expected()
+                item = node[name]
+                item.get_checksums()
+                assert item.datatype == datatype
+                assert item.checksums == checksums[name]
+                item.get()
+                assert all(p.exists() for p in item.fs_paths)
+    check_inserted()
+    # Check read from cached files
     dataset.refresh()
-    check_expected()
+    orig_server = dataset.repository.server
+    dataset.repository.server = 'BADVALUE'
+    check_inserted()
+    # Check downloaded
+    dataset.repository.server = orig_server
+    dataset.refresh()
+    shutil.rmtree(dataset.repository.cache_dir / dataset.name)
+    check_inserted()  
 
 
 # -----------------------
@@ -281,17 +298,18 @@ def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
 
 
 def create_test_file(fname, tmp_dir):
-    fpath = tmp_dir / fname
+    fpath = Path(fname)
+    os.makedirs(tmp_dir, exist_ok=True)
     # Make double dir
     if fname.startswith('doubledir'):
-        os.mkdir(fpath)
+        os.mkdir(tmp_dir / fpath)
         fname = 'dir'
         fpath /= fname
     if fname.startswith('dir'):
-        os.mkdir(fpath)
+        os.mkdir(tmp_dir / fpath)
         fname = 'test.txt'
         fpath /= fname
-    with open(fpath, 'w') as f:
+    with open(tmp_dir / fpath, 'w') as f:
         f.write(f'test {fname}')
     return fpath
 

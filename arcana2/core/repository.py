@@ -93,7 +93,7 @@ class Repository(metaclass=ABCMeta):
         """        
 
     @abstractmethod
-    def get_file_group_paths(self, file_group):
+    def get_file_group_paths(self, file_group, cache_only=False):
         """
         Cache the file_group locally (if required) and return the locations
         of the cached primary file and side cars
@@ -102,6 +102,9 @@ class Repository(metaclass=ABCMeta):
         ----------
         file_group : FileGroup
             The file_group to cache locally
+        cache_only : bool
+            Whether to attempt to extract the file groups from the local cache
+            (if applicable) and raise an error otherwise
 
         Returns
         -------
@@ -109,6 +112,12 @@ class Repository(metaclass=ABCMeta):
             The file-system path to the cached file
         side_cars : Dict[str, str] or None
             The file-system paths to the cached side-cars if present
+
+        Raises
+        ------
+        ArcanaCacheError
+            If cache_only is set and there is a mismatch between the cached
+            and remote versions
         """
 
     @abstractmethod

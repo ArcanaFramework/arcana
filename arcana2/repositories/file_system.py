@@ -1,6 +1,7 @@
 import os
 import os.path as op
 from pathlib import Path
+import re
 import errno
 from collections import defaultdict
 import shutil
@@ -47,7 +48,7 @@ class FileSystem(Repository):
             'type': get_class_info(type(self)),
             'host': HOSTNAME}
 
-    def get_file_group_paths(self, file_group):
+    def get_file_group_paths(self, file_group, **kwargs):
         """
         Set the path of the file_group from the repository
         """
@@ -150,7 +151,8 @@ class FileSystem(Repository):
 
         for dpath, _, _ in os.walk(dataset.name):
             tree_path = Path(dpath).relative_to(dataset.name).parts
-            if len(tree_path) == len(dataset.hierarchy):
+            if (len(tree_path) == len(dataset.hierarchy)
+                    and not re.match(r'__.*__$', tree_path[-1])):
                 dataset.add_leaf_node(tree_path)
 
     def find_items(self, data_node):

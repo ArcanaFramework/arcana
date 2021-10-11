@@ -96,8 +96,11 @@ def test_put_items(dataset: Dataset):
             fhash = hashlib.md5()
             with open(deriv_tmp_dir / test_file, 'rb') as f:
                 fhash.update(f.read())
-            checksums[str(Path(name).with_suffix('.'.join(test_file.suffixes)))
-                      if fs_paths else '.'] = fhash.hexdigest()
+            try:
+                rel_path = str(test_file.relative_to(files[0]))
+            except ValueError:
+                rel_path = '.'.join(test_file.suffixes)
+            checksums[rel_path] = fhash.hexdigest()
             fs_paths.append(deriv_tmp_dir / test_file.parts[0])
         # Test inserting the new item into the repository
         for node in dataset.nodes(freq):
@@ -105,7 +108,7 @@ def test_put_items(dataset: Dataset):
             item.put(*datatype.assort_files(fs_paths))
     def check_inserted():
         """Check that the inserted items are present in the dataset"""
-        for name, freq, datatype, files in dataset.blueprint.to_insert:
+        for name, freq, datatype, _ in dataset.blueprint.to_insert:
             for node in dataset.nodes(freq):
                 item = node[name]
                 item.get_checksums()
@@ -116,9 +119,7 @@ def test_put_items(dataset: Dataset):
     check_inserted()  # Check that cached objects have been updated
     dataset.refresh()  # Clear object cache
     check_inserted()  # Check that objects can be recreated from repository
-    
-    
-    
+
 
 # -----------------------
 # Test dataset structures

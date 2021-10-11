@@ -1,6 +1,7 @@
 import os.path as op
 from abc import abstractmethod, ABCMeta
 from collections import defaultdict
+from pathlib import Path
 import numpy as np
 from arcana2.core.utils import split_extension
 import logging
@@ -322,8 +323,9 @@ class FileFormat(object):
             A dictionary mapping the auxiliary file name to the selected path
         """
         by_ext = defaultdict(list)
+        candidates = list(candidates)  # protect against iterators
         for path in candidates:
-            ext = ''.join(path.suffixes).lower()
+            ext = ''.join(Path(path).suffixes).lower()
             if not ext:
                 ext = None
             by_ext[ext].append(path)
