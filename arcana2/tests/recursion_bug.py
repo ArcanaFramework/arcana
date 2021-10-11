@@ -5,7 +5,7 @@ from pydra import mark, Workflow
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from pydra.tasks.dcm2niix import Dcm2Niix
-from arcana2.core.data.enum import DataDimension
+from arcana2.core.data.enum import DataSpace
 from arcana2.core.data.set import Dataset
 from arcana2.core.data.item import DataItem
 from arcana2.core.pipeline import Pipeline
@@ -23,7 +23,7 @@ def identity(**kwargs):
 @mark.task
 @mark.annotate({
     'dataset': Dataset,
-    'frequency': DataDimension,
+    'frequency': DataSpace,
     'outputs': ty.Sequence[str],
     'requested_ids': ty.Sequence[str] or None,
     'return': {
@@ -159,7 +159,7 @@ wf.add(f(name='test', x=wf.lzin.ids, y=2))
 # @mark.task
 # @mark.annotate(
 #     {'dataset': Dataset,
-#         'frequency': DataDimension,
+#         'frequency': DataSpace,
 #         'id': str,
 #         'inputs': ty.Sequence[str],
 #         'return': source_output_spec})
@@ -247,7 +247,7 @@ wf.add(f(name='test', x=wf.lzin.ids, y=2))
 #         input_spec=SpecInfo(
 #             name='SinkInputs', bases=(BaseSpec,), fields=(
 #                 [('dataset', Dataset),
-#                     ('frequency', DataDimension),
+#                     ('frequency', DataSpace),
 #                     ('id', str)]
 #                 + [(s, DataItem) for s in to_sink])),
 #         output_spec=SpecInfo(

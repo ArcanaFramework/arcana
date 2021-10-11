@@ -3,9 +3,9 @@ from operator import __or__
 from enum import Enum
 
 
-class DataDimension(Enum):
+class DataSpace(Enum):
     """
-    Base class for all "data dimensions" enums. DataDimension enums specify
+    Base class for all "data dimensions" enums. DataSpace enums specify
     the relationships between nodes of a dataset.
 
     For example in imaging studies, scannings sessions are typically organised
@@ -16,7 +16,7 @@ class DataDimension(Enum):
     time-point can still be represented in the same space, and just be of
     depth=1 along those dimensions.
 
-    All dimensions should be included as members of a DataDimension subclass
+    All dimensions should be included as members of a DataSpace subclass
     enum with orthogonal binary vector values, e.g.
 
         member = 0b001
@@ -150,7 +150,7 @@ class DataDimension(Enum):
 
         Parameters
         ----------
-        child : DataDimension
+        child : DataSpace
             The data frequency to check parent/child relationship with
         if_match : bool
             Treat matching frequencies as "parents" of each other

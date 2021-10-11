@@ -1,1 +1,1 @@
-from .enum import DataDimension, DataQuality, DataSalience
+from .enum import DataSpace, DataQuality, DataSalience

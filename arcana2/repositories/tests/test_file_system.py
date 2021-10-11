@@ -12,7 +12,7 @@ from functools import reduce
 from copy import copy
 import pytest
 from arcana2.repositories.file_system import FileSystem
-from arcana2.core.data.enum import DataDimension
+from arcana2.core.data.enum import DataSpace
 from arcana2.core.data.set import Dataset
 from arcana2.core.data.datatype import FileFormat
 from arcana2.datatypes.general import text, directory, json
@@ -20,7 +20,7 @@ from arcana2.datatypes.neuroimaging import (
     nifti_gz, niftix_gz, niftix, nifti, analyze, mrtrix_image)
 
 
-class TestDimension(DataDimension):
+class TestDimension(DataSpace):
     """Dummy data dimensions for ease of testing"""
 
     # Per dataset
@@ -129,12 +129,12 @@ def test_put_items(dataset: Dataset):
 @dataclass
 class TestDatasetBlueprint():
 
-    hierarchy: list[DataDimension]
+    hierarchy: list[DataSpace]
     dim_lengths: list[int]  # size of layers a-d respectively
     files: list[str]  # files present at bottom layer
-    id_inference: dict[DataDimension, str]  # id_inference dict
+    id_inference: dict[DataSpace, str]  # id_inference dict
     expected_formats: dict[str, tuple[FileFormat, list[str]]]  # expected formats
-    to_insert: list[str, tuple[DataDimension, FileFormat, list[str]]]  # files to insert as derivatives
+    to_insert: list[str, tuple[DataSpace, FileFormat, list[str]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {

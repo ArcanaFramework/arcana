@@ -12,7 +12,7 @@ from arcana2.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.item import DataItem
 from .data.set import Dataset
 from .data.datatype import FileFormat
-from .data.enum import DataDimension
+from .data.enum import DataSpace
 
 logger = logging.getLogger('arcana')
 
@@ -30,7 +30,7 @@ class Pipeline():
 
     workflow: Workflow = attr.ib()
     dataset: Dataset = attr.ib()
-    frequency: DataDimension = attr.ib()
+    frequency: DataSpace = attr.ib()
     inputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
     outputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
     _connected: set[str] = attr.ib(factory=set, repr=False)
@@ -115,7 +115,7 @@ class Pipeline():
             List of sink names to be connected to the outputs of the pipeline
             If teh the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)
-        frequency : DataDimension, optional
+        frequency : DataSpace, optional
             The frequency of the pipeline, i.e. the frequency of the
             derivatvies within the dataset, e.g. per-session, per-subject, etc,
             by default None
@@ -224,7 +224,7 @@ class Pipeline():
         @mark.task
         @mark.annotate(
             {'dataset': Dataset,
-             'frequency': DataDimension,
+             'frequency': DataSpace,
              'id': str,
              'inputs': ty.Sequence[str],
              'return': source_output_spec})
@@ -312,7 +312,7 @@ class Pipeline():
                 input_spec=SpecInfo(
                     name='UploadInputs', bases=(BaseSpec,), fields=(
                         [('dataset', Dataset),
-                         ('frequency', DataDimension),
+                         ('frequency', DataSpace),
                          ('id', str)]
                         + [(s, DataItem) for s in to_sink])),
                 output_spec=SpecInfo(
@@ -342,7 +342,7 @@ def identity(**kwargs):
 @mark.task
 @mark.annotate({
     'dataset': Dataset,
-    'frequency': DataDimension,
+    'frequency': DataSpace,
     'outputs': ty.Sequence[str],
     'requested_ids': ty.Sequence[str] or None,
     'return': {

@@ -19,7 +19,7 @@ import xnat
 from arcana2.repositories import Xnat
 from arcana2.core.utils import set_cwd
 from arcana2.dimensions.clinical import Clinical
-from arcana2.core.data.enum import DataDimension
+from arcana2.core.data.enum import DataSpace
 from arcana2.core.data.set import Dataset
 from arcana2.core.data.datatype import FileFormat
 from arcana2.datatypes.general import text, directory, json
@@ -100,8 +100,8 @@ class TestDatasetBlueprint():
 
     dim_lengths: list[int]
     scans: list[tuple[str, list[tuple[str, FileFormat, list[str]]]]]
-    id_inference: dict[DataDimension, str]
-    to_insert: list[str, tuple[DataDimension, FileFormat, list[str]]]  # files to insert as derivatives
+    id_inference: dict[DataSpace, str]
+    to_insert: list[str, tuple[DataSpace, FileFormat, list[str]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {
