@@ -186,14 +186,16 @@ class FileGroup(DataItem):
     def get(self):
         self._check_exists()
         self._check_part_of_data_node()
-        self.set_fs_path(*self.data_node.get_file_group_paths(self))
+        self._set_fs_paths()
 
-    def put(self):
+    def put(self, fs_path, side_cars=None):
         self._check_part_of_data_node()
-        self.data_node.put_file_group(self)          
+        self.data_node.put_file_group(self, fs_path=fs_path,
+                                      side_cars=side_cars)
+        self._set_fs_paths()
 
-    def set_fs_path(self, fs_path, side_cars=None):
-        """Sets the primary file path and any side-car files
+    def _set_fs_paths(self):
+        """Sets the primary file path and any side-car files from the node
 
         Parameters
         ----------
@@ -203,6 +205,7 @@ class FileGroup(DataItem):
             dictionary with name of side-car files as keys (as defined in the
             FileFormat class) and file paths as values
         """
+        fs_path, side_cars = self.data_node.get_file_group_paths(self)
         self.fs_path = absolute_path(fs_path)
         if side_cars is None:
             side_cars = self.default_side_cars()
@@ -332,6 +335,7 @@ class Field(DataItem):
     def put(self, value):
         self._check_part_of_data_node()
         self.data_node.put_field(self, self.datatype(value))
+        self.exists = True
 
     def __int__(self):
         return int(self.value)

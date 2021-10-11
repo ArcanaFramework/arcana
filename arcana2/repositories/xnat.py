@@ -1,6 +1,7 @@
 import os
 import os.path as op
 import stat
+from pathlib import Path
 import typing as ty
 from glob import glob
 import time
@@ -73,7 +74,7 @@ class Xnat(Repository):
     """
 
     server: str = attr.ib()
-    cache_dir: str = attr.ib()
+    cache_dir: str = attr.ib(converter=Path)
     user: str = attr.ib(default=None)
     password: str = attr.ib(default=None)
     check_md5: bool = attr.ib(default=True)
@@ -100,9 +101,6 @@ class Xnat(Repository):
             raise ArcanaError("XNAT repository has been disconnected before "
                               "exiting outer context")
         return self._login
-
-    def dataset_fs_path_dir(self, dataset_name):
-        return op.join(self.cache_dir, dataset_name)
 
     def connect(self):
         """
@@ -244,7 +242,7 @@ class Xnat(Repository):
             val = parse_value(val)
         return val
 
-    def put_file_group(self, file_group):
+    def put_file_group(self, file_group, fs_path, side_cars):
         """
         Retrieves a fields value
 
@@ -272,25 +270,6 @@ class Xnat(Repository):
                 # Set the uri of the file_group
                 file_group.uri = '{}/resources/{}'.format(
                     self.standard_uri(xnode), name)
-            # Copy file_group to cache
-            cache_path = self.cache_path(file_group)
-            if os.path.exists(cache_path):
-                shutil.rmtree(cache_path)
-            os.makedirs(cache_path, stat.S_IRWXU | stat.S_IRWXG)
-            if file_group.datatype.directory:
-                shutil.copytree(file_group.fs_path, cache_path)
-            else:
-                # Copy primary file
-                shutil.copyfile(file_group.fs_path,
-                                op.join(cache_path, file_group.fname))
-                # Copy auxiliaries
-                for sc_fname, sc_path in file_group.aux_file_fnames_and_paths:
-                    shutil.copyfile(sc_path, op.join(cache_path, sc_fname))
-            with open(cache_path + self.MD5_SUFFIX, 'w',
-                      **JSON_ENCODING) as f:
-                json.dump(file_group.calculate_checksums(), f, indent=2)
-            if file_group.provenance:
-                self.put_provenance(file_group)
             # Delete existing resource (if present)
             try:
                 xresource = xnode.resources[name]
@@ -304,30 +283,47 @@ class Xnat(Repository):
             # Create the new resource for the file_group
             xresource = self.login.classes.ResourceCatalog(
                 parent=xnode, label=name, format=file_group.datatype_name)
-            # Upload the files to the new resource                
+            # Create cache path
+            cache_path = self.cache_path(file_group)
+            if cache_path.exists():
+                shutil.rmtree(cache_path)
+            os.makedirs(cache_path, stat.S_IRWXU | stat.S_IRWXG)
+            # Upload data and add it to cache
             if file_group.datatype.directory:
-                for dpath, _, fnames  in os.walk(file_group.fs_path):
+                for dpath, _, fnames  in os.walk(fs_path):
                     for fname in fnames:
                         fpath = op.join(dpath, fname)
-                        frelpath = op.relpath(fpath, file_group.fs_path)
+                        frelpath = op.relpath(fpath, fs_path)
                         xresource.upload(fpath, frelpath)
+                shutil.copytree(fs_path, cache_path)
             else:
-                xresource.upload(file_group.name_path, file_group.fname)
-                for sc_fname, sc_path in file_group.aux_file_fnames_and_paths:
+                # Upload primary file and add to cache
+                xresource.upload(fs_path, file_group.fname)
+                shutil.copyfile(fs_path, cache_path / file_group.fname)
+                # Upload side cars and add them to cache
+                for sc_name, sc_path in side_cars:
+                    sc_fname = sc_name + file_group.datatype.side_cars[sc_name]
                     xresource.upload(sc_path, sc_fname)
+                    shutil.copyfile(sc_path, cache_path / sc_fname)
+            # Save checksums in cache to avoid having to download them later
+            with open(cache_path + self.MD5_SUFFIX, 'w',
+                    **JSON_ENCODING) as f:
+                json.dump(file_group.calculate_checksums(), f, indent=2)
+            # Save provenance
+            if file_group.provenance:
+                self.put_provenance(file_group)
 
-    def put_field(self, field):
+    def put_field(self, field, value):
         self._check_repository(field)
-        val = field.value
         if field.array:
             if field.datatype is str:
-                val = ['"{}"'.format(v) for v in val]
-            val = '[' + ','.join(str(v) for v in val) + ']'
+                value = ['"{}"'.format(v) for v in value]
+            value = '[' + ','.join(str(v) for v in value) + ']'
         if field.datatype is str:
-            val = '"{}"'.format(val)
+            value = '"{}"'.format(value)
         with self:
             xsession = self.get_xnode(field.data_node)
-            xsession.fields[self.escape_name(field)] = val
+            xsession.fields[self.escape_name(field)] = value
         if field.provenance:
             self.put_provenance(field)
 
@@ -680,7 +676,7 @@ class Xnat(Repository):
             uri = item
         if uri is None:
             raise ArcanaError("URI of item needs to be set before cache path")
-        return op.join(self.cache_dir, *uri.split('/')[3:])
+        return self.cache_dir.joinpath(uri.split('/')[3:])
 
     def _check_repository(self, item):
         if item.data_node.dataset.repository is not self:

@@ -71,8 +71,7 @@ def test_put_items(mutable_dataset: Dataset, tmp_dir: str):
             test_files[name][test_file_path] = fhash.hexdigest()
         for node in dataset.nodes(freq):
             item = node[name]
-            item.set_fs_path(*datatype.assort_files(test_files[name]))
-            item.put()
+            item.put(*datatype.assort_files(test_files[name]))
     expected_items = defaultdict(dict)
     for name, freq, datatype, files in mutable_dataset.blueprint.to_insert:
         expected_items[freq][name] = (datatype, set(files))

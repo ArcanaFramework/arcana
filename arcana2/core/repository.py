@@ -128,7 +128,7 @@ class Repository(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_file_group(self, file_group):
+    def put_file_group(self, file_group, fs_path, side_cars):
         """
         Inserts or updates the file_group into the repository
 
@@ -139,7 +139,7 @@ class Repository(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_field(self, field):
+    def put_field(self, field, value):
         """
         Inserts or updates the fields into the repository
 

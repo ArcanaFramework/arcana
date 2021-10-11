@@ -79,37 +79,37 @@ class FileSystem(Repository):
             val = field.datatype(val)
         return val
 
-    def put_file_group(self, file_group):
+    def put_file_group(self, file_group, fs_path, side_cars):
         """
         Inserts or updates a file_group in the repository
         """
         target_path = self.file_group_path(file_group)
-        source_path = file_group.fs_path
+        if fs_path == target_path:
+            logger.info(
+                f"Attempted to set file path of {file_group} to its path in "
+                f"the repository {target_path}")
+            return
         # Create target directory if it doesn't exist already
         dname = target_path.parent
         if not dname.exists():
             os.makedirs(dname)
-        if source_path.is_file():
-            if source_path != target_path:
-                shutil.copyfile(source_path, target_path)
+        if fs_path.is_file():
+            shutil.copyfile(fs_path, target_path)
             # Copy side car files into repository
-            for sc_name, target_sc_path in file_group.datatype.default_side_cars(
+            for sc_name, sc_path in file_group.datatype.default_side_cars(
                     target_path).items():
-                source_sc_path = file_group.datatype.side_cars[sc_name]
-                if source_sc_path != target_sc_path:
-                    shutil.copyfile(source_sc_path, target_sc_path)
-        elif source_path.is_dir():
-            if source_path != target_path:
-                if target_path.exists():
-                    shutil.rmtree(target_path)
-                shutil.copytree(source_path, target_path)
+                shutil.copyfile(side_cars[sc_name], sc_path)
+        elif fs_path.is_dir():
+            if target_path.exists():
+                shutil.rmtree(target_path)
+            shutil.copytree(fs_path, target_path)
         else:
             raise ValueError(
-                f"Source file {source_path} does not exist")
+                f"Source file {fs_path} does not exist")
         if file_group.provenance is not None:
             file_group.provenance.save(self.prov_json_path(file_group))
 
-    def put_field(self, field):
+    def put_field(self, field, value):
         """
         Inserts or updates a field in the repository
         """
@@ -126,12 +126,10 @@ class FileSystem(Repository):
                 else:
                     raise
             if field.array:
-                value = list(field.value)
-            else:
-                value = field.value
-            if field.provenance is not None:
-                value = {self.VALUE_KEY: value,
-                         self.PROV_KEY: field.provenance.dct}
+                value = list(value)
+            dct[field.path] = {
+                self.VALUE_KEY: value,
+                self.PROV_KEY: field.provenance.dct}
             with open(fpath, 'w') as f:
                 json.dump(dct, f, indent=2)
 
@@ -220,9 +218,11 @@ class FileSystem(Repository):
         return path
 
     def file_group_path(self, file_group):
-        return (
-            self.node_path(file_group.data_node).joinpath(*file_group.path.split('/'))
-            + file_group.datatype.extension)
+        fs_path = self.node_path(file_group.data_node).joinpath(
+            *file_group.path.split('/'))
+        if file_group.datatype.extension:
+            fs_path = fs_path.with_suffix(file_group.datatype.extension)
+        return fs_path
 
     def fields_json_path(self, field):
         return op.join(self.node_path(field.data_node), self.FIELDS_FNAME)

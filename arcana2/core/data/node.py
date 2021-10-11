@@ -167,11 +167,12 @@ class DataNode():
     def get_field_value(self, field):
         return self.dataset.repository.get_field_value(field)
 
-    def put_file_group(self, file_group):
-        self.dataset.repository.put_file_group(file_group)
+    def put_file_group(self, file_group, fs_path, side_cars):
+        self.dataset.repository.put_file_group(
+            file_group, fs_path=fs_path, side_cars=side_cars)
 
-    def put_field(self, field):
-        self.dataset.repository.put_field(field)
+    def put_field(self, field, value):
+        self.dataset.repository.put_field(field, value)
 
 
 @attr.s

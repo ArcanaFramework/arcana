@@ -96,8 +96,7 @@ def test_put_items(dataset: Dataset):
             item = node[name]
             fs_paths = [deriv_tmp_dir / fname.parts[0]
                         for fname in checksums[name]]
-            item.set_fs_path(*datatype.assort_files(fs_paths))
-            item.put()
+            item.put(*datatype.assort_files(fs_paths))
     expected_items = defaultdict(dict)
     for name, freq, datatype, files in dataset.blueprint.to_insert:
         expected_items[freq][name] = (datatype, files)
@@ -221,7 +220,7 @@ def dataset(work_dir, request):
     create_dataset_in_repo(dataset_name, work_dir)
     dataset = access_dataset(dataset_name, work_dir)
     yield dataset
-    shutil.rmtree(dataset.name)
+    #shutil.rmtree(dataset.name)
 
 
 @pytest.fixture
