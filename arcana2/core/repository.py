@@ -169,7 +169,7 @@ class Repository(metaclass=ABCMeta):
             MD5 hex digest. The primary file in the file-set (i.e. the one that
             the path points to) should be specified by '.'.
         """
-        return None
+        return file_group.calculate_checksums()
 
     def connect(self):
         """

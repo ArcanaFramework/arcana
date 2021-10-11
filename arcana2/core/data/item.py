@@ -84,7 +84,7 @@ class DataItem(metaclass=ABCMeta):
     def _check_exists(self):
         if not self.exists:
             raise ArcanaDataNotDerivedYetError(
-                self.name_path,
+                self.path,
                 f"Cannot access {self} as it hasn't been derived yet")
 
     def _check_part_of_data_node(self):
@@ -235,23 +235,25 @@ class FileGroup(DataItem):
     def get_checksums(self):
         self._check_exists()
         if self.checksums is None:
-            if self.dataset is not None:
-                self.checksums = self.dataset.get_checksums(self)
-            if self.checksums is None:
-                self.calculate_checksums()
+            # Load checksums from repository (e.g. via API)
+            if self.data_node is not None:
+                self.checksums = self.data_node.dataset.repository.get_checksums(self)
+            # If the repository cannot calculate the checksums do them manually
+            else:
+                self.checksums = self.calculate_checksums()
 
     def calculate_checksums(self):
         self._check_exists()
         checksums = {}
-        for fpath in self.all_file_paths:
+        for fpath in self.all_file_paths():
             fhash = hashlib.md5()
             with open(fpath, 'rb') as f:
                 # Calculate hash in chunks so we don't run out of memory for
                 # large files.
                 for chunk in iter(lambda: f.read(self.HASH_CHUNK_SIZE), b''):
                     fhash.update(chunk)
-            checksums[op.relpath(fpath, self.fs_path)] = fhash.hexdigest()
-        self.checksums = checksums
+            checksums[fpath.relative_to(self.fs_path)] = fhash.hexdigest()
+        return checksums
 
     def contents_equal(self, other, **kwargs):
         """

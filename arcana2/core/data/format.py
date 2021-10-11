@@ -323,20 +323,16 @@ class FileFormat(object):
         """
         by_ext = defaultdict(list)
         for path in candidates:
-            ext = ''.join(path.suffixes)
-            if ext is not None:
-                ext = ext.lower()
+            ext = ''.join(path.suffixes).lower()
+            if not ext:
+                ext = None
             by_ext[ext].append(path)
-        try:
-            primary_file = by_ext[self.ext]
-        except KeyError:
+        primary_file = by_ext[self.ext]
+        if not primary_file:
             raise ArcanaFileFormatError(
                 "No files match primary file extension of {} out of "
                 "potential candidates of {}"
                 .format(self, "', '".join(candidates)))
-        if not primary_file:
-            raise ArcanaFileFormatError(
-                "No potential files for primary file of {}".format(self))
         elif len(primary_file) > 1:
             raise ArcanaFileFormatError(
                 "Multiple potential files for '{}' primary file of {}"

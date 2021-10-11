@@ -90,18 +90,22 @@ class FileSystem(Repository):
         if not dname.exists():
             os.makedirs(dname)
         if source_path.is_file():
-            shutil.copyfile(source_path, target_path)
+            if source_path != target_path:
+                shutil.copyfile(source_path, target_path)
             # Copy side car files into repository
-            for aux_name, aux_path in file_group.data_format.default_side_cars(
+            for sc_name, target_sc_path in file_group.data_format.default_side_cars(
                     target_path).items():
-                shutil.copyfile(
-                    file_group.data_format.side_cars[aux_name], aux_path)
+                source_sc_path = file_group.data_format.side_cars[sc_name]
+                if source_sc_path != target_sc_path:
+                    shutil.copyfile(source_sc_path, target_sc_path)
         elif source_path.is_dir():
-            if target_path.exists():
-                shutil.rmtree(target_path)
-            shutil.copytree(source_path, target_path)
+            if source_path != target_path:
+                if target_path.exists():
+                    shutil.rmtree(target_path)
+                shutil.copytree(source_path, target_path)
         else:
-            assert False
+            raise ValueError(
+                f"Source file {source_path} does not exist")
         if file_group.provenance is not None:
             file_group.provenance.save(self.prov_json_path(file_group))
 
@@ -216,13 +220,9 @@ class FileSystem(Repository):
         return path
 
     def file_group_path(self, file_group):
-        if file_group.fs_path:
-            path = file_group.fs_path
-        else:
-            path = (self.node_path(file_group.data_node).joinpath(
-                        *file_group.path.split('/'))
-                    + file_group.data_format.extension)
-        return path
+        return (
+            self.node_path(file_group.data_node).joinpath(*file_group.path.split('/'))
+            + file_group.data_format.extension)
 
     def fields_json_path(self, field):
         return op.join(self.node_path(field.data_node), self.FIELDS_FNAME)

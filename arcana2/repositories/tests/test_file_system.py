@@ -81,36 +81,43 @@ def test_get_items(dataset: Dataset):
             assert set(os.path.basename(p) for p in item.fs_paths) == files
 
 
-def test_put_items(dataset: Dataset, tmp_dir: str):
-    test_files = defaultdict(dict)
+def test_put_items(dataset: Dataset):
+    checksums = defaultdict(dict)
     for name, freq, data_format, files in dataset.blueprint.to_insert:
         dataset.add_sink(name=name, format=data_format, frequency=freq)
+        deriv_tmp_dir = Path(mkdtemp())
         for fname in files:
-            test_file = create_test_file(fname, tmp_dir / name)
+            test_file_path = create_test_file(fname, deriv_tmp_dir)
             fhash = hashlib.md5()
-            with open(test_file, 'rb') as f:
+            with open(deriv_tmp_dir / test_file_path, 'rb') as f:
                 fhash.update(f.read())
-            test_files[name][test_file.relative_to(tmp_dir / name)] = fhash.hexdigest()
+            checksums[name][test_file_path] = fhash.hexdigest()
         for node in dataset.nodes(freq):
             item = node[name]
-            item.set_fs_path(*data_format.assort_files(test_files[name]))
+            fs_paths = [deriv_tmp_dir / fname.parts[0]
+                        for fname in checksums[name]]
+            item.set_fs_path(*data_format.assort_files(fs_paths))
             item.put()
     expected_items = defaultdict(dict)
     for name, freq, data_format, files in dataset.blueprint.to_insert:
-        expected_items[freq][name] = (data_format, set(files))
-    def check_expected():
+        expected_items[freq][name] = (data_format, files)
+    def check_inserted():
+        """Check that the inserted items are present in the dataset"""
         for freq, sinks in expected_items.items():
             for node in dataset.nodes(freq):
                 for name, (data_format, files) in sinks.items():
                     item = node[name]
                     item.get_checksums()
                     assert item.data_format == data_format
-                    assert item.checksums == test_files[name]
-                    assert set(item.fs_paths) == set(
-                        f.parts[0] for f in test_files[name])
-    check_expected()
-    dataset.refresh()
-    check_expected()
+                    assert item.checksums == {
+                        k.relative_to(files[0]): v
+                        for k, v in checksums[name].items()}
+                    assert set(p.name for p in item.fs_paths) == set(files)
+                    item.get()
+                    assert all(p.exists() for p in item.fs_paths)
+    check_inserted()  # Check that cached objects have been updated
+    dataset.refresh()  # Clear object cache
+    check_inserted()  # Check that objects can be recreated from repository
     
     
     
@@ -143,7 +150,7 @@ TEST_DATASET_BLUEPRINTS = {
          'dir1': [
             (directory, ['dir1'])]},
         [('deriv1', td.d, text, ['file1.txt']),  # Derivatives to insert
-         ('deriv2', td.c, directory, ['dir1', 'dir2', 'file1.png']),
+         ('deriv2', td.c, directory, ['dir']),
          ('deriv3', td.bd, text, ['file1.txt'])]
     ),
     'one_layer': TestDatasetBlueprint(
@@ -257,17 +264,17 @@ def get_dataset_path(name, base_dir):
 
 
 def create_test_file(fname, dpath):
+    fpath = Path(fname)
     os.makedirs(dpath, exist_ok=True)
-    fpath = Path(dpath) / fname
     # Make double dir
     if fname.startswith('doubledir'):
-        os.mkdir(fpath)
+        os.makedirs(dpath / fpath, exist_ok=True)
         fname = 'dir'
         fpath /= fname
     if fname.startswith('dir'):
-        os.mkdir(fpath)
+        os.makedirs(dpath / fpath, exist_ok=True)
         fname = 'test.txt'
         fpath /= fname
-    with open(fpath, 'w') as f:
+    with open(dpath / fpath, 'w') as f:
         f.write(f'test {fname}')
     return fpath
