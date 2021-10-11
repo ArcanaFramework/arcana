@@ -12,7 +12,7 @@ from arcana2.core.data.provenance import DataProvenance
 from arcana2.exceptions import ArcanaMissingDataException, ArcanaUsageError
 from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana2.core.data.set import Dataset
-from arcana2.space.clinical import Clinical, DataSpace
+from arcana2.dataspaces.clinical import Clinical, DataSpace
 from arcana2.core.repository import Repository
 
 

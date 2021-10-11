@@ -164,7 +164,7 @@ class Dataset():
     #         return self.root_node.children[key]
 
     @property
-    def dimensions(self):
+    def space(self):
         return type(self.hierarchy[0])
 
     @property

@@ -1,4 +1,4 @@
-from arcana2.core.data.enum import DataSpace
+from arcana2.core.data import DataSpace
 
 class Clinical(DataSpace):
     """
@@ -10,7 +10,7 @@ class Clinical(DataSpace):
     # Root node of the dataset
     dataset = 0b000  # singular within the dataset
 
-    # Basis frequencies in the data tree dimensions
+    # Axes of the data space
     member = 0b001  # subjects relative to their group membership, i.e.
                     # matched pairs of test and control subjects should share
                     # the same member IDs.
@@ -19,11 +19,11 @@ class Clinical(DataSpace):
 
     # Combinations
     session = 0b111  # a single session (i.e. a single timepoint of a subject)
-    subject = 0b011 # uniquely identified subject within in the dataset.
-                    # As opposed to 'member', which specifies a subject in
-                    # relation to its group (i.e. one subject for each member
-                    # in each group). For datasets with only one study group,
-                    # then subject and member are equivalent
+    subject = 0b011  # uniquely identified subject within in the dataset.
+                     # As opposed to 'member', which specifies a subject in
+                     # relation to its group (i.e. one subject for each member
+                     # in each group). For datasets with only one study group,
+                     # then subject and member are equivalent
     batch = 0b110  # data from separate groups at separate timepoints
-    matchedpoint = 0b101 # matched members (e.g. test & control) across
-                              # all groups and timepoints
+    matchedpoint = 0b101  # matched members (e.g. test & control) across
+                          # all groups and timepoints
