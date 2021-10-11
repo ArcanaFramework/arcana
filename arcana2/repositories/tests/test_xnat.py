@@ -95,14 +95,13 @@ def test_put_items(mutable_dataset: Dataset):
                 assert all(p.exists() for p in item.fs_paths)
     check_inserted()
     # Check read from cached files
-    dataset.refresh()
-    orig_server = dataset.repository.server
-    dataset.repository.server = 'BADVALUE'
+    mutable_dataset.refresh()
+    orig_server = mutable_dataset.repository.server
     check_inserted()
     # Check downloaded
-    dataset.repository.server = orig_server
-    dataset.refresh()
-    shutil.rmtree(dataset.repository.cache_dir / dataset.name)
+    mutable_dataset.repository.server = orig_server
+    mutable_dataset.refresh()
+    shutil.rmtree(mutable_dataset.repository.cache_dir / mutable_dataset.name)
     check_inserted()  
 
 

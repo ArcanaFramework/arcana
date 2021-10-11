@@ -384,14 +384,22 @@ class Xnat(Repository):
             # Replace the fnames with the relative path to the primary file
             primary = file_group.datatype.assort_files(checksums.keys())[0]
             new_checksums = {}
-            for fname, chksum in checksums.items():
+            for fname, chksum in sorted(checksums.items()):
+                fname = Path(fname)
                 try:
-                    new_fname = Path(fname).relative_to(primary)
+                    new_fname = fname.relative_to(primary)
                 except ValueError:
-                    new_fname = '.'.join(fname)
+                    # Reduce name to suffixes if a "side-car" file
+                    new_fname = '.'.join(fname.suffixes)
                 if new_fname in new_checksums:
+                    logger.warning(
+                        f"Multiple side-cars found in {file_group} XNAT "
+                        f"resource with the same extension (this isn't allowed)"
+                        f" and therefore cannot convert {fname} to {new_fname}"
+                        " in checksums")
                     new_fname = fname
-                new_checksums[new_fname] = chksum
+                new_checksums[str(new_fname)] = chksum
+            checksums = new_checksums
         return checksums
 
     def find_nodes(self, dataset: Dataset, **kwargs):
@@ -602,49 +610,6 @@ class Xnat(Repository):
     def unescape_name(cls, name):
         return '/'.join(name.split(cls.PATH_SEP))
 
-
-    @classmethod
-    def node_name(cls, data_node):
-        """"""
-        if data_node.frequency not in (Clinical.subject, Clinical.session):
-            node_name = (
-                '__' + '__'.join(
-                    f'{l}_' + '_'.join(data_node.ids[l])
-                    for l in data_node.frequency.nonzero_basis()) + '__')
-        else:
-            node_name = data_node.id
-        return node_name
-
-    # @classmethod
-    # def unescape_name(cls, xname: str):
-    #     """Reverses the escape of an item name by `escape_name`
-
-    #     Parameters
-    #     ----------
-    #     xname : `str`
-    #         An escaped name of a data node stored in the project resources
-
-    #     Returns
-    #     -------
-    #     name : `str`
-    #         The unescaped name of an item
-    #     frequency : Clinical
-    #         The frequency of the node
-    #     ids : Dict[Clinical, str]
-    #         A dictionary of IDs for the node
-    #     """
-    #     ids = {}
-    #     id_parts = xname.split('___')[1:-1]
-    #     freq_value = 0b0
-    #     for part in id_parts:
-    #         layer_freq_str, id = part.split('__')
-    #         layer_freq = Clinical[layer_freq_str]
-    #         ids[layer_freq] = id
-    #         freq_value != layer_freq
-    #     frequency = Clinical(freq_value)
-    #     name_path = '/'.join(id_parts[-1].split('__'))
-    #     return name_path, frequency, ids
-
     @classmethod
     def standard_uri(cls, xnode):
         """Get the URI of the XNAT node (ImageSession | Subject | Project)
@@ -680,9 +645,68 @@ class Xnat(Repository):
             # Replace subject ID with subject label in URI
             uri = re.sub(r'(?<=/subjects/)[^/]+', subject_id, uri)
 
-        return uri
+        return uri   
 
+    def get_file_group_paths(self, file_group):
+        try:
+            mounted_dir = self.get_direct_mount(file_group.data_node)
+        except KeyError:
+            return self.get_file_group_paths_via_api(file_group)
+        else:
+            return self.get_file_group_paths_via_direct_access(
+                file_group, mounted_dir)
+
+    def get_field_value(self, field):
+        try:
+            mounted_dir = self.get_direct_mount(field.data_node)
+        except KeyError:
+            return self.get_field_value_via_api(field)
+        else:
+            return self.get_field_value_via_direct_access(
+                field, mounted_dir)
+
+    def put_file_group(self, file_group, fs_path, side_cars):
+        try:
+            mounted_dir = self.get_direct_mount(file_group.data_node)
+        except KeyError:
+            return self.put_file_group_via_api(file_group, fs_path, side_cars)
+        else:
+            return self.put_file_group_via_direct_access(
+                file_group, fs_path, side_cars, mounted_dir)
+
+    def put_field(self, field, value):
+        try:
+            mounted_dir = self.get_direct_mount(field.data_node)
+        except KeyError:
+            return self.put_field_via_api(field, value)
+        else:
+            return self.put_field_via_direct_access(
+                field, value, mounted_dir)
+
+    def get_file_group_paths_via_direct_access(self, file_group, mounted_dir):
+        raise NotImplementedError
+
+    def get_field_value_via_direct_access(self, field, mounted_dir):
+        raise NotImplementedError
+
+    def put_file_group_via_direct_access(self, file_group, fs_path, side_cars,
+                                         mounted_dir):
+        raise NotImplementedError
+
+    def put_field_via_direct_access(self, field, value, mounted_dir):
+        raise NotImplementedError
+
+
+    def get_direct_mount(self, data_node):
+        if data_node == 99:
+            raise KeyError
+        
 
 def append_suffix(path, suffix):
     "Appends a string suffix to a Path object"
     return Path(str(path) + suffix)
+
+
+
+
+
