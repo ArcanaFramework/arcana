@@ -255,7 +255,11 @@ class FileGroup(DataItem):
                 # large files.
                 for chunk in iter(lambda: f.read(self.HASH_CHUNK_SIZE), b''):
                     fhash.update(chunk)
-            checksums[fpath.relative_to(self.fs_path)] = fhash.hexdigest()
+            try:
+                rel_path = fpath.relative_to(self.fs_path)
+            except ValueError:
+                rel_path = fpath.name
+            checksums[str(rel_path)] = fhash.hexdigest()
         return checksums
 
     def contents_equal(self, other, **kwargs):

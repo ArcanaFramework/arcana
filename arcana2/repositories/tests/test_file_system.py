@@ -82,38 +82,37 @@ def test_get_items(dataset: Dataset):
 
 
 def test_put_items(dataset: Dataset):
-    checksums = defaultdict(dict)
+    all_checksums = {}
+    all_fs_paths = {}
     for name, freq, datatype, files in dataset.blueprint.to_insert:
         dataset.add_sink(name=name, format=datatype, frequency=freq)
         deriv_tmp_dir = Path(mkdtemp())
+        # Create test files, calculate checkums and recorded expected paths
+        # for inserted files
+        all_checksums[name] = checksums = {}
+        all_fs_paths[name] = fs_paths = []
         for fname in files:
-            test_file_path = create_test_file(fname, deriv_tmp_dir)
+            test_file = create_test_file(fname, deriv_tmp_dir)
             fhash = hashlib.md5()
-            with open(deriv_tmp_dir / test_file_path, 'rb') as f:
+            with open(deriv_tmp_dir / test_file, 'rb') as f:
                 fhash.update(f.read())
-            checksums[name][test_file_path] = fhash.hexdigest()
+            checksums[str(Path(name).with_suffix('.'.join(test_file.suffixes)))
+                      if fs_paths else '.'] = fhash.hexdigest()
+            fs_paths.append(deriv_tmp_dir / test_file.parts[0])
+        # Test inserting the new item into the repository
         for node in dataset.nodes(freq):
             item = node[name]
-            fs_paths = [deriv_tmp_dir / fname.parts[0]
-                        for fname in checksums[name]]
             item.put(*datatype.assort_files(fs_paths))
-    expected_items = defaultdict(dict)
-    for name, freq, datatype, files in dataset.blueprint.to_insert:
-        expected_items[freq][name] = (datatype, files)
     def check_inserted():
         """Check that the inserted items are present in the dataset"""
-        for freq, sinks in expected_items.items():
+        for name, freq, datatype, files in dataset.blueprint.to_insert:
             for node in dataset.nodes(freq):
-                for name, (datatype, files) in sinks.items():
-                    item = node[name]
-                    item.get_checksums()
-                    assert item.datatype == datatype
-                    assert item.checksums == {
-                        k.relative_to(files[0]): v
-                        for k, v in checksums[name].items()}
-                    assert set(p.name for p in item.fs_paths) == set(files)
-                    item.get()
-                    assert all(p.exists() for p in item.fs_paths)
+                item = node[name]
+                item.get_checksums()
+                assert item.datatype == datatype
+                assert item.checksums == all_checksums[name]
+                item.get()
+                assert all(p.exists() for p in item.fs_paths)
     check_inserted()  # Check that cached objects have been updated
     dataset.refresh()  # Clear object cache
     check_inserted()  # Check that objects can be recreated from repository
@@ -148,7 +147,7 @@ TEST_DATASET_BLUEPRINTS = {
             (nifti_gz, ['file2.nii.gz'])],
          'dir1': [
             (directory, ['dir1'])]},
-        [('deriv1', td.d, text, ['file1.txt']),  # Derivatives to insert
+        [('deriv1', td.abcd, text, ['file1.txt']),  # Derivatives to insert
          ('deriv2', td.c, directory, ['dir']),
          ('deriv3', td.bd, text, ['file1.txt'])]
     ),

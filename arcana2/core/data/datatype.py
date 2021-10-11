@@ -332,7 +332,7 @@ class FileFormat(object):
             raise ArcanaFileFormatError(
                 "No files match primary file extension of {} out of "
                 "potential candidates of {}"
-                .format(self, "', '".join(candidates)))
+                .format(self, "', '".join(str(p) for p in candidates)))
         elif len(primary_file) > 1:
             raise ArcanaFileFormatError(
                 "Multiple potential files for '{}' primary file of {}"
@@ -340,19 +340,20 @@ class FileFormat(object):
         else:
             primary_file = primary_file[0]
         side_cars = {}
-        for aux_name, aux_ext in self.side_cars.items():
-            aux = by_ext[aux_ext]
-            if not aux:
+        for sc_name, sc_ext in self.side_cars.items():
+            side_car = by_ext[sc_ext]
+            if not side_car:
                 raise ArcanaFileFormatError(
                     "No files match auxiliary file extension '{}' of {} out of"
                     " potential candidates of {}"
-                    .format(aux_ext, self, "', '".join(candidates)))
-            elif len(aux) > 1:
+                    .format(sc_ext, self,
+                            "', '".join(str(p) for p in candidates)))
+            elif len(side_car) > 1:
                 raise ArcanaFileFormatError(
                     ("Multiple potential files for '{}' auxiliary file ext. "
-                     + "({}) of {}".format("', '".join(aux), self)))
+                     + "({}) of {}".format("', '".join(side_car), self)))
             else:
-                side_cars[aux_name] = aux[0]
+                side_cars[sc_name] = side_car[0]
         return primary_file, side_cars
 
     # def matches(self, file_group):
