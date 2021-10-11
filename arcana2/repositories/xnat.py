@@ -129,7 +129,7 @@ class Xnat(Repository):
         self.login.disconnect()
         self._login = None
 
-    def get_file_group_paths(self, file_group, cache_only=False):
+    def get_file_group_paths(self, file_group):
         """
         Caches a file_group to the local file system and returns the path to
         the cached files
@@ -179,20 +179,11 @@ class Xnat(Repository):
                     if md5_path.exists():
                         with open(md5_path, 'r') as f:
                             cached_checksums = json.load(f)
-                    else:
-                        # Generate local version of checksums
-                        with open(md5_path, 'w', **JSON_ENCODING) as f:
-                            json.dump(file_group.calculate_checksums(), f,
-                                      indent=2)
                     if cached_checksums == file_group.checksums:
                         need_to_download = False
                 else:
                     need_to_download = False
             if need_to_download:
-                if cache_only:
-                    raise ArcanaCacheError(
-                        f"Cache mismatch for {file_group} and 'cache_only' "
-                        "set")
                 # The name_path to the directory which the files will be
                 # downloaded to.
                 tmp_dir = append_suffix(cache_path, '.download')
@@ -225,13 +216,7 @@ class Xnat(Repository):
                     self.download_file_group(tmp_dir, xresource, file_group,
                                           cache_path)
                     shutil.rmtree(tmp_dir)
-        if not file_group.datatype.directory:
-            primary_path, side_cars = file_group.datatype.assort_files(
-                op.join(cache_path, f) for f in os.listdir(cache_path))
-        else:
-            primary_path = cache_path
-            side_cars = None
-        return primary_path, side_cars
+        return self._file_group_paths(file_group)
 
     def get_field_value(self, field):
         """
@@ -303,6 +288,7 @@ class Xnat(Repository):
                 shutil.rmtree(cache_path)
             os.makedirs(cache_path, stat.S_IRWXU | stat.S_IRWXG)
             # Upload data and add it to cache
+            side_car_paths = {}
             if file_group.datatype.directory:
                 for dpath, _, fnames  in os.walk(fs_path):
                     dpath = Path(dpath)
@@ -317,10 +303,17 @@ class Xnat(Repository):
                 xresource.upload(str(fs_path), fname)
                 shutil.copyfile(fs_path, cache_path / fname)
                 # Upload side cars and add them to cache
-                for sc_name, sc_path in side_cars:
+                for sc_name, sc_src_path in side_cars:
                     sc_fname = escaped_name + file_group.datatype.side_cars[sc_name]
-                    xresource.upload(str(sc_path), sc_fname)
-                    shutil.copyfile(sc_path, cache_path / sc_fname)
+                    xresource.upload(str(sc_src_path), sc_fname)
+                    shutil.copyfile(sc_src_path, cache_path / sc_fname)
+            # need to manually set this here in order to calculate the
+            # checksums (instead of waiting until after the 'put' is finished)
+            file_group._set_fs_paths(*self._file_group_paths(file_group))
+            with open(append_suffix(cache_path, self.MD5_SUFFIX), 'w',
+                      **JSON_ENCODING) as f:
+                json.dump(file_group.calculate_checksums(), f,
+                          indent=2)
             # Save provenance
             if file_group.provenance:
                 self.put_provenance(file_group)
@@ -568,6 +561,16 @@ class Xnat(Repository):
             raise ArcanaWrongRepositoryError(
                 "{} is from {} instead of {}".format(
                     item, item.dataset.repository, self))
+
+    def _file_group_paths(self, file_group):
+        cache_path = self.cache_path(file_group)
+        if not file_group.datatype.directory:
+            primary_path, side_cars = file_group.datatype.assort_files(
+                op.join(cache_path, f) for f in os.listdir(cache_path))
+        else:
+            primary_path = cache_path
+            side_cars = None
+        return primary_path, side_cars
 
     @classmethod
     def escape_name(cls, item):

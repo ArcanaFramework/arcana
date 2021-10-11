@@ -192,9 +192,9 @@ class FileGroup(DataItem):
         self._check_part_of_data_node()
         self.data_node.put_file_group(self, fs_path=fs_path,
                                       side_cars=side_cars)
-        self._set_fs_paths(cache_only=True)
+        self._set_fs_paths()
 
-    def _set_fs_paths(self, cache_only=False):
+    def _set_fs_paths(self, fs_path=None, side_cars=None):
         """Sets the primary file path and any side-car files from the node
 
         Parameters
@@ -205,8 +205,8 @@ class FileGroup(DataItem):
             dictionary with name of side-car files as keys (as defined in the
             FileFormat class) and file paths as values
         """
-        fs_path, side_cars = self.data_node.get_file_group_paths(
-            self, cache_only=cache_only)
+        if fs_path is None:
+            fs_path, side_cars = self.data_node.get_file_group_paths(self)
         self.fs_path = absolute_path(fs_path)
         if side_cars is None:
             side_cars = self.default_side_cars()
