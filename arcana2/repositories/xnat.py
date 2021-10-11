@@ -21,7 +21,7 @@ from arcana2.exceptions import (
 from arcana2.core.data.provenance import DataProvenance
 from arcana2.core.utils import dir_modtime, get_class_info, parse_value
 from arcana2.core.data.set import Dataset
-from arcana2.dimensions.clinical import Clinical
+from arcana2.dataspaces.clinical import Clinical
 
 
 

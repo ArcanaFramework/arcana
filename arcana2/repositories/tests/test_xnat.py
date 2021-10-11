@@ -18,7 +18,7 @@ import docker
 import xnat
 from arcana2.repositories import Xnat
 from arcana2.core.utils import set_cwd
-from arcana2.dimensions.clinical import Clinical
+from arcana2.dataspaces.clinical import Clinical
 from arcana2.core.data.enum import DataSpace
 from arcana2.core.data.set import Dataset
 from arcana2.core.data.datatype import FileFormat

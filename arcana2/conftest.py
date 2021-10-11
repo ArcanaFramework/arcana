@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 from arcana2.core.data.spec import DataSource, DataSink
 from arcana2.repositories import FileSystem, Xnat
-from arcana2.dimensions.clinical import Clinical
+from arcana2.dataspaces.clinical import Clinical
 from arcana2.datatypes import dicom, niftix_gz
 
 # Set DEBUG logging for unittests

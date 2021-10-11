@@ -12,7 +12,7 @@ from arcana2.core.data.provenance import DataProvenance
 from arcana2.exceptions import ArcanaMissingDataException, ArcanaUsageError
 from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana2.core.data.set import Dataset
-from arcana2.dimensions.clinical import Clinical, DataSpace
+from arcana2.space.clinical import Clinical, DataSpace
 from arcana2.core.repository import Repository
 
 
@@ -198,7 +198,7 @@ class FileSystem(Repository):
 
     def node_path(self, node):
         path = node.dataset.name
-        accounted_freq = node.dataset.dimensions(0)
+        accounted_freq = node.dataset.space(0)
         for layer in node.dataset.hierarchy:
             if not (layer.is_parent(node.frequency)
                     or layer == node.frequency):
@@ -206,7 +206,7 @@ class FileSystem(Repository):
             path /= node.ids[layer]
             accounted_freq |= layer
         # If not "leaf node" then 
-        if node.frequency != max(node.dataset.dimensions):
+        if node.frequency != max(node.dataset.space):
             unaccounted_freq = node.frequency - (node.frequency
                                                  & accounted_freq)
             unaccounted_id = node.ids[unaccounted_freq]

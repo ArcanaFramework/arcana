@@ -10,7 +10,7 @@ from arcana2.core.data.set import Dataset
 from arcana2.core.data.item import DataItem
 from arcana2.core.pipeline import Pipeline
 from arcana2.repositories import FileSystem
-from arcana2.dimensions.clinical import Clinical
+from arcana2.dataspaces.clinical import Clinical
 from arcana2.datatypes import dicom, niftix_gz
 from arcana2.exceptions import ArcanaNameError, ArcanaUsageError
 

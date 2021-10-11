@@ -135,7 +135,7 @@ class Pipeline():
             with overwrite == False.
         """
         if frequency is None:
-            frequency = max(dataset.dimensions)
+            frequency = max(dataset.space)
         else:
             frequency = dataset._parse_freq(frequency)
 

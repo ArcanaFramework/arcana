@@ -130,10 +130,10 @@ class BaseDatasetCmd():
     @classmethod
     def parse_dimensions(cls, args):
         try:
-            module_name, dim_name = args.dimensions.split('.')
+            module_name, dim_name = args.space.split('.')
         except ValueError:
             raise ArcanaUsageError(
-                f"Value provided to '--dimensions' arg ({args.dimensions}) "
+                f"Value provided to '--dimensions' arg ({args.space}) "
                 "needs to include module, e.g. clinical.Clinical")
-        module = import_module('.'.join(('arcana2.dimensions', module_name)))
+        module = import_module('.'.join(('arcana2.space', module_name)))
         return getattr(module, dim_name)

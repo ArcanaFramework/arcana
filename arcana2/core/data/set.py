@@ -115,10 +115,10 @@ class Dataset():
     @column_specs.validator
     def column_specs_validator(self, _, column_specs):
         if wrong_freq := [m for m in column_specs.values()
-                          if not isinstance(m.frequency, self.dimensions)]:
+                          if not isinstance(m.frequency, self.space)]:
             raise ArcanaUsageError(
                 f"Data hierarchy of {wrong_freq} column specs do(es) not match"
-                f" that of dataset {self.dimensions}")
+                f" that of dataset {self.space}")
 
     @excluded.validator
     def excluded_validator(self, _, excluded):
@@ -136,13 +136,13 @@ class Dataset():
             raise ArcanaUsageError(
                 f"hierarchy provided to {self} cannot be empty")            
         if not_valid := [f for f in hierarchy
-                         if not isinstance(f, self.dimensions)]:
+                         if not isinstance(f, self.space)]:
             raise ArcanaWrongDataSpacesError(
                 "{} are not part of the {} data dimensions"
-                .format(', '.join(not_valid), self.dimensions))
+                .format(', '.join(not_valid), self.space))
         # Check that all data frequencies are "covered" by the hierarchy and
         # each subsequent
-        covered = self.dimensions(0)
+        covered = self.space(0)
         for i, layer in enumerate(hierarchy):
             diff = layer - covered
             if not diff:
@@ -150,15 +150,15 @@ class Dataset():
                     f"{layer} does not add any additional basis layers to "
                     f"previous layers {hierarchy[i:]}")
             covered |= layer
-        if covered != max(self.dimensions):
+        if covered != max(self.space):
             raise ArcanaUsageError(
                 f"The data hierarchy {hierarchy} does not cover the following "
                 f"basis frequencies "
                 + ', '.join(str(m) for m in (~covered).nonzero_basis()) +
-                f"f the {self.dimensions} data dimensions")
+                f"f the {self.space} data dimensions")
 
     # def __getitem__(self, key):
-    #     if key == self.dimensions(0):
+    #     if key == self.space(0):
     #         return self.root_node
     #     else:
     #         return self.root_node.children[key]
@@ -169,7 +169,7 @@ class Dataset():
 
     @property
     def root_freq(self):
-        return self.dimensions(0)
+        return self.space(0)
 
     @property
     def prov(self):
@@ -306,7 +306,7 @@ class Dataset():
             node = self.root_node
             for freq, id in id_kwargs.items():
                 try:
-                    children_dict = node.children[self.dimensions[freq]]
+                    children_dict = node.children[self.space[freq]]
                 except KeyError:
                     raise ArcanaNameError(
                         freq, f"{freq} is not a child frequency of {node}")
@@ -422,9 +422,9 @@ class Dataset():
                 f"the hierarchy ({self.hierarchy}) of {self}")
         # Set a default ID of None for all parent frequencies that could be
         # inferred from a node at this depth
-        ids = {f: None for f in self.dimensions}
+        ids = {f: None for f in self.space}
         # Calculate the combined freqs after each layer is added
-        frequency = self.dimensions(0)
+        frequency = self.space(0)
         for layer, label in zip(self.hierarchy, tree_path):
             ids[layer] = label
             try:
@@ -460,7 +460,7 @@ class Dataset():
                         f" pattern '{regex}'")
                 new_freqs = layer - (layer & frequency)
                 for target_freq, target_id in match.groupdict().items():
-                    target_freq = self.dimensions[target_freq]
+                    target_freq = self.space[target_freq]
                     if (target_freq & new_freqs) != target_freq:
                         raise ArcanaUsageError(
                             f"Inferred ID target, {target_freq}, is not a "
@@ -472,10 +472,10 @@ class Dataset():
                             f"and {target_id} from {regex}")
                     ids[target_freq] = target_id
             frequency |= layer
-        assert(frequency == max(self.dimensions))
+        assert(frequency == max(self.space))
         # Create composite IDs for non-basis frequencies if they are not
         # explicitly in the layer dimensions
-        for freq in (set(self.dimensions) - set(frequency.nonzero_basis())):
+        for freq in (set(self.space) - set(frequency.nonzero_basis())):
             if ids[freq] is None:
                 id = tuple(ids[b] for b in freq.nonzero_basis() if ids[b] is not None)
                 if id:
@@ -593,16 +593,16 @@ class Dataset():
         """Parses the data frequency, converting from string if necessary and
         checks it matches the dimensions of the dataset"""
         if freq is None:
-            return max(self.dimensions)
+            return max(self.space)
         try:
             if isinstance(freq, str):
-                freq = self.dimensions[freq]
-            elif not isinstance(freq, self.dimensions):
+                freq = self.space[freq]
+            elif not isinstance(freq, self.space):
                 raise KeyError
         except KeyError:
             raise ArcanaWrongDataSpacesError(
                 f"{freq} is not a valid dimension for {self} "
-                f"({self.dimensions})")
+                f"({self.space})")
         return freq
 
     @classmethod
