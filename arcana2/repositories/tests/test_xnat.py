@@ -140,9 +140,12 @@ TEST_DATASET_BLUEPRINTS = {
            ('BIDS', None, ['file1.json']),
            ('SNAPSHOT', None, ['file1.png'])])],
         {},
-        []),  # id_inference dict
+        [('deriv1', Clinical.timepoint, text, ['file.txt']),
+         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.batch, directory, ['dir']),
+         ]),  # id_inference dict
     'multi': TestDatasetBlueprint(  # dataset name
-        [2, 3, 4],  # number of timepoints, groups and members respectively
+        [2, 2, 2],  # number of timepoints, groups and members respectively
         [
             ('scan1',
              [('TEXT',  # resource name
@@ -151,16 +154,17 @@ TEST_DATASET_BLUEPRINTS = {
         {Clinical.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
          Clinical.session: r'timepoint(?P<timepoint>\d+).*'},  # id_inference dict
         [('deriv1', Clinical.session, text, ['file.txt']),
-         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
-         ('deriv3', Clinical.timepoint, directory, ['doubledir']),
-         ('deriv4', Clinical.member, text, ['file.txt']),
-         ('deriv5', Clinical.dataset, text, ['file.txt']),
-         ('deriv6', Clinical.batch, text, ['file.txt']),
-         ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
-         ('deriv8', Clinical.group, text, ['file.txt']),])}
+        #  ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
+        #  ('deriv3', Clinical.timepoint, directory, ['doubledir']),
+        #  ('deriv4', Clinical.member, text, ['file.txt']),
+        #  ('deriv5', Clinical.dataset, text, ['file.txt']),
+        #  ('deriv6', Clinical.batch, text, ['file.txt']),
+        #  ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
+        #  ('deriv8', Clinical.group, text, ['file.txt']),
+         ])}
 
 GOOD_DATASETS = ['basic', 'multi']
-MUTABLE_DATASETS = ['multi']
+MUTABLE_DATASETS = ['basic', 'multi']
 
 # ------------------------------------
 # Pytest fixtures and helper functions
