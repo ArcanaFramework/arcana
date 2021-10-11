@@ -54,7 +54,7 @@ class FileSystem(Repository):
         # Don't need to cache file_group as it is already local as long
         # as the path is set
         primary_path = self.file_group_path(file_group)
-        side_cars = file_group.data_format.default_side_cars(primary_path)
+        side_cars = file_group.datatype.default_side_cars(primary_path)
         if not op.exists(primary_path):
             raise ArcanaMissingDataException(
                 "{} does not exist in {}"
@@ -74,9 +74,9 @@ class FileSystem(Repository):
         if isinstance(val, dict):
             val = val[self.VALUE_KEY]
         if field.array:
-            val = [field.data_format(v) for v in val]
+            val = [field.datatype(v) for v in val]
         else:
-            val = field.data_format(val)
+            val = field.datatype(val)
         return val
 
     def put_file_group(self, file_group):
@@ -93,9 +93,9 @@ class FileSystem(Repository):
             if source_path != target_path:
                 shutil.copyfile(source_path, target_path)
             # Copy side car files into repository
-            for sc_name, target_sc_path in file_group.data_format.default_side_cars(
+            for sc_name, target_sc_path in file_group.datatype.default_side_cars(
                     target_path).items():
-                source_sc_path = file_group.data_format.side_cars[sc_name]
+                source_sc_path = file_group.datatype.side_cars[sc_name]
                 if source_sc_path != target_sc_path:
                     shutil.copyfile(source_sc_path, target_sc_path)
         elif source_path.is_dir():
@@ -222,7 +222,7 @@ class FileSystem(Repository):
     def file_group_path(self, file_group):
         return (
             self.node_path(file_group.data_node).joinpath(*file_group.path.split('/'))
-            + file_group.data_format.extension)
+            + file_group.datatype.extension)
 
     def fields_json_path(self, field):
         return op.join(self.node_path(field.data_node), self.FIELDS_FNAME)

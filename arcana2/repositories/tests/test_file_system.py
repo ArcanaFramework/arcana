@@ -14,9 +14,9 @@ import pytest
 from arcana2.repositories.file_system import FileSystem
 from arcana2.core.data.enum import DataDimension
 from arcana2.core.data.set import Dataset
-from arcana2.core.data.format import FileFormat
-from arcana2.data_formats.general import text, directory, json
-from arcana2.data_formats.neuroimaging import (
+from arcana2.core.data.datatype import FileFormat
+from arcana2.datatypes.general import text, directory, json
+from arcana2.datatypes.neuroimaging import (
     nifti_gz, niftix_gz, niftix, nifti, analyze, mrtrix_image)
 
 
@@ -83,8 +83,8 @@ def test_get_items(dataset: Dataset):
 
 def test_put_items(dataset: Dataset):
     checksums = defaultdict(dict)
-    for name, freq, data_format, files in dataset.blueprint.to_insert:
-        dataset.add_sink(name=name, format=data_format, frequency=freq)
+    for name, freq, datatype, files in dataset.blueprint.to_insert:
+        dataset.add_sink(name=name, format=datatype, frequency=freq)
         deriv_tmp_dir = Path(mkdtemp())
         for fname in files:
             test_file_path = create_test_file(fname, deriv_tmp_dir)
@@ -96,19 +96,19 @@ def test_put_items(dataset: Dataset):
             item = node[name]
             fs_paths = [deriv_tmp_dir / fname.parts[0]
                         for fname in checksums[name]]
-            item.set_fs_path(*data_format.assort_files(fs_paths))
+            item.set_fs_path(*datatype.assort_files(fs_paths))
             item.put()
     expected_items = defaultdict(dict)
-    for name, freq, data_format, files in dataset.blueprint.to_insert:
-        expected_items[freq][name] = (data_format, files)
+    for name, freq, datatype, files in dataset.blueprint.to_insert:
+        expected_items[freq][name] = (datatype, files)
     def check_inserted():
         """Check that the inserted items are present in the dataset"""
         for freq, sinks in expected_items.items():
             for node in dataset.nodes(freq):
-                for name, (data_format, files) in sinks.items():
+                for name, (datatype, files) in sinks.items():
                     item = node[name]
                     item.get_checksums()
-                    assert item.data_format == data_format
+                    assert item.datatype == datatype
                     assert item.checksums == {
                         k.relative_to(files[0]): v
                         for k, v in checksums[name].items()}

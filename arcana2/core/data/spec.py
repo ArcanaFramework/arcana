@@ -21,7 +21,7 @@ class DataSource():
         A regex name_path to match the file_group names with. Must match
         one and only one file_group per <frequency>. If None, the name
         is used instead.
-    data_format : FileFormat or type
+    datatype : FileFormat or type
         File format that data will be 
     frequency : DataDimension
         The frequency of the file-group within the dataset tree, e.g. per
@@ -43,7 +43,7 @@ class DataSource():
         Flags whether the name_path is a regular expression or not
     """
     path: str = attr.ib()
-    data_format = attr.ib()
+    datatype = attr.ib()
     frequency: DataDimension = attr.ib()
     quality_threshold: DataQuality = attr.ib(
         default=None, converter=optional(lambda q: DataQuality[str(q)]))
@@ -58,11 +58,11 @@ class DataSource():
             (match_quality, self.quality_threshold),
             (match_metadata, self.metadata)]
         # Get all items that match the data format of the source
-        matches = node.resolved(self.data_format)
+        matches = node.resolved(self.datatype)
         if not matches:
             raise ArcanaInputMissingMatchError(
                 f"Did not find any items matching data format "
-                f"{self.data_format} in {self}")
+                f"{self.datatype} in {self}")
         # Apply all filters to find items that match criteria
         for func, arg in criteria:
             if arg is not None:
@@ -138,17 +138,17 @@ class DataSink():
     """
 
     path: str = attr.ib()
-    data_format = attr.ib()
+    datatype = attr.ib()
     frequency: DataDimension = attr.ib()
     salience: DataSalience = attr.ib(default=DataSalience.supplementary)
     pipeline: str = attr.ib(default=None)
 
     def match(self, node):
-        matches = [i for i in node.resolved(self.data_format)
+        matches = [i for i in node.resolved(self.datatype)
                    if i.path == self.path]
         if not matches:
             # Return a placeholder data item that can be set
-            return self.data_format(path=self.path, data_node=node,
+            return self.datatype(path=self.path, data_node=node,
                                     exists=False)
         elif len(matches) > 1:
             raise ArcanaMultipleMatchesInputError(

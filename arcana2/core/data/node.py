@@ -10,7 +10,7 @@ from arcana2.exceptions import (
     ArcanaNameError, ArcanaUsageError, ArcanaUnresolvableFormatException,
     ArcanaWrongFrequencyError, ArcanaFileFormatError, ArcanaError)
 from arcana2.core.utils import split_extension
-from .format import FileFormat
+from .datatype import FileFormat
 from .item import DataItem
 from .provenance import DataProvenance
 from .enum import DataQuality, DataDimension, DataDimension
@@ -204,7 +204,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     provenance: DataProvenance = attr.ib(default=None)
     _matched: ty.Dict[str, DataItem] = attr.ib(factory=dict, init=False)
 
-    def resolve(self, data_format):
+    def resolve(self, datatype):
         """
         Detects the format of the file-group from a list of possible
         candidates and returns a corresponding FileGroup object. If multiple
@@ -218,7 +218,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
 
         Parameters
         ----------
-        data_format : FileFormat or type
+        datatype : FileFormat or type
             A list of file-formats to try to match. The first matching format
             in the sequence will be used to create a file-group
 
@@ -241,16 +241,16 @@ class UnresolvedDataItem(metaclass=ABCMeta):
                 "attempting to resolve a file-groups format")
         try:
             # Attempt to access previously saved
-            item = self._matched[data_format]
+            item = self._matched[datatype]
         except KeyError:
-            if isinstance(data_format, FileFormat):
-                item = self._resolve(data_format)
+            if isinstance(datatype, FileFormat):
+                item = self._resolve(datatype)
             else:
-                item = self._resolve(data_format)
+                item = self._resolve(datatype)
         return item
 
     @abstractmethod
-    def _resolve(self, data_format):
+    def _resolve(self, datatype):
         raise NotImplementedError
 
     @property
@@ -305,41 +305,41 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                                            converter=normalise_paths)
     uris: dict[str] = attr.ib(default=None)
 
-    def _resolve(self, data_format):
+    def _resolve(self, datatype):
         # Perform matching based on resource names in multi-format
         # file-group
         if self.uris is not None:
             item = None
-            for data_format_name, uri in self.uris.items():
-                if data_format_name.lower() in data_format.all_names:
-                    item = data_format(uri=uri, **self.item_kwargs)
+            for datatype_name, uri in self.uris.items():
+                if datatype_name.lower() in datatype.all_names:
+                    item = datatype(uri=uri, **self.item_kwargs)
             if item is None:
                 raise ArcanaUnresolvableFormatException(
                     f"Could not file a matching resource in {self.path} for"
-                    f" the given data_format ({data_format.name}), found "
+                    f" the given datatype ({datatype.name}), found "
                     "('{}')".format("', '".join(self.uris)))
         # Perform matching based on file-extensions of local name_paths
         # in multi-format file-group
         else:
             file_path = None
             side_cars = None
-            if data_format.directory:
+            if datatype.directory:
                 if (len(self.file_paths) == 1
                     and self.file_paths[0].is_dir()
-                    and (data_format.within_dir_exts is None
-                        or (data_format.within_dir_exts == frozenset(
+                    and (datatype.within_dir_exts is None
+                        or (datatype.within_dir_exts == frozenset(
                             split_extension(f)[1]
                             for f in os.listdir(self.file_paths)
                             if not f.startswith('.'))))):
                     file_path = self.file_paths[0]
             else:
                 try:
-                    file_path, side_cars = data_format.assort_files(
+                    file_path, side_cars = datatype.assort_files(
                         self.file_paths)
                 except ArcanaFileFormatError:
                     pass
             if file_path is not None:
-                item = data_format(
+                item = datatype(
                     fs_path=file_path, side_cars=side_cars,
                     **self.item_kwargs)
             else:
@@ -348,7 +348,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                     f"{self.data_node.id} ('" + "', '".join(
                         str(p) for p in self.file_paths) 
                     + "') did not match the naming conventions expected by "
-                    f"data_format '{data_format.name}'")
+                    f"datatype '{datatype.name}'")
         return item
 
 
@@ -383,22 +383,22 @@ class UnresolvedField(UnresolvedDataItem):
     value: (int or float or str or ty.Sequence[int] or ty.Sequence[float]
             or ty.Sequence[str]) = attr.ib(default=None)
 
-    def _resolve(self, data_format):
+    def _resolve(self, datatype):
         try:
-            if data_format._name == 'Sequence':
-                if len(data_format.__args__) > 1:
+            if datatype._name == 'Sequence':
+                if len(datatype.__args__) > 1:
                     raise ArcanaUsageError(
                         f"Sequence datatypes with more than one arg "
-                        "are not supported ({data_format})")
-                subtype = data_format.__args__[0]
+                        "are not supported ({datatype})")
+                subtype = datatype.__args__[0]
                 value = [subtype(v)
                             for v in self.value[1:-1].split(',')]
             else:
-                value = data_format(self.value)
+                value = datatype(self.value)
         except ValueError:
             raise ArcanaUnresolvableFormatException(
                     f"Could not convert value of {self} ({self.value}) "
-                    f"to data_format {data_format}")
+                    f"to datatype {datatype}")
         else:
             item = DataItem(value=value, **self.item_kwargs)
         return item

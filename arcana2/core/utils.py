@@ -102,8 +102,8 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
                 class_str, "', '".join(prefixes)))
     return cls
 
-def resolve_data_format(name):
-    """Resolves a in a sub-module of arcana2.data_formats based on its
+def resolve_datatype(name):
+    """Resolves a in a sub-module of arcana2.datatypes based on its
     name
 
     Parameters
@@ -118,23 +118,23 @@ def resolve_data_format(name):
     """
     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
         return eval(name)
-    import arcana2.data_formats
-    data_format = None
+    import arcana2.datatypes
+    datatype = None
     module_names = [
         i.name for i in pkgutil.iter_modules(
-            [os.path.dirname(arcana2.data_formats.__file__)])]
+            [os.path.dirname(arcana2.datatypes.__file__)])]
     for module_name in module_names:
-        module = import_module('arcana2.data_formats.' + module_name)
+        module = import_module('arcana2.datatypes.' + module_name)
         try:
-            data_format = getattr(module, name)
+            datatype = getattr(module, name)
         except AttributeError:
             pass
-    if data_format is None:
+    if datatype is None:
         raise ArcanaNameError(
             name,
             f"Could not find format {name} in installed modules:\n"
             + "\n    ".join(module_names))
-    return data_format
+    return datatype
     
 
 @contextmanager
@@ -211,7 +211,7 @@ def lower(s):
 
 
 
-def parse_single_value(value, data_format=None):
+def parse_single_value(value, datatype=None):
     """
     Tries to convert to int, float and then gives up and assumes the value
     is of type string. Useful when excepting values that may be string
@@ -230,12 +230,12 @@ def parse_single_value(value, data_format=None):
     elif not isinstance(value, (int, float, bool)):
         raise ArcanaUsageError(
             "Unrecognised type for single value {}".format(value))
-    if data_format is not None:
-        value = data_format(value)
+    if datatype is not None:
+        value = datatype(value)
     return value
 
 
-def parse_value(value, data_format=None):
+def parse_value(value, datatype=None):
     # Split strings with commas into lists
     if isinstance(value, str):
         if value.startswith('[') and value.endswith(']'):
@@ -247,15 +247,15 @@ def parse_value(value, data_format=None):
         except TypeError:
             pass
     if isinstance(value, list):
-        value = [parse_single_value(v, data_format=data_format) for v in value]
+        value = [parse_single_value(v, datatype=datatype) for v in value]
         # Check to see if datatypes are consistent
-        data_formats = set(type(v) for v in value)
-        if len(data_formats) > 1:
+        datatypes = set(type(v) for v in value)
+        if len(datatypes) > 1:
             raise ArcanaUsageError(
                 "Inconsistent datatypes in values array ({})"
                 .format(value))
     else:
-        value = parse_single_value(value, data_format=data_format)
+        value = parse_single_value(value, datatype=datatype)
     return value
 
 
@@ -272,7 +272,7 @@ def find_mismatch(first, second, indent=''):
     """
     Finds where two objects differ, iterating down into nested containers
     (i.e. dicts, lists and tuples) They can be nested containers
-    any combination of primary data_formats, str, int, float, dict and lists
+    any combination of primary datatypes, str, int, float, dict and lists
 
     Parameters
     ----------

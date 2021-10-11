@@ -13,7 +13,7 @@ from arcana2.exceptions import (
     ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
     ArcanaDataNotDerivedYetError)
 from .enum import DataQuality
-from .format import FileFormat
+from .datatype import FileFormat
 from .provenance import DataProvenance
 
 
@@ -47,7 +47,7 @@ class DataItem(metaclass=ABCMeta):
     """
 
     path: str = attr.ib()
-    data_format: type or FileFormat = attr.ib()
+    datatype: type or FileFormat = attr.ib()
     uri: str = attr.ib(default=None)
     order: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=DataQuality.usable)
@@ -160,7 +160,7 @@ class FileGroup(DataItem):
     def default_side_cars(self):
         if self.fs_path is None:
             return {}
-        return self.data_format.default_side_cars(self.fs_path)
+        return self.datatype.default_side_cars(self.fs_path)
 
     @side_cars.validator
     def validate_side_cars(self, _, side_cars):
@@ -170,12 +170,12 @@ class FileGroup(DataItem):
                     "Auxiliary files can only be provided to a FileGroup "
                     f"of '{self.path}' ({side_cars}) if the local path is "
                     "as well")
-            if set(self.data_format.side_cars.keys()) != set(side_cars.keys()):
+            if set(self.datatype.side_cars.keys()) != set(side_cars.keys()):
                 raise ArcanaUsageError(
                     "Keys of provided auxiliary files ('{}') don't match "
                     "format ('{}')".format(
                         "', '".join(side_cars.keys()),
-                        "', '".join(self.data_format.side_cars.keys())))
+                        "', '".join(self.datatype.side_cars.keys())))
             if missing_side_cars:= [f for f in side_cars.values()
                                     if not op.exists(f)]:
                 raise ArcanaUsageError(
@@ -223,7 +223,7 @@ class FileGroup(DataItem):
             raise ArcanaUsageError(
                 f"{self} has not be retrieved from the repository. Use 'get' "
                 "method first.")
-        if self.data_format.directory:
+        if self.datatype.directory:
             return chain(*((Path(root) / f for f in files)
                            for root, _, files in os.walk(self.fs_path)))
         else:
@@ -268,8 +268,8 @@ class FileGroup(DataItem):
             The other file_group to compare to
         """
         self._check_exists()
-        if hasattr(self.data_format, 'contents_equal'):
-            equal = self.data_format.contents_equal(self, other, **kwargs)
+        if hasattr(self.datatype, 'contents_equal'):
+            equal = self.datatype.contents_equal(self, other, **kwargs)
         else:
             equal = (self.checksums == other.checksums)
         return equal
@@ -290,13 +290,13 @@ class FileGroup(DataItem):
         else:
             copy_file = shutil.copyfile
             copy_dir = shutil.copytree
-        if self.format.directory:
+        if self.datatype.directory:
             copy_dir(self.fs_path, path)
         else:
-            copy_file(self.fs_path, path + self.format.ext)
+            copy_file(self.fs_path, path + self.datatype.ext)
             for aux_name, aux_path in self.side_cars.items():
-                copy_file(aux_path, path + self.format.side_cars[aux_name])
-        return self.format.file_group_cls.from_path(path)
+                copy_file(aux_path, path + self.datatype.side_cars[aux_name])
+        return self.datatype.file_group_cls.from_path(path)
 
 
 @attr.s
@@ -309,7 +309,7 @@ class Field(DataItem):
     name_path : str
         The name_path to the relative location of the field, i.e. excluding
         information about which node in the data tree it belongs to
-    data_format : type
+    datatype : type
         The datatype of the value. Can be one of (float, int, str)
     derived : bool
         Whether or not the value belongs in the derived session or not
@@ -329,13 +329,9 @@ class Field(DataItem):
         self._check_part_of_data_node()
         self.value = self.data_node.get_field_value(self)
 
-    def put(self):
+    def put(self, value):
         self._check_part_of_data_node()
-        if self.value is None:
-            raise ArcanaUsageError(
-                f"Need to set value of {self} before it is 'put' in "
-                "dataset")
-        self.data_node.put_field(self)
+        self.data_node.put_field(self, self.datatype(value))
 
     def __int__(self):
         return int(self.value)
@@ -344,14 +340,14 @@ class Field(DataItem):
         return float(self.value)
 
     def __str__(self):
-        if self.data_format.__args__:  # Sequence type
+        if self.datatype.__args__:  # Sequence type
             val = '[' + ','.join(self._to_str(v) for v in self.value) + ']'
         else:
             val = self._to_str(self.value)
         return val
 
     def _to_str(self, val):
-        if self.data_format is str:
+        if self.datatype is str:
             val = '"{}"'.format(val)
         else:
             val = str(val)

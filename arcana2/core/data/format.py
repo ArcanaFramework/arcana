@@ -122,7 +122,7 @@ class FileFormat(object):
         """Temporary workaround until FileFormat is retired in place of using
         separate subclasses for each type"""
         from .item import FileGroup
-        return FileGroup(*args, data_format=self, **kwargs)
+        return FileGroup(*args, datatype=self, **kwargs)
 
     @property
     def all_names(self):
@@ -501,7 +501,7 @@ class Image(FileFormat, metaclass=ABCMeta):
             The root-mean-square tolerance that is acceptable between the array
             data for the images to be considered equal
         """
-        if other_fileset.format != self:
+        if other_fileset.datatype != self:
             return False
         if self.headers_diff(fileset, other_fileset, **kwargs):
             return False
@@ -558,7 +558,7 @@ class Image(FileFormat, metaclass=ABCMeta):
                                                equal_nan=True):
                                 diff.append(key)
                         except TypeError:
-                            # Fallback to a straight comparison for some data_formats
+                            # Fallback to a straight comparison for some datatypes
                             if value != other_value:
                                 diff.append(key)
                 elif value != other_value:

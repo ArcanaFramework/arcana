@@ -143,10 +143,10 @@ class Xnat(Repository):
             A dictionary containing a mapping of auxiliary file names to
             name_paths
         """
-        if file_group.data_format is None:
+        if file_group.datatype is None:
             raise ArcanaUsageError(
                 "Attempting to download {}, which has not been assigned a "
-                "file format (see FileGroup.formatted)".format(file_group))
+                "file format (see FileGroup.datatypeted)".format(file_group))
         self._check_repository(file_group)
         with self:  # Connect to the XNAT repository if haven't already
             xnode = self.get_xnode(file_group.data_node)
@@ -161,7 +161,7 @@ class Xnat(Repository):
                     xscan = xnode.scans[file_group.name]
                     file_group.id = xscan.id
                     base_uri += '/scans/' + xscan.id
-                    xresource = xscan.resources[file_group.data_format_name]
+                    xresource = xscan.resources[file_group.datatype_name]
                 # Set URI so we can retrieve checksums if required. We ensure we
                 # use the resource name instead of its ID in the URI for
                 # consistency with other locations where it is set and to keep the
@@ -214,8 +214,8 @@ class Xnat(Repository):
                     self.download_file_group(tmp_dir, xresource, file_group,
                                           cache_path)
                     shutil.rmtree(tmp_dir)
-        if not file_group.data_format.directory:
-            primary_path, side_cars = file_group.data_format.assort_files(
+        if not file_group.datatype.directory:
+            primary_path, side_cars = file_group.datatype.assort_files(
                 op.join(cache_path, f) for f in os.listdir(cache_path))
         else:
             primary_path = cache_path
@@ -258,7 +258,7 @@ class Xnat(Repository):
         value : float or int or str of list[float] or list[int] or list[str]
             The value of the field
         """
-        if file_group.data_format is None:
+        if file_group.datatype is None:
             raise ArcanaFileFormatError(
                 "Format of {} needs to be set before it is uploaded to {}"
                 .format(file_group, self))
@@ -277,7 +277,7 @@ class Xnat(Repository):
             if os.path.exists(cache_path):
                 shutil.rmtree(cache_path)
             os.makedirs(cache_path, stat.S_IRWXU | stat.S_IRWXG)
-            if file_group.data_format.directory:
+            if file_group.datatype.directory:
                 shutil.copytree(file_group.fs_path, cache_path)
             else:
                 # Copy primary file
@@ -303,9 +303,9 @@ class Xnat(Repository):
                 xresource.delete()
             # Create the new resource for the file_group
             xresource = self.login.classes.ResourceCatalog(
-                parent=xnode, label=name, format=file_group.data_format_name)
+                parent=xnode, label=name, format=file_group.datatype_name)
             # Upload the files to the new resource                
-            if file_group.data_format.directory:
+            if file_group.datatype.directory:
                 for dpath, _, fnames  in os.walk(file_group.fs_path):
                     for fname in fnames:
                         fpath = op.join(dpath, fname)
@@ -320,10 +320,10 @@ class Xnat(Repository):
         self._check_repository(field)
         val = field.value
         if field.array:
-            if field.data_format is str:
+            if field.datatype is str:
                 val = ['"{}"'.format(v) for v in val]
             val = '[' + ','.join(str(v) for v in val) + ']'
-        if field.data_format is str:
+        if field.datatype is str:
             val = '"{}"'.format(val)
         with self:
             xsession = self.get_xnode(field.data_node)
@@ -380,10 +380,10 @@ class Xnat(Repository):
             checksums = {r['Name']: r['digest']
                          for r in self.login.get_json(file_group.uri + '/files')[
                              'ResultSet']['Result']}
-        if not file_group.data_format.directory:
+        if not file_group.datatype.directory:
             # Replace the key corresponding to the primary file with '.' to
             # match the way that checksums are created by Arcana
-            primary = file_group.data_format.assort_files(checksums.keys())[0]
+            primary = file_group.datatype.assort_files(checksums.keys())[0]
             checksums['.'] = checksums.pop(primary)
         return checksums
 
@@ -421,7 +421,7 @@ class Xnat(Repository):
             for xresource in xnode.resources.values():
                 data_node.add_file_group(
                     path=xresource.name,
-                    uris={xresource.data_format: xresource.uri})
+                    uris={xresource.datatype: xresource.uri})
             # self.add_scans_to_node(data_node, xnode)
             # self.add_fields_to_node(data_node, xnode)
             # self.add_resources_to_node(data_node, xnode)
@@ -826,7 +826,7 @@ class Xnat(Repository):
             cmd_inputs.append({
                 "name": param,
                 "description": desc,
-                "type": COMMAND_INPUT_TYPES[spec.data_format],
+                "type": COMMAND_INPUT_TYPES[spec.datatype],
                 "default-value": (spec.default
                                     if spec.default is not None else ""),
                 "required": spec.default is None,

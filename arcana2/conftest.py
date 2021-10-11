@@ -7,7 +7,7 @@ from pathlib import Path
 from arcana2.core.data.spec import DataSource, DataSink
 from arcana2.repositories import FileSystem, Xnat
 from arcana2.dimensions.clinical import Clinical
-from arcana2.data_formats import dicom, niftix_gz
+from arcana2.datatypes import dicom, niftix_gz
 
 # Set DEBUG logging for unittests
 
@@ -54,7 +54,7 @@ def dicom_inputs():
     return {
         'in_dir': DataSource(
             path='sample-dicom',
-            data_format=dicom,
+            datatype=dicom,
             frequency=Clinical.session)}
 
 
@@ -63,7 +63,7 @@ def nifti_outputs():
     return {
         'out_file': DataSink(
             path='output-nifti',
-            data_format=niftix_gz,
+            datatype=niftix_gz,
             frequency=Clinical.session)}
 
 

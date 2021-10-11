@@ -10,7 +10,7 @@ from pydra.tasks.mrtrix3.utils import MRConvert
 from pydra.tasks.dcm2niix import Dcm2Niix
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.tasks.utils import identity_converter
-from arcana2.core.data.format import FileFormat
+from arcana2.core.data.datatype import FileFormat
 from arcana2.core.data.item import FileGroup
 
 
@@ -86,7 +86,7 @@ class BaseImage(FileGroup):
             The root-mean-square tolerance that is acceptable between the array
             data for the images to be considered equal
         """
-        if other_fileset.format != self:
+        if other_fileset.datatype != self:
             return False
         if self.headers_diff(fileset, other_fileset, **kwargs):
             return False
@@ -143,7 +143,7 @@ class BaseImage(FileGroup):
                                                equal_nan=True):
                                 diff.append(key)
                         except TypeError:
-                            # Fallback to a straight comparison for some data_formats
+                            # Fallback to a straight comparison for some datatypes
                             if value != other_value:
                                 diff.append(key)
                 elif value != other_value:
@@ -211,7 +211,7 @@ class DicomImage(BaseImage):
     def get_dims(self, fileset):
         hdr = self.get_header(fileset)
         return np.array((hdr.Rows, hdr.Columns, len(self.dcm_files(fileset))),
-                        data_format=int)
+                        datatype=int)
 
     def extract_id(self, fileset):
         return int(fileset.dicom_values([self.SERIES_NUMBER_TAG])[0])
@@ -261,10 +261,10 @@ class MrtrixImage(BaseImage):
         for key, value in list(hdr.items()):
             if ',' in value:
                 try:
-                    hdr[key] = np.array(value.split(','), data_format=int)
+                    hdr[key] = np.array(value.split(','), datatype=int)
                 except ValueError:
                     try:
-                        hdr[key] = np.array(value.split(','), data_format=float)
+                        hdr[key] = np.array(value.split(','), datatype=float)
                     except ValueError:
                         pass
             else:

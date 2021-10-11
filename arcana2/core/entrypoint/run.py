@@ -8,7 +8,7 @@ from arcana2.exceptions import ArcanaUsageError
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
 from .base import BaseDatasetCmd
-from arcana2.core.utils import resolve_class, resolve_data_format
+from arcana2.core.utils import resolve_class, resolve_datatype
 
 
 sanitize_path_re = re.compile(r'[^a-zA-Z\d]')
@@ -104,7 +104,7 @@ class BaseRunCmd(BaseDatasetCmd):
                 raise ArcanaUsageError(
                     f"Input {i} has too many input args, {nargs} instead "
                     f"of max {cls.MAX_INPUT_ARGS} ({inpt})")
-            (var, pattern, data_format_name, required_format_name, order,
+            (var, pattern, datatype_name, required_format_name, order,
              quality, metadata, freq) = [
                 a if a != '*' else None for a in (
                     inpt + [None] * (cls.MAX_INPUT_ARGS - len(inpt)))]
@@ -114,18 +114,18 @@ class BaseRunCmd(BaseDatasetCmd):
             if not pattern:
                 raise ArcanaUsageError(
                     f"Path must be provided for input {i} ({inpt})")
-            if not data_format_name:
+            if not datatype_name:
                 raise ArcanaUsageError(
                     f"Datatype must be provided for input {i} ({inpt})")
-            data_format = resolve_data_format(data_format_name)
+            datatype = resolve_datatype(datatype_name)
             if required_format_name is not None:
-                required_format = resolve_data_format(required_format_name)
+                required_format = resolve_datatype(required_format_name)
             else:
-                required_format = data_format
+                required_format = datatype
             dataset.add_source(
                 name=var,
                 path=pattern,
-                format=data_format,
+                format=datatype,
                 frequency=freq,
                 order=order,
                 metadata=metadata,
@@ -152,14 +152,14 @@ class BaseRunCmd(BaseDatasetCmd):
         # Create outputs
         outputs = []
         for output in args.output:
-            var, store_at, data_format_name = output[:3]
-            data_format = resolve_data_format(data_format_name)
-            produced_format = (resolve_data_format(output[3])
-                               if len(output) == 4 else data_format)
+            var, store_at, datatype_name = output[:3]
+            datatype = resolve_datatype(datatype_name)
+            produced_format = (resolve_datatype(output[3])
+                               if len(output) == 4 else datatype)
             dataset.add_sink(
                 name=var,
                 path=store_at,
-                format=data_format,
+                format=datatype,
                 frequency=frequency)
             outputs.append((var, produced_format))
         return outputs

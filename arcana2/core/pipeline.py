@@ -11,7 +11,7 @@ from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.item import DataItem
 from .data.set import Dataset
-from .data.format import FileFormat
+from .data.datatype import FileFormat
 from .data.enum import DataDimension
 
 logger = logging.getLogger('arcana')
@@ -169,7 +169,7 @@ class Pipeline():
             try:
                 required_format = input_formats[input_name]
             except KeyError:
-                required_format = source.data_format
+                required_format = source.datatype
             pipeline.inputs.append((input_name, required_format))
 
         # Add sinks for the output of the workflow
@@ -196,7 +196,7 @@ class Pipeline():
             try:
                 produced_format = output_formats[output_name]
             except KeyError:
-                produced_format = sink.data_format
+                produced_format = sink.datatype
             pipeline.outputs.append((output_name, produced_format))
 
         # Generate list of nodes to process checking existing outputs
@@ -252,7 +252,7 @@ class Pipeline():
 
         # Do input format conversions if required
         for input_name, required_format in pipeline.inputs:
-            stored_format = dataset.column_specs[input_name].data_format
+            stored_format = dataset.column_specs[input_name].datatype
             if required_format != stored_format:
                 cname = f"{input_name}_input_converter"
                 converter_task = required_format.converter(stored_format)(
@@ -285,7 +285,7 @@ class Pipeline():
 
         # Do output format conversions if required
         for output_name, produced_format in pipeline.outputs:
-            stored_format = dataset.column_specs[output_name].data_format
+            stored_format = dataset.column_specs[output_name].datatype
             if produced_format != stored_format:
                 cname = f"{output_name}_output_converter"
                 # Insert converter

@@ -21,9 +21,9 @@ from arcana2.core.utils import set_cwd
 from arcana2.dimensions.clinical import Clinical
 from arcana2.core.data.enum import DataDimension
 from arcana2.core.data.set import Dataset
-from arcana2.core.data.format import FileFormat
-from arcana2.data_formats.general import text, directory, json
-from arcana2.data_formats.neuroimaging import niftix_gz, nifti_gz, dicom, nifti
+from arcana2.core.data.datatype import FileFormat
+from arcana2.datatypes.general import text, directory, json
+from arcana2.datatypes.neuroimaging import niftix_gz, nifti_gz, dicom, nifti
 
 
 def test_find_nodes(dataset):
@@ -42,16 +42,16 @@ def test_find_nodes(dataset):
 def test_get_items(dataset):
     expected_files = {}
     for scan_name, resources in dataset.scans:
-        for resource_name, data_format, files in resources:
-            if data_format is not None:
+        for resource_name, datatype, files in resources:
+            if datatype is not None:
                 source_name = scan_name + resource_name
-                dataset.add_source(source_name, scan_name, data_format)
+                dataset.add_source(source_name, scan_name, datatype)
                 expected_files[source_name] = set(files)
     for node in dataset.nodes(Clinical.session):
         for source_name, files in expected_files.items():
             item = node[source_name]
             item.get()
-            if item.data_format.directory:
+            if item.datatype.directory:
                 item_files = set(os.listdir(item.fs_path))
             else:
                 item_files = set(os.path.basename(p) for p in item.fs_paths)
@@ -60,8 +60,8 @@ def test_get_items(dataset):
 
 def test_put_items(mutable_dataset: Dataset, tmp_dir: str):
     test_files = defaultdict(dict)
-    for name, freq, data_format, files in mutable_dataset.blueprint.to_insert:
-        mutable_dataset.add_sink(name=name, format=data_format, frequency=freq)
+    for name, freq, datatype, files in mutable_dataset.blueprint.to_insert:
+        mutable_dataset.add_sink(name=name, format=datatype, frequency=freq)
         deriv_tmp_dir = tmp_dir / name
         for fname in files:
             test_file_path = create_test_file(fname, deriv_tmp_dir)
@@ -71,18 +71,18 @@ def test_put_items(mutable_dataset: Dataset, tmp_dir: str):
             test_files[name][test_file_path] = fhash.hexdigest()
         for node in dataset.nodes(freq):
             item = node[name]
-            item.set_fs_path(*data_format.assort_files(test_files[name]))
+            item.set_fs_path(*datatype.assort_files(test_files[name]))
             item.put()
     expected_items = defaultdict(dict)
-    for name, freq, data_format, files in mutable_dataset.blueprint.to_insert:
-        expected_items[freq][name] = (data_format, set(files))
+    for name, freq, datatype, files in mutable_dataset.blueprint.to_insert:
+        expected_items[freq][name] = (datatype, set(files))
     def check_expected():
         for freq, sinks in expected_items.items():
             for node in mutable_dataset.nodes(freq):
-                for name, (data_format, files) in sinks.items():
+                for name, (datatype, files) in sinks.items():
                     item = node[name]
                     item.get_checksums()
-                    assert item.data_format == data_format
+                    assert item.datatype == datatype
                     assert item.checksums == test_files[name]
                     assert set(item.fs_paths) == set(
                         f.parts[0] for f in test_files[name])

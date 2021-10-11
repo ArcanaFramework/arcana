@@ -11,7 +11,7 @@ from arcana2.core.data.item import DataItem
 from arcana2.core.pipeline import Pipeline
 from arcana2.repositories import FileSystem
 from arcana2.dimensions.clinical import Clinical
-from arcana2.data_formats import dicom, niftix_gz
+from arcana2.datatypes import dicom, niftix_gz
 from arcana2.exceptions import ArcanaNameError, ArcanaUsageError
 
 
@@ -92,7 +92,7 @@ wf = Workflow(name=name, input_spec=['ids'])
 #     try:
 #         required_format = input_formats[input_name]
 #     except KeyError:
-#         required_format = source.data_format
+#         required_format = source.datatype
 #     pipeline.inputs.append((input_name, required_format))
 
 # # Add sinks for the output of the workflow
@@ -119,7 +119,7 @@ wf = Workflow(name=name, input_spec=['ids'])
 #     try:
 #         produced_format = output_formats[output_name]
 #     except KeyError:
-#         produced_format = sink.data_format
+#         produced_format = sink.datatype
 #     pipeline.outputs.append((output_name, produced_format))
 
 
@@ -187,7 +187,7 @@ wf.add(f(name='test', x=wf.lzin.ids, y=2))
 
 # # Do input format conversions if required
 # for input_name, required_format in pipeline.inputs:
-#     stored_format = dataset.column_specs[input_name].data_format
+#     stored_format = dataset.column_specs[input_name].datatype
 #     if required_format != stored_format:
 #         cname = f"{input_name}_input_converter"
 #         converter_task = required_format.converter(stored_format)(
@@ -220,7 +220,7 @@ wf.add(f(name='test', x=wf.lzin.ids, y=2))
 
 # # Do output format conversions if required
 # for output_name, produced_format in pipeline.outputs:
-#     stored_format = dataset.column_specs[output_name].data_format
+#     stored_format = dataset.column_specs[output_name].datatype
 #     if produced_format != stored_format:
 #         cname = f"{output_name}_output_converter"
 #         # Insert converter
