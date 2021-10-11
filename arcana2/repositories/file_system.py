@@ -48,7 +48,7 @@ class FileSystem(Repository):
             'type': get_class_info(type(self)),
             'host': HOSTNAME}
 
-    def get_file_group_paths(self, file_group, **kwargs):
+    def get_file_group(self, file_group, **kwargs):
         """
         Set the path of the file_group from the repository
         """
@@ -67,7 +67,7 @@ class FileSystem(Repository):
                     .format(file_group, aux_name, self))
         return primary_path, side_cars
 
-    def get_field_value(self, field):
+    def get_field(self, field):
         """
         Update the value of the field from the repository
         """

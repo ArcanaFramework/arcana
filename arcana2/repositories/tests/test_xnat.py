@@ -101,7 +101,8 @@ def test_put_items(mutable_dataset: Dataset):
     # Check downloaded
     mutable_dataset.repository.server = orig_server
     mutable_dataset.refresh()
-    shutil.rmtree(mutable_dataset.repository.cache_dir / mutable_dataset.name)
+    shutil.rmtree(mutable_dataset.repository.cache_dir / 'projects'
+                  / mutable_dataset.name)
     check_inserted()  
 
 

@@ -206,7 +206,7 @@ class FileGroup(DataItem):
             FileFormat class) and file paths as values
         """
         if fs_path is None:
-            fs_path, side_cars = self.data_node.get_file_group_paths(self)
+            fs_path, side_cars = self.data_node.get_file_group(self)
         self.fs_path = absolute_path(fs_path)
         if side_cars is None:
             side_cars = self.default_side_cars()
@@ -335,7 +335,7 @@ class Field(DataItem):
     def get(self):
         self._check_exists()
         self._check_part_of_data_node()
-        self.value = self.data_node.get_field_value(self)
+        self.value = self.data_node.get_field(self)
 
     def put(self, value):
         self._check_part_of_data_node()

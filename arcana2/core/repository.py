@@ -93,7 +93,7 @@ class Repository(metaclass=ABCMeta):
         """        
 
     @abstractmethod
-    def get_file_group_paths(self, file_group, cache_only=False):
+    def get_file_group(self, file_group, cache_only=False):
         """
         Cache the file_group locally (if required) and return the locations
         of the cached primary file and side cars
@@ -121,7 +121,7 @@ class Repository(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get_field_value(self, field):
+    def get_field(self, field):
         """
         Extract and return the value of the field from the repository
 
