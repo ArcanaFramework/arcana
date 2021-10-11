@@ -382,10 +382,17 @@ class Xnat(Repository):
                          for r in self.login.get_json(file_group.uri + '/files')[
                              'ResultSet']['Result']}
         if not file_group.datatype.directory:
-            # Replace the key corresponding to the primary file with '.' to
-            # match the way that checksums are created by Arcana
+            # Replace the fnames with the relative path to the primary file
             primary = file_group.datatype.assort_files(checksums.keys())[0]
-            checksums['.'] = checksums.pop(primary)
+            new_checksums = {}
+            for fname, chksum in checksums.items():
+                try:
+                    new_fname = Path(fname).relative_to(primary)
+                except ValueError:
+                    new_fname = '.'.join(fname)
+                if new_fname in new_checksums:
+                    new_fname = fname
+                new_checksums[new_fname] = chksum
         return checksums
 
     def find_nodes(self, dataset: Dataset, **kwargs):
@@ -418,17 +425,17 @@ class Xnat(Repository):
                         order=xscan.id,
                         quality=xscan.quality,
                         # Ensure uri uses resource label instead of ID
-                        uris={
-                            r.label: '/'.join(r.uri.split('/')[:-1] + [r.label])
-                            for r in xscan.resources.values()})
+                        uris={r.label: '/'.join(r.uri.split('/')[:-1]
+                                                + [r.label])
+                              for r in xscan.resources.values()})
             for name, value in xnode.fields.items():
                 data_node.add_field(
-                    path=name,
+                    path=self.unescape_name(name),
                     value=value)
             for xresource in xnode.resources.values():
                 data_node.add_file_group(
-                    path=xresource.label,
-                    uris={xresource.datatype: xresource.uri})
+                    path=self.unescape_name(xresource.label),
+                    uris={xresource.format: xresource.uri})
 
 
     def dicom_header(self, file_group):
@@ -507,17 +514,6 @@ class Xnat(Repository):
             os.mkdir(tmp_dir)
             self.download_file_group(tmp_dir, xresource, file_group, cache_path)
 
-    @classmethod
-    def node_name(cls, data_node):
-        if data_node.frequency not in (Clinical.subject, Clinical.session):
-            node_name = (
-                '__' + '__'.join(
-                    f'{l}_' + '_'.join(data_node.ids[l])
-                    for l in data_node.frequency.nonzero_basis()) + '__')
-        else:
-            node_name = data_node.id
-        return node_name            
-
     def get_xnode(self, data_node):
         """
         Returns the XNAT session and cache dir corresponding to the provided
@@ -531,26 +527,21 @@ class Xnat(Repository):
         with self:
             xproject = self.login.projects[data_node.dataset.name]
             if data_node.frequency == Clinical.dataset:
-                return xproject
-            if data_node.frequency in (Clinical.subject,
-                                       Clinical.session):
-                subj_label = data_node.ids[Clinical.subject]
-                # Create
-                try:
-                    xsubject = xproject.subjects[subj_label]
-                except KeyError:
-                    xsubject = self.login.classes.SubjectData(
-                        label=subj_label, parent=xproject)
-                if data_node.frequency == Clinical.subject:
-                    return xsubject
-                sess_label = data_node.ids[Clinical.session]
-                try:
-                    xsession = xsubject.experiments[sess_label]
-                except KeyError:
-                    xsession = self.login.classes.MrSessionData(
-                        label=sess_label, parent=xsubject)
-                return xsession
-
+                xnode = xproject
+            elif data_node.frequency == Clinical.subject:
+                xnode = xproject.subjects[data_node.ids[Clinical.subject]]
+            elif data_node.frequency == Clinical.session:
+                xnode = xproject.experiments[data_node.ids[Clinical.session]]
+            else:
+                # Create a "subject" to hold the non-standard node (i.e. not
+                # a project, subject or session node)
+                node_label = (
+                    '__' + '__'.join(
+                        f'{l}_' + '_'.join(data_node.ids[l])
+                        for l in data_node.frequency.nonzero_basis()) + '__')
+                xnode = self.login.classes.SubjectData(label=node_label,
+                                                       parent=xproject)
+            return xnode
 
     def cache_path(self, item):
         """Path to the directory where the item is/should be cached. Note that

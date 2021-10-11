@@ -61,7 +61,6 @@ def test_get_items(dataset):
 
 def test_put_items(mutable_dataset: Dataset):
     all_checksums = {}
-    all_fs_paths = {}
     tmp_dir = Path(mkdtemp())
     for name, freq, datatype, files in mutable_dataset.blueprint.to_insert:
         mutable_dataset.add_sink(name=name, format=datatype, frequency=freq)
@@ -69,7 +68,7 @@ def test_put_items(mutable_dataset: Dataset):
         # Create test files, calculate checkums and recorded expected paths
         # for inserted files
         all_checksums[name] = checksums = {}
-        all_fs_paths[name] = fs_paths = []        
+        fs_paths = []        
         for fname in files:
             test_file = create_test_file(fname, deriv_tmp_dir)
             fhash = hashlib.md5()
@@ -91,7 +90,7 @@ def test_put_items(mutable_dataset: Dataset):
                 item = node[name]
                 item.get_checksums()
                 assert item.datatype == datatype
-                assert item.checksums == checksums[name]
+                assert item.checksums == all_checksums[name]
                 item.get()
                 assert all(p.exists() for p in item.fs_paths)
     check_inserted()
@@ -196,7 +195,12 @@ def mutable_dataset(repository, request):
 
 
 @pytest.fixture(scope='module')
-def repository():
+def xnat_archive_dir():
+    return Path(__file__).parent / 'xnat_archive_dir'
+
+
+@pytest.fixture(scope='module')
+def repository(xnat_archive_dir):
 
     dc = docker.from_env()
 
@@ -213,9 +217,11 @@ def repository():
     try:
         container = dc.containers.get(DOCKER_IMAGE)
     except docker.errors.NotFound:
-        container = dc.containers.run(image.tags[0], detach=True,
-                                      ports={'8080/tcp': DOCKER_XNAT_PORT},
-                                      remove=True, name=DOCKER_IMAGE)
+        container = dc.containers.run(
+            image.tags[0], detach=True, ports={'8080/tcp': DOCKER_XNAT_PORT},
+            remove=True, name=DOCKER_IMAGE,
+            volumes={xnat_archive_dir: {'bind': '/data/xnat/archive',
+                                        'mode': 'rw'}})
         run_prefix = ''
     else:
         # Set a prefix for all the created projects based on the current time
