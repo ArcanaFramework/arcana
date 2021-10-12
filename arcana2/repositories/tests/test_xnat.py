@@ -153,14 +153,15 @@ TEST_DATASET_BLUEPRINTS = {
                ['file.txt'])])],
         {Clinical.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
          Clinical.session: r'timepoint(?P<timepoint>\d+).*'},  # id_inference dict
-        [('deriv1', Clinical.session, text, ['file.txt']),
-        #  ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
-        #  ('deriv3', Clinical.timepoint, directory, ['doubledir']),
-        #  ('deriv4', Clinical.member, text, ['file.txt']),
-        #  ('deriv5', Clinical.dataset, text, ['file.txt']),
-        #  ('deriv6', Clinical.batch, text, ['file.txt']),
-        #  ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
-        #  ('deriv8', Clinical.group, text, ['file.txt']),
+        [
+         ('deriv1', Clinical.session, text, ['file.txt']),
+         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.timepoint, directory, ['doubledir']),
+         ('deriv4', Clinical.member, text, ['file.txt']),
+         ('deriv5', Clinical.dataset, text, ['file.txt']),
+         ('deriv6', Clinical.batch, text, ['file.txt']),
+         ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
+         ('deriv8', Clinical.group, text, ['file.txt']),
          ])}
 
 GOOD_DATASETS = ['basic', 'multi']

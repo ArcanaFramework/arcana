@@ -439,7 +439,8 @@ class Xnat(Repository):
     def find_nodes_via_direct_access(self, dataset: Dataset, mounted_dir: Path):
         raise NotImplementedError
 
-    def find_items_via_direct_access(self, data_node: DataNode, mounted_dir: Path):
+    def find_items_via_direct_access(self, data_node: DataNode,
+                                     mounted_dir: Path):
         raise NotImplementedError
 
     def get_file_group_via_direct_access(self, file_group, mounted_dir):
@@ -476,29 +477,27 @@ class Xnat(Repository):
                 "Can't retrieve checksums as URI has not been set for {}"
                 .format(file_group))
         with self:
-            checksums = {r['Name']: r['digest']
+            checksums = {r['URI']: r['digest']
                          for r in self.login.get_json(file_group.uri + '/files')[
                              'ResultSet']['Result']}
+        # strip base URI to get relative paths of files within the resource
+        checksums = {re.match(r'.*/resources/\w+/files/(.*)$', u).group(1): c
+                     for u, c in sorted(checksums.items())}
         if not file_group.datatype.directory:
-            # Replace the fnames with the relative path to the primary file
+            # Replace the paths of side cars with their extensions and the
+            # primary file with '.'
             primary = file_group.datatype.assort_files(checksums.keys())[0]
-            new_checksums = {}
-            for fname, chksum in sorted(checksums.items()):
-                fname = Path(fname)
-                try:
-                    new_fname = fname.relative_to(primary)
-                except ValueError:
-                    # Reduce name to suffixes if a "side-car" file
-                    new_fname = '.'.join(fname.suffixes)
-                if new_fname in new_checksums:
+            checksums['.'] = checksums.pop(primary)
+            for path in set(checksums.keys()) - set(['.']):
+                ext = '.'.join(Path(path).suffixes)
+                if ext in checksums:
                     logger.warning(
                         f"Multiple side-cars found in {file_group} XNAT "
-                        f"resource with the same extension (this isn't allowed)"
-                        f" and therefore cannot convert {fname} to {new_fname}"
-                        " in checksums")
-                    new_fname = fname
-                new_checksums[str(new_fname)] = chksum
-            checksums = new_checksums
+                        f"resource with the same extension (this isn't "
+                        f"allowed) and therefore cannot convert {path} to "
+                        "{ext} in checksums")
+                else:
+                    checksums[ext] = checksums.pop(path)
         return checksums
 
     def dicom_header(self, file_group):
@@ -598,12 +597,15 @@ class Xnat(Repository):
             else:
                 # Create a "subject" to hold the non-standard node (i.e. not
                 # a project, subject or session node)
-                node_label = (
-                    '__' + '__'.join(
-                        f'{l}_' + '_'.join(data_node.ids[l])
-                        for l in data_node.frequency.nonzero_basis()) + '__')
-                xnode = self.login.classes.SubjectData(label=node_label,
-                                                       parent=xproject)
+                if data_node.id is None:
+                    id_str = ''
+                elif isinstance(data_node.id, tuple):
+                    id_str = '_' + '_'.join(data_node.id)
+                else:
+                    id_str = '_' + str(data_node.id)
+                xnode = self.login.classes.SubjectData(
+                    label=f'__{data_node.frequency}{id_str}__',
+                    parent=xproject)
             return xnode
 
     def cache_path(self, item):
