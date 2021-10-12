@@ -164,8 +164,8 @@ TEST_DATASET_BLUEPRINTS = {
          ('deriv8', Clinical.group, text, ['file.txt']),
          ])}
 
-GOOD_DATASETS = ['basic', 'multi']
-MUTABLE_DATASETS = ['basic', 'multi']
+GOOD_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
+MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 
 # ------------------------------------
 # Pytest fixtures and helper functions
@@ -184,19 +184,22 @@ PUT_SUFFIX = '_put'
 
 
 @pytest.fixture(params=GOOD_DATASETS, scope='module')
-def dataset(repository, request):
-    return access_dataset(repository, request.param)
+def dataset(repository, xnat_archive_dir, request):
+    dataset_name, access_type = request.param.split('.')
+    return access_dataset(repository, dataset_name, access_type,
+                          xnat_archive_dir)
 
 
 @pytest.fixture(params=MUTABLE_DATASETS, scope='function')
-def mutable_dataset(repository, request):
-    dataset_name = request.param
-    test_suffix = 'MUTABLE' + str(hex(random.getrandbits(32)))[2:]
+def mutable_dataset(repository, xnat_archive_dir, request):
+    dataset_name, access_type = request.param.split('.')
+    test_suffix = 'MUTABLE' + access_type + str(hex(random.getrandbits(32)))[2:]
     # Need to create a new dataset per function so it can be safely modified
     # by the test without messing up other tests.
     create_dataset_in_repo(dataset_name, repository.run_prefix,
                            test_suffix=test_suffix)
-    return access_dataset(repository, request.param, test_suffix)
+    return access_dataset(repository, dataset_name, access_type,
+                          xnat_archive_dir, test_suffix)
 
 
 @pytest.fixture(scope='module')
@@ -222,6 +225,9 @@ def repository(xnat_archive_dir):
     try:
         container = dc.containers.get(DOCKER_IMAGE)
     except docker.errors.NotFound:
+        # Clear the XNAT archive dir
+        shutil.rmtree(xnat_archive_dir, ignore_errors=True)
+        os.mkdir(xnat_archive_dir)
         container = dc.containers.run(
             image.tags[0], detach=True, ports={'8080/tcp': DOCKER_XNAT_PORT},
             remove=True, name=DOCKER_IMAGE,
@@ -235,7 +241,8 @@ def repository(xnat_archive_dir):
         run_prefix = datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
 
     # Create all datasets that can be reused and don't raise errors
-    for dataset_name in GOOD_DATASETS:
+    dataset_names = set(n.split('.')[0] for n in GOOD_DATASETS)
+    for dataset_name in dataset_names:
         create_dataset_in_repo(dataset_name, run_prefix)
     
     repository = Xnat(
@@ -255,10 +262,22 @@ def repository(xnat_archive_dir):
         container.stop()
 
 
-def access_dataset(repository, name, test_suffix=''):
-    blueprint = TEST_DATASET_BLUEPRINTS[name]
-    proj_name = repository.run_prefix + name + test_suffix
-    dataset = repository.dataset(proj_name, id_inference=blueprint.id_inference)
+def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
+                   test_suffix=''):
+    blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
+    proj_name = repository.run_prefix + dataset_name + test_suffix
+    if access_method == 'direct':
+        proj_dir = xnat_archive_dir / proj_name / 'arc001'
+        mounts = {(Clinical.dataset, None): proj_dir}
+        for sess_label in proj_dir.iterdir():
+            mounts[(Clinical.session, sess_label.name)] = proj_dir / sess_label
+    elif access_method == 'api':
+        mounts = {}
+    else:
+        assert False    
+    dataset = repository.dataset(proj_name,
+                                 id_inference=blueprint.id_inference,
+                                 access_args={'mounts': mounts})
     # Stash the args used to create the dataset in attributes so they can be
     # used by tests
     dataset.blueprint = blueprint
@@ -269,7 +288,6 @@ def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
     """
     Creates dataset for each entry in dataset_structures
     """
-
     blueprint  =  TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_name = run_prefix + dataset_name + test_suffix
 

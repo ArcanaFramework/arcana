@@ -96,6 +96,8 @@ class Dataset():
         omitted or its value is None, then all available will be used
     workflows : Dict[str, pydra.Workflow]
         Workflows that have been applied to the dataset to generate sink
+    access_args: dict[str, Any]
+        Repository specific args used to control the way the dataset is accessed
     """
 
     name: str = attr.ib()
@@ -110,6 +112,7 @@ class Dataset():
     excluded: dict[DataSpace, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     workflows: dict[str, Workflow] = attr.ib(factory=dict, repr=False)
+    access_args: dict[str, ty.Any] = attr.ib(factory=dict)
     _root_node: DataNode = attr.ib(default=None, init=False, repr=False)  
 
     @column_specs.validator

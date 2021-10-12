@@ -3,6 +3,7 @@ import os.path as op
 import stat
 from pathlib import Path
 import typing as ty
+from tempfile import mkdtemp
 from glob import glob
 import time
 import logging
@@ -58,9 +59,11 @@ class Xnat(Repository):
         Username with which to connect to XNAT with
     password : str
         Password to connect to the XNAT repository with
-    direct_mounts : dict[(DataSpace, str or tuple[str]), Path]
-        Paths to local mounts of XNATs archive directory (e.g. when running 
-        inside XNAT's container service) so that data can be accessed directly
+    mounts : dict[str, dict[tuple[Clinical, str], Path]]
+        Paths to a local mounts of directories within XNATs archive for nodes
+        of a project (i.e.. when running  inside XNAT's container service).
+        Keys -> Project ID, Values -> dictionary mapping node frequency + ID to
+        mounted path
     check_md5 : bool
         Whether to check the MD5 digest of cached files before using. This
         checks for updates on the server since the file was cached
@@ -81,7 +84,6 @@ class Xnat(Repository):
     cache_dir: str = attr.ib(converter=Path)
     user: str = attr.ib(default=None)
     password: str = attr.ib(default=None)
-    direct_mounts: dict[(DataSpace, str or tuple[str]), Path] = attr.ib(factory=dict)
     check_md5: bool = attr.ib(default=True)
     race_condition_delay: int = attr.ib(default=30)
     _cached_datasets: ty.Dict[str, Dataset]= attr.ib(factory=dict, init=False)
@@ -135,64 +137,7 @@ class Xnat(Repository):
         self.login.disconnect()
         self._login = None
 
-    def get_direct_mount(self, data_node):
-        return self.direct_mounts[(data_node.frequency, data_node.id)]
-
     def find_nodes(self, dataset: Dataset, **kwargs):
-        try:
-            mounted_dir = self.direct_mounts[(dataset.root_freq, ())]
-        except KeyError:
-            return self.find_nodes_via_api(dataset)
-        else:
-            return self.find_nodes_via_direct_access(
-                dataset, mounted_dir)
-
-    def find_items(self, data_node):
-        try:
-            mounted_dir = self.get_direct_mount(data_node)
-        except KeyError:
-            return self.find_items_via_api(data_node)
-        else:
-            return self.find_items_via_direct_access(
-                data_node, mounted_dir)
-
-    def get_file_group(self, file_group):
-        try:
-            mounted_dir = self.get_direct_mount(file_group.data_node)
-        except KeyError:
-            return self.get_file_group_via_api(file_group)
-        else:
-            return self.get_file_group_via_direct_access(
-                file_group, mounted_dir)
-
-    def get_field(self, field):
-        try:
-            mounted_dir = self.get_direct_mount(field.data_node)
-        except KeyError:
-            return self.get_field_via_api(field)
-        else:
-            return self.get_field_via_direct_access(
-                field, mounted_dir)
-
-    def put_file_group(self, file_group, fs_path, side_cars):
-        try:
-            mounted_dir = self.get_direct_mount(file_group.data_node)
-        except KeyError:
-            return self.put_file_group_via_api(file_group, fs_path, side_cars)
-        else:
-            return self.put_file_group_via_direct_access(
-                file_group, fs_path, side_cars, mounted_dir)
-
-    def put_field(self, field, value):
-        try:
-            mounted_dir = self.get_direct_mount(field.data_node)
-        except KeyError:
-            return self.put_field_via_api(field, value)
-        else:
-            return self.put_field_via_direct_access(
-                field, value, mounted_dir)
-
-    def find_nodes_via_api(self, dataset: Dataset, **kwargs):
         """
         Find all file_groups, fields and provenance provenances within an XNAT
         project and create data tree within dataset
@@ -207,7 +152,7 @@ class Xnat(Repository):
             for exp in self.login.projects[dataset.name].experiments.values():
                 dataset.add_leaf_node([exp.subject.label, exp.label])
 
-    def find_items_via_api(self, data_node):
+    def find_items(self, data_node):
         with self:
             xnode = self.get_xnode(data_node)
             # Add scans, fields and resources to data node
@@ -232,7 +177,15 @@ class Xnat(Repository):
             for xresource in xnode.resources.values():
                 data_node.add_file_group(
                     path=self.unescape_name(xresource.label),
-                    uris={xresource.format: xresource.uri})            
+                    uris={xresource.format: xresource.uri})               
+
+    def get_file_group(self, file_group):
+        try:
+            mounted_dir = self.get_direct_mount(file_group.data_node)
+        except KeyError:
+            return self.get_file_group_via_api(file_group)
+        else:
+            return self.get_file_group_via_direct_access(file_group, mounted_dir)
 
     def get_file_group_via_api(self, file_group):
         """
@@ -323,27 +276,37 @@ class Xnat(Repository):
                     shutil.rmtree(tmp_dir)
         return self._file_group_paths(file_group)
 
-    def get_field_via_api(self, field):
-        """
-        Retrieves a fields value
+    def get_file_group_via_direct_access(self, file_group, mounted_dir):
+        path = re.match(
+            r'/data/(?:archive/)?projects/\w+/(?:subjects/\w+/)?'
+            r'(?:experiments/\w+/)?(?P<path>.*)$', file_group.uri).group('path')
+        if 'scans' in path:
+            path = path.replace('scans', 'SCANS').replace('resources/', '')
+        else:
+            path = path.replace('resources', 'RESOURCES')
+        resource_path = mounted_dir / path
+        if file_group.datatype.directory:
+            # Link files from resource dir into temp dir to avoid catalog XML
+            primary_path = self.cache_path(file_group)
+            shutil.rmtree(primary_path, ignore_errors=True)
+            os.makedirs(primary_path, exist_ok=True)
+            for item in resource_path.iterdir():
+                if not item.name.endswith('_catalog.xml'):
+                    os.symlink(item, primary_path / item.name)
+            side_cars = {}
+        else:
+            primary_path, side_cars = file_group.datatype.assort_files(
+                resource_path.iterdir())
+        return primary_path, side_cars
 
-        Parameters
-        ----------
-        field : Field
-            The field to retrieve
-
-        Returns
-        -------
-        value : float or int or str of list[float] or list[int] or list[str]
-            The value of the field
-        """
-        self._check_repository(field)
-        with self:
-            xsession = self.get_xnode(field.data_node)
-            val = xsession.fields[self.escape_name(field)]
-            val = val.replace('&quot;', '"')
-            val = parse_value(val)
-        return val
+    def put_file_group(self, file_group, fs_path, side_cars):
+        try:
+            mounted_dir = self.get_direct_mount(file_group.data_node)
+        except KeyError:
+            return self.put_file_group_via_api(file_group, fs_path, side_cars)
+        else:
+            return self.put_file_group_via_direct_access(file_group, fs_path,
+                                                         side_cars, mounted_dir)
 
     def put_file_group_via_api(self, file_group, fs_path, side_cars):
         """
@@ -368,8 +331,8 @@ class Xnat(Repository):
         with self:
             # Add session for derived scans if not present
             xnode = self.get_xnode(file_group.data_node)
+            escaped_name = self.escape_name(file_group)
             if not file_group.uri:
-                escaped_name = self.escape_name(file_group)
                 # Set the uri of the file_group
                 file_group.uri = '{}/resources/{}'.format(
                     self.standard_uri(xnode), escaped_name)
@@ -422,7 +385,47 @@ class Xnat(Repository):
             if file_group.provenance:
                 self.put_provenance(file_group)
 
-    def put_field_via_api(self, field, value):
+    def put_file_group_via_direct_access(self, file_group, fs_path, side_cars,
+                                         mounted_dir):
+        resource_path = mounted_dir / 'RESOURCES'
+        os.makedirs(resource_path, exist_ok=True)
+        escaped_name = self.escape_name(file_group)
+        if file_group.datatype.directory:
+            shutil.copytree(fs_path, resource_path / escaped_name)
+        else:
+            # Upload primary file and add to cache
+            fname = escaped_name + file_group.datatype.extension
+            shutil.copyfile(fs_path, resource_path / fname)
+            # Upload side cars and add them to cache
+            for sc_name, sc_src_path in side_cars.items():
+                sc_fname = escaped_name + file_group.datatype.side_cars[sc_name]
+                shutil.copyfile(sc_src_path, resource_path / sc_fname)
+        file_group.uri = (self._make_uri(file_group.data_node)
+                          + '/RESOURCES/' + escaped_name)   
+
+    def get_field(self, field):
+        """
+        Retrieves a fields value
+
+        Parameters
+        ----------
+        field : Field
+            The field to retrieve
+
+        Returns
+        -------
+        value : float or int or str of list[float] or list[int] or list[str]
+            The value of the field
+        """
+        self._check_repository(field)
+        with self:
+            xsession = self.get_xnode(field.data_node)
+            val = xsession.fields[self.escape_name(field)]
+            val = val.replace('&quot;', '"')
+            val = parse_value(val)
+        return val
+
+    def put_field(self, field, value):
         self._check_repository(field)
         if field.array:
             if field.datatype is str:
@@ -435,26 +438,6 @@ class Xnat(Repository):
             xsession.fields[self.escape_name(field)] = value
         if field.provenance:
             self.put_provenance(field)
-
-    def find_nodes_via_direct_access(self, dataset: Dataset, mounted_dir: Path):
-        raise NotImplementedError
-
-    def find_items_via_direct_access(self, data_node: DataNode,
-                                     mounted_dir: Path):
-        raise NotImplementedError
-
-    def get_file_group_via_direct_access(self, file_group, mounted_dir):
-        raise NotImplementedError
-
-    def get_field_via_direct_access(self, field, mounted_dir):
-        raise NotImplementedError
-
-    def put_file_group_via_direct_access(self, file_group, fs_path, side_cars,
-                                         mounted_dir):
-        raise NotImplementedError
-
-    def put_field_via_direct_access(self, field, value, mounted_dir):
-        raise NotImplementedError
 
     def get_checksums(self, file_group):
         """
@@ -595,18 +578,32 @@ class Xnat(Repository):
             elif data_node.frequency == Clinical.session:
                 xnode = xproject.experiments[data_node.ids[Clinical.session]]
             else:
-                # Create a "subject" to hold the non-standard node (i.e. not
-                # a project, subject or session node)
-                if data_node.id is None:
-                    id_str = ''
-                elif isinstance(data_node.id, tuple):
-                    id_str = '_' + '_'.join(data_node.id)
-                else:
-                    id_str = '_' + str(data_node.id)
                 xnode = self.login.classes.SubjectData(
-                    label=f'__{data_node.frequency}{id_str}__',
-                    parent=xproject)
+                    label=self._make_node_name(data_node), parent=xproject)
             return xnode
+
+    def _make_node_name(self, data_node):
+        # Create a "subject" to hold the non-standard node (i.e. not
+        # a project, subject or session node)
+        if data_node.id is None:
+            id_str = ''
+        elif isinstance(data_node.id, tuple):
+            id_str = '_' + '_'.join(data_node.id)
+        else:
+            id_str = '_' + str(data_node.id)
+        return f'__{data_node.frequency}{id_str}__'
+
+
+    def _make_uri(self, data_node: DataNode):
+        uri = '/data/archive/projects/' + data_node.dataset.name
+        if data_node.frequency == Clinical.session:
+            uri += '/experiments/' + data_node.id
+        elif data_node.frequency == Clinical.subject:
+            uri += '/subjects/' + data_node.id
+        elif data_node.frequency != Clinical.dataset:
+            uri += '/subjects/' + self._make_node_name(data_node)
+        return uri
+
 
     def cache_path(self, item):
         """Path to the directory where the item is/should be cached. Note that
@@ -728,7 +725,11 @@ class Xnat(Repository):
             # Until XnatPy adds a create_resource to projects, subjects &
             # sessions
             # xresource = xnode.create_resource(format_name)
-        xresource.upload(cache_path, fname)        
+        xresource.upload(cache_path, fname)
+
+    def get_direct_mount(self, data_node: DataNode):
+        mounts = data_node.dataset.access_args['mounts']
+        return mounts[(data_node.frequency, data_node.id)]
 
 def append_suffix(path, suffix):
     "Appends a string suffix to a Path object"

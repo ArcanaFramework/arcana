@@ -140,7 +140,7 @@ class FileGroup(DataItem):
     fs_path: str = attr.ib(default=None, converter=optional(absolute_path))
     side_cars: ty.Dict[str, str] = attr.ib(
         converter=optional(absolute_paths_dict))
-    checksums: ty.Dict[str, str] = attr.ib(default=None)
+    _checksums: ty.Dict[str, str] = attr.ib(default=None)
 
     HASH_CHUNK_SIZE = 2 ** 20  # 1MB in calc. checksums to avoid mem. issues
 
@@ -234,17 +234,22 @@ class FileGroup(DataItem):
             return self.fs_paths
 
     def aux_file(self, name):
-        return self.side_cars[name]  
+        return self.side_cars[name]
+
+    @property
+    def checksums(self):
+        if self._checksums is None:
+            self.get_checksums()
+        return self._checksums
 
     def get_checksums(self):
         self._check_exists()
-        if self.checksums is None:
-            # Load checksums from repository (e.g. via API)
-            if self.data_node is not None:
-                self.checksums = self.data_node.dataset.repository.get_checksums(self)
-            # If the repository cannot calculate the checksums do them manually
-            else:
-                self.checksums = self.calculate_checksums()
+        # Load checksums from repository (e.g. via API)
+        if self.data_node is not None:
+            self._checksums = self.data_node.dataset.repository.get_checksums(self)
+        # If the repository cannot calculate the checksums do them manually
+        else:
+            self._checksums = self.calculate_checksums()
 
     def calculate_checksums(self):
         self._check_exists()
