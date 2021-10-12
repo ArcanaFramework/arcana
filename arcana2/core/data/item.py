@@ -242,10 +242,10 @@ class FileGroup(DataItem):
             self.get_checksums()
         return self._checksums
 
-    def get_checksums(self):
+    def get_checksums(self, force_calculate=False):
         self._check_exists()
         # Load checksums from repository (e.g. via API)
-        if self.data_node is not None:
+        if self.data_node is not None and not force_calculate:
             self._checksums = self.data_node.dataset.repository.get_checksums(self)
         # If the repository cannot calculate the checksums do them manually
         else:

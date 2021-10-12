@@ -88,7 +88,8 @@ def test_put_items(mutable_dataset: Dataset):
         for name, freq, datatype, _ in mutable_dataset.blueprint.to_insert:
             for node in mutable_dataset.nodes(freq):
                 item = node[name]
-                item.get_checksums()
+                item.get_checksums(force_calculate=(
+                    mutable_dataset.access_method == 'direct'))
                 assert item.datatype == datatype
                 assert item.checksums == all_checksums[name]
                 item.get()
@@ -96,14 +97,17 @@ def test_put_items(mutable_dataset: Dataset):
     check_inserted()
     # Check read from cached files
     mutable_dataset.refresh()
-    orig_server = mutable_dataset.repository.server
-    check_inserted()
-    # Check downloaded
-    mutable_dataset.repository.server = orig_server
-    mutable_dataset.refresh()
-    shutil.rmtree(mutable_dataset.repository.cache_dir / 'projects'
-                  / mutable_dataset.name)
-    check_inserted()  
+    if mutable_dataset.access_method == 'api':
+        # Note that we can't check the direct access put by this method since
+        # it isn't registered with the XNAT database and therefore isn't
+        # found by `find_items`. In real life this is handled by the output
+        # handlers of the container service
+        check_inserted()
+        # Check downloaded by deleting the cache dir
+        shutil.rmtree(mutable_dataset.repository.cache_dir / 'projects'
+                    / mutable_dataset.name)
+        mutable_dataset.refresh()
+        check_inserted()  
 
 
 # -----------------------
@@ -175,6 +179,9 @@ DOCKER_BUILD_DIR = Path(__file__).parent / 'xnat-docker'
 DOCKER_IMAGE = 'arcana-xnat-debug'
 DOCKER_HOST = 'localhost'
 DOCKER_XNAT_PORT = '8989'
+DOCKER_REGISTRY_IMAGE = 'registry'
+DOCKER_REGISTRY_CONTAINER = 'xnat-docker-registry'
+DOCKER_REGISTRY_PORT = '5959'
 DOCKER_XNAT_URI = f'http://{DOCKER_HOST}:{DOCKER_XNAT_PORT}'
 DOCKER_XNAT_USER = 'admin'
 DOCKER_XNAT_PASSWORD = 'admin'
@@ -185,20 +192,20 @@ PUT_SUFFIX = '_put'
 
 @pytest.fixture(params=GOOD_DATASETS, scope='module')
 def dataset(repository, xnat_archive_dir, request):
-    dataset_name, access_type = request.param.split('.')
-    return access_dataset(repository, dataset_name, access_type,
+    dataset_name, access_method = request.param.split('.')
+    return access_dataset(repository, dataset_name, access_method,
                           xnat_archive_dir)
 
 
 @pytest.fixture(params=MUTABLE_DATASETS, scope='function')
 def mutable_dataset(repository, xnat_archive_dir, request):
-    dataset_name, access_type = request.param.split('.')
-    test_suffix = 'MUTABLE' + access_type + str(hex(random.getrandbits(32)))[2:]
+    dataset_name, access_method = request.param.split('.')
+    test_suffix = 'MUTABLE' + access_method + str(hex(random.getrandbits(32)))[2:]
     # Need to create a new dataset per function so it can be safely modified
     # by the test without messing up other tests.
     create_dataset_in_repo(dataset_name, repository.run_prefix,
                            test_suffix=test_suffix)
-    return access_dataset(repository, dataset_name, access_type,
+    return access_dataset(repository, dataset_name, access_method,
                           xnat_archive_dir, test_suffix)
 
 
@@ -262,6 +269,34 @@ def repository(xnat_archive_dir):
         container.stop()
 
 
+@pytest.fixture(scope='module')
+def registry():
+    "Stand up a Docker registry to use with the container service"
+
+    dc = docker.from_env()
+
+    try:
+        image = dc.images.get(DOCKER_REGISTRY_IMAGE)
+    except docker.errors.ImageNotFound:
+        image = dc.images.pull(DOCKER_REGISTRY_IMAGE)
+
+    try:
+        container = dc.containers.get(DOCKER_REGISTRY_CONTAINER)
+    except docker.errors.NotFound:
+        container = dc.containers.run(
+            image.tags[0], detach=True,
+            ports={'5000/tcp': DOCKER_REGISTRY_PORT},
+            remove=True, name=DOCKER_REGISTRY_CONTAINER)
+        already_running = False
+    else:
+        already_running = True
+
+    yield f'localhost:{DOCKER_REGISTRY_PORT}'
+
+    if not already_running:
+        container.stop()
+
+
 def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
                    test_suffix=''):
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
@@ -281,6 +316,7 @@ def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
     # Stash the args used to create the dataset in attributes so they can be
     # used by tests
     dataset.blueprint = blueprint
+    dataset.access_method = access_method
     return dataset
 
 

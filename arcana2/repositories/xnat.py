@@ -205,6 +205,9 @@ class Xnat(Repository):
             A dictionary containing a mapping of auxiliary file names to
             name_paths
         """
+        logger.info("Getting %s from %s:%s node via API",
+                    file_group.path, file_group.data_node.frequency,
+                    file_group.data_node.id)        
         if file_group.datatype is None:
             raise ArcanaUsageError(
                 "Attempting to download {}, which has not been assigned a "
@@ -277,6 +280,9 @@ class Xnat(Repository):
         return self._file_group_paths(file_group)
 
     def get_file_group_via_direct_access(self, file_group, mounted_dir):
+        logger.info("Getting %s from %s:%s node by direct access to archive",
+                    file_group.path, file_group.data_node.frequency,
+                    file_group.data_node.id)
         path = re.match(
             r'/data/(?:archive/)?projects/\w+/(?:subjects/\w+/)?'
             r'(?:experiments/\w+/)?(?P<path>.*)$', file_group.uri).group('path')
@@ -384,15 +390,18 @@ class Xnat(Repository):
             # Save provenance
             if file_group.provenance:
                 self.put_provenance(file_group)
+        logger.info("Put %s into %s:%s node via API",
+                    file_group.path, file_group.data_node.frequency,
+                    file_group.data_node.id)
 
     def put_file_group_via_direct_access(self, file_group, fs_path, side_cars,
                                          mounted_dir):
-        resource_path = mounted_dir / 'RESOURCES'
-        os.makedirs(resource_path, exist_ok=True)
         escaped_name = self.escape_name(file_group)
+        resource_path = mounted_dir / 'RESOURCES' / escaped_name 
         if file_group.datatype.directory:
-            shutil.copytree(fs_path, resource_path / escaped_name)
+            shutil.copytree(fs_path, resource_path)
         else:
+            os.makedirs(resource_path, exist_ok=True)
             # Upload primary file and add to cache
             fname = escaped_name + file_group.datatype.extension
             shutil.copyfile(fs_path, resource_path / fname)
@@ -401,7 +410,11 @@ class Xnat(Repository):
                 sc_fname = escaped_name + file_group.datatype.side_cars[sc_name]
                 shutil.copyfile(sc_src_path, resource_path / sc_fname)
         file_group.uri = (self._make_uri(file_group.data_node)
-                          + '/RESOURCES/' + escaped_name)   
+                          + '/RESOURCES/' + escaped_name)
+        file_group.exists = True
+        logger.info("Put %s into %s:%s node by direct access to archive",
+                    file_group.path, file_group.data_node.frequency,
+                    file_group.data_node.id)
 
     def get_field(self, field):
         """
