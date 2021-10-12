@@ -175,6 +175,10 @@ class Dataset():
         return self.space(0)
 
     @property
+    def leaf_freq(self):
+        return max(self.space)
+
+    @property
     def prov(self):
         return {
             'name': self.name,

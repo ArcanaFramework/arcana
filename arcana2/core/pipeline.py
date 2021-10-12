@@ -154,6 +154,14 @@ class Pipeline():
         # data node iteration and repository connection nodes
         wf = Workflow(name=name, input_spec=['ids'])
 
+#         wf.add(test_func(
+#             a=1,
+#             b=2,
+#             dataset=dataset,
+#             name='test_func'))
+# 
+#         wf.set_output(('c', wf.test_func.lzout.c))
+
         pipeline = Pipeline(wf, dataset, frequency=frequency)
 
         # Add sinks for the output of the workflow
@@ -328,8 +336,10 @@ class Pipeline():
             [('id', wf.per_node.upload.lzout.id)])
 
         wf.set_output(
-            [('processed', wf.per_node.lzout.id),
-             ('couldnt_process', wf.to_process.lzout.cant_process)])
+            [
+             #('processed', wf.per_node.lzout.id),
+             ('couldnt_process', wf.to_process.lzout.cant_process)
+             ])
 
         return pipeline
 
@@ -337,6 +347,17 @@ class Pipeline():
 def identity(**kwargs):
     "Returns the keyword arguments as a tuple"
     return tuple(kwargs.values())
+
+
+#@mark.task
+#@mark.annotate({
+#    'a': int,
+#    'b': int,
+#    'dataset': Dataset,
+#    'return':{
+#        'c': int}})
+#def test_func(a, b, dataset):
+#    return a + b
 
 
 @mark.task

@@ -20,7 +20,7 @@ from arcana2.datatypes.neuroimaging import (
     nifti_gz, niftix_gz, niftix, nifti, analyze, mrtrix_image)
 
 
-class TestDimension(DataSpace):
+class TestDataSpace(DataSpace):
     """Dummy data dimensions for ease of testing"""
 
     # Per dataset
@@ -50,14 +50,14 @@ class TestDimension(DataSpace):
     abcd = 0b1111
 
 
-td = TestDimension
+td = TestDataSpace
 
 dummy_format = FileFormat(name='xyz', extension='.x',
                           side_cars={'y': '.y', 'z': '.z'})
 
 
 def test_find_nodes(dataset: Dataset):
-    for freq in TestDimension:
+    for freq in TestDataSpace:
         # For all non-zero bases in the frequency, multiply the dim lengths
         # together to get the combined number of nodes expected for that
         # frequency
@@ -74,7 +74,7 @@ def test_get_items(dataset: Dataset):
             source_name = fg_name + format.name
             dataset.add_source(source_name, fg_name, format)
             source_files[source_name] = set(files)
-    for node in dataset.nodes(td.abcd):
+    for node in dataset.nodes(dataset.leaf_freq):
         for source_name, files in source_files.items():
             item = node[source_name]
             item.get()
@@ -239,7 +239,7 @@ def create_dataset_in_repo(name, base_dir):
     os.mkdir(dataset_path)
 
     for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
-        ids = dict(zip(TestDimension.basis(), id_tple))
+        ids = dict(zip(TestDataSpace.basis(), id_tple))
         dpath = dataset_path
         for layer in blueprint.hierarchy:
             dpath /= ''.join(f'{b}{ids[b]}' for b in layer.nonzero_basis())
