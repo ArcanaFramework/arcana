@@ -41,7 +41,7 @@ class BaseDatasetCmd():
                   "If the second arg contains '/' then it is interpreted as "
                   "the path to a text file containing a list of IDs"))    
         parser.add_argument(
-            '--dimensions', type=str, default='clinical.Clinical',
+            '--dataspace', type=str, default='clinical.Clinical',
             help=("The enum that specifies the data dimensions of the dataset. "
                   "Defaults to `Clinical`, which "
                   "consists of the typical dataset>group>subject>session "
@@ -130,10 +130,10 @@ class BaseDatasetCmd():
     @classmethod
     def parse_dimensions(cls, args):
         try:
-            module_name, dim_name = args.space.split('.')
+            module_name, dim_name = args.dataspace.split('.')
         except ValueError:
             raise ArcanaUsageError(
-                f"Value provided to '--dimensions' arg ({args.space}) "
+                f"Value provided to '--dimensions' arg ({args.dataspace}) "
                 "needs to include module, e.g. clinical.Clinical")
-        module = import_module('.'.join(('arcana2.space', module_name)))
+        module = import_module('.'.join(('arcana2.dataspaces', module_name)))
         return getattr(module, dim_name)

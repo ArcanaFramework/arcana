@@ -10,11 +10,11 @@ def test_run_app(test_dicom_dataset_dir):
     RunAppCmd.construct_parser(parser)
     args = parser.parse_args([
         'pydra.tasks.dcm2niix.Dcm2Niix',
-        test_dicom_dataset_dir,
+        str(test_dicom_dataset_dir),
         '--repository', 'file_system',
         '--input', 'in_dir', 'sample-dicom', 'dicom',
         '--output', 'out_file', 'output-nifti', 'niftix_gz',
-        '--dimensions', 'clinical.Clinical',
+        '--dataspace', 'clinical.Clinical',
         '--hierarchy', 'session',
         '--dry_run',
         '--frequency', 'session'
