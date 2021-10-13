@@ -57,7 +57,14 @@ class DataNode():
         try:
             return self._items[column_name]
         except KeyError:
-            spec = self.dataset.column_specs[column_name]
+            try:
+                spec = self.dataset.column_specs[column_name]
+            except KeyError:
+                raise ArcanaNameError(
+                    column_name,
+                    f"{column_name} is not the name of a column in "
+                    f"{self.dataset.name} dataset ('" + "', '".join(
+                        self.dataset.column_specs) + "')")
             if spec.frequency != self.frequency:
                 return ArcanaWrongFrequencyError(
                     column_name,

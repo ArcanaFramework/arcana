@@ -9,9 +9,6 @@ from arcana2.dataspaces.clinical import Clinical
 from arcana2.datatypes import dicom, niftix_gz
 
 
-TEST_DATA_DIR = Path(__file__).parent.joinpath("tests", "data").absolute()
-
-
 def create_test_file(fname, dpath):
     fpath = Path(fname)
     os.makedirs(dpath, exist_ok=True)
@@ -31,7 +28,7 @@ def create_test_file(fname, dpath):
 
 @pytest.fixture(scope='session')
 def test_ref_data_dir():
-    return TEST_DATA_DIR
+    return Path(__file__).parent.parent.joinpath("tests", "data").absolute()
 
 
 @pytest.fixture

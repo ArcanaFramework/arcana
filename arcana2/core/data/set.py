@@ -354,7 +354,7 @@ class Dataset():
             return [self.root_node]
         nodes = self.root_node.children[frequency].values()
         if ids is not None:
-            nodes = (n for n in nodes if n in set(ids))
+            nodes = (n for n in nodes if n.id in set(ids))
         return nodes
         
     def node_ids(self, frequency):

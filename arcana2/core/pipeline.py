@@ -206,7 +206,7 @@ class Pipeline():
             dataset=dataset,
             frequency=frequency,
             outputs=outputs,
-            requested_ids=wf.lzin.ids,
+            requested_ids=None,  # FIXME: Needs to be set dynamically
             name='to_process'))
 
         # Create the workflow that will be split across all nodes for the 
@@ -360,7 +360,7 @@ def to_process(dataset, frequency, outputs, requested_ids):
     cant_process = []
     for data_node in dataset.nodes(frequency, ids=requested_ids):
         # TODO: Should check provenance of existing nodes to see if it matches
-        not_exist = [not data_node[o].exists for o in outputs]
+        not_exist = [not data_node[o[0]].exists for o in outputs]
         if all(not_exist):
             ids.append(data_node.id)
         elif any(not_exist):

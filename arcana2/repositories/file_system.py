@@ -41,6 +41,13 @@ class FileSystem(Repository):
     LOCK_SUFFIX = '.lock'
     PROV_KEY = '__provenance__'
     VALUE_KEY = '__value__'
+    
+    def dataset(self, name, *args, **kwargs):
+        name = Path(name)
+        if not name.exists():
+            raise ArcanaUsageError(
+                f"Path to dataset root '{str(name)}'' does not exist")
+        return super().dataset(name, *args, **kwargs)        
 
     @property
     def provenance(self):
