@@ -1,0 +1,312 @@
+import os
+from datetime import datetime
+from dataclasses import dataclass
+import shutil
+from pathlib import Path
+import random
+import time
+import contextlib
+from tempfile import mkdtemp
+from itertools import product
+import pytest
+import docker
+import xnat
+import arcana2
+from arcana2.repositories import Xnat
+from arcana2.dataspaces.clinical import Clinical
+from arcana2.core.data.enum import DataSpace
+from arcana2.core.data.datatype import FileFormat
+from arcana2.datatypes.general import text, directory
+from arcana2.datatypes.neuroimaging import niftix_gz, nifti_gz, dicom
+from arcana2.test_fixtures.generic import create_test_file
+
+
+# -----------------------
+# Test dataset structures
+# -----------------------
+
+@dataclass
+class TestDatasetBlueprint():
+
+    dim_lengths: list[int]
+    scans: list[tuple[str, list[tuple[str, FileFormat, list[str]]]]]
+    id_inference: dict[DataSpace, str]
+    to_insert: list[str, tuple[DataSpace, FileFormat, list[str]]]  # files to insert as derivatives
+
+
+TEST_DATASET_BLUEPRINTS = {
+    'basic': TestDatasetBlueprint(  # dataset name
+        [1, 1, 3],  # number of timepoints, groups and members respectively
+        [('scan1',  # scan type (ID is index)
+          [('text', # resource name
+            text,  # Data format
+            ['file.txt'])]),  # name files to place within resource
+         ('scan2',
+          [('niftix_gz',
+            niftix_gz,
+            ['file.nii.gz', 'file.json'])]),
+         ('scan3',
+          [('directory',
+            directory,
+            ['doubledir', 'dir', 'file.dat'])]),
+         ('scan4',
+          [('DICOM', dicom, ['file1.dcm', 'file2.dcm', 'file3.dcm']),
+           ('NIFTI', nifti_gz, ['file1.nii.gz']),
+           ('BIDS', None, ['file1.json']),
+           ('SNAPSHOT', None, ['file1.png'])])],
+        {},
+        [('deriv1', Clinical.timepoint, text, ['file.txt']),
+         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.batch, directory, ['dir']),
+         ]),  # id_inference dict
+    'multi': TestDatasetBlueprint(  # dataset name
+        [2, 2, 2],  # number of timepoints, groups and members respectively
+        [
+            ('scan1',
+             [('TEXT',  # resource name
+               text, 
+               ['file.txt'])])],
+        {Clinical.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
+         Clinical.session: r'timepoint(?P<timepoint>\d+).*'},  # id_inference dict
+        [
+         ('deriv1', Clinical.session, text, ['file.txt']),
+         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.timepoint, directory, ['doubledir']),
+         ('deriv4', Clinical.member, text, ['file.txt']),
+         ('deriv5', Clinical.dataset, text, ['file.txt']),
+         ('deriv6', Clinical.batch, text, ['file.txt']),
+         ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
+         ('deriv8', Clinical.group, text, ['file.txt']),
+         ])}
+
+GOOD_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
+MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
+
+# ------------------------------------
+# Pytest fixtures and helper functions
+# ------------------------------------
+
+DOCKER_BUILD_DIR = Path(__file__).parent / 'xnat-docker'
+DOCKER_IMAGE = 'arcana-xnat-debug'
+DOCKER_HOST = 'localhost'
+DOCKER_XNAT_PORT = '8989'
+DOCKER_REGISTRY_IMAGE = 'registry'
+DOCKER_REGISTRY_CONTAINER = 'xnat-docker-registry'
+DOCKER_REGISTRY_PORT = '5959'
+DOCKER_XNAT_URI = f'http://{DOCKER_HOST}:{DOCKER_XNAT_PORT}'
+DOCKER_XNAT_USER = 'admin'
+DOCKER_XNAT_PASSWORD = 'admin'
+CONNECTION_ATTEMPTS = 20
+CONNECTION_ATTEMPT_SLEEP = 5
+PUT_SUFFIX = '_put'
+
+
+@pytest.fixture(params=GOOD_DATASETS, scope='module')
+def xnat_dataset(repository, xnat_archive_dir, request):
+    dataset_name, access_method = request.param.split('.')
+    return access_dataset(repository, dataset_name, access_method,
+                          xnat_archive_dir)
+
+
+@pytest.fixture(params=MUTABLE_DATASETS, scope='function')
+def mutable_xnat_dataset(repository, xnat_archive_dir, request):
+    dataset_name, access_method = request.param.split('.')
+    test_suffix = 'MUTABLE' + access_method + str(hex(random.getrandbits(32)))[2:]
+    # Need to create a new dataset per function so it can be safely modified
+    # by the test without messing up other tests.
+    create_dataset_in_repo(dataset_name, repository.run_prefix,
+                           test_suffix=test_suffix)
+    return access_dataset(repository, dataset_name, access_method,
+                          xnat_archive_dir, test_suffix)
+
+
+@pytest.fixture(scope='module')
+def xnat_archive_dir():
+    return Path(arcana2.__file__).parent / 'tests' / 'xnat_archive_dir'
+
+
+@pytest.fixture(scope='module')
+def repository(xnat_archive_dir):
+
+    dc = docker.from_env()
+
+    try:
+        image = dc.images.get(DOCKER_IMAGE)
+    except docker.errors.ImageNotFound:
+        image, build_logs = dc.images.build(path=str(DOCKER_BUILD_DIR),
+                                            tag=DOCKER_IMAGE)
+        build_logs = list(build_logs)
+        if build_logs[-1]['stream'] != f'Successfully tagged {DOCKER_IMAGE}:latest\n':
+            raise Exception("Could not build debug XNAT image:\n"
+                            ''.join(l['stream'] for l in build_logs))
+    
+    try:
+        container = dc.containers.get(DOCKER_IMAGE)
+    except docker.errors.NotFound:
+        # Clear the XNAT archive dir
+        shutil.rmtree(xnat_archive_dir, ignore_errors=True)
+        os.mkdir(xnat_archive_dir)
+        container = dc.containers.run(
+            image.tags[0], detach=True, ports={'8080/tcp': DOCKER_XNAT_PORT},
+            remove=True, name=DOCKER_IMAGE,
+            volumes={xnat_archive_dir: {'bind': '/data/xnat/archive',
+                                        'mode': 'rw'}})
+        run_prefix = ''
+    else:
+        # Set a prefix for all the created projects based on the current time
+        # so that they don't clash with datasets generated for previous test
+        # runs that haven't been cleaned properly
+        run_prefix = datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
+
+    # Create all datasets that can be reused and don't raise errors
+    dataset_names = set(n.split('.')[0] for n in GOOD_DATASETS)
+    for dataset_name in dataset_names:
+        create_dataset_in_repo(dataset_name, run_prefix)
+    
+    repository = Xnat(
+        server=DOCKER_XNAT_URI,
+        user=DOCKER_XNAT_USER,
+        password=DOCKER_XNAT_PASSWORD,
+        cache_dir=mkdtemp())
+
+    # Stash a project prefix in the repository object
+    repository.run_prefix = run_prefix
+
+    yield repository
+
+    # If container was run by this fixture (instead of already running) stop
+    # it afterwards
+    if not run_prefix:
+        container.stop()
+
+
+@pytest.fixture(scope='module')
+def registry():
+    "Stand up a Docker registry to use with the container service"
+
+    dc = docker.from_env()
+
+    try:
+        image = dc.images.get(DOCKER_REGISTRY_IMAGE)
+    except docker.errors.ImageNotFound:
+        image = dc.images.pull(DOCKER_REGISTRY_IMAGE)
+
+    try:
+        container = dc.containers.get(DOCKER_REGISTRY_CONTAINER)
+    except docker.errors.NotFound:
+        container = dc.containers.run(
+            image.tags[0], detach=True,
+            ports={'5000/tcp': DOCKER_REGISTRY_PORT},
+            remove=True, name=DOCKER_REGISTRY_CONTAINER)
+        already_running = False
+    else:
+        already_running = True
+
+    yield f'localhost:{DOCKER_REGISTRY_PORT}'
+
+    if not already_running:
+        container.stop()
+
+
+def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
+                   test_suffix=''):
+    blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
+    proj_name = repository.run_prefix + dataset_name + test_suffix
+    if access_method == 'direct':
+        proj_dir = xnat_archive_dir / proj_name / 'arc001'
+        mounts = {(Clinical.dataset, None): proj_dir}
+        for sess_label in proj_dir.iterdir():
+            mounts[(Clinical.session, sess_label.name)] = proj_dir / sess_label
+    elif access_method == 'api':
+        mounts = {}
+    else:
+        assert False    
+    dataset = repository.dataset(proj_name,
+                                 id_inference=blueprint.id_inference,
+                                 access_args={'mounts': mounts})
+    # Stash the args used to create the dataset in attributes so they can be
+    # used by tests
+    dataset.blueprint = blueprint
+    dataset.access_method = access_method
+    return dataset
+
+
+def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
+    """
+    Creates dataset for each entry in dataset_structures
+    """
+    blueprint  =  TEST_DATASET_BLUEPRINTS[dataset_name]
+    dataset_name = run_prefix + dataset_name + test_suffix
+
+    with connect() as login:
+        login.put(f'/data/archive/projects/{dataset_name}')
+    
+    with connect() as login:
+        xproject = login.projects[dataset_name]
+        xclasses = login.classes
+        for id_tple in product(*(list(range(d))
+                                 for d in blueprint.dim_lengths)):
+            ids = dict(zip(Clinical.basis(), id_tple))
+            # Create subject
+            subject_label = ''.join(
+                f'{b}{ids[b]}' for b in Clinical.subject.nonzero_basis())
+            xsubject = xclasses.SubjectData(label=subject_label,
+                                            parent=xproject)
+            # Create session
+            session_label = ''.join(
+                f'{b}{ids[b]}' for b in Clinical.session.nonzero_basis())
+            xsession = xclasses.MrSessionData(label=session_label,
+                                            parent=xsubject)
+            
+            for i, (sname, resources) in enumerate(blueprint.scans, start=1):
+                # Create scan
+                xscan = xclasses.MrScanData(id=i, type=sname,
+                                            parent=xsession)
+                for rname, _, fnames in resources:
+
+                    tmp_dir = Path(mkdtemp())
+                    # Create the resource
+                    xresource = xscan.create_resource(rname)
+                    # Create the dummy files
+                    for fname in fnames:
+                        fpath = create_test_file(fname, tmp_dir)
+                        xresource.upload(str(tmp_dir / fpath), str(fpath))
+
+
+# def create_test_file(fname, tmp_dir):
+#     fpath = Path(fname)
+#     os.makedirs(tmp_dir, exist_ok=True)
+#     # Make double dir
+#     if fname.startswith('doubledir'):
+#         os.mkdir(tmp_dir / fpath)
+#         fname = 'dir'
+#         fpath /= fname
+#     if fname.startswith('dir'):
+#         os.mkdir(tmp_dir / fpath)
+#         fname = 'test.txt'
+#         fpath /= fname
+#     with open(tmp_dir / fpath, 'w') as f:
+#         f.write(f'test {fname}')
+#     return fpath
+
+
+@contextlib.contextmanager
+def connect():
+    # Need to give time for XNAT to get itself ready after it has
+    # started so we try multiple times until giving up trying to connect
+    attempts = 0
+    for _ in range(1, CONNECTION_ATTEMPTS + 1):
+        try:
+            login = xnat.connect(server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
+                                 password=DOCKER_XNAT_PASSWORD)
+        except xnat.exceptions.XNATError:
+            if attempts == CONNECTION_ATTEMPTS:
+                raise
+            else:
+                time.sleep(CONNECTION_ATTEMPT_SLEEP)
+        else:
+            break
+    try:
+        yield login
+    finally:
+        login.disconnect()
