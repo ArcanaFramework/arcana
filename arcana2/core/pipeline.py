@@ -68,7 +68,7 @@ class Pipeline():
                 "tuples, or dictionary")
         # Connect "outputs" the pipeline to the 
         for out_name, node_out in connections:
-            setattr(self.workflow.sink, out_name, node_out)
+            setattr(self.workflow.per_node.sink, out_name, node_out)
             self._connected.add(out_name)
 
     def __getattr__(self, varname):
@@ -154,14 +154,6 @@ class Pipeline():
         # data node iteration and repository connection nodes
         wf = Workflow(name=name, input_spec=['ids'])
 
-        wf.add(test_func(
-            a=wf.lzin.ids,
-            b=2,
-            dataset=dataset,
-            name='test_func'))
-
-        wf.set_output(('c', wf.test_func.lzout.c))
-
         pipeline = Pipeline(wf,
                             # dataset,
                             frequency=frequency)
@@ -199,7 +191,7 @@ class Pipeline():
                 else:
                     raise ArcanaUsageError(
                         f"Attempting to overwrite pipeline of '{output_name}' "
-                        f"sink ({sink.pipeline}) . Use 'overwrite' option if "
+                        f"sink ({sink.pipeline}). Use 'overwrite' option if "
                         "this is desired")
             sink.pipeline = pipeline
             sinks[output_name] = sink
@@ -339,7 +331,7 @@ class Pipeline():
 
         wf.set_output(
             [
-             #('processed', wf.per_node.lzout.id),
+             ('processed', wf.per_node.lzout.id),
              ('couldnt_process', wf.to_process.lzout.cant_process)
              ])
 
@@ -350,16 +342,6 @@ def identity(**kwargs):
     "Returns the keyword arguments as a tuple"
     return tuple(kwargs.values())
 
-
-@mark.task
-@mark.annotate({
-   'a': int,
-   'b': int,
-   'dataset': Dataset,
-   'return':{
-       'c': int}})
-def test_func(a, b, dataset):
-   return a + b
 
 
 @mark.task
