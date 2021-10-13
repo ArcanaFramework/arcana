@@ -28,4 +28,4 @@ def test_run_app(test_dicom_dataset_dir):
         ])
     pipeline = RunAppCmd().run(args)
     pipeline.workflow.pickle_task()
-    # workflow()
+    # pipeline()

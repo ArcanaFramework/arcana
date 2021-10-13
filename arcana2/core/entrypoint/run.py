@@ -252,21 +252,21 @@ class RunAppCmd(BaseRunCmd):
     @classmethod
     def construct_pipeline(cls, args, pipeline):
         
-        task_cls = resolve_class(args.app, prefixes=['pydra.tasks'])
+        # task_cls = resolve_class(args.app, prefixes=['pydra.tasks'])
 
-        # Add the app task
-        pipeline.add(task_cls(name='app',
-                              **cls.parse_app_args(args, task_cls)))
+        # # Add the app task
+        # pipeline.add(task_cls(name='app',
+        #                       **cls.parse_app_args(args, task_cls)))
 
-        # Connect source to inputs
-        for input in pipeline.input_names:
-            setattr(pipeline.app.inputs, input, getattr(pipeline.source.lzout,
-                                                        input))
+        # # Connect source to inputs
+        # for input in pipeline.input_names:
+        #     setattr(pipeline.app.inputs, input, getattr(pipeline.source.lzout,
+        #                                                 input))
 
-        # Connect outputs to sink
-        for output in pipeline.output_names:
-            setattr(pipeline.sink.inputs, output, getattr(pipeline.app.lzout,
-                                                          output))
+        # # Connect outputs to sink
+        # for output in pipeline.output_names:
+        #     setattr(pipeline.sink.inputs, output, getattr(pipeline.app.lzout,
+        #                                                   output))
 
         return pipeline
 

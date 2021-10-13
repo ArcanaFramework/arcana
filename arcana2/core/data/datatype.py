@@ -97,14 +97,17 @@ class FileFormat(object):
             return False
 
     def __hash__(self):
-        return (
-            hash(self.name)
-            ^ hash(self.extension)
-            ^ hash(self.desc)
-            ^ hash(self.directory)
-            ^ hash(self._within_dir_exts)
-            ^ hash(tuple(self.alternate_names))
-            ^ hash(tuple(sorted(self.side_cars.items()))))
+        try:
+            return (
+                hash(self.name)
+                ^ hash(self.extension)
+                ^ hash(self.desc)
+                ^ hash(self.directory)
+                ^ hash(self._within_dir_exts)
+                ^ hash(tuple(self.alternate_names))
+                ^ hash(tuple(sorted(self.side_cars.items()))))
+        except AttributeError:
+            return id(self)  # Temporary measure until datatypes are refactored
 
     def __ne__(self, other):
         return not self == other

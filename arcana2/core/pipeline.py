@@ -29,7 +29,7 @@ class Pipeline():
     """
 
     workflow: Workflow = attr.ib()
-    dataset: Dataset = attr.ib()
+    # dataset: Dataset = attr.ib()
     frequency: DataSpace = attr.ib()
     inputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
     outputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
@@ -154,15 +154,17 @@ class Pipeline():
         # data node iteration and repository connection nodes
         wf = Workflow(name=name, input_spec=['ids'])
 
-#         wf.add(test_func(
-#             a=1,
-#             b=2,
-#             dataset=dataset,
-#             name='test_func'))
-# 
-#         wf.set_output(('c', wf.test_func.lzout.c))
+        wf.add(test_func(
+            a=wf.lzin.ids,
+            b=2,
+            dataset=dataset,
+            name='test_func'))
 
-        pipeline = Pipeline(wf, dataset, frequency=frequency)
+        wf.set_output(('c', wf.test_func.lzout.c))
+
+        pipeline = Pipeline(wf,
+                            # dataset,
+                            frequency=frequency)
 
         # Add sinks for the output of the workflow
         sources = {}
@@ -349,15 +351,15 @@ def identity(**kwargs):
     return tuple(kwargs.values())
 
 
-#@mark.task
-#@mark.annotate({
-#    'a': int,
-#    'b': int,
-#    'dataset': Dataset,
-#    'return':{
-#        'c': int}})
-#def test_func(a, b, dataset):
-#    return a + b
+@mark.task
+@mark.annotate({
+   'a': int,
+   'b': int,
+   'dataset': Dataset,
+   'return':{
+       'c': int}})
+def test_func(a, b, dataset):
+   return a + b
 
 
 @mark.task
