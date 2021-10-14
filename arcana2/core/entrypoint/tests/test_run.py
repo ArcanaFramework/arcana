@@ -5,18 +5,18 @@ from argparse import ArgumentParser
 from arcana2.core.entrypoint.run import RunAppCmd
 
 
-def test_run_app(test_dicom_dataset_dir):
+def test_run_app(pydra_task_details, dataset):
+    task_location, task_inputs, task_outputs = pydra_task_details
     parser = ArgumentParser()
     RunAppCmd.construct_parser(parser)
     args = parser.parse_args([
-        'pydra.tasks.dcm2niix.Dcm2Niix',
-        str(test_dicom_dataset_dir),
+        task_location,
+        dataset.name,
         '--repository', 'file_system',
         '--input', 'in_dir', 'sample-dicom', 'dicom',
         '--output', 'out_file', 'output-nifti', 'niftix_gz',
-        '--dataspace', 'clinical.Clinical',
-        '--hierarchy', 'session',
-        '--dry_run',
+        '--dataspace', dataset.space__module__ + '.' + dataset.space.__name__,
+        '--hierarchy', dataset.hierarchy,
         '--frequency', 'session'
         # '--ids', None,
         # '--container', None,
@@ -27,5 +27,5 @@ def test_run_app(test_dicom_dataset_dir):
         # '--app_arg', []
         ])
     pipeline = RunAppCmd().run(args)
-    pipeline.workflow.pickle_task()
-    pipeline(plugin='serial')
+    # pipeline.workflow.pickle_task()
+    # pipeline(plugin='serial')

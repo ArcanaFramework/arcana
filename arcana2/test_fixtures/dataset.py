@@ -142,6 +142,15 @@ GOOD_DATASETS = ['full', 'one_layer', 'skip_single', 'skip_with_inference',
 # Pytest fixtures and helper functions
 # ------------------------------------
 
+@pytest.fixture
+def test_dataspace():
+    return TestDataSpace
+
+
+@pytest.fixture
+def test_dataspace_location():
+    return 'arcana2.test_fixtures.dataset.TestDataSpace'
+
 
 @pytest.fixture(params=GOOD_DATASETS)
 def dataset(work_dir, request):
