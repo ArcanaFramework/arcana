@@ -10,7 +10,7 @@ import json
 import attr
 from fasteners import InterProcessLock
 from arcana2.core.data.provenance import DataProvenance
-from arcana2.exceptions import ArcanaMissingDataException, ArcanaUsageError
+from arcana2.exceptions import ArcanaFileFormatError, ArcanaMissingDataException, ArcanaUsageError
 from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana2.core.data.set import Dataset
 from arcana2.dataspaces.clinical import Clinical, DataSpace
@@ -91,6 +91,7 @@ class FileSystem(Repository):
         """
         Inserts or updates a file_group in the repository
         """
+        fs_path = Path(fs_path)
         target_path = self.file_group_path(file_group)
         if fs_path == target_path:
             logger.info(
@@ -104,9 +105,14 @@ class FileSystem(Repository):
         if fs_path.is_file():
             shutil.copyfile(fs_path, target_path)
             # Copy side car files into repository
-            for sc_name, sc_path in file_group.datatype.default_side_cars(
-                    target_path).items():
-                shutil.copyfile(side_cars[sc_name], sc_path)
+            for sc_name in file_group.datatype.side_cars:
+                try:
+                    sc_path = side_cars[sc_name]
+                except KeyError:
+                    raise ArcanaFileFormatError(
+                        f"Missing side car '{sc_name}' when attempting to "
+                        f"put file_group")
+                shutil.copyfile(side_cars[sc_name], str(sc_path))
         elif fs_path.is_dir():
             if target_path.exists():
                 shutil.rmtree(target_path)
@@ -169,11 +175,11 @@ class FileSystem(Repository):
             return
         # Filter contents of directory to omit fields JSON and provenance
         filtered = []
-        for item in os.listdir(dpath):
-            if not (item.startswith('.')
-                    or item == self.FIELDS_FNAME
-                    or item.endswith(self.PROV_SUFFIX)):
-                filtered.append(item)
+        for subpath in dpath.iterdir():
+            if not (subpath.name.startswith('.')
+                    or subpath.name == self.FIELDS_FNAME
+                    or subpath.name.endswith(self.PROV_SUFFIX)):
+                filtered.append(subpath.name)
         # Group files and sub-dirs that match except for extensions
         matching = defaultdict(set)
         for fname in filtered:

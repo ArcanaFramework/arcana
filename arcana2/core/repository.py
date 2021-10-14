@@ -18,7 +18,7 @@ class Repository(metaclass=ABCMeta):
 
     """
 
-    _connection_depth = attr.ib(default=0, init=False)
+    _connection_depth = attr.ib(default=0, init=False, hash=False)
 
     def __enter__(self):
         # This allows the repository to be used within nested contexts

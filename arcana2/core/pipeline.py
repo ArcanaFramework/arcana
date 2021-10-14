@@ -29,7 +29,6 @@ class Pipeline():
     """
 
     workflow: Workflow = attr.ib()
-    # dataset: Dataset = attr.ib()
     frequency: DataSpace = attr.ib()
     inputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
     outputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
@@ -41,7 +40,7 @@ class Pipeline():
         Treat the 'lzout' of the source node as the 'lzin' of the pipeline to
         allow pipelines to be treated the same as normal Pydra workflow
         """
-        return self.workflow.source.lzout
+        return self.workflow.per_node.source.lzout
 
     def set_output(self, connections):
         """Connect the output using the same syntax as used for a Pydra workflow
@@ -68,14 +67,16 @@ class Pipeline():
                 "tuples, or dictionary")
         # Connect "outputs" the pipeline to the 
         for out_name, node_out in connections:
-            setattr(self.workflow.per_node.sink, out_name, node_out)
+            setattr(self.workflow.per_node.output_interface, out_name, node_out)
             self._connected.add(out_name)
 
     def __getattr__(self, varname):
         """
         Delegate any missing attributes to nested workflow that operates per
         node"""
-        return getattr(self.workflow.per_node, varname)
+        if 'workflow' in self.__dict__ and 'per_node' in self.workflow.name2obj:
+            return getattr(self.workflow.per_node, varname)
+        raise AttributeError(varname)
 
     def __call__(self, *args, **kwargs):
         self.check_connections()
@@ -240,8 +241,8 @@ class Pipeline():
                 for inpt_name in inputs:
                     item = data_node[inpt_name]
                     item.get()  # download to host if required
-                    outputs.append(item)
-            return tuple(outputs)
+                    outputs.append(item.value)
+            return tuple(outputs) if len(inputs) > 1 else outputs[0]
 
         wf.per_node.add(source(
             name='source', dataset=dataset, frequency=frequency,
@@ -269,7 +270,8 @@ class Pipeline():
                 setattr(pipeline.lzin, input_name,
                         getattr(wf.per_node, cname).lzout.converted)
 
-        # Create identity node to accept connections from user-
+        # Create identity node to accept connections from user-defined nodes
+        # via `set_output` method
         wf.per_node.add(
             FunctionTask(
                 identity,
@@ -279,10 +281,10 @@ class Pipeline():
                 output_spec=SpecInfo(
                     name=f'{name}Outputs', bases=(BaseSpec,),
                     fields=[(o, ty.Any) for o in output_names]),
-                name='sink'))
+                name='output_interface'))
 
         # Set format converters where required
-        to_sink = {o: getattr(wf.per_node.sink.lzout, o)
+        to_sink = {o: getattr(wf.per_node.output_interface.lzout, o)
                    for o in output_names}
 
         # Do output format conversions if required
@@ -297,20 +299,19 @@ class Pipeline():
                 to_sink[output_name] = getattr(wf.per_node,
                                                cname).lzout.converted
 
-        def store(dataset, frequency, id, **to_sink):
+        def sink(dataset, frequency, id, **to_sink):
             data_node = dataset.node(frequency, id)
             with dataset.repository:
                 for outpt_name, outpt_value in to_sink.items():
                     node_item = data_node[outpt_name]
-                    node_item.value = outpt_value
-                    node_item.put() # Store value/path in repository
+                    node_item.put(outpt_value) # Store value/path in repository
             return id
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
         wf.per_node.add(
             FunctionTask(
-                store,
+                sink,
                 input_spec=SpecInfo(
                     name='UploadInputs', bases=(BaseSpec,), fields=(
                         [('dataset', Dataset),
@@ -320,14 +321,14 @@ class Pipeline():
                 output_spec=SpecInfo(
                     name='UploadOutputs', bases=(BaseSpec,), fields=[
                         ('id', str)]),
-                name='upload',
+                name='sink',
                 dataset=dataset,
                 frequency=frequency,
                 id=wf.per_node.lzin.id,
                 **to_sink))
 
         wf.per_node.set_output(
-            [('id', wf.per_node.upload.lzout.id)])
+            [('id', wf.per_node.sink.lzout.id)])
 
         wf.set_output(
             [

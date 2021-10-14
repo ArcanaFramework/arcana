@@ -140,7 +140,7 @@ class FileGroup(DataItem):
     fs_path: str = attr.ib(default=None, converter=optional(absolute_path))
     side_cars: ty.Dict[str, str] = attr.ib(
         converter=optional(absolute_paths_dict))
-    _checksums: ty.Dict[str, str] = attr.ib(default=None)
+    _checksums: ty.Dict[str, str] = attr.ib(default=None, repr=False)
 
     HASH_CHUNK_SIZE = 2 ** 20  # 1MB in calc. checksums to avoid mem. issues
 
@@ -190,9 +190,17 @@ class FileGroup(DataItem):
 
     def put(self, fs_path, side_cars=None):
         self._check_part_of_data_node()
+        if side_cars is None:
+            side_cars = self.datatype.default_side_cars(fs_path)
+        elif side_cars is not None:
+            side_cars = absolute_paths_dict(side_cars)
         self.data_node.put_file_group(self, fs_path=fs_path,
                                       side_cars=side_cars)
         self._set_fs_paths()
+
+    @property
+    def value(self):
+        return str(self.fs_path)
 
     def _set_fs_paths(self, fs_path=None, side_cars=None):
         """Sets the primary file path and any side-car files from the node
@@ -233,7 +241,7 @@ class FileGroup(DataItem):
         else:
             return self.fs_paths
 
-    def aux_file(self, name):
+    def side_car(self, name):
         return self.side_cars[name]
 
     @property

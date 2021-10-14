@@ -16,7 +16,7 @@ from .provenance import DataProvenance
 from .enum import DataQuality, DataSpace, DataSpace
 
 
-@attr.s
+@attr.s(auto_detect=True)
 class DataNode():
     """A "node" in a data tree where file-groups and fields can be placed, e.g.
     a session or subject.
@@ -310,8 +310,8 @@ class UnresolvedFileGroup(UnresolvedDataItem):
         to each resource        
     """
 
-    file_paths: ty.Sequence[str] = attr.ib(factory=list,
-                                           converter=normalise_paths)
+    file_paths: ty.Sequence[Path] = attr.ib(factory=list,
+                                            converter=normalise_paths)
     uris: dict[str] = attr.ib(default=None)
 
     def _resolve(self, datatype):
@@ -338,8 +338,8 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                     and (datatype.within_dir_exts is None
                         or (datatype.within_dir_exts == frozenset(
                             split_extension(f)[1]
-                            for f in os.listdir(self.file_paths)
-                            if not f.startswith('.'))))):
+                            for f in self.file_paths[0].iterdir()
+                            if not str(f).startswith('.'))))):
                     file_path = self.file_paths[0]
             else:
                 try:

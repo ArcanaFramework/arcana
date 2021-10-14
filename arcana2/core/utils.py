@@ -184,18 +184,16 @@ def split_extension(path):
         The extension part of the string, i.e. 'nii.gz' of 'file.nii.gz'
     """
     for double_ext in double_exts:
-        if path.endswith(double_ext):
-            return path[:-len(double_ext)], double_ext
-    dirname = os.path.dirname(path)
-    filename = os.path.basename(path)
-    parts = filename.split('.')
+        if path.name.endswith(double_ext):
+            return str(path)[:-len(double_ext)], double_ext
+    parts = path.name.split('.')
     if len(parts) == 1:
-        base = filename
+        base = path.name
         ext = None
     else:
         ext = '.' + parts[-1]
         base = '.'.join(parts[:-1])
-    return os.path.join(dirname, base), ext
+    return path.parent / base, ext
 
 
 class classproperty(property):
