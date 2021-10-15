@@ -22,8 +22,17 @@ sch.setFormatter(formatter)
 logger.addHandler(sch)
 
 
-# Import all test fixtures from sub-package
-from .test_fixtures import *
+# Import all test fixtures from `test_fixtures` sub-package
+from .test_fixtures.generic import (
+    test_ref_data_dir, test_dicom_dataset_dir, dicom_dataset, dicom_inputs,
+    nifti_outputs, work_dir)
+from .test_fixtures.dataset import (
+    test_dataspace, test_dataspace_location, dataset, tmp_dir)
+from .test_fixtures.tasks import (
+    pydra_task_details, pydra_task)
+from .test_fixtures.xnat import (
+    xnat_dataset, mutable_xnat_dataset, xnat_archive_dir, repository,
+    docker_registry)
 
 
 # For debugging in IDE's don't catch raised exceptions and let the IDE

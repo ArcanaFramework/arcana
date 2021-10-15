@@ -91,7 +91,7 @@ DOCKER_IMAGE = 'arcana-xnat-debug'
 DOCKER_HOST = 'localhost'
 DOCKER_XNAT_PORT = '8989'
 DOCKER_REGISTRY_IMAGE = 'registry'
-DOCKER_REGISTRY_CONTAINER = 'xnat-docker-registry'
+DOCKER_REGISTRY_CONTAINER = 'arcana-xnat-docker-registry'
 DOCKER_REGISTRY_PORT = '5959'
 DOCKER_XNAT_URI = f'http://{DOCKER_HOST}:{DOCKER_XNAT_PORT}'
 DOCKER_XNAT_USER = 'admin'
@@ -101,7 +101,7 @@ CONNECTION_ATTEMPT_SLEEP = 5
 PUT_SUFFIX = '_put'
 
 
-@pytest.fixture(params=GOOD_DATASETS, scope='module')
+@pytest.fixture(params=GOOD_DATASETS, scope='session')
 def xnat_dataset(repository, xnat_archive_dir, request):
     dataset_name, access_method = request.param.split('.')
     return access_dataset(repository, dataset_name, access_method,
@@ -120,12 +120,12 @@ def mutable_xnat_dataset(repository, xnat_archive_dir, request):
                           xnat_archive_dir, test_suffix)
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def xnat_archive_dir():
     return Path(arcana2.__file__).parent / 'tests' / 'xnat_archive_dir'
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope='session')
 def repository(xnat_archive_dir):
 
     dc = docker.from_env()
@@ -180,8 +180,8 @@ def repository(xnat_archive_dir):
         container.stop()
 
 
-@pytest.fixture(scope='module')
-def registry():
+@pytest.fixture(scope='session')
+def docker_registry():
     "Stand up a Docker registry to use with the container service"
 
     dc = docker.from_env()
