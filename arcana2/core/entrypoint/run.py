@@ -326,7 +326,7 @@ class RunAppCmd(BaseRunCmd):
 
     @classmethod
     def parse_frequency(cls, args):
-        return cls.parse_dimensions(args)[args.frequency]
+        return cls.parse_dataspace(args)[args.frequency]
 
     @classmethod
     def workflow_name(cls, args):

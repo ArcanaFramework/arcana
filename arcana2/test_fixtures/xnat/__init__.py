@@ -86,7 +86,7 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 # Pytest fixtures and helper functions
 # ------------------------------------
 
-DOCKER_BUILD_DIR = Path(__file__).parent / 'xnat-docker'
+DOCKER_BUILD_DIR = Path(__file__).parent / 'docker-build'
 DOCKER_IMAGE = 'arcana-xnat-debug'
 DOCKER_HOST = 'localhost'
 DOCKER_XNAT_PORT = '8989'

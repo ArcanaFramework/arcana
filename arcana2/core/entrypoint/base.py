@@ -102,7 +102,7 @@ class BaseDatasetCmd():
         else:
             id_inference = None
 
-        dimensions = cls.parse_dimensions(args)
+        dimensions = cls.parse_dataspace(args)
 
         if args.hierarchy:
             hierarchy = [dimensions[l] for l in args.hierarchy]
@@ -128,12 +128,18 @@ class BaseDatasetCmd():
                                   excluded=parse_ids(args.excluded))
 
     @classmethod
-    def parse_dimensions(cls, args):
-        try:
-            module_name, dim_name = args.dataspace.split('.')
-        except ValueError:
+    def parse_dataspace(cls, args):
+        parts = args.dataspace.split('.')
+        if len(parts) < 2:
             raise ArcanaUsageError(
-                f"Value provided to '--dimensions' arg ({args.dataspace}) "
-                "needs to include module, e.g. clinical.Clinical")
-        module = import_module('.'.join(('arcana2.dataspaces', module_name)))
-        return getattr(module, dim_name)
+                f"Value provided to '--dataspace' arg ({args.dataspace}) "
+                "needs to include module, either relative to "
+                "'arcana2.dataspaces' (e.g. clinical.Clinical) or an "
+                "absolute path")
+        module_path = '.'.join(parts[:-1])
+        cls_name = parts[-1]
+        try:
+            module = import_module('arcana2.dataspaces.' + module_path)
+        except ImportError:
+            module = import_module(module_path)
+        return getattr(module, cls_name)
