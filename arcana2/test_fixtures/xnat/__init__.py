@@ -87,18 +87,17 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 # ------------------------------------
 
 DOCKER_BUILD_DIR = Path(__file__).parent / 'docker-build'
-DOCKER_IMAGE = 'arcana-xnat-debug'
+DOCKER_IMAGE = 'arcana-xnat'
 DOCKER_HOST = 'localhost'
 DOCKER_XNAT_PORT = '8989'
 DOCKER_REGISTRY_IMAGE = 'registry'
-DOCKER_REGISTRY_CONTAINER = 'arcana-xnat-docker-registry'
+DOCKER_REGISTRY_CONTAINER = 'arcana-docker-registry'
 DOCKER_REGISTRY_PORT = '5959'
 DOCKER_XNAT_URI = f'http://{DOCKER_HOST}:{DOCKER_XNAT_PORT}'
 DOCKER_XNAT_USER = 'admin'
 DOCKER_XNAT_PASSWORD = 'admin'
 CONNECTION_ATTEMPTS = 20
 CONNECTION_ATTEMPT_SLEEP = 5
-PUT_SUFFIX = '_put'
 
 
 @pytest.fixture(params=GOOD_DATASETS, scope='session')
