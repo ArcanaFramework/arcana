@@ -18,7 +18,7 @@ from arcana2.core.data.enum import DataSpace
 from arcana2.core.data.datatype import FileFormat
 from arcana2.datatypes.general import text, directory
 from arcana2.datatypes.neuroimaging import niftix_gz, nifti_gz, dicom
-from arcana2.test_fixtures.generic import create_test_file
+from ..dataset import create_test_file
 
 
 # -----------------------
@@ -122,7 +122,7 @@ def mutable_xnat_dataset(repository, xnat_archive_dir, request):
 
 @pytest.fixture(scope='session')
 def xnat_archive_dir():
-    return Path(arcana2.__file__).parent / 'tests' / 'xnat_archive_dir'
+    return Path(__file__).parent / 'xnat_archive_dir'
 
 
 @pytest.fixture(scope='session')

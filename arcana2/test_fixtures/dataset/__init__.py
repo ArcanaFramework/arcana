@@ -9,6 +9,7 @@ from arcana2.repositories.file_system import FileSystem
 from arcana2.core.data.enum import DataSpace
 from arcana2.core.data.datatype import FileFormat
 from arcana2.datatypes.general import text, directory, json
+from arcana2.dataspaces.clinical import Clinical
 from arcana2.datatypes.neuroimaging import (
     nifti_gz, niftix_gz, niftix, nifti, analyze, mrtrix_image)
 from arcana2.test_fixtures.generic import create_test_file
@@ -152,6 +153,18 @@ def test_dataspace_location():
     return 'arcana2.test_fixtures.dataset.TestDataSpace'
 
 
+@pytest.fixture
+def test_dicom_dataset_dir(test_ref_data_dir):
+    return test_ref_data_dir / 'test-dataset'
+
+
+@pytest.fixture
+def dicom_dataset(test_dicom_dataset_dir):
+    return FileSystem().dataset(
+        test_dicom_dataset_dir,
+        hierarchy=[Clinical.session])
+
+
 @pytest.fixture(params=GOOD_DATASETS)
 def dataset(work_dir, request):
     dataset_name = request.param
@@ -198,6 +211,23 @@ def access_dataset(name, base_dir):
 
 def get_dataset_path(name, base_dir):
     return base_dir / name
+
+
+def create_test_file(fname, dpath):
+    fpath = Path(fname)
+    os.makedirs(dpath, exist_ok=True)
+    # Make double dir
+    if fname.startswith('doubledir'):
+        os.makedirs(dpath / fpath, exist_ok=True)
+        fname = 'dir'
+        fpath /= fname
+    if fname.startswith('dir'):
+        os.makedirs(dpath / fpath, exist_ok=True)
+        fname = 'test.txt'
+        fpath /= fname
+    with open(dpath / fpath, 'w') as f:
+        f.write(f'test {fname}')
+    return fpath
 
 
 # def create_test_file(fname, dpath):

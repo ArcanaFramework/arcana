@@ -15,7 +15,6 @@ def test_run_app(test_dicom_dataset_dir):
         '--output', 'out_file', 'output-nifti', 'niftix_gz',
         '--dataspace', 'clinical.Clinical',
         '--hierarchy', 'session',
-        '--dry_run',
         '--frequency', 'session'
         # '--ids', None,
         # '--container', None,
@@ -26,8 +25,6 @@ def test_run_app(test_dicom_dataset_dir):
         # '--app_arg', []
         ])
     pipeline = RunAppCmd().run(args)
-    pipeline.workflow.pickle_task()
-    pipeline(plugin='serial')
 
 # def test_run_app(pydra_task_details, dataset):
 #     task_location, task_inputs, task_outputs = pydra_task_details

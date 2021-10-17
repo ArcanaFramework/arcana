@@ -23,11 +23,10 @@ logger.addHandler(sch)
 
 
 # Import all test fixtures from `test_fixtures` sub-package
-from .test_fixtures.generic import (
-    test_ref_data_dir, test_dicom_dataset_dir, dicom_dataset, dicom_inputs,
-    nifti_outputs, work_dir)
+from .test_fixtures.general import work_dir
 from .test_fixtures.dataset import (
-    test_dataspace, test_dataspace_location, dataset, tmp_dir)
+    test_dataspace, test_dataspace_location, dataset, tmp_dir,
+    test_dicom_dataset_dir, dicom_dataset)
 from .test_fixtures.tasks import (
     pydra_task_details, pydra_task)
 from .test_fixtures.xnat import (

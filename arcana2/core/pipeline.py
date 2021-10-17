@@ -72,11 +72,11 @@ class Pipeline():
 
     def __getattr__(self, varname):
         """
-        Delegate any missing attributes to nested workflow that operates per
+        Delegate any missing attributes to the nested workflow that operates per
         node"""
         if 'workflow' in self.__dict__ and 'per_node' in self.workflow.name2obj:
             return getattr(self.workflow.per_node, varname)
-        raise AttributeError(varname)
+        super().__getattribute__(name)  # Raise the original AttributeError
 
     def __call__(self, *args, **kwargs):
         self.check_connections()
