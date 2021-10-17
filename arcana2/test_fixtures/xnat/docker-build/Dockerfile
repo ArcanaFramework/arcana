@@ -1,8 +1,8 @@
-FROM tomcat:7-jre8-alpine
+FROM tomcat:9-jdk8-openjdk-buster
 
 # User configurable arguments
-ARG XNAT_VER=1.8.2
-ARG XNAT_CS_PLUGIN_VER=2.1.0
+ARG XNAT_VER=1.8.3
+ARG XNAT_CS_PLUGIN_VER=3.1.0
 ARG XNAT_ROOT=/data/xnat
 ARG XNAT_HOME=/data/xnat/home
 ARG JAVA_MS=256m
@@ -38,11 +38,11 @@ RUN rm /usr/local/bin/make-xnat-config.sh
 RUN wget --no-verbose --output-document=/tmp/xnat-web-${XNAT_VER}.war https://api.bitbucket.org/2.0/repositories/xnatdev/xnat-web/downloads/xnat-web-${XNAT_VER}.war
 RUN unzip -o -d ${TOMCAT_XNAT_FOLDER_PATH} /tmp/xnat-web-${XNAT_VER}.war
 RUN rm -f /tmp/xnat-web-${XNAT_VER}.war
-RUN wget --output-document ${XNAT_HOME}/plugins/container-service-plugin.jar https://github.com/NrgXnat/container-service/releases/download/${XNAT_CS_PLUGIN_VER}/containers-${XNAT_CS_PLUGIN_VER}-fat.jar
+RUN wget --output-document ${XNAT_HOME}/plugins/container-service-plugin.jar https://bitbucket.org/xnatdev/container-service/downloads/container-service-${XNAT_CS_PLUGIN_VER}-fat.jar
 RUN apk del wget
 RUN mkdir /var/log/tomcat
 ENV XNAT_HOME=${XNAT_HOME} XNAT_DATASOURCE_USERNAME=${XNAT_DATASOURCE_USERNAME} PGPASSWORD=${XNAT_DATASOURCE_PASSWORD}
-ENV JAVA_OPTS="-Xms${JAVA_MS} -Xmx${JAVA_MX} -Dxnat.home=${XNAT_HOME} -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000"
+ENV CATALINA_OPTS="-Xms${JAVA_MS} -Xmx${JAVA_MX} -Dxnat.home=${XNAT_HOME} -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000"
 
 # Add scripts for configuring XNAT database before launching Tomcat
 COPY launch-xnat.sh /launch-xnat.sh
