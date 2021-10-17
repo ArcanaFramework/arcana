@@ -149,8 +149,9 @@ def repository(xnat_archive_dir):
         container = dc.containers.run(
             image.tags[0], detach=True, ports={'8080/tcp': DOCKER_XNAT_PORT},
             remove=True, name=DOCKER_IMAGE,
-            volumes={xnat_archive_dir: {'bind': '/data/xnat/archive',
-                                        'mode': 'rw'}})
+            volumes={str(xnat_archive_dir): {'bind': '/data/xnat/archive',
+                                             'mode': 'rw'}}
+            )
         run_prefix = ''
     else:
         # Set a prefix for all the created projects based on the current time

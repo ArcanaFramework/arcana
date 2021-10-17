@@ -23,7 +23,7 @@ def test_dataset_in_workflow_pickle(dataset: Dataset, tmp_dir: Path):
     # data node iteration and repository connection nodes
     wf = Workflow(name='test', input_spec=['a'])
 
-    wf.add(test_func(
+    wf.add(func(
         a=wf.lzin.a,
         b=2,
         dataset=dataset,
@@ -41,5 +41,5 @@ def test_dataset_in_workflow_pickle(dataset: Dataset, tmp_dir: Path):
    'dataset': Dataset,
    'return':{
        'c': int}})
-def test_func(a, b, dataset):
+def func(a, b, dataset):
    return a + b

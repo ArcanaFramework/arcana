@@ -12,7 +12,6 @@ from arcana2.datatypes.general import text, directory, json
 from arcana2.dataspaces.clinical import Clinical
 from arcana2.datatypes.neuroimaging import (
     nifti_gz, niftix_gz, niftix, nifti, analyze, mrtrix_image)
-from arcana2.test_fixtures.generic import create_test_file
 
 
 class TestDataSpace(DataSpace):
@@ -155,7 +154,7 @@ def test_dataspace_location():
 
 @pytest.fixture
 def test_dicom_dataset_dir(test_ref_data_dir):
-    return test_ref_data_dir / 'test-dataset'
+    return Path(__file__).parent / 'test-dataset'
 
 
 @pytest.fixture

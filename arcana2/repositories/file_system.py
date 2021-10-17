@@ -104,6 +104,7 @@ class FileSystem(Repository):
             os.makedirs(dname)
         if fs_path.is_file():
             shutil.copyfile(fs_path, target_path)
+            sc_target_paths = file_group.datatype.default_side_cars(target_path)
             # Copy side car files into repository
             for sc_name in file_group.datatype.side_cars:
                 try:
@@ -112,7 +113,7 @@ class FileSystem(Repository):
                     raise ArcanaFileFormatError(
                         f"Missing side car '{sc_name}' when attempting to "
                         f"put file_group")
-                shutil.copyfile(side_cars[sc_name], str(sc_path))
+                shutil.copyfile(str(sc_path), str(sc_target_paths[sc_name]))
         elif fs_path.is_dir():
             if target_path.exists():
                 shutil.rmtree(target_path)
