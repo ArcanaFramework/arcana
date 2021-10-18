@@ -101,21 +101,21 @@ CONNECTION_ATTEMPT_SLEEP = 5
 
 
 @pytest.fixture(params=GOOD_DATASETS, scope='session')
-def xnat_dataset(repository, xnat_archive_dir, request):
+def xnat_dataset(xnat_repository, xnat_archive_dir, request):
     dataset_name, access_method = request.param.split('.')
-    return access_dataset(repository, dataset_name, access_method,
+    return access_dataset(xnat_repository, dataset_name, access_method,
                           xnat_archive_dir)
 
 
 @pytest.fixture(params=MUTABLE_DATASETS, scope='function')
-def mutable_xnat_dataset(repository, xnat_archive_dir, request):
+def mutable_xnat_dataset(xnat_repository, xnat_archive_dir, request):
     dataset_name, access_method = request.param.split('.')
     test_suffix = 'MUTABLE' + access_method + str(hex(random.getrandbits(32)))[2:]
     # Need to create a new dataset per function so it can be safely modified
     # by the test without messing up other tests.
-    create_dataset_in_repo(dataset_name, repository.run_prefix,
+    create_dataset_in_repo(dataset_name, xnat_repository.run_prefix,
                            test_suffix=test_suffix)
-    return access_dataset(repository, dataset_name, access_method,
+    return access_dataset(xnat_repository, dataset_name, access_method,
                           xnat_archive_dir, test_suffix)
 
 
@@ -125,7 +125,7 @@ def xnat_archive_dir():
 
 
 @pytest.fixture(scope='session')
-def repository(xnat_archive_dir):
+def xnat_repository(xnat_archive_dir):
 
     dc = docker.from_env()
 
@@ -149,8 +149,7 @@ def repository(xnat_archive_dir):
             image.tags[0], detach=True, ports={'8080/tcp': DOCKER_XNAT_PORT},
             remove=True, name=DOCKER_IMAGE,
             volumes={str(xnat_archive_dir): {'bind': '/data/xnat/archive',
-                                             'mode': 'rw'}}
-            )
+                                             'mode': 'rw'}})
         run_prefix = ''
     else:
         # Set a prefix for all the created projects based on the current time
@@ -256,7 +255,7 @@ def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
             session_label = ''.join(
                 f'{b}{ids[b]}' for b in Clinical.session.nonzero_basis())
             xsession = xclasses.MrSessionData(label=session_label,
-                                            parent=xsubject)
+                                              parent=xsubject)
             
             for i, (sname, resources) in enumerate(blueprint.scans, start=1):
                 # Create scan
@@ -271,23 +270,6 @@ def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
                     for fname in fnames:
                         fpath = create_test_file(fname, tmp_dir)
                         xresource.upload(str(tmp_dir / fpath), str(fpath))
-
-
-# def create_test_file(fname, tmp_dir):
-#     fpath = Path(fname)
-#     os.makedirs(tmp_dir, exist_ok=True)
-#     # Make double dir
-#     if fname.startswith('doubledir'):
-#         os.mkdir(tmp_dir / fpath)
-#         fname = 'dir'
-#         fpath /= fname
-#     if fname.startswith('dir'):
-#         os.mkdir(tmp_dir / fpath)
-#         fname = 'test.txt'
-#         fpath /= fname
-#     with open(tmp_dir / fpath, 'w') as f:
-#         f.write(f'test {fname}')
-#     return fpath
 
 
 @contextlib.contextmanager
