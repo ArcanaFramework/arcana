@@ -1,10 +1,10 @@
-from itertools import zip_longest, repeat
 import re
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Sequence
-from pydra import Workflow
-from arcana2.core.data.spec import DataSource
-from arcana2.core.data.spec import DataSink
 from arcana2.exceptions import ArcanaUsageError
+from arcana2.core.data.datatype import FileFormat
+from arcana2.core.data import DataSpace, DataQuality
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
 from .base import BaseDatasetCmd
@@ -30,18 +30,7 @@ class BaseRunCmd(BaseDatasetCmd):
             metavar=('ENGINE', 'IMAGE'),
             help=("The container engine ('docker'|'singularity') and the image"
                   " to run the app in"))
-        parser.add_argument(
-            '--input', '-i', action='append', default=[], nargs='+',
-            help=cls.INPUT_HELP.format(var_desc=cls.VAR_DESC))
-        parser.add_argument(
-            '--output', '-o', action='append', default=[], nargs='+',
-            help=cls.OUTPUT_HELP.format(var_desc=cls.VAR_DESC))
-        parser.add_argument(
-            '--workflow_format', action='append', default=[], nargs=2,
-            metavar=('NAME', 'FORMAT'),
-            help=("The file format the app requires the input in/provides "
-                  "outputs in. Only required when the format differs from the "
-                  "format stored in the dataset"))
+        cls.construct_io_parser(parser)
         parser.add_argument(
             '--ids', nargs='+', default=None,
             help=("IDs of the nodes to process (i.e. for the frequency that "
@@ -49,6 +38,15 @@ class BaseRunCmd(BaseDatasetCmd):
         parser.add_argument(
             '--dry_run', action='store_true', default=False,
             help=("Set up the workflow to test inputs but don't run the app"))
+
+    @classmethod
+    def construct_io_parser(cls, parser):
+        parser.add_argument(
+            '--input', '-i', action='append', default=[], nargs='+',
+            help=cls.INPUT_HELP.format(var_desc=cls.VAR_DESC))
+        parser.add_argument(
+            '--output', '-o', action='append', default=[], nargs='+',
+            help=cls.OUTPUT_HELP.format(var_desc=cls.VAR_DESC))
 
     @classmethod
     def run(cls, args):
@@ -70,6 +68,45 @@ class BaseRunCmd(BaseDatasetCmd):
             pipeline(ids=args.ids)
 
         return pipeline
+
+    @classmethod
+    def parse_input_args(cls, args):
+        for i, inpt in enumerate(args.input):
+            nargs = len(inpt)
+            if nargs > cls.MAX_INPUT_ARGS:
+                raise ArcanaUsageError(
+                    f"Input {i} has too many input args, {nargs} instead "
+                    f"of max {cls.MAX_INPUT_ARGS} ({inpt})")
+            (var, pattern, datatype_name, required_format_name, order,
+             quality, metadata, freq) = [
+                a if a != '*' else None for a in (
+                    inpt + [None] * (cls.MAX_INPUT_ARGS - len(inpt)))]
+            if not var:
+                raise ArcanaUsageError(
+                    f"{cls.VAR_ARG} must be provided for input {i} ({inpt})")
+            if not pattern:
+                raise ArcanaUsageError(
+                    f"Path must be provided for input {i} ({inpt})")
+            if not datatype_name:
+                raise ArcanaUsageError(
+                    f"Datatype must be provided for input {i} ({inpt})")
+            datatype = resolve_datatype(datatype_name)
+            if required_format_name is not None:
+                required_datatype = resolve_datatype(required_format_name)
+            else:
+                required_datatype = datatype
+            yield InputArg(var, pattern, datatype, required_datatype, freq,
+                           order, metadata, True, quality)
+
+    @classmethod
+    def parse_output_args(cls, args):
+        for output in args.output:
+            var, store_at, datatype_name = output[:3]
+            datatype = resolve_datatype(datatype_name)
+            produced_datatype = (resolve_datatype(output[3])
+                                if len(output) == 4 else datatype)
+            yield OutputArg(name=var, path=store_at, datatype=datatype,
+                            produced_datatype=produced_datatype)
 
     @classmethod
     def add_input_sources(cls, args, dataset):
@@ -98,40 +135,17 @@ class BaseRunCmd(BaseDatasetCmd):
         """
         # Create file-group matchers
         inputs = []
-        for i, inpt in enumerate(args.input):
-            nargs = len(inpt)
-            if nargs > cls.MAX_INPUT_ARGS:
-                raise ArcanaUsageError(
-                    f"Input {i} has too many input args, {nargs} instead "
-                    f"of max {cls.MAX_INPUT_ARGS} ({inpt})")
-            (var, pattern, datatype_name, required_format_name, order,
-             quality, metadata, freq) = [
-                a if a != '*' else None for a in (
-                    inpt + [None] * (cls.MAX_INPUT_ARGS - len(inpt)))]
-            if not var:
-                raise ArcanaUsageError(
-                    f"{cls.VAR_ARG} must be provided for input {i} ({inpt})")
-            if not pattern:
-                raise ArcanaUsageError(
-                    f"Path must be provided for input {i} ({inpt})")
-            if not datatype_name:
-                raise ArcanaUsageError(
-                    f"Datatype must be provided for input {i} ({inpt})")
-            datatype = resolve_datatype(datatype_name)
-            if required_format_name is not None:
-                required_format = resolve_datatype(required_format_name)
-            else:
-                required_format = datatype
+        for arg in cls.parse_input_args(args):
             dataset.add_source(
-                name=var,
-                path=pattern,
-                format=datatype,
-                frequency=freq,
-                order=order,
-                metadata=metadata,
-                is_regex=True,
-                quality_threshold=quality)
-            inputs.append((var, required_format))
+                name=arg.name,
+                path=arg.path,
+                format=arg.datatype,
+                frequency=arg.frequency,
+                order=arg.order,
+                metadata=arg.metadata,
+                is_regex=arg.is_regex,
+                quality_threshold=arg.quality)
+            inputs.append((arg.name, arg.required_datatype))
         return inputs
 
     @classmethod
@@ -151,17 +165,13 @@ class BaseRunCmd(BaseDatasetCmd):
         frequency = cls.parse_frequency(args)
         # Create outputs
         outputs = []
-        for output in args.output:
-            var, store_at, datatype_name = output[:3]
-            datatype = resolve_datatype(datatype_name)
-            produced_format = (resolve_datatype(output[3])
-                               if len(output) == 4 else datatype)
+        for arg in cls.parse_output_args(args):
             dataset.add_sink(
-                name=var,
-                path=store_at,
-                format=datatype,
+                name=arg.name,
+                path=arg.path,
+                format=arg.datatype,
                 frequency=frequency)
-            outputs.append((var, produced_format))
+            outputs.append((arg.name, arg.produced_datatype))
         return outputs
 
 
@@ -225,7 +235,7 @@ class BaseRunCmd(BaseDatasetCmd):
         """
 
 
-class RunAppCmd(BaseRunCmd):
+class RunCmd(BaseRunCmd):
 
     desc = ("Runs an app against a dataset stored in a repository. The app "
             "needs to be wrapped in a Pydra interface that is on the Python "
@@ -416,3 +426,25 @@ class RunBidsAppCmd(BaseRunCmd):
         'ImageOrientationPatientDICOM' array in the JSON side car at
 
             sub-01/ses-01/anat/sub-01_ses-01_T1w.json"""
+
+
+@dataclass
+class InputArg():
+    name: str
+    path: Path
+    datatype: FileFormat
+    required_datatype: FileFormat
+    frequency: DataSpace
+    order: int
+    metadata: dict[str, str]
+    is_regex: bool
+    quality_threshold: DataQuality
+
+
+@dataclass
+class OutputArg():
+    name: str
+    path: Path
+    datatype: FileFormat
+    produced_datatype: FileFormat
+    

@@ -25,9 +25,9 @@ def test_find_nodes(dataset: Dataset):
 def test_get_items(dataset: Dataset):
     source_files = {}
     for fg_name, formats in dataset.blueprint.expected_formats.items():
-        for format, files in formats:
-            source_name = fg_name + format.name
-            dataset.add_source(source_name, fg_name, format)
+        for datatype, files in formats:
+            source_name = fg_name + datatype.name
+            dataset.add_source(source_name, fg_name, datatype)
             source_files[source_name] = set(files)
     for node in dataset.nodes(dataset.leaf_freq):
         for source_name, files in source_files.items():
@@ -40,7 +40,7 @@ def test_put_items(dataset: Dataset):
     all_checksums = {}
     all_fs_paths = {}
     for name, freq, datatype, files in dataset.blueprint.to_insert:
-        dataset.add_sink(name=name, format=datatype, frequency=freq)
+        dataset.add_sink(name=name, datatype=datatype, frequency=freq)
         deriv_tmp_dir = Path(mkdtemp())
         # Create test files, calculate checkums and recorded expected paths
         # for inserted files

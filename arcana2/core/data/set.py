@@ -204,7 +204,7 @@ class Dataset():
         """Refresh the dataset nodes"""
         self._root_node = None
 
-    def add_source(self, name, path, format, frequency=None, overwrite=False,
+    def add_source(self, name, path, datatype, frequency=None, overwrite=False,
                    **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -218,7 +218,7 @@ class Dataset():
             The location of the source within the dataset
         frequency : [type]
             The frequency of the source within the dataset
-        format : FileFormat or type
+        datatype : FileFormat or type
             The file-format (for file-groups) or datatype (for fields)
             that the source will be stored in within the dataset
         overwrite : bool
@@ -227,11 +227,11 @@ class Dataset():
             Additional kwargs to pass to DataSource.__init__
         """
         frequency = self._parse_freq(frequency)
-        self._add_spec(name, DataSource(path, format, frequency, **kwargs),
+        self._add_spec(name, DataSource(path, datatype, frequency, **kwargs),
                        overwrite)
 
-    def add_sink(self, name, format, path=None, frequency=None, overwrite=False,
-                 **kwargs):
+    def add_sink(self, name, datatype, path=None, frequency=None,
+                 overwrite=False, **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
 
@@ -244,7 +244,7 @@ class Dataset():
             The frequency of the sink within the dataset
         path : str, default `name`
             The location of the sink within the dataset            
-        format : FileFormat or type
+        datatype : FileFormat or type
             The file-format (for file-groups) or datatype (for fields)
             that the sink will be stored in within the dataset
         overwrite : bool
@@ -253,7 +253,7 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if path is None:
             path = name
-        self._add_spec(name, DataSink(path, format, frequency, **kwargs),
+        self._add_spec(name, DataSink(path, datatype, frequency, **kwargs),
                        overwrite)
 
     def _add_spec(self, name, spec, overwrite):

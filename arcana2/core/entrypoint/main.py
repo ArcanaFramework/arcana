@@ -3,7 +3,7 @@ import logging
 from argparse import ArgumentParser
 from arcana2.core.utils import wrap_text
 from arcana2.__about__ import __version__
-from .run import RunAppCmd, RunBidsAppCmd
+from .run import RunCmd, RunBidsAppCmd
 from .wrap4xnat import Wrap4XnatCmd
 
 logger = logging.getLogger('arcana')
@@ -20,18 +20,19 @@ class HelpCmd():
     @classmethod
     def construct_parser(cls, parser):
         parser.add_argument('command',
-                            help="The sub-command to show the help info for")
+                            help=("The sub-command to show the help info for."
+                                  " Available sub-commands are:\n"
+                                  + "\n".join(MainCmd.commands)))
 
     @classmethod
     def run(cls, args):
-        MainCmd.commands[args.command].parser().print_help()
-
+        MainCmd.get_parser(args.command).print_help()
 
 
 class MainCmd():
 
     commands = {
-        'run-app': RunAppCmd,
+        'run': RunCmd,
         'run-bids-app': RunBidsAppCmd,
         'wrap4xnat': Wrap4XnatCmd,
         'help': HelpCmd}
@@ -75,6 +76,14 @@ class MainCmd():
             cmd_args = cmd_parser.parse_args(argv[1:])
             cmd_cls.run(cmd_args)
 
+    @classmethod
+    def get_parser(cls, command_name):
+        cmd_cls = cls.commands[command_name]
+        cmd_parser = ArgumentParser(prog='arcana ' + command_name,
+                                    description=cmd_cls.desc)
+        cmd_cls.construct_parser(cmd_parser)
+        return cmd_parser
+    
 
 if __name__ == '__main__':
     MainCmd.run()

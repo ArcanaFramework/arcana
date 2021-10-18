@@ -11,7 +11,6 @@ from itertools import product
 import pytest
 import docker
 import xnat
-import arcana2
 from arcana2.repositories import Xnat
 from arcana2.dataspaces.clinical import Clinical
 from arcana2.core.data.enum import DataSpace
@@ -132,12 +131,8 @@ def xnat_repository(xnat_archive_dir):
     try:
         image = dc.images.get(DOCKER_IMAGE)
     except docker.errors.ImageNotFound:
-        image, build_logs = dc.images.build(path=str(DOCKER_BUILD_DIR),
+        image, _ = dc.images.build(path=str(DOCKER_BUILD_DIR),
                                             tag=DOCKER_IMAGE)
-        build_logs = list(build_logs)
-        if build_logs[-1]['stream'] != f'Successfully tagged {DOCKER_IMAGE}:latest\n':
-            raise Exception("Could not build debug XNAT image:\n"
-                            ''.join(l['stream'] for l in build_logs))
     
     try:
         container = dc.containers.get(DOCKER_IMAGE)
@@ -180,7 +175,7 @@ def xnat_repository(xnat_archive_dir):
 
 
 @pytest.fixture(scope='session')
-def docker_registry():
+def xnat_container_registry(xnat_repository):
     "Stand up a Docker registry to use with the container service"
 
     dc = docker.from_env()

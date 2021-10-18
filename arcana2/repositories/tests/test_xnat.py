@@ -49,7 +49,8 @@ def test_put_items(mutable_xnat_dataset: Dataset):
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
     for name, freq, datatype, files in mutable_xnat_dataset.blueprint.to_insert:
-        mutable_xnat_dataset.add_sink(name=name, format=datatype, frequency=freq)
+        mutable_xnat_dataset.add_sink(name=name, datatype=datatype,
+                                      frequency=freq)
         deriv_tmp_dir = tmp_dir / name
         # Create test files, calculate checkums and recorded expected paths
         # for inserted files
