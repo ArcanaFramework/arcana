@@ -1,4 +1,4 @@
-FROM tomcat:9-jdk8-openjdk-buster
+FROM tomcat:9-jre8-alpine
 
 # User configurable arguments
 ARG XNAT_VER=1.8.3
