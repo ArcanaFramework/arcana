@@ -1,9 +1,9 @@
 from argparse import ArgumentParser
-from arcana2.core.entrypoint.wrapper import RunCmd
+from arcana2.core.entrypoint.run import RunCmd
 
 def test_run_app(test_dicom_dataset_dir):
     parser = ArgumentParser()
-    RunWrappCmd.construct_parser(parser)
+    RunCmd.construct_parser(parser)
     args = parser.parse_args([
         'pydra.tasks.dcm2niix.Dcm2Niix',
         str(test_dicom_dataset_dir),

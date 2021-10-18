@@ -102,8 +102,12 @@ CONNECTION_ATTEMPT_SLEEP = 5
 @pytest.fixture(params=GOOD_DATASETS, scope='session')
 def xnat_dataset(xnat_repository, xnat_archive_dir, request):
     dataset_name, access_method = request.param.split('.')
-    return access_dataset(xnat_repository, dataset_name, access_method,
-                          xnat_archive_dir)
+    args = (xnat_repository, dataset_name, access_method, xnat_archive_dir)
+    try:
+        return access_dataset(*args)
+    except KeyError:
+        create_dataset_in_repo(dataset_name, xnat_repository.run_prefix)
+        return access_dataset(*args)
 
 
 @pytest.fixture(params=MUTABLE_DATASETS, scope='function')
@@ -143,19 +147,20 @@ def xnat_repository(xnat_archive_dir):
         container = dc.containers.run(
             image.tags[0], detach=True, ports={'8080/tcp': DOCKER_XNAT_PORT},
             remove=True, name=DOCKER_IMAGE,
+            # Expose the XNAT archive dir outside of the XNAT docker container
+            # to simulate what the XNAT container service exposes to running
+            # pipelines, and the Docker socket for the container service to
+            # to use
             volumes={str(xnat_archive_dir): {'bind': '/data/xnat/archive',
-                                             'mode': 'rw'}})
+                                             'mode': 'rw'},
+                     '/var/run/docker.sock': {'bind': '/var/run/docker.sock',
+                                              'mode': 'rw'}})
         run_prefix = ''
     else:
         # Set a prefix for all the created projects based on the current time
         # so that they don't clash with datasets generated for previous test
         # runs that haven't been cleaned properly
         run_prefix = datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
-
-    # Create all datasets that can be reused and don't raise errors
-    dataset_names = set(n.split('.')[0] for n in GOOD_DATASETS)
-    for dataset_name in dataset_names:
-        create_dataset_in_repo(dataset_name, run_prefix)
     
     repository = Xnat(
         server=DOCKER_XNAT_URI,
@@ -196,7 +201,15 @@ def xnat_container_registry(xnat_repository):
     else:
         already_running = True
 
-    yield f'localhost:{DOCKER_REGISTRY_PORT}'
+    uri = f'localhost:{DOCKER_REGISTRY_PORT}'
+
+    # Set the registry in the XNAT repository
+    with connect() as login:
+        login.post('/xapi/docker/hubs/1', json={
+            "name": "Test Registry",
+            "url": f"http://{uri}"})
+
+    yield uri
 
     if not already_running:
         container.stop()
