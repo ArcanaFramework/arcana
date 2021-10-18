@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import tempfile
+import sys
 import json
 from pathlib import Path
 from logging import getLogger
@@ -40,10 +41,10 @@ class Wrap4XnatCmd():
         parser.add_argument('--output', '-o', action='append', default=[],
                             nargs=2, metavar=('NAME', 'DATATYPE'),
                             help="Outputs of the app to stored back in XNAT")
-        parser.add_argument('--parameter', '-p', metavar='NAME',
-                            help=("Parameters to expose to the container "
-                                  "service"))
-        parser.add_argument('--requirement', '-r', nargs='+',
+        parser.add_argument('--parameter', '-p', metavar='NAME', action='append',
+                            help=("Fixed parameters of the Pydra workflow to "
+                                  "expose to the container service"))
+        parser.add_argument('--requirement', '-r', nargs='+', action='append',
                             help=("Software requirements to be added to the "
                                   "the docker image using Neurodocker. "
                                   "Neurodocker requirement name, followed by "
@@ -51,6 +52,8 @@ class Wrap4XnatCmd():
                                   "method args (see Neurodocker docs). Use "
                                   "'.' to skip version arg and use the latest "
                                   "available"))
+        parser.add_argument('--package', '-k', action='append',
+                            help="PyPI packages to be installed in the env")
         parser.add_argument('--maintainer', '-m', type=str, default=None,
                             help="Maintainer of the pipeline")
         parser.add_argument('--description', '-d', default=None,
@@ -91,6 +94,7 @@ class Wrap4XnatCmd():
         cmd_label = json.dumps(cmd_json).replace('"', r'\"').replace(
             '$', r'\$')
         labels['org.nrg.commands'] = '[{' + cmd_label + '}]'
+        labels['arcana.wrap4xnat'] = ' '.join(sys.argv)
 
         instructions = [
             ["base", "debian:stretch"],
@@ -108,6 +112,8 @@ class Wrap4XnatCmd():
         if labels:
             instructions.append(["label", labels])
 
+        pip_packages = [cls.ARCANA_PIP_PATH] + list(args.packages)
+
         instructions.append(
             ["miniconda", {
                 "create_env": "arcana2",
@@ -115,7 +121,7 @@ class Wrap4XnatCmd():
                     "python=3.8",
                     "numpy",
                     "traits"],
-                "pip_install": [cls.ARCANA_PIP_PATH]}])
+                "pip_install": pip_packages}])
 
         neurodocker_specs = {
             "pkg_manager": "apt",
