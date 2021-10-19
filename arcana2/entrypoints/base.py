@@ -5,7 +5,7 @@ from arcana2.repositories.file_system import FileSystem
 from arcana2.repositories.xnat import Xnat
 
 
-class BaseDatasetCmd():
+class BaseDatasetCmd(BaseCmd):
 
     @classmethod
     def construct_parser(cls, parser):

@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
-from arcana2.core.entrypoint.run import RunCmd
+from arcana2.entrypoints.run import RunCmd
+
 
 def test_run_app(test_dicom_dataset_dir):
     parser = ArgumentParser()

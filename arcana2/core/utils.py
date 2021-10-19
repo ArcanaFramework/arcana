@@ -2,6 +2,7 @@ from typing import Sequence
 import subprocess as sp
 import pkgutil
 import re
+from pathlib import Path
 from importlib import import_module
 from itertools import zip_longest
 import os.path
@@ -9,6 +10,7 @@ import os.path
 from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
+from arcana2.core.data.datatype import FileFormat
 from arcana2.exceptions import ArcanaUsageError, ArcanaNameError
 
 
@@ -102,6 +104,7 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
                 class_str, "', '".join(prefixes)))
     return cls
 
+
 def resolve_datatype(name):
     """Resolves a in a sub-module of arcana2.datatypes based on its
     name
@@ -119,23 +122,40 @@ def resolve_datatype(name):
     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
         return eval(name)
     import arcana2.datatypes
-    datatype = None
-    module_names = [
-        i.name for i in pkgutil.iter_modules(
-            [os.path.dirname(arcana2.datatypes.__file__)])]
+    return get_subclass(arcana2.datatypes, FileFormat, name)
+
+
+def submodules(module):
+    module_names = [i.name for i in pkgutil.iter_modules(
+        [str(Path(module.__file__).parent)])]
     for module_name in module_names:
-        module = import_module('arcana2.datatypes.' + module_name)
+        yield import_module(module.__package__ + '.' + module_name)
+
+
+def list_subclasses(package, base_class):
+    """List all available cmds in """
+    subclasses = []
+    for module in submodules(package):
+        for obj_name in dir(module):
+            obj = getattr(module, obj_name)
+            if issubclass(obj, base_class):
+                subclasses.append(obj)
+    return subclasses
+
+
+def get_subclass(package, base_class, name):
+    sub_class = None
+    for module in submodules(package):
         try:
-            datatype = getattr(module, name)
+            sub_class = getattr(module, name)
         except AttributeError:
             pass
-    if datatype is None:
+    if sub_class is None:
         raise ArcanaNameError(
             name,
-            f"Could not find format {name} in installed modules:\n"
-            + "\n    ".join(module_names))
-    return datatype
-    
+            f"Could not find '{name}'' in {package.__package__} sub-modules:\n")
+    return sub_class
+
 
 @contextmanager
 def set_cwd(path):
@@ -205,8 +225,6 @@ def lower(s):
     if s is None:
         return None
     return s.lower()
-
-
 
 
 def parse_single_value(value, datatype=None):

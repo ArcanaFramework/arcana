@@ -1,10 +1,12 @@
 import sys
 import logging
+from abc import ABCMeta, abstractclassmethod
+import pkgutil
 from argparse import ArgumentParser
-from arcana2.core.utils import wrap_text
+from arcana2.core.utils import wrap_text, submodules
 from arcana2.__about__ import __version__
-from .run import RunCmd, RunBidsAppCmd
-from .wrap4xnat import Wrap4XnatCmd
+import arcana2.entrypoints
+from arcana2.exceptions import ArcanaNameError
 
 logger = logging.getLogger('arcana')
 
@@ -13,8 +15,22 @@ DEFAULT_INDENT = 4
 DEFAULT_SPACER = 4
 
 
-class HelpCmd():
+class BaseCmd(metaclass=ABCMeta):
+    """Abstract base class for new Arcana entrypoints
+    """
+    
+    @abstractclassmethod
+    def construct_parser(cls, parser):
+        pass
 
+    @abstractclassmethod
+    def run(cls, args):
+        pass
+
+
+class HelpCmd(BaseCmd):
+
+    cmd_name = 'help'
     desc = "Show help for a particular command"
 
     @classmethod
@@ -29,13 +45,17 @@ class HelpCmd():
         MainCmd.get_parser(args.command).print_help()
 
 
+
 class MainCmd():
 
-    commands = {
-        'run': RunCmd,
-        'run-bids-app': RunBidsAppCmd,
-        'wrap4xnat': Wrap4XnatCmd,
-        'help': HelpCmd}
+
+
+    
+        commands = {
+            'run': RunCmd,
+            'run-bids-app': RunBidsAppCmd,
+            'wrap4xnat': Wrap4XnatCmd,
+            'help': HelpCmd}
 
     @classmethod
     def parser(cls):

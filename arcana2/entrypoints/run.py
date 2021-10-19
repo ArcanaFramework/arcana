@@ -16,9 +16,15 @@ sanitize_path_re = re.compile(r'[^a-zA-Z\d]')
 def sanitize_path(path):
     return sanitize_path_re.sub(path, '_')
 
-class BaseRunCmd(BaseDatasetCmd):
+
+class RunCmd(BaseDatasetCmd):
     """Abstract base class for RunCmds
     """
+
+    cmd_name = 'run'
+    desc = ("Runs an app against a dataset stored in a repository. The app "
+            "needs to be wrapped in a Pydra interface that is on the Python "
+            "path")
 
     MAX_INPUT_ARGS = 8
 
@@ -174,73 +180,6 @@ class BaseRunCmd(BaseDatasetCmd):
             outputs.append((arg.name, arg.produced_datatype))
         return outputs
 
-
-    INPUT_HELP = """
-        A file-group input to provide to the app that is matched by the 
-        provided criteria.
-        {var_desc}
-
-        PATH the name regular expression (in Python syntax) of file-group or
-        field name
-
-        FORMAT is the name or extension of the file-format the
-        input is stored in in the dataset. 
-
-        REQUIRED_FORMAT is the format that the app requires the input in.
-        If different from the FORMAT, an implicit conversions will
-                        be attempted when required. The default is
-                        'niftix_gz', which is the g-zipped NIfTI image file
-                        + JSON side-car required for BIDS 
-
-        Alternative criteria can be used to match the file-group (e.g. scan)
-        
-        ORDER is the order of the scan in the session to select if more than
-        one match the other criteria. E.g. an order of '2' with a pattern of
-        '.*bold.*' could match the second T1-weighted scan in the session
-        
-        QUALITY is the the minimum usuable quality to be considered for a match.
-        Can be one of 'usable', 'questionable' or 'unusable'
-
-        semicolon-separated list of header_vals values
-                        in NAME:VALUE form. For DICOM headers
-                        NAME is the numeric values of the DICOM tag, e.g
-                        (0008,0008) -> 00080008
-            frequency - The frequency of the file-group within the dataset.
-                        Can be either 'dataset', 'group', 'subject',
-                        'timepoint', 'session', 'unique_subject', 'group_visit'
-                        or 'subject_timepoint'. Typically only required for
-                        derivatives
-
-        Trailing args can be dropped if default, 
-
-            e.g. --input in_file 't1_mprage.*'
-            
-        Preceding args that aren't required can be replaced by '*', 
-
-            --input in_file.nii.gz 't1_mprage.*' * * questionable"""
-
-
-    OUTPUT_HELP = """The outputs produced by the app to be stored in the "
-        repository.
-        {var_desc}
-
-        The STORE_AT arg specifies where the output should be stored within
-        the data node of the dataset in the repository.
-
-        FORMAT is the name of the file-format the file will be stored at in
-        the dataset.
-
-        PRODUCED_FORMAT is the name of the file-format that the file be produced
-        by the workflow in
-        """
-
-
-class RunCmd(BaseRunCmd):
-
-    desc = ("Runs an app against a dataset stored in a repository. The app "
-            "needs to be wrapped in a Pydra interface that is on the Python "
-            "path")
-
     @classmethod
     def construct_parser(cls, parser):
         parser.add_argument(
@@ -324,7 +263,7 @@ class RunCmd(BaseRunCmd):
         return app_args
 
     @classmethod
-    def app_name(cls, args):
+    def cmd_name(cls, args):
         return args.app.split('.')[-1].lower()
 
     VAR_ARG = 'INTERFACE_NAME'
@@ -343,89 +282,64 @@ class RunCmd(BaseRunCmd):
         return args.app.replace('.', '_')
 
 
-class RunBidsAppCmd(BaseRunCmd):
+    INPUT_HELP = """
+        A file-group input to provide to the app that is matched by the 
+        provided criteria.
+        {var_desc}
 
-    desc = ("Runs a BIDS app against a dataset stored in a repository.")
+        PATH the name regular expression (in Python syntax) of file-group or
+        field name
 
-    @classmethod
-    def construct_parser(cls, parser):
-        parser.add_argument(
-            'entrypoint',
-            help=("The entrypoint of the BIDS app"))
-        parser.add_argument(
-            '--analysis_level', default='participant',
-            help=("The level at which the analysis is performed. Either "
-                  "'participant' or 'group'"))
-        parser.add_argument(
-            '--flags', '-f', default='',
-            help=("Arbitrary flags to pass onto the BIDS app (enclose in "
-                  "quotation marks)"))
-        super().construct_parser(parser)
+        FORMAT is the name or extension of the file-format the
+        input is stored in in the dataset. 
 
-    @classmethod
-    def construct_pipeline(cls, args, pipeline):
+        REQUIRED_FORMAT is the format that the app requires the input in.
+        If different from the FORMAT, an implicit conversions will
+                        be attempted when required. The default is
+                        'niftix_gz', which is the g-zipped NIfTI image file
+                        + JSON side-car required for BIDS 
 
-        pipeline.add(
-            construct_bids(
-                name='construct_bids',
-                input_names=pipeline.input_names))
+        Alternative criteria can be used to match the file-group (e.g. scan)
+        
+        ORDER is the order of the scan in the session to select if more than
+        one match the other criteria. E.g. an order of '2' with a pattern of
+        '.*bold.*' could match the second T1-weighted scan in the session
+        
+        QUALITY is the the minimum usuable quality to be considered for a match.
+        Can be one of 'usable', 'questionable' or 'unusable'
 
-        pipeline.add(
-            bids_app(
-                name='app',
-                app_name=args.app,
-                bids_dir=pipeline.construct_bids.lzout.bids_dir,
-                analysis_level=args.analysis_level,
-                ids=args.ids,
-                flags=args.flags))
+        semicolon-separated list of header_vals values
+                        in NAME:VALUE form. For DICOM headers
+                        NAME is the numeric values of the DICOM tag, e.g
+                        (0008,0008) -> 00080008
+            frequency - The frequency of the file-group within the dataset.
+                        Can be either 'dataset', 'group', 'subject',
+                        'timepoint', 'session', 'unique_subject', 'group_visit'
+                        or 'subject_timepoint'. Typically only required for
+                        derivatives
 
-        pipeline.add(
-            extract_bids(
-                name='extract_bids',
-                bids_dir=pipeline.app.lzout.bids_dir,
-                outputs=pipeline.output_names))
+        Trailing args can be dropped if default, 
 
-        pipeline.set_output()
-
-    @classmethod
-    def app_name(cls, args):
-        if args.container:
-            name = args.container[1].split('/')[-1]
-        else:
-            name = args.entrypoint
-        return name
-
-    @classmethod
-    def workflow_name(cls, args):
-        return args.container.replace('/', '_')
-
-    @classmethod
-    def parse_frequency(cls, args):
-        return 'session' if args.analysis_level == 'participant' else 'group'
-
-
-    VAR_ARG = 'BIDS_PATH'
-
-    VAR_DESC = f"""
-        The {VAR_ARG} is the path the that the file/field should be
-        located within the constructed BIDS dataset with the file extension
-        and subject and session sub-dirs entities omitted, e.g:
-
-            anat/T1w
-
-        for Session 1 of Subject 1 would be placed at the path
+            e.g. --input in_file 't1_mprage.*'
             
-            sub-01/ses-01/anat/sub-01_ses-01_T1w.nii.gz
+        Preceding args that aren't required can be replaced by '*', 
 
-        Field datatypes should also specify where they are stored in the
-        corresponding JSON side-cars using JSON path syntax, e.g.
+            --input in_file.nii.gz 't1_mprage.*' * * questionable"""
 
-            anat/T1w$ImageOrientationPatientDICOM[1]
 
-        will be stored as the second item in the
-        'ImageOrientationPatientDICOM' array in the JSON side car at
+    OUTPUT_HELP = """The outputs produced by the app to be stored in the "
+        repository.
+        {var_desc}
 
-            sub-01/ses-01/anat/sub-01_ses-01_T1w.json"""
+        The STORE_AT arg specifies where the output should be stored within
+        the data node of the dataset in the repository.
+
+        FORMAT is the name of the file-format the file will be stored at in
+        the dataset.
+
+        PRODUCED_FORMAT is the name of the file-format that the file be produced
+        by the workflow in
+        """
 
 
 @dataclass

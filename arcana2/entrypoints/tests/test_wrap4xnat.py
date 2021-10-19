@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from arcana2.core.entrypoint.wrap4xnat import Wrap4XnatCmd
+from arcana2.entrypoints.wrap4xnat import Wrap4XnatCmd
 
 
 def test_wrap4xnat_app(xnat_repository, docker_registry):
