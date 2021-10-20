@@ -63,18 +63,21 @@ TEST_TASKS = {
                     'b': B(u=2.5, v=1.25)},
                    {'c': C(z=10)})}
 
-test_task_names = list(TEST_TASKS)
+BASIC_TASKS = ['add', 'path_manip', 'attrs_func']
+
+FILE_TASKS = ['concatenate']
 
 
-@pytest.fixture(params=test_task_names)
+@pytest.fixture(params=BASIC_TASKS)
 def pydra_task_details(request):
     func_name = request.param
     return ('arcana2.test_fixtures.tasks.' + func_name,) + tuple(
         TEST_TASKS[func_name][1:])
             
 
-@pytest.fixture(params=test_task_names)
+@pytest.fixture(params=BASIC_TASKS)
 def pydra_task(request):
-    task, args = TEST_TASKS[request.param]
+    task, args, expected_out = TEST_TASKS[request.param]
     task.test_args = args  # stash args away in task object for future access
     return task
+

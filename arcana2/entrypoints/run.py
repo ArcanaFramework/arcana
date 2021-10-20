@@ -7,7 +7,7 @@ from arcana2.core.data.datatype import FileFormat
 from arcana2.core.data import DataSpace, DataQuality
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
-from .base import BaseDatasetCmd
+from .dataset import BaseDatasetCmd
 from arcana2.core.utils import resolve_class, resolve_datatype
 
 
@@ -261,10 +261,6 @@ class RunCmd(BaseDatasetCmd):
                         f"cannot be converted to type {arg_spec[1]}") 
             app_args[name] = val
         return app_args
-
-    @classmethod
-    def cmd_name(cls, args):
-        return args.app.split('.')[-1].lower()
 
     VAR_ARG = 'INTERFACE_NAME'
 

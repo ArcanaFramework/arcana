@@ -1,12 +1,9 @@
 import sys
 import logging
 from abc import ABCMeta, abstractclassmethod
-import pkgutil
 from argparse import ArgumentParser
-from arcana2.core.utils import wrap_text, submodules
+from arcana2.core.utils import classproperty, get_subclass, list_subclasses, wrap_text, submodules
 from arcana2.__about__ import __version__
-import arcana2.entrypoints
-from arcana2.exceptions import ArcanaNameError
 
 logger = logging.getLogger('arcana')
 
@@ -47,15 +44,6 @@ class HelpCmd(BaseCmd):
 
 
 class MainCmd():
-
-
-
-    
-        commands = {
-            'run': RunCmd,
-            'run-bids-app': RunBidsAppCmd,
-            'wrap4xnat': Wrap4XnatCmd,
-            'help': HelpCmd}
 
     @classmethod
     def parser(cls):
@@ -103,6 +91,19 @@ class MainCmd():
                                     description=cmd_cls.desc)
         cmd_cls.construct_parser(cmd_parser)
         return cmd_parser
+
+    @classproperty
+    def commands(cls):
+        if cls._commands is None:    
+            import arcana2.entrypoints
+            cls._commands = {
+                c.cmd_name: c
+                for c in list_subclasses(arcana2.entrypoints, BaseCmd)
+                if hasattr(c, 'cmd_name')}
+            cls._commands['help'] = HelpCmd
+        return cls._commands
+
+    _commands = None
     
 
 if __name__ == '__main__':

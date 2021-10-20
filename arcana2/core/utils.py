@@ -4,13 +4,13 @@ import pkgutil
 import re
 from pathlib import Path
 from importlib import import_module
+from inspect import isclass
 from itertools import zip_longest
 import os.path
 # from nipype.interfaces.matlab import MatlabCommand
 from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
-from arcana2.core.data.datatype import FileFormat
 from arcana2.exceptions import ArcanaUsageError, ArcanaNameError
 
 
@@ -122,7 +122,9 @@ def resolve_datatype(name):
     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
         return eval(name)
     import arcana2.datatypes
-    return get_subclass(arcana2.datatypes, FileFormat, name)
+    import arcana2.core.data.datatype
+    return get_subclass(arcana2.datatypes,
+                        arcana2.core.data.datatype.FileFormat, name)
 
 
 def submodules(module):
@@ -138,7 +140,7 @@ def list_subclasses(package, base_class):
     for module in submodules(package):
         for obj_name in dir(module):
             obj = getattr(module, obj_name)
-            if issubclass(obj, base_class):
+            if isclass(obj) and issubclass(obj, base_class) and obj is not base_class:
                 subclasses.append(obj)
     return subclasses
 
@@ -154,6 +156,9 @@ def get_subclass(package, base_class, name):
         raise ArcanaNameError(
             name,
             f"Could not find '{name}'' in {package.__package__} sub-modules:\n")
+    if not issubclass(sub_class, base_class):
+        raise ArcanaUsageError(
+            f"{sub_class} is not a sub-class of {base_class}")
     return sub_class
 
 
@@ -214,12 +219,6 @@ def split_extension(path):
         ext = '.' + parts[-1]
         base = '.'.join(parts[:-1])
     return path.parent / base, ext
-
-
-class classproperty(property):
-    def __get__(self, cls, owner):
-        return self.fget.__get__(None, owner)()  # pylint: disable=no-member
-
 
 def lower(s):
     if s is None:
@@ -414,3 +413,8 @@ def wrap_text(text, line_length, indent, prefix_indent=False):
         wrapped = ' ' * indent + wrapped
     return wrapped
 
+class classproperty(object):
+    def __init__(self, f):
+        self.f = f
+    def __get__(self, obj, owner):
+        return self.f(owner)

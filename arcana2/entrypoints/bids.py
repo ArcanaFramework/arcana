@@ -47,13 +47,13 @@ class RunBidsAppCmd(RunCmd):
 
         pipeline.set_output()
 
-    @classmethod
-    def cmd_name(cls, args):
-        if args.container:
-            name = args.container[1].split('/')[-1]
-        else:
-            name = args.entrypoint
-        return name
+    # @classmethod
+    # def cmd_name(cls, args):
+    #     if args.container:
+    #         name = args.container[1].split('/')[-1]
+    #     else:
+    #         name = args.entrypoint
+    #     return name
 
     @classmethod
     def workflow_name(cls, args):

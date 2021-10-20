@@ -3,6 +3,7 @@ from importlib import import_module
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.repositories.file_system import FileSystem
 from arcana2.repositories.xnat import Xnat
+from arcana2.core.entrypoint import BaseCmd
 
 
 class BaseDatasetCmd(BaseCmd):
