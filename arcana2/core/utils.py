@@ -18,6 +18,10 @@ PATH_SUFFIX = '_path'
 FIELD_SUFFIX = '_field'
 CHECKSUM_SUFFIX = '_checksum'
 
+DOCKER_HUB = 'https://index.docker.io/v1/'
+ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana2.git"
+
+
 package_dir = os.path.join(os.path.dirname(__file__), '..')
 
 try:

@@ -8,7 +8,7 @@ from arcana2.repositories.xnat.container_service import (
     generate_dockerfile, InputArg, OutputArg)
 from .run import RunCmd
 from arcana2.core.entrypoint import BaseCmd
-from arcana2.core.utils import resolve_datatype
+from arcana2.core.utils import resolve_datatype, DOCKER_HUB, ARCANA_PIP
 
 
 logger = getLogger('arcana')
@@ -29,10 +29,6 @@ class Wrap4XnatCmd(BaseCmd):
         parser.add_argument('image_name', metavar='IMAGE',
                             help=("The name of the Docker image, preceded by "
                                   "the registry it will be stored"))
-        parser.add_argument('out_file',
-                            help="The path to save the Dockerfile to")
-        parser.add_argument('version',
-                            help=("Version of the container pipeline"))        
         parser.add_argument('--input', '-i', action='append', default=[],
                             nargs=3, metavar=('NAME', 'DATATYPE', 'FREQUENCY'),
                             help="Inputs to be used by the app")
@@ -52,22 +48,22 @@ class Wrap4XnatCmd(BaseCmd):
                                   "available"))
         parser.add_argument('--package', '-k', action='append',
                             help="PyPI packages to be installed in the env")
-        parser.add_argument('--maintainer', '-m', type=str, default=None,
-                            help="Maintainer of the pipeline")
-        parser.add_argument('--description', '-d', default=None,
-                            help="A description of what the pipeline does")
-        parser.add_argument('--registry', default=cls.DOCKER_HUB,
-                            help="The registry to install the ")
-        parser.add_argument('--build_dir', default=None,
-                            help=("The directory to build the dockerfile in. "
-                                  "Defaults to a temporary directory"))
         parser.add_argument('--frequency', default='session',
                             help=("Whether the resultant container runs "
                                   "against a session or a whole dataset "
                                   "(i.e. project). Can be one of either "
                                   "'session' or 'dataset'"))
-        parser.add_argument('--dry_run', action='store_true', default=False,
-                            help=("Don't build the generated Dockerfile"))
+        parser.add_argument('--registry', default=cls.DOCKER_HUB,
+                            help="The registry the image will be installed in")
+        parser.add_argument('--build_dir', default=None,
+                            help="The directory to build the dockerfile in")
+        parser.add_argument('--maintainer', '-m', type=str, default=None,
+                            help="Maintainer of the pipeline")
+        parser.add_argument('--description', '-d', default=None,
+                            help="A description of what the pipeline does")
+        parser.add_argument('--install', default=False, action='store_true',
+                            help=("Build the generated Dockerfile and install "
+                                  "it in the specified registry"))
 
     @classmethod
     def run(cls, args):
@@ -75,33 +71,44 @@ class Wrap4XnatCmd(BaseCmd):
         outputs = RunCmd.parse_output_args(args)
 
         extra_labels = {'arcana-wrap4xnat-cmd': ' '.join(sys.argv)}
-        pydra_interface = resolve_class(args.interface_name)
+        pydra_task = resolve_class(args.interface_name)()
+
+        
+        build_dir = Path(tempfile.mkdtemp()
+                         if args.build_dir is None else args.build_dir)
+
+        image_name = (args.image_name + ':latest' if ':' not in args.image_name
+                      else args.image_name)
 
         # Generate dockerfile
         dockerfile = generate_dockerfile(
-            pydra_interface, args.image_name, args.tag, inputs, outputs,
+            pydra_task, image_name, args.tag, inputs, outputs,
             args.parameter, args.requirement, args.package, args.registry,
-            args.description, maintainer=None, extra_labels=extra_labels)
+            args.description, build_dir=build_dir, maintainer=None,
+            extra_labels=extra_labels)
 
-        # Save generated dockerfile to file
-        out_file = Path(args.out_file)
-        out_file.parent.mkdir(exist_ok=True, parents=True)
-        with open(str(out_file), 'w') as f:
-            f.write(dockerfile)
-        logger.info("Dockerfile generated at %s", out_file)
+        if args.install:
+            cls.install(dockerfile, image_name, args.registry,
+                        build_dir=build_dir)
+        else:
+            return dockerfile
 
+    @classmethod
+    def install(cls, image_name, registry, build_dir):
         # Build and upload docker image
-        if not args.dry_run:
-            if args.build_dir:
-                build_dir = Path(args.build_dir)
-            else:
-                build_dir = Path(tempfile.mkdtemp())
-            logger.info("Building dockerfile at %s dir", str(build_dir))
+        
+        logger.info("Building image in %s", str(build_dir))
 
-            dc = docker.from_env()
-            image, _ = dc.images.build(path=str(build_dir),
-                                        tag=args.image_path)
-            image.push(args.registry)
+        image_path = f'{registry}/{image_name}'
+
+        dc = docker.from_env()
+        print(str(build_dir))
+        image, _ = dc.images.build(path=str(build_dir),
+                                   tag=image_path)
+        
+        logger.info("Uploading %s image to %s", image_path, registry)
+
+        image.push(registry)
 
     @classmethod
     def parse_input_args(cls, args):

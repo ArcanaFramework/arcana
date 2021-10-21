@@ -3,7 +3,6 @@ import os.path as op
 import stat
 from pathlib import Path
 import typing as ty
-from tempfile import mkdtemp
 from glob import glob
 import time
 import logging
@@ -13,16 +12,13 @@ import re
 from zipfile import ZipFile, BadZipfile
 import shutil
 import attr
-from tqdm import tqdm
 import xnat
 from arcana2.core.utils import JSON_ENCODING
 from arcana2.core.repository import Repository
-from arcana2.core.data import DataSpace
 from arcana2.core.data.node import DataNode
 from arcana2.exceptions import (
-    ArcanaError, ArcanaCacheError, ArcanaUsageError, ArcanaFileFormatError,
+    ArcanaError, ArcanaUsageError, ArcanaFileFormatError,
     ArcanaWrongRepositoryError)
-from arcana2.core.data.provenance import DataProvenance
 from arcana2.core.utils import dir_modtime, get_class_info, parse_value
 from arcana2.core.data.set import Dataset
 from arcana2.dataspaces.clinical import Clinical

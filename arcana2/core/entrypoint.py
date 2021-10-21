@@ -82,7 +82,9 @@ class MainCmd():
                                         description=cmd_cls.desc)
             cmd_cls.construct_parser(cmd_parser)
             cmd_args = cmd_parser.parse_args(argv[1:])
-            cmd_cls.run(cmd_args)
+            output = cmd_cls.run(cmd_args)
+            if output is not None:
+                print(output)
 
     @classmethod
     def get_parser(cls, command_name):

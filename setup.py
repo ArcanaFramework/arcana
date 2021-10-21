@@ -1,13 +1,10 @@
 import sys
-import os.path
+from pathlib import Path
 from setuptools import setup, find_packages
 
-PACKAGE_NAME = 'arcana2'
-
 # Get version from module inside package
-sys.path.insert(0, os.path.join(os.path.dirname(__file__),
-                                PACKAGE_NAME))
-from __about__ import __version__, install_requires, tests_require  # noqa pylint: disable=no-name-in-module
+sys.path.insert(0, str(Path(__file__).parent / 'arcana2'))
+from __about__ import __version__, PACKAGE_NAME, install_requires, tests_require, python_versions  # noqa pylint: disable=no-name-in-module
 sys.path.pop(0)
 
 
@@ -18,7 +15,7 @@ setup(
     author_email='tom.g.close@gmail.com',
     packages=find_packages(),
     url='https://github.com/australian-imaging-service/arcana2',
-    license='The Apache Software Licence 2.0',
+    license='Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License',
     description=(
         'Abstraction of Repository-Centric ANAlysis framework'),
     long_description=open('README.rst').read(),
@@ -28,17 +25,14 @@ setup(
         'console_scripts': ['arcana = arcana2.core.entrypoint:MainCmd.run']},
     extras_require={
         'test': tests_require},
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Intended Audience :: Healthcare Industry",
-        "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: Apache Software License",
-        "Natural Language :: English",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Topic :: Scientific/Engineering :: Bio-Informatics",
-        "Topic :: Scientific/Engineering :: Medical Science Apps."],
+    classifiers=(
+        ["Development Status :: 4 - Beta",
+         "Intended Audience :: Healthcare Industry",
+         "Intended Audience :: Science/Research",
+         "License :: OSI Approved :: Apache Software License",
+         "Natural Language :: English",
+         "Topic :: Scientific/Engineering :: Bio-Informatics",
+         "Topic :: Scientific/Engineering :: Medical Science Apps."]
+        + ["Programming Language :: Python :: " + str(v)
+           for v in python_versions]),
     keywords='repository analysis neuroimaging workflows pipelines')

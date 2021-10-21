@@ -76,7 +76,20 @@ TEST_DATASET_BLUEPRINTS = {
          ('deriv6', Clinical.batch, text, ['file.txt']),
          ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
          ('deriv8', Clinical.group, text, ['file.txt']),
-         ])}
+         ]),
+    'simple': TestDatasetBlueprint(  # dataset name
+        [1, 1, 1],  # number of timepoints, groups and members respectively
+        [('scan1',  # scan type (ID is index)
+          [('text', # resource name
+            text,  # Data format
+            ['file1.txt'])]),  # name files to place within resource
+         ('scan2',
+          [('text',
+            text,
+            ['file2.txt'])])],
+        {},
+        [('deriv1', Clinical.session, text, ['file.txt'])]),  # id_inference dict
+    }
 
 GOOD_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
@@ -107,19 +120,12 @@ def xnat_dataset(xnat_repository, xnat_archive_dir, request):
                         xnat_repository.run_prefix) not in login.projects:
             create_dataset_in_repo(dataset_name, xnat_repository.run_prefix)    
     return access_dataset(xnat_repository, dataset_name, access_method,
-                          xnat_archive_dir)
+                          xnat_archive_dir)    
 
 
 @pytest.fixture(params=MUTABLE_DATASETS, scope='function')
 def mutable_xnat_dataset(xnat_repository, xnat_archive_dir, request):
-    dataset_name, access_method = request.param.split('.')
-    test_suffix = 'MUTABLE' + access_method + str(hex(random.getrandbits(32)))[2:]
-    # Need to create a new dataset per function so it can be safely modified
-    # by the test without messing up other tests.
-    create_dataset_in_repo(dataset_name, xnat_repository.run_prefix,
-                           test_suffix=test_suffix)
-    return access_dataset(xnat_repository, dataset_name, access_method,
-                          xnat_archive_dir, test_suffix)
+    return get_mutable_dataset(xnat_repository, xnat_archive_dir, request.param)
 
 
 @pytest.fixture(scope='session')
@@ -128,7 +134,7 @@ def xnat_archive_dir():
 
 
 @pytest.fixture(scope='session')
-def xnat_repository(xnat_archive_dir):
+def xnat_repository(xnat_archive_dir, run_prefix):
 
     dc = docker.from_env()
 
@@ -155,12 +161,7 @@ def xnat_repository(xnat_archive_dir):
                                              'mode': 'rw'},
                      '/var/run/docker.sock': {'bind': '/var/run/docker.sock',
                                               'mode': 'rw'}})
-        run_prefix = ''
-    else:
-        # Set a prefix for all the created projects based on the current time
-        # so that they don't clash with datasets generated for previous test
-        # runs that haven't been cleaned properly
-        run_prefix = datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
+        run_prefix = None
     
     repository = Xnat(
         server=DOCKER_XNAT_URI,
@@ -177,6 +178,17 @@ def xnat_repository(xnat_archive_dir):
     # it afterwards
     if not run_prefix:
         container.stop()
+
+
+@pytest.fixture(scope='session')
+def run_prefix():
+    "A datetime string used to avoid stale data left over from previous tests"
+    return datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
+
+
+@pytest.fixture(scope='session')
+def xnat_respository_uri(xnat_repository):
+    return xnat_repository.server
 
 
 @pytest.fixture(scope='session')
@@ -203,9 +215,9 @@ def xnat_container_registry(xnat_repository):
 
     uri = f'localhost:{DOCKER_REGISTRY_PORT}'
 
-    # Set the registry in the XNAT repository
-    with connect() as login:
-        login.post('/xapi/docker/hubs/1', json={
+    # Set it to the default registry in the XNAT repository
+    with xnat_repository:
+        xnat_repository.login.post('/xapi/docker/hubs/1', json={
             "name": "Test Registry",
             "url": f"http://{uri}"})
 
@@ -215,8 +227,19 @@ def xnat_container_registry(xnat_repository):
         container.stop()
 
 
-def project_name(dataset_name, run_prefix, test_suffix=''):
-    return (run_prefix + dataset_name + test_suffix)
+def get_mutable_dataset(xnat_repository, xnat_archive_dir, test_name):
+    dataset_name, access_method = test_name.split('.')
+    test_suffix = 'mutable' + access_method + str(hex(random.getrandbits(16)))[2:]
+    # Need to create a new dataset per function so it can be safely modified
+    # by the test without messing up other tests.
+    create_dataset_in_repo(dataset_name, xnat_repository.run_prefix,
+                           test_suffix=test_suffix)
+    return access_dataset(xnat_repository, dataset_name, access_method,
+                          xnat_archive_dir, test_suffix)
+
+
+def project_name(dataset_name, run_prefix=None, test_suffix=''):
+    return (run_prefix if run_prefix else '') + dataset_name + test_suffix
 
 
 def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,

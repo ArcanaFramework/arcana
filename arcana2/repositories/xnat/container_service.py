@@ -1,29 +1,35 @@
 
 import json
 import logging
+from pathlib import Path
+import site
+import shutil
+import tempfile
+import pkg_resources
 from dataclasses import dataclass
+import cloudpickle as cp
+from attr import NOTHING
 import neurodocker as nd
+from natsort import natsorted
 from arcana2.dataspaces.clinical import Clinical
 from arcana2.core.data.datatype import FileFormat
 from arcana2.core.data import DataSpace
-from arcana2.core.utils import resolve_class
+from arcana2.core.utils import resolve_class, DOCKER_HUB, ARCANA_PIP
 from arcana2.exceptions import ArcanaUsageError
+from arcana2.__about__ import PACKAGE_NAME, python_versions
 
 logger = logging.getLogger('arcana')
 
 
-DOCKER_HUB = 'https://index.docker.io/v1/'
-ARCANA_PIP = "git+https://github.com/australian-imaging-service/arcana2.git"
-
-
-def generate_dockerfile(pydra_interface, image_tag, inputs, outputs,
+def generate_dockerfile(pydra_task, image_tag, inputs, outputs,
                         parameters, requirements, packages,  description,
-                        maintainer, registry=DOCKER_HUB, extra_labels=None):
+                        maintainer, build_dir, frequency=Clinical.session,
+                        registry=DOCKER_HUB, extra_labels=None):
     """Constructs a dockerfile that wraps a with dependencies
 
     Parameters
     ----------
-    pydra_interface : pydra.Task or pydra.Workflow
+    pydra_task : pydra.Task or pydra.Workflow
         The Pydra Task or Workflow to be run in XNAT container service
     image_tag : str
         The name of the Docker image, preceded by the registry it will be stored
@@ -53,15 +59,19 @@ def generate_dockerfile(pydra_interface, image_tag, inputs, outputs,
     """
 
     labels = {}
+    packages = list(packages)
+
+    if build_dir is None:
+        build_dir = tempfile.mkdtemp()
 
     if maintainer:
         labels["maintainer"] = maintainer
 
-    pipeline_name = pydra_interface.replace('.', '_').capitalize()
+    pipeline_name = pydra_task.name.replace('.', '_').capitalize()
 
     cmd_json = generate_json_config(
-        pipeline_name, pydra_interface, image_tag, inputs, outputs,
-        parameters, description, registry=registry)
+        pipeline_name, pydra_task, image_tag, inputs, outputs,
+        parameters, description, frequency=frequency, registry=registry)
 
     # Convert JSON into Docker label
     print(json.dumps(cmd_json, indent=2))
@@ -72,8 +82,8 @@ def generate_dockerfile(pydra_interface, image_tag, inputs, outputs,
         labels.update(extra_labels)
 
     instructions = [
-        ["base", "debian:stretch"],
-        ["install", ["git", "vim"]]]
+        ["base", "debian:bullseye"],
+        ["install", ["git", "vim", "ssh-client", "python3", "python3-pip"]]]
 
     for req in requirements:
         req_name = req[0]
@@ -84,30 +94,62 @@ def generate_dockerfile(pydra_interface, image_tag, inputs, outputs,
             install_props['method'] = req[2]
         instructions.append([req_name, install_props])
 
+    arcana_pkg = next(p for p in pkg_resources.working_set
+                      if p.key == PACKAGE_NAME)
+    arcana_pkg_loc = Path(arcana_pkg.location).resolve()
+    site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]
+
+    # Use local installation of arcana
+    if arcana_pkg_loc not in site_pkg_locs:
+        shutil.copytree(arcana_pkg_loc, build_dir / 'arcana')
+        arcana_pip = '/arcana'
+        instructions.append(['copy', ['./arcana', arcana_pip]])
+    else:
+        direct_url_path = Path(arcana_pkg.egg_info) / 'direct_url.json'
+        if direct_url_path.exists():
+            with open(direct_url_path) as f:
+                durl = json.load(f)
+            # Sort out known hosts issue so we can download arca
+            instructions.append(['run', 'mkdir /root/.ssh'])
+            instructions.append([
+                'run', 'ssh-keyscan -t rsa github.com >> /root/.ssh/known_hosts'])                
+            arcana_pip = f"{durl['vcs']}+{durl['url']}@{durl['commit_id']}"
+        else:
+            arcana_pip = f"{arcana_pkg.key}=={arcana_pkg.version}"
+    instructions.append(['run', 'pip3 install ' + arcana_pip])
+
+    
+    # instructions.append(
+    #     ["miniconda", {
+    #         "create_env": "arcana2",
+    #         "conda_install": [
+    #             "python=" + natsorted(python_versions)[-1],
+    #             "numpy",
+    #             "traits"],
+    #         "pip_install": packages}])
+
     if labels:
         instructions.append(["label", labels])
-
-    pip_packages = [ARCANA_PIP] + list(packages)
-
-    instructions.append(
-        ["miniconda", {
-            "create_env": "arcana2",
-            "conda_install": [
-                "python=3.8",
-                "numpy",
-                "traits"],
-            "pip_install": pip_packages}])
 
     neurodocker_specs = {
         "pkg_manager": "apt",
         "instructions": instructions}
 
-    return nd.Dockerfile(neurodocker_specs).render()
+    dockerfile = nd.Dockerfile(neurodocker_specs).render()
+
+    # Save generated dockerfile to file
+    out_file = build_dir / 'Dockerfile'
+    out_file.parent.mkdir(exist_ok=True, parents=True)
+    with open(str(out_file), 'w') as f:
+        f.write(dockerfile)
+    logger.info("Dockerfile generated at %s", out_file)
+
+    return dockerfile
 
 
-def generate_json_config(pipeline_name, pydra_interface, image_tag, version,
+def generate_json_config(pipeline_name, pydra_task, image_tag,
                          inputs, outputs, parameters, desc,
-                         frequency='session', registry=DOCKER_HUB):
+                         frequency=Clinical.session, registry=DOCKER_HUB):
     """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
     should handle the containerised pipeline
 
@@ -115,12 +157,10 @@ def generate_json_config(pipeline_name, pydra_interface, image_tag, version,
     ----------
     pipeline_name : str
         Name of the pipeline
-    pydra_interface : Task or Workflow
+    pydra_task : Task or Workflow
         [description]
     image_tag : str
-        [description]
-    version : str
-        Version of the 
+        Name + version of the Docker image to be created
     inputs : list[InputArg]
         Inputs to be provided to the container
     outputs : list[OutputArg]
@@ -129,8 +169,8 @@ def generate_json_config(pipeline_name, pydra_interface, image_tag, version,
         Parameters to be exposed in the CS command
     description : str
         User-facing description of the pipeline
-    frequency : [type]
-        [description]
+    frequency : Clinical
+        Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
     registry : str
         URI of the Docker registry to upload the image to
 
@@ -144,47 +184,55 @@ def generate_json_config(pipeline_name, pydra_interface, image_tag, version,
     ArcanaUsageError
         [description]
     """
-
+    if isinstance(frequency, str):
+        frequency = Clinical[frequency]
     if frequency not in VALID_FREQUENCIES:
         raise ArcanaUsageError(
             f"'{frequency}'' is not a valid option ('"
             + "', '".join(VALID_FREQUENCIES) + "')")
 
+    # Convert tuples to appropriate dataclasses for inputs and outputs
+    inputs = [InputArg(*i) for i in inputs if isinstance(i, tuple)]
+    outputs = [OutputArg(*o) for o in outputs if isinstance(o, tuple)]
+
+    image_name, version = image_tag.split(':')
+
     cmd_inputs = []
     input_names = []
+
+    field_specs = dict(pydra_task.input_spec.fields)
+
     for inpt in inputs:
-        spec = getattr(pydra_interface.inputs, inpt.name)
+        spec = field_specs[inpt.name]
         
-        desc = spec.desc if spec.desc else ""
-        if isinstance(spec.required_format, FileFormat):
-            desc = (f"Scan match ({spec.datatype}): {desc} "
+        desc = spec.metadata.get('help_string', '')
+        if spec.type in (str, Path):
+            desc = (f"Scan match ({spec.type}): {desc} "
                     "[SCAN_TYPE [ORDER [TAG=VALUE, ...]]]")
+            input_type = 'string'
         else:
-            desc = f"Field match ({spec.datatype}): {desc} [FIELD_NAME]"
+            desc = f"Field match ({spec.type}): {desc} [FIELD_NAME]"
+            input_type = COMMAND_INPUT_TYPES[spec.type]
         cmd_inputs.append({
             "name": inpt.name,
             "description": desc,
-            "type": "string",
+            "type": input_type,
             "default-value": "",
             "required": True,
             "user-settable": True,
             "replacement-key": "#{}_INPUT#".format(inpt.name.upper())})
 
     for param in parameters:
-        # spec = analysis_cls.param_spec(param)
-        # desc = "Parameter: " + spec.desc
-        # if spec.choices:
-        #     desc += " (choices: {})".format(','.join(spec.choices))
-
-        spec = getattr(pydra_interface.inputs, param)
+        spec = field_specs[param]
+        desc = "Parameter: " + spec.metadata.get('help_string', '')
+        required = spec._default is NOTHING
 
         cmd_inputs.append({
             "name": param,
             "description": desc,
-            "type": COMMAND_INPUT_TYPES[spec.datatype],
-            "default-value": (spec.default
-                                if spec.default is not None else ""),
-            "required": spec.default is None,
+            "type": COMMAND_INPUT_TYPES[spec.type],
+            "default-value": (spec._default if not required else ""),
+            "required": required,
             "user-settable": True,
             "replacement-key": "#{}_PARAM#".format(param.upper())})
 
@@ -204,10 +252,13 @@ def generate_json_config(pipeline_name, pydra_interface, image_tag, version,
     param_args = ' '.join('-p {} #{}_PARAM#'.format(p, p.upper())
                             for p in parameters)
 
+    func = cp.loads(pydra_task.inputs._func)
+
     cmdline = (
-        f"arcana run {pydra_interface.__name__} #PROJECT_ID# "
-        f"{input_args} {param_args}"
-        " --work /work --repository xnat #PROJECT_URI# #TOKEN#", "#SECRET#")
+        # f"conda run --no-capture-output -n arcana2 "  # activate conda
+        f"arcana run {func.__module__}.{func.__name__} "  # run pydra task in Arcana
+        f"#PROJECT_ID# {input_args} {param_args} --work /work " # inputs + params
+        "--repository xnat #PROJECT_URI# #TOKEN# #SECRET#")  # pass XNAT API details
 
     if frequency == Clinical.session:
         cmd_inputs.append(
@@ -227,7 +278,7 @@ def generate_json_config(pipeline_name, pydra_interface, image_tag, version,
         "label": pipeline_name,
         "version": version,
         "schema-version": "1.0",
-        "image": image_tag,
+        "image": image_name,
         "index": registry,
         "type": "docker",
         "command-line": cmdline,
@@ -362,4 +413,4 @@ COMMAND_INPUT_TYPES = {
     int: 'number',
     float: 'number'}
 
-VALID_FREQUENCIES = ('session', 'dataset')
+VALID_FREQUENCIES = (Clinical.session, Clinical.dataset)
