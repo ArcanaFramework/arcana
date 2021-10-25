@@ -94,21 +94,20 @@ class Wrap4XnatCmd(BaseCmd):
             return dockerfile
 
     @classmethod
-    def install(cls, image_name, registry, build_dir):
+    def install(cls, image_tag, registry, build_dir):
         # Build and upload docker image
         
         logger.info("Building image in %s", str(build_dir))
 
-        image_path = f'{registry}/{image_name}'
-
         dc = docker.from_env()
-        print(str(build_dir))
-        image, _ = dc.images.build(path=str(build_dir),
-                                   tag=image_path)
-        
-        logger.info("Uploading %s image to %s", image_path, registry)
 
-        image.push(registry)
+        image_path = f'{registry}/{image_tag}'
+
+        dc.images.build(path=str(build_dir), tag=image_tag)
+        
+        logger.info("Uploading %s image to %s", image_tag, registry)
+
+        dc.images.push(image_path)
 
     @classmethod
     def parse_input_args(cls, args):

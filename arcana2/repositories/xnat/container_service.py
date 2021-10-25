@@ -21,10 +21,11 @@ from arcana2.__about__ import PACKAGE_NAME, python_versions
 logger = logging.getLogger('arcana')
 
 
-def generate_dockerfile(pydra_task, image_tag, inputs, outputs,
-                        parameters, requirements, packages,  description,
-                        maintainer, build_dir, frequency=Clinical.session,
-                        registry=DOCKER_HUB, extra_labels=None):
+def generate_dockerfile(pydra_task, image_tag, inputs, outputs, description, 
+                        maintainer, build_dir, parameters=None,
+                        requirements=None, packages=None,
+                        frequency=Clinical.session, registry=DOCKER_HUB,
+                        extra_labels=None):
     """Constructs a dockerfile that wraps a with dependencies
 
     Parameters
@@ -37,6 +38,13 @@ def generate_dockerfile(pydra_task, image_tag, inputs, outputs,
         Inputs to be provided to the container
     outputs : list[OutputArg]
         Outputs from the container
+    description : str
+        User-facing description of the pipeline
+    maintainer : str
+        The name and email of the developer creating the wrapper (i.e. you)
+    build_dir : Path
+        Path to the directory to create the Dockerfile in and copy any local
+        files to
     parameters : list[str]
         Parameters to be exposed in the CS command
     requirements : list[tuple[str, str]]
@@ -45,10 +53,6 @@ def generate_dockerfile(pydra_task, image_tag, inputs, outputs,
         Name and version of the Python PyPI packages to add to the image
     registry : str
         URI of the Docker registry to upload the image to
-    description : str
-        User-facing description of the pipeline
-    maintainer : str
-        The name and email of the developer creating the wrapper (i.e. you)
     extra_labels : dict[str, str], optional
         Additional labels to be added to the image
 
@@ -63,6 +67,12 @@ def generate_dockerfile(pydra_task, image_tag, inputs, outputs,
 
     if build_dir is None:
         build_dir = tempfile.mkdtemp()
+    if parameters is None:
+        parameters = []
+    if requirements is None:
+        requirements = []
+    if packages is None:
+        packages = []
 
     if maintainer:
         labels["maintainer"] = maintainer
@@ -74,10 +84,7 @@ def generate_dockerfile(pydra_task, image_tag, inputs, outputs,
         parameters, description, frequency=frequency, registry=registry)
 
     # Convert JSON into Docker label
-    print(json.dumps(cmd_json, indent=2))
-    cmd_label = json.dumps(cmd_json).replace('"', r'\"').replace(
-        '$', r'\$')
-    labels['org.nrg.commands'] = '[{' + cmd_label + '}]'
+    labels['org.nrg.commands'] = '[' + json.dumps(cmd_json) + ']'
     if extra_labels:
         labels.update(extra_labels)
 
@@ -101,6 +108,7 @@ def generate_dockerfile(pydra_task, image_tag, inputs, outputs,
 
     # Use local installation of arcana
     if arcana_pkg_loc not in site_pkg_locs:
+        shutil.rmtree(build_dir / 'arcana')
         shutil.copytree(arcana_pkg_loc, build_dir / 'arcana')
         arcana_pip = '/arcana'
         instructions.append(['copy', ['./arcana', arcana_pip]])
@@ -108,17 +116,14 @@ def generate_dockerfile(pydra_task, image_tag, inputs, outputs,
         direct_url_path = Path(arcana_pkg.egg_info) / 'direct_url.json'
         if direct_url_path.exists():
             with open(direct_url_path) as f:
-                durl = json.load(f)
-            # Sort out known hosts issue so we can download arca
-            instructions.append(['run', 'mkdir /root/.ssh'])
-            instructions.append([
-                'run', 'ssh-keyscan -t rsa github.com >> /root/.ssh/known_hosts'])                
+                durl = json.load(f)             
             arcana_pip = f"{durl['vcs']}+{durl['url']}@{durl['commit_id']}"
         else:
             arcana_pip = f"{arcana_pkg.key}=={arcana_pkg.version}"
-    instructions.append(['run', 'pip3 install ' + arcana_pip])
+    packages.append(arcana_pip)
 
-    
+    instructions.append(['run', 'pip3 install ' + ' '.join(packages)])
+
     # instructions.append(
     #     ["miniconda", {
     #         "create_env": "arcana2",
@@ -207,7 +212,7 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
         
         desc = spec.metadata.get('help_string', '')
         if spec.type in (str, Path):
-            desc = (f"Scan match ({spec.type}): {desc} "
+            desc = (f"Scan match: {desc} "
                     "[SCAN_TYPE [ORDER [TAG=VALUE, ...]]]")
             input_type = 'string'
         else:

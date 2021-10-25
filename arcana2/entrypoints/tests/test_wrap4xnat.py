@@ -23,9 +23,9 @@ def test_wrap4xnat(xnat_repository, xnat_container_registry, run_prefix,
     dataset = get_mutable_dataset(xnat_repository, xnat_archive_dir,
                                   'simple.direct')
 
-    build_dir = Path(tempfile.mkdtemp())
+    build_dir = Path('/Users/tclose/Desktop/docker-build')  # Path(tempfile.mkdtemp())
 
-    image_name = f'{run_prefix}wrap4xnat-test-{dataset.name}'
+    image_name = f'wrap4xnat{run_prefix}'
     image_tag = image_name + ':latest'
 
     generate_dockerfile(

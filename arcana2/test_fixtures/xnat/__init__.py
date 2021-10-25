@@ -216,8 +216,8 @@ def xnat_container_registry(xnat_repository):
     uri = f'localhost:{DOCKER_REGISTRY_PORT}'
 
     # Set it to the default registry in the XNAT repository
-    with xnat_repository:
-        xnat_repository.login.post('/xapi/docker/hubs/1', json={
+    with connect(xnat_repository.server) as login:
+        login.post('/xapi/docker/hubs/1', json={
             "name": "Test Registry",
             "url": f"http://{uri}"})
 
@@ -308,14 +308,14 @@ def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
 
 
 @contextlib.contextmanager
-def connect():
+def connect(server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
+            password=DOCKER_XNAT_PASSWORD):
     # Need to give time for XNAT to get itself ready after it has
     # started so we try multiple times until giving up trying to connect
     attempts = 0
     for _ in range(1, CONNECTION_ATTEMPTS + 1):
         try:
-            login = xnat.connect(server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
-                                 password=DOCKER_XNAT_PASSWORD)
+            login = xnat.connect(server, user=user, password=password)
         except xnat.exceptions.XNATError:
             if attempts == CONNECTION_ATTEMPTS:
                 raise

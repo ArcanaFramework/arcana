@@ -9,7 +9,7 @@ install_requires = [
     'xnat>=0.3.17',
     'pydra>=0.14.1',
     'pydicom>=1.0.2',
-    'pydra-mrtrix3',
+    # 'pydra-mrtrix3',
     'pydra-dcm2niix',
     'natsort>=7.1.1',
     # 'networkx>=2.2',
