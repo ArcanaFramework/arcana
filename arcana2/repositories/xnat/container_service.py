@@ -149,12 +149,13 @@ def generate_dockerfile(pydra_task, image_tag, inputs, outputs, description,
         f.write(dockerfile)
     logger.info("Dockerfile generated at %s", out_file)
 
-    return dockerfile
+    return dockerfile, cmd_json
 
 
 def generate_json_config(pipeline_name, pydra_task, image_tag,
                          inputs, outputs, parameters, desc,
-                         frequency=Clinical.session, registry=DOCKER_HUB):
+                         frequency=Clinical.session, registry=DOCKER_HUB,
+                         info_url=None, debug_output=False):
     """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
     should handle the containerised pipeline
 
@@ -225,7 +226,9 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
             "default-value": "",
             "required": True,
             "user-settable": True,
-            "replacement-key": "#{}_INPUT#".format(inpt.name.upper())})
+            "replacement-key": "[{}_INPUT]".format(inpt.name.upper())})
+        if info_url:
+            cmd_inputs['info-url'] = info_url
 
     for param in parameters:
         spec = field_specs[param]
@@ -239,7 +242,7 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
             "default-value": (spec._default if not required else ""),
             "required": required,
             "user-settable": True,
-            "replacement-key": "#{}_PARAM#".format(param.upper())})
+            "replacement-key": "[{}_PARAM]".format(param.upper())})
 
     cmd_inputs.append(
         {
@@ -248,13 +251,49 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
             "type": "string",
             "required": True,
             "user-settable": False,
-            "replacement-key": "#PROJECT_ID#"
+            "replacement-key": "[PROJECT_ID]"
         })
 
+    cmd_outputs = []
+    output_handlers = []
+    for output in outputs:
+        cmd_outputs.append({
+            "name": output.name,
+            "description": f"{output.name} ({output.datatype})",
+            "required": True,
+            "mount": "out",
+            "path": None,
+            "glob": None})
+        output_handlers.append({
+            "name": f"{output.name}-resource",
+            "accepts-command-output": output.name,
+            "via-wrapup-command": None,
+            "as-a-child-of": "session",
+            "type": "Resource",
+            "label": output.name,
+            "format": None})
 
-    input_args = ' '.join('-i {} #{}_INPUT#'.format(i, i.upper())
+    if debug_output:  # Save work directory as session resource
+        cmd_outputs.append({
+                "name": "work",
+                "description": "Working directory",
+                "required": True,
+                "mount": "work",
+                "path": None,
+                "glob": None})
+        output_handlers.append({
+                "name": "work-resource",
+                "accepts-command-output": "work",
+                "via-wrapup-command": None,
+                "as-a-child-of": "session",
+                "type": "Resource",
+                "label": "__work__",
+                "format": None})
+
+
+    input_args = ' '.join('-i {} #{}_INPUT]'.format(i, i.upper())
                             for i in input_names)
-    param_args = ' '.join('-p {} #{}_PARAM#'.format(p, p.upper())
+    param_args = ' '.join('-p {} #{}_PARAM]'.format(p, p.upper())
                             for p in parameters)
 
     func = cp.loads(pydra_task.inputs._func)
@@ -262,8 +301,8 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
     cmdline = (
         # f"conda run --no-capture-output -n arcana2 "  # activate conda
         f"arcana run {func.__module__}.{func.__name__} "  # run pydra task in Arcana
-        f"#PROJECT_ID# {input_args} {param_args} --work /work " # inputs + params
-        "--repository xnat #PROJECT_URI# #TOKEN# #SECRET#")  # pass XNAT API details
+        f"[PROJECT_ID] {input_args} {param_args} --work /work " # inputs + params
+        "--repository xnat [PROJECT_URI] [TOKEN] [SECRET]")  # pass XNAT API details
 
     if frequency == Clinical.session:
         cmd_inputs.append(
@@ -273,9 +312,9 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
                 "type": "string",
                 "required": True,
                 "user-settable": False,
-                "replacement-key": "#SESSION_ID#"
+                "replacement-key": "[SESSION_ID]"
             })
-        cmdline += " --session_ids #SESSION_ID# "
+        cmdline += " --session_ids [SESSION_ID] "
 
     return {
         "name": pipeline_name,
@@ -292,39 +331,22 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
             {
                 "name": "in",
                 "writable": False,
-                "name_path": "/input"
+                "path": "/input"
             },
             {
-                "name": "output",
+                "name": "out",
                 "writable": True,
-                "name_path": "/output"
+                "path": "/output"
             },
             {
                 "name": "work",
                 "writable": True,
-                "name_path": "/work"
+                "path": "/work"
             }
         ],
         "ports": {},
         "inputs": cmd_inputs,
-        "outputs": [
-            {
-                "name": "output",
-                "description": "Derivatives",
-                "required": True,
-                "mount": "out",
-                "name_path": None,
-                "glob": None
-            },
-            {
-                "name": "working",
-                "description": "Working directory",
-                "required": True,
-                "mount": "work",
-                "name_path": None,
-                "glob": None
-            }
-        ],
+        "outputs": cmd_outputs,
         "xnat": [
             {
                 "name": pipeline_name,
@@ -375,26 +397,7 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
                         "provides-value-for-command-input": "subject-id"
                     }
                 ],
-                "output-handlers": [
-                    {
-                        "name": "output-resource",
-                        "accepts-command-output": "output",
-                        "via-wrapup-command": None,
-                        "as-a-child-of": "session",
-                        "type": "Resource",
-                        "label": "Derivatives",
-                        "format": None
-                    },
-                    {
-                        "name": "working-resource",
-                        "accepts-command-output": "working",
-                        "via-wrapup-command": None,
-                        "as-a-child-of": "session",
-                        "type": "Resource",
-                        "label": "Work",
-                        "format": None
-                    }
-                ]
+                "output-handlers": output_handlers
             }
         ]
     }

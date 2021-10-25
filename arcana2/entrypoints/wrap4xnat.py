@@ -61,9 +61,11 @@ class Wrap4XnatCmd(BaseCmd):
                             help="Maintainer of the pipeline")
         parser.add_argument('--description', '-d', default=None,
                             help="A description of what the pipeline does")
+        parser.add_argument('--build', default=False, action='store_true',
+                            help=("Build the generated Dockerfile"))
         parser.add_argument('--install', default=False, action='store_true',
-                            help=("Build the generated Dockerfile and install "
-                                  "it in the specified registry"))
+                            help=("Install the built docker image in the "
+                                  "specified registry (implies '--build')"))
 
     @classmethod
     def run(cls, args):
@@ -87,6 +89,9 @@ class Wrap4XnatCmd(BaseCmd):
             args.description, build_dir=build_dir, maintainer=None,
             extra_labels=extra_labels)
 
+        if args.build or args.install:
+            cls.build(image_name, build_dir=build_dir)
+
         if args.install:
             cls.install(dockerfile, image_name, args.registry,
                         build_dir=build_dir)
@@ -94,16 +99,21 @@ class Wrap4XnatCmd(BaseCmd):
             return dockerfile
 
     @classmethod
+    def build(cls, image_tag, build_dir):
+
+        dc = docker.from_env()
+
+        logger.info("Building image in %s", str(build_dir))
+
+        dc.images.build(path=str(build_dir), tag=image_tag)        
+
+    @classmethod
     def install(cls, image_tag, registry, build_dir):
         # Build and upload docker image
-        
-        logger.info("Building image in %s", str(build_dir))
 
         dc = docker.from_env()
 
         image_path = f'{registry}/{image_tag}'
-
-        dc.images.build(path=str(build_dir), tag=image_tag)
         
         logger.info("Uploading %s image to %s", image_tag, registry)
 

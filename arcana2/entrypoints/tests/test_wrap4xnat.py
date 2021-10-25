@@ -1,10 +1,11 @@
 from pathlib import Path
 import tempfile
 from pydra import mark
+from pprint import pprint
 from argparse import ArgumentParser
 from arcana2.entrypoints.wrap4xnat import Wrap4XnatCmd
 from arcana2.repositories.xnat.container_service import (
-    generate_dockerfile)
+    generate_dockerfile, generate_json_config)
 from arcana2.test_fixtures.xnat import get_mutable_dataset
 from arcana2.datatypes import text
 from arcana2.dataspaces.clinical import Clinical
@@ -25,10 +26,12 @@ def test_wrap4xnat(xnat_repository, xnat_container_registry, run_prefix,
 
     build_dir = Path('/Users/tclose/Desktop/docker-build')  # Path(tempfile.mkdtemp())
 
-    image_name = f'wrap4xnat{run_prefix}'
-    image_tag = image_name + ':latest'
+    # image_name = f'wrap4xnat{run_prefix}'
+    # image_tag = image_name + ':latest'
 
-    generate_dockerfile(
+    image_tag = 'wrap4xnat:latest'    
+
+    dockerfile, command_json = generate_dockerfile(
         pydra_task=concatenate(),
         image_tag=image_tag,
         inputs=[
@@ -45,9 +48,24 @@ def test_wrap4xnat(xnat_repository, xnat_container_registry, run_prefix,
         description="A container for testing arcana wrap4xnat",
         maintainer='some.one@an.org')
     
-    Wrap4XnatCmd().install(image_tag, xnat_container_registry,
-                           build_dir)
+    # Wrap4XnatCmd().build(image_tag, build_dir)
 
     with xnat_repository:
-        commands = xnat_repository.login.get('/xapi/commands')
+
+        login = xnat_repository.login
+
+        def f():
+            login.post('/xapi/commands', json={
+                'command': command_json,
+                'image': image_tag})
+
+        pprint(command_json)
+
+        f()
+
+        # login.post('/xapi/docker/pull', json={
+        #     'image': image_tag,
+        #     'save-commands': True})
+        
+        commands = login.get('/xapi/commands')
         assert image_name in commands   
