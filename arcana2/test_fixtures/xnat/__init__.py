@@ -141,8 +141,7 @@ def xnat_repository(xnat_archive_dir, run_prefix):
     try:
         image = dc.images.get(DOCKER_IMAGE)
     except docker.errors.ImageNotFound:
-        image, _ = dc.images.build(path=str(DOCKER_BUILD_DIR),
-                                            tag=DOCKER_IMAGE)
+        image, _ = dc.images.build(path=str(DOCKER_BUILD_DIR), tag=DOCKER_IMAGE)
     
     try:
         container = dc.containers.get(DOCKER_IMAGE)
@@ -159,8 +158,9 @@ def xnat_repository(xnat_archive_dir, run_prefix):
             # to use
             volumes={str(xnat_archive_dir): {'bind': '/data/xnat/archive',
                                              'mode': 'rw'},
-                     '/var/run/docker.sock': {'bind': '/var/run/docker.sock',
-                                              'mode': 'rw'}})
+                    #  '/var/run/docker.sock': {'bind': '/var/run/docker.sock',
+                    #                           'mode': 'rw'}
+                     })
         run_prefix = None
     
     repository = Xnat(
