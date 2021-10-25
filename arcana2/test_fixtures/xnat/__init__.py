@@ -151,7 +151,7 @@ def xnat_repository(xnat_archive_dir, run_prefix):
         os.mkdir(xnat_archive_dir)
         container = dc.containers.run(
             image.tags[0], detach=True, ports={'8080/tcp': DOCKER_XNAT_PORT},
-            remove=True, name=DOCKER_IMAGE,
+            name=DOCKER_IMAGE, privileged=True, # remove=True, 
             # Expose the XNAT archive dir outside of the XNAT docker container
             # to simulate what the XNAT container service exposes to running
             # pipelines, and the Docker socket for the container service to
