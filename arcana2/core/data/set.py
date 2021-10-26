@@ -160,12 +160,6 @@ class Dataset():
                 + ', '.join(str(m) for m in (~covered).nonzero_basis()) +
                 f"f the {self.space} data dimensions")
 
-    # def __getitem__(self, key):
-    #     if key == self.space(0):
-    #         return self.root_node
-    #     else:
-    #         return self.root_node.children[key]
-
     @property
     def space(self):
         return type(self.hierarchy[0])

@@ -183,8 +183,9 @@ class FileGroup(DataItem):
                     "that don't exist ('{}')".format(
                         "', '".join(missing_side_cars)))
 
-    def get(self):
-        self._check_exists()
+    def get(self, assume_exists=False):
+        if not assume_exists:
+            self._check_exists()
         self._check_part_of_data_node()
         self._set_fs_paths()
 
@@ -345,8 +346,9 @@ class Field(DataItem):
 
     value: int or float or str = attr.ib(converter=parse_value, default=None)
 
-    def get(self):
-        self._check_exists()
+    def get(self, assume_exists=False):
+        if not assume_exists:
+            self._check_exists()
         self._check_part_of_data_node()
         self.value = self.data_node.get_field(self)
 

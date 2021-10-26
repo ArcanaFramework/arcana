@@ -36,7 +36,7 @@ def test_pipeline(work_dir):
 
     pipeline(ids=IDS, plugin='serial')
 
-    for id in IDS:
-        with open(dataset['deriv'][id].path) as f:
+    for item in dataset['deriv']:
+        with open(item.fs_path) as f:
             contents = f.read()
-        assert contents == '\n'.join(['file1.txt', 'file1.txt'] * 2)
+        assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)

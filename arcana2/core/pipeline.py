@@ -89,9 +89,18 @@ class Pipeline():
     def nodes(self):
         return self.wf.nodes
 
+    @property
+    def dataset(self):
+        return self.wf.per_node.sink.inputs.dataset
+
     def __call__(self, *args, **kwargs):
         self.check_connections()
-        return self.wf(*args, **kwargs)
+        result = self.wf(*args, **kwargs)
+        # Set derivatives as existing
+        for node in self.dataset.nodes(self.frequency):
+            for output in self.output_names:
+                node[output].get(assume_exists=True)
+        return result
 
     def check_connections(self):
         if missing:= set(self.output_names) - self._connected:
