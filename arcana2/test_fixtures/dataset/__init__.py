@@ -167,8 +167,9 @@ def dicom_dataset(test_dicom_dataset_dir):
 @pytest.fixture(params=GOOD_DATASETS)
 def dataset(work_dir, request):
     dataset_name = request.param
-    create_dataset_in_repo(dataset_name, work_dir)
-    dataset = access_dataset(dataset_name, work_dir)
+    blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
+    dataset_path = get_dataset_path(dataset_name, work_dir)
+    make_dataset(blueprint, dataset_path)
     yield dataset
     #shutil.rmtree(dataset.name)
 
@@ -180,14 +181,14 @@ def tmp_dir():
     shutil.rmtree(tmp_dir)
 
 
-def create_dataset_in_repo(name, base_dir):
+def make_dataset(blueprint, dataset_path):
+    create_dataset_in_repo(blueprint, dataset_path)
+    return access_dataset(blueprint, dataset_path)
+
+
+def create_dataset_in_repo(blueprint, dataset_path):
     "Creates a dataset from parameters in TEST_DATASETS"
-
-    blueprint = TEST_DATASET_BLUEPRINTS[name]
-
-    dataset_path = get_dataset_path(name, base_dir)
-    os.mkdir(dataset_path)
-
+    dataset_path.mkdir(exist_ok=True, parents=True)
     for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
         ids = dict(zip(TestDataSpace.basis(), id_tple))
         dpath = dataset_path
@@ -198,10 +199,9 @@ def create_dataset_in_repo(name, base_dir):
             create_test_file(fname, dpath)
 
 
-def access_dataset(name, base_dir):
-    blueprint = TEST_DATASET_BLUEPRINTS[name]
+def access_dataset(blueprint, dataset_path):
     dataset = FileSystem().dataset(
-        get_dataset_path(name, base_dir),
+        dataset_path,
         hierarchy=blueprint.hierarchy,
         id_inference=blueprint.id_inference)
     dataset.blueprint = blueprint
@@ -225,22 +225,6 @@ def create_test_file(fname, dpath):
         fname = 'test.txt'
         fpath /= fname
     with open(dpath / fpath, 'w') as f:
-        f.write(f'test {fname}')
+        f.write(f'{fname}')
     return fpath
 
-
-# def create_test_file(fname, dpath):
-#     fpath = Path(fname)
-#     os.makedirs(dpath, exist_ok=True)
-#     # Make double dir
-#     if fname.startswith('doubledir'):
-#         os.makedirs(dpath / fpath, exist_ok=True)
-#         fname = 'dir'
-#         fpath /= fname
-#     if fname.startswith('dir'):
-#         os.makedirs(dpath / fpath, exist_ok=True)
-#         fname = 'test.txt'
-#         fpath /= fname
-#     with open(dpath / fpath, 'w') as f:
-#         f.write(f'test {fname}')
-#     return fpath

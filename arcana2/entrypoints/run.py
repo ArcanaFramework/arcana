@@ -209,8 +209,8 @@ class RunCmd(BaseDatasetCmd):
 
         # Connect source to inputs
         for input in pipeline.input_names:
-            setattr(pipeline.app.inputs, input, getattr(pipeline.source.lzout,
-                                                        input))
+            setattr(pipeline.app.inputs, input,
+                    getattr(pipeline.per_node.source.lzout, input))
 
         # Connect outputs to sink
         for output in pipeline.output_names:

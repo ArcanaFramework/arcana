@@ -204,8 +204,8 @@ class Dataset():
         """Refresh the dataset nodes"""
         self._root_node = None
 
-    def add_source(self, name, path, datatype, frequency=None, overwrite=False,
-                   **kwargs):
+    def add_source(self, name, datatype, path=None, frequency=None,
+                   overwrite=False, **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
 
@@ -214,19 +214,21 @@ class Dataset():
         name : str
             The name used to reference the dataset "column" for the
             source
-        path : str, default `name`
-            The location of the source within the dataset
-        frequency : [type]
-            The frequency of the source within the dataset
         datatype : FileFormat or type
             The file-format (for file-groups) or datatype (for fields)
             that the source will be stored in within the dataset
+        path : str, default `name`
+            The location of the source within the dataset
+        frequency : DataSpace, default self.leaf_freq
+            The frequency of the source within the dataset            
         overwrite : bool
             Whether to overwrite existing columns
         **kwargs : dict[str, Any]
             Additional kwargs to pass to DataSource.__init__
         """
         frequency = self._parse_freq(frequency)
+        if path is None:
+            path = name
         self._add_spec(name, DataSource(path, datatype, frequency, **kwargs),
                        overwrite)
 
@@ -240,13 +242,13 @@ class Dataset():
         name : str
             The name used to reference the dataset "column" for the
             sink
-        frequency : [type]
-            The frequency of the sink within the dataset
-        path : str, default `name`
-            The location of the sink within the dataset            
         datatype : FileFormat or type
             The file-format (for file-groups) or datatype (for fields)
             that the sink will be stored in within the dataset
+        path : str, default `name`
+            The location of the sink within the dataset            
+        frequency : DataSpace, default self.leaf_freq
+            The frequency of the sink within the dataset            
         overwrite : bool
             Whether to overwrite an existing sink
         """

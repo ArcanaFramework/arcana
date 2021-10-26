@@ -24,11 +24,11 @@ class Pipeline():
 
     Parameters
     ----------
-    workflow : Workflow
+    wf : Workflow
         The pydra workflow
     """
 
-    workflow: Workflow = attr.ib()
+    wf: Workflow = attr.ib()
     frequency: DataSpace = attr.ib()
     inputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
     outputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
@@ -40,7 +40,7 @@ class Pipeline():
         Treat the 'lzout' of the source node as the 'lzin' of the pipeline to
         allow pipelines to be treated the same as normal Pydra workflow
         """
-        return self.workflow.per_node.source.lzout
+        return self.wf.per_node.source.lzout
 
     def set_output(self, connections):
         """Connect the output using the same syntax as used for a Pydra workflow
@@ -67,20 +67,31 @@ class Pipeline():
                 "tuples, or dictionary")
         # Connect "outputs" the pipeline to the 
         for out_name, node_out in connections:
-            setattr(self.workflow.per_node.output_interface, out_name, node_out)
+            setattr(self.wf.per_node.output_interface.inputs, out_name,
+                    node_out)
             self._connected.add(out_name)
 
-    def __getattr__(self, varname):
-        """
-        Delegate any missing attributes to the nested workflow that operates per
-        node"""
-        if 'workflow' in self.__dict__ and 'per_node' in self.workflow.name2obj:
-            return getattr(self.workflow.per_node, varname)
-        super().__getattribute__(name)  # Raise the original AttributeError
+    def add(self, task):
+        if task.name in self.wf.name2obj:
+            raise ValueError(
+                "Another task named {} is already added to the pipeline"
+                .format(task.name))        
+        if task.name in dir(self):
+            raise ValueError(
+                "Cannot use names of pipeline attributes or methods "
+                f"({task.name}) as task name")        
+        self.wf.per_node.add(task)
+        # Favour setting a proper attribute instead of using __getattr__ to
+        # redirect to name2obj
+        setattr(self, task.name, task)
+
+    @property
+    def nodes(self):
+        return self.wf.nodes
 
     def __call__(self, *args, **kwargs):
         self.check_connections()
-        return self.workflow(*args, **kwargs)
+        return self.wf(*args, **kwargs)
 
     def check_connections(self):
         if missing:= set(self.output_names) - self._connected:
@@ -206,7 +217,7 @@ class Pipeline():
         wf.add(to_process(
             dataset=dataset,
             frequency=frequency,
-            outputs=outputs,
+            outputs=pipeline.outputs,
             requested_ids=None,  # FIXME: Needs to be set dynamically
             name='to_process'))
 
@@ -341,7 +352,10 @@ class Pipeline():
 
 def identity(**kwargs):
     "Returns the keyword arguments as a tuple"
-    return tuple(kwargs.values())
+    to_return = tuple(kwargs.values())
+    if len(to_return) == 1:
+        to_return = to_return[0]
+    return to_return
 
 
 
