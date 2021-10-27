@@ -141,8 +141,7 @@ def xnat_repository(xnat_archive_dir, run_prefix):
     try:
         image = dc.images.get(DOCKER_IMAGE)
     except docker.errors.ImageNotFound:
-        image, _ = dc.images.build(path=str(DOCKER_BUILD_DIR),
-                                            tag=DOCKER_IMAGE)
+        image, _ = dc.images.build(path=str(DOCKER_BUILD_DIR), tag=DOCKER_IMAGE)
     
     try:
         container = dc.containers.get(DOCKER_IMAGE)
@@ -219,7 +218,7 @@ def xnat_container_registry(xnat_repository):
     with connect(xnat_repository.server) as login:
         login.post('/xapi/docker/hubs/1', json={
             "name": "Test Registry",
-            "url": f"http://{uri}"})
+            "url": f"https://{uri}"})
 
     yield uri
 

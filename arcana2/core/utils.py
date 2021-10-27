@@ -109,8 +109,29 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     return cls
 
 
+# def resolve_datatype(name):
+#     """Resolves a in a sub-module of arcana2.datatypes based on its
+#     name
+
+#     Parameters
+#     ----------
+#     name : str
+#         The name of the format
+
+#     Returns
+#     -------
+#     FileFormat or type
+#         The resolved file format or type
+#     """
+#     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
+#         return eval(name)
+#     import arcana2.datatypes
+#     import arcana2.core.data.datatype
+#     return get_subclass(arcana2.datatypes,
+#                         arcana2.core.data.datatype.FileFormat, name)
+
 def resolve_datatype(name):
-    """Resolves a in a sub-module of arcana2.datatypes based on its
+    """Resolves a in a sub-module of arcana2.file_format based on its
     name
 
     Parameters
@@ -126,9 +147,22 @@ def resolve_datatype(name):
     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
         return eval(name)
     import arcana2.datatypes
-    import arcana2.core.data.datatype
-    return get_subclass(arcana2.datatypes,
-                        arcana2.core.data.datatype.FileFormat, name)
+    data_format = None
+    module_names = [
+        i.name for i in pkgutil.iter_modules(
+            [os.path.dirname(arcana2.datatypes.__file__)])]
+    for module_name in module_names:
+        module = import_module('arcana2.datatypes.' + module_name)
+        try:
+            data_format = getattr(module, name)
+        except AttributeError:
+            pass
+    if data_format is None:
+        raise ArcanaNameError(
+            name,
+            f"Could not find format {name} in installed modules:\n"
+            + "\n    ".join(module_names))
+    return data_format
 
 
 def submodules(module):

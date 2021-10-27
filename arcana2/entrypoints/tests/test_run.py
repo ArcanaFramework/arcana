@@ -1,25 +1,31 @@
 from argparse import ArgumentParser
+from arcana2.test_fixtures.dataset import TEST_DATASET_BLUEPRINTS, make_dataset
 from arcana2.entrypoints.run import RunCmd
+from arcana2.datatypes import text
 
 
-def test_run_app(test_dicom_dataset_dir):
+def test_run_app(work_dir):
+
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['basic'], work_dir)
+    
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
-        'pydra.tasks.dcm2niix.Dcm2Niix',
-        str(test_dicom_dataset_dir),
+        'arcana2.test_fixtures.tasks.concatenate',
+        str(dataset.name),
         '--repository', 'file_system',
-        '--input', 'in_dir', 'sample-dicom', 'dicom',
-        '--output', 'out_file', 'output-nifti', 'niftix_gz',
-        '--dataspace', 'clinical.Clinical',
-        '--hierarchy', 'session',
-        '--frequency', 'session'
-        # '--ids', None,
-        # '--container', None,
-        # '--id_inference', None,
-        # '--included', [],
-        # '--excluded', [],
-        # '--workflow_format', [],
-        # '--app_arg', []
-        ])
-    pipeline = RunCmd().run(args)
+        '--input', 'in_file1', 'file1', 'text',
+        '--input', 'in_file2', 'file2', 'text',
+        '--output', 'out_file', 'deriv', 'text',
+        '--dataspace', 'arcana2.test_fixtures.dataset.TestDataSpace',
+        '--hierarchy', 'abcd',
+        '--frequency', 'abcd',
+        '--parameter', 'duplicates', '2'])
+    RunCmd().run(args)
+
+    dataset.add_sink('deriv', text)
+
+    for item in dataset['deriv']:
+        with open(item.fs_path) as f:
+            contents = f.read()
+        assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)

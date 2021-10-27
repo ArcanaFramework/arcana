@@ -30,17 +30,18 @@ class RunCmd(BaseDatasetCmd):
 
     @classmethod
     def construct_parser(cls, parser):
+        cls.construct_app_parser(parser)
         super().construct_parser(parser)
-        parser.add_argument(
-            '--container', nargs=2, default=None,
-            metavar=('ENGINE', 'IMAGE'),
-            help=("The container engine ('docker'|'singularity') and the image"
-                  " to run the app in"))
         cls.construct_io_parser(parser)
         parser.add_argument(
             '--ids', nargs='+', default=None,
             help=("IDs of the nodes to process (i.e. for the frequency that "
                   "the app runs at)."))
+        parser.add_argument(
+            '--container', nargs=2, default=None,
+            metavar=('ENGINE', 'IMAGE'),
+            help=("The container engine ('docker'|'singularity') and the image"
+                  " to run the app in"))
         parser.add_argument(
             '--dry_run', action='store_true', default=False,
             help=("Set up the workflow to test inputs but don't run the app"))
@@ -53,6 +54,23 @@ class RunCmd(BaseDatasetCmd):
         parser.add_argument(
             '--output', '-o', action='append', default=[], nargs='+',
             help=cls.OUTPUT_HELP.format(var_desc=cls.VAR_DESC))
+
+    @classmethod
+    def construct_app_parser(cls, parser):
+        parser.add_argument(
+            'app',
+            help=("The path to a Pydra interface that wraps the app "
+                  "convenience the 'pydra.tasks' prefix can be omitted "
+                  "(e.g. fsl.preprocess.first.First)"))        
+        parser.add_argument(
+            '--frequency', '-f', default='session',
+            help=("The level at which the analysis is performed. One of (per) "
+                  "dataset, group, subject, timepoint, group_timepoint or "
+                  "session"))
+        parser.add_argument(
+            '--parameter', '-p', metavar=('NAME', 'VAL'),
+            action='append', default=[], nargs=2,
+            help=("Parameter to pass to the app"))
 
     @classmethod
     def run(cls, args):
@@ -145,12 +163,12 @@ class RunCmd(BaseDatasetCmd):
             dataset.add_source(
                 name=arg.name,
                 path=arg.path,
-                format=arg.datatype,
+                datatype=arg.datatype,
                 frequency=arg.frequency,
                 order=arg.order,
                 metadata=arg.metadata,
                 is_regex=arg.is_regex,
-                quality_threshold=arg.quality)
+                quality_threshold=arg.quality_threshold)
             inputs.append((arg.name, arg.required_datatype))
         return inputs
 
@@ -175,28 +193,10 @@ class RunCmd(BaseDatasetCmd):
             dataset.add_sink(
                 name=arg.name,
                 path=arg.path,
-                format=arg.datatype,
+                datatype=arg.datatype,
                 frequency=frequency)
             outputs.append((arg.name, arg.produced_datatype))
         return outputs
-
-    @classmethod
-    def construct_parser(cls, parser):
-        parser.add_argument(
-            'app',
-            help=("The path to a Pydra interface that wraps the app "
-                  "convenience the 'pydra.tasks' prefix can be omitted "
-                  "(e.g. fsl.preprocess.first.First)"))        
-        parser.add_argument(
-            '--frequency', '-f', default='session',
-            help=("The level at which the analysis is performed. One of (per) "
-                  "dataset, group, subject, timepoint, group_timepoint or "
-                  "session"))
-        parser.add_argument(
-            '--app_arg', '-a', metavar=('FLAG',),
-            action='append', default=[],
-            help=("Flag to pass to the app interface"))
-        super().construct_parser(parser)
 
     @classmethod
     def construct_pipeline(cls, args, pipeline):
@@ -205,12 +205,12 @@ class RunCmd(BaseDatasetCmd):
 
         # Add the app task
         pipeline.add(task_cls(name='app',
-                              **cls.parse_app_args(args, task_cls)))
+                              **cls.parse_parameters(args, task_cls)))
 
         # Connect source to inputs
         for input in pipeline.input_names:
             setattr(pipeline.app.inputs, input,
-                    getattr(pipeline.per_node.source.lzout, input))
+                    getattr(pipeline.wf.per_node.source.lzout, input))
 
         # Connect outputs to sink
         for output in pipeline.output_names:
@@ -219,7 +219,7 @@ class RunCmd(BaseDatasetCmd):
         return pipeline
 
     @classmethod
-    def parse_app_args(cls, args, task_cls):
+    def parse_parameters(cls, args, task_cls):
         """Parses the args to be passed to the Pydra task, converting to the
         right types where required.
 
@@ -236,16 +236,18 @@ class RunCmd(BaseDatasetCmd):
             Arg names and their values to pass to the app
         """
         app_args = {}
-        for name, val in args.app_arg:
+        task = task_cls()
+        for name, val in args.parameter:
             try:
-                arg_spec = next(s for s in task_cls.input_spec.fields
+                arg_spec = next(s for s in task.input_spec.fields
                                 if s[0] == name)
             except StopIteration:
                 raise ArcanaUsageError(
                     f"Unrecognised argument '{name}' passed to '--arg' flag. "
                     "Expecting one of '{}'".format(
-                        "', '".join(task_cls.input_spec.fields)))
-            arg_type = arg_spec[1]
+                        "', '".join(f[0] for f in task.input_spec.fields
+                                    if not f[0].startswith('_'))))
+            arg_type = arg_spec[1].type
             if arg_type is not str and issubclass(arg_type, Sequence):
                 if len(arg_type.__args__) == 1:
                     sub_type = arg_type.__args__[0]
@@ -254,10 +256,10 @@ class RunCmd(BaseDatasetCmd):
                 val = [sub_type(v) for v in re.split(r'[ ,;]+', val)]
             else:
                 try:
-                    val = arg_spec[1](val)
+                    val = arg_type(val)
                 except TypeError:
                     raise ArcanaUsageError(
-                        f"Value supplied to '{name}' field in {task_cls} "
+                        f"Value supplied to '{name}' field in {task.name} "
                         f"cannot be converted to type {arg_spec[1]}") 
             app_args[name] = val
         return app_args

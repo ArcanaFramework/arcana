@@ -27,7 +27,7 @@ def test_get_items(dataset: Dataset):
     for fg_name, formats in dataset.blueprint.expected_formats.items():
         for datatype, files in formats:
             source_name = fg_name + datatype.name
-            dataset.add_source(source_name, fg_name, datatype)
+            dataset.add_source(source_name, path=fg_name, datatype=datatype)
             source_files[source_name] = set(files)
     for node in dataset.nodes(dataset.leaf_freq):
         for source_name, files in source_files.items():

@@ -132,7 +132,12 @@ TEST_DATASET_BLUEPRINTS = {
          'file1': [
             (dummy_format, ['file1.x', 'file1.y', 'file1.z'])]},
         [('deriv1', td.d, json, ['file1.json'])]
-    )}
+    ),
+    'basic': TestDatasetBlueprint(
+        [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        [1, 1, 1, 2],
+        ['file1.txt', 'file2.txt'],
+        {}, {}, [])}
 
 
 GOOD_DATASETS = ['full', 'one_layer', 'skip_single', 'skip_with_inference',
@@ -169,7 +174,7 @@ def dataset(work_dir, request):
     dataset_name = request.param
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_path = get_dataset_path(dataset_name, work_dir)
-    make_dataset(blueprint, dataset_path)
+    dataset = make_dataset(blueprint, dataset_path)
     yield dataset
     #shutil.rmtree(dataset.name)
 

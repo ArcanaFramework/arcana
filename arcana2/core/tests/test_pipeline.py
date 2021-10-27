@@ -1,19 +1,12 @@
 
 from arcana2.test_fixtures.dataset import (
-    make_dataset, TestDatasetBlueprint, TestDataSpace)
+    make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
 from arcana2.test_fixtures.tasks import concatenate
 from arcana2.datatypes.general import text
 
 
-basic_dataset = TestDatasetBlueprint(
-        [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [1, 1, 1, 2],
-        ['file1.txt', 'file2.txt'],
-        {}, {}, [])
-
-
 def test_pipeline(work_dir):
-    dataset = make_dataset(basic_dataset, work_dir)
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['basic'], work_dir)
 
     dataset.add_source('file1', text)
     dataset.add_source('file2', text)
