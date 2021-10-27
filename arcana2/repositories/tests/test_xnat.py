@@ -32,7 +32,8 @@ def test_get_items(xnat_dataset):
         for resource_name, datatype, files in resources:
             if datatype is not None:
                 source_name = scan_name + resource_name
-                xnat_dataset.add_source(source_name, scan_name, datatype)
+                xnat_dataset.add_source(source_name, path=scan_name,
+                                        datatype=datatype)
                 expected_files[source_name] = set(files)
     for node in xnat_dataset.nodes(Clinical.session):
         for source_name, files in expected_files.items():

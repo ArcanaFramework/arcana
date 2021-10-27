@@ -127,7 +127,7 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
 #         return eval(name)
 #     import arcana2.datatypes
 #     import arcana2.core.data.datatype
-#     return get_subclass(arcana2.datatypes,
+#     return resolve_subclass(arcana2.datatypes,
 #                         arcana2.core.data.datatype.FileFormat, name)
 
 def resolve_datatype(name):
@@ -183,7 +183,7 @@ def list_subclasses(package, base_class):
     return subclasses
 
 
-def get_subclass(package, base_class, name):
+def resolve_subclass(package, base_class, name):
     sub_class = None
     for module in submodules(package):
         try:

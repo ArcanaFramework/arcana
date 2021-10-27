@@ -3,10 +3,11 @@ import sys
 from pathlib import Path
 from logging import getLogger
 import docker
-from arcana2.core.utils import resolve_class
+from arcana2.core.utils import resolve_class, resolve_subclass
 from arcana2.repositories.xnat.container_service import (
     generate_dockerfile, InputArg, OutputArg)
 from .run import RunCmd
+from arcana2.dataspaces.clinical import Clinical
 from arcana2.core.entrypoint import BaseCmd
 from arcana2.core.utils import resolve_datatype, DOCKER_HUB, ARCANA_PIP
 
@@ -30,8 +31,8 @@ class Wrap4XnatCmd(BaseCmd):
                             help=("The name of the Docker image, preceded by "
                                   "the registry it will be stored"))
         parser.add_argument('--input', '-i', action='append', default=[],
-                            nargs=3, metavar=('NAME', 'DATATYPE', 'FREQUENCY'),
-                            help="Inputs to be used by the app")
+                            nargs='+',
+                            help="Inputs to be used by the app (NAME DATATYPE [FREQUENCY])")
         parser.add_argument('--output', '-o', action='append', default=[],
                             nargs=2, metavar=('NAME', 'DATATYPE'),
                             help="Outputs of the app to stored back in XNAT")
@@ -48,12 +49,12 @@ class Wrap4XnatCmd(BaseCmd):
                                   "available"))
         parser.add_argument('--package', '-k', action='append',
                             help="PyPI packages to be installed in the env")
-        parser.add_argument('--frequency', default='session',
+        parser.add_argument('--frequency', default='clinical.Clinical.session',
                             help=("Whether the resultant container runs "
                                   "against a session or a whole dataset "
                                   "(i.e. project). Can be one of either "
                                   "'session' or 'dataset'"))
-        parser.add_argument('--registry', default=cls.DOCKER_HUB,
+        parser.add_argument('--registry', default=DOCKER_HUB,
                             help="The registry the image will be installed in")
         parser.add_argument('--build_dir', default=None,
                             help="The directory to build the dockerfile in")
@@ -69,25 +70,27 @@ class Wrap4XnatCmd(BaseCmd):
 
     @classmethod
     def run(cls, args):
-        inputs = RunCmd.parse_input_args(args)
-        outputs = RunCmd.parse_output_args(args)
+
+        frequency = cls.parse_frequency(args)
+        
+        inputs = cls.parse_input_args(args, frequency)
+        outputs = cls.parse_output_args(args)
 
         extra_labels = {'arcana-wrap4xnat-cmd': ' '.join(sys.argv)}
-        pydra_task = resolve_class(args.interface_name)()
+        pydra_task = cls.parse_interface(args)
 
         
         build_dir = Path(tempfile.mkdtemp()
                          if args.build_dir is None else args.build_dir)
 
-        image_name = (args.image_name + ':latest' if ':' not in args.image_name
-                      else args.image_name)
+        image_name = cls.parse_image_name(args)
 
         # Generate dockerfile
         dockerfile = generate_dockerfile(
             pydra_task, image_name, args.tag, inputs, outputs,
             args.parameter, args.requirement, args.package, args.registry,
             args.description, build_dir=build_dir, maintainer=None,
-            extra_labels=extra_labels)
+            extra_labels=extra_labels, frequency=frequency)
 
         if args.build or args.install:
             cls.build(image_name, build_dir=build_dir)
@@ -97,6 +100,19 @@ class Wrap4XnatCmd(BaseCmd):
                         build_dir=build_dir)
         else:
             return dockerfile
+
+    @classmethod
+    def parse_interface(cls, args):
+        return resolve_class(args.interface)()
+
+    @classmethod
+    def parse_frequency(cls, args):
+        return Clinical[args.frequency]
+
+    @classmethod
+    def parse_image_name(cls, args):
+        return (args.image_name + ':latest' if ':' not in args.image_name
+                else args.image_name)
 
     @classmethod
     def build(cls, image_tag, build_dir):
@@ -120,9 +136,10 @@ class Wrap4XnatCmd(BaseCmd):
         dc.images.push(image_path)
 
     @classmethod
-    def parse_input_args(cls, args):
+    def parse_input_args(cls, args, default_frequency):
         for inpt in args.input:
-            name, required_datatype_name, frequency = inpt
+            name, required_datatype_name = inpt[:2]
+            frequency = inpt[2] if len(inpt) > 2 else default_frequency
             required_datatype = resolve_datatype(required_datatype_name)
             yield InputArg(name, required_datatype, frequency)
 

@@ -2,7 +2,7 @@ import sys
 import logging
 from abc import ABCMeta, abstractclassmethod
 from argparse import ArgumentParser
-from arcana2.core.utils import classproperty, get_subclass, list_subclasses, wrap_text, submodules
+from arcana2.core.utils import classproperty, resolve_subclass, list_subclasses, wrap_text, submodules
 from arcana2.__about__ import __version__
 
 logger = logging.getLogger('arcana')
