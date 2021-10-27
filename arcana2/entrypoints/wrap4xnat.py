@@ -4,8 +4,8 @@ from pathlib import Path
 from logging import getLogger
 import docker
 from arcana2.core.utils import resolve_class, resolve_subclass
-from arcana2.repositories.xnat.container_service import (
-    generate_dockerfile, InputArg, OutputArg)
+from arcana2.repositories.xnat import (
+    generate_dockerfile, generate_json_config, InputArg, OutputArg)
 from .run import RunCmd
 from arcana2.dataspaces.clinical import Clinical
 from arcana2.core.entrypoint import BaseCmd
@@ -36,6 +36,8 @@ class Wrap4XnatCmd(BaseCmd):
         parser.add_argument('--output', '-o', action='append', default=[],
                             nargs=2, metavar=('NAME', 'DATATYPE'),
                             help="Outputs of the app to stored back in XNAT")
+        parser.add_argument('--name', '-n', type=str, default=None,
+                            help="A name for the pipeline")
         parser.add_argument('--parameter', '-p', metavar='NAME', action='append',
                             help=("Fixed parameters of the Pydra workflow to "
                                   "expose to the container service"))
@@ -85,12 +87,25 @@ class Wrap4XnatCmd(BaseCmd):
 
         image_name = cls.parse_image_name(args)
 
+        pipeline_name = args.name if args.name else pydra_task.name
+
+        # Generate "command JSON" to embed in container to let XNAT know how
+        # to run the pipeline
+        json_config = generate_json_config(
+            pipeline_name,
+            pydra_task,
+            inputs=inputs,
+            outputs=outputs,
+            description=args.description,
+            parameters=args.parameter,
+            frequency=frequency,
+            registry=args.registry)
+
         # Generate dockerfile
         dockerfile = generate_dockerfile(
-            pydra_task, image_name, args.tag, inputs, outputs,
-            args.parameter, args.requirement, args.package, args.registry,
-            args.description, build_dir=build_dir, maintainer=None,
-            extra_labels=extra_labels, frequency=frequency)
+            pydra_task, json_config, image_name, args.maintainer,
+            args.requirement, args.package, build_dir=build_dir,
+            extra_labels=extra_labels)
 
         if args.build or args.install:
             cls.build(image_name, build_dir=build_dir)
