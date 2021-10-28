@@ -3,10 +3,9 @@ import sys
 from pathlib import Path
 from logging import getLogger
 import docker
-from arcana2.core.utils import resolve_class, resolve_subclass
-from arcana2.repositories.xnat import (
+from arcana2.core.utils import resolve_class
+from arcana2.repositories.xnat.cs import (
     generate_dockerfile, generate_json_config, InputArg, OutputArg)
-from .run import RunCmd
 from arcana2.dataspaces.clinical import Clinical
 from arcana2.core.entrypoint import BaseCmd
 from arcana2.core.utils import resolve_datatype, DOCKER_HUB, ARCANA_PIP

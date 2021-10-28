@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from arcana2.entrypoints.wrap4xnat import Wrap4XnatCmd
-from arcana2.repositories.xnat.xnat_cs import InputArg, OutputArg
+from arcana2.repositories.xnat.cs import InputArg, OutputArg
 from arcana2.datatypes import text
 from arcana2.dataspaces.clinical import Clinical
 from arcana2.test_fixtures.tasks import concatenate

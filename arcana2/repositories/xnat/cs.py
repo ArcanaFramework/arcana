@@ -1,4 +1,7 @@
-
+"""
+Helper functions for generating XNAT Container Service compatible Docker
+containers
+"""
 import json
 import logging
 from pathlib import Path
@@ -134,11 +137,11 @@ def generate_dockerfile(pydra_task, json_config, maintainer, build_dir,
         f.write(dockerfile)
     logger.info("Dockerfile generated at %s", out_file)
 
-    return dockerfile
+    return dockerfile, build_dir
 
 
 def generate_json_config(pipeline_name, pydra_task, image_tag,
-                         inputs, outputs, description, 
+                         inputs, outputs, description, version,
                          parameters=None, frequency=Clinical.session,
                          registry=DOCKER_HUB, info_url=None, debug_output=False):
     """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
@@ -158,6 +161,8 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
         Outputs from the container 
     description : str
         User-facing description of the pipeline
+    version : str
+        Version string for the wrapped pipeline
     parameters : list[str]
         Parameters to be exposed in the CS command    
     frequency : Clinical
@@ -188,13 +193,13 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
     inputs = [InputArg(*i) for i in inputs if isinstance(i, tuple)]
     outputs = [OutputArg(*o) for o in outputs if isinstance(o, tuple)]
 
-    image_name, version = image_tag.split(':')
-
     field_specs = dict(pydra_task.input_spec.fields)
 
+    # JSON to define all inputs and parameters to the pipelines
     inputs_json = []
 
     # Add task inputs to inputs JSON specification
+    input_args = []
     for inpt in inputs:
         spec = field_specs[inpt.name]
         
@@ -214,10 +219,11 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
             "required": True,
             "user-settable": True,
             "replacement-key": "[{}_INPUT]".format(inpt.name.upper())})
-        if info_url:
-            inputs_json['info-url'] = info_url
+        input_args.append(
+            f'--input {inpt.name} [{inpt.name.upper()}_INPUT]')
 
     # Add parameters as additional inputs to inputs JSON specification
+    param_args = []
     for param in parameters:
         spec = field_specs[param]
         desc = "Parameter: " + spec.metadata.get('help_string', '')
@@ -231,20 +237,13 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
             "required": required,
             "user-settable": True,
             "replacement-key": "[{}_PARAM]".format(param.upper())})
+        param_args.append(
+            f'--parameter {param} [{param.upper()}_INPUT]')
 
-    # Add Project ID as derived input
-    inputs_json.append(
-        {
-            "name": "project-id",
-            "description": "Project ID",
-            "type": "string",
-            "required": True,
-            "user-settable": False,
-            "replacement-key": "[PROJECT_ID]"
-        })
-
+    # Set up output handlers and arguments
     outputs_json = []
     output_handlers = []
+    output_args = []
     for output in outputs:
         outputs_json.append({
             "name": output.name,
@@ -261,8 +260,11 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
             "type": "Resource",
             "label": output.name,
             "format": None})
+        output_args.append(
+            f'--output {output.name} [{output.name.upper()}_OUTPUT]')
 
-    if debug_output:  # Save work directory as session resource
+    # Save work directory as session resource if debugging
+    if debug_output:  
         outputs_json.append({
                 "name": "work",
                 "description": "Working directory",
@@ -279,41 +281,65 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
                 "label": "__work__",
                 "format": None})
 
+    input_args_str = ' '.join(input_args)
+    output_args_str = ' '.join(output_args)
+    param_args_str = ' '.join(param_args)
 
-    input_args = ' '.join('--input {} [{}_INPUT]'.format(i.name, i.name.upper())
-                            for i in inputs)
-    output_args = ' '.join('--output {} [{}_OUTPUT]'.format(o.name, o.name.upper())
-                            for o in outputs)
-    param_args = ' '.join('--parameter {} [{}_PARAM]'.format(p, p.upper())
-                            for p in parameters)
-
+    # Unpickle function to get its name
     func = cp.loads(pydra_task.inputs._func)
 
     cmdline = (
         # f"conda run --no-capture-output -n arcana2 "  # activate conda
         f"arcana run {func.__module__}.{func.__name__} "  # run pydra task in Arcana
-        f"[PROJECT_ID] {input_args} {output_args} {param_args} --work /work " # inputs + params
+        f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} --work /work " # inputs + params
         "--repository xnat [PROJECT_URI] [TOKEN] [SECRET]")  # pass XNAT API details
+
+    # Add Project ID as derived input to facilitate access to API
+    inputs_json.append(
+        {
+            "name": "PROJECT_ID",
+            "description": "Project ID",
+            "type": "string",
+            "required": True,
+            "user-settable": None,
+            "replacement-key": "[PROJECT_ID]"
+        })
+
+    # if frequency == Clinical.subject:
+    #     inputs_json.append(
+    #         {
+    #             "name": "subject-id",
+    #             "description": "ID of the subject",
+    #             "type": "string",
+    #             "required": True,
+    #             "user-settable": False,
+    #             "replacement-key": "[SUBJECT_ID]"
+    #         })
+    #     cmdline += " --ids [SUBJECT_ID]"
 
     if frequency == Clinical.session:
         inputs_json.append(
             {
-                "name": "session-id",
-                "description": "",
+                "name": "SESSION_LABEL",
+                "description": "Imaging session label",
                 "type": "string",
                 "required": True,
-                "user-settable": False,
-                "replacement-key": "[SESSION_ID]"
+                "user-settable": None,
+                "replacement-key": "[SESSION_LABEL]"
             })
-        cmdline += " --session_ids [SESSION_ID] "
+        cmdline += " --ids [SESSION_LABEL] "
+    else:
+        raise NotImplementedError(
+            "Wrapper currently only supports session-level pipelines")
 
-    return {
+    # Generate the complete configuration JSON
+    json_config = {
         "name": pipeline_name,
         "description": description,
         "label": pipeline_name,
         "version": version,
         "schema-version": "1.0",
-        "image": image_name,
+        "image": image_tag,
         "index": registry,
         "type": "docker",
         "command-line": cmdline,
@@ -356,42 +382,77 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
                         "provides-value-for-command-input": None,
                         "provides-files-for-command-mount": "in",
                         "via-setup-command": None,
-                        "user-settable": None,
+                        "user-settable": False,
                         "load-children": True
                     }
                 ],
                 "derived-inputs": [
-                    {
-                        "name": "session-id",
-                        "type": "string",
-                        "required": True,
-                        "load-children": True,
-                        "derived-from-wrapper-input": "session",
-                        "derived-from-xnat-object-property": "id",
-                        "provides-value-for-command-input": "session-id"
-                    },
-                    {
-                        "name": "subject",
-                        "type": "Subject",
-                        "required": True,
-                        "user-settable": False,
-                        "load-children": True,
-                        "derived-from-wrapper-input": "session"
-                    },
-                    {
-                        "name": "project-id",
-                        "type": "string",
-                        "required": True,
-                        "load-children": True,
-                        "derived-from-wrapper-input": "subject",
-                        "derived-from-xnat-object-property": "id",
-                        "provides-value-for-command-input": "subject-id"
-                    }
+                    # {
+                    #     "name": "session_id",
+                    #     "type": "string",
+                    #     "required": True,
+                    #     "load-children": True,
+                    #     "derived-from-wrapper-input": "session",
+                    #     "derived-from-xnat-object-property": "id",
+                    #     "provides-value-for-command-input": "session-id"
+                    # },
+                    # {
+                    #     "name": "subject",
+                    #     "type": "Subject",
+                    #     "required": True,
+                    #     "user-settable": False,
+                    #     "load-children": True,
+                    #     "derived-from-wrapper-input": "session"
+                    # },
+                    # {
+                    #     "name": "subject_id",
+                    #     "type": "string",
+                    #     "required": True,
+                    #     "load-children": True,
+                    #     "derived-from-wrapper-input": "subject",
+                    #     "derived-from-xnat-object-property": "id",
+                    #     "provides-value-for-command-input": "subject-id"
+                    # }
+                # {
+                #     "name": "session-id",
+                #     "type": "string",
+                #     "derived-from-wrapper-input": "session",
+                #     "derived-from-xnat-object-property": "id",
+                #     "provides-value-for-command-input": "session-id"
+                # },
+                {
+                    "name": "session-label",
+                    "type": "string",
+                    "derived-from-wrapper-input": "session",
+                    "derived-from-xnat-object-property": "label",
+                    "provides-value-for-command-input": "session-id",
+                    "user-settable": None
+                },
+                # {
+                #     "name": "subject-id",
+                #     "type": "string",
+                #     "derived-from-wrapper-input": "session",
+                #     "derived-from-xnat-object-property": "subject-id",
+                #     "provides-value-for-command-input": "subject-id"
+                # },
+                {
+                    "name": "project",
+                    "type": "string",
+                    "derived-from-wrapper-input": "session",
+                    "derived-from-xnat-object-property": "project-id",
+                    "provides-value-for-command-input": "project-id",
+                    "user-settable": None
+                }                    
                 ],
                 "output-handlers": output_handlers
             }
         ]
     }
+
+    if info_url:
+        json_config['info-url'] = info_url
+
+    return json_config
 
 
 @dataclass

@@ -29,7 +29,7 @@ from .test_fixtures.dataset import (
     test_dicom_dataset_dir, dicom_dataset)
 from .test_fixtures.tasks import (
     pydra_task_details, pydra_task)
-from .test_fixtures.xnat import (
+from .test_fixtures.xnat.xnat import (
     xnat_dataset, mutable_xnat_dataset, xnat_archive_dir, xnat_repository,
     xnat_container_registry, run_prefix)
 
