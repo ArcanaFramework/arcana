@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import docker
+from xnat.exceptions import XNATError
 from arcana2.entrypoints.wrap4xnat import Wrap4XnatCmd
 from arcana2.test_fixtures.xnat.xnat import get_mutable_dataset
 from arcana2.dataspaces.clinical import Clinical
@@ -77,6 +78,10 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
         # Post json config to debug xnat instead of pulling image as it isn't
         # working and since we are mounting in Docker sock (i.e. sharing the
         # outer Docker) the image is already there
+        try:
+            xnat_repository.login.delete('/xapi/commands/1')
+        except XNATError:
+            pass
         result = xnat_repository.login.post('/xapi/commands', json=json_config)
         
         commands = xnat_repository.login.get('/xapi/commands')

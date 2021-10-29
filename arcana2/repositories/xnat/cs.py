@@ -238,30 +238,33 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
             "user-settable": True,
             "replacement-key": "[{}_PARAM]".format(param.upper())})
         param_args.append(
-            f'--parameter {param} [{param.upper()}_INPUT]')
+            f'--parameter {param} [{param.upper()}_PARAM]')
 
     # Set up output handlers and arguments
     outputs_json = []
     output_handlers = []
     output_args = []
     for output in outputs:
+
+        output_fname = output.name + output.datatype.extension
+        # Set the path to the 
         outputs_json.append({
             "name": output.name,
             "description": f"{output.name} ({output.datatype})",
             "required": True,
             "mount": "out",
-            "path": None,
+            "path": output_fname,
             "glob": None})
         output_handlers.append({
             "name": f"{output.name}-resource",
             "accepts-command-output": output.name,
             "via-wrapup-command": None,
-            "as-a-child-of": "session",
+            "as-a-child-of": "SESSION_XML",
             "type": "Resource",
             "label": output.name,
             "format": None})
         output_args.append(
-            f'--output {output.name} [{output.name.upper()}_OUTPUT]')
+            f'--output {output.name} /output/{output_fname}')
 
     # Save work directory as session resource if debugging
     if debug_output:  
@@ -276,7 +279,7 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
                 "name": "work-resource",
                 "accepts-command-output": "work",
                 "via-wrapup-command": None,
-                "as-a-child-of": "session",
+                "as-a-child-of": "SESSION_XML",
                 "type": "Resource",
                 "label": "__work__",
                 "format": None})
@@ -291,43 +294,76 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
     cmdline = (
         # f"conda run --no-capture-output -n arcana2 "  # activate conda
         f"arcana run {func.__module__}.{func.__name__} "  # run pydra task in Arcana
-        f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} --work /work " # inputs + params
-        "--repository xnat [PROJECT_URI] [TOKEN] [SECRET]")  # pass XNAT API details
+        f"[PROJECT] {input_args_str} {output_args_str} {param_args_str} --work /work " # inputs + params
+        "--repository xnat $XNAT_HOST $XNAT_USER $XNAT_PASS")  # pass XNAT API details
 
-    # Add Project ID as derived input to facilitate access to API
+    # Create Project input that can be passed to the command line, which will
+    # be populated by inputs derived from the XNAT object passed to the pipeline
     inputs_json.append(
         {
-            "name": "PROJECT_ID",
+            "name": "PROJECT",
             "description": "Project ID",
             "type": "string",
             "required": True,
-            "user-settable": None,
-            "replacement-key": "[PROJECT_ID]"
+            "user-settable": False,
+            "replacement-key": "[PROJECT]"
         })
 
-    # if frequency == Clinical.subject:
-    #     inputs_json.append(
-    #         {
-    #             "name": "subject-id",
-    #             "description": "ID of the subject",
-    #             "type": "string",
-    #             "required": True,
-    #             "user-settable": False,
-    #             "replacement-key": "[SUBJECT_ID]"
-    #         })
-    #     cmdline += " --ids [SUBJECT_ID]"
-
+    # Access session via Container service args and derive 
     if frequency == Clinical.session:
+        # Set the object the pipeline is to be run against
+        context = ["xnat:imageSessionData"]
+        # Create Session input that  can be passed to the command line, which
+        # will be populated by inputs derived from the XNAT session object
+        # passed to the pipeline.
         inputs_json.append(
             {
-                "name": "SESSION_LABEL",
+                "name": "SESSION",
                 "description": "Imaging session label",
                 "type": "string",
                 "required": True,
-                "user-settable": None,
-                "replacement-key": "[SESSION_LABEL]"
+                "user-settable": False,
+                "replacement-key": "[SESSION]"
             })
-        cmdline += " --ids [SESSION_LABEL] "
+        # Add specific session to process to command line args
+        cmdline += " --ids [SESSION] "
+        # Access the session XNAT object passed to the pipeline
+        external_inputs = [
+                    {
+                        "name": "SESSION_XML",
+                        "description": "Imaging session",
+                        "type": "Session",
+                        "source": None,
+                        "default-value": None,
+                        "required": True,
+                        "replacement-key": None,
+                        "sensitive": None,
+                        "provides-value-for-command-input": None,
+                        "provides-files-for-command-mount": "in",
+                        "via-setup-command": None,
+                        "user-settable": False,
+                        "load-children": True
+                    }
+                ]
+        # Access to project ID and session label from session XNAT object
+        derived_inputs = [
+            {
+                "name": "SESSION_LABEL",
+                "type": "string",
+                "derived-from-wrapper-input": "SESSION_XML",
+                "derived-from-xnat-object-property": "label",
+                "provides-value-for-command-input": "SESSION",
+                "user-settable": False
+            },
+            {
+                "name": "PROJECT_ID",
+                "type": "string",
+                "derived-from-wrapper-input": "SESSION_XML",
+                "derived-from-xnat-object-property": "project-id",
+                "provides-value-for-command-input": "PROJECT",
+                "user-settable": False
+            }]
+    
     else:
         raise NotImplementedError(
             "Wrapper currently only supports session-level pipelines")
@@ -368,82 +404,9 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
             {
                 "name": pipeline_name,
                 "description": description,
-                "contexts": ["xnat:imageSessionData"],
-                "external-inputs": [
-                    {
-                        "name": "session",
-                        "description": "Imaging session",
-                        "type": "Session",
-                        "source": None,
-                        "default-value": None,
-                        "required": True,
-                        "replacement-key": None,
-                        "sensitive": None,
-                        "provides-value-for-command-input": None,
-                        "provides-files-for-command-mount": "in",
-                        "via-setup-command": None,
-                        "user-settable": False,
-                        "load-children": True
-                    }
-                ],
-                "derived-inputs": [
-                    # {
-                    #     "name": "session_id",
-                    #     "type": "string",
-                    #     "required": True,
-                    #     "load-children": True,
-                    #     "derived-from-wrapper-input": "session",
-                    #     "derived-from-xnat-object-property": "id",
-                    #     "provides-value-for-command-input": "session-id"
-                    # },
-                    # {
-                    #     "name": "subject",
-                    #     "type": "Subject",
-                    #     "required": True,
-                    #     "user-settable": False,
-                    #     "load-children": True,
-                    #     "derived-from-wrapper-input": "session"
-                    # },
-                    # {
-                    #     "name": "subject_id",
-                    #     "type": "string",
-                    #     "required": True,
-                    #     "load-children": True,
-                    #     "derived-from-wrapper-input": "subject",
-                    #     "derived-from-xnat-object-property": "id",
-                    #     "provides-value-for-command-input": "subject-id"
-                    # }
-                # {
-                #     "name": "session-id",
-                #     "type": "string",
-                #     "derived-from-wrapper-input": "session",
-                #     "derived-from-xnat-object-property": "id",
-                #     "provides-value-for-command-input": "session-id"
-                # },
-                {
-                    "name": "session-label",
-                    "type": "string",
-                    "derived-from-wrapper-input": "session",
-                    "derived-from-xnat-object-property": "label",
-                    "provides-value-for-command-input": "session-id",
-                    "user-settable": None
-                },
-                # {
-                #     "name": "subject-id",
-                #     "type": "string",
-                #     "derived-from-wrapper-input": "session",
-                #     "derived-from-xnat-object-property": "subject-id",
-                #     "provides-value-for-command-input": "subject-id"
-                # },
-                {
-                    "name": "project",
-                    "type": "string",
-                    "derived-from-wrapper-input": "session",
-                    "derived-from-xnat-object-property": "project-id",
-                    "provides-value-for-command-input": "project-id",
-                    "user-settable": None
-                }                    
-                ],
+                "contexts": context,
+                "external-inputs": external_inputs,
+                "derived-inputs": derived_inputs,
                 "output-handlers": output_handlers
             }
         ]
