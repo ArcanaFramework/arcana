@@ -13,11 +13,13 @@ install_requires = [
     'pydra-dcm2niix',
     'natsort>=7.1.1',
     # 'networkx>=2.2',
-    # 'fasteners>=0.7.0',
+    'fasteners>=0.7.0',
     # 'future>=0.16.0',
     # 'pybids>=0.5.1',
     # 'contextlib2>=0.5.5',
-    # 'deepdiff>=3.3',
+    'docker>=5.0.2'
+    'neurodocker',
+    'deepdiff>=3.3',
     'tqdm>=4.25.0']
 
 

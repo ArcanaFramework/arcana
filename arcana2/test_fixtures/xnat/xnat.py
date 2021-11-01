@@ -104,6 +104,7 @@ DOCKER_HOST = 'localhost'
 DOCKER_XNAT_PORT = '8989'
 DOCKER_REGISTRY_IMAGE = 'registry'
 DOCKER_REGISTRY_CONTAINER = 'arcana-docker-registry'
+DOCKER_NETWORK_NAME = 'arcana'
 DOCKER_REGISTRY_PORT = '5959'
 DOCKER_XNAT_URI = f'http://{DOCKER_HOST}:{DOCKER_XNAT_PORT}'
 DOCKER_XNAT_USER = 'admin'
@@ -134,7 +135,7 @@ def xnat_archive_dir():
 
 
 @pytest.fixture(scope='session')
-def xnat_repository(xnat_archive_dir, run_prefix):
+def xnat_repository(xnat_archive_dir, run_prefix, xnat_docker_network):
 
     dc = docker.from_env()
 
@@ -150,12 +151,14 @@ def xnat_repository(xnat_archive_dir, run_prefix):
         shutil.rmtree(xnat_archive_dir, ignore_errors=True)
         os.mkdir(xnat_archive_dir)
         container = dc.containers.run(
-            image.tags[0], detach=True, ports={'8080/tcp': DOCKER_XNAT_PORT},
+            image.tags[0], detach=True, ports={
+                '8080/tcp': DOCKER_XNAT_PORT},
             remove=True, name=DOCKER_IMAGE,
             # Expose the XNAT archive dir outside of the XNAT docker container
             # to simulate what the XNAT container service exposes to running
             # pipelines, and the Docker socket for the container service to
             # to use
+            network=xnat_docker_network.id,
             volumes={str(xnat_archive_dir): {'bind': '/data/xnat/archive',
                                              'mode': 'rw'},
                      '/var/run/docker.sock': {'bind': '/var/run/docker.sock',
@@ -191,7 +194,7 @@ def xnat_respository_uri(xnat_repository):
 
 
 @pytest.fixture(scope='session')
-def xnat_container_registry(xnat_repository):
+def xnat_container_registry(xnat_repository, xnat_docker_network):
     "Stand up a Docker registry to use with the container service"
 
     dc = docker.from_env()
@@ -207,6 +210,7 @@ def xnat_container_registry(xnat_repository):
         container = dc.containers.run(
             image.tags[0], detach=True,
             ports={'5000/tcp': DOCKER_REGISTRY_PORT},
+            network=xnat_docker_network.id,
             remove=True, name=DOCKER_REGISTRY_CONTAINER)
         already_running = False
     else:
@@ -218,12 +222,21 @@ def xnat_container_registry(xnat_repository):
     with connect(xnat_repository.server) as login:
         login.post('/xapi/docker/hubs/1', json={
             "name": "testregistry",
-            "url": f"https://{uri}"})
+            "url": f"https://{DOCKER_REGISTRY_CONTAINER}:5000"})
 
     yield uri
 
     if not already_running:
         container.stop()
+
+@pytest.fixture(scope='session')
+def xnat_docker_network():
+    dc = docker.from_env()
+    try:
+        network = dc.networks.get(DOCKER_NETWORK_NAME)
+    except docker.errors.NotFound:
+        network = dc.networks.create(DOCKER_NETWORK_NAME)
+    return network
 
 
 def get_mutable_dataset(xnat_repository, xnat_archive_dir, test_name):

@@ -109,17 +109,16 @@ def generate_dockerfile(pydra_task, json_config, maintainer, build_dir,
             arcana_pip = f"{arcana_pkg.key}=={arcana_pkg.version}"
     packages.append(arcana_pip)
 
-    instructions.append(['run', 'pip3 install ' + ' '.join(packages)])
+    # instructions.append(['run', 'pip3 install ' + ' '.join(packages)])
 
-    # FIXME: reinstate miniconda install
-    # instructions.append(
-    #     ["miniconda", {
-    #         "create_env": "arcana2",
-    #         "conda_install": [
-    #             "python=" + natsorted(python_versions)[-1],
-    #             "numpy",
-    #             "traits"],
-    #         "pip_install": packages}])
+    instructions.append(
+        ["miniconda", {
+            "create_env": "arcana",
+            "conda_install": [
+                "python=" + natsorted(python_versions)[-1],
+                "numpy",
+                "traits"],
+            "pip_install": packages}])
 
     if labels:
         instructions.append(["label", labels])
@@ -259,7 +258,7 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
             "name": f"{output.name}-resource",
             "accepts-command-output": output.name,
             "via-wrapup-command": None,
-            "as-a-child-of": "SESSION_XML",
+            "as-a-child-of": "SESSION",
             "type": "Resource",
             "label": output.name,
             "format": None})
@@ -279,7 +278,7 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
                 "name": "work-resource",
                 "accepts-command-output": "work",
                 "via-wrapup-command": None,
-                "as-a-child-of": "SESSION_XML",
+                "as-a-child-of": "SESSION",
                 "type": "Resource",
                 "label": "__work__",
                 "format": None})
@@ -292,21 +291,21 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
     func = cp.loads(pydra_task.inputs._func)
 
     cmdline = (
-        # f"conda run --no-capture-output -n arcana2 "  # activate conda
+        f"conda run --no-capture-output -n arcana "  # activate conda
         f"arcana run {func.__module__}.{func.__name__} "  # run pydra task in Arcana
-        f"[PROJECT] {input_args_str} {output_args_str} {param_args_str} --work /work " # inputs + params
+        f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} --work /work " # inputs + params
         "--repository xnat $XNAT_HOST $XNAT_USER $XNAT_PASS")  # pass XNAT API details
 
     # Create Project input that can be passed to the command line, which will
     # be populated by inputs derived from the XNAT object passed to the pipeline
     inputs_json.append(
         {
-            "name": "PROJECT",
+            "name": "PROJECT_ID",
             "description": "Project ID",
             "type": "string",
             "required": True,
             "user-settable": False,
-            "replacement-key": "[PROJECT]"
+            "replacement-key": "[PROJECT_ID]"
         })
 
     # Access session via Container service args and derive 
@@ -318,49 +317,47 @@ def generate_json_config(pipeline_name, pydra_task, image_tag,
         # passed to the pipeline.
         inputs_json.append(
             {
-                "name": "SESSION",
+                "name": "SESSION_LABEL",
                 "description": "Imaging session label",
                 "type": "string",
                 "required": True,
                 "user-settable": False,
-                "replacement-key": "[SESSION]"
+                "replacement-key": "[SESSION_LABEL]"
             })
         # Add specific session to process to command line args
-        cmdline += " --ids [SESSION] "
+        cmdline += " --ids [SESSION_LABEL] "
         # Access the session XNAT object passed to the pipeline
         external_inputs = [
-                    {
-                        "name": "SESSION_XML",
-                        "description": "Imaging session",
-                        "type": "Session",
-                        "source": None,
-                        "default-value": None,
-                        "required": True,
-                        "replacement-key": None,
-                        "sensitive": None,
-                        "provides-value-for-command-input": None,
-                        "provides-files-for-command-mount": "in",
-                        "via-setup-command": None,
-                        "user-settable": False,
-                        "load-children": True
-                    }
-                ]
+            {
+                "name": "SESSION",
+                "description": "Imaging session",
+                "type": "Session",
+                "source": None,
+                "default-value": None,
+                "required": True,
+                "replacement-key": None,
+                "sensitive": None,
+                "provides-value-for-command-input": None,
+                "provides-files-for-command-mount": "in",
+                "via-setup-command": None,
+                "user-settable": False,
+                "load-children": True}]
         # Access to project ID and session label from session XNAT object
         derived_inputs = [
             {
-                "name": "SESSION_LABEL",
+                "name": "__SESSION_LABEL__",
                 "type": "string",
-                "derived-from-wrapper-input": "SESSION_XML",
+                "derived-from-wrapper-input": "SESSION",
                 "derived-from-xnat-object-property": "label",
-                "provides-value-for-command-input": "SESSION",
+                "provides-value-for-command-input": "SESSION_LABEL",
                 "user-settable": False
             },
             {
-                "name": "PROJECT_ID",
+                "name": "__PROJECT_ID__",
                 "type": "string",
-                "derived-from-wrapper-input": "SESSION_XML",
+                "derived-from-wrapper-input": "SESSION",
                 "derived-from-xnat-object-property": "project-id",
-                "provides-value-for-command-input": "PROJECT",
+                "provides-value-for-command-input": "PROJECT_ID",
                 "user-settable": False
             }]
     

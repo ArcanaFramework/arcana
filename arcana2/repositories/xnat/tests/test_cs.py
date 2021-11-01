@@ -11,6 +11,8 @@ from arcana2.repositories.xnat.cs import (
     generate_dockerfile, generate_json_config)
 
 
+PIPELINE_NAME = 'test-concatenate'
+
 def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
                      xnat_archive_dir):
 
@@ -27,7 +29,7 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
     pydra_task = concatenate()
 
     json_config = generate_json_config(
-        pipeline_name='test-concatenate',
+        pipeline_name=PIPELINE_NAME,
         pydra_task=pydra_task,
         image_tag=image_tag,
         inputs=[
@@ -60,29 +62,49 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
         packages=[],
         extra_labels={})
 
-    # dc = docker.from_env()
-    # dc.images.build(path=str(build_dir), tag=image_tag)
+    dc = docker.from_env()
+    dc.images.build(path=str(build_dir), tag=image_tag)
 
-    # image_path = f'{xnat_container_registry}/{image_tag}'
+    image_path = f'{xnat_container_registry}/{image_tag}'
 
-    # dc.images.push(image_path)
+    dc.images.push(image_path)
 
 
     with xnat_repository:
 
+        xlogin = xnat_repository.login
+
         # Pull image from test registry to XNAT container service
-        # xnat_repository.login.post('/xapi/docker/pull', json={
+        # xlogin.post('/xapi/docker/pull', json={
         #     'image': image_tag,
         #     'save-commands': True})
 
         # Post json config to debug xnat instead of pulling image as it isn't
         # working and since we are mounting in Docker sock (i.e. sharing the
         # outer Docker) the image is already there
-        try:
-            xnat_repository.login.delete('/xapi/commands/1')
-        except XNATError:
-            pass
-        result = xnat_repository.login.post('/xapi/commands', json=json_config)
+
+        # Delete existing commands
+        cmd_ids = [c['id'] for c in xlogin.get(f'/xapi/commands/').json()]
+        for cmd in cmd_ids:
+            xlogin.delete(f"/xapi/commands/{cmd['id']}",
+                          accepted_status=204)
+        cmd_id = xlogin.post('/xapi/commands', json=json_config).json()
+
+        # Enable the command globally and in project
+        xlogin.put(
+            f'/xapi/commands/{cmd_id}/wrappers/{PIPELINE_NAME}/enabled')
+        xlogin.put(
+            f'/xapi/projects/{dataset.name}/commands/{cmd_id}/wrappers/{PIPELINE_NAME}/enabled')
+
+        test_xsession = next(iter(xlogin.projects[dataset.name].experiments.values()))
+
+        # Launch container
+        result = xlogin.get(
+            f'/xapi/projects/{dataset.name}/wrappers/{cmd_id}/launch?'
+            f'SESSION={test_xsession.id}&format=json')
+
+        result = xlogin.post(
+            f"/xapi/projects/{dataset.name}/wrappers/{cmd_id}/root/SESSION/launch")
         
-        commands = xnat_repository.login.get('/xapi/commands')
+        commands = xlogin.get('/xapi/commands')
         assert image_tag in commands   
