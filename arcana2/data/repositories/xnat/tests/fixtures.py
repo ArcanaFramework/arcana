@@ -11,13 +11,13 @@ from itertools import product
 import pytest
 import docker
 import xnat
-from arcana2.repositories import Xnat
-from arcana2.dataspaces.clinical import Clinical
+from arcana2.data.repositories import Xnat
+from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.data.space import DataSpace
-from arcana2.core.data.datatype import FileFormat
-from arcana2.datatypes.general import text, directory
-from arcana2.datatypes.neuroimaging import niftix_gz, nifti_gz, dicom
-from ..dataset import create_test_file
+from arcana2.core.data.type import FileFormat
+from arcana2.data.types.general import text, directory
+from arcana2.data.types.neuroimaging import niftix_gz, nifti_gz, dicom
+from arcana2.core.data.tests.fixtures import create_test_file
 
 
 # -----------------------

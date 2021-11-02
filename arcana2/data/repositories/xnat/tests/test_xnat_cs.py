@@ -3,12 +3,11 @@ import json
 import docker
 from xnat.exceptions import XNATError
 from arcana2.entrypoints.wrap4xnat import Wrap4XnatCmd
-from arcana2.test_fixtures.xnat.xnat import make_mutable_dataset
-from arcana2.dataspaces.clinical import Clinical
-from arcana2.datatypes import text
-from arcana2.test_fixtures.tasks import concatenate
-from arcana2.repositories.xnat.cs import (
-    generate_dockerfile, generate_json_config)
+from arcana2.data.repositories.xnat.tests.fixtures import make_mutable_dataset
+from arcana2.data.spaces.clinical import Clinical
+from arcana2.data.types import text
+from arcana2.tasks.tests.fixtures import concatenate
+from arcana2.data.repositories.xnat.cs import XnatViaCS
 
 
 PIPELINE_NAME = 'test-concatenate'
@@ -28,7 +27,7 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
 
     pydra_task = concatenate()
 
-    json_config = generate_json_config(
+    json_config = XnatViaCS.generate_json_config(
         pipeline_name=PIPELINE_NAME,
         pydra_task=pydra_task,
         image_tag=image_tag,
@@ -53,7 +52,7 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
 
     # dcm2niix_config['name'] = dcm2niix_config['label'] = 'dcm2niix' + run_prefix
 
-    dockerfile, build_dir = generate_dockerfile(
+    dockerfile, build_dir = XnatViaCS.generate_dockerfile(
         pydra_task=pydra_task,
         json_config=json_config,
         maintainer='some.one@an.org',

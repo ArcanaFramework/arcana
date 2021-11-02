@@ -6,7 +6,8 @@ from typing import Sequence
 import arcana2.data.types
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.core.data.type import FileFormat
-from arcana2.core.data.space import DataSpace, DataQuality
+from arcana2.core.data.space import DataSpace
+from arcana2.core.data.enum import DataQuality
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
 from .dataset import BaseDatasetCmd
@@ -145,7 +146,7 @@ class RunCmd(BaseDatasetCmd):
         elif '.' in path:
             # FIXME: Need a more robust way of determining datatype
             # from output path extension
-            for dtype in list_instances(arcana2.datatypes, FileFormat):
+            for dtype in list_instances(arcana2.data.types, FileFormat):
                 if dtype.extension == '.'.join(path.suffixes):
                     datatype = dtype
                     # Strip suffix from path

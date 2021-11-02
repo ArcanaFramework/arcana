@@ -17,8 +17,8 @@ import cloudpickle as cp
 from attr import NOTHING
 import neurodocker as nd
 from natsort import natsorted
-from arcana2.dataspaces.clinical import Clinical
-from arcana2.core.data.datatype import FileFormat
+from arcana2.data.spaces.clinical import Clinical
+from arcana2.core.data.type import FileFormat
 from arcana2.core.data.space import DataSpace
 from arcana2.core.utils import resolve_class, DOCKER_HUB, ARCANA_PIP
 from arcana2.exceptions import ArcanaUsageError
@@ -65,9 +65,8 @@ class XnatViaCS(Xnat):
         frequency) then the filter should match all sessions in the Analysis's
         subject_ids and timepoint_ids.
     """
-    context: DataSpace = attr.ib()
-    input_mount: Path = attr.ib()
-    output_mount: Path = attr.ib()
+    context: DataSpace = attr.ib(default=Clinical.session)
+
 
     def get_file_group(self, file_group):
         if not self.on_direct_mount(file_group):
@@ -371,7 +370,7 @@ class XnatViaCS(Xnat):
                 "label": output.name,
                 "format": None})
             output_args.append(
-                f'--output {output.name} /output/{output_fname}')
+                f'--output {output.name} {cls.OUTPUT_MOUNT}/{output_fname}')
 
         # Save work directory as session resource if debugging
         if debug_output:  
@@ -402,7 +401,7 @@ class XnatViaCS(Xnat):
             f"conda run --no-capture-output -n arcana "  # activate conda
             f"arcana run {func.__module__}.{func.__name__} "  # run pydra task in Arcana
             f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} "
-            "--work /work " # inputs + params
+            f"--work {cls.WORK_MOUNT} " # inputs + params
             "--repository xnat $XNAT_HOST $XNAT_USER $XNAT_PASS")  # pass XNAT API details
 
         # Create Project input that can be passed to the command line, which will
@@ -490,17 +489,17 @@ class XnatViaCS(Xnat):
                 {
                     "name": "in",
                     "writable": False,
-                    "path": "/input"
+                    "path": cls.INPUT_MOUNT
                 },
                 {
                     "name": "out",
                     "writable": True,
-                    "path": "/output"
+                    "path": cls.OUTPUT_MOUNT
                 },
                 {
                     "name": "work",
                     "writable": True,
-                    "path": "/work"
+                    "path": cls.WORK_MOUNT
                 }
             ],
             "ports": {},
@@ -535,7 +534,6 @@ class XnatViaCS(Xnat):
         name: str
         datatype: FileFormat
 
-
     COMMAND_INPUT_TYPES = {
         bool: 'bool',
         str: 'string',
@@ -543,3 +541,6 @@ class XnatViaCS(Xnat):
         float: 'number'}
 
     VALID_FREQUENCIES = (Clinical.session, Clinical.dataset)
+    INPUT_MOUNT = "/input"
+    OUTPUT_MOUNT = "/output"
+    WORK_MOUNT = '/work'

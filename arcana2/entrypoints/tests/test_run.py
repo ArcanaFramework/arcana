@@ -1,10 +1,10 @@
 from argparse import ArgumentParser
-from arcana2.test_fixtures.dataset import TEST_DATASET_BLUEPRINTS, make_dataset
-from arcana2.test_fixtures.xnat.xnat import (
+from arcana2.core.data.tests.fixtures import TEST_DATASET_BLUEPRINTS, make_dataset
+from arcana2.data.repositories.xnat.tests.fixtures import (
     make_mutable_dataset as make_xnat_dataset,
     TEST_DATASET_BLUEPRINTS as TEST_XNAT_DATASET_BLUEPRINTS)
 from arcana2.entrypoints.run import RunCmd
-from arcana2.datatypes import text
+from arcana2.data.types import text
 
 
 def test_run_app(work_dir):
@@ -14,7 +14,7 @@ def test_run_app(work_dir):
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
-        'arcana2.test_fixtures.tasks.concatenate',
+        'arcana2.tasks.tests.fixtures.concatenate',
         str(dataset.name),
         '--repository', 'file_system',
         '--input', 'in_file1', 'file1', 'text',
@@ -42,7 +42,7 @@ def test_run_xnat_app(xnat_repository, xnat_archive_dir):
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
-        'arcana2.test_fixtures.tasks.concatenate',
+        'arcana2.tasks.tests.fixtures.concatenate',
         dataset.name,
         '--input', 'in_file1', 'scan1:text',
         '--input', 'in_file2', 'scan2:text',

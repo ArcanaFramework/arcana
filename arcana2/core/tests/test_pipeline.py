@@ -1,8 +1,8 @@
 
-from arcana2.test_fixtures.dataset import (
+from arcana2.core.data.tests.fixtures import (
     make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
-from arcana2.test_fixtures.tasks import concatenate
-from arcana2.datatypes.general import text
+from arcana2.tasks.tests.fixtures import concatenate
+from arcana2.data.types.general import text
 
 
 def test_pipeline(work_dir):

@@ -3,9 +3,9 @@ import cloudpickle as cp
 from pydra import mark, Workflow
 from arcana2.core.data.set import Dataset
 from arcana2.core.data.spec import DataSource, DataSink
-from arcana2.repositories.file_system import FileSystem
-from arcana2.dataspaces.clinical import Clinical as cl
-from arcana2.datatypes.neuroimaging import dicom, niftix_gz
+from arcana2.data.repositories.file_system import FileSystem
+from arcana2.data.spaces.clinical import Clinical as cl
+from arcana2.data.types.neuroimaging import dicom, niftix_gz
 
 
 def test_dataset_pickle(dataset: Dataset, tmp_dir: Path):
