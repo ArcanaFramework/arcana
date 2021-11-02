@@ -184,8 +184,8 @@ class FileGroup(DataItem):
                         "', '".join(missing_side_cars)))
 
     def get(self, assume_exists=False):
-        if not assume_exists:
-            self._check_exists()
+        if assume_exists:
+            self.exists = True
         self._check_part_of_data_node()
         self._set_fs_paths()
 

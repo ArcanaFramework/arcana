@@ -3,7 +3,7 @@ import json
 import docker
 from xnat.exceptions import XNATError
 from arcana2.entrypoints.wrap4xnat import Wrap4XnatCmd
-from arcana2.test_fixtures.xnat.xnat import get_mutable_dataset
+from arcana2.test_fixtures.xnat.xnat import make_mutable_dataset
 from arcana2.dataspaces.clinical import Clinical
 from arcana2.datatypes import text
 from arcana2.test_fixtures.tasks import concatenate
@@ -16,7 +16,7 @@ PIPELINE_NAME = 'test-concatenate'
 def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
                      xnat_archive_dir):
 
-    dataset = get_mutable_dataset(xnat_repository, xnat_archive_dir,
+    dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
                                   'simple.direct')
 
     build_dir = Path('/Users/tclose/Desktop/docker-build')  # Path(tempfile.mkdtemp())
@@ -63,7 +63,8 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
         extra_labels={})
 
     dc = docker.from_env()
-    dc.images.build(path=str(build_dir), tag=image_tag)
+    image, build_logs = dc.images.build(path=str(build_dir), tag=image_tag)
+
 
     image_path = f'{xnat_container_registry}/{image_tag}'
 
@@ -85,9 +86,8 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
 
         # Delete existing commands
         cmd_ids = [c['id'] for c in xlogin.get(f'/xapi/commands/').json()]
-        for cmd in cmd_ids:
-            xlogin.delete(f"/xapi/commands/{cmd['id']}",
-                          accepted_status=204)
+        for cmd_id in cmd_ids:
+            xlogin.delete(f"/xapi/commands/{cmd_id}", accepted_status=[204])
         cmd_id = xlogin.post('/xapi/commands', json=json_config).json()
 
         # Enable the command globally and in project

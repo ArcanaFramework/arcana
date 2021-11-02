@@ -1,10 +1,13 @@
 
 from importlib import import_module
+from arcana2.dataspaces.clinical import Clinical
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.repositories.file_system import FileSystem
 from arcana2.repositories.xnat import Xnat
 from arcana2.core.entrypoint import BaseCmd
 
+
+XNAT_CACHE_DIR = 'xnat-cache'
 
 class BaseDatasetCmd(BaseCmd):
 
@@ -75,9 +78,14 @@ class BaseDatasetCmd(BaseCmd):
                   "data dimensions"))
 
     @classmethod
-    def get_dataset(cls, args):
+    def get_dataset(cls, args, work_dir):
         """Initialises a repository and then gets a dataset from it
         """
+
+        dimensions = cls.parse_dataspace(args)
+        hierarchy = [dimensions[l]
+                     for l in args.hierarchy] if args.hierarchy else None
+        
         repo_args = list(args.repository)
         repo_type = repo_args.pop(0)
         nargs = len(repo_args)
@@ -90,9 +98,11 @@ class BaseDatasetCmd(BaseCmd):
                     f"repository ({args}), at least 1 (SERVER) and no more "
                     f"than 3 are required (SERVER, USER, PASSWORD)")
             repository = Xnat(
-                server=args[0],
-                user=args[1] if nargs > 1 else None,
-                password=args[2] if nargs > 2 else None)
+                server=repo_args[0],
+                user=repo_args[1] if nargs > 1 else None,
+                password=repo_args[2] if nargs > 2 else None,
+                cache_dir=work_dir / XNAT_CACHE_DIR)
+            hierarchy = [Clinical.subject, Clinical.session]
         else:
             raise ArcanaUsageError(
                 f"Unrecognised repository type provided as first argument "
@@ -103,11 +113,7 @@ class BaseDatasetCmd(BaseCmd):
         else:
             id_inference = None
 
-        dimensions = cls.parse_dataspace(args)
-
-        if args.hierarchy:
-            hierarchy = [dimensions[l] for l in args.hierarchy]
-        else:
+        if hierarchy is None:
             hierarchy = [max(dimensions)]
 
         def parse_ids(ids_args):

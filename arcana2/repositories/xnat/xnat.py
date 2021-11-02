@@ -176,12 +176,11 @@ class Xnat(Repository):
                     uris={xresource.format: xresource.uri})               
 
     def get_file_group(self, file_group):
-        try:
+        if self.has_direct_mount(file_group):
             mounted_dir = self.get_direct_mount(file_group.data_node)
-        except KeyError:
-            return self.get_file_group_via_api(file_group)
-        else:
             return self.get_file_group_via_direct_access(file_group, mounted_dir)
+        else:
+            return self.get_file_group_via_api(file_group)
 
     def get_file_group_via_api(self, file_group):
         """
@@ -213,16 +212,16 @@ class Xnat(Repository):
             xnode = self.get_xnode(file_group.data_node)
             if not file_group.uri:
                 base_uri = self.standard_uri(xnode)
-                if file_group.derived:
-                    xresource = xnode.resources[self.escape_name(file_group)]
-                else:
-                    # If file_group is a primary 'scan' (rather than a
-                    # derivative) we need to get the resource of the scan
-                    # instead of the scan
-                    xscan = xnode.scans[file_group.name]
-                    file_group.id = xscan.id
-                    base_uri += '/scans/' + xscan.id
-                    xresource = xscan.resources[file_group.datatype_name]
+                # if file_group.derived:
+                xresource = xnode.resources[self.escape_name(file_group)]
+                # else:
+                #     # If file_group is a primary 'scan' (rather than a
+                #     # derivative) we need to get the resource of the scan
+                #     # instead of the scan
+                #     xscan = xnode.scans[file_group.name]
+                #     file_group.id = xscan.id
+                #     base_uri += '/scans/' + xscan.id
+                #     xresource = xscan.resources[file_group.datatype_name]
                 # Set URI so we can retrieve checksums if required. We ensure we
                 # use the resource name instead of its ID in the URI for
                 # consistency with other locations where it is set and to keep the
@@ -302,13 +301,20 @@ class Xnat(Repository):
         return primary_path, side_cars
 
     def put_file_group(self, file_group, fs_path, side_cars):
-        try:
+        if self.has_direct_mount(file_group):
             mounted_dir = self.get_direct_mount(file_group.data_node)
-        except KeyError:
-            return self.put_file_group_via_api(file_group, fs_path, side_cars)
+            paths = self.put_file_group_via_direct_access(
+                file_group, fs_path, side_cars, mounted_dir)
         else:
-            return self.put_file_group_via_direct_access(file_group, fs_path,
-                                                         side_cars, mounted_dir)
+            paths = self.put_file_group_via_api(file_group, fs_path, side_cars)
+        return paths
+
+
+    def has_direct_mount(self, file_group):
+        access_args = file_group.data_node.dataset.access_args
+        if 'mounts' not in access_args:
+            return False
+        return (file_group.data_node.frequency, file_group.data_node.id) in access_args['mounts']
 
     def put_file_group_via_api(self, file_group, fs_path, side_cars):
         """
@@ -656,8 +662,7 @@ class Xnat(Repository):
 
     @classmethod
     def escape_name(cls, item):
-        """Escape the name of an item by prefixing the name of the current
-        analysis
+        """Escape the name of an item by replacing '/' with a valid substring
 
         Parameters
         ----------
@@ -669,7 +674,7 @@ class Xnat(Repository):
         `str`
             The derived name
         """
-        return cls.PATH_SEP.join(item.path.split('/'))
+        return cls.PATH_SEP.join(str(item.path).split('/'))
 
     @classmethod
     def unescape_name(cls, name):

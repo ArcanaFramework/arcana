@@ -183,6 +183,17 @@ def list_subclasses(package, base_class):
     return subclasses
 
 
+def list_instances(package, cls):
+    """List all available cmds in """
+    instances = []
+    for module in submodules(package):
+        for obj_name in dir(module):
+            obj = getattr(module, obj_name)
+            if isinstance(obj, cls):
+                instances.append(obj)
+    return instances
+
+
 def resolve_subclass(package, base_class, name):
     sub_class = None
     for module in submodules(package):

@@ -89,7 +89,13 @@ TEST_DATASET_BLUEPRINTS = {
             ['file2.txt'])])],
         {},
         [('deriv1', Clinical.session, text, ['file.txt'])]),  # id_inference dict
-    }
+    'basic': TestDatasetBlueprint(
+        [1, 1, 2],
+        [('scan1',
+          [('text', text, ['file1.txt'])]),
+         ('scan2',
+          [('text', text, ['file2.txt'])])],
+        {}, [])}
 
 GOOD_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
@@ -126,7 +132,7 @@ def xnat_dataset(xnat_repository, xnat_archive_dir, request):
 
 @pytest.fixture(params=MUTABLE_DATASETS, scope='function')
 def mutable_xnat_dataset(xnat_repository, xnat_archive_dir, request):
-    return get_mutable_dataset(xnat_repository, xnat_archive_dir, request.param)
+    return make_mutable_dataset(xnat_repository, xnat_archive_dir, request.param)
 
 
 @pytest.fixture(scope='session')
@@ -152,7 +158,7 @@ def xnat_repository(xnat_archive_dir, run_prefix, xnat_docker_network):
         os.mkdir(xnat_archive_dir)
         container = dc.containers.run(
             image.tags[0], detach=True, ports={
-                '8080/tcp': DOCKER_XNAT_PORT},
+                '80/tcp': DOCKER_XNAT_PORT},
             remove=True, name=DOCKER_IMAGE,
             # Expose the XNAT archive dir outside of the XNAT docker container
             # to simulate what the XNAT container service exposes to running
@@ -239,7 +245,7 @@ def xnat_docker_network():
     return network
 
 
-def get_mutable_dataset(xnat_repository, xnat_archive_dir, test_name):
+def make_mutable_dataset(xnat_repository, xnat_archive_dir, test_name):
     dataset_name, access_method = test_name.split('.')
     test_suffix = 'mutable' + access_method + str(hex(random.getrandbits(16)))[2:]
     # Need to create a new dataset per function so it can be safely modified

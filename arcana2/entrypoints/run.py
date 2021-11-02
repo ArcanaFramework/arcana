@@ -1,14 +1,19 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
+import tempfile
 from typing import Sequence
+import arcana2.datatypes
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.core.data.datatype import FileFormat
 from arcana2.core.data import DataSpace, DataQuality
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
 from .dataset import BaseDatasetCmd
-from arcana2.core.utils import resolve_class, resolve_datatype
+from arcana2.core.utils import resolve_class, resolve_datatype, list_instances
+
+
+PYDRA_CACHE = 'pydra-cache'
 
 
 sanitize_path_re = re.compile(r'[^a-zA-Z\d]')
@@ -43,6 +48,13 @@ class RunCmd(BaseDatasetCmd):
             help=("The container engine ('docker'|'singularity') and the image"
                   " to run the app in"))
         parser.add_argument(
+            '--work', '-w', default=None,
+            help=("The location of the directory where the working files "
+                  "created during the pipeline execution will be stored"))
+        parser.add_argument(
+            '--pydra_plugin', default='cf',
+            help=("The Pydra plugin with which to process the workflow"))
+        parser.add_argument(
             '--dry_run', action='store_true', default=False,
             help=("Set up the workflow to test inputs but don't run the app"))
 
@@ -75,7 +87,9 @@ class RunCmd(BaseDatasetCmd):
     @classmethod
     def run(cls, args):
 
-        dataset = cls.get_dataset(args)
+        work_dir = Path(args.work) if args.work is None else Path(tempfile.mkdtemp())
+
+        dataset = cls.get_dataset(args, work_dir)
         inputs = cls.add_input_sources(args, dataset)
         outputs = cls.add_output_sinks(args, dataset)
         frequency = cls.parse_frequency(args)
@@ -89,7 +103,7 @@ class RunCmd(BaseDatasetCmd):
         cls.construct_pipeline(args, pipeline)
 
         if not args.dry_run:
-            pipeline(ids=args.ids)
+            pipeline(ids=args.ids, plugin=args.pydra_plugin)  # , cache_locations=work_dir / PYDRA_CACHE)
 
         return pipeline
 
@@ -110,11 +124,11 @@ class RunCmd(BaseDatasetCmd):
                     f"{cls.VAR_ARG} must be provided for input {i} ({inpt})")
             if not pattern:
                 raise ArcanaUsageError(
-                    f"Path must be provided for input {i} ({inpt})")
+                    f"A path pattern to match must be provided for input {i} ({inpt})")
             if not datatype_name:
-                raise ArcanaUsageError(
-                    f"Datatype must be provided for input {i} ({inpt})")
-            datatype = resolve_datatype(datatype_name)
+                pattern, datatype = cls._datatype_from_path(pattern)
+            else:
+                datatype = resolve_datatype(datatype_name)
             if required_format_name is not None:
                 required_datatype = resolve_datatype(required_format_name)
             else:
@@ -123,12 +137,38 @@ class RunCmd(BaseDatasetCmd):
                            order, metadata, True, quality)
 
     @classmethod
+    def _datatype_from_path(cls, path):
+        datatype = None
+        if ':' in path:
+            path, datatype_name = path.split(':')
+            datatype = resolve_datatype(datatype_name.lower())
+        elif '.' in path:
+            # FIXME: Need a more robust way of determining datatype
+            # from output path extension
+            for dtype in list_instances(arcana2.datatypes, FileFormat):
+                if dtype.extension == '.'.join(path.suffixes):
+                    datatype = dtype
+                    # Strip suffix from path
+                    path = path.parent / path.stem
+                    break
+        if datatype is None:
+            raise ArcanaUsageError(
+                f"Could not identify datatype from path {path}")
+        return path, datatype
+
+    @classmethod
     def parse_output_args(cls, args):
         for output in args.output:
-            var, store_at, datatype_name = output[:3]
-            datatype = resolve_datatype(datatype_name)
-            produced_datatype = (resolve_datatype(output[3])
-                                if len(output) == 4 else datatype)
+            var, store_at = output[:2]
+            if len(output) > 2:
+                datatype_name = output[3]
+                datatype = resolve_datatype(datatype_name)
+            else:
+                store_at, datatype = cls._datatype_from_path(store_at)
+            if len(output) > 3:
+                produced_datatype = resolve_datatype(output[3])
+            else:
+                produced_datatype = datatype
             yield OutputArg(name=var, path=store_at, datatype=datatype,
                             produced_datatype=produced_datatype)
 
