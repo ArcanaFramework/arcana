@@ -88,7 +88,7 @@ class RunCmd(BaseDatasetCmd):
     @classmethod
     def run(cls, args):
 
-        work_dir = Path(args.work) if args.work is None else Path(tempfile.mkdtemp())
+        work_dir = Path(args.work) if args.work is not None else Path(tempfile.mkdtemp())
 
         dataset = cls.get_dataset(args, work_dir)
         inputs = cls.add_input_sources(args, dataset)
@@ -162,7 +162,7 @@ class RunCmd(BaseDatasetCmd):
         for output in args.output:
             var, store_at = output[:2]
             if len(output) > 2:
-                datatype_name = output[3]
+                datatype_name = output[2]
                 datatype = resolve_datatype(datatype_name)
             else:
                 store_at, datatype = cls._datatype_from_path(store_at)

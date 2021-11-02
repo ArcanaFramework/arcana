@@ -97,6 +97,8 @@ class FileFormat(object):
             return False
 
     def __hash__(self):
+        if not self.__dict__:
+            return hash(type(self))
         return (
             hash(self.name)
             ^ hash(self.extension)

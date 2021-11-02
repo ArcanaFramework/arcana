@@ -89,7 +89,7 @@ TEST_DATASET_BLUEPRINTS = {
             ['file2.txt'])])],
         {},
         [('deriv1', Clinical.session, text, ['file.txt'])]),  # id_inference dict
-    'basic': TestDatasetBlueprint(
+    'concatenate-test': TestDatasetBlueprint(
         [1, 1, 2],
         [('scan1',
           [('text', text, ['file1.txt'])]),

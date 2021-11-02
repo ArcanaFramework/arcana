@@ -104,7 +104,7 @@ FILE_TASKS = ['concatenate']
 @pytest.fixture(params=BASIC_TASKS)
 def pydra_task_details(request):
     func_name = request.param
-    return ('arcana2.test_fixtures.tasks.' + func_name,) + tuple(
+    return ('arcana2.tasks.tests.fixtures' + func_name,) + tuple(
         TEST_TASKS[func_name][1:])
             
 

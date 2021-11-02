@@ -6,7 +6,7 @@ from arcana2.data.types.general import text
 
 
 def test_pipeline(work_dir):
-    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['basic'], work_dir)
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate-test'], work_dir)
 
     dataset.add_source('file1', text)
     dataset.add_source('file2', text)
