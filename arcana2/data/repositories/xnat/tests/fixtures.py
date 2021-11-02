@@ -105,6 +105,7 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 # ------------------------------------
 
 DOCKER_BUILD_DIR = Path(__file__).parent / 'docker-build'
+DOCKER_XNAT_ARCHIVE_DIR = Path(__file__).parent / 'xnat_archive_dir'
 DOCKER_IMAGE = 'arcana-xnat'
 DOCKER_HOST = 'localhost'
 DOCKER_XNAT_PORT = '8989'
@@ -137,11 +138,36 @@ def mutable_xnat_dataset(xnat_repository, xnat_archive_dir, request):
 
 @pytest.fixture(scope='session')
 def xnat_archive_dir():
-    return Path(__file__).parent / 'xnat_archive_dir'
+    return DOCKER_XNAT_ARCHIVE_DIR
 
 
 @pytest.fixture(scope='session')
 def xnat_repository(xnat_archive_dir, run_prefix, xnat_docker_network):
+
+    container, already_running = start_xnat_repository(xnat_archive_dir,
+                                                       xnat_docker_network)
+
+    repository = Xnat(
+        server=DOCKER_XNAT_URI,
+        user=DOCKER_XNAT_USER,
+        password=DOCKER_XNAT_PASSWORD,
+        cache_dir=mkdtemp())
+
+    # Stash a project prefix in the repository object
+    repository.run_prefix = run_prefix if already_running else None
+
+    yield repository
+
+    # If container was run by this fixture (instead of already running) stop
+    # it afterwards
+    if not already_running:
+        container.stop()
+
+
+def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_ARCHIVE_DIR,
+                          xnat_docker_network=None):
+    if xnat_docker_network is None:
+        xnat_docker_network = get_xnat_docker_network()
 
     dc = docker.from_env()
 
@@ -169,23 +195,11 @@ def xnat_repository(xnat_archive_dir, run_prefix, xnat_docker_network):
                                              'mode': 'rw'},
                      '/var/run/docker.sock': {'bind': '/var/run/docker.sock',
                                               'mode': 'rw'}})
-        run_prefix = None
-    
-    repository = Xnat(
-        server=DOCKER_XNAT_URI,
-        user=DOCKER_XNAT_USER,
-        password=DOCKER_XNAT_PASSWORD,
-        cache_dir=mkdtemp())
+        already_running = False
+    else:
+        already_running = True
+    return container, already_running
 
-    # Stash a project prefix in the repository object
-    repository.run_prefix = run_prefix
-
-    yield repository
-
-    # If container was run by this fixture (instead of already running) stop
-    # it afterwards
-    if not run_prefix:
-        container.stop()
 
 
 @pytest.fixture(scope='session')
@@ -203,8 +217,25 @@ def xnat_respository_uri(xnat_repository):
 def xnat_container_registry(xnat_repository, xnat_docker_network):
     "Stand up a Docker registry to use with the container service"
 
-    dc = docker.from_env()
+    container, already_running = start_xnat_container_registry(xnat_docker_network)
 
+    uri = f'localhost:{DOCKER_REGISTRY_PORT}'
+
+    # Set it to the default registry in the XNAT repository
+    with connect(xnat_repository.server) as login:
+        login.post('/xapi/docker/hubs/1', json={
+            "name": "testregistry",
+            "url": f"https://{DOCKER_REGISTRY_CONTAINER}:5000"})
+
+    yield uri
+
+    if not already_running:
+        container.stop()
+
+def start_xnat_container_registry(xnat_docker_network=None):
+    if xnat_docker_network is None:
+        xnat_docker_network = get_xnat_docker_network()
+    dc = docker.from_env()
     try:
         image = dc.images.get(DOCKER_REGISTRY_IMAGE)
     except docker.errors.ImageNotFound:
@@ -221,22 +252,13 @@ def xnat_container_registry(xnat_repository, xnat_docker_network):
         already_running = False
     else:
         already_running = True
-
-    uri = f'localhost:{DOCKER_REGISTRY_PORT}'
-
-    # Set it to the default registry in the XNAT repository
-    with connect(xnat_repository.server) as login:
-        login.post('/xapi/docker/hubs/1', json={
-            "name": "testregistry",
-            "url": f"https://{DOCKER_REGISTRY_CONTAINER}:5000"})
-
-    yield uri
-
-    if not already_running:
-        container.stop()
+    return container, already_running
 
 @pytest.fixture(scope='session')
 def xnat_docker_network():
+    return get_xnat_docker_network()
+
+def get_xnat_docker_network():
     dc = docker.from_env()
     try:
         network = dc.networks.get(DOCKER_NETWORK_NAME)
