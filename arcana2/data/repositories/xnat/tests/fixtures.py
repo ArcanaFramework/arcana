@@ -105,7 +105,7 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 # ------------------------------------
 
 DOCKER_BUILD_DIR = Path(__file__).parent / 'docker-build'
-DOCKER_XNAT_ARCHIVE_DIR = Path(__file__).parent / 'xnat_archive_dir'
+DOCKER_XNAT_ARCHIVE_DIR = Path(__file__).parent / 'archive_dir'
 DOCKER_IMAGE = 'arcana-xnat'
 DOCKER_HOST = 'localhost'
 DOCKER_XNAT_PORT = '8989'
