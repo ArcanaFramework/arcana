@@ -1,4 +1,4 @@
-from arcana2.core.data import DataSpace
+from arcana2.core.data.space import DataSpace
 
 class Clinical(DataSpace):
     """

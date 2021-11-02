@@ -8,8 +8,8 @@ from tempfile import mkdtemp
 from functools import reduce
 from arcana2.dataspaces.clinical import Clinical
 from arcana2.core.data.set import Dataset
-from arcana2.test_fixtures.xnat.xnat import create_test_file
-from arcana2.test_fixtures.dataset import create_test_file
+from .fixtures import create_test_file
+from arcana2.core.data.tests.fixtures import create_test_file
 
 
 def test_find_nodes(xnat_dataset):

@@ -11,8 +11,8 @@ from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.item import DataItem
 from .data.set import Dataset
-from .data.datatype import FileFormat
-from .data.enum import DataSpace
+from .data.type import FileFormat
+from .data.space import DataSpace
 
 logger = logging.getLogger('arcana')
 

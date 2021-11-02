@@ -1,5 +1,8 @@
 import os
 import logging
+import shutil
+from pathlib import Path
+from tempfile import mkdtemp
 import pytest
 
 
@@ -22,14 +25,20 @@ sch.setFormatter(formatter)
 logger.addHandler(sch)
 
 
+@pytest.fixture
+def work_dir():
+    work_dir = mkdtemp()
+    yield Path(work_dir)
+    shutil.rmtree(work_dir)
+
+
 # Import all test fixtures from `test_fixtures` sub-package
-from .test_fixtures.general import work_dir
-from .test_fixtures.dataset import (
+from .core.data.tests.fixtures import (
     test_dataspace, test_dataspace_location, dataset, tmp_dir,
     test_dicom_dataset_dir, dicom_dataset)
-from .test_fixtures.tasks import (
+from .tasks.tests.fixtures import (
     pydra_task_details, pydra_task)
-from .test_fixtures.xnat.xnat import (
+from .data.repositories.xnat.tests.fixtures import (
     xnat_dataset, mutable_xnat_dataset, xnat_archive_dir, xnat_repository,
     xnat_container_registry, run_prefix, xnat_docker_network)
 

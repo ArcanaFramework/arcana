@@ -13,15 +13,15 @@ from arcana2.core.data.provenance import DataProvenance
 from arcana2.exceptions import ArcanaFileFormatError, ArcanaMissingDataException, ArcanaUsageError
 from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana2.core.data.set import Dataset
-from arcana2.dataspaces.clinical import Clinical, DataSpace
-from arcana2.core.repository import Repository
+from arcana2.data.spaces.clinical import Clinical, DataSpace
+from arcana2.core.data.repository import DataRepository
 
 
 logger = logging.getLogger('arcana')
 
 
 @attr.s
-class FileSystem(Repository):
+class FileSystem(DataRepository):
     """
     A Repository class for data stored hierarchically within sub-directories
     of a file-system directory. The depth and which layer in the data tree

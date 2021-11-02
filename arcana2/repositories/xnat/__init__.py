@@ -1,1 +1,0 @@
-from .xnat import Xnat

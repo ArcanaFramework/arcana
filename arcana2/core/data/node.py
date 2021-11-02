@@ -10,10 +10,11 @@ from arcana2.exceptions import (
     ArcanaNameError, ArcanaUsageError, ArcanaUnresolvableFormatException,
     ArcanaWrongFrequencyError, ArcanaFileFormatError, ArcanaError)
 from arcana2.core.utils import split_extension
-from .datatype import FileFormat
+from .type import FileFormat
 from .item import DataItem
 from .provenance import DataProvenance
-from .enum import DataQuality, DataSpace, DataSpace
+from .enum import DataQuality
+from .space import DataSpace
 
 
 @attr.s(auto_detect=True)

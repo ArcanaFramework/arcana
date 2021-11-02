@@ -1,1 +1,1 @@
-from .enum import DataSpace, DataQuality, DataSalience
+from .enum import DataQuality, DataSalience

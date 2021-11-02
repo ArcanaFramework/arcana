@@ -9,9 +9,9 @@ from pydra import Workflow
 from arcana2.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
     ArcanaBadlyFormattedIDError, ArcanaWrongDataSpacesError)
-from .enum import DataSpace
+from .space import DataSpace
 from .spec import DataSink, DataSource
-from .. import repository
+from . import repository
 
 from .node import DataNode
 
@@ -101,7 +101,7 @@ class Dataset():
     """
 
     name: str = attr.ib()
-    repository: repository.Repository = attr.ib()
+    repository: repository.DataRepository = attr.ib()
     hierarchy: list[DataSpace] = attr.ib()
     id_inference: (dict[DataSpace, str] or ty.Callable) = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))

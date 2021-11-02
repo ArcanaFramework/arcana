@@ -4,11 +4,10 @@ from pathlib import Path
 from logging import getLogger
 import docker
 from arcana2.core.utils import resolve_class
-from arcana2.repositories.xnat.cs import (
-    generate_dockerfile, generate_json_config, InputArg, OutputArg)
-from arcana2.dataspaces.clinical import Clinical
+from arcana2.data.repositories.xnat.cs import XnatViaCS
+from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.entrypoint import BaseCmd
-from arcana2.core.utils import resolve_datatype, DOCKER_HUB, ARCANA_PIP
+from arcana2.core.utils import resolve_datatype, DOCKER_HUB
 
 
 logger = getLogger('arcana')
@@ -90,7 +89,7 @@ class Wrap4XnatCmd(BaseCmd):
 
         # Generate "command JSON" to embed in container to let XNAT know how
         # to run the pipeline
-        json_config = generate_json_config(
+        json_config = XnatViaCS.generate_json_config(
             pipeline_name,
             pydra_task,
             inputs=inputs,
@@ -101,7 +100,7 @@ class Wrap4XnatCmd(BaseCmd):
             registry=args.registry)
 
         # Generate dockerfile
-        dockerfile = generate_dockerfile(
+        dockerfile = XnatViaCS.generate_dockerfile(
             pydra_task, json_config, image_name, args.maintainer,
             args.requirement, args.package, build_dir=build_dir,
             extra_labels=extra_labels)
@@ -155,11 +154,11 @@ class Wrap4XnatCmd(BaseCmd):
             name, required_datatype_name = inpt[:2]
             frequency = inpt[2] if len(inpt) > 2 else default_frequency
             required_datatype = resolve_datatype(required_datatype_name)
-            yield InputArg(name, required_datatype, frequency)
+            yield XnatViaCS.InputArg(name, required_datatype, frequency)
 
     @classmethod
     def parse_output_args(cls, args):
         for output in args.output:
             name, datatype_name_name = output
             produced_datatype = resolve_datatype(datatype_name_name)
-            yield OutputArg(name, produced_datatype)
+            yield XnatViaCS.OutputArg(name, produced_datatype)

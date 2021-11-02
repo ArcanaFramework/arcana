@@ -1,4 +1,4 @@
-from copy import deepcopy, copy
+from copy import copy
 from abc import ABCMeta, abstractmethod
 import os
 import os.path as op
@@ -10,7 +10,7 @@ from pydra.tasks.mrtrix3.utils import MRConvert
 from pydra.tasks.dcm2niix import Dcm2Niix
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.tasks.utils import identity_converter
-from arcana2.core.data.datatype import FileFormat
+from arcana2.core.data.type import FileFormat
 from arcana2.core.data.item import FileGroup
 
 

@@ -14,14 +14,14 @@ import shutil
 import attr
 import xnat
 from arcana2.core.utils import JSON_ENCODING
-from arcana2.core.repository import Repository
+from arcana2.core.data.repository import DataRepository
 from arcana2.core.data.node import DataNode
 from arcana2.exceptions import (
     ArcanaError, ArcanaUsageError, ArcanaFileFormatError,
     ArcanaWrongRepositoryError)
 from arcana2.core.utils import dir_modtime, get_class_info, parse_value
 from arcana2.core.data.set import Dataset
-from arcana2.dataspaces.clinical import Clinical
+from arcana2.data.spaces.clinical import Clinical
 
 
 logger = logging.getLogger('arcana2')
@@ -39,7 +39,7 @@ COMMAND_INPUT_TYPES = {
     float: 'number'}
 
 @attr.s
-class Xnat(Repository):
+class Xnat(DataRepository):
     """
     A 'Repository' class for XNAT repositories
 
@@ -176,13 +176,6 @@ class Xnat(Repository):
                     uris={xresource.format: xresource.uri})               
 
     def get_file_group(self, file_group):
-        if self.has_direct_mount(file_group):
-            mounted_dir = self.get_direct_mount(file_group.data_node)
-            return self.get_file_group_via_direct_access(file_group, mounted_dir)
-        else:
-            return self.get_file_group_via_api(file_group)
-
-    def get_file_group_via_api(self, file_group):
         """
         Caches a file_group to the local file system and returns the path to
         the cached files
@@ -274,49 +267,8 @@ class Xnat(Repository):
                     shutil.rmtree(tmp_dir)
         return self._file_group_paths(file_group)
 
-    def get_file_group_via_direct_access(self, file_group, mounted_dir):
-        logger.info("Getting %s from %s:%s node by direct access to archive",
-                    file_group.path, file_group.data_node.frequency,
-                    file_group.data_node.id)
-        path = re.match(
-            r'/data/(?:archive/)?projects/\w+/(?:subjects/\w+/)?'
-            r'(?:experiments/\w+/)?(?P<path>.*)$', file_group.uri).group('path')
-        if 'scans' in path:
-            path = path.replace('scans', 'SCANS').replace('resources/', '')
-        else:
-            path = path.replace('resources', 'RESOURCES')
-        resource_path = mounted_dir / path
-        if file_group.datatype.directory:
-            # Link files from resource dir into temp dir to avoid catalog XML
-            primary_path = self.cache_path(file_group)
-            shutil.rmtree(primary_path, ignore_errors=True)
-            os.makedirs(primary_path, exist_ok=True)
-            for item in resource_path.iterdir():
-                if not item.name.endswith('_catalog.xml'):
-                    os.symlink(item, primary_path / item.name)
-            side_cars = {}
-        else:
-            primary_path, side_cars = file_group.datatype.assort_files(
-                resource_path.iterdir())
-        return primary_path, side_cars
 
     def put_file_group(self, file_group, fs_path, side_cars):
-        if self.has_direct_mount(file_group):
-            mounted_dir = self.get_direct_mount(file_group.data_node)
-            paths = self.put_file_group_via_direct_access(
-                file_group, fs_path, side_cars, mounted_dir)
-        else:
-            paths = self.put_file_group_via_api(file_group, fs_path, side_cars)
-        return paths
-
-
-    def has_direct_mount(self, file_group):
-        access_args = file_group.data_node.dataset.access_args
-        if 'mounts' not in access_args:
-            return False
-        return (file_group.data_node.frequency, file_group.data_node.id) in access_args['mounts']
-
-    def put_file_group_via_api(self, file_group, fs_path, side_cars):
         """
         Retrieves a fields value
 
@@ -393,28 +345,6 @@ class Xnat(Repository):
             if file_group.provenance:
                 self.put_provenance(file_group)
         logger.info("Put %s into %s:%s node via API",
-                    file_group.path, file_group.data_node.frequency,
-                    file_group.data_node.id)
-
-    def put_file_group_via_direct_access(self, file_group, fs_path, side_cars,
-                                         mounted_dir):
-        escaped_name = self.escape_name(file_group)
-        resource_path = mounted_dir / 'RESOURCES' / escaped_name 
-        if file_group.datatype.directory:
-            shutil.copytree(fs_path, resource_path)
-        else:
-            os.makedirs(resource_path, exist_ok=True)
-            # Upload primary file and add to cache
-            fname = escaped_name + file_group.datatype.extension
-            shutil.copyfile(fs_path, resource_path / fname)
-            # Upload side cars and add them to cache
-            for sc_name, sc_src_path in side_cars.items():
-                sc_fname = escaped_name + file_group.datatype.side_cars[sc_name]
-                shutil.copyfile(sc_src_path, resource_path / sc_fname)
-        file_group.uri = (self._make_uri(file_group.data_node)
-                          + '/RESOURCES/' + escaped_name)
-        file_group.exists = True
-        logger.info("Put %s into %s:%s node by direct access to archive",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)
 

@@ -1,5 +1,5 @@
 from typing import Dict
-from pydra import mark
+from pydra import mark, ShellCommandTask
 
 
 @mark.task

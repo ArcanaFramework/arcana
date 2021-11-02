@@ -1,4 +1,4 @@
-from arcana2.core.data.datatype import FileFormat
+from arcana2.core.data.type import FileFormat
 from arcana2.tasks.archive import (
     create_tar, extract_tar, create_zip, extract_zip)
 

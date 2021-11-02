@@ -13,7 +13,7 @@ import docker
 import xnat
 from arcana2.repositories import Xnat
 from arcana2.dataspaces.clinical import Clinical
-from arcana2.core.data.enum import DataSpace
+from arcana2.core.data.space import DataSpace
 from arcana2.core.data.datatype import FileFormat
 from arcana2.datatypes.general import text, directory
 from arcana2.datatypes.neuroimaging import niftix_gz, nifti_gz, dicom

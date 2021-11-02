@@ -6,7 +6,8 @@ from pydra import Workflow
 from arcana2.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError)
-from .enum import DataSpace, DataQuality, DataSalience
+from .enum import DataQuality, DataSalience
+from .space import DataSpace
 
 
 @attr.s

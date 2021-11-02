@@ -5,12 +5,12 @@ from dataclasses import dataclass
 import shutil
 from itertools import product
 import pytest
-from arcana2.repositories.file_system import FileSystem
-from arcana2.core.data.enum import DataSpace
-from arcana2.core.data.datatype import FileFormat
-from arcana2.datatypes.general import text, directory, json
-from arcana2.dataspaces.clinical import Clinical
-from arcana2.datatypes.neuroimaging import (
+from arcana2.data.repositories.file_system import FileSystem
+from arcana2.core.data.space import DataSpace
+from arcana2.core.data.type import FileFormat
+from arcana2.data.types.general import text, directory, json
+from arcana2.data.spaces.clinical import Clinical
+from arcana2.data.types.neuroimaging import (
     nifti_gz, niftix_gz, niftix, nifti, analyze, mrtrix_image)
 
 
@@ -232,4 +232,3 @@ def create_test_file(fname, dpath):
     with open(dpath / fpath, 'w') as f:
         f.write(f'{fname}')
     return fpath
-

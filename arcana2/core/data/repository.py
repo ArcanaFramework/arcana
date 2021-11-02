@@ -2,13 +2,13 @@ import logging
 from abc import abstractmethod, ABCMeta
 import attr
 from arcana2.exceptions import ArcanaUsageError
-from .data import set as dataset
+from . import set as set_module
 
 
 logger = logging.getLogger('arcana')
 
 @attr.s
-class Repository(metaclass=ABCMeta):
+class DataRepository(metaclass=ABCMeta):
     """
     Abstract base class for all Repository systems, DaRIS, XNAT and
     local file system. Sets out the interface that all Repository
@@ -64,10 +64,10 @@ class Repository(metaclass=ABCMeta):
                 raise ArcanaUsageError(
                     "'hierarchy' kwarg must be specified for datasets in "
                     f"{type(self)} repositories")
-        return dataset.Dataset(name,
-                               repository=self,
-                               hierarchy=hierarchy,
-                               **kwargs)
+        return set_module.Dataset(name,
+                                  repository=self,
+                                  hierarchy=hierarchy,
+                                  **kwargs)
 
     @abstractmethod
     def find_nodes(self, dataset):

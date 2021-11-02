@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from pathlib import Path
 import tempfile
 from typing import Sequence
-import arcana2.datatypes
+import arcana2.data.types
 from arcana2.exceptions import ArcanaUsageError
-from arcana2.core.data.datatype import FileFormat
-from arcana2.core.data import DataSpace, DataQuality
+from arcana2.core.data.type import FileFormat
+from arcana2.core.data.space import DataSpace, DataQuality
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
 from .dataset import BaseDatasetCmd

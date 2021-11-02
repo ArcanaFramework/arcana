@@ -1,9 +1,9 @@
 
 from importlib import import_module
-from arcana2.dataspaces.clinical import Clinical
+from arcana2.data.spaces.clinical import Clinical
 from arcana2.exceptions import ArcanaUsageError
-from arcana2.repositories.file_system import FileSystem
-from arcana2.repositories.xnat import Xnat
+from arcana2.data.repositories.file_system import FileSystem
+from arcana2.data.repositories.xnat import Xnat
 from arcana2.core.entrypoint import BaseCmd
 
 
