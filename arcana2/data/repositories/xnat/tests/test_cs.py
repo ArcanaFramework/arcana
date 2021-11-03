@@ -14,7 +14,7 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
                      xnat_archive_dir):
 
     dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
-                                  'simple.direct')
+                                  'for_concatenate.direct')
 
     build_dir = Path('/Users/tclose/Desktop/docker-build')  # Path(tempfile.mkdtemp())
 

@@ -398,7 +398,7 @@ class XnatViaCS(Xnat):
                 "label": output.name,
                 "format": None})
             output_args.append(
-                f'--output {output.name} {cls.OUTPUT_MOUNT}/{output_fname}')
+                f'--output {output.name} {cls.OUTPUT_MOUNT}:{output.datatype.name}')
 
         # Save work directory as session resource if debugging
         if debug_output:  
@@ -430,7 +430,7 @@ class XnatViaCS(Xnat):
             f"arcana run {func.__module__}.{func.__name__} "  # run pydra task in Arcana
             f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
             f"--work {cls.WORK_MOUNT} "  # working directory
-            "--repository xnat_via_cs $XNAT_HOST $XNAT_USER $XNAT_PASS {frequency}")  # pass XNAT API details
+            f"--repository xnat_via_cs $XNAT_HOST $XNAT_USER $XNAT_PASS {frequency}")  # pass XNAT API details
 
         # Create Project input that can be passed to the command line, which will
         # be populated by inputs derived from the XNAT object passed to the pipeline

@@ -58,6 +58,7 @@ TEST_DATASET_BLUEPRINTS = {
         [('deriv1', Clinical.timepoint, text, ['file.txt']),
          ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
          ('deriv3', Clinical.batch, directory, ['dir']),
+         ('deriv4', Clinical.dataset, text, ['file.txt']),
          ]),  # id_inference dict
     'multi': TestDatasetBlueprint(  # dataset name
         [2, 2, 2],  # number of timepoints, groups and members respectively
@@ -78,19 +79,7 @@ TEST_DATASET_BLUEPRINTS = {
          ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
          ('deriv8', Clinical.group, text, ['file.txt']),
          ]),
-    'simple': TestDatasetBlueprint(  # dataset name
-        [1, 1, 1],  # number of timepoints, groups and members respectively
-        [('scan1',  # scan type (ID is index)
-          [('text', # resource name
-            text,  # Data format
-            ['file1.txt'])]),  # name files to place within resource
-         ('scan2',
-          [('text',
-            text,
-            ['file2.txt'])])],
-        {},
-        [('deriv1', Clinical.session, text, ['file.txt'])]),  # id_inference dict
-    'concatenate-test': TestDatasetBlueprint(
+    'for_concatenate': TestDatasetBlueprint(
         [1, 1, 2],
         [('scan1',
           [('text', text, ['file1.txt'])]),

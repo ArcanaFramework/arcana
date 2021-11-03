@@ -6,8 +6,10 @@ import json
 import pydicom
 import numpy as np
 import nibabel
-from pydra.tasks.mrtrix3.utils import MRConvert
 from pydra.tasks.dcm2niix import Dcm2Niix
+# Hack to get module to load until pydra-mrtrix is published on PyPI
+# from pydra.tasks.mrtrix3.utils import MRConvert
+MRConvert = Dcm2Niix
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.tasks.utils import identity_converter
 from arcana2.core.data.type import FileFormat

@@ -141,16 +141,18 @@ class RunCmd(BaseDatasetCmd):
     def _datatype_from_path(cls, path):
         datatype = None
         if ':' in path:
-            path, datatype_name = path.split(':')
+            path, datatype_name = str(path).split(':')
             datatype = resolve_datatype(datatype_name.lower())
         elif '.' in path:
+            path = Path(path)
+            path_ext = '.'.join(path.suffixes)
+            # Strip suffix from path
+            path = path.parent / path.stem
             # FIXME: Need a more robust way of determining datatype
             # from output path extension
             for dtype in list_instances(arcana2.data.types, FileFormat):
-                if dtype.extension == '.'.join(path.suffixes):
+                if dtype.extension == path_ext:
                     datatype = dtype
-                    # Strip suffix from path
-                    path = path.parent / path.stem
                     break
         if datatype is None:
             raise ArcanaUsageError(
