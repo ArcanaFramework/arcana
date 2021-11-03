@@ -1,8 +1,6 @@
 from pathlib import Path
 import json
 import docker
-from xnat.exceptions import XNATError
-from arcana2.entrypoints.wrap4xnat import Wrap4XnatCmd
 from arcana2.data.repositories.xnat.tests.fixtures import make_mutable_dataset
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.data.types import text

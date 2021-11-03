@@ -12,6 +12,7 @@ import pytest
 import docker
 import xnat
 from arcana2.data.repositories import Xnat
+from arcana2.data.repositories.xnat.cs import XnatViaCS
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.data.space import DataSpace
 from arcana2.core.data.type import FileFormat
@@ -287,17 +288,22 @@ def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
     proj_name = project_name(dataset_name, repository.run_prefix, test_suffix)
     if access_method == 'direct':
+        # Create a new repository access object that accesses data directly
+        # via the XNAT archive directory, like 
         proj_dir = xnat_archive_dir / proj_name / 'arc001'
-        mounts = {(Clinical.dataset, None): proj_dir}
-        for sess_label in proj_dir.iterdir():
-            mounts[(Clinical.session, sess_label.name)] = proj_dir / sess_label
-    elif access_method == 'api':
-        mounts = {}
-    else:
-        assert False    
+        repository = XnatViaCS(
+            server=repository.server,
+            user=repository.user,
+            password=repository.password,
+            cache_dir=repository.cache_dir,
+            frequency=Clinical.dataset,
+            input_mount=proj_dir,
+            output_mount=Path(mkdtemp()))
+    elif access_method != 'api':
+        assert False
+    
     dataset = repository.dataset(proj_name,
-                                 id_inference=blueprint.id_inference,
-                                 access_args={'mounts': mounts})
+                                 id_inference=blueprint.id_inference)
     # Stash the args used to create the dataset in attributes so they can be
     # used by tests
     dataset.blueprint = blueprint

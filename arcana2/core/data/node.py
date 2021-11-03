@@ -170,8 +170,7 @@ class DataNode():
             path=path, data_node=self, value=value, **kwargs))
 
     def get_file_group(self, file_group, **kwargs):
-        return self.dataset.repository.get_file_group(file_group,
-                                                            **kwargs)
+        return self.dataset.repository.get_file_group(file_group, **kwargs)
 
     def get_field(self, field):
         return self.dataset.repository.get_field(field)

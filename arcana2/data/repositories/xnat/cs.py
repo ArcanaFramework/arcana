@@ -21,7 +21,7 @@ from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.data.type import FileFormat
 from arcana2.core.data.space import DataSpace
 from arcana2.core.utils import resolve_class, DOCKER_HUB, ARCANA_PIP
-from arcana2.exceptions import ArcanaUsageError
+from arcana2.exceptions import ArcanaUsageError, ArcanaNoDirectXnatMountException
 from arcana2.__about__ import PACKAGE_NAME, python_versions
 from .api import Xnat
 
@@ -31,7 +31,9 @@ logger = logging.getLogger('arcana')
 @attr.s
 class XnatViaCS(Xnat):
     """
-    A 'Repository' class for XNAT repositories
+    Access class for XNAT repositories via XNAT's built-in container service.
+    The container service allows the exposure of the underlying file system
+    where imaging data
 
     Parameters
     ----------
@@ -45,11 +47,6 @@ class XnatViaCS(Xnat):
         Username with which to connect to XNAT with
     password : str
         Password to connect to the XNAT repository with
-    mounts : dict[str, dict[tuple[Clinical, str], Path]]
-        Paths to a local mounts of directories within XNATs archive for nodes
-        of a project (i.e.. when running  inside XNAT's container service).
-        Keys -> Project ID, Values -> dictionary mapping node frequency + ID to
-        mounted path
     check_md5 : bool
         Whether to check the MD5 digest of cached files before using. This
         checks for updates on the server since the file was cached
@@ -57,76 +54,107 @@ class XnatViaCS(Xnat):
         The amount of time to wait before checking that the required
         file_group has been downloaded to cache by another process has
         completed if they are attempting to download the same file_group
-    session_filter : str
-        A regular expression that is used to prefilter the discovered sessions
-        to avoid having to retrieve metadata for them, and potentially speeding
-        up the initialisation of the Analysis. Note that if the processing
-        relies on summary derivatives (i.e. of 'per_timepoint/subject/analysis'
-        frequency) then the filter should match all sessions in the Analysis's
-        subject_ids and timepoint_ids.
     """
-    context: DataSpace = attr.ib(default=Clinical.session)
+
+    INPUT_MOUNT = Path("/input")
+    OUTPUT_MOUNT = Path("/output")
+    WORK_MOUNT = Path('/work')
+    
+    frequency: DataSpace = attr.ib(default=Clinical.session)
+    node_id: str = attr.ib(default=None)
+    input_mount: Path = attr.ib(default=INPUT_MOUNT, converter=Path)
+    output_mount: Path = attr.ib(default=OUTPUT_MOUNT, converter=Path)
 
 
     def get_file_group(self, file_group):
-        if not self.on_direct_mount(file_group):
+        try:
+            input_mount = self.get_input_mount(file_group)
+        except ArcanaNoDirectXnatMountException:
             # Fallback to API access
             return super().get_file_group(file_group)
-        logger.info("Getting %s from %s:%s node by direct access to archive",
+        logger.info("Getting %s from %s:%s node via direct access to archive directory",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)
-        path = re.match(
-            r'/data/(?:archive/)?projects/\w+/(?:subjects/\w+/)?'
-            r'(?:experiments/\w+/)?(?P<path>.*)$', file_group.uri).group('path')
-        if 'scans' in path:
-            path = path.replace('scans', 'SCANS').replace('resources/', '')
-        else:
+        if file_group.uri:
+            path = re.match(
+                r'/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/'
+                r'(?:subjects/[a-zA-Z0-9\-_]+/)?'
+                r'(?:experiments/[a-zA-Z0-9\-_]+/)?(?P<path>.*)$',
+                file_group.uri).group('path')
+            if 'scans' in path:
+                path = path.replace('scans', 'SCANS').replace('resources/', '')
             path = path.replace('resources', 'RESOURCES')
-        resource_path = self.input_mount / path
-        if file_group.datatype.directory:
-            # Link files from resource dir into temp dir to avoid catalog XML
-            primary_path = self.cache_path(file_group)
-            shutil.rmtree(primary_path, ignore_errors=True)
-            os.makedirs(primary_path, exist_ok=True)
-            for item in resource_path.iterdir():
-                if not item.name.endswith('_catalog.xml'):
-                    os.symlink(item, primary_path / item.name)
-            side_cars = {}
+            resource_path = input_mount / path
+            if file_group.datatype.directory:
+                # Link files from resource dir into temp dir to avoid catalog XML
+                primary_path = self.cache_path(file_group)
+                shutil.rmtree(primary_path, ignore_errors=True)
+                os.makedirs(primary_path, exist_ok=True)
+                for item in resource_path.iterdir():
+                    if not item.name.endswith('_catalog.xml'):
+                        os.symlink(item, primary_path / item.name)
+                side_cars = {}
+            else:
+                primary_path, side_cars = file_group.datatype.assort_files(
+                    resource_path.iterdir())
         else:
-            primary_path, side_cars = file_group.datatype.assort_files(
-                resource_path.iterdir())
+            logger.debug(
+                "No URI set for file_group %s, assuming it is a newly created "
+                "derivative on the output mount", file_group)
+            primary_path, side_cars = self.output_paths(file_group)
         return primary_path, side_cars
 
     def put_file_group(self, file_group, fs_path, side_cars):
-        if not self.on_direct_mount(file_group):
+        try:
+            primary_path, side_car_paths = self.get_output_paths(file_group)
+        except ArcanaNoDirectXnatMountException:
             # Fallback to API access
             return super().put_file_group(file_group, fs_path, side_cars)
-        escaped_name = self.escape_name(file_group)
-        resource_path = self.output_mount / 'RESOURCES' / escaped_name 
         if file_group.datatype.directory:
-            shutil.copytree(fs_path, resource_path)
+            shutil.copytree(fs_path, primary_path)
+        else:
+            os.makedirs(primary_path.parent, exist_ok=True)
+            # Upload primary file and add to cache
+            shutil.copyfile(fs_path, primary_path)
+            # Upload side cars and add them to cache
+            for sc_name, sc_src_path in side_cars.items():
+                shutil.copyfile(sc_src_path, side_car_paths[sc_name])
+        # Update file-group with new values for local paths and XNAT URI
+        file_group.set_fs_paths(primary_path, side_car_paths)
+        file_group.uri = (self._make_uri(file_group.data_node)
+                          + '/RESOURCES/' + self.escape_name(file_group.path))
+        logger.info("Put %s into %s:%s node via direct access to archive directory",
+                    file_group.path, file_group.data_node.frequency,
+                    file_group.data_node.id)
+
+    def get_output_paths(self, file_group):
+        if self.frequency != file_group.data_node.frequency:
+            raise ArcanaNoDirectXnatMountException
+        escaped_name = self.escape_name(file_group.path)
+        resource_path = self.output_mount / escaped_name
+        side_car_paths = {}
+        if file_group.datatype.directory:
+            primary_path = resource_path
         else:
             os.makedirs(resource_path, exist_ok=True)
             # Upload primary file and add to cache
             fname = escaped_name + file_group.datatype.extension
-            shutil.copyfile(fs_path, resource_path / fname)
+            primary_path = resource_path / fname
             # Upload side cars and add them to cache
-            for sc_name, sc_src_path in side_cars.items():
-                sc_fname = escaped_name + file_group.datatype.side_cars[sc_name]
-                shutil.copyfile(sc_src_path, resource_path / sc_fname)
-        file_group.uri = (self._make_uri(file_group.data_node)
-                          + '/RESOURCES/' + escaped_name)
-        file_group.exists = True
-        logger.info("Put %s into %s:%s node by direct access to archive",
-                    file_group.path, file_group.data_node.frequency,
-                    file_group.data_node.id)
-
+            for sc_name, sc_ext in file_group.datatype.side_cars:
+                sc_fname = escaped_name + sc_ext
+                sc_fpath = resource_path / sc_fname
+                side_car_paths[sc_name] = sc_fpath
+        return primary_path, side_car_paths
     
-    def has_direct_mount(self, file_group):
-        access_args = file_group.data_node.dataset.access_args
-        if 'mounts' not in access_args:
-            return False
-        return (file_group.data_node.frequency, file_group.data_node.id) in access_args['mounts']
+    def get_input_mount(self, file_group):
+        data_node = file_group.data_node
+        if self.frequency == data_node.frequency:
+            return self.input_mount
+        elif self.frequency == Clinical.dataset and data_node.frequency == Clinical.session:
+            return self.input_mount / data_node.id
+        else:
+            raise ArcanaNoDirectXnatMountException
 
     
 
@@ -352,7 +380,7 @@ class XnatViaCS(Xnat):
         output_args = []
         for output in outputs:
 
-            output_fname = output.name + output.datatype.extension
+            output_fname = cls.escape_name(output.name) + output.datatype.extension
             # Set the path to the 
             outputs_json.append({
                 "name": output.name,
@@ -400,9 +428,9 @@ class XnatViaCS(Xnat):
         cmdline = (
             f"conda run --no-capture-output -n arcana "  # activate conda
             f"arcana run {func.__module__}.{func.__name__} "  # run pydra task in Arcana
-            f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} "
-            f"--work {cls.WORK_MOUNT} " # inputs + params
-            "--repository xnat $XNAT_HOST $XNAT_USER $XNAT_PASS")  # pass XNAT API details
+            f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
+            f"--work {cls.WORK_MOUNT} "  # working directory
+            "--repository xnat_via_cs $XNAT_HOST $XNAT_USER $XNAT_PASS {frequency}")  # pass XNAT API details
 
         # Create Project input that can be passed to the command line, which will
         # be populated by inputs derived from the XNAT object passed to the pipeline
@@ -420,6 +448,7 @@ class XnatViaCS(Xnat):
         if frequency == Clinical.session:
             # Set the object the pipeline is to be run against
             context = ["xnat:imageSessionData"]
+            cmdline += ' [SESSION_LABEL]'  # Pass node-id to XnatViaCS repo
             # Create Session input that  can be passed to the command line, which
             # will be populated by inputs derived from the XNAT session object
             # passed to the pipeline.
@@ -489,17 +518,17 @@ class XnatViaCS(Xnat):
                 {
                     "name": "in",
                     "writable": False,
-                    "path": cls.INPUT_MOUNT
+                    "path": str(cls.INPUT_MOUNT)
                 },
                 {
                     "name": "out",
                     "writable": True,
-                    "path": cls.OUTPUT_MOUNT
+                    "path": str(cls.OUTPUT_MOUNT)
                 },
                 {
                     "name": "work",
                     "writable": True,
-                    "path": cls.WORK_MOUNT
+                    "path": str(cls.WORK_MOUNT)
                 }
             ],
             "ports": {},
@@ -541,6 +570,3 @@ class XnatViaCS(Xnat):
         float: 'number'}
 
     VALID_FREQUENCIES = (Clinical.session, Clinical.dataset)
-    INPUT_MOUNT = "/input"
-    OUTPUT_MOUNT = "/output"
-    WORK_MOUNT = '/work'

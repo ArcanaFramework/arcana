@@ -24,7 +24,7 @@ from arcana2.core.data.set import Dataset
 from arcana2.data.spaces.clinical import Clinical
 
 
-logger = logging.getLogger('arcana2')
+logger = logging.getLogger('arcana')
 
 special_char_re = re.compile(r'[^a-zA-Z_0-9]')
 tag_parse_re = re.compile(r'\((\d+),(\d+)\)')
@@ -41,7 +41,7 @@ COMMAND_INPUT_TYPES = {
 @attr.s
 class Xnat(DataRepository):
     """
-    A 'Repository' class for XNAT repositories
+    Access class for XNAT data repositories
 
     Parameters
     ----------
@@ -55,25 +55,13 @@ class Xnat(DataRepository):
         Username with which to connect to XNAT with
     password : str
         Password to connect to the XNAT repository with
-    mounts : dict[str, dict[tuple[Clinical, str], Path]]
-        Paths to a local mounts of directories within XNATs archive for nodes
-        of a project (i.e.. when running  inside XNAT's container service).
-        Keys -> Project ID, Values -> dictionary mapping node frequency + ID to
-        mounted path
     check_md5 : bool
         Whether to check the MD5 digest of cached files before using. This
         checks for updates on the server since the file was cached
-    race_cond_delay : int
+    race_condition_delay : int
         The amount of time to wait before checking that the required
         file_group has been downloaded to cache by another process has
         completed if they are attempting to download the same file_group
-    session_filter : str
-        A regular expression that is used to prefilter the discovered sessions
-        to avoid having to retrieve metadata for them, and potentially speeding
-        up the initialisation of the Analysis. Note that if the processing
-        relies on summary derivatives (i.e. of 'per_timepoint/subject/analysis'
-        frequency) then the filter should match all sessions in the Analysis's
-        subject_ids and timepoint_ids.
     """
 
     server: str = attr.ib()
@@ -193,7 +181,7 @@ class Xnat(DataRepository):
             A dictionary containing a mapping of auxiliary file names to
             name_paths
         """
-        logger.info("Getting %s from %s:%s node via API",
+        logger.info("Getting %s from %s:%s node via API access",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)        
         if file_group.datatype is None:
@@ -206,7 +194,7 @@ class Xnat(DataRepository):
             if not file_group.uri:
                 base_uri = self.standard_uri(xnode)
                 # if file_group.derived:
-                xresource = xnode.resources[self.escape_name(file_group)]
+                xresource = xnode.resources[self.escape_name(file_group.path)]
                 # else:
                 #     # If file_group is a primary 'scan' (rather than a
                 #     # derivative) we need to get the resource of the scan
@@ -291,7 +279,7 @@ class Xnat(DataRepository):
         with self:
             # Add session for derived scans if not present
             xnode = self.get_xnode(file_group.data_node)
-            escaped_name = self.escape_name(file_group)
+            escaped_name = self.escape_name(file_group.path)
             if not file_group.uri:
                 # Set the uri of the file_group
                 file_group.uri = '{}/resources/{}'.format(
@@ -314,6 +302,7 @@ class Xnat(DataRepository):
             cache_path = self.cache_path(file_group)
             if cache_path.exists():
                 shutil.rmtree(cache_path)
+            side_car_paths = {}
             # Upload data and add it to cache
             if file_group.datatype.directory:
                 for dpath, _, fnames  in os.walk(fs_path):
@@ -323,20 +312,24 @@ class Xnat(DataRepository):
                         frelpath = fpath.relative_to(fs_path)
                         xresource.upload(str(fpath), str(frelpath))
                 shutil.copytree(fs_path, cache_path)
+                primary_path = cache_path
             else:
                 # Upload primary file and add to cache
                 fname = escaped_name + file_group.datatype.extension
                 xresource.upload(str(fs_path), fname)
                 os.makedirs(cache_path, stat.S_IRWXU | stat.S_IRWXG)
-                shutil.copyfile(fs_path, cache_path / fname)
+                primary_path = cache_path / fname
+                shutil.copyfile(fs_path, primary_path)
                 # Upload side cars and add them to cache
                 for sc_name, sc_src_path in side_cars.items():
                     sc_fname = escaped_name + file_group.datatype.side_cars[sc_name]
                     xresource.upload(str(sc_src_path), sc_fname)
-                    shutil.copyfile(sc_src_path, cache_path / sc_fname)
+                    sc_fpath = cache_path / sc_fname
+                    shutil.copyfile(sc_src_path, sc_fpath)
+                    side_car_paths[sc_name] = sc_fpath
             # need to manually set this here in order to calculate the
             # checksums (instead of waiting until after the 'put' is finished)
-            file_group._set_fs_paths(*self._file_group_paths(file_group))
+            file_group.set_fs_paths(primary_path, side_car_paths)
             with open(append_suffix(cache_path, self.MD5_SUFFIX), 'w',
                       **JSON_ENCODING) as f:
                 json.dump(file_group.calculate_checksums(), f,
@@ -344,7 +337,7 @@ class Xnat(DataRepository):
             # Save provenance
             if file_group.provenance:
                 self.put_provenance(file_group)
-        logger.info("Put %s into %s:%s node via API",
+        logger.info("Put %s into %s:%s node via API access",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)
 
@@ -591,7 +584,7 @@ class Xnat(DataRepository):
         return primary_path, side_cars
 
     @classmethod
-    def escape_name(cls, item):
+    def escape_name(cls, path):
         """Escape the name of an item by replacing '/' with a valid substring
 
         Parameters
@@ -604,7 +597,7 @@ class Xnat(DataRepository):
         `str`
             The derived name
         """
-        return cls.PATH_SEP.join(str(item.path).split('/'))
+        return cls.PATH_SEP.join(str(path).split('/'))
 
     @classmethod
     def unescape_name(cls, name):

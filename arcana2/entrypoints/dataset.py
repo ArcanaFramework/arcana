@@ -1,9 +1,11 @@
 
+import os
 from importlib import import_module
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.data.repositories.file_system import FileSystem
 from arcana2.data.repositories.xnat import Xnat
+from arcana2.data.repositories.xnat.cs import XnatViaCS
 from arcana2.core.entrypoint import BaseCmd
 
 
@@ -102,6 +104,22 @@ class BaseDatasetCmd(BaseCmd):
                 user=repo_args[1] if nargs > 1 else None,
                 password=repo_args[2] if nargs > 2 else None,
                 cache_dir=work_dir / XNAT_CACHE_DIR)
+            hierarchy = [Clinical.subject, Clinical.session]
+        elif repo_type == 'xnat_via_cs':
+            if nargs < 1 or nargs > 7:
+                raise ArcanaUsageError(
+                    f"Incorrect number of arguments passed to an Xnat "
+                    f"repository ({args}), at least 1 (FREQUENCY) and no more "
+                    f"than 4 are required (FREQUENCY, NODE_ID, INPUT_MOUNT, OUTPUT_MOUNT)")
+            repository = XnatViaCS(
+                server=repo_args[0],
+                user=repo_args[1],
+                password=repo_args[2],
+                cache_dir=work_dir / XNAT_CACHE_DIR,
+                frequency=Clinical[repo_args[3]],
+                node_id=repo_args[4] if len(repo_args) > 4 else None,
+                input_mount=repo_args[5] if len(repo_args) > 5 else XnatViaCS.INPUT_MOUNT,
+                output_mount=repo_args[6] if len(repo_args) > 6 else XnatViaCS.OUTPUT_MOUNT)
             hierarchy = [Clinical.subject, Clinical.session]
         else:
             raise ArcanaUsageError(

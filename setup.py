@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author='Tom G. Close',
     author_email='tom.g.close@gmail.com',
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests']),
     url='https://github.com/australian-imaging-service/arcana2',
     license='Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License',
     description=(

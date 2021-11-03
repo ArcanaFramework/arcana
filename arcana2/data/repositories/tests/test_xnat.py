@@ -2,15 +2,18 @@ import os
 import os.path
 import operator as op
 import shutil
+import logging
 from pathlib import Path
 import hashlib
 from tempfile import mkdtemp
 from functools import reduce
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.data.set import Dataset
-from .fixtures import create_test_file
+from arcana2.data.repositories.xnat.tests.fixtures import create_test_file
 from arcana2.core.data.tests.fixtures import create_test_file
 
+# logger = logging.getLogger('arcana')
+# logger.setLevel(logging.INFO)
 
 def test_find_nodes(xnat_dataset):
     for freq in Clinical:
@@ -26,7 +29,7 @@ def test_find_nodes(xnat_dataset):
             f" vs {num_nodes}")
 
 
-def test_get_items(xnat_dataset):
+def test_get_items(xnat_dataset, caplog):
     expected_files = {}
     for scan_name, resources in xnat_dataset.blueprint.scans:
         for resource_name, datatype, files in resources:
@@ -35,43 +38,47 @@ def test_get_items(xnat_dataset):
                 xnat_dataset.add_source(source_name, path=scan_name,
                                         datatype=datatype)
                 expected_files[source_name] = set(files)
-    for node in xnat_dataset.nodes(Clinical.session):
-        for source_name, files in expected_files.items():
-            item = node[source_name]
-            item.get()
-            if item.datatype.directory:
-                item_files = set(os.listdir(item.fs_path))
-            else:
-                item_files = set(p.name for p in item.fs_paths)
-            assert item_files == files
+    with caplog.at_level(logging.INFO, logger='arcana'):
+        for node in xnat_dataset.nodes(Clinical.session):
+            for source_name, files in expected_files.items():
+                item = node[source_name]
+                item.get()
+                if item.datatype.directory:
+                    item_files = set(os.listdir(item.fs_path))
+                else:
+                    item_files = set(p.name for p in item.fs_paths)
+                assert item_files == files
+    assert f'{xnat_dataset.access_method} access' in caplog.text.lower()
 
 
-def test_put_items(mutable_xnat_dataset: Dataset):
+def test_put_items(mutable_xnat_dataset: Dataset, caplog):
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
-    for name, freq, datatype, files in mutable_xnat_dataset.blueprint.to_insert:
-        mutable_xnat_dataset.add_sink(name=name, datatype=datatype,
-                                      frequency=freq)
-        deriv_tmp_dir = tmp_dir / name
-        # Create test files, calculate checkums and recorded expected paths
-        # for inserted files
-        all_checksums[name] = checksums = {}
-        fs_paths = []        
-        for fname in files:
-            test_file = create_test_file(fname, deriv_tmp_dir)
-            fhash = hashlib.md5()
-            with open(deriv_tmp_dir / test_file, 'rb') as f:
-                fhash.update(f.read())
-            try:
-                rel_path = str(test_file.relative_to(files[0]))
-            except ValueError:
-                rel_path = '.'.join(test_file.suffixes)                
-            checksums[rel_path] = fhash.hexdigest()
-            fs_paths.append(deriv_tmp_dir / test_file.parts[0])
-        # Insert node into xnat_dataset
-        for node in mutable_xnat_dataset.nodes(freq):
-            item = node[name]
-            item.put(*datatype.assort_files(fs_paths))
+    with caplog.at_level(logging.INFO, logger='arcana'):
+        for name, freq, datatype, files in mutable_xnat_dataset.blueprint.to_insert:
+            mutable_xnat_dataset.add_sink(name=name, datatype=datatype,
+                                        frequency=freq)
+            deriv_tmp_dir = tmp_dir / name
+            # Create test files, calculate checkums and recorded expected paths
+            # for inserted files
+            all_checksums[name] = checksums = {}
+            fs_paths = []        
+            for fname in files:
+                test_file = create_test_file(fname, deriv_tmp_dir)
+                fhash = hashlib.md5()
+                with open(deriv_tmp_dir / test_file, 'rb') as f:
+                    fhash.update(f.read())
+                try:
+                    rel_path = str(test_file.relative_to(files[0]))
+                except ValueError:
+                    rel_path = '.'.join(test_file.suffixes)                
+                checksums[rel_path] = fhash.hexdigest()
+                fs_paths.append(deriv_tmp_dir / test_file.parts[0])
+            # Insert node into xnat_dataset
+            for node in mutable_xnat_dataset.nodes(freq):
+                item = node[name]
+                item.put(*datatype.assort_files(fs_paths))
+    assert f'{mutable_xnat_dataset.access_method} access' in caplog.text.lower()
     def check_inserted():
         for name, freq, datatype, _ in mutable_xnat_dataset.blueprint.to_insert:
             for node in mutable_xnat_dataset.nodes(freq):

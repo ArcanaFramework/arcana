@@ -203,3 +203,8 @@ class ArcanaBadlyFormattedIDError(ArcanaDataTreeConstructionError):
 
 class ArcanaWrongDataSpacesError(ArcanaError):
     "Provided frequency is not a valid member of the dataset's dimensions"
+
+
+class ArcanaNoDirectXnatMountException(ArcanaException):
+    "Raised when attemptint to access a file-system mount for a node that hasn't been mounted directly "
+    pass

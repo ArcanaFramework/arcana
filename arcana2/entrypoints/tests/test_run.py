@@ -1,3 +1,5 @@
+import tempfile
+from pathlib import Path
 from argparse import ArgumentParser
 from arcana2.core.data.tests.fixtures import TEST_DATASET_BLUEPRINTS, make_dataset
 from arcana2.data.repositories.xnat.tests.fixtures import (
@@ -34,7 +36,7 @@ def test_run_app(work_dir, test_dataspace_location):
         assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)
 
 
-def test_run_xnat_app(xnat_repository, xnat_archive_dir, work_dir):
+def test_run_app_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
 
     dataset = make_xnat_dataset(xnat_repository, xnat_archive_dir,
                                 test_name='concatenate-test.api')
@@ -59,5 +61,40 @@ def test_run_xnat_app(xnat_repository, xnat_archive_dir, work_dir):
     for item in dataset['deriv']:
         item.get()
         with open(item.fs_path) as f:
+            contents = f.read()
+        assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)
+
+
+def test_run_app_via_xnat_cs(xnat_repository, xnat_archive_dir, work_dir):
+
+    dataset = make_xnat_dataset(xnat_repository, xnat_archive_dir,
+                                test_name='concatenate-test.api')
+
+    output_dir = Path(tempfile.mkdtemp())
+
+    session_label = 'timepoint0group0member0'
+    
+    parser = ArgumentParser()
+    RunCmd.construct_parser(parser)
+    args = parser.parse_args([
+        'arcana2.tasks.tests.fixtures.concatenate',
+        dataset.name,
+        '--input', 'in_file1', 'scan1:text',
+        '--input', 'in_file2', 'scan2:text',
+        '--output', 'out_file', 'deriv:text',
+        '--parameter', 'duplicates', '2',
+        '--work', str(work_dir),
+        '--repository', 'xnat_via_cs', xnat_repository.server,
+        xnat_repository.user, xnat_repository.password, 'session',
+        session_label,
+        str(xnat_archive_dir / dataset.name / 'arc001' / session_label),
+        str(output_dir),
+        '--ids', session_label, '--pydra_plugin', 'serial'])
+    RunCmd().run(args)
+
+    for output_path in output_dir.iterdir():
+        output_files = [p.name for p in output_path.iterdir()]
+        assert output_files == ['deriv.txt']
+        with open(output_path / 'deriv.txt') as f:
             contents = f.read()
         assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)
