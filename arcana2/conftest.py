@@ -33,7 +33,7 @@ def work_dir():
 
 
 # Import all test fixtures from `test_fixtures` sub-package
-from .core.data.tests.fixtures import (
+from .data.repositories.tests.fixtures import (
     test_dataspace, test_dataspace_location, dataset, tmp_dir,
     test_dicom_dataset_dir, dicom_dataset)
 from .tasks.tests.fixtures import (

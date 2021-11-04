@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 from argparse import ArgumentParser
-from arcana2.core.data.tests.fixtures import TEST_DATASET_BLUEPRINTS, make_dataset
+from arcana2.data.repositories.tests.fixtures import TEST_DATASET_BLUEPRINTS, make_dataset
 from arcana2.data.repositories.xnat.tests.fixtures import (
     make_mutable_dataset as make_xnat_dataset,
     TEST_DATASET_BLUEPRINTS as TEST_XNAT_DATASET_BLUEPRINTS)
@@ -11,7 +11,7 @@ from arcana2.data.types import text
 
 def test_run_app(work_dir, test_dataspace_location):
 
-    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['for_concatenate'], work_dir)
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'], work_dir)
     
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
@@ -39,7 +39,7 @@ def test_run_app(work_dir, test_dataspace_location):
 def test_run_app_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
 
     dataset = make_xnat_dataset(xnat_repository, xnat_archive_dir,
-                                test_name='for_concatenate.api')
+                                test_name='concatenate_test.api')
     
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
@@ -68,7 +68,7 @@ def test_run_app_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
 def test_run_app_via_xnat_cs(xnat_repository, xnat_archive_dir, work_dir):
 
     dataset = make_xnat_dataset(xnat_repository, xnat_archive_dir,
-                                test_name='for_concatenate.direct')
+                                test_name='concatenate_test.direct')
 
     output_dir = Path(tempfile.mkdtemp())
 

@@ -16,7 +16,7 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
                      xnat_archive_dir):
 
     dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
-                                  'for_concatenate.direct')
+                                  'concatenate_test.direct')
 
     build_dir = Path(tempfile.mkdtemp())
 

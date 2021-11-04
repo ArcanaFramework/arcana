@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import operator as op
 from functools import reduce
 from arcana2.core.data.set import Dataset
-from arcana2.core.data.tests.fixtures import create_test_file
+from arcana2.data.repositories.tests.fixtures import create_test_file
 
 
 

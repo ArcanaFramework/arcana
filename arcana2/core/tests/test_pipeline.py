@@ -1,12 +1,12 @@
 
-from arcana2.core.data.tests.fixtures import (
+from arcana2.data.repositories.tests.fixtures import (
     make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
 from arcana2.tasks.tests.fixtures import concatenate
 from arcana2.data.types.general import text
 
 
 def test_pipeline(work_dir):
-    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['for_concatenate'], work_dir)
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'], work_dir)
 
     dataset.add_source('file1', text)
     dataset.add_source('file2', text)

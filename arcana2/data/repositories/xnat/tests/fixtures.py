@@ -18,7 +18,7 @@ from arcana2.core.data.space import DataSpace
 from arcana2.core.data.type import FileFormat
 from arcana2.data.types.general import text, directory
 from arcana2.data.types.neuroimaging import niftix_gz, nifti_gz, dicom
-from arcana2.core.data.tests.fixtures import create_test_file
+from arcana2.data.repositories.tests.fixtures import create_test_file
 
 
 # -----------------------
@@ -79,7 +79,7 @@ TEST_DATASET_BLUEPRINTS = {
          ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
          ('deriv8', Clinical.group, text, ['file.txt']),
          ]),
-    'for_concatenate': TestDatasetBlueprint(
+    'concatenate_test': TestDatasetBlueprint(
         [1, 1, 2],
         [('scan1',
           [('text', text, ['file1.txt'])]),
@@ -300,17 +300,20 @@ def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
     return dataset
 
 
-def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
+def create_dataset_in_repo(dataset_name, run_prefix='', test_suffix='',
+                           server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
+                           password=DOCKER_XNAT_PASSWORD,
+                           max_attempts=CONNECTION_ATTEMPTS):
     """
     Creates dataset for each entry in dataset_structures
     """
     blueprint  =  TEST_DATASET_BLUEPRINTS[dataset_name]
     proj_name = project_name(dataset_name, run_prefix, test_suffix)
 
-    with connect() as login:
+    with connect(server, user, password) as login:
         login.put(f'/data/archive/projects/{proj_name}')
     
-    with connect() as login:
+    with connect(server, user, password) as login:
         xproject = login.projects[proj_name]
         xclasses = login.classes
         for id_tple in product(*(list(range(d))
@@ -344,15 +347,15 @@ def create_dataset_in_repo(dataset_name, run_prefix, test_suffix=''):
 
 @contextlib.contextmanager
 def connect(server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
-            password=DOCKER_XNAT_PASSWORD):
+            password=DOCKER_XNAT_PASSWORD, max_attempts=CONNECTION_ATTEMPTS):
     # Need to give time for XNAT to get itself ready after it has
     # started so we try multiple times until giving up trying to connect
     attempts = 0
-    for _ in range(1, CONNECTION_ATTEMPTS + 1):
+    for _ in range(1, max_attempts + 1):
         try:
             login = xnat.connect(server, user=user, password=password)
         except xnat.exceptions.XNATError:
-            if attempts == CONNECTION_ATTEMPTS:
+            if attempts == max_attempts:
                 raise
             else:
                 time.sleep(CONNECTION_ATTEMPT_SLEEP)

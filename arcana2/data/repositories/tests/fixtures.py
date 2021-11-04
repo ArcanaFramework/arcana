@@ -133,7 +133,7 @@ TEST_DATASET_BLUEPRINTS = {
             (dummy_format, ['file1.x', 'file1.y', 'file1.z'])]},
         [('deriv1', td.d, json, ['file1.json'])]
     ),
-    'for_concatenate': TestDatasetBlueprint(
+    'concatenate_test': TestDatasetBlueprint(
         [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         [1, 1, 1, 2],
         ['file1.txt', 'file2.txt'],
