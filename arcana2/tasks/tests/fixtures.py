@@ -70,7 +70,7 @@ def concatenate(in_file1: Path, in_file2: Path, out_file: Path=None,
         A text file made by concatenating the two inputs
     """
     if out_file is None:
-        out_file = Path(in_file1).parent / 'out_file.txt'
+        out_file = Path('out_file.txt').absolute()
     contents = []
     for _ in range(duplicates):
         for fname in (in_file1, in_file2):

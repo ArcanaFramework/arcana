@@ -339,8 +339,8 @@ class FileFormat(object):
                 .format(self, "', '".join(str(p) for p in candidates)))
         elif len(primary_file) > 1:
             raise ArcanaFileFormatError(
-                "Multiple potential files for '{}' primary file of {}"
-                .format("', '".join(str(p) for p in primary_file), self))
+                "Found multiple potential files for primary file of {} ('{}')"
+                .format(self, "', '".join(str(p) for p in primary_file)))
         else:
             primary_file = primary_file[0]
         side_cars = {}

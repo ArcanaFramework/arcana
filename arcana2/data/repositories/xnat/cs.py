@@ -22,7 +22,7 @@ from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.data.type import FileFormat
 from arcana2.core.data.space import DataSpace
 from arcana2.core.utils import resolve_class, DOCKER_HUB, ARCANA_PIP
-from arcana2.exceptions import ArcanaUsageError, ArcanaNoDirectXnatMountException
+from arcana2.exceptions import ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException
 from arcana2.__about__ import PACKAGE_NAME, python_versions
 from .api import Xnat
 
@@ -96,8 +96,12 @@ class XnatViaCS(Xnat):
                         os.symlink(item, primary_path / item.name)
                 side_cars = {}
             else:
-                primary_path, side_cars = file_group.datatype.assort_files(
-                    resource_path.iterdir())
+                try:
+                    primary_path, side_cars = file_group.datatype.assort_files(
+                        resource_path.iterdir())
+                except ArcanaFileFormatError as e:
+                    e.msg += f" in {file_group} from {resource_path}"
+                    raise e
         else:
             logger.debug(
                 "No URI set for file_group %s, assuming it is a newly created "
@@ -234,7 +238,7 @@ class XnatViaCS(Xnat):
             if pkg_loc not in site_pkg_locs:
                 shutil.rmtree(build_dir / pkg_name, ignore_errors=True)
                 shutil.copytree(pkg_loc, build_dir / pkg_name)
-                pip_address = '/' + pkg_name
+                pip_address = '/local-packages/' + pkg_name
                 instructions.append(['copy', ['./' + pkg_name, pip_address]])
             else:
                 direct_url_path = Path(pkg.egg_info) / 'direct_url.json'
@@ -400,7 +404,7 @@ class XnatViaCS(Xnat):
                 "label": output.name,
                 "format": None})
             output_args.append(
-                f'--output {output.name} {cls.OUTPUT_MOUNT}:{output.datatype.name}')
+                f'--output {output.name} {output.datatype.name}')
 
         # Save work directory as session resource if debugging
         if debug_output:  
