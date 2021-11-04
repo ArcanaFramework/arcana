@@ -17,6 +17,7 @@ import cloudpickle as cp
 from attr import NOTHING
 import neurodocker as nd
 from natsort import natsorted
+from arcana2.__about__ import install_requires
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.data.type import FileFormat
 from arcana2.core.data.space import DataSpace
@@ -101,15 +102,11 @@ class XnatViaCS(Xnat):
             logger.debug(
                 "No URI set for file_group %s, assuming it is a newly created "
                 "derivative on the output mount", file_group)
-            primary_path, side_cars = self.output_paths(file_group)
+            primary_path, side_cars = self.get_output_paths(file_group)
         return primary_path, side_cars
 
     def put_file_group(self, file_group, fs_path, side_cars):
-        try:
-            primary_path, side_car_paths = self.get_output_paths(file_group)
-        except ArcanaNoDirectXnatMountException:
-            # Fallback to API access
-            return super().put_file_group(file_group, fs_path, side_cars)
+        primary_path, side_car_paths = self.get_output_paths(file_group)
         if file_group.datatype.directory:
             shutil.copytree(fs_path, primary_path)
         else:
@@ -128,8 +125,6 @@ class XnatViaCS(Xnat):
                     file_group.data_node.id)
 
     def get_output_paths(self, file_group):
-        if self.frequency != file_group.data_node.frequency:
-            raise ArcanaNoDirectXnatMountException
         escaped_name = self.escape_name(file_group.path)
         resource_path = self.output_mount / escaped_name
         side_car_paths = {}
@@ -141,7 +136,7 @@ class XnatViaCS(Xnat):
             fname = escaped_name + file_group.datatype.extension
             primary_path = resource_path / fname
             # Upload side cars and add them to cache
-            for sc_name, sc_ext in file_group.datatype.side_cars:
+            for sc_name, sc_ext in file_group.datatype.side_cars.items():
                 sc_fname = escaped_name + sc_ext
                 sc_fpath = resource_path / sc_fname
                 side_car_paths[sc_name] = sc_fpath
@@ -223,26 +218,33 @@ class XnatViaCS(Xnat):
                 install_props['method'] = req[2]
             instructions.append([req_name, install_props])
 
-        arcana_pkg = next(p for p in pkg_resources.working_set
-                        if p.key == PACKAGE_NAME)
-        arcana_pkg_loc = Path(arcana_pkg.location).resolve()
         site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]
 
-        # Use local installation of arcana
-        if arcana_pkg_loc not in site_pkg_locs:
-            shutil.rmtree(build_dir / 'arcana')
-            shutil.copytree(arcana_pkg_loc, build_dir / 'arcana')
-            arcana_pip = '/arcana'
-            instructions.append(['copy', ['./arcana', arcana_pip]])
-        else:
-            direct_url_path = Path(arcana_pkg.egg_info) / 'direct_url.json'
-            if direct_url_path.exists():
-                with open(direct_url_path) as f:
-                    durl = json.load(f)             
-                arcana_pip = f"{durl['vcs']}+{durl['url']}@{durl['commit_id']}"
+        # Copies the local working copy of arcana and pydra (+sub-packages)
+        # into the dockerfile if present instead of relying on the PyPI version,
+        # which might be missing bugfixes
+        for pkg_name in ['arcana2'] + [re.split(r'[>=]+', p)[0]
+                                       for p in install_requires
+                                       if p.startswith('pydra')]:
+            
+            pkg = next(p for p in pkg_resources.working_set
+                       if p.key == pkg_name)
+            pkg_loc = Path(pkg.location).resolve()
+            # Use local installation of arcana
+            if pkg_loc not in site_pkg_locs:
+                shutil.rmtree(build_dir / pkg_name, ignore_errors=True)
+                shutil.copytree(pkg_loc, build_dir / pkg_name)
+                pip_address = '/' + pkg_name
+                instructions.append(['copy', ['./' + pkg_name, pip_address]])
             else:
-                arcana_pip = f"{arcana_pkg.key}=={arcana_pkg.version}"
-        packages.append(arcana_pip)
+                direct_url_path = Path(pkg.egg_info) / 'direct_url.json'
+                if direct_url_path.exists():
+                    with open(direct_url_path) as f:
+                        durl = json.load(f)             
+                    pip_address = f"{durl['vcs']}+{durl['url']}@{durl['commit_id']}"
+                else:
+                    pip_address = f"{pkg.key}=={pkg.version}"
+            packages.append(pip_address)
 
         # instructions.append(['run', 'pip3 install ' + ' '.join(packages)])
 

@@ -10,7 +10,7 @@ install_requires = [
     'pydra>=0.14.1',
     'pydicom>=1.0.2',
     'nibabel>=3.2.1',
-    # 'pydra-mrtrix3',
+    'pydra-mrtrix3',
     'pydra-dcm2niix',
     'natsort>=7.1.1',
     'fasteners>=0.7.0',

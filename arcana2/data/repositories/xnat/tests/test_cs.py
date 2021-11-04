@@ -1,6 +1,8 @@
 from pathlib import Path
 import json
-import docker
+import logging
+import tempfile
+import docker.errors
 from arcana2.data.repositories.xnat.tests.fixtures import make_mutable_dataset
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.data.types import text
@@ -16,7 +18,7 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
     dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
                                   'for_concatenate.direct')
 
-    build_dir = Path('/Users/tclose/Desktop/docker-build')  # Path(tempfile.mkdtemp())
+    build_dir = Path(tempfile.mkdtemp())
 
     # image_name = f'wrap4xnat{run_prefix}'
     # image_tag = image_name + ':latest'
@@ -59,9 +61,16 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
         packages=[],
         extra_labels={})
 
-    dc = docker.from_env()
-    image, build_logs = dc.images.build(path=str(build_dir), tag=image_tag)
+    with open('/Users/tclose/Desktop/test-dockerfile', 'w') as f:
+        f.write(dockerfile)
 
+    dc = docker.from_env()
+    try:
+        image, build_logs = dc.images.build(path=str(build_dir), tag=image_tag)
+    except docker.errors.BuildError as e:
+        logging.error(f"Error building docker file in {build_dir}")
+        logging.error('\n'.join(l.get('stream', '') for l in e.build_log))
+        raise
 
     image_path = f'{xnat_container_registry}/{image_tag}'
 
