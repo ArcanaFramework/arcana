@@ -238,7 +238,7 @@ class XnatViaCS(Xnat):
             if pkg_loc not in site_pkg_locs:
                 shutil.rmtree(build_dir / pkg_name, ignore_errors=True)
                 shutil.copytree(pkg_loc, build_dir / pkg_name)
-                pip_address = '/local-packages/' + pkg_name
+                pip_address = '/python-packages/' + pkg_name
                 instructions.append(['copy', ['./' + pkg_name, pip_address]])
             else:
                 direct_url_path = Path(pkg.egg_info) / 'direct_url.json'
