@@ -112,14 +112,14 @@ class BaseDatasetCmd(BaseCmd):
                     f"repository ({args}), at least 1 (FREQUENCY) and no more "
                     f"than 4 are required (FREQUENCY, NODE_ID, INPUT_MOUNT, OUTPUT_MOUNT)")
             repository = XnatViaCS(
-                server=repo_args[0],
-                user=repo_args[1],
-                password=repo_args[2],
                 cache_dir=work_dir / XNAT_CACHE_DIR,
-                frequency=Clinical[repo_args[3]],
-                node_id=repo_args[4] if len(repo_args) > 4 else None,
+                frequency=Clinical[repo_args[0]],
+                node_id=repo_args[1] if len(repo_args) > 1 else None,
+                server=repo_args[2] if len(repo_args) > 2 else os.environ['XNAT_HOST'],
+                user=repo_args[3] if len(repo_args) > 3 else os.environ['XNAT_USER'],
+                password=repo_args[4] if len(repo_args) > 4 else os.environ['XNAT_PASS'],
                 input_mount=repo_args[5] if len(repo_args) > 5 else XnatViaCS.INPUT_MOUNT,
-                output_mount=repo_args[6] if len(repo_args) > 6 else XnatViaCS.OUTPUT_MOUNT)
+                output_mount=repo_args[6] if len(repo_args) > 6 else XnatViaCS.OUTPUT_MOUNT,)
             hierarchy = [Clinical.subject, Clinical.session]
         else:
             raise ArcanaUsageError(

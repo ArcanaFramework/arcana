@@ -154,7 +154,7 @@ def test_dataspace():
 
 @pytest.fixture
 def test_dataspace_location():
-    return 'arcana2.core.data.tests.fixtures.TestDataSpace'
+    return __name__ + '.TestDataSpace'
 
 
 @pytest.fixture

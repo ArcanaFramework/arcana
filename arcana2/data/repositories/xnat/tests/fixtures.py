@@ -156,7 +156,8 @@ def xnat_repository(xnat_archive_dir, run_prefix, xnat_docker_network):
 
 
 def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_ARCHIVE_DIR,
-                          xnat_docker_network=None):
+                          xnat_docker_network=None, mount_archive=True,
+                          remove=True):
     if xnat_docker_network is None:
         xnat_docker_network = get_xnat_docker_network()
 
@@ -173,19 +174,21 @@ def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_ARCHIVE_DIR,
         # Clear the XNAT archive dir
         shutil.rmtree(xnat_archive_dir, ignore_errors=True)
         os.mkdir(xnat_archive_dir)
+        volumes = {'/var/run/docker.sock': {'bind': '/var/run/docker.sock',
+                                            'mode': 'rw'}}
+        if mount_archive:
+            volumes[str(xnat_archive_dir)] = {'bind': '/data/xnat/archive',
+                                              'mode': 'rw'}
         container = dc.containers.run(
             image.tags[0], detach=True, ports={
                 '80/tcp': DOCKER_XNAT_PORT},
-            remove=True, name=DOCKER_IMAGE,
+            remove=remove, name=DOCKER_IMAGE,
             # Expose the XNAT archive dir outside of the XNAT docker container
             # to simulate what the XNAT container service exposes to running
             # pipelines, and the Docker socket for the container service to
             # to use
             network=xnat_docker_network.id,
-            volumes={str(xnat_archive_dir): {'bind': '/data/xnat/archive',
-                                             'mode': 'rw'},
-                     '/var/run/docker.sock': {'bind': '/var/run/docker.sock',
-                                              'mode': 'rw'}})
+            volumes=volumes)
         already_running = False
     else:
         already_running = True
@@ -351,8 +354,7 @@ def connect(server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
             password=DOCKER_XNAT_PASSWORD, max_attempts=CONNECTION_ATTEMPTS):
     # Need to give time for XNAT to get itself ready after it has
     # started so we try multiple times until giving up trying to connect
-    attempts = 0
-    for _ in range(1, max_attempts + 1):
+    for attempts in range(1, max_attempts + 1):
         try:
             login = xnat.connect(server, user=user, password=password)
         except xnat.exceptions.XNATError:

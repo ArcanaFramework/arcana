@@ -264,9 +264,15 @@ class XnatViaCS(Xnat):
         if labels:
             instructions.append(["label", labels])
 
+        # Copy command JSON inside dockerfile for ease of reference
+        with open(build_dir / 'command.json', 'w') as f:
+            json.dump(json_config, f, indent='    ')
+        instructions.append(['copy', ['./command.json', '/command.json']])
+
         neurodocker_specs = {
             "pkg_manager": "apt",
             "instructions": instructions}
+
 
         dockerfile = nd.Dockerfile(neurodocker_specs).render()
 
@@ -333,7 +339,8 @@ class XnatViaCS(Xnat):
         inputs = [cls.InputArg(*i) for i in inputs if isinstance(i, tuple)]
         outputs = [cls.OutputArg(*o) for o in outputs if isinstance(o, tuple)]
 
-        field_specs = dict(pydra_task.input_spec.fields)
+        input_specs = dict(pydra_task.input_spec.fields)
+        output_specs = dict(pydra_task.output_spec.fields)
 
         # JSON to define all inputs and parameters to the pipelines
         inputs_json = []
@@ -341,15 +348,14 @@ class XnatViaCS(Xnat):
         # Add task inputs to inputs JSON specification
         input_args = []
         for inpt in inputs:
-            spec = field_specs[inpt.name]
+            spec = input_specs[inpt.name]
             
             desc = spec.metadata.get('help_string', '')
             if spec.type in (str, Path):
-                desc = (f"Scan match: {desc} "
-                        "[SCAN_TYPE [ORDER [TAG=VALUE, ...]]]")
+                desc = (f"Match resource [PATH:STORED_DTYPE]: {desc} ")
                 input_type = 'string'
             else:
-                desc = f"Field match ({spec.type}): {desc} [FIELD_NAME]"
+                desc = f"Match field ({spec.type}) [PATH:STORED_DTYPE]: {desc} "
                 input_type = cls.COMMAND_INPUT_TYPES[spec.type]
             inputs_json.append({
                 "name": inpt.name,
@@ -360,13 +366,13 @@ class XnatViaCS(Xnat):
                 "user-settable": True,
                 "replacement-key": "[{}_INPUT]".format(inpt.name.upper())})
             input_args.append(
-                f'--input {inpt.name} [{inpt.name.upper()}_INPUT]')
+                f'--input {inpt.name} {inpt.datatype} [{inpt.name.upper()}_INPUT]')
 
         # Add parameters as additional inputs to inputs JSON specification
         param_args = []
         for param in parameters:
-            spec = field_specs[param]
-            desc = "Parameter: " + spec.metadata.get('help_string', '')
+            spec = input_specs[param]
+            desc = f"Parameter ({spec.type}): " + spec.metadata.get('help_string', '')
             required = spec._default is NOTHING
 
             inputs_json.append({
@@ -385,8 +391,15 @@ class XnatViaCS(Xnat):
         output_handlers = []
         output_args = []
         for output in outputs:
-
             output_fname = cls.escape_name(output.name) + output.datatype.extension
+            inputs_json.append({
+                "name": output.name,
+                "description": f"Output path [PATH:STORED_DTYPE]: ",
+                "type": "string",
+                "default-value": f'{pipeline_name}/{output.name}:{output.datatype.name}',
+                "required": True,
+                "user-settable": True,
+                "replacement-key": "[{}_OUTPUT]".format(output.name.upper())})
             # Set the path to the 
             outputs_json.append({
                 "name": output.name,
@@ -404,16 +417,16 @@ class XnatViaCS(Xnat):
                 "label": output.name,
                 "format": None})
             output_args.append(
-                f'--output {output.name} {output.datatype.name}')
+                f'--output {output.name} {output.datatype} [{output.name.upper()}_OUTPUT]')
 
         # Save work directory as session resource if debugging
         if debug_output:  
             outputs_json.append({
                     "name": "work",
                     "description": "Working directory",
-                    "required": True,
+                    "required": False,
                     "mount": "work",
-                    "path": None,
+                    "path": pipeline_name,
                     "glob": None})
             output_handlers.append({
                     "name": "work-resource",
@@ -436,7 +449,7 @@ class XnatViaCS(Xnat):
             f"arcana run {func.__module__}.{func.__name__} "  # run pydra task in Arcana
             f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
             f"--work {cls.WORK_MOUNT} "  # working directory
-            f"--repository xnat_via_cs $XNAT_HOST $XNAT_USER $XNAT_PASS {frequency}")  # pass XNAT API details
+            f"--repository xnat_via_cs {frequency}")  # pass XNAT API details
 
         # Create Project input that can be passed to the command line, which will
         # be populated by inputs derived from the XNAT object passed to the pipeline

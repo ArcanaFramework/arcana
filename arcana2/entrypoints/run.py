@@ -32,7 +32,7 @@ class RunCmd(BaseDatasetCmd):
             "needs to be wrapped in a Pydra interface that is on the Python "
             "path")
 
-    MAX_INPUT_ARGS = 8
+    MAX_INPUT_ARGS = 7
 
     @classmethod
     def construct_parser(cls, parser):
@@ -65,7 +65,8 @@ class RunCmd(BaseDatasetCmd):
             '--input', '-i', action='append', default=[], nargs='+',
             help=cls.INPUT_HELP.format(var_desc=cls.VAR_DESC))
         parser.add_argument(
-            '--output', '-o', action='append', default=[], nargs='+',
+            '--output', '-o', action='append', default=[], nargs=3,
+            metavar=('VAR', 'PRODUCED_DTYPE', 'STORE_AT'),
             help=cls.OUTPUT_HELP.format(var_desc=cls.VAR_DESC))
 
     @classmethod
@@ -116,29 +117,41 @@ class RunCmd(BaseDatasetCmd):
                 raise ArcanaUsageError(
                     f"Input {i} has too many input args, {nargs} instead "
                     f"of max {cls.MAX_INPUT_ARGS} ({inpt})")
-            (var, pattern, datatype_name, required_format_name, order,
+            (var, input_datatype_name, pattern, order,
              quality, metadata, freq) = [
                 a if a != '*' else None for a in (
                     inpt + [None] * (cls.MAX_INPUT_ARGS - len(inpt)))]
             if not var:
                 raise ArcanaUsageError(
                     f"{cls.VAR_ARG} must be provided for input {i} ({inpt})")
+            if not input_datatype_name:
+                raise ArcanaUsageError(
+                    f"An input datatype to match must be provided for input {i} ({inpt})")
             if not pattern:
                 raise ArcanaUsageError(
                     f"A path pattern to match must be provided for input {i} ({inpt})")
-            if not datatype_name:
-                pattern, datatype = cls._datatype_from_path(pattern)
-            else:
-                datatype = resolve_datatype(datatype_name)
-            if required_format_name is not None:
-                required_datatype = resolve_datatype(required_format_name)
-            else:
-                required_datatype = datatype
-            yield InputArg(var, pattern, datatype, required_datatype, freq,
+            input_datatype = resolve_datatype(input_datatype_name)
+            pattern, stored_datatype = cls._datatype_from_path(pattern,
+                                                               input_datatype)
+                
+            yield InputArg(var, pattern, input_datatype, stored_datatype, freq,
                            order, metadata, True, quality)
 
     @classmethod
-    def _datatype_from_path(cls, path):
+    def parse_output_args(cls, args):
+        for output in args.output:
+            var, output_datatype, store_at = output
+            # When interface outputs include file format this argument won't
+            # be necessary
+            output_datatype = resolve_datatype(output_datatype)
+            store_at, stored_datatype = cls._datatype_from_path(store_at,
+                                                                output_datatype)
+            yield OutputArg(name=var, path=store_at,
+                            output_datatype=output_datatype,
+                            stored_datatype=stored_datatype)
+
+    @classmethod
+    def _datatype_from_path(cls, path, default):
         datatype = None
         if ':' in path:
             path, datatype_name = str(path).split(':')
@@ -155,25 +168,8 @@ class RunCmd(BaseDatasetCmd):
                     datatype = dtype
                     break
         if datatype is None:
-            raise ArcanaUsageError(
-                f"Could not identify datatype from path {path}")
+            datatype = default
         return path, datatype
-
-    @classmethod
-    def parse_output_args(cls, args):
-        for output in args.output:
-            var, store_at = output[:2]
-            if len(output) > 2:
-                datatype_name = output[2]
-                datatype = resolve_datatype(datatype_name)
-            else:
-                store_at, datatype = cls._datatype_from_path(store_at)
-            if len(output) > 3:
-                produced_datatype = resolve_datatype(output[3])
-            else:
-                produced_datatype = datatype
-            yield OutputArg(name=var, path=store_at, datatype=datatype,
-                            produced_datatype=produced_datatype)
 
     @classmethod
     def add_input_sources(cls, args, dataset):
@@ -206,13 +202,13 @@ class RunCmd(BaseDatasetCmd):
             dataset.add_source(
                 name=arg.name,
                 path=arg.path,
-                datatype=arg.datatype,
+                datatype=arg.stored_datatype,
                 frequency=arg.frequency,
                 order=arg.order,
                 metadata=arg.metadata,
                 is_regex=arg.is_regex,
                 quality_threshold=arg.quality_threshold)
-            inputs.append((arg.name, arg.required_datatype))
+            inputs.append((arg.name, arg.input_datatype))
         return inputs
 
     @classmethod
@@ -236,9 +232,9 @@ class RunCmd(BaseDatasetCmd):
             dataset.add_sink(
                 name=arg.name,
                 path=arg.path,
-                datatype=arg.datatype,
+                datatype=arg.stored_datatype,
                 frequency=frequency)
-            outputs.append((arg.name, arg.produced_datatype))
+            outputs.append((arg.name, arg.output_datatype))
         return outputs
 
     @classmethod
@@ -387,8 +383,8 @@ class RunCmd(BaseDatasetCmd):
 class InputArg():
     name: str
     path: Path
-    datatype: FileFormat
-    required_datatype: FileFormat
+    input_datatype: FileFormat
+    stored_datatype: FileFormat
     frequency: DataSpace
     order: int
     metadata: dict[str, str]
@@ -400,6 +396,6 @@ class InputArg():
 class OutputArg():
     name: str
     path: Path
-    datatype: FileFormat
-    produced_datatype: FileFormat
+    output_datatype: FileFormat
+    stored_datatype: FileFormat
     

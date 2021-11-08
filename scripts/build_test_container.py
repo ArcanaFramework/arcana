@@ -61,5 +61,7 @@ except docker.errors.BuildError as e:
     logging.error(f"Error building docker file in {build_dir}")
     logging.error('\n'.join(l.get('stream', '') for l in e.build_log))
     raise
+print(f"Built {image_tag} image")
 
 dc.images.push(image_tag)
+print(f"Uploaded {image_tag} to {args.container_registry} registry")
