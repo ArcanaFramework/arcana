@@ -104,15 +104,15 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
 
         test_xsession = next(iter(xlogin.projects[dataset.name].experiments.values()))
 
-        result = xlogin.post(
-            f"/xapi/projects/{dataset.name}/wrappers/{cmd_id}/root/SESSION/launch",
-            query={
-                'SESSION': test_xsession.id},
-            json={
-                "params": {
-                    "in_file1": "scan1:text",
-                    "in_file2": "scan2:text",
-                    "out_file": "deriv:text"}})
+        # result = xlogin.post(
+        #     f"/xapi/projects/{dataset.name}/wrappers/{cmd_id}/root/SESSION/launch",
+        #     query={
+        #         'SESSION': test_xsession.id},
+        #     json={
+        #         "params": {
+        #             "in_file1": "scan1:text",
+        #             "in_file2": "scan2:text",
+        #             "out_file": "deriv:text"}})
 
         # Launch container
         # result = xlogin.get(
