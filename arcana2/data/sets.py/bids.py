@@ -1,10 +1,13 @@
 import attr
 import re
 import json
+import tempfile
 from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
-import pydra
+from pydra import Workflow, mark
+from pydra.engine.task import FunctionTask, ShellCommandTask
+from pydra.engine.specs import BaseSpec, SpecInfo, ShellSpec
 from arcana2.core.data.set import Dataset
 from arcana2.data.spaces.clinical import Clinical
 from ..repositories import FileSystem
@@ -132,9 +135,11 @@ class BidsDataset(Dataset):
                 f.write('\t'.join(d[c] for c in self.participants_attrs) + '\n')
 
     @classmethod
-    def wrap_app(self, container: str, inputs: dict[str, str],
-                 outputs: dict[str, str],
-                 frequency: Clinical=Clinical.session) -> pydra.Workflow:
+    def wrap_app(cls, app_task, input_paths: dict[str, str],
+                 output_paths: dict[str, str],
+                 frequency: Clinical=Clinical.session,
+                 parameters: dict[str, str]=None,
+                 container_type='docker') -> Workflow:
         """Creates a Pydra workflow which takes inputs and maps them to
         a BIDS dataset, executes a BIDS app and extracts outputs from
         the derivatives stored back in the BIDS dataset
@@ -143,19 +148,90 @@ class BidsDataset(Dataset):
         ----------
         app_container : str
             Path to the container to execute on the datasest
-        inputs : dict[str, str]
-            The inputs to be stored in a BIDS dataset.
+        input_paths : dict[str, str]
+            The inputs to be stored in a BIDS dataset, mapping a sanitized name
+            to be added in the workflow input interface and the location within
+            the BIDS app to put it
 
         Returns
         -------
         [type]
             [description]
         """
-        sanitized_name = re.sub(r'[ /-]', '_', container)
-        workflow = pydra.Workflow(name=f"wrapped_{sanitized_name}",
-                                  inputs=list(inputs))
+        if parameters is None:
+            parameters = {}
+        sanitized_name = app_task().name
+        workflow = Workflow(name=f"wrapped_{sanitized_name}",
+                            inputs=list(input_paths) + ['id'])
+
+        def to_bids(frequency, id, input_paths, **inputs):
+            dataset = BidsDataset(tempfile.mkdtemp())
+            data_node = dataset.node(frequency, id)
+            with dataset.repository:
+                for outpt_name, outpt_value in inputs.items():
+                    node_item = data_node[input_paths[outpt_name]]
+                    node_item.put(outpt_value) # Store value/path in repository
+            return (dataset, dataset.name)
+
+        # Can't use a decorated function as we need to allow for dynamic
+        # arguments
+        workflow.add(
+            FunctionTask(
+                to_bids,
+                input_spec=SpecInfo(
+                    name='ToBidsInputs', bases=(BaseSpec,), fields=(
+                        [('frequency', Clinical),
+                         ('id', str),
+                         ('input_paths', dict[str, str])]
+                        + [(i, str) for i in input_paths])),
+                output_spec=SpecInfo(
+                    name='ToBidsOutputs', bases=(BaseSpec,), fields=[
+                        ('dataset', BidsDataset),
+                        ('dataset_path', Path)]),
+                name='to_bids',
+                frequency=frequency,
+                id=workflow.lzin.id,
+                input_paths=input_paths,
+                **{i: getattr(workflow.lzin, i) for i in input_paths}))
+
+        workflow.add(
+            app_task(
+                name=sanitized_name,
+                dataset=workflow.to_bids.lzout.dataset_path,
+                **parameters))
+
+        @mark.task
+        @mark.annotate(
+            {'dataset': BidsDataset,
+             'frequency': Clinical,
+             'id': str,
+             'output_paths': dict[str, str],
+             'return': {o: str for o in output_paths}})
+        def extract_bids(dataset, frequency, id, output_paths):
+            """Selects the items from the dataset corresponding to the input 
+            sources and retrieves them from the repository to a cache on 
+            the host"""
+            outputs = []
+            data_node = dataset.node(frequency, id)
+            with dataset.repository:
+                for output in output_paths:
+                    item = data_node[output]
+                    item.get()  # download to host if required
+                    outputs.append(item.value)
+            return tuple(outputs) if len(output_paths) > 1 else outputs[0]
         
-        
+        workflow.add(extract_bids(
+            name='extract_bids',
+            dataset=workflow.to_bids.lzout.dataset,
+            frequency=frequency,
+            id=workflow.lzin.id,
+            output_paths=output_paths))
+
+        for output in output_paths:
+            workflow.set_output(
+                (output, getattr(workflow.extract_bids.lzout, output)))
+
+        return workflow
 
 
 class BidsFormat(FileSystem):
