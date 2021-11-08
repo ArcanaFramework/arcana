@@ -78,7 +78,9 @@ class FileSystem(DataRepository):
         """
         Update the value of the field from the repository
         """
-        val = self._get_field_val(field)
+        self.cast_value(self.get_field_val(field))
+
+    def cast_value(self, val, field):
         if isinstance(val, dict):
             val = val[self.VALUE_KEY]
         if field.array:
@@ -171,7 +173,10 @@ class FileSystem(DataRepository):
 
     def find_items(self, data_node):
         # First ID can be omitted
-        dpath = self.node_path(data_node)
+        self.find_items_in_dir(self.root_dir(data_node)
+                               / self.node_path(data_node))
+
+    def find_items_in_dir(self, dpath, data_node):
         if not op.exists(dpath):
             return
         # Filter contents of directory to omit fields JSON and provenance
@@ -211,7 +216,7 @@ class FileSystem(DataRepository):
                                     provenance=prov)
 
     def node_path(self, node):
-        path = node.dataset.name
+        path = Path()
         accounted_freq = node.dataset.space(0)
         for layer in node.dataset.hierarchy:
             if not (layer.is_parent(node.frequency)
@@ -233,15 +238,20 @@ class FileSystem(DataRepository):
                          + '_'.join(unaccounted_id) + '__')
         return path
 
+    def root_dir(self, data_node):
+        return Path(data_node.dataset.name)
+
     def file_group_path(self, file_group):
-        fs_path = self.node_path(file_group.data_node).joinpath(
-            *file_group.path.split('/'))
+        fs_path = self.root_dir(file_group.data_node) / self.node_path(
+            file_group.data_node).joinpath(*file_group.path.split('/'))
         if file_group.datatype.extension:
             fs_path = fs_path.with_suffix(file_group.datatype.extension)
         return fs_path
 
     def fields_json_path(self, field):
-        return op.join(self.node_path(field.data_node), self.FIELDS_FNAME)
+        return (self.root_dir(field.data_node)
+                / self.node_path(field.data_node)
+                / self.FIELDS_FNAME)
 
     def prov_json_path(self, file_group):
         return self.file_group_path(file_group) + self.PROV_SUFFX
@@ -264,24 +274,24 @@ class FileSystem(DataRepository):
         """
         Loads the fields provenance from the JSON dictionary
         """
-        val_dct = self._get_field_val(field)
+        val_dct = self.get_field_val(field)
         if isinstance(val_dct, dict):
             prov = val_dct.get(self.PROV_KEY)
         else:
             prov = None
         return prov
 
-    def _get_field_val(self, field):
+    def get_field_val(self, field):
         """
         Load fields JSON, locking to prevent read/write conflicts
         Would be better if only checked if locked to allow
         concurrent reads but not possible with multi-process
         locks (in my understanding at least).
         """
-        fpath = self.fields_json_path(field)
+        json_path = self.fields_json_path(field)
         try:
-            with InterProcessLock(fpath + self.LOCK_SUFFIX,
-                                  logger=logger), open(fpath, 'r') as f:
+            with InterProcessLock(json_path + self.LOCK_SUFFIX,
+                                  logger=logger), open(json_path, 'r') as f:
                 dct = json.load(f)
             val_dct = dct[field.name]
             return val_dct

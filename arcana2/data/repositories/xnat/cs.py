@@ -289,7 +289,7 @@ class XnatViaCS(Xnat):
     def generate_json_config(cls, pipeline_name, pydra_task, image_tag,
                             inputs, outputs, description, version,
                             parameters=None, frequency=Clinical.session,
-                            registry=DOCKER_HUB, info_url=None, debug_output=False):
+                            registry=DOCKER_HUB, info_url=None):
         """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
         should handle the containerised pipeline
 
@@ -415,27 +415,9 @@ class XnatViaCS(Xnat):
                 "as-a-child-of": "SESSION",
                 "type": "Resource",
                 "label": output.name,
-                "format": None})
+                "format": output.datatype.name})
             output_args.append(
                 f'--output {output.name} {output.datatype} [{output.name.upper()}_OUTPUT]')
-
-        # Save work directory as session resource if debugging
-        if debug_output:  
-            outputs_json.append({
-                    "name": "work",
-                    "description": "Working directory",
-                    "required": False,
-                    "mount": "work",
-                    "path": pipeline_name,
-                    "glob": None})
-            output_handlers.append({
-                    "name": "work-resource",
-                    "accepts-command-output": "work",
-                    "via-wrapup-command": None,
-                    "as-a-child-of": "SESSION",
-                    "type": "Resource",
-                    "label": "__work__",
-                    "format": None})
 
         input_args_str = ' '.join(input_args)
         output_args_str = ' '.join(output_args)
@@ -543,11 +525,6 @@ class XnatViaCS(Xnat):
                     "name": "out",
                     "writable": True,
                     "path": str(cls.OUTPUT_MOUNT)
-                },
-                {
-                    "name": "work",
-                    "writable": True,
-                    "path": str(cls.WORK_MOUNT)
                 }
             ],
             "ports": {},
