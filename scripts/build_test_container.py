@@ -40,8 +40,7 @@ json_config = XnatViaCS.generate_json_config(
     version='0.1',
     registry=args.container_registry,
     frequency=Clinical.session,
-    info_url=None,
-    debug_output=True)
+    info_url=None)
 
 dockerfile, build_dir = XnatViaCS.generate_dockerfile(
     pydra_task=pydra_task,

@@ -2,6 +2,7 @@ import attr
 import re
 import json
 import tempfile
+import docker
 from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
@@ -134,12 +135,43 @@ class BidsDataset(Dataset):
             for d in self.participants.values():
                 f.write('\t'.join(d[c] for c in self.participants_attrs) + '\n')
 
+    def load_metadata(self):
+        if not self.root_dir.exists():
+            raise ArcanaUsageError(
+                f"Could not find a directory at '{self.name}' to be the "
+                "root node of the dataset")
+
+        with open(self.root_dir / 'dataset_description.json', 'w') as f:
+            dct = json.load(f)               
+        self.bids_name = dct['Name']
+        self.bids_version = dct['BIDSVersion']
+        self.bids_type = dct['DatasetType']
+        self.license = dct['Licence']
+        self.authors = dct['Authors']
+        self.acknowledgements = dct['Acknowledgements']
+        self.how_to_acknowledge = dct['HowToAcknowledge']
+        self.funding = dct['Funding']
+        self.ethics_approvals = dct['EthicsApprovals']
+        self.references = dct['ReferencesAndLinks']
+        self.doi = dct['DatasetDOI']
+        if self.bids_type == 'derivative':
+            self.generated_by = dct['GeneratedBy']
+            self.sources = [SourceMetadata.from_dict(d)
+                            for d in dct['sourceDatasets']]
+
+        self.participants = {}
+        with open(self.root_dir / 'participants.tsv') as f:
+            cols = f.readline().split('\t')
+            while line:= f.readline():
+                d = dict(zip(cols, line.split('\t')))
+                self.participants[d['participant_id']] = d                
+
     @classmethod
-    def wrap_app(cls, app_task, input_paths: dict[str, str],
+    def wrap_app(cls, image_tag, input_paths: dict[str, str],
                  output_paths: dict[str, str],
                  frequency: Clinical=Clinical.session,
                  parameters: dict[str, str]=None,
-                 container_type='docker') -> Workflow:
+                 container_type: str='docker') -> Workflow:
         """Creates a Pydra workflow which takes inputs and maps them to
         a BIDS dataset, executes a BIDS app and extracts outputs from
         the derivatives stored back in the BIDS dataset
@@ -160,7 +192,7 @@ class BidsDataset(Dataset):
         """
         if parameters is None:
             parameters = {}
-        sanitized_name = app_task().name
+        sanitized_name = re.sub(r'[-/]', '_', image_tag)
         workflow = Workflow(name=f"wrapped_{sanitized_name}",
                             inputs=list(input_paths) + ['id'])
 
@@ -194,11 +226,22 @@ class BidsDataset(Dataset):
                 input_paths=input_paths,
                 **{i: getattr(workflow.lzin, i) for i in input_paths}))
 
+        app_task = cls.make_app_task(image_tag,
+                                     {p: type(p) for p in parameters},
+                                     container_type)
+
+        app_kwargs = copy(parameters)
+        if frequency == Clinical.session:
+            app_kwargs['analysis_level'] = 'participant'
+            app_kwargs['participant_label'] = workflow.lzin.id
+        else:
+            app_kwargs['analysis_level'] = 'group'
+
         workflow.add(
             app_task(
                 name=sanitized_name,
-                dataset=workflow.to_bids.lzout.dataset_path,
-                **parameters))
+                dataset_path=workflow.to_bids.lzout.dataset_path,
+                **app_kwargs))
 
         @mark.task
         @mark.annotate(
@@ -234,6 +277,59 @@ class BidsDataset(Dataset):
         return workflow
 
 
+    @classmethod
+    def make_app_task(cls, image_tag: str,
+                      parameters: dict[str, type]=None,
+                      container_type: str='docker') -> ShellCommandTask:
+
+        if parameters is None:
+            parameters = {}
+
+        dc = docker.from_env()
+
+        app_image = dc.images.pull(image_tag)
+
+        image_attrs = dc.inspect_image(app_image)['Config']
+
+        executable = image_attrs['Entrypoint']
+        if executable is None:
+            executable = image_attrs['Cmd']
+
+        input_fields = [
+            ("dataset_path", Path,
+                {"help_string": "Path to BIDS dataset",
+                 "position": 1,
+                 "mandatory": True}),
+            ("out_dir", Path,
+                {"help_string": "Path to BIDS output",
+                  "position": 2,
+                  "mandatory": True,
+                  "output_file_template": "/out"}),
+            ("analysis_level", str,
+                {"help_string": "The analysis level the app will be run at",
+                 "position": 3,
+                 "default": "participant"}),
+            ("participant_label", list[str],
+                {"help_string": "The IDs to include in the analysis",
+                 "argstr": "--participant_label %s",
+                 "position": 4})]
+
+        for param, dtype in parameters.items():
+            argstr = f'--{param}'
+            if dtype is not bool:
+                argstr += ' %s'
+            input_fields.append((
+                param, dtype, {
+                    "help_string": f"Optional parameter {param}",
+                    "argstr": argstr}))
+        
+        return ShellCommandTask(
+            executable=executable,
+            input_spec=SpecInfo(name="Input", fields=input_fields,
+                                bases=(ShellSpec,)),
+            container_info=(container_type, image_tag))
+
+
 class BidsFormat(FileSystem):
     """Repository for working with data stored on the file-system in BIDS format 
     """
@@ -248,35 +344,8 @@ class BidsFormat(FileSystem):
         dataset : Dataset
             The dataset to construct the tree dimensions for
         """
-        if not dataset.root_dir.exists():
-            raise ArcanaUsageError(
-                f"Could not find a directory at '{dataset.name}' to be the "
-                "root node of the dataset")
 
-        with open(self.root_dir / 'dataset_description.json', 'w') as f:
-            dct = json.load(f)               
-        self.bids_name = dct['Name']
-        self.bids_version = dct['BIDSVersion']
-        self.bids_type = dct['DatasetType']
-        self.license = dct['Licence']
-        self.authors = dct['Authors']
-        self.acknowledgements = dct['Acknowledgements']
-        self.how_to_acknowledge = dct['HowToAcknowledge']
-        self.funding = dct['Funding']
-        self.ethics_approvals = dct['EthicsApprovals']
-        self.references = dct['ReferencesAndLinks']
-        self.doi = dct['DatasetDOI']
-        if self.bids_type == 'derivative':
-            self.generated_by = dct['GeneratedBy']
-            self.sources = [SourceMetadata.from_dict(d)
-                            for d in dct['sourceDatasets']]
-
-        dataset.participants = {}
-        with open(dataset.root_dir / 'participants.tsv') as f:
-            cols = f.readline().split('\t')
-            while line:= f.readline():
-                d = dict(zip(cols, line.split('\t')))
-                dataset.participants[d['participant_id']] = d
+        dataset.load_metadata()
 
         for subject_id, participant in dataset.participants.items():
             base_ids = {Clinical.group: participant.get('group'),

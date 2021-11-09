@@ -55,8 +55,8 @@ COPY xnat-prefs-init.ini ${XNAT_HOME}/config/prefs-init.ini
 
 # Change the default port to 80 (so that the container service knows where to)
 # find it) and expose it
-RUN sed -i 's/port="8080"/port="80"/' ${CATALINA_HOME}/conf/server.xml
-EXPOSE 80
+# RUN sed -i 's/port="8080"/port="80"/' ${CATALINA_HOME}/conf/server.xml
+EXPOSE 8080
 
 # Setup Postgres
 RUN mkdir /run/postgresql

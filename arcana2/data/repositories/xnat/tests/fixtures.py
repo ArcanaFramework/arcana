@@ -181,7 +181,7 @@ def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_ARCHIVE_DIR,
                                               'mode': 'rw'}
         container = dc.containers.run(
             image.tags[0], detach=True, ports={
-                '80/tcp': DOCKER_XNAT_PORT},
+                '8080/tcp': DOCKER_XNAT_PORT},
             remove=remove, name=DOCKER_IMAGE,
             # Expose the XNAT archive dir outside of the XNAT docker container
             # to simulate what the XNAT container service exposes to running

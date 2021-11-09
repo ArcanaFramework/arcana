@@ -24,7 +24,7 @@ def sanitize_path(path):
 
 
 class RunCmd(BaseDatasetCmd):
-    """Abstract base class for RunCmds
+    """Runs a generic Pydra task/workflow 
     """
 
     cmd_name = 'run'
@@ -324,19 +324,17 @@ class RunCmd(BaseDatasetCmd):
         provided criteria.
         {var_desc}
 
-        PATH the name regular expression (in Python syntax) of file-group or
-        field name
-
-        FORMAT is the name or extension of the file-format the
-        input is stored in in the dataset. 
-
         REQUIRED_FORMAT is the format that the app requires the input in.
         If different from the FORMAT, an implicit conversions will
                         be attempted when required. The default is
                         'niftix_gz', which is the g-zipped NIfTI image file
                         + JSON side-car required for BIDS 
 
-        Alternative criteria can be used to match the file-group (e.g. scan)
+        PATH:FORMAT the name regular expression (in Python syntax) of file-group or
+        field name, where FORMAT is the name or extension of the file-format the
+        input is stored in in the dataset.
+
+        Alternative criteria that can be used to match the file-group (e.g. scan)
         
         ORDER is the order of the scan in the session to select if more than
         one match the other criteria. E.g. an order of '2' with a pattern of
@@ -368,14 +366,12 @@ class RunCmd(BaseDatasetCmd):
         repository.
         {var_desc}
 
-        The STORE_AT arg specifies where the output should be stored within
-        the data node of the dataset in the repository.
-
-        FORMAT is the name of the file-format the file will be stored at in
-        the dataset.
-
         PRODUCED_FORMAT is the name of the file-format that the file be produced
         by the workflow in
+
+        The STORE_AT:FORMAT arg specifies where the output should be stored within
+        the data node of the dataset in the repository. FORMAT is the name of
+        the file-format the file will be stored at in the dataset.
         """
 
 
