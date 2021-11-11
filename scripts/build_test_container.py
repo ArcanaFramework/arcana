@@ -1,8 +1,9 @@
 import tempfile
 from argparse import ArgumentParser
 from pathlib import Path
-import docker
 import logging
+import docker
+import xnat
 from arcana2.tasks.tests.fixtures import concatenate
 from arcana2.data.repositories.xnat.cs import XnatViaCS
 from arcana2.data.repositories.xnat.tests.fixtures import DOCKER_REGISTRY_URI
@@ -12,7 +13,13 @@ from arcana2.data.types.general import text
 parser = ArgumentParser()
 parser.add_argument('image_name',
                     help="Name of the generated docker image")
-parser.add_argument('--container_registry', default=DOCKER_REGISTRY_URI,
+parser.add_argument('--build', default=False, action='store_true',
+                    help="Build the generated pipeline container")
+parser.add_argument('--xnat_server', default=None, nargs='+',
+                    help="The XNAT server it will be uploaded to")
+parser.add_argument('--dataset_name', default=None,
+                    help="The dataset to enable the container for")
+parser.add_argument('--container_registry', default=None,
                     help="Container registry host to upload built image to")
 args = parser.parse_args()
 
@@ -21,13 +28,17 @@ build_dir = Path(tempfile.mkdtemp())
 
 # image_name = f'wrap4xnat{run_prefix}'
 # image_tag = image_name + ':latest'
-
-image_tag = f'{args.container_registry}/{args.image_name}:latest'
+if args.container_registry is not None:
+    image_tag = f'{args.container_registry}/{args.image_name}:latest'
+else:
+    image_tag = f'{args.image_name}:latest'
 
 pydra_task = concatenate()
 
+pipeline_name = args.image_name.split('/')[-1]
+
 json_config = XnatViaCS.generate_json_config(
-    pipeline_name=args.image_name.split('/')[-1],
+    pipeline_name=pipeline_name,
     pydra_task=pydra_task,
     image_tag=image_tag,
     inputs=[
@@ -53,14 +64,38 @@ dockerfile, build_dir = XnatViaCS.generate_dockerfile(
 
 print(f"Created dockerfile in {build_dir}")
 
-dc = docker.from_env()
-try:
-    image, build_logs = dc.images.build(path=str(build_dir), tag=image_tag)
-except docker.errors.BuildError as e:
-    logging.error(f"Error building docker file in {build_dir}")
-    logging.error('\n'.join(l.get('stream', '') for l in e.build_log))
-    raise
-print(f"Built {image_tag} image")
+if args.build:
+    dc = docker.from_env()
+    try:
+        image, build_logs = dc.images.build(path=str(build_dir), tag=image_tag)
+    except docker.errors.BuildError as e:
+        logging.error(f"Error building docker file in {build_dir}")
+        logging.error('\n'.join(l.get('stream', '') for l in e.build_log))
+        raise
+    print(f"Built {image_tag} image")
 
-dc.images.push(image_tag)
-print(f"Uploaded {image_tag} to {args.container_registry} registry")
+    if args.container_registry is not None:
+        dc.images.push(image_tag)
+        print(f"Uploaded {image_tag} to {args.container_registry} registry")
+
+if args.xnat_server is not None:
+    if len(args.xnat_server) > 1:
+        server, user, password = args.xnat_server
+    else:
+        server = args.xnat_server[0]
+        user = 'admin'
+        password = 'admin'
+
+    # Enable the command globally and in the project
+    with xnat.connect(server, user=user, password=password) as xlogin:
+
+        cmd_ids = [c['id'] for c in xlogin.get(f'/xapi/commands/').json()]
+        for cmd_id in cmd_ids:
+            xlogin.delete(f"/xapi/commands/{cmd_id}", accepted_status=[204])
+        cmd_id = xlogin.post('/xapi/commands', json=json_config).json()
+
+        xlogin.put(
+            f'/xapi/commands/{cmd_id}/wrappers/{pipeline_name}/enabled')
+        if args.dataset_name:
+            xlogin.put(
+                f'/xapi/projects/{args.dataset_name}/commands/{cmd_id}/wrappers/{pipeline_name}/enabled')

@@ -315,6 +315,8 @@ class XnatViaCS(Xnat):
             Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
         registry : str
             URI of the Docker registry to upload the image to
+        info_url : str
+            URI explaining in detail what the pipeline does
 
         Returns
         -------

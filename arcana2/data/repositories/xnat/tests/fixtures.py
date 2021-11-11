@@ -193,6 +193,23 @@ def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_HOME_DIR / 'archive',
         already_running = False
     else:
         already_running = True
+
+    # Set the path translations to point to the mounted XNAT home directory
+    with connect(DOCKER_XNAT_URI) as login:
+        login.post('/xapi/docker/server', json={
+            # 'id': 2,
+            'name': 'Local socket',
+            'host': 'unix:///var/run/docker.sock',
+            'cert-path': '',
+            'swarm-mode': False,
+            'path-translation-xnat-prefix': '/data/xnat',
+            'path-translation-docker-prefix': DOCKER_XNAT_HOME_DIR,
+            'pull-images-on-xnat-init': False,
+            'container-user': '',
+            'auto-cleanup': True,
+            'swarm-constraints': [],
+            'ping': True})
+    
     return container, already_running
 
 
