@@ -22,5 +22,5 @@ __pycache__
 test.log
 .vscode
 *.egg-info
-/arcana2/data/repositories/xnat/tests/archive_dir
+/arcana2/data/repositories/xnat/tests/xnat_home
 /arcana2/data/repositories/xnat/tests/dicom-dataset/

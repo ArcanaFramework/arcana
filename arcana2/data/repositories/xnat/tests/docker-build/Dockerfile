@@ -28,11 +28,11 @@ RUN mkdir -p \
         ${XNAT_HOME}/logs \
         ${XNAT_HOME}/plugins \
         ${XNAT_HOME}/work \
-        ${XNAT_ROOT}/archive \
         ${XNAT_ROOT}/build \
         ${XNAT_ROOT}/cache \
         ${XNAT_ROOT}/ftp \
         ${XNAT_ROOT}/pipeline \
+        ${XNAT_ROOT}/archive \
         ${XNAT_ROOT}/prearchive
 RUN /usr/local/bin/make-xnat-config.sh
 RUN rm /usr/local/bin/make-xnat-config.sh

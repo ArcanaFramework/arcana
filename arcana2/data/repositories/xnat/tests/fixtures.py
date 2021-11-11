@@ -95,7 +95,7 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 # ------------------------------------
 
 DOCKER_BUILD_DIR = Path(__file__).parent / 'docker-build'
-DOCKER_XNAT_ARCHIVE_DIR = Path(__file__).parent / 'archive_dir'
+DOCKER_XNAT_HOME_DIR = Path(__file__).parent / 'xnat_home'
 DOCKER_IMAGE = 'arcana-xnat'
 DOCKER_HOST = 'localhost'
 DOCKER_XNAT_PORT = '8989'
@@ -129,7 +129,8 @@ def mutable_xnat_dataset(xnat_repository, xnat_archive_dir, request):
 
 @pytest.fixture(scope='session')
 def xnat_archive_dir():
-    return DOCKER_XNAT_ARCHIVE_DIR
+    DOCKER_XNAT_HOME_DIR.mkdir(parents=True, exist_ok=True)
+    return DOCKER_XNAT_HOME_DIR / 'archive'
 
 
 @pytest.fixture(scope='session')
@@ -155,7 +156,7 @@ def xnat_repository(xnat_archive_dir, run_prefix, xnat_docker_network):
         container.stop()
 
 
-def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_ARCHIVE_DIR,
+def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_HOME_DIR / 'archive',
                           xnat_docker_network=None, mount_archive=True,
                           remove=True):
     if xnat_docker_network is None:
@@ -173,7 +174,7 @@ def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_ARCHIVE_DIR,
     except docker.errors.NotFound:
         # Clear the XNAT archive dir
         shutil.rmtree(xnat_archive_dir, ignore_errors=True)
-        os.mkdir(xnat_archive_dir)
+        xnat_archive_dir.mkdir(parents=True)
         volumes = {'/var/run/docker.sock': {'bind': '/var/run/docker.sock',
                                             'mode': 'rw'}}
         if mount_archive:
@@ -193,7 +194,6 @@ def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_ARCHIVE_DIR,
     else:
         already_running = True
     return container, already_running
-
 
 
 @pytest.fixture(scope='session')
