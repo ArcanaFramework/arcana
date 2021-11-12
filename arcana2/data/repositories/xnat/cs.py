@@ -29,6 +29,12 @@ from .api import Xnat
 logger = logging.getLogger('arcana')
 
 
+def localhost_translation(server):
+    match = re.match(r'(https?://)localhost(.*)', server)
+    if match:
+        server = match.group(1) + 'host.docker.internal' + match.group(2)
+    return server
+
 @attr.s
 class XnatViaCS(Xnat):
     """
@@ -65,6 +71,22 @@ class XnatViaCS(Xnat):
     node_id: str = attr.ib(default=None)
     input_mount: Path = attr.ib(default=INPUT_MOUNT, converter=Path)
     output_mount: Path = attr.ib(default=OUTPUT_MOUNT, converter=Path)
+    server: str = attr.ib(converter=localhost_translation)
+    user: str = attr.ib()
+    password: str = attr.ib()
+
+
+    @server.default
+    def server_default(self):
+        return os.environ['XNAT_HOST']
+
+    @user.default
+    def user_default(self):
+        return os.environ['XNAT_USER']
+
+    @password.default
+    def password_default(self):
+        return os.environ['XNAT_PASS']
 
 
     def get_file_group(self, file_group):

@@ -98,7 +98,7 @@ DOCKER_BUILD_DIR = Path(__file__).parent / 'docker-build'
 DOCKER_XNAT_HOME_DIR = Path(__file__).parent / 'xnat_home'
 DOCKER_IMAGE = 'arcana-xnat'
 DOCKER_HOST = 'localhost'
-DOCKER_XNAT_PORT = '8989'
+DOCKER_XNAT_PORT = '8080'  # This shouldn't be changed as it needs to be the same as the internal
 DOCKER_REGISTRY_IMAGE = 'registry'
 DOCKER_REGISTRY_CONTAINER = 'arcana-docker-registry'
 DOCKER_NETWORK_NAME = 'arcana'
@@ -236,12 +236,13 @@ def xnat_container_registry(xnat_repository, xnat_docker_network):
     with connect(xnat_repository.server) as login:
         login.post('/xapi/docker/hubs/1', json={
             "name": "testregistry",
-            "url": f"https://{DOCKER_REGISTRY_CONTAINER}:5000"})
+            "url": f"https://host.docker.internal:{DOCKER_REGISTRY_PORT}"})
 
     yield uri
 
     if not already_running:
         container.stop()
+
 
 def start_xnat_container_registry(xnat_docker_network=None):
     if xnat_docker_network is None:
