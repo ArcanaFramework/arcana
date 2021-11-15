@@ -1,76 +1,161 @@
-FROM tomcat:9-jre8-alpine
+# Timestamp: 2021/11/15 10:16:57 UTC
+# 
+# Thank you for using Neurodocker. If you discover any issues
+# or ways to improve this software, please submit an issue or
+# pull request on our GitHub repository:
+# 
+#     https://github.com/ReproNim/neurodocker
 
-# User configurable arguments
-ARG XNAT_VER=1.8.3
-ARG XNAT_CS_PLUGIN_VER=3.1.0
-ARG XNAT_BATCH_LAUNCH_PLUGIN_VER=0.5.0
-ARG XNAT_ROOT=/data/xnat
-ARG XNAT_HOME=/data/xnat/home
-ARG JAVA_MS=256m
-ARG JAVA_MX=2g
-ARG XNAT_DATASOURCE_DRIVER=org.postgresql.Driver
-ARG XNAT_DATASOURCE_URL=jdbc:postgresql://localhost:5432/xnat
-ARG XNAT_DATASOURCE_USERNAME=xnat
-ARG XNAT_DATASOURCE_PASSWORD=xnat
-ARG XNAT_HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQL9Dialect
-ARG TOMCAT_XNAT_FOLDER=ROOT
-ARG TOMCAT_XNAT_FOLDER_PATH=${CATALINA_HOME}/webapps/${TOMCAT_XNAT_FOLDER}
+FROM debian:bullseye
 
-# Create XNAT config file at $XNAT_HOME/config/xnat-conf.properties
-COPY make-xnat-config.sh /usr/local/bin/make-xnat-config.sh
-
-# Install XNAT
-RUN apk add --no-cache postgresql postgresql-client supervisor wget vim docker
-RUN rm -rf ${CATALINA_HOME}/webapps/*
-RUN mkdir -p \
-        ${TOMCAT_XNAT_FOLDER_PATH} \
-        ${XNAT_HOME}/config \
-        ${XNAT_HOME}/logs \
-        ${XNAT_HOME}/plugins \
-        ${XNAT_HOME}/work \
-        ${XNAT_ROOT}/build \
-        ${XNAT_ROOT}/cache \
-        ${XNAT_ROOT}/ftp \
-        ${XNAT_ROOT}/pipeline \
-        ${XNAT_ROOT}/archive \
-        ${XNAT_ROOT}/prearchive
-RUN /usr/local/bin/make-xnat-config.sh
-RUN rm /usr/local/bin/make-xnat-config.sh
-RUN wget --no-verbose --output-document=/tmp/xnat-web-${XNAT_VER}.war https://api.bitbucket.org/2.0/repositories/xnatdev/xnat-web/downloads/xnat-web-${XNAT_VER}.war
-RUN unzip -o -d ${TOMCAT_XNAT_FOLDER_PATH} /tmp/xnat-web-${XNAT_VER}.war
-RUN rm -f /tmp/xnat-web-${XNAT_VER}.war
-RUN wget --output-document ${XNAT_HOME}/plugins/container-service-plugin.jar https://bitbucket.org/xnatdev/container-service/downloads/container-service-${XNAT_CS_PLUGIN_VER}-fat.jar
-RUN wget --output-document ${XNAT_HOME}/plugins/batch-launch-plugin.jar https://bitbucket.org/xnatx/xnatx-batch-launch-plugin/downloads/batch-launch-plugin-${XNAT_BATCH_LAUNCH_PLUGIN_VER}.jar
-RUN apk del wget
-RUN mkdir /var/log/tomcat
-ENV XNAT_HOME=${XNAT_HOME} XNAT_DATASOURCE_USERNAME=${XNAT_DATASOURCE_USERNAME} PGPASSWORD=${XNAT_DATASOURCE_PASSWORD}
-ENV CATALINA_OPTS="-Xms${JAVA_MS} -Xmx${JAVA_MX} -Dxnat.home=${XNAT_HOME}"
-
-# Add scripts for configuring XNAT database before launching Tomcat
-COPY launch-xnat.sh /launch-xnat.sh
-COPY XNAT.sql /XNAT.sql
-
-# Skip the new site setup by creating site preferences file
-COPY xnat-prefs-init.ini ${XNAT_HOME}/config/prefs-init.ini
-
-# Change the default port to 80 (so that the container service knows where to)
-# find it) and expose it
-# RUN sed -i 's/port="8080"/port="80"/' ${CATALINA_HOME}/conf/server.xml
-EXPOSE 8080
-
-# Setup Postgres
-RUN mkdir /run/postgresql
-RUN mkdir /var/lib/postgresql/data
-RUN chmod 700 /var/lib/postgresql/data
-RUN chown postgres:postgres /run/postgresql /var/lib/postgresql/data
-
-# Create postgres DB
-USER postgres
-RUN initdb -D /var/lib/postgresql/data
-RUN echo -e "\ndatasource.driver = '/tmp'" >> /var/lib/postgresql/data/postgresql.conf
 USER root
 
-# Use supervisord to launch postgres and tomcat
-COPY supervisord.conf /etc/supervisord.conf
-CMD ["/usr/bin/supervisord"]
+ARG DEBIAN_FRONTEND="noninteractive"
 
+ENV LANG="en_US.UTF-8" \
+    LC_ALL="en_US.UTF-8" \
+    ND_ENTRYPOINT="/neurodocker/startup.sh"
+RUN export ND_ENTRYPOINT="/neurodocker/startup.sh" \
+    && apt-get update -qq \
+    && apt-get install -y -q --no-install-recommends \
+           apt-utils \
+           bzip2 \
+           ca-certificates \
+           curl \
+           locales \
+           unzip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
+    && dpkg-reconfigure --frontend=noninteractive locales \
+    && update-locale LANG="en_US.UTF-8" \
+    && chmod 777 /opt && chmod a+s /opt \
+    && mkdir -p /neurodocker \
+    && if [ ! -f "$ND_ENTRYPOINT" ]; then \
+         echo '#!/usr/bin/env bash' >> "$ND_ENTRYPOINT" \
+    &&   echo 'set -e' >> "$ND_ENTRYPOINT" \
+    &&   echo 'export USER="${USER:=`whoami`}"' >> "$ND_ENTRYPOINT" \
+    &&   echo 'if [ -n "$1" ]; then "$@"; else /usr/bin/env bash; fi' >> "$ND_ENTRYPOINT"; \
+    fi \
+    && chmod -R 777 /neurodocker && chmod a+s /neurodocker
+
+ENTRYPOINT ["/neurodocker/startup.sh"]
+
+RUN apt-get update -qq \
+    && apt-get install -y -q --no-install-recommends \
+           git \
+           vim \
+           ssh-client \
+           python3 \
+           python3-pip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY ["./arcana2", "/python-packages/arcana2"]
+
+COPY ["./pydra", "/python-packages/pydra"]
+
+COPY ["./pydra-mrtrix3", "/python-packages/pydra-mrtrix3"]
+
+COPY ["./pydra-dcm2niix", "/python-packages/pydra-dcm2niix"]
+
+ENV CONDA_DIR="/opt/miniconda-latest" \
+    PATH="/opt/miniconda-latest/bin:$PATH"
+RUN export PATH="/opt/miniconda-latest/bin:$PATH" \
+    && echo "Downloading Miniconda installer ..." \
+    && conda_installer="/tmp/miniconda.sh" \
+    && curl -fsSL --retry 5 -o "$conda_installer" https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+    && bash "$conda_installer" -b -p /opt/miniconda-latest \
+    && rm -f "$conda_installer" \
+    && conda update -yq -nbase conda \
+    && conda config --system --prepend channels conda-forge \
+    && conda config --system --set auto_update_conda false \
+    && conda config --system --set show_channel_urls true \
+    && sync && conda clean -y --all && sync \
+    && conda create -y -q --name arcana \
+    && conda install -y -q --name arcana \
+           "python=3.9" \
+           "numpy" \
+           "traits" \
+    && sync && conda clean -y --all && sync \
+    && bash -c "source activate arcana \
+    &&   pip install --no-cache-dir  \
+             "/python-packages/arcana2" \
+             "/python-packages/pydra" \
+             "/python-packages/pydra-mrtrix3" \
+             "/python-packages/pydra-dcm2niix"" \
+    && rm -rf ~/.cache/pip/* \
+    && sync
+
+LABEL maintainer="some.one@an.org"
+
+RUN echo '{ \
+    \n  "pkg_manager": "apt", \
+    \n  "instructions": [ \
+    \n    [ \
+    \n      "base", \
+    \n      "debian:bullseye" \
+    \n    ], \
+    \n    [ \
+    \n      "install", \
+    \n      [ \
+    \n        "git", \
+    \n        "vim", \
+    \n        "ssh-client", \
+    \n        "python3", \
+    \n        "python3-pip" \
+    \n      ] \
+    \n    ], \
+    \n    [ \
+    \n      "copy", \
+    \n      [ \
+    \n        "./arcana2", \
+    \n        "/python-packages/arcana2" \
+    \n      ] \
+    \n    ], \
+    \n    [ \
+    \n      "copy", \
+    \n      [ \
+    \n        "./pydra", \
+    \n        "/python-packages/pydra" \
+    \n      ] \
+    \n    ], \
+    \n    [ \
+    \n      "copy", \
+    \n      [ \
+    \n        "./pydra-mrtrix3", \
+    \n        "/python-packages/pydra-mrtrix3" \
+    \n      ] \
+    \n    ], \
+    \n    [ \
+    \n      "copy", \
+    \n      [ \
+    \n        "./pydra-dcm2niix", \
+    \n        "/python-packages/pydra-dcm2niix" \
+    \n      ] \
+    \n    ], \
+    \n    [ \
+    \n      "miniconda", \
+    \n      { \
+    \n        "create_env": "arcana", \
+    \n        "conda_install": [ \
+    \n          "python=3.9", \
+    \n          "numpy", \
+    \n          "traits" \
+    \n        ], \
+    \n        "pip_install": [ \
+    \n          "/python-packages/arcana2", \
+    \n          "/python-packages/pydra", \
+    \n          "/python-packages/pydra-mrtrix3", \
+    \n          "/python-packages/pydra-dcm2niix" \
+    \n        ] \
+    \n      } \
+    \n    ], \
+    \n    [ \
+    \n      "label", \
+    \n      { \
+    \n        "maintainer": "some.one@an.org" \
+    \n      } \
+    \n    ] \
+    \n  ] \
+    \n}' > /neurodocker/neurodocker_specs.json

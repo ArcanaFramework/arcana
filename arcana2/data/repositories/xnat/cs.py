@@ -180,7 +180,7 @@ class XnatViaCS(Xnat):
     
 
     @classmethod
-    def generate_dockerfile(cls, pydra_task, json_config, maintainer, build_dir,
+    def generate_dockerfile(cls, json_config, maintainer, build_dir,
                             requirements=None, packages=None, extra_labels=None):
         """Constructs a dockerfile that wraps a with dependencies
 
@@ -224,10 +224,9 @@ class XnatViaCS(Xnat):
         if maintainer:
             labels["maintainer"] = maintainer
 
-        pipeline_name = pydra_task.name.replace('.', '_').capitalize()
-
         # Convert JSON into Docker label
-        labels['org.nrg.commands'] = '[' + json.dumps(json_config) + ']'
+        if json_config is not None:
+            labels['org.nrg.commands'] = '[' + json.dumps(json_config) + ']'
         if extra_labels:
             labels.update(extra_labels)
 
@@ -259,7 +258,24 @@ class XnatViaCS(Xnat):
             # Use local installation of arcana
             if pkg_loc not in site_pkg_locs:
                 shutil.rmtree(build_dir / pkg_name, ignore_errors=True)
-                shutil.copytree(pkg_loc, build_dir / pkg_name)
+                gitignore_path = (pkg_loc / '.gitignore')
+                if gitignore_path.exists():
+                    with open(gitignore_path) as f:
+                        gitignore = f.read().splitlines()
+                    absolute_paths = [pkg_loc / p[1:] for p in gitignore
+                                      if p.startswith('/')]
+                    relative_paths = [p for p in gitignore
+                                      if not p.startswith('/')]
+                    file_ignore = shutil.ignore_patterns(*relative_paths)
+                    def ignore(directory, contents):
+                        to_ignore = file_ignore(directory, contents)
+                        to_ignore.update(
+                            c for c in contents
+                            if Path(directory) / c in absolute_paths)
+                        return to_ignore
+                else:
+                    ignore = shutil.ignore_patterns('*.pyc', '__pycache__')
+                shutil.copytree(pkg_loc, build_dir / pkg_name, ignore=ignore)
                 pip_address = '/python-packages/' + pkg_name
                 instructions.append(['copy', ['./' + pkg_name, pip_address]])
             else:
@@ -287,9 +303,10 @@ class XnatViaCS(Xnat):
             instructions.append(["label", labels])
 
         # Copy command JSON inside dockerfile for ease of reference
-        with open(build_dir / 'command.json', 'w') as f:
-            json.dump(json_config, f, indent='    ')
-        instructions.append(['copy', ['./command.json', '/command.json']])
+        if json_config is not None:
+            with open(build_dir / 'command.json', 'w') as f:
+                json.dump(json_config, f, indent='    ')
+            instructions.append(['copy', ['./command.json', '/command.json']])
 
         neurodocker_specs = {
             "pkg_manager": "apt",
@@ -305,7 +322,7 @@ class XnatViaCS(Xnat):
             f.write(dockerfile)
         logger.info("Dockerfile generated at %s", out_file)
 
-        return dockerfile, build_dir
+        return build_dir
 
     @classmethod
     def generate_json_config(cls, pipeline_name, pydra_task, image_tag,
@@ -416,21 +433,13 @@ class XnatViaCS(Xnat):
         output_args = []
         for output in outputs:
             output_fname = cls.escape_name(output.name) + output.datatype.extension
-            inputs_json.append({
-                "name": output.name,
-                "description": f"Output path [PATH:STORED_DTYPE]: ",
-                "type": "string",
-                "default-value": f'{pipeline_name}/{output.name}:{output.datatype.name}',
-                "required": True,
-                "user-settable": True,
-                "replacement-key": "[{}_OUTPUT]".format(output.name.upper())})
             # Set the path to the 
             outputs_json.append({
                 "name": output.name,
                 "description": f"{output.name} ({output.datatype})",
                 "required": True,
                 "mount": "out",
-                "path": output_fname,
+                "path": f'{output.name}/{output_fname}',
                 "glob": None})
             output_handlers.append({
                 "name": f"{output.name}-resource",
@@ -441,7 +450,7 @@ class XnatViaCS(Xnat):
                 "label": output.name,
                 "format": output.datatype.name})
             output_args.append(
-                f'--output {output.name} {output.datatype} [{output.name.upper()}_OUTPUT]')
+                f'--output {output.name} {output.datatype} {output_fname}')
 
         input_args_str = ' '.join(input_args)
         output_args_str = ' '.join(output_args)

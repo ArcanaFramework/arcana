@@ -12,18 +12,12 @@ from arcana2.data.repositories.xnat.cs import XnatViaCS
 
 PIPELINE_NAME = 'test-concatenate'
 
-def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
-                     xnat_archive_dir):
-
-    dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
-                                  'concatenate_test.direct')
+def test_generate_cs_pipeline(xnat_repository, xnat_container_registry,
+                              run_prefix):
 
     build_dir = Path(tempfile.mkdtemp())
 
-    # image_name = f'wrap4xnat{run_prefix}'
-    # image_tag = image_name + ':latest'
-
-    image_tag = 'arcana-concatenate:latest'
+    image_tag = f'arcana-concatenate{run_prefix}:latest'
 
     pydra_task = concatenate()
 
@@ -41,19 +35,9 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
         version='0.1',
         registry=xnat_container_registry,
         frequency=Clinical.session,
-        info_url=None,
-        debug_output=True)
+        info_url=None)
 
-    with open('/Users/tclose/Desktop/test-command-json.json', 'w') as f:
-        json.dump(json_config, f, indent='    ', sort_keys=True)
-
-    # with open('/Users/tclose/Desktop/dcm2niix-command.json') as f:
-    #     dcm2niix_config = json.load(f)
-
-    # dcm2niix_config['name'] = dcm2niix_config['label'] = 'dcm2niix' + run_prefix
-
-    dockerfile, build_dir = XnatViaCS.generate_dockerfile(
-        pydra_task=pydra_task,
+    build_dir = XnatViaCS.generate_dockerfile(
         json_config=json_config,
         maintainer='some.one@an.org',
         build_dir=build_dir,
@@ -61,12 +45,9 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
         packages=[],
         extra_labels={})
 
-    with open('/Users/tclose/Desktop/test-dockerfile', 'w') as f:
-        f.write(dockerfile)
-
     dc = docker.from_env()
     try:
-        image, build_logs = dc.images.build(path=str(build_dir), tag=image_tag)
+        dc.images.build(path=str(build_dir), tag=image_tag)
     except docker.errors.BuildError as e:
         logging.error(f"Error building docker file in {build_dir}")
         logging.error('\n'.join(l.get('stream', '') for l in e.build_log))
@@ -76,52 +57,66 @@ def test_generate_cs(xnat_repository, xnat_container_registry, run_prefix,
 
     dc.images.push(image_path)
 
-
+    # Login to XNAT and attempt to pull the image and check the command has
+    # been detected correctly
     with xnat_repository:
 
         xlogin = xnat_repository.login
 
         # Pull image from test registry to XNAT container service
-        # xlogin.post('/xapi/docker/pull', json={
-        #     'image': image_tag,
-        #     'save-commands': True})
+        xlogin.post('/xapi/docker/pull', json={
+            'image': image_tag,
+            'save-commands': True})
 
-        # Post json config to debug xnat instead of pulling image as it isn't
-        # working and since we are mounting in Docker sock (i.e. sharing the
-        # outer Docker) the image is already there
+        commands = {c['id']: c for c in xlogin.get(f'/xapi/commands/').json()}
 
-        # Delete existing commands
-        cmd_ids = [c['id'] for c in xlogin.get(f'/xapi/commands/').json()]
-        for cmd_id in cmd_ids:
-            xlogin.delete(f"/xapi/commands/{cmd_id}", accepted_status=[204])
+
+def test_run_pipeline_in_cs(xnat_repository, xnat_archive_dir,
+                         xnat_container_registry, concatenate_container,
+                         run_prefix):
+    
+
+    dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
+                                  'concatenate_test.direct')
+
+    pipeline_name = PIPELINE_NAME + run_prefix
+
+    json_config = XnatViaCS.generate_json_config(
+        pipeline_name=pipeline_name,
+        pydra_task=concatenate(),
+        image_tag=concatenate_container,
+        inputs=[
+            ('in_file1', text, Clinical.session),
+            ('in_file2', text, Clinical.session)],
+        outputs=[
+            ('out_file', text)],
+        parameters=['duplicates'],
+        description="A pipeline to test Arcana's wrap4xnat function",
+        version='0.1',
+        registry=xnat_container_registry,
+        frequency=Clinical.session,
+        info_url=None)
+
+    with xnat_repository:
+
+        xlogin = xnat_repository.login
+
         cmd_id = xlogin.post('/xapi/commands', json=json_config).json()
 
         # Enable the command globally and in the project
         xlogin.put(
-            f'/xapi/commands/{cmd_id}/wrappers/{PIPELINE_NAME}/enabled')
+            f'/xapi/commands/{cmd_id}/wrappers/{pipeline_name}/enabled')
         xlogin.put(
-            f'/xapi/projects/{dataset.name}/commands/{cmd_id}/wrappers/{PIPELINE_NAME}/enabled')
+            f'/xapi/projects/{dataset.name}/commands/{cmd_id}/wrappers/{pipeline_name}/enabled')
 
         test_xsession = next(iter(xlogin.projects[dataset.name].experiments.values()))
 
-        # result = xlogin.post(
-        #     f"/xapi/projects/{dataset.name}/wrappers/{cmd_id}/root/SESSION/launch",
-        #     query={
-        #         'SESSION': test_xsession.id},
-        #     json={
-        #         "params": {
-        #             "in_file1": "scan1:text",
-        #             "in_file2": "scan2:text",
-        #             "out_file": "deriv:text"}})
+        result = xlogin.post(
+            f"/xapi/projects/{dataset.name}/wrappers/{cmd_id}/root/xnat:mrSessionData/launch",
+            json={'SESSION': f'/archive/experiments/{test_xsession.id}',
+                  'in_file1': 'scan1:text',
+                  'in_file2': 'scan2:text',
+                  'duplicates': '2'})
 
-        # Launch container
-        # result = xlogin.get(
-        #     f'/xapi/projects/{dataset.name}/wrappers/{cmd_id}/launch?'
-        #     f'SESSION={test_xsession.id}&format=json')
-
-        # result = xlogin.post(
-        #     f"/xapi/projects/{dataset.name}/wrappers/{cmd_id}/root/SESSION/launch",
-        #     json={})
-        
-        # commands = xlogin.get('/xapi/commands')
-        # assert image_tag in commands   
+        print(result.text)
+        json = result.json()

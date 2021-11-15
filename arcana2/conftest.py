@@ -40,7 +40,8 @@ from .tasks.tests.fixtures import (
     pydra_task_details, pydra_task)
 from .data.repositories.xnat.tests.fixtures import (
     xnat_dataset, mutable_xnat_dataset, xnat_archive_dir, xnat_repository,
-    xnat_container_registry, run_prefix, xnat_docker_network)
+    xnat_container_registry, run_prefix, xnat_docker_network,
+    concatenate_container)
 
 
 # For debugging in IDE's don't catch raised exceptions and let the IDE

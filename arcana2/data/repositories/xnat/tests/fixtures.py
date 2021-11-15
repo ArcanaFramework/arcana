@@ -8,6 +8,7 @@ import time
 import contextlib
 from tempfile import mkdtemp
 from itertools import product
+import requests
 import pytest
 import docker
 import xnat
@@ -18,6 +19,7 @@ from arcana2.core.data.space import DataSpace
 from arcana2.core.data.type import FileFormat
 from arcana2.data.types.general import text, directory
 from arcana2.data.types.neuroimaging import niftix_gz, nifti_gz, dicom
+from arcana2.tasks.tests.fixtures import concatenate
 from arcana2.data.repositories.tests.fixtures import create_test_file
 
 
@@ -94,8 +96,11 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 # Pytest fixtures and helper functions
 # ------------------------------------
 
+DOCKER_SRC_DIR = Path(__file__).parent / 'docker-src'
 DOCKER_BUILD_DIR = Path(__file__).parent / 'docker-build'
-DOCKER_XNAT_HOME_DIR = Path(__file__).parent / 'xnat_home'
+DOCKER_XNAT_ROOT = Path(__file__).parent / 'xnat_root'
+DOCKER_XNAT_MNT_DIRS = [
+    'home/logs', 'home/work', 'build', 'archive', 'prearchive']
 DOCKER_IMAGE = 'arcana-xnat'
 DOCKER_HOST = 'localhost'
 DOCKER_XNAT_PORT = '8080'  # This shouldn't be changed as it needs to be the same as the internal
@@ -129,8 +134,8 @@ def mutable_xnat_dataset(xnat_repository, xnat_archive_dir, request):
 
 @pytest.fixture(scope='session')
 def xnat_archive_dir():
-    DOCKER_XNAT_HOME_DIR.mkdir(parents=True, exist_ok=True)
-    return DOCKER_XNAT_HOME_DIR / 'archive'
+    DOCKER_XNAT_ROOT.mkdir(parents=True, exist_ok=True)
+    return DOCKER_XNAT_ROOT / 'archive'
 
 
 @pytest.fixture(scope='session')
@@ -156,9 +161,27 @@ def xnat_repository(xnat_archive_dir, run_prefix, xnat_docker_network):
         container.stop()
 
 
-def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_HOME_DIR / 'archive',
-                          xnat_docker_network=None, mount_archive=True,
-                          remove=True):
+@pytest.fixture(scope='session')
+def concatenate_container(xnat_repository, xnat_container_registry):
+
+    image_tag = f'arcana-concatenate:latest'
+
+    build_dir = XnatViaCS.generate_dockerfile(
+        json_config=None,
+        maintainer='some.one@an.org',
+        build_dir=DOCKER_BUILD_DIR,
+        requirements=[],
+        packages=[],
+        extra_labels={})
+
+    dc = docker.from_env()
+    dc.images.build(path=str(build_dir), tag=image_tag)
+
+    return image_tag
+
+
+def start_xnat_repository(xnat_docker_network=None, remove=True,
+                          xnat_root=DOCKER_XNAT_ROOT):
     if xnat_docker_network is None:
         xnat_docker_network = get_xnat_docker_network()
 
@@ -167,19 +190,23 @@ def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_HOME_DIR / 'archive',
     try:
         image = dc.images.get(DOCKER_IMAGE)
     except docker.errors.ImageNotFound:
-        image, _ = dc.images.build(path=str(DOCKER_BUILD_DIR), tag=DOCKER_IMAGE)
+        image, _ = dc.images.build(path=str(DOCKER_SRC_DIR), tag=DOCKER_IMAGE)
     
     try:
         container = dc.containers.get(DOCKER_IMAGE)
     except docker.errors.NotFound:
-        # Clear the XNAT archive dir
-        shutil.rmtree(xnat_archive_dir, ignore_errors=True)
-        xnat_archive_dir.mkdir(parents=True)
         volumes = {'/var/run/docker.sock': {'bind': '/var/run/docker.sock',
                                             'mode': 'rw'}}
-        if mount_archive:
-            volumes[str(xnat_archive_dir)] = {'bind': '/data/xnat/archive',
-                                              'mode': 'rw'}
+        # Mount in the XNAT root directory for debugging and to allow access
+        # from the Docker host when using the container service
+        if xnat_root is not None:
+            # Clear previous ROOT directories
+            shutil.rmtree(xnat_root, ignore_errors=True)
+            for  dname in DOCKER_XNAT_MNT_DIRS:
+                dpath = Path(xnat_root) / dname
+                dpath.mkdir(parents=True)
+                volumes[str(dpath)] = {'bind': '/data/xnat/' + dname,
+                                       'mode': 'rw'}
         container = dc.containers.run(
             image.tags[0], detach=True, ports={
                 '8080/tcp': DOCKER_XNAT_PORT},
@@ -203,7 +230,7 @@ def start_xnat_repository(xnat_archive_dir=DOCKER_XNAT_HOME_DIR / 'archive',
             'cert-path': '',
             'swarm-mode': False,
             'path-translation-xnat-prefix': '/data/xnat',
-            'path-translation-docker-prefix': str(DOCKER_XNAT_HOME_DIR),
+            'path-translation-docker-prefix': str(DOCKER_XNAT_ROOT),
             'pull-images-on-xnat-init': False,
             'container-user': '',
             'auto-cleanup': True,
@@ -375,7 +402,7 @@ def connect(server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
     for attempts in range(1, max_attempts + 1):
         try:
             login = xnat.connect(server, user=user, password=password)
-        except xnat.exceptions.XNATError:
+        except (xnat.exceptions.XNATError, requests.ConnectionError):
             if attempts == max_attempts:
                 raise
             else:
