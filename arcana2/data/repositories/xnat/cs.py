@@ -38,9 +38,9 @@ def localhost_translation(server):
 @attr.s
 class XnatViaCS(Xnat):
     """
-    Access class for XNAT repositories via XNAT's built-in container service.
+    Access class for XNAT repositories via the XNAT container service plugin.
     The container service allows the exposure of the underlying file system
-    where imaging data
+    where imaging data can be accessed directly (for performance), and outputs
 
     Parameters
     ----------
