@@ -344,9 +344,9 @@ class XnatViaCS(Xnat):
             The task or workflow to be wrapped for XNAT CS use
         image_tag : str
             Name + version of the Docker image to be created
-        inputs : list[InputArg]
+        inputs : list[InputArg or tuple]
             Inputs to be provided to the container
-        outputs : list[OutputArg]
+        outputs : list[OutputArg or tuple]
             Outputs from the container 
         description : str
             User-facing description of the pipeline

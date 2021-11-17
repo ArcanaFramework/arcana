@@ -79,7 +79,7 @@ class BidsDataset(Dataset):
     authors: list[str] = attr.ib(default=[], repr=False)
     bids_version: str = attr.ib(default='1.0.1', repr=False)
     doi: str = attr.ib(default=None, repr=False)
-    funding: list[str] = attr.ib(factory=[], repr=False)
+    funding: list[str] = attr.ib(factory=list, repr=False)
     bids_type: str = attr.ib(default='derivative', repr=False)
     license: str = attr.ib(default='CC0', repr=False)
     references: list[str] = attr.ib(factory=list)
@@ -164,170 +164,7 @@ class BidsDataset(Dataset):
             cols = f.readline().split('\t')
             while line:= f.readline():
                 d = dict(zip(cols, line.split('\t')))
-                self.participants[d['participant_id']] = d                
-
-    @classmethod
-    def wrap_app(cls, image_tag, input_paths: dict[str, str],
-                 output_paths: dict[str, str],
-                 frequency: Clinical=Clinical.session,
-                 parameters: dict[str, str]=None,
-                 container_type: str='docker') -> Workflow:
-        """Creates a Pydra workflow which takes inputs and maps them to
-        a BIDS dataset, executes a BIDS app and extracts outputs from
-        the derivatives stored back in the BIDS dataset
-
-        Parameters
-        ----------
-        app_container : str
-            Path to the container to execute on the datasest
-        input_paths : dict[str, str]
-            The inputs to be stored in a BIDS dataset, mapping a sanitized name
-            to be added in the workflow input interface and the location within
-            the BIDS app to put it
-
-        Returns
-        -------
-        [type]
-            [description]
-        """
-        if parameters is None:
-            parameters = {}
-        sanitized_name = re.sub(r'[-/]', '_', image_tag)
-        workflow = Workflow(name=f"wrapped_{sanitized_name}",
-                            inputs=list(input_paths) + ['id'])
-
-        def to_bids(frequency, id, input_paths, **inputs):
-            dataset = BidsDataset(tempfile.mkdtemp())
-            data_node = dataset.node(frequency, id)
-            with dataset.repository:
-                for outpt_name, outpt_value in inputs.items():
-                    node_item = data_node[input_paths[outpt_name]]
-                    node_item.put(outpt_value) # Store value/path in repository
-            return (dataset, dataset.name)
-
-        # Can't use a decorated function as we need to allow for dynamic
-        # arguments
-        workflow.add(
-            FunctionTask(
-                to_bids,
-                input_spec=SpecInfo(
-                    name='ToBidsInputs', bases=(BaseSpec,), fields=(
-                        [('frequency', Clinical),
-                         ('id', str),
-                         ('input_paths', dict[str, str])]
-                        + [(i, str) for i in input_paths])),
-                output_spec=SpecInfo(
-                    name='ToBidsOutputs', bases=(BaseSpec,), fields=[
-                        ('dataset', BidsDataset),
-                        ('dataset_path', Path)]),
-                name='to_bids',
-                frequency=frequency,
-                id=workflow.lzin.id,
-                input_paths=input_paths,
-                **{i: getattr(workflow.lzin, i) for i in input_paths}))
-
-        app_task = cls.make_app_task(image_tag,
-                                     {p: type(p) for p in parameters},
-                                     container_type)
-
-        app_kwargs = copy(parameters)
-        if frequency == Clinical.session:
-            app_kwargs['analysis_level'] = 'participant'
-            app_kwargs['participant_label'] = workflow.lzin.id
-        else:
-            app_kwargs['analysis_level'] = 'group'
-
-        workflow.add(
-            app_task(
-                name=sanitized_name,
-                dataset_path=workflow.to_bids.lzout.dataset_path,
-                **app_kwargs))
-
-        @mark.task
-        @mark.annotate(
-            {'dataset': BidsDataset,
-             'frequency': Clinical,
-             'id': str,
-             'output_paths': dict[str, str],
-             'return': {o: str for o in output_paths}})
-        def extract_bids(dataset, frequency, id, output_paths):
-            """Selects the items from the dataset corresponding to the input 
-            sources and retrieves them from the repository to a cache on 
-            the host"""
-            outputs = []
-            data_node = dataset.node(frequency, id)
-            with dataset.repository:
-                for output in output_paths:
-                    item = data_node[output]
-                    item.get()  # download to host if required
-                    outputs.append(item.value)
-            return tuple(outputs) if len(output_paths) > 1 else outputs[0]
-        
-        workflow.add(extract_bids(
-            name='extract_bids',
-            dataset=workflow.to_bids.lzout.dataset,
-            frequency=frequency,
-            id=workflow.lzin.id,
-            output_paths=output_paths))
-
-        for output in output_paths:
-            workflow.set_output(
-                (output, getattr(workflow.extract_bids.lzout, output)))
-
-        return workflow
-
-
-    @classmethod
-    def make_app_task(cls, image_tag: str,
-                      parameters: dict[str, type]=None,
-                      container_type: str='docker') -> ShellCommandTask:
-
-        if parameters is None:
-            parameters = {}
-
-        dc = docker.from_env()
-
-        app_image = dc.images.pull(image_tag)
-
-        image_attrs = dc.inspect_image(app_image)['Config']
-
-        executable = image_attrs['Entrypoint']
-        if executable is None:
-            executable = image_attrs['Cmd']
-
-        input_fields = [
-            ("dataset_path", Path,
-                {"help_string": "Path to BIDS dataset",
-                 "position": 1,
-                 "mandatory": True}),
-            ("out_dir", Path,
-                {"help_string": "Path to BIDS output",
-                  "position": 2,
-                  "mandatory": True,
-                  "output_file_template": "/out"}),
-            ("analysis_level", str,
-                {"help_string": "The analysis level the app will be run at",
-                 "position": 3,
-                 "default": "participant"}),
-            ("participant_label", list[str],
-                {"help_string": "The IDs to include in the analysis",
-                 "argstr": "--participant_label %s",
-                 "position": 4})]
-
-        for param, dtype in parameters.items():
-            argstr = f'--{param}'
-            if dtype is not bool:
-                argstr += ' %s'
-            input_fields.append((
-                param, dtype, {
-                    "help_string": f"Optional parameter {param}",
-                    "argstr": argstr}))
-        
-        return ShellCommandTask(
-            executable=executable,
-            input_spec=SpecInfo(name="Input", fields=input_fields,
-                                bases=(ShellSpec,)),
-            container_info=(container_type, image_tag))
+                self.participants[d['participant_id']] = d
 
 
 class BidsFormat(FileSystem):
@@ -400,3 +237,178 @@ class BidsFormat(FileSystem):
         else:
             val = super().get_field_val(field)
         return val
+
+    @classmethod
+    def wrap_app(cls, image_tag,
+                 input_paths: dict[str, str],
+                 output_paths: dict[str, str],
+                 frequency: Clinical=Clinical.session,
+                 parameters: dict[str, str]=None,
+                 container_type: str='docker') -> Workflow:
+        """Creates a Pydra workflow which takes inputs and maps them to
+        a BIDS dataset, executes a BIDS app and extracts outputs from
+        the derivatives stored back in the BIDS dataset
+
+        Parameters
+        ----------
+        image_tag : str
+            Name of the BIDS app image to wrap
+        inputs : list[XnatViaCS.InputArg or tuple]
+            The inputs to be stored in a BIDS dataset, mapping a sanitized name
+            to be added in the workflow input interface and the location within
+            the BIDS app to put it
+        outputs : list[XnatViaCS.OutputArg or tuple]
+            The outputs to be extracted from the output directory mounted to the
+            BIDS app to be added in the workflow input interface and the location within
+            the BIDS app to find it
+        parameters : list[tuple[str, dtype]]
+            The parameters of the app to be exposed to the interface
+        container_type : str
+            The container technology to use to run the app (either 'docker' or'singularity')
+        Returns
+        -------
+        [type]
+            [description]
+        """
+        if parameters is None:
+            parameters = {}
+        def task(name, **kwargs):
+            
+            workflow = Workflow(name=name,
+                                input_spec=list(input_paths) + ['id'],
+                                **kwargs)
+
+            def to_bids(frequency, id, input_paths, **inputs):
+                dataset = BidsDataset(tempfile.mkdtemp())
+                data_node = dataset.node(frequency, id)
+                with dataset.repository:
+                    for inpt_name, inpt_value in inputs.items():
+                        dataset.add_sink()
+                        node_item = data_node[input_paths[inpt_name]]
+                        node_item.put(inpt_value) # Store value/path in repository
+                return (dataset, dataset.name)
+
+            # Can't use a decorated function as we need to allow for dynamic
+            # arguments
+            workflow.add(
+                FunctionTask(
+                    to_bids,
+                    input_spec=SpecInfo(
+                        name='ToBidsInputs', bases=(BaseSpec,), fields=(
+                            [('frequency', Clinical),
+                            ('id', str),
+                            ('input_paths', dict[str, str])]
+                            + [(i, str) for i in input_paths])),
+                    output_spec=SpecInfo(
+                        name='ToBidsOutputs', bases=(BaseSpec,), fields=[
+                            ('dataset', BidsDataset),
+                            ('dataset_path', Path)]),
+                    name='to_bids',
+                    frequency=frequency,
+                    id=workflow.lzin.id,
+                    input_paths=input_paths,
+                    **{i: getattr(workflow.lzin, i) for i in input_paths}))
+
+            app_task = cls.make_bids_app_task(
+                image_tag,
+                {p: type(p) for p in parameters},
+                container_type)
+
+            app_kwargs = copy(parameters)
+            if frequency == Clinical.session:
+                app_kwargs['analysis_level'] = 'participant'
+                app_kwargs['participant_label'] = workflow.lzin.id
+            else:
+                app_kwargs['analysis_level'] = 'group'
+
+            workflow.add(
+                app_task(
+                    name='bids_app',
+                    dataset_path=workflow.to_bids.lzout.dataset_path,
+                    **app_kwargs))
+
+            @mark.task
+            @mark.annotate(
+                {'app_out_dir': Path,
+                'frequency': Clinical,
+                'id': str,
+                'output_paths': dict[str, str],
+                'return': {o: str for o in output_paths}})
+            def extract_bids(dataset, frequency, id, output_paths):
+                """Selects the items from the dataset corresponding to the input 
+                sources and retrieves them from the repository to a cache on 
+                the host"""
+                outputs = []
+                data_node = dataset.node(frequency, id)
+                with dataset.repository:
+                    for output in output_paths:
+                        item = data_node[output]
+                        item.get()  # download to host if required
+                        outputs.append(item.value)
+                return tuple(outputs) if len(output_paths) > 1 else outputs[0]
+            
+            workflow.add(extract_bids(
+                name='extract_bids',
+                dataset=workflow.to_bids.lzout.dataset,
+                frequency=frequency,
+                id=workflow.lzin.id,
+                output_paths=output_paths))
+
+            for output in output_paths:
+                workflow.set_output(
+                    (output, getattr(workflow.extract_bids.lzout, output)))
+
+            return workflow
+        return task
+
+    @classmethod
+    def make_bids_app_task(cls, image_tag: str,
+                           parameters: dict[str, type]=None,
+                           container_type: str='docker') -> ShellCommandTask:
+
+        if parameters is None:
+            parameters = {}
+
+        dc = docker.from_env()
+
+        app_image = dc.images.pull(image_tag)
+
+        image_attrs = dc.inspect_image(app_image)['Config']
+
+        executable = image_attrs['Entrypoint']
+        if executable is None:
+            executable = image_attrs['Cmd']
+
+        input_fields = [
+            ("dataset_path", Path,
+                {"help_string": "Path to BIDS dataset",
+                 "position": 1,
+                 "mandatory": True}),
+            ("out_dir", Path,
+                {"help_string": "Path to BIDS output",
+                  "position": 2,
+                  "mandatory": True,
+                  "output_file_template": "/out"}),
+            ("analysis_level", str,
+                {"help_string": "The analysis level the app will be run at",
+                 "position": 3,
+                 "default": "participant"}),
+            ("participant_label", list[str],
+                {"help_string": "The IDs to include in the analysis",
+                 "argstr": "--participant_label %s",
+                 "position": 4})]
+
+        for param, dtype in parameters.items():
+            argstr = f'--{param}'
+            if dtype is not bool:
+                argstr += ' %s'
+            input_fields.append((
+                param, dtype, {
+                    "help_string": f"Optional parameter {param}",
+                    "argstr": argstr}))
+        
+        return ShellCommandTask(
+            executable=executable,
+            input_spec=SpecInfo(name="Input", fields=input_fields,
+                                bases=(ShellSpec,)),
+            container_info=(container_type, image_tag))
