@@ -133,16 +133,21 @@ def mutable_xnat_dataset(xnat_repository, xnat_archive_dir, request):
 
 
 @pytest.fixture(scope='session')
-def xnat_archive_dir():
+def xnat_root_dir():
     DOCKER_XNAT_ROOT.mkdir(parents=True, exist_ok=True)
-    return DOCKER_XNAT_ROOT / 'archive'
+    return DOCKER_XNAT_ROOT
 
 
 @pytest.fixture(scope='session')
-def xnat_repository(xnat_archive_dir, run_prefix, xnat_docker_network):
+def xnat_archive_dir(xnat_root_dir):
+    return xnat_root_dir / 'archive'
 
-    container, already_running = start_xnat_repository(xnat_archive_dir,
-                                                       xnat_docker_network)
+
+@pytest.fixture(scope='session')
+def xnat_repository(xnat_root_dir, run_prefix, xnat_docker_network):
+
+    container, already_running = start_xnat_repository(
+        xnat_root_dir=xnat_root_dir, xnat_docker_network=xnat_docker_network)
 
     repository = Xnat(
         server=DOCKER_XNAT_URI,
@@ -181,7 +186,25 @@ def concatenate_container(xnat_repository, xnat_container_registry):
 
 
 def start_xnat_repository(xnat_docker_network=None, remove=True,
-                          xnat_root=DOCKER_XNAT_ROOT):
+                          xnat_root_dir=DOCKER_XNAT_ROOT):
+    """Starts an XNAT repository within a single Docker container that has
+    has the container service plugin configured to access the Docker socket
+    to launch sibling containers.
+
+    Parameters
+    ----------
+    xnat_docker_network : [type], optional
+        [description], by default None
+    remove : bool, optional
+        [description], by default True
+    xnat_root_dir : [type], optional
+        [description], by default DOCKER_XNAT_ROOT
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
     if xnat_docker_network is None:
         xnat_docker_network = get_xnat_docker_network()
 
@@ -199,11 +222,11 @@ def start_xnat_repository(xnat_docker_network=None, remove=True,
                                             'mode': 'rw'}}
         # Mount in the XNAT root directory for debugging and to allow access
         # from the Docker host when using the container service
-        if xnat_root is not None:
+        if xnat_root_dir is not None:
             # Clear previous ROOT directories
-            shutil.rmtree(xnat_root, ignore_errors=True)
+            shutil.rmtree(xnat_root_dir, ignore_errors=True)
             for  dname in DOCKER_XNAT_MNT_DIRS:
-                dpath = Path(xnat_root) / dname
+                dpath = Path(xnat_root_dir) / dname
                 dpath.mkdir(parents=True)
                 volumes[str(dpath)] = {'bind': '/data/xnat/' + dname,
                                        'mode': 'rw'}

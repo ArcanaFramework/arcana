@@ -272,6 +272,10 @@ class XnatViaCS(Xnat):
                         to_ignore.update(
                             c for c in contents
                             if Path(directory) / c in absolute_paths)
+                        # Don't want to create two conftests in the src
+                        # directory when running tests
+                        if 'conftest.py' in contents:
+                            to_ignore.add('conftest.py')
                         return to_ignore
                 else:
                     ignore = shutil.ignore_patterns('*.pyc', '__pycache__')

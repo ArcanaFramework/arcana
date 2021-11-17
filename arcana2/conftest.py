@@ -41,7 +41,7 @@ from .tasks.tests.fixtures import (
 from .data.repositories.xnat.tests.fixtures import (
     xnat_dataset, mutable_xnat_dataset, xnat_archive_dir, xnat_repository,
     xnat_container_registry, run_prefix, xnat_docker_network,
-    concatenate_container)
+    concatenate_container, xnat_root_dir)
 
 
 # For debugging in IDE's don't catch raised exceptions and let the IDE

@@ -1,6 +1,6 @@
 PACKAGE_NAME = 'arcana2'
 
-__version__ = '2.0.0a'
+__version__ = '2.0.0a0'
 
 __authors__ = [
     ("Thomas G. Close", "tom.g.close@gmail.com")]

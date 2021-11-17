@@ -25,6 +25,3 @@ test.log
 /arcana2/data/repositories/xnat/tests/xnat_root
 /arcana2/data/repositories/xnat/tests/dicom-dataset/
 /arcana2/data/repositories/xnat/tests/docker-build/
-# Conftest should actually be included in the repository, it is only included
-# here to avoid it being copied into the XNAT docker build dir
-/conftest.py

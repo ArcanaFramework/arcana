@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import logging
+import time
 import tempfile
 import docker.errors
 from arcana2.data.repositories.xnat.tests.fixtures import make_mutable_dataset
@@ -12,17 +13,19 @@ from arcana2.data.repositories.xnat.cs import XnatViaCS
 
 PIPELINE_NAME = 'test-concatenate'
 
-def test_generate_cs_pipeline(xnat_repository, xnat_container_registry,
-                              run_prefix):
+def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
+                            run_prefix):
 
     build_dir = Path(tempfile.mkdtemp())
 
     image_tag = f'arcana-concatenate{run_prefix}:latest'
 
+    pipeline_name = 'detected_' + PIPELINE_NAME + run_prefix
+
     pydra_task = concatenate()
 
     json_config = XnatViaCS.generate_json_config(
-        pipeline_name=PIPELINE_NAME,
+        pipeline_name=pipeline_name,
         pydra_task=pydra_task,
         image_tag=image_tag,
         inputs=[
@@ -68,13 +71,14 @@ def test_generate_cs_pipeline(xnat_repository, xnat_container_registry,
             'image': image_tag,
             'save-commands': True})
 
-        commands = {c['id']: c for c in xlogin.get(f'/xapi/commands/').json()}
+        commands = {c['name']: c for c in xlogin.get(f'/xapi/commands/').json()}
+        assert pipeline_name in commands, "Pipeline config wasn't detected automatically"
+        assert json_config == commands[pipeline_name]
 
 
-def test_run_pipeline_in_cs(xnat_repository, xnat_archive_dir,
+def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
                          xnat_container_registry, concatenate_container,
                          run_prefix):
-    
 
     dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
                                   'concatenate_test.direct')
@@ -111,12 +115,28 @@ def test_run_pipeline_in_cs(xnat_repository, xnat_archive_dir,
 
         test_xsession = next(iter(xlogin.projects[dataset.name].experiments.values()))
 
-        result = xlogin.post(
-            f"/xapi/projects/{dataset.name}/wrappers/{cmd_id}/root/xnat:mrSessionData/launch",
+        launch_result = xlogin.post(
+            f"/xapi/projects/{dataset.name}/wrappers/{cmd_id}/root/SESSION/launch",
             json={'SESSION': f'/archive/experiments/{test_xsession.id}',
                   'in_file1': 'scan1:text',
                   'in_file2': 'scan2:text',
-                  'duplicates': '2'})
+                  'duplicates': '2'}).json()
 
-        print(result.text)
-        json = result.json()
+        assert launch_result['status'] == 'success'
+        workflow_id = launch_result['workflow-id']
+        assert workflow_id != 'To be assigned'
+
+        NUM_ATTEMPTS = 100
+        SLEEP_PERIOD = 10
+        max_runtime = NUM_ATTEMPTS * SLEEP_PERIOD
+
+        for i in range(NUM_ATTEMPTS):
+            wf_result = xlogin.get(f'/xapi/workflows/{workflow_id}').json()
+            if wf_result['status'] not in ('Pending', 'Running'):
+                break
+            time.sleep(SLEEP_PERIOD)
+        
+        assert i != 99, f"Workflow {workflow_id} did not complete in {max_runtime}"
+        assert wf_result['status'] == 'Complete'
+
+        assert list(test_xsession.resources['out_file'].files) == ['out_file.txt']
