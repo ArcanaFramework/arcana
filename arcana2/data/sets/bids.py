@@ -240,8 +240,8 @@ class BidsFormat(FileSystem):
 
     @classmethod
     def wrap_app(cls, image_tag,
-                 input_paths: dict[str, str],
-                 output_paths: dict[str, str],
+                 inputs: list[tuple[str, type]],
+                 outputs: list[tuple[str, type]],
                  frequency: Clinical=Clinical.session,
                  parameters: dict[str, str]=None,
                  container_type: str='docker') -> Workflow:
@@ -275,14 +275,14 @@ class BidsFormat(FileSystem):
         def task(name, **kwargs):
             
             workflow = Workflow(name=name,
-                                input_spec=list(input_paths) + ['id'],
+                                input_spec=list(zip(*inputs)[0]) + ['id'],
                                 **kwargs)
 
-            def to_bids(frequency, id, input_paths, **inputs):
+            def to_bids(frequency, id, input_paths, **input_values):
                 dataset = BidsDataset(tempfile.mkdtemp())
                 data_node = dataset.node(frequency, id)
                 with dataset.repository:
-                    for inpt_name, inpt_value in inputs.items():
+                    for inpt_name, inpt_value in input_values.items():
                         dataset.add_sink()
                         node_item = data_node[input_paths[inpt_name]]
                         node_item.put(inpt_value) # Store value/path in repository
