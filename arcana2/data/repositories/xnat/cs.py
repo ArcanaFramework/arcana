@@ -15,6 +15,7 @@ from dataclasses import dataclass
 import attr
 import cloudpickle as cp
 from attr import NOTHING
+from pydra.engine.task import TaskBase
 import neurodocker as nd
 from natsort import natsorted
 from arcana2.__about__ import install_requires
@@ -180,8 +181,14 @@ class XnatViaCS(Xnat):
     
 
     @classmethod
-    def generate_dockerfile(cls, json_config, maintainer, build_dir,
-                            requirements=None, packages=None, extra_labels=None):
+    def generate_dockerfile(cls,
+                            task_location,
+                            json_config,
+                            maintainer,
+                            build_dir,
+                            requirements=None,
+                            packages=None,
+                            extra_labels=None):
         """Constructs a dockerfile that wraps a with dependencies
 
         Parameters
@@ -329,10 +336,12 @@ class XnatViaCS(Xnat):
         return build_dir
 
     @classmethod
-    def generate_json_config(cls, pipeline_name, pydra_task, image_tag,
-                            inputs, outputs, description, version,
-                            parameters=None, frequency=Clinical.session,
-                            registry=DOCKER_HUB, info_url=None):
+    def generate_json_config(cls, pipeline_name: str,
+                             task_location: str,
+                             image_tag: str,
+                             inputs, outputs, description, version,
+                             parameters=None, frequency=Clinical.session,
+                             registry=DOCKER_HUB, info_url=None):
         """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
         should handle the containerised pipeline
 
@@ -340,8 +349,8 @@ class XnatViaCS(Xnat):
         ----------
         pipeline_name : str
             Name of the pipeline
-        pydra_task : Task or Workflow
-            The task or workflow to be wrapped for XNAT CS use
+        task_location : str
+            The module path to the task to execute
         image_tag : str
             Name + version of the Docker image to be created
         inputs : list[InputArg or tuple]
@@ -384,8 +393,12 @@ class XnatViaCS(Xnat):
         inputs = [cls.InputArg(*i) for i in inputs if isinstance(i, tuple)]
         outputs = [cls.OutputArg(*o) for o in outputs if isinstance(o, tuple)]
 
-        input_specs = dict(pydra_task.input_spec.fields)
-        output_specs = dict(pydra_task.output_spec.fields)
+        pydra_task = resolve_class(task_location)
+        if not isinstance(pydra_task, TaskBase):
+            pydra_task = pydra_task()
+
+        input_specs = dict(f[:2] for f in pydra_task.input_spec.fields)
+        # output_specs = dict(f[:2] for f in pydra_task.output_spec.fields)
 
         # JSON to define all inputs and parameters to the pipelines
         inputs_json = []
@@ -460,12 +473,9 @@ class XnatViaCS(Xnat):
         output_args_str = ' '.join(output_args)
         param_args_str = ' '.join(param_args)
 
-        # Unpickle function to get its name
-        func = cp.loads(pydra_task.inputs._func)
-
         cmdline = (
             f"conda run --no-capture-output -n arcana "  # activate conda
-            f"arcana run {func.__module__}.{func.__name__} "  # run pydra task in Arcana
+            f"arcana run {task_location} "  # run pydra task in Arcana
             f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
             f"--work {cls.WORK_MOUNT} "  # working directory
             f"--repository xnat_via_cs {frequency}")  # pass XNAT API details

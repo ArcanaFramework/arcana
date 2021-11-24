@@ -67,7 +67,7 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     Parameters
     ----------
     class_str : str
-        Path to class preceded by module path, e.g. main_pkg.sub_pkg.MyClass
+        Module path and name of class joined by ':', e.g. main_pkg.sub_pkg:MyClass
     prefixes : Sequence[str]
         List of allowable module prefixes to try to append if the fully
         resolved path fails, e.g. ['pydra.tasks'] would allow
@@ -79,15 +79,13 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     type:
         The resolved class
     """
-    parts = class_str.split('.')
-    module_name = '.'.join(parts[:-1])
-    class_name = parts[-1]
+    module_path, class_name = class_str.split(':')
     cls = None
     for prefix in [None] + list(prefixes):
         if prefix is not None:
-            mod_name = prefix + '.' + module_name
+            mod_name = prefix + '.' + module_path
         else:
-            mod_name = module_name
+            mod_name = module_path
         if not mod_name:
             continue
         mod_name = mod_name.strip('.')

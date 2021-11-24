@@ -107,7 +107,7 @@ DOCKER_XNAT_PORT = '8080'  # This shouldn't be changed as it needs to be the sam
 DOCKER_REGISTRY_IMAGE = 'registry'
 DOCKER_REGISTRY_CONTAINER = 'arcana-docker-registry'
 DOCKER_NETWORK_NAME = 'arcana'
-DOCKER_REGISTRY_PORT = '5959'
+DOCKER_REGISTRY_PORT = '80'  # Must be 80 to avoid bug in XNAT CS config
 DOCKER_XNAT_URI = f'http://{DOCKER_HOST}:{DOCKER_XNAT_PORT}'
 DOCKER_REGISTRY_URI = f'{DOCKER_HOST}:{DOCKER_REGISTRY_PORT}'
 DOCKER_XNAT_USER = 'admin'
@@ -181,6 +181,8 @@ def concatenate_container(xnat_repository, xnat_container_registry):
 
     dc = docker.from_env()
     dc.images.build(path=str(build_dir), tag=image_tag)
+
+    shutil.rmtree(DOCKER_BUILD_DIR)
 
     return image_tag
 
@@ -280,13 +282,13 @@ def xnat_container_registry(xnat_repository, xnat_docker_network):
 
     container, already_running = start_xnat_container_registry(xnat_docker_network)
 
-    uri = f'localhost:{DOCKER_REGISTRY_PORT}'
+    uri = f'localhost'  # {DOCKER_REGISTRY_PORT}  # Needs to be on 80 to avoid bug with ':' in URI 
 
     # Set it to the default registry in the XNAT repository
     with connect(xnat_repository.server) as login:
         login.post('/xapi/docker/hubs/1', json={
             "name": "testregistry",
-            "url": f"https://host.docker.internal:{DOCKER_REGISTRY_PORT}"})
+            "url": f"https://host.docker.internal"})
 
     yield uri
 
