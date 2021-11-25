@@ -12,11 +12,6 @@ debug_level = logging.WARNING
 
 logger = logging.getLogger('arcana')
 logger.setLevel(debug_level)
-fch = logging.FileHandler('./test.log')
-fch.setLevel(debug_level)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fch.setFormatter(formatter)
-logger.addHandler(fch)
 
 sch = logging.StreamHandler()
 sch.setLevel(debug_level)
