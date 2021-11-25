@@ -133,7 +133,7 @@ class Xnat(DataRepository):
         """
         with self:
             # Get per_dataset level derivatives and fields
-            for exp in self.login.projects[dataset.name].experiments.values():
+            for exp in self.login.projects[dataset.id].experiments.values():
                 dataset.add_leaf_node([exp.subject.label, exp.label])
 
     def find_items(self, data_node):
@@ -508,7 +508,7 @@ class Xnat(DataRepository):
             The data_node to get the corresponding XNAT node for
         """
         with self:
-            xproject = self.login.projects[data_node.dataset.name]
+            xproject = self.login.projects[data_node.dataset.id]
             if data_node.frequency == Clinical.dataset:
                 xnode = xproject
             elif data_node.frequency == Clinical.subject:
@@ -533,7 +533,7 @@ class Xnat(DataRepository):
 
 
     def _make_uri(self, data_node: DataNode):
-        uri = '/data/archive/projects/' + data_node.dataset.name
+        uri = '/data/archive/projects/' + data_node.dataset.id
         if data_node.frequency == Clinical.session:
             uri += '/experiments/' + data_node.id
         elif data_node.frequency == Clinical.subject:

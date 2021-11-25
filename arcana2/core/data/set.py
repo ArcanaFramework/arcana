@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import typing as ty
+from pathlib import Path
 from itertools import chain
 import re
 import attr
@@ -27,9 +28,9 @@ class Dataset():
 
     Parameters
     ----------
-    name : str
-        The name/path that uniquely identifies the datset within the
-        repository it is stored (e.g. FS directory path or project name)
+    id : str
+        The dataset id/path that uniquely identifies the datset within the
+        repository it is stored (e.g. FS directory path or project ID)
     repository : Repository
         The repository the dataset is stored into. Can be the local file
         system by providing a FileSystem repo.
@@ -100,7 +101,7 @@ class Dataset():
         Repository specific args used to control the way the dataset is accessed
     """
 
-    name: str = attr.ib()
+    id: str = attr.ib()
     repository: repository.DataRepository = attr.ib()
     hierarchy: list[DataSpace] = attr.ib()
     id_inference: (dict[DataSpace, str] or ty.Callable) = attr.ib(
@@ -169,13 +170,17 @@ class Dataset():
         return self.space(0)
 
     @property
+    def root_dir(self):
+        return Path(self.id)
+
+    @property
     def leaf_freq(self):
         return max(self.space)
 
     @property
     def prov(self):
         return {
-            'name': self.name,
+            'id': self.id,
             'repository': self.repository.prov,
             'ids': {str(freq): tuple(ids) for freq, ids in self.nodes.items()}}
 
@@ -502,7 +507,7 @@ class Dataset():
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
-        logger.info(f'Adding new {str(frequency)} node to {self.name} dataset: '
+        logger.info(f'Adding new {str(frequency)} node to {self.id} dataset: '
                     + ', '.join(f'{str(f)}={i}' for f, i in ids.items()))
         frequency = self._parse_freq(frequency)
         node = DataNode(ids, frequency, self)

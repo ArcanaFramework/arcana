@@ -208,3 +208,7 @@ class ArcanaWrongDataSpacesError(ArcanaError):
 class ArcanaNoDirectXnatMountException(ArcanaException):
     "Raised when attemptint to access a file-system mount for a node that hasn't been mounted directly "
     pass
+
+
+class ArcanaEmptyDatasetError(ArcanaException):
+    pass

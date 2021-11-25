@@ -111,12 +111,12 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
         xlogin.put(
             f'/xapi/commands/{cmd_id}/wrappers/{pipeline_name}/enabled')
         xlogin.put(
-            f'/xapi/projects/{dataset.name}/commands/{cmd_id}/wrappers/{pipeline_name}/enabled')
+            f'/xapi/projects/{dataset.id}/commands/{cmd_id}/wrappers/{pipeline_name}/enabled')
 
-        test_xsession = next(iter(xlogin.projects[dataset.name].experiments.values()))
+        test_xsession = next(iter(xlogin.projects[dataset.id].experiments.values()))
 
         launch_result = xlogin.post(
-            f"/xapi/projects/{dataset.name}/wrappers/{cmd_id}/root/SESSION/launch",
+            f"/xapi/projects/{dataset.id}/wrappers/{cmd_id}/root/SESSION/launch",
             json={'SESSION': f'/archive/experiments/{test_xsession.id}',
                   'in_file1': 'scan1:text',
                   'in_file2': 'scan2:text',

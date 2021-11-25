@@ -176,7 +176,7 @@ def dataset(work_dir, request):
     dataset_path = get_dataset_path(dataset_name, work_dir)
     dataset = make_dataset(blueprint, dataset_path)
     yield dataset
-    #shutil.rmtree(dataset.name)
+    #shutil.rmtree(dataset.id)
 
 
 @pytest.fixture

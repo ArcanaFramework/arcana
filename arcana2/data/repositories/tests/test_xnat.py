@@ -100,6 +100,6 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
         check_inserted()
         # Check downloaded by deleting the cache dir
         shutil.rmtree(mutable_xnat_dataset.repository.cache_dir / 'projects'
-                    / mutable_xnat_dataset.name)
+                    / mutable_xnat_dataset.id)
         mutable_xnat_dataset.refresh()
         check_inserted()  

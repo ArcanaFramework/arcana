@@ -122,7 +122,7 @@ class FileSystem(DataRepository):
             shutil.copytree(fs_path, target_path)
         else:
             raise ValueError(
-                f"Source file {fs_path} does not exist")
+                f"Source path {fs_path} does not exist")
         if file_group.provenance is not None:
             file_group.provenance.save(self.prov_json_path(file_group))
 
@@ -160,13 +160,13 @@ class FileSystem(DataRepository):
         dataset : Dataset
             The dataset to construct the tree dimensions for
         """
-        if not os.path.exists(dataset.name):
+        if not os.path.exists(dataset.id):
             raise ArcanaUsageError(
-                f"Could not find a directory at '{dataset.name}' to be the "
+                f"Could not find a directory at '{dataset.id}' to be the "
                 "root node of the dataset")
 
-        for dpath, _, _ in os.walk(dataset.name):
-            tree_path = Path(dpath).relative_to(dataset.name).parts
+        for dpath, _, _ in os.walk(dataset.id):
+            tree_path = Path(dpath).relative_to(dataset.id).parts
             if (len(tree_path) == len(dataset.hierarchy)
                     and not re.match(r'__.*__$', tree_path[-1])):
                 dataset.add_leaf_node(tree_path)
@@ -239,7 +239,7 @@ class FileSystem(DataRepository):
         return path
 
     def root_dir(self, data_node):
-        return Path(data_node.dataset.name)
+        return Path(data_node.dataset.id)
 
     def file_group_path(self, file_group):
         fs_path = self.root_dir(file_group.data_node) / self.node_path(

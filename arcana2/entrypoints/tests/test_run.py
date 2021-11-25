@@ -17,7 +17,7 @@ def test_run_app(work_dir, test_dataspace_location):
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
         'arcana2.tasks.tests.fixtures.concatenate',
-        str(dataset.name),
+        str(dataset.id),
         '--repository', 'file_system',
         '--input', 'in_file1', 'text', 'file1', 
         '--input', 'in_file2', 'text','file2',
@@ -45,7 +45,7 @@ def test_run_app_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
         'arcana2.tasks.tests.fixtures.concatenate',
-        dataset.name,
+        dataset.id,
         '--input', 'in_file1', 'text', 'scan1:text',
         '--input', 'in_file2', 'text', 'scan2:text',
         '--output', 'out_file', 'text', 'deriv:text',
@@ -78,7 +78,7 @@ def test_run_app_via_xnat_cs(xnat_repository, xnat_archive_dir, work_dir):
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
         'arcana2.tasks.tests.fixtures.concatenate',
-        dataset.name,
+        dataset.id,
         '--input', 'in_file1', 'text', 'scan1:text',
         '--input', 'in_file2', 'text', 'scan2:text',
         '--output', 'out_file', 'text', 'deriv:text',
@@ -86,7 +86,7 @@ def test_run_app_via_xnat_cs(xnat_repository, xnat_archive_dir, work_dir):
         '--work', str(work_dir),
         '--repository', 'xnat_via_cs', 'session', session_label,
         xnat_repository.server, xnat_repository.user, xnat_repository.password, 
-        str(xnat_archive_dir / dataset.name / 'arc001' / session_label),
+        str(xnat_archive_dir / dataset.id / 'arc001' / session_label),
         str(output_dir),
         '--ids', session_label, '--pydra_plugin', 'serial'])
     RunCmd().run(args)

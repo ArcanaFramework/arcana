@@ -64,7 +64,7 @@ class DataNode():
                 raise ArcanaNameError(
                     column_name,
                     f"{column_name} is not the name of a column in "
-                    f"{self.dataset.name} dataset ('" + "', '".join(
+                    f"{self.dataset.id} dataset ('" + "', '".join(
                         self.dataset.column_specs) + "')")
             if spec.frequency != self.frequency:
                 return ArcanaWrongFrequencyError(
