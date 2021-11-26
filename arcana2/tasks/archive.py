@@ -100,7 +100,7 @@ def create_zip(in_file, out_file, compression=None, allowZip64=True,
             allowZip64=allowZip64, compresslevel=compresslevel,
             strict_timestamps=strict_timestamps) as zfile, set_cwd(base_dir):
         for path in in_file:
-            for dpath, dirs, files in os.walk(path):
+            for dpath, _, files in os.walk(path):
                 zfile.write(relative_path(dpath, base_dir))
                 for fname in files:
                     fpath = os.path.join(dpath, fname)

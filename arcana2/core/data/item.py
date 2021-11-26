@@ -56,11 +56,11 @@ class DataItem(metaclass=ABCMeta):
     data_node = attr.ib(default=None)    
 
     @abstractmethod
-    def get(self):
+    def get(self, assume_exists=False):
         raise NotImplementedError
 
     @abstractmethod
-    def put(self):
+    def put(self, value):
         raise NotImplementedError
 
     @property

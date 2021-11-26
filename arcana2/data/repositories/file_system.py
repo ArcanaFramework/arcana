@@ -2,6 +2,7 @@ import os
 import os.path as op
 from pathlib import Path
 import re
+from copy import copy
 import errno
 from collections import defaultdict
 import shutil
@@ -108,14 +109,20 @@ class FileSystem(DataRepository):
             shutil.copyfile(fs_path, target_path)
             sc_target_paths = file_group.datatype.default_side_cars(target_path)
             # Copy side car files into repository
+            if side_cars is not None:
+                side_cars = copy(side_cars)
             for sc_name in file_group.datatype.side_cars:
                 try:
-                    sc_path = side_cars[sc_name]
+                    sc_path = side_cars.pop(sc_name)
                 except KeyError:
                     raise ArcanaFileFormatError(
                         f"Missing side car '{sc_name}' when attempting to "
                         f"put file_group")
                 shutil.copyfile(str(sc_path), str(sc_target_paths[sc_name]))
+            if side_cars:
+                raise ArcanaFileFormatError(
+                    f"Unrecognised side cars ({side_cars}) when attempting to "
+                    f"write {file_group.datatype.name} files")
         elif fs_path.is_dir():
             if target_path.exists():
                 shutil.rmtree(target_path)

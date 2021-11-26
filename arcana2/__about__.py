@@ -23,6 +23,7 @@ install_requires = [
 
 tests_require = [
     'pytest-env>=0.6.2',
-    'pytest-cov>=2.12.1']
+    'pytest-cov>=2.12.1',
+    'nibabel>=3.2.1']
 
 python_versions = ['3.6', '3.7', '3.8', '3.9']

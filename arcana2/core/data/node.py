@@ -74,7 +74,11 @@ class DataNode():
                     " frequency")
             item = self._items[column_name] = spec.match(self)
             return item
-            
+
+    def __setitem__(self, column_name, value):
+        item = self[column_name]
+        item.put(value)
+        return item
 
     def __repr__(self):
         return f"{type(self).__name__}(id={self.id}, frequency={self.frequency})"
