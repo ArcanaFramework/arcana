@@ -241,6 +241,11 @@ class FileSystem(DataRepository):
     def root_dir(self, data_node):
         return Path(data_node.dataset.id)
 
+    @classmethod
+    def absolute_node_path(cls, data_node):
+        repo = cls()
+        return repo.root_dir(data_node) / repo.node_path(data_node)
+
     def file_group_path(self, file_group):
         fs_path = self.root_dir(file_group.data_node) / self.node_path(
             file_group.data_node).joinpath(*file_group.path.split('/'))

@@ -82,7 +82,7 @@ class BidsDataset(Dataset):
         path = Path(path)
         path.mkdir()
         if session_ids is not None:
-            hierarchy = [Clinical.subject, Clinical.session]
+            hierarchy = [Clinical.subject, Clinical.timepoint]
         else:
             hierarchy = [Clinical.session]
         dataset = BidsDataset(
@@ -97,9 +97,11 @@ class BidsDataset(Dataset):
                 for session_id in session_ids:
                     if not session_id.startswith('sub-'):
                         session_id = f'ses-{session_id}'
-                    dataset.add_leaf_node([subject_id, session_id])
+                    node = dataset.add_leaf_node([subject_id, session_id])
+                    BidsFormat.absolute_node_path(node).mkdir(parents=True)
             else:
-                dataset.add_leaf_node([subject_id])
+                node = dataset.add_leaf_node([subject_id])
+                BidsFormat.absolute_node_path(node).mkdir(parents=True)
         dataset.save_metadata()
         return dataset
 
@@ -140,8 +142,8 @@ class BidsDataset(Dataset):
         description_json_path = (self.root_dir / 'dataset_description.json')
         if not description_json_path.exists():
             raise ArcanaEmptyDatasetError(
-                f"Could not find a directory at '{self.name}' to be the "
-                "containing 'dataset_description.json' root node of the dataset")
+                f"Could not find a directory at '{self.id}' containing a "
+                "'dataset_description.json' file")
         with open(description_json_path, 'w') as f:
             dct = json.load(f)               
         self.bids_name = dct['Name']

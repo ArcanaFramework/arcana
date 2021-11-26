@@ -490,7 +490,7 @@ class Dataset():
                     if len(id) == 1:
                         id = id[0]
                     ids[freq] = id
-        self.add_node(ids, frequency)
+        return self.add_node(ids, frequency)
 
     def add_node(self, ids, frequency):
         """Adds a node to the dataset, creating all parent "aggregate" nodes
@@ -541,7 +541,10 @@ class Dataset():
                     raise ArcanaDataTreeConstructionError(
                         f"ID clash ({diff_id}) between nodes inserted into "
                         f"data tree in {diff_freq} children of {parent_node} "
-                        f"({children_dict[diff_id]} and {node})")
+                        f"({children_dict[diff_id]} and {node}). You may "
+                        f"need to set the `id_inference` attr of the dataset "
+                        "to disambiguate ID components (e.g. how to extract "
+                        "the timepoint ID from a session label)")
                 children_dict[diff_id] = node
         return node
 
