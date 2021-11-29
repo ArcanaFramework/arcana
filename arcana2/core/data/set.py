@@ -114,7 +114,8 @@ class Dataset():
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     workflows: dict[str, Workflow] = attr.ib(factory=dict, repr=False)
     access_args: dict[str, ty.Any] = attr.ib(factory=dict)
-    _root_node: DataNode = attr.ib(default=None, init=False, repr=False)  
+    _root_node: DataNode = attr.ib(default=None, init=False, repr=False,
+                                   eq=False)  
 
     @column_specs.validator
     def column_specs_validator(self, _, column_specs):

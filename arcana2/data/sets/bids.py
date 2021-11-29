@@ -136,7 +136,7 @@ class BidsDataset(Dataset):
     @classmethod
     def load(cls, path):
         if list(Path(path).glob('**/sub-*/ses-*')):
-            hierarchy = [Clinical.subject, Clinical.session]
+            hierarchy = [Clinical.subject, Clinical.timepoint]
         else:
             hierarchy = [Clinical.session]    
         dataset = BidsDataset(path, repository=BidsFormat(),
@@ -227,7 +227,7 @@ class BidsDataset(Dataset):
                 "'dataset_description.json' file")
         with open(description_json_path) as f:
             dct = json.load(f)               
-        self.bids_name = dct['Name']
+        self.name = dct['Name']
         self.bids_version = dct['BIDSVersion']
         self.bids_type = dct.get('DatasetType')
         self.license = dct.get('Licence')
