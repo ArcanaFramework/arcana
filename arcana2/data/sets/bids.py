@@ -403,7 +403,8 @@ class BidsFormat(FileSystem):
         def bidsify_id(id):
             if id == attr.NOTHING:
                 id = 'sub-DEFAULT'
-            elif not id.startswith('sub-'):
+            id = re.sub(r'[^a-zA-Z0-9]', '', id)
+            if not id.startswith('sub-'):
                 id = 'sub-' + id
             return id
         workflow.add(bidsify_id(name='bidsify_id', id=workflow.lzin.id))
@@ -465,9 +466,9 @@ class BidsFormat(FileSystem):
             return [(str(dataset.id), cls.CONTAINER_DATASET_PATH, 'ro'),
                     (str(derivatives_path), cls.CONTAINER_DERIV_PATH, 'rw')]
 
-        workflow.add(bindings(dataset=workflow.to_bids.lzout.dataset,
-                              app_name=name,
-                              id=workflow.bidsify_id.lzout.out))        
+        workflow.add(bindings(
+            dataset=workflow.to_bids.lzout.dataset,
+            derivatives_path=workflow.derivatives_path.lzout.out))        
 
         app_kwargs = copy(parameters)
         if frequency == Clinical.session:
