@@ -13,6 +13,7 @@ from pydra.engine.task import (
     FunctionTask, DockerTask, SingularityTask, ShellCommandTask)
 from pydra.engine.specs import (
     BaseSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
+from pydra.engine.specs import Directory
 from arcana2.core.data.set import Dataset
 from arcana2.data.types.general import directory
 from arcana2.data.spaces.clinical import Clinical
@@ -284,18 +285,17 @@ class BidsFormat(FileSystem):
             return
 
         for subject_id, participant in dataset.participants.items():
-            base_ids = {Clinical.group: participant.get('group'),
-                        Clinical.subject: subject_id}
+            try:
+                explicit_ids = {Clinical.group: participant['group']}
+            except KeyError:
+                explicit_ids = {}
             if dataset.is_multi_session():
                 for sess_id in (dataset.root_dir / subject_id).iterdir():
-                    ids = copy(base_ids)
-                    ids[Clinical.timepoint] = sess_id
-                    ids[Clinical.session] = subject_id + '_' + sess_id
-                    dataset.add_node(ids, Clinical.session)
+                    dataset.add_leaf_node([subject_id, sess_id],
+                                          explicit_ids=explicit_ids)
             else:
-                ids = copy(base_ids)
-                ids[Clinical.session] = subject_id
-                dataset.add_node(ids, Clinical.session)
+                dataset.add_leaf_node([subject_id],
+                                      explicit_ids=explicit_ids)
 
     def find_items(self, data_node):
         rel_session_path = self.node_path(data_node)
@@ -328,9 +328,10 @@ class BidsFormat(FileSystem):
         fs_path /= self.node_path(dn)
         for part in parts[:-1]:
             fs_path /= part
-        fname = '_'.join(dn.ids[h]
-                         for h in dn.dataset.hierarchy) + '_' + parts[-1]
-        fs_path /= fname
+        if parts:  # Often the whole folder is the output for a BIDS app
+            fname = '_'.join(dn.ids[h]
+                            for h in dn.dataset.hierarchy) + '_' + parts[-1]
+            fs_path /= fname
         if file_group.datatype.extension:
             fs_path = fs_path.with_suffix(file_group.datatype.extension)
         return fs_path
@@ -394,22 +395,38 @@ class BidsFormat(FileSystem):
         output_names = [cls.escape_name(o) for o in outputs]
         workflow = Workflow(
             name=name,
-            input_spec=input_names)
+            input_spec=input_names + ['dataset', 'id'])
 
-        def to_bids(frequency, inputs, app_name, **input_values):
-            dataset = BidsDataset.create(
-                path=Path(tempfile.mkdtemp()) / 'bids',
-                name=app_name + '_dataset',
-                subject_ids=[cls.DUMMY_SUBJECT_ID])
+        # Check id startswith 'sub-' as per BIDS
+
+        @mark.task
+        def bidsify_id(id):
+            if id == attr.NOTHING:
+                id = 'sub-DEFAULT'
+            elif not id.startswith('sub-'):
+                id = 'sub-' + id
+            return id
+        workflow.add(bidsify_id(name='bidsify_id', id=workflow.lzin.id))
+
+        def to_bids(frequency, inputs, app_name, dataset, id, **input_values):
+            """Takes generic inptus and stores them within a BIDS dataset
+            """
+            if dataset == attr.NOTHING:
+                dataset = Path('.') / 'bids_dataset'
+            if not isinstance(dataset, Dataset):
+                dataset = BidsDataset.create(
+                    path=dataset,
+                    name=app_name + '_dataset',
+                    subject_ids=[id])
             for inpt_path, inpt_type in inputs.items():
                 dataset.add_sink(cls.escape_name(inpt_path), inpt_type,
                                  path=inpt_path)
-            data_node = dataset.node(frequency, cls.DUMMY_SUBJECT_ID)
+            data_node = dataset.node(frequency, id)
             with dataset.repository:
                 for inpt_name, inpt_value in input_values.items():
                     node_item = data_node[inpt_name]
                     node_item.put(inpt_value) # Store value/path in repository
-            return (dataset, dataset.id)
+            return dataset
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
@@ -420,37 +437,50 @@ class BidsFormat(FileSystem):
                     name='ToBidsInputs', bases=(BaseSpec,), fields=(
                         [('frequency', Clinical),
                         ('inputs', dict[str, type]),
-                        ('app_name', str)]
+                        ('app_name', str),
+                        ('dataset', Dataset or str),
+                        ('id', str)]
                         + [(i, str) for i in input_names])),
                 output_spec=SpecInfo(
                     name='ToBidsOutputs', bases=(BaseSpec,), fields=[
-                        ('dataset', BidsDataset),
-                        ('dataset_path', Path)]),
+                        ('dataset', BidsDataset)]),
                 name='to_bids',
                 frequency=frequency,
                 inputs=inputs,
                 app_name=name,
+                dataset=workflow.lzin.dataset,
+                id=workflow.bidsify_id.lzout.out,
                 **{i: getattr(workflow.lzin, i) for i in input_names}))
+
+        @mark.task
+        def derivatives_path(dataset: Dataset, app_name: str, id: str) -> str:
+            return dataset.id / 'derivatives' / app_name / id
+        workflow.add(derivatives_path(
+            dataset=workflow.to_bids.lzout.dataset,
+            app_name=name,
+            id=workflow.bidsify_id.lzout.out))
+
+        @mark.task
+        def bindings(dataset: Dataset, derivatives_path: str) -> list[tuple[str, str, str]]:
+            return [(str(dataset.id), cls.CONTAINER_DATASET_PATH, 'ro'),
+                    (str(derivatives_path), cls.CONTAINER_DERIV_PATH, 'rw')]
+
+        workflow.add(bindings(dataset=workflow.to_bids.lzout.dataset,
+                              app_name=name,
+                              id=workflow.bidsify_id.lzout.out))        
 
         app_kwargs = copy(parameters)
         if frequency == Clinical.session:
             app_kwargs['analysis_level'] = 'participant'
-            app_kwargs['participant_label'] = cls.DUMMY_SUBJECT_ID
+            app_kwargs['participant_label'] = workflow.lzin.id
         else:
             app_kwargs['analysis_level'] = 'group'
-
-        @mark.task
-        def bindings(dataset_path: Path, app_name: str) -> list[tuple[str, str, str]]:
-            deriv_path = dataset_path / 'derivatives' / app_name / cls.DUMMY_SUBJECT_ID
-            return [(dataset_path, cls.INTERNAL_DATASET_PATH, 'ro'),
-                    (deriv_path, cls.INTERNAL_DERIV_PATH, 'rw')]
-
-        workflow.add(bindings(dataset_path=workflow.to_bids.lzout.dataset_path,
-                              app_name=name))
             
         workflow.add(cls.bids_app_task(
             name='bids_app',
             image_tag=image_tag,
+            dataset_path=cls.CONTAINER_DATASET_PATH,
+            output_path=cls.CONTAINER_DERIV_PATH,
             parameters={p: type(p) for p in parameters},
             container_type=container_type,
             bindings=workflow.bindings.lzout.out,
@@ -458,15 +488,24 @@ class BidsFormat(FileSystem):
 
         @mark.task
         @mark.annotate(
-            {'frequency': Clinical,
+            {'dataset': Dataset,
+             'frequency': Clinical,
              'outputs': dict[str, type],
+             'deriv_dir': str,
              'return': {o: str for o in output_names}})
-        def extract_bids(dataset, frequency, outputs):
+        def extract_bids(dataset, frequency, outputs, id, deriv_dir):
             """Selects the items from the dataset corresponding to the input 
             sources and retrieves them from the repository to a cache on 
-            the host"""
+            the host
+            """
+            # NB: `deriv_dir` isn't actually required as we know where the output
+            # will be written to (i.e. the <bids-dataset>/derivatives directory),
+            # and for apps run inside containers it is actually the internal path
+            # inside the container. However, it needs to be included here to
+            # ensure that extract bids is placed after the bids app in the
+            # execution graph
             output_paths = []
-            data_node = dataset.node(frequency, cls.DUMMY_SUBJECT_ID)
+            data_node = dataset.node(frequency, id)
             for output_path, output_type in outputs.items():
                 dataset.add_sink(cls.escape_name(output_path), output_type,
                                  path='derivatives/' + output_path)
@@ -475,13 +514,15 @@ class BidsFormat(FileSystem):
                     item = data_node[cls.escape_name(output_name)]
                     item.get()  # download to host if required
                     output_paths.append(item.value)
-            return tuple(output_paths) if len(outputs) > 1 else outputs[0]
+            return tuple(output_paths) if len(outputs) > 1 else output_paths[0]
         
         workflow.add(extract_bids(
             name='extract_bids',
-            dataset=workflow.bids_app.lzout.dataset_path,
+            dataset=workflow.to_bids.lzout.dataset,
             frequency=frequency,
-            outputs=outputs))
+            outputs=outputs,
+            id=workflow.bidsify_id.lzout.out,
+            deriv_dir=workflow.bids_app.lzout.output_path))
 
         for output_name in output_names:
             workflow.set_output(
@@ -492,6 +533,8 @@ class BidsFormat(FileSystem):
     @classmethod
     def bids_app_task(cls, name,
                       image_tag: str,
+                      dataset_path: str,
+                      output_path: str,
                       bindings: list[tuple[str, str, str]],
                       parameters: dict[str, type]=None,
                       analysis_level: str='participant',
@@ -512,34 +555,24 @@ class BidsFormat(FileSystem):
             executable = image_attrs['Cmd']
 
         input_fields = [
-            ("dataset_path", Path,
-                {"help_string": "Path to BIDS dataset",
-                 "position": 1,
-                 "mandatory": True,
-                 "argstr": ""}),
-            ("out_dir", Path,
-                {"help_string": "Path where outputs will be written",
-                  "position": 2,
-                  "mandatory": True,
-                  "argstr": ""}),
+            ("dataset_path", str,
+             {"help_string": "Path to BIDS dataset in the container",
+              "position": 1,
+              "mandatory": True,
+              "argstr": ""}),
+            ("output_path", str,
+             {"help_string": "Directory where outputs will be written in the container",
+              "position": 2,
+              "output_file_template": "{dataset_path}_derivatives",
+              "argstr": ""}),
             ("analysis_level", str,
-                {"help_string": "The analysis level the app will be run at",
-                 "position": 3,
-                 "argstr": ""}),
+             {"help_string": "The analysis level the app will be run at",
+              "position": 3,
+              "argstr": ""}),
             ("participant_label", list[str],
-                {"help_string": "The IDs to include in the analysis",
-                 "argstr": "--participant_label ",
-                 "position": 4})]
-
-        output_fields = [
-            ('dataset_path', Path,
-             {'help_string': "Path to BIDS dataset",
-              "output_file_template": "{dataset_path}",
-              "requires": ['dataset_path']}),
-            ('out_dir', Path,
-             {'help_string': "Path where outputs were written",
-              "output_file_template": "{out_dir}",
-              "requires": ['out_dir']})]
+             {"help_string": "The IDs to include in the analysis",
+              "argstr": "--participant_label ",
+              "position": 4})]
 
         for param, dtype in parameters.items():
             argstr = f'--{param}'
@@ -567,10 +600,8 @@ class BidsFormat(FileSystem):
             bindings=bindings,
             input_spec=SpecInfo(name="Input", fields=input_fields,
                                 bases=(base_spec_cls,)),
-            output_spec=SpecInfo(name="Output", fields=output_fields,
-                                 bases=(ShellOutSpec,)),
-            out_dir=cls.INTERNAL_DERIV_PATH,
-            dataset_path=cls.INTERNAL_DATASET_PATH,  # dataset_path,
+            dataset_path=dataset_path,
+            output_path=output_path,
             analysis_level=analysis_level,
             **kwargs)
 
@@ -599,6 +630,5 @@ class BidsFormat(FileSystem):
     PATH_SEP = '__l__'
 
     # For running 
-    INTERNAL_DERIV_PATH = '/outputs'
-    INTERNAL_DATASET_PATH = '/bids_dataset'
-    DUMMY_SUBJECT_ID = 'sub-01'
+    CONTAINER_DERIV_PATH = '/arcana_bids_outputs'
+    CONTAINER_DATASET_PATH = '/arcana_bids_dataset'

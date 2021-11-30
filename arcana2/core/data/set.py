@@ -405,7 +405,7 @@ class Dataset():
             names = self.column_specs
         return (list(self.column(n)) for n in names)
 
-    def add_leaf_node(self, tree_path):
+    def add_leaf_node(self, tree_path, explicit_ids=None):
         """Creates a new node at a the path down the tree of the dataset as
         well as all "parent" nodes upstream in the data tree
 
@@ -414,6 +414,9 @@ class Dataset():
         tree_path : Sequence[str]
             The sequence of labels for each layer in the hierarchy of the
             dataset leading to the current node.
+        explicit_ids : dict[DataSpace, str]
+            IDs for frequencies not in the dataset hierarchy that are to be
+            set explicitly
 
         Raises
         ------
@@ -424,6 +427,8 @@ class Dataset():
             raised if one of the groups specified in the ID inference reg-ex
             doesn't match a valid frequency in the data dimensions
         """
+        if explicit_ids is None:
+            explicit_ids = {}
         # Get basis frequencies covered at the given depth of the
         if len(tree_path) != len(self.hierarchy):
             raise ArcanaDataTreeConstructionError(
@@ -482,6 +487,9 @@ class Dataset():
                     ids[target_freq] = target_id
             frequency |= layer
         assert(frequency == max(self.space))
+        # Set or override any inferred IDs within the ones that have been
+        # explicitly provided
+        ids.update(explicit_ids)
         # Create composite IDs for non-basis frequencies if they are not
         # explicitly in the layer dimensions
         for freq in (set(self.space) - set(frequency.nonzero_basis())):
