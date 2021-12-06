@@ -18,7 +18,8 @@ class DataRepository(metaclass=ABCMeta):
 
     """
 
-    _connection_depth = attr.ib(default=0, init=False, hash=False)
+    _connection_depth = attr.ib(default=0, init=False, hash=False, repr=False,
+                                eq=False)
 
     def __enter__(self):
         # This allows the repository to be used within nested contexts

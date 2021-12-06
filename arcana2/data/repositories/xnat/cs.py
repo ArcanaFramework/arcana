@@ -186,9 +186,11 @@ class XnatViaCS(Xnat):
                             json_config,
                             maintainer,
                             build_dir,
+                            base_image=None,
                             requirements=None,
                             packages=None,
-                            extra_labels=None):
+                            extra_labels=None,
+                            package_manager=None):
         """Constructs a dockerfile that wraps a with dependencies
 
         Parameters
@@ -204,6 +206,8 @@ class XnatViaCS(Xnat):
         build_dir : Path
             Path to the directory to create the Dockerfile in and copy any local
             files to
+        base_image : str
+            The base image to build from
         requirements : list[tuple[str, str]]
             Name and version of the Neurodocker requirements to add to the image
         packages : list[tuple[str, str]]
@@ -228,6 +232,10 @@ class XnatViaCS(Xnat):
             requirements = []
         if packages is None:
             packages = []
+        if base_image is None:
+            base_image = "debian:bullseye"
+        if package_manager is None:
+            package_manager = 'apt'
 
         if maintainer:
             labels["maintainer"] = maintainer
@@ -239,7 +247,7 @@ class XnatViaCS(Xnat):
             labels.update(extra_labels)
 
         instructions = [
-            ["base", "debian:bullseye"],
+            ["base", base_image],
             ["install", ["git", "vim", "ssh-client", "python3", "python3-pip"]]]
 
         for req in requirements:
@@ -253,12 +261,17 @@ class XnatViaCS(Xnat):
 
         site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]
 
+        potential_local_packages = (
+            ['arcana2']
+            + [re.split(r'[>=]+', p)[0] for p in install_requires
+               if p.startswith('pydra')])
+
+        potential_local_packages.append(task_location.split('.')[0])
+
         # Copies the local working copy of arcana and pydra (+sub-packages)
         # into the dockerfile if present instead of relying on the PyPI version,
         # which might be missing bugfixes
-        for pkg_name in ['arcana2'] + [re.split(r'[>=]+', p)[0]
-                                       for p in install_requires
-                                       if p.startswith('pydra')]:
+        for pkg_name in potential_local_packages:
             
             pkg = next(p for p in pkg_resources.working_set
                        if p.key == pkg_name)
@@ -321,7 +334,7 @@ class XnatViaCS(Xnat):
             instructions.append(['copy', ['./command.json', '/command.json']])
 
         neurodocker_specs = {
-            "pkg_manager": "apt",
+            "pkg_manager": package_manager,
             "instructions": instructions}
 
 

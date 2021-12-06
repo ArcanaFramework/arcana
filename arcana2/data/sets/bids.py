@@ -12,7 +12,7 @@ from pydra import Workflow, mark
 from pydra.engine.task import (
     FunctionTask, DockerTask, SingularityTask, ShellCommandTask)
 from pydra.engine.specs import (
-    BaseSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
+    BaseSpec, LazyField, ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
 from pydra.engine.specs import Directory
 from arcana2.core.data.set import Dataset
 from arcana2.data.types.general import directory
@@ -355,12 +355,12 @@ class BidsFormat(FileSystem):
     @classmethod
     def wrap_app(cls,
                  name,
-                 image_tag,
+                 executable_or_image,
                  inputs: dict[str, type],
                  outputs: dict[str, type]=None,
                  frequency: Clinical=Clinical.session,
-                 parameters: dict[str, str]=None,
-                 container_type: str='docker') -> Workflow:
+                 parameters: dict[str, type]=None,
+                 container_type: str=None) -> Workflow:
         """Creates a Pydra workflow which takes inputs and maps them to
         a BIDS dataset, executes a BIDS app and extracts outputs from
         the derivatives stored back in the BIDS dataset
@@ -395,7 +395,7 @@ class BidsFormat(FileSystem):
         output_names = [cls.escape_name(o) for o in outputs]
         workflow = Workflow(
             name=name,
-            input_spec=input_names + ['dataset', 'id'])
+            input_spec=input_names + list(parameters) + ['dataset', 'id'])
 
         # Check id startswith 'sub-' as per BIDS
 
@@ -454,57 +454,42 @@ class BidsFormat(FileSystem):
                 **{i: getattr(workflow.lzin, i) for i in input_names}))
 
         @mark.task
-        def derivatives_path(dataset: Dataset, app_name: str, id: str) -> str:
-            return dataset.id / 'derivatives' / app_name / id
-        workflow.add(derivatives_path(
+        @mark.annotate(
+            {'return':
+                {'base': str,
+                 'derivs': str}})
+        def dataset_paths(dataset: Dataset, app_name: str, id: str):
+            return (str(dataset.id),
+                    str(dataset.id / 'derivatives' / app_name / id))
+
+        workflow.add(dataset_paths(
             dataset=workflow.to_bids.lzout.dataset,
             app_name=name,
             id=workflow.bidsify_id.lzout.out))
-
-        @mark.task
-        def bindings(dataset: Dataset, derivatives_path: str) -> list[tuple[str, str, str]]:
-            return [(str(dataset.id), cls.CONTAINER_DATASET_PATH, 'ro'),
-                    (str(derivatives_path), cls.CONTAINER_DERIV_PATH, 'rw')]
-
-        workflow.add(bindings(
-            dataset=workflow.to_bids.lzout.dataset,
-            derivatives_path=workflow.derivatives_path.lzout.out))        
-
-        app_kwargs = copy(parameters)
-        if frequency == Clinical.session:
-            app_kwargs['analysis_level'] = 'participant'
-            app_kwargs['participant_label'] = workflow.lzin.id
-        else:
-            app_kwargs['analysis_level'] = 'group'
             
         workflow.add(cls.bids_app_task(
             name='bids_app',
-            image_tag=image_tag,
-            dataset_path=cls.CONTAINER_DATASET_PATH,
-            output_path=cls.CONTAINER_DERIV_PATH,
+            executable_or_image=executable_or_image,
+            dataset_path=workflow.dataset_paths.lzout.base,
+            output_path=workflow.dataset_paths.lzout.derivs,
             parameters={p: type(p) for p in parameters},
-            container_type=container_type,
-            bindings=workflow.bindings.lzout.out,
-            **app_kwargs))
+            workflow=workflow,
+            frequency=frequency,
+            container_type=container_type))
 
         @mark.task
         @mark.annotate(
             {'dataset': Dataset,
              'frequency': Clinical,
              'outputs': dict[str, type],
-             'deriv_dir': str,
+             'app_completed': bool,  # NB: app_completed is included here
              'return': {o: str for o in output_names}})
-        def extract_bids(dataset, frequency, outputs, id, deriv_dir):
+        def extract_bids(dataset, frequency, outputs, id, app_completed):
             """Selects the items from the dataset corresponding to the input 
             sources and retrieves them from the repository to a cache on 
             the host
             """
-            # NB: `deriv_dir` isn't actually required as we know where the output
-            # will be written to (i.e. the <bids-dataset>/derivatives directory),
-            # and for apps run inside containers it is actually the internal path
-            # inside the container. However, it needs to be included here to
-            # ensure that extract bids is placed after the bids app in the
-            # execution graph
+            
             output_paths = []
             data_node = dataset.node(frequency, id)
             for output_path, output_type in outputs.items():
@@ -523,7 +508,7 @@ class BidsFormat(FileSystem):
             frequency=frequency,
             outputs=outputs,
             id=workflow.bidsify_id.lzout.out,
-            deriv_dir=workflow.bids_app.lzout.output_path))
+            app_completed=workflow.bids_app.lzout.completed))
 
         for output_name in output_names:
             workflow.set_output(
@@ -532,28 +517,18 @@ class BidsFormat(FileSystem):
         return workflow
 
     @classmethod
-    def bids_app_task(cls, name,
-                      image_tag: str,
-                      dataset_path: str,
-                      output_path: str,
-                      bindings: list[tuple[str, str, str]],
+    def bids_app_task(cls,
+                      name: str,
+                      executable_or_image: str,
+                      dataset_path: LazyField,
+                      output_path: LazyField,
+                      workflow: Workflow,
+                      frequency: Clinical,
                       parameters: dict[str, type]=None,
-                      analysis_level: str='participant',
-                      container_type: str='docker',
-                      **kwargs) -> ShellCommandTask:
+                      container_type: str='docker') -> ShellCommandTask:
 
         if parameters is None:
             parameters = {}
-
-        dc = docker.from_env()
-
-        dc.images.pull(image_tag)
-
-        image_attrs = dc.api.inspect_image(image_tag)['Config']
-
-        executable = image_attrs['Entrypoint']
-        if executable is None:
-            executable = image_attrs['Cmd']
 
         input_fields = [
             ("dataset_path", str,
@@ -564,7 +539,7 @@ class BidsFormat(FileSystem):
             ("output_path", str,
              {"help_string": "Directory where outputs will be written in the container",
               "position": 2,
-              "output_file_template": "{dataset_path}_derivatives",
+            #   "output_file_template": f"{name}_derivatives",
               "argstr": ""}),
             ("analysis_level", str,
              {"help_string": "The analysis level the app will be run at",
@@ -575,6 +550,11 @@ class BidsFormat(FileSystem):
               "argstr": "--participant_label ",
               "position": 4})]
 
+        output_fields=[
+            ("completed", bool,
+             {"help_string": "a simple flag to indicate app has completed",
+              "callable": lambda: True})]
+
         for param, dtype in parameters.items():
             argstr = f'--{param}'
             if dtype is not bool:
@@ -584,23 +564,56 @@ class BidsFormat(FileSystem):
                     "help_string": f"Optional parameter {param}",
                     "argstr": argstr}))
 
-        if container_type == 'docker':
-            task_cls = DockerTask
-            base_spec_cls = DockerSpec
-        elif container_type == 'singularity':
-            task_cls = SingularityTask
-            base_spec_cls = SingularitySpec
+        kwargs = {p: getattr(workflow.lzin, p) for p in parameters}
+
+        if container_type is None:
+            task_cls = ShellCommandTask
+            base_spec_cls = ShellSpec
+            kwargs['executable'] = executable_or_image
         else:
-            raise ArcanaUsageError(
-                f"Unrecognised container type {container_type} "
-                "(can be docker or singularity)")
+            
+            @mark.task
+            def make_bindings(dataset: Dataset, output_path: str) -> list[tuple[str, str, str]]:
+                """Make bindings for directories to be mounted inside the container
+                   for both the input dataset and the output derivatives"""
+                return [(str(dataset.id), cls.CONTAINER_DATASET_PATH, 'ro'),
+                        (str(output_path), cls.CONTAINER_DERIV_PATH, 'rw')]
+
+            workflow.add(make_bindings(
+                dataset=dataset_path,
+                derivatives_path=output_path))
+
+            kwargs['bindings'] = workflow.make_bindings.lzout.out
+
+            # Set input and output directories to "internal" paths within the
+            # container
+            dataset_path = cls.CONTAINER_DATASET_PATH
+            output_path = cls.CONTAINER_DERIV_PATH
+            kwargs['image'] = executable_or_image
+
+            if container_type == 'docker':
+                task_cls = DockerTask
+                base_spec_cls = DockerSpec
+            elif container_type == 'singularity':
+                task_cls = SingularityTask
+                base_spec_cls = SingularitySpec
+            else:
+                raise ArcanaUsageError(
+                    f"Unrecognised container type {container_type} "
+                    "(can be docker or singularity)")
+
+        if frequency == Clinical.session:
+            analysis_level = 'participant'
+            kwargs['participant_label'] = workflow.lzin.id
+        else:
+            analysis_level = 'group'
 
         return task_cls(
             name=name,
-            image=image_tag,
-            bindings=bindings,
             input_spec=SpecInfo(name="Input", fields=input_fields,
                                 bases=(base_spec_cls,)),
+            output_spec=SpecInfo(name="Output", fields=output_fields,
+                                 bases=(ShellOutSpec,)),
             dataset_path=dataset_path,
             output_path=output_path,
             analysis_level=analysis_level,
