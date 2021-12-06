@@ -22,6 +22,41 @@ DOCKER_HUB = 'https://index.docker.io/v1/'
 ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana2.git"
 
 
+def path2name(path):
+    """Escape the name of an item by replacing '/' with a valid substring
+
+    Parameters
+    ----------
+    path : str
+        A path containing '/' characters that need to be escaped
+
+    Returns
+    -------
+    str
+        A python safe name
+    """
+    return PATH_SEP.join(str(path).split('/'))
+
+
+def name2path(name):
+    """Unescape a name created by path2name
+
+    Parameters
+    ----------
+    name : str
+        An escaped path
+
+    Returns
+    -------
+    str
+        The derived name
+    """
+    return '/'.join(name.split(PATH_SEP))
+
+
+PATH_SEP = '__l__'
+
+
 package_dir = os.path.join(os.path.dirname(__file__), '..')
 
 try:

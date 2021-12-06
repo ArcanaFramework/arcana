@@ -22,7 +22,7 @@ from arcana2.__about__ import install_requires
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.data.type import FileFormat
 from arcana2.core.data.space import DataSpace
-from arcana2.core.utils import resolve_class, DOCKER_HUB, ARCANA_PIP
+from arcana2.core.utils import resolve_class, DOCKER_HUB, path2name
 from arcana2.exceptions import ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException
 from arcana2.__about__ import PACKAGE_NAME, python_versions
 from .api import Xnat
@@ -146,13 +146,13 @@ class XnatViaCS(Xnat):
         # Update file-group with new values for local paths and XNAT URI
         file_group.set_fs_paths(primary_path, side_car_paths)
         file_group.uri = (self._make_uri(file_group.data_node)
-                          + '/RESOURCES/' + self.escape_name(file_group.path))
+                          + '/RESOURCES/' + path2name(file_group.path))
         logger.info("Put %s into %s:%s node via direct access to archive directory",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)
 
     def get_output_paths(self, file_group):
-        escaped_name = self.escape_name(file_group.path)
+        escaped_name = path2name(file_group.path)
         resource_path = self.output_mount / escaped_name
         side_car_paths = {}
         if file_group.datatype.directory:
@@ -420,7 +420,9 @@ class XnatViaCS(Xnat):
         # Add task inputs to inputs JSON specification
         input_args = []
         for inpt in inputs:
-            spec = input_specs[inpt.name]
+            escaped_name = path2name(input.name)
+            replacement_key = f'[{escaped_name.upper()}_INPUT]'
+            spec = input_specs[escaped_name]
             
             desc = spec.metadata.get('help_string', '')
             if spec.type in (str, Path):
@@ -428,7 +430,7 @@ class XnatViaCS(Xnat):
                 input_type = 'string'
             else:
                 desc = f"Match field ({spec.type}) [PATH:STORED_DTYPE]: {desc} "
-                input_type = cls.COMMAND_INPUT_TYPES[spec.type]
+                input_type = cls.COMMAND_INPUT_TYPES.get(spec.type, 'string')
             inputs_json.append({
                 "name": inpt.name,
                 "description": desc,
@@ -436,9 +438,9 @@ class XnatViaCS(Xnat):
                 "default-value": "",
                 "required": True,
                 "user-settable": True,
-                "replacement-key": "[{}_INPUT]".format(inpt.name.upper())})
+                "replacement-key": replacement_key})
             input_args.append(
-                f'--input {inpt.name} {inpt.datatype} [{inpt.name.upper()}_INPUT]')
+                f'--input {escaped_name} {inpt.datatype} {replacement_key}')
 
         # Add parameters as additional inputs to inputs JSON specification
         param_args = []
@@ -446,24 +448,28 @@ class XnatViaCS(Xnat):
             spec = input_specs[param]
             desc = f"Parameter ({spec.type}): " + spec.metadata.get('help_string', '')
             required = spec._default is NOTHING
+            
+            replacement_key = f'[{param.upper()}_PARAM]'
 
             inputs_json.append({
                 "name": param,
                 "description": desc,
-                "type": cls.COMMAND_INPUT_TYPES[spec.type],
+                "type": cls.COMMAND_INPUT_TYPES.get(spec.type, 'string'),
                 "default-value": (spec._default if not required else ""),
                 "required": required,
                 "user-settable": True,
-                "replacement-key": "[{}_PARAM]".format(param.upper())})
+                "replacement-key": replacement_key})
             param_args.append(
-                f'--parameter {param} [{param.upper()}_PARAM]')
+                f'--parameter {param} {replacement_key}')
 
         # Set up output handlers and arguments
         outputs_json = []
         output_handlers = []
         output_args = []
         for output in outputs:
-            output_fname = cls.escape_name(output.name) + output.datatype.extension
+            output_fname = path2name(output.name)
+            if output.datatype.extension is not None:
+                output_fname += output.datatype.extension
             # Set the path to the 
             outputs_json.append({
                 "name": output.name,

@@ -316,7 +316,7 @@ class RunCmd(BaseDatasetCmd):
 
     @classmethod
     def workflow_name(cls, args):
-        return args.app.replace('.', '_')
+        return re.sub(r'[\.:]', '_', args.app)
 
 
     INPUT_HELP = """

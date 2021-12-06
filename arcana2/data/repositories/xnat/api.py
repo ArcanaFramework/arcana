@@ -21,6 +21,7 @@ from arcana2.exceptions import (
     ArcanaWrongRepositoryError)
 from arcana2.core.utils import dir_modtime, get_class_info, parse_value
 from arcana2.core.data.set import Dataset
+from arcana2.core.utils import path2name, name2path
 from arcana2.data.spaces.clinical import Clinical
 
 
@@ -79,7 +80,6 @@ class Xnat(DataRepository):
     FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
     DEFAULT_HIERARCHY = [Clinical.subject, Clinical.session]
-    PATH_SEP = '_ll_'
 
     @property
     def prov(self):
@@ -156,11 +156,11 @@ class Xnat(DataRepository):
                               for r in xscan.resources.values()})
             for name, value in xnode.fields.items():
                 data_node.add_field(
-                    path=self.unescape_name(name),
+                    path=name2path(name),
                     value=value)
             for xresource in xnode.resources.values():
                 data_node.add_file_group(
-                    path=self.unescape_name(xresource.label),
+                    path=name2path(xresource.label),
                     uris={xresource.format: xresource.uri})               
 
     def get_file_group(self, file_group):
@@ -194,7 +194,7 @@ class Xnat(DataRepository):
             if not file_group.uri:
                 base_uri = self.standard_uri(xnode)
                 # if file_group.derived:
-                xresource = xnode.resources[self.escape_name(file_group.path)]
+                xresource = xnode.resources[path2name(file_group.path)]
                 # else:
                 #     # If file_group is a primary 'scan' (rather than a
                 #     # derivative) we need to get the resource of the scan
@@ -279,7 +279,7 @@ class Xnat(DataRepository):
         with self:
             # Add session for derived scans if not present
             xnode = self.get_xnode(file_group.data_node)
-            escaped_name = self.escape_name(file_group.path)
+            escaped_name = path2name(file_group.path)
             if not file_group.uri:
                 # Set the uri of the file_group
                 file_group.uri = '{}/resources/{}'.format(
@@ -358,7 +358,7 @@ class Xnat(DataRepository):
         self._check_repository(field)
         with self:
             xsession = self.get_xnode(field.data_node)
-            val = xsession.fields[self.escape_name(field)]
+            val = xsession.fields[path2name(field)]
             val = val.replace('&quot;', '"')
             val = parse_value(val)
         return val
@@ -373,7 +373,7 @@ class Xnat(DataRepository):
             value = '"{}"'.format(value)
         with self:
             xsession = self.get_xnode(field.data_node)
-            xsession.fields[self.escape_name(field)] = value
+            xsession.fields[path2name(field)] = value
         if field.provenance:
             self.put_provenance(field)
 
@@ -584,26 +584,6 @@ class Xnat(DataRepository):
         return primary_path, side_cars
 
     @classmethod
-    def escape_name(cls, path):
-        """Escape the name of an item by replacing '/' with a valid substring
-
-        Parameters
-        ----------
-        item : FileGroup | Provenance
-            The item to generate a derived name for
-
-        Returns
-        -------
-        `str`
-            The derived name
-        """
-        return cls.PATH_SEP.join(str(path).split('/'))
-
-    @classmethod
-    def unescape_name(cls, name):
-        return '/'.join(name.split(cls.PATH_SEP))
-
-    @classmethod
     def standard_uri(cls, xnode):
         """Get the URI of the XNAT node (ImageSession | Subject | Project)
         using labels rather than IDs for subject and sessions, e.g
@@ -645,7 +625,7 @@ class Xnat(DataRepository):
                                        self.PROV_RESOURCE)
         cache_dir = self.cache_path(uri)
         os.makedirs(cache_dir, exist_ok=True)
-        fname = self.escape_name(item) + '.json'
+        fname = path2name(item) + '.json'
         if item.is_field:
             fname = self.FIELD_PROV_PREFIX + fname
         cache_path = op.join(cache_dir, fname)

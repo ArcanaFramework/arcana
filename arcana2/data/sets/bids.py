@@ -15,6 +15,7 @@ from pydra.engine.specs import (
     BaseSpec, LazyField, ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
 from pydra.engine.specs import Directory
 from arcana2.core.data.set import Dataset
+from arcana2.core.utils import path2name
 from arcana2.data.types.general import directory
 from arcana2.data.spaces.clinical import Clinical
 from ..repositories import FileSystem
@@ -391,8 +392,8 @@ class BidsFormat(FileSystem):
         if outputs is None:
             outputs = {f'derivatives/{name}': directory}
         # Ensure output paths all start with 'derivatives
-        input_names = [cls.escape_name(i) for i in inputs]
-        output_names = [cls.escape_name(o) for o in outputs]
+        input_names = [path2name(i) for i in inputs]
+        output_names = [path2name(o) for o in outputs]
         workflow = Workflow(
             name=name,
             input_spec=input_names + list(parameters) + ['dataset', 'id'])
@@ -420,7 +421,7 @@ class BidsFormat(FileSystem):
                     name=app_name + '_dataset',
                     subject_ids=[id])
             for inpt_path, inpt_type in inputs.items():
-                dataset.add_sink(cls.escape_name(inpt_path), inpt_type,
+                dataset.add_sink(path2name(inpt_path), inpt_type,
                                  path=inpt_path)
             data_node = dataset.node(frequency, id)
             with dataset.repository:
@@ -493,11 +494,11 @@ class BidsFormat(FileSystem):
             output_paths = []
             data_node = dataset.node(frequency, id)
             for output_path, output_type in outputs.items():
-                dataset.add_sink(cls.escape_name(output_path), output_type,
+                dataset.add_sink(path2name(output_path), output_type,
                                  path='derivatives/' + output_path)
             with dataset.repository:
                 for output_name in outputs:
-                    item = data_node[cls.escape_name(output_name)]
+                    item = data_node[path2name(output_name)]
                     item.get()  # download to host if required
                     output_paths.append(item.value)
             return tuple(output_paths) if len(outputs) > 1 else output_paths[0]
@@ -618,30 +619,6 @@ class BidsFormat(FileSystem):
             output_path=output_path,
             analysis_level=analysis_level,
             **kwargs)
-
-
-    @classmethod
-    def escape_name(cls, path):
-        """Escape the name of an item by replacing '/' with a valid substring
-
-        Parameters
-        ----------
-        item : FileGroup | Provenance
-            The item to generate a derived name for
-
-        Returns
-        -------
-        `str`
-            The derived name
-        """
-        return cls.PATH_SEP.join(str(path).split('/'))
-
-    
-    @classmethod
-    def unescape_name(cls, name):
-        return '/'.join(name.split(cls.PATH_SEP))
-
-    PATH_SEP = '__l__'
 
     # For running 
     CONTAINER_DERIV_PATH = '/arcana_bids_outputs'
