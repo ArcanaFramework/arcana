@@ -362,17 +362,13 @@ class BidsApp:
         metadata={'help_string': 'Name of the BIDS app image to wrap'})
     executable: str = attr.ib(
         metadata={'help_string': 'Name of the executable within the image to run (i.e. the entrypoint of the image). Required when extending the base image and launching Arcana within it'})
-    inputs: dict[str, type] = attr.ib(
+    inputs: list[tuple[str, str, type]] = attr.ib(
         metadata={'help_string': (
-            "The inputs to be stored in a BIDS dataset, mapping a sanitized "
-            "name to be added in the workflow input interface and the location "
-            "within the BIDS app to put it")})
-    outputs: dict[str, type] = attr.ib(
+            "The inputs to be inserted into the BIDS dataset (NAME, BIDS_PATH, DTYPE)")})
+    outputs: list[tuple[str, str, type]] = attr.ib(
         metadata={'help_string': (
-            "The outputs to be extracted from the output directory mounted to the "
-            "BIDS app to be added in the workflow input interface and the location within "
-            "the BIDS app to find it")})
-    parameters: dict[str, type]=attr.ib(
+            "The outputs to be extracted from the derivatives directory (NAME, BIDS_PATH, DTYPE)")})
+    parameters: dict[str, type] = attr.ib(
         metadata={'help_string': 'The parameters of the app to be exposed to the interface'},
         default=None)
 
@@ -407,7 +403,7 @@ class BidsApp:
         if isinstance(frequency, str):
             frequency = Clinical[frequency]
         if name is None:
-            name = self.image.replace(':', '_')
+            name = re.sub(r'[^a-zA-Z0-9]', '_', self.image)
 
         # Create BIDS dataset to hold translated data
         if dataset is None:
@@ -419,8 +415,8 @@ class BidsApp:
                 subject_ids=[self.DEFAULT_ID])
 
         # Ensure output paths all start with 'derivatives
-        input_names = [path2name(i) for i in self.inputs]
-        output_names = [path2name(o) for o in self.outputs]
+        input_names = [i[0] for i in self.inputs]
+        output_names = [o[0] for o in self.outputs]
         workflow = Workflow(
             name=name,
             input_spec=input_names + list(parameters) + ['id'])
@@ -441,9 +437,8 @@ class BidsApp:
         def to_bids(frequency, inputs, dataset, id, **input_values):
             """Takes generic inptus and stores them within a BIDS dataset
             """
-            for inpt_path, inpt_type in inputs.items():
-                dataset.add_sink(path2name(inpt_path), inpt_type,
-                                 path=inpt_path)
+            for inpt_name, inpt_path, inpt_type in inputs:
+                dataset.add_sink(inpt_name, inpt_type, path=inpt_path)
             data_node = dataset.node(frequency, id)
             with dataset.repository:
                 for inpt_name, inpt_value in input_values.items():
@@ -459,7 +454,7 @@ class BidsApp:
                 input_spec=SpecInfo(
                     name='ToBidsInputs', bases=(BaseSpec,), fields=(
                         [('frequency', Clinical),
-                        ('inputs', dict[str, type]),
+                        ('inputs', list[tuple[str, str, type]]),
                         ('dataset', Dataset or str),
                         ('id', str)]
                         + [(i, str) for i in input_names])),
@@ -477,20 +472,19 @@ class BidsApp:
         @mark.annotate(
             {'return':
                 {'base': str,
-                 'derivs': str}})
-        def dataset_paths(dataset: Dataset, app_name: str, id: str):
+                 'output': str}})
+        def dataset_paths(dataset: Dataset, id: str):
             return (str(dataset.id),
-                    str(dataset.id / 'derivatives' / app_name / id))
+                    str(dataset.id / 'derivatives' / 'bids-app' / id))
 
         workflow.add(dataset_paths(
             dataset=workflow.to_bids.lzout.dataset,
-            app_name=name,
             id=workflow.bidsify_id.lzout.out))
             
         workflow.add(self.main_task(
             name='bids_app',
             dataset_path=workflow.dataset_paths.lzout.base,
-            output_path=workflow.dataset_paths.lzout.derivs,
+            output_path=workflow.dataset_paths.lzout.output,
             parameters={p: type(p) for p in parameters},
             workflow=workflow,
             frequency=frequency,
@@ -500,7 +494,7 @@ class BidsApp:
         @mark.annotate(
             {'dataset': Dataset,
              'frequency': Clinical,
-             'outputs': dict[str, type],
+             'outputs': list[tuple[str, str, type]],
              'app_completed': bool,  # NB: app_completed is included here just to make sure that 'extract_bids' runs after the main task
              'return': {o: str for o in output_names}})
         def extract_bids(dataset, frequency, outputs, id, app_completed):
@@ -510,12 +504,12 @@ class BidsApp:
             """
             output_paths = []
             data_node = dataset.node(frequency, id)
-            for output_path, output_type in outputs.items():
-                dataset.add_sink(path2name(output_path), output_type,
-                                 path='derivatives/' + output_path)
+            for output_name, output_path, output_type in outputs:
+                dataset.add_sink(output_name, output_type,
+                                 path='derivatives/bids-app/' + output_path)
             with dataset.repository:
-                for output_name in outputs:
-                    item = data_node[path2name(output_name)]
+                for output in outputs:
+                    item = data_node[output[0]]
                     item.get()  # download to host if required
                     output_paths.append(item.value)
             return tuple(output_paths) if len(outputs) > 1 else output_paths[0]

@@ -350,12 +350,18 @@ class XnatViaCS(Xnat):
         return build_dir
 
     @classmethod
-    def generate_json_config(cls, pipeline_name: str,
+    def generate_json_config(cls,
+                             pipeline_name: str,
                              task_location: str,
                              image_tag: str,
-                             inputs, outputs, description, version,
-                             parameters=None, frequency=Clinical.session,
-                             registry=DOCKER_HUB, info_url=None):
+                             inputs,
+                             outputs,
+                             description,
+                             version,
+                             parameters=None,
+                             frequency=Clinical.session,
+                             registry=DOCKER_HUB,
+                             info_url=None):
         """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
         should handle the containerised pipeline
 
@@ -618,12 +624,14 @@ class XnatViaCS(Xnat):
     @dataclass
     class InputArg():
         name: str
+        path: str
         datatype: FileFormat
-        frequency: DataSpace
+        frequency: Clinical = Clinical.session
 
     @dataclass
     class OutputArg():
         name: str
+        path: str
         datatype: FileFormat
 
     COMMAND_INPUT_TYPES = {
