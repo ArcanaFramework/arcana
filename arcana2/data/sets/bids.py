@@ -20,6 +20,7 @@ from arcana2.data.types.general import directory
 from arcana2.data.spaces.clinical import Clinical
 from ..repositories import FileSystem
 from arcana2.exceptions import ArcanaError, ArcanaUsageError, ArcanaEmptyDatasetError
+from arcana2.core.utils import func_task
 
 
 
@@ -315,6 +316,8 @@ class BidsFormat(FileSystem):
         dn = file_group.data_node
         fs_path = self.root_dir(dn)
         parts = file_group.path.split('/')
+        if parts[-1] == '':
+            parts = parts[:-1]
         if parts[0] == 'derivatives':
             if len(parts) < 2:
                 raise ArcanaUsageError(
@@ -422,60 +425,25 @@ class BidsApp:
             input_spec=input_names + list(parameters) + ['id'])
 
         # Check id startswith 'sub-' as per BIDS
-
-        @mark.task
-        def bidsify_id(id):
-            if id == attr.NOTHING:
-                id = self.DEFAULT_ID
-            else:
-                id = re.sub(r'[^a-zA-Z0-9]', '', id)
-                if not id.startswith('sub-'):
-                    id = 'sub-' + id
-            return id
         workflow.add(bidsify_id(name='bidsify_id', id=workflow.lzin.id))
-
-        def to_bids(frequency, inputs, dataset, id, **input_values):
-            """Takes generic inptus and stores them within a BIDS dataset
-            """
-            for inpt_name, inpt_path, inpt_type in inputs:
-                dataset.add_sink(inpt_name, inpt_type, path=inpt_path)
-            data_node = dataset.node(frequency, id)
-            with dataset.repository:
-                for inpt_name, inpt_value in input_values.items():
-                    node_item = data_node[inpt_name]
-                    node_item.put(inpt_value) # Store value/path in repository
-            return dataset
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
-        workflow.add(
-            FunctionTask(
-                to_bids,
-                input_spec=SpecInfo(
-                    name='ToBidsInputs', bases=(BaseSpec,), fields=(
-                        [('frequency', Clinical),
-                        ('inputs', list[tuple[str, str, type]]),
-                        ('dataset', Dataset or str),
-                        ('id', str)]
-                        + [(i, str) for i in input_names])),
-                output_spec=SpecInfo(
-                    name='ToBidsOutputs', bases=(BaseSpec,), fields=[
-                        ('dataset', BidsDataset)]),
-                name='to_bids',
-                frequency=frequency,
-                inputs=self.inputs,
-                dataset=dataset,
-                id=workflow.bidsify_id.lzout.out,
-                **{i: getattr(workflow.lzin, i) for i in input_names}))
-
-        @mark.task
-        @mark.annotate(
-            {'return':
-                {'base': str,
-                 'output': str}})
-        def dataset_paths(dataset: Dataset, id: str):
-            return (str(dataset.id),
-                    str(dataset.id / 'derivatives' / 'bids-app' / id))
+        workflow.add(func_task(
+            to_bids,
+            in_fields=(
+                [('frequency', Clinical),
+                 ('inputs', list[tuple[str, str, type]]),
+                 ('dataset', Dataset or str),
+                 ('id', str)]
+                + [(i, str) for i in input_names]),
+            out_fields=[('dataset', BidsDataset)],
+            name='to_bids',
+            frequency=frequency,
+            inputs=self.inputs,
+            dataset=dataset,
+            id=workflow.bidsify_id.lzout.out,
+            **{i: getattr(workflow.lzin, i) for i in input_names}))
 
         workflow.add(dataset_paths(
             dataset=workflow.to_bids.lzout.dataset,
@@ -490,31 +458,14 @@ class BidsApp:
             frequency=frequency,
             virtualisation=virtualisation))
 
-        @mark.task
-        @mark.annotate(
-            {'dataset': Dataset,
-             'frequency': Clinical,
-             'outputs': list[tuple[str, str, type]],
-             'app_completed': bool,  # NB: app_completed is included here just to make sure that 'extract_bids' runs after the main task
-             'return': {o: str for o in output_names}})
-        def extract_bids(dataset, frequency, outputs, id, app_completed):
-            """Selects the items from the dataset corresponding to the input 
-            sources and retrieves them from the repository to a cache on 
-            the host
-            """
-            output_paths = []
-            data_node = dataset.node(frequency, id)
-            for output_name, output_path, output_type in outputs:
-                dataset.add_sink(output_name, output_type,
-                                 path='derivatives/bids-app/' + output_path)
-            with dataset.repository:
-                for output in outputs:
-                    item = data_node[output[0]]
-                    item.get()  # download to host if required
-                    output_paths.append(item.value)
-            return tuple(output_paths) if len(outputs) > 1 else output_paths[0]
-        
-        workflow.add(extract_bids(
+        workflow.add(func_task(
+            extract_bids,
+            in_fields=[
+                ('dataset', Dataset),
+                ('frequency', Clinical),
+                ('outputs', list[tuple[str, str, type]]),
+                ('app_completed', bool)],
+            out_fields=[(o, str) for o in output_names],
             name='extract_bids',
             dataset=workflow.to_bids.lzout.dataset,
             frequency=frequency,
@@ -581,13 +532,6 @@ class BidsApp:
             base_spec_cls = ShellSpec
             kwargs['executable'] = self.executable
         else:
-            
-            @mark.task
-            def make_bindings(dataset: Dataset, output_path: str) -> list[tuple[str, str, str]]:
-                """Make bindings for directories to be mounted inside the container
-                   for both the input dataset and the output derivatives"""
-                return [(str(dataset.id), self.CONTAINER_DATASET_PATH, 'ro'),
-                        (str(output_path), self.CONTAINER_DERIV_PATH, 'rw')]
 
             workflow.add(make_bindings(
                 dataset=dataset_path,
@@ -634,3 +578,63 @@ class BidsApp:
     CONTAINER_DATASET_PATH = '/arcana_bids_dataset'
 
     DEFAULT_ID = 'sub-DEFAULT'
+
+
+@mark.task
+def bidsify_id(id):
+    if id == attr.NOTHING:
+        id = BidsApp.DEFAULT_ID
+    else:
+        id = re.sub(r'[^a-zA-Z0-9]', '', id)
+        if not id.startswith('sub-'):
+            id = 'sub-' + id
+    return id
+
+
+def to_bids(frequency, inputs, dataset, id, **input_values):
+    """Takes generic inptus and stores them within a BIDS dataset
+    """
+    for inpt_name, inpt_path, inpt_type in inputs:
+        dataset.add_sink(inpt_name, inpt_type, path=inpt_path)
+    data_node = dataset.node(frequency, id)
+    with dataset.repository:
+        for inpt_name, inpt_value in input_values.items():
+            node_item = data_node[inpt_name]
+            node_item.put(inpt_value) # Store value/path in repository
+    return dataset
+
+
+@mark.task
+@mark.annotate(
+    {'return':
+        {'base': str,
+            'output': str}})
+def dataset_paths(dataset: Dataset, id: str):
+    return (str(dataset.id),
+            str(dataset.id / 'derivatives' / 'bids-app' / id))
+
+
+def extract_bids(dataset, frequency, outputs, id, app_completed):
+    """Selects the items from the dataset corresponding to the input 
+    sources and retrieves them from the repository to a cache on 
+    the host
+    """
+    output_paths = []
+    data_node = dataset.node(frequency, id)
+    for output_name, output_path, output_type in outputs:
+        dataset.add_sink(output_name, output_type,
+                            path='derivatives/bids-app/' + output_path)
+    with dataset.repository:
+        for output in outputs:
+            item = data_node[output[0]]
+            item.get()  # download to host if required
+            output_paths.append(item.value)
+    return tuple(output_paths) if len(outputs) > 1 else output_paths[0]
+
+
+@mark.task
+def make_bindings(dataset: Dataset, output_path: str) -> list[tuple[str, str, str]]:
+    """Make bindings for directories to be mounted inside the container
+        for both the input dataset and the output derivatives"""
+    return [(str(dataset.id), BidsApp.CONTAINER_DATASET_PATH, 'ro'),
+            (str(output_path), BidsApp.CONTAINER_DERIV_PATH, 'rw')]

@@ -13,6 +13,7 @@ from .data.item import DataItem
 from .data.set import Dataset
 from .data.type import FileFormat
 from .data.space import DataSpace
+from .utils import func_task
 
 logger = logging.getLogger('arcana')
 
@@ -117,7 +118,7 @@ class Pipeline():
 
     @classmethod
     def factory(cls, name, dataset, inputs, outputs, frequency=None,
-                overwrite=False):
+                overwrite=False, **kwargs):
         """Generate a new pipeline connected with its inputs and outputs
         connected to sources/sinks in the dataset
 
@@ -142,6 +143,8 @@ class Pipeline():
             by default None
         overwrite : bool, optional
             Whether to overwrite existing connections to sinks, by default False
+        **kwargs
+            Passed to Pydra.Workflow init
 
         Returns
         -------
@@ -173,11 +176,9 @@ class Pipeline():
 
         # Create the outer workflow to link the analysis workflow with the
         # data node iteration and repository connection nodes
-        wf = Workflow(name=name, input_spec=['ids'])
+        wf = Workflow(name=name, input_spec=['ids'], **kwargs)
 
-        pipeline = Pipeline(wf,
-                            # dataset,
-                            frequency=frequency)
+        pipeline = Pipeline(wf, frequency=frequency)
 
         # Add sinks for the output of the workflow
         sources = {}
@@ -237,36 +238,27 @@ class Pipeline():
             input_spec=['id'],
             id=wf.to_process.lzout.ids).split('id'))
 
-        source_output_spec = {
-            s: (DataItem
-                if dataset.column_specs[s].frequency.is_parent(frequency,
-                                                               if_match=True)
-                else ty.Sequence[DataItem])
-            for s in input_names}
+        source_in = [
+            ('dataset', Dataset),
+            ('frequency', DataSpace),
+            ('id', str),
+            ('inputs', ty.Sequence[str])]
 
-        @mark.task
-        @mark.annotate(
-            {'dataset': Dataset,
-             'frequency': DataSpace,
-             'id': str,
-             'inputs': ty.Sequence[str],
-             'return': source_output_spec})
-        def source(dataset, frequency, id, inputs):
-            """Selects the items from the dataset corresponding to the input 
-            sources and retrieves them from the repository to a cache on 
-            the host"""
-            outputs = []
-            data_node = dataset.node(frequency, id)
-            with dataset.repository:
-                for inpt_name in inputs:
-                    item = data_node[inpt_name]
-                    item.get()  # download to host if required
-                    outputs.append(item.value)
-            return tuple(outputs) if len(inputs) > 1 else outputs[0]
+        source_out = [
+            (s,
+             (DataItem if dataset.column_specs[s].frequency.is_parent(
+                 frequency, if_match=True) else ty.Sequence[DataItem]))
+            for s in input_names]
 
-        wf.per_node.add(source(
-            name='source', dataset=dataset, frequency=frequency,
-            inputs=input_names, id=wf.per_node.lzin.id))
+        wf.per_node.add(func_task(
+            source_items,
+            in_fields=source_in,
+            out_fields=source_out,
+            name='source',
+            dataset=dataset,
+            frequency=frequency,
+            inputs=input_names,
+            id=wf.per_node.lzin.id))
 
         # Set the inputs
         for input_name in input_names:
@@ -281,7 +273,7 @@ class Pipeline():
                 converter_task = required_format.converter(stored_format)(
                     name=cname,
                     to_convert=getattr(pipeline.lzin, input_name))
-                if source_output_spec[input_name] == ty.Sequence[DataItem]:
+                if source_out[input_name] == ty.Sequence[DataItem]:
                     # Iterate over all items in the sequence and convert them
                     converter_task.split('to_convert')
                 # Insert converter
@@ -292,16 +284,11 @@ class Pipeline():
 
         # Create identity node to accept connections from user-defined nodes
         # via `set_output` method
-        wf.per_node.add(
-            FunctionTask(
-                identity,
-                input_spec=SpecInfo(
-                    name=f'{name}Inputs', bases=(BaseSpec,),
-                    fields=[(o, ty.Any) for o in output_names]),
-                output_spec=SpecInfo(
-                    name=f'{name}Outputs', bases=(BaseSpec,),
-                    fields=[(o, ty.Any) for o in output_names]),
-                name='output_interface'))
+        wf.per_node.add(func_task(
+            identity,
+            in_fields=[(o, ty.Any) for o in output_names],
+            out_fields=[(o, ty.Any) for o in output_names],
+            name='output_interface'))
 
         # Set format converters where required
         to_sink = {o: getattr(wf.per_node.output_interface.lzout, o)
@@ -319,42 +306,27 @@ class Pipeline():
                 to_sink[output_name] = getattr(wf.per_node,
                                                cname).lzout.converted
 
-        def sink(dataset, frequency, id, **to_sink):
-            data_node = dataset.node(frequency, id)
-            with dataset.repository:
-                for outpt_name, outpt_value in to_sink.items():
-                    node_item = data_node[outpt_name]
-                    node_item.put(outpt_value) # Store value/path in repository
-            return id
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
-        wf.per_node.add(
-            FunctionTask(
-                sink,
-                input_spec=SpecInfo(
-                    name='UploadInputs', bases=(BaseSpec,), fields=(
-                        [('dataset', Dataset),
-                         ('frequency', DataSpace),
-                         ('id', str)]
-                        + [(s, DataItem) for s in to_sink])),
-                output_spec=SpecInfo(
-                    name='UploadOutputs', bases=(BaseSpec,), fields=[
-                        ('id', str)]),
-                name='sink',
-                dataset=dataset,
-                frequency=frequency,
-                id=wf.per_node.lzin.id,
-                **to_sink))
+        wf.per_node.add(func_task(
+            sink_items,
+            in_fields=(
+                [('dataset', Dataset), ('frequency', DataSpace), ('id', str)]
+                + [(s, DataItem) for s in to_sink]),
+            out_fields=[('id', str)],
+            name='sink',
+            dataset=dataset,
+            frequency=frequency,
+            id=wf.per_node.lzin.id,
+            **to_sink))
 
         wf.per_node.set_output(
             [('id', wf.per_node.sink.lzout.id)])
 
         wf.set_output(
-            [
-             ('processed', wf.per_node.lzout.id),
-             ('couldnt_process', wf.to_process.lzout.cant_process)
-             ])
+            [('processed', wf.per_node.lzout.id),
+             ('couldnt_process', wf.to_process.lzout.cant_process)])
 
         return pipeline
 
@@ -390,3 +362,27 @@ def to_process(dataset, frequency, outputs, requested_ids):
         elif any(not_exist):
             cant_process.append(data_node.id)
     return ids, cant_process
+
+
+def source_items(dataset, frequency, id, inputs):
+    """Selects the items from the dataset corresponding to the input 
+    sources and retrieves them from the repository to a cache on 
+    the host"""
+    outputs = []
+    data_node = dataset.node(frequency, id)
+    with dataset.repository:
+        for inpt_name in inputs:
+            item = data_node[inpt_name]
+            item.get()  # download to host if required
+            outputs.append(item.value)
+    return tuple(outputs) if len(inputs) > 1 else outputs[0]
+
+
+def sink_items(dataset, frequency, id, **to_sink):
+    """Stores items generated by the pipeline back into the repository"""
+    data_node = dataset.node(frequency, id)
+    with dataset.repository:
+        for outpt_name, outpt_value in to_sink.items():
+            node_item = data_node[outpt_name]
+            node_item.put(outpt_value) # Store value/path in repository
+    return id

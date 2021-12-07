@@ -11,6 +11,8 @@ import os.path
 from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
+from pydra.engine.task import FunctionTask
+from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import ArcanaUsageError, ArcanaNameError
 
 
@@ -52,6 +54,34 @@ def name2path(name):
         The derived name
     """
     return '/'.join(name.split(PATH_SEP))
+
+
+def func_task(func, in_fields, out_fields, **inputs):
+    """Syntactic sugar for creating a FunctionTask
+
+    Parameters
+    ----------
+    func : Callable
+        The function to wrap
+    input_fields : list[tuple[str, type]]
+        The list of input fields to create for the task
+    output_fields : list[tuple[str, type]]
+        The list of output fields to create for the task
+    **inputs
+        Inputs to set for the task
+
+    Returns
+    -------
+    pydra.FunctionTask
+        The wrapped task"""
+    func_name = func.__name__.capitalize()
+    return FunctionTask(
+        func,
+        input_spec=SpecInfo(
+            name=f'{func_name}In', bases=(BaseSpec,), fields=in_fields),
+        output_spec=SpecInfo(
+            name=f'{func_name}Out', bases=(BaseSpec,), fields=out_fields),
+        **inputs)
 
 
 PATH_SEP = '__l__'

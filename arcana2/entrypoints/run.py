@@ -94,6 +94,7 @@ class RunCmd(BaseDatasetCmd):
     def run(cls, args):
 
         work_dir = Path(args.work) if args.work is not None else Path(tempfile.mkdtemp())
+        work_dir.mkdir(exist_ok=True)
 
         dataset = cls.get_dataset(args, work_dir)
         inputs = cls.add_input_sources(args, dataset)
@@ -104,12 +105,13 @@ class RunCmd(BaseDatasetCmd):
             name=cls.workflow_name(args),
             inputs=inputs,
             outputs=outputs,
-            frequency=frequency)
+            frequency=frequency,
+            cache_dir=work_dir / PYDRA_CACHE)
 
         cls.construct_pipeline(args, pipeline)
 
         if not args.dry_run:
-            pipeline(ids=args.ids, plugin=args.pydra_plugin)  # , cache_locations=work_dir / PYDRA_CACHE)
+            pipeline(ids=args.ids, plugin=args.pydra_plugin)
 
         return pipeline
 

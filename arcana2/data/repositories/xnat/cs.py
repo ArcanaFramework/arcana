@@ -504,7 +504,8 @@ class XnatViaCS(Xnat):
             f"arcana run {task_location} "  # run pydra task in Arcana
             f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
             f"--work {cls.WORK_MOUNT} "  # working directory
-            f"--repository xnat_via_cs {frequency}")  # pass XNAT API details
+            f"--repository xnat_via_cs {frequency} "
+            f"--pydra_plugin serial")  # pass XNAT API details
 
         # Create Project input that can be passed to the command line, which will
         # be populated by inputs derived from the XNAT object passed to the pipeline
