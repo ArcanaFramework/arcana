@@ -353,73 +353,94 @@ class BidsFormat(FileSystem):
             val = super().get_field_val(field)
         return val
 
-    @classmethod
-    def wrap_app(cls,
-                 name,
-                 executable_or_image,
-                 inputs: dict[str, type],
-                 outputs: dict[str, type]=None,
-                 frequency: Clinical=Clinical.session,
-                 parameters: dict[str, type]=None,
-                 container_type: str=None) -> Workflow:
+    
+
+@attr.s
+class BidsApp:
+
+    image: str = attr.ib(
+        metadata={'help_string': 'Name of the BIDS app image to wrap'})
+    executable: str = attr.ib(
+        metadata={'help_string': 'Name of the executable within the image to run (i.e. the entrypoint of the image). Required when extending the base image and launching Arcana within it'})
+    inputs: dict[str, type] = attr.ib(
+        metadata={'help_string': (
+            "The inputs to be stored in a BIDS dataset, mapping a sanitized "
+            "name to be added in the workflow input interface and the location "
+            "within the BIDS app to put it")})
+    outputs: dict[str, type] = attr.ib(
+        metadata={'help_string': (
+            "The outputs to be extracted from the output directory mounted to the "
+            "BIDS app to be added in the workflow input interface and the location within "
+            "the BIDS app to find it")})
+    parameters: dict[str, type]=attr.ib(
+        metadata={'help_string': 'The parameters of the app to be exposed to the interface'},
+        default=None)
+
+    def __call__(self, name=None, frequency: Clinical or str=Clinical.session,
+                 virtualisation: str=None, dataset: str or Path or Dataset=None) -> Workflow:
         """Creates a Pydra workflow which takes inputs and maps them to
         a BIDS dataset, executes a BIDS app and extracts outputs from
         the derivatives stored back in the BIDS dataset
 
         Parameters
         ----------
-        image_tag : str
-            Name of the BIDS app image to wrap
-        inputs : dict[str, type]
-            The inputs to be stored in a BIDS dataset, mapping a sanitized name
-            to be added in the workflow input interface and the location within
-            the BIDS app to put it
-        outputs : dict[str, type]
-            The outputs to be extracted from the output directory mounted to the
-            BIDS app to be added in the workflow input interface and the location within
-            the BIDS app to find it
-        parameters : list[tuple[str, dtype]]
-            The parameters of the app to be exposed to the interface
-        container_type : str
-            The container technology to use to run the app (either 'docker' or'singularity')
+        name : str
+            Name for the workflow
+        frequency : Clinical
+            Frequency to run the app at, i.e. per-"session" or per-"dataset"
+        virtualisation : str or None
+            The virtualisation method to run the main app task, can be one of
+            None, 'docker' or 'singularity'
+        dataset : str or Dataset
+            The dataset to run the BIDS app on. If a string or Path is provided
+            then a new BIDS dataset is created at that location with a single
+            subject (sub-DEFAULT). If nothing is provided then a dataset is
+            created at './bids_dataset'.
+
         Returns
         -------
         pydra.Workflow
             A Pydra workflow 
         """
-        if parameters is None:
+        if self.parameters is None:
             parameters = {}
-        if outputs is None:
-            outputs = {f'derivatives/{name}': directory}
+        if isinstance(frequency, str):
+            frequency = Clinical[frequency]
+        if name is None:
+            name = self.image.replace(':', '_')
+
+        # Create BIDS dataset to hold translated data
+        if dataset is None:
+            dataset = Path(tempfile.mkdtemp()) / 'bids_dataset'
+        if not isinstance(dataset, Dataset):
+            dataset = BidsDataset.create(
+                path=dataset,
+                name=name + '_dataset',
+                subject_ids=[self.DEFAULT_ID])
+
         # Ensure output paths all start with 'derivatives
-        input_names = [path2name(i) for i in inputs]
-        output_names = [path2name(o) for o in outputs]
+        input_names = [path2name(i) for i in self.inputs]
+        output_names = [path2name(o) for o in self.outputs]
         workflow = Workflow(
             name=name,
-            input_spec=input_names + list(parameters) + ['dataset', 'id'])
+            input_spec=input_names + list(parameters) + ['id'])
 
         # Check id startswith 'sub-' as per BIDS
 
         @mark.task
         def bidsify_id(id):
             if id == attr.NOTHING:
-                id = 'sub-DEFAULT'
-            id = re.sub(r'[^a-zA-Z0-9]', '', id)
-            if not id.startswith('sub-'):
-                id = 'sub-' + id
+                id = self.DEFAULT_ID
+            else:
+                id = re.sub(r'[^a-zA-Z0-9]', '', id)
+                if not id.startswith('sub-'):
+                    id = 'sub-' + id
             return id
         workflow.add(bidsify_id(name='bidsify_id', id=workflow.lzin.id))
 
-        def to_bids(frequency, inputs, app_name, dataset, id, **input_values):
+        def to_bids(frequency, inputs, dataset, id, **input_values):
             """Takes generic inptus and stores them within a BIDS dataset
             """
-            if dataset == attr.NOTHING:
-                dataset = Path('.') / 'bids_dataset'
-            if not isinstance(dataset, Dataset):
-                dataset = BidsDataset.create(
-                    path=dataset,
-                    name=app_name + '_dataset',
-                    subject_ids=[id])
             for inpt_path, inpt_type in inputs.items():
                 dataset.add_sink(path2name(inpt_path), inpt_type,
                                  path=inpt_path)
@@ -439,7 +460,6 @@ class BidsFormat(FileSystem):
                     name='ToBidsInputs', bases=(BaseSpec,), fields=(
                         [('frequency', Clinical),
                         ('inputs', dict[str, type]),
-                        ('app_name', str),
                         ('dataset', Dataset or str),
                         ('id', str)]
                         + [(i, str) for i in input_names])),
@@ -448,9 +468,8 @@ class BidsFormat(FileSystem):
                         ('dataset', BidsDataset)]),
                 name='to_bids',
                 frequency=frequency,
-                inputs=inputs,
-                app_name=name,
-                dataset=workflow.lzin.dataset,
+                inputs=self.inputs,
+                dataset=dataset,
                 id=workflow.bidsify_id.lzout.out,
                 **{i: getattr(workflow.lzin, i) for i in input_names}))
 
@@ -468,29 +487,27 @@ class BidsFormat(FileSystem):
             app_name=name,
             id=workflow.bidsify_id.lzout.out))
             
-        workflow.add(cls.bids_app_task(
+        workflow.add(self.main_task(
             name='bids_app',
-            executable_or_image=executable_or_image,
             dataset_path=workflow.dataset_paths.lzout.base,
             output_path=workflow.dataset_paths.lzout.derivs,
             parameters={p: type(p) for p in parameters},
             workflow=workflow,
             frequency=frequency,
-            container_type=container_type))
+            virtualisation=virtualisation))
 
         @mark.task
         @mark.annotate(
             {'dataset': Dataset,
              'frequency': Clinical,
              'outputs': dict[str, type],
-             'app_completed': bool,  # NB: app_completed is included here
+             'app_completed': bool,  # NB: app_completed is included here just to make sure that 'extract_bids' runs after the main task
              'return': {o: str for o in output_names}})
         def extract_bids(dataset, frequency, outputs, id, app_completed):
             """Selects the items from the dataset corresponding to the input 
             sources and retrieves them from the repository to a cache on 
             the host
             """
-            
             output_paths = []
             data_node = dataset.node(frequency, id)
             for output_path, output_type in outputs.items():
@@ -507,7 +524,7 @@ class BidsFormat(FileSystem):
             name='extract_bids',
             dataset=workflow.to_bids.lzout.dataset,
             frequency=frequency,
-            outputs=outputs,
+            outputs=self.outputs,
             id=workflow.bidsify_id.lzout.out,
             app_completed=workflow.bids_app.lzout.completed))
 
@@ -517,16 +534,14 @@ class BidsFormat(FileSystem):
 
         return workflow
 
-    @classmethod
-    def bids_app_task(cls,
-                      name: str,
-                      executable_or_image: str,
-                      dataset_path: LazyField,
-                      output_path: LazyField,
-                      workflow: Workflow,
-                      frequency: Clinical,
-                      parameters: dict[str, type]=None,
-                      container_type: str='docker') -> ShellCommandTask:
+    def main_task(self,
+                  name: str,
+                  dataset_path: LazyField,
+                  output_path: LazyField,
+                  workflow: Workflow,
+                  frequency: Clinical,
+                  parameters: dict[str, type]=None,
+                  virtualisation=None) -> ShellCommandTask:
 
         if parameters is None:
             parameters = {}
@@ -567,18 +582,18 @@ class BidsFormat(FileSystem):
 
         kwargs = {p: getattr(workflow.lzin, p) for p in parameters}
 
-        if container_type is None:
+        if virtualisation is None:
             task_cls = ShellCommandTask
             base_spec_cls = ShellSpec
-            kwargs['executable'] = executable_or_image
+            kwargs['executable'] = self.executable
         else:
             
             @mark.task
             def make_bindings(dataset: Dataset, output_path: str) -> list[tuple[str, str, str]]:
                 """Make bindings for directories to be mounted inside the container
                    for both the input dataset and the output derivatives"""
-                return [(str(dataset.id), cls.CONTAINER_DATASET_PATH, 'ro'),
-                        (str(output_path), cls.CONTAINER_DERIV_PATH, 'rw')]
+                return [(str(dataset.id), self.CONTAINER_DATASET_PATH, 'ro'),
+                        (str(output_path), self.CONTAINER_DERIV_PATH, 'rw')]
 
             workflow.add(make_bindings(
                 dataset=dataset_path,
@@ -588,19 +603,19 @@ class BidsFormat(FileSystem):
 
             # Set input and output directories to "internal" paths within the
             # container
-            dataset_path = cls.CONTAINER_DATASET_PATH
-            output_path = cls.CONTAINER_DERIV_PATH
-            kwargs['image'] = executable_or_image
+            dataset_path = self.CONTAINER_DATASET_PATH
+            output_path = self.CONTAINER_DERIV_PATH
+            kwargs['image'] = self.image
 
-            if container_type == 'docker':
+            if virtualisation == 'docker':
                 task_cls = DockerTask
                 base_spec_cls = DockerSpec
-            elif container_type == 'singularity':
+            elif virtualisation == 'singularity':
                 task_cls = SingularityTask
                 base_spec_cls = SingularitySpec
             else:
                 raise ArcanaUsageError(
-                    f"Unrecognised container type {container_type} "
+                    f"Unrecognised container type {virtualisation} "
                     "(can be docker or singularity)")
 
         if frequency == Clinical.session:
@@ -623,3 +638,5 @@ class BidsFormat(FileSystem):
     # For running 
     CONTAINER_DERIV_PATH = '/arcana_bids_outputs'
     CONTAINER_DATASET_PATH = '/arcana_bids_dataset'
+
+    DEFAULT_ID = 'sub-DEFAULT'

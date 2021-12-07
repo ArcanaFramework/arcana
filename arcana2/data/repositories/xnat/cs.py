@@ -178,7 +178,6 @@ class XnatViaCS(Xnat):
         else:
             raise ArcanaNoDirectXnatMountException
 
-    
 
     @classmethod
     def generate_dockerfile(cls,
@@ -293,10 +292,11 @@ class XnatViaCS(Xnat):
                         to_ignore.update(
                             c for c in contents
                             if Path(directory) / c in absolute_paths)
-                        # Don't want to create two conftests in the src
-                        # directory when running tests
-                        if 'conftest.py' in contents:
-                            to_ignore.add('conftest.py')
+                        # Skip files that shouldn't be copied into the build
+                        # directory as they mess up test discovery
+                        for fname in cls.DONT_COPY_INTO_BUILD:
+                            if fname in contents:
+                                to_ignore.add(fname)
                         return to_ignore
                 else:
                     ignore = shutil.ignore_patterns('*.pyc', '__pycache__')
@@ -420,7 +420,7 @@ class XnatViaCS(Xnat):
         # Add task inputs to inputs JSON specification
         input_args = []
         for inpt in inputs:
-            escaped_name = path2name(input.name)
+            escaped_name = path2name(inpt.name)
             replacement_key = f'[{escaped_name.upper()}_INPUT]'
             spec = input_specs[escaped_name]
             
@@ -432,7 +432,7 @@ class XnatViaCS(Xnat):
                 desc = f"Match field ({spec.type}) [PATH:STORED_DTYPE]: {desc} "
                 input_type = cls.COMMAND_INPUT_TYPES.get(spec.type, 'string')
             inputs_json.append({
-                "name": inpt.name,
+                "name": inpt.name.replace('/', '_'),
                 "description": desc,
                 "type": input_type,
                 "default-value": "",
@@ -472,7 +472,7 @@ class XnatViaCS(Xnat):
                 output_fname += output.datatype.extension
             # Set the path to the 
             outputs_json.append({
-                "name": output.name,
+                "name": output.name.replace('/', '_'),
                 "description": f"{output.name} ({output.datatype})",
                 "required": True,
                 "mount": "out",
@@ -633,3 +633,6 @@ class XnatViaCS(Xnat):
         float: 'number'}
 
     VALID_FREQUENCIES = (Clinical.session, Clinical.dataset)
+
+    DONT_COPY_INTO_BUILD = ['conftest.py', 'debug-build', '__pycache__',
+                            '.pytest_cache']

@@ -56,6 +56,10 @@ class RunCmd(BaseDatasetCmd):
             '--pydra_plugin', default='cf',
             help=("The Pydra plugin with which to process the workflow"))
         parser.add_argument(
+            '--virtualisation', default='none', type=str,
+            choices=('docker', 'singularity', 'none'),
+            help=("The virtualisation method to run with the task with (only applicable to BIDS app tasks)"))
+        parser.add_argument(
             '--dry_run', action='store_true', default=False,
             help=("Set up the workflow to test inputs but don't run the app"))
 
@@ -242,9 +246,12 @@ class RunCmd(BaseDatasetCmd):
         
         task_cls = resolve_class(args.app, prefixes=['pydra.tasks'])
 
+        kwargs = cls.parse_parameters(args, task_cls)
+        if args.virtualisation != 'none':
+            kwargs['virtualisation'] = args.virtualisation
+
         # Add the app task
-        pipeline.add(task_cls(name='app',
-                              **cls.parse_parameters(args, task_cls)))
+        pipeline.add(task_cls(name='app', **kwargs))
 
         # Connect source to inputs
         for input in pipeline.input_names:

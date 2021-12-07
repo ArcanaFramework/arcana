@@ -106,7 +106,3 @@ class MainCmd():
         return cls._commands
 
     _commands = None
-    
-
-if __name__ == '__main__':
-    MainCmd.run()

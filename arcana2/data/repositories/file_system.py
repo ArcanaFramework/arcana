@@ -64,15 +64,16 @@ class FileSystem(DataRepository):
         # as the path is set
         primary_path = self.file_group_path(file_group)
         side_cars = file_group.datatype.default_side_cars(primary_path)
+        location_str = (f"{file_group.data_node} node of "
+                        f"{file_group.data_node.dataset} on {self}")
         if not op.exists(primary_path):
             raise ArcanaMissingDataException(
-                "{} does not exist in {}"
-                .format(file_group, self))
+                f"{file_group} does not exist in {location_str}")
         for aux_name, aux_path in side_cars.items():
             if not op.exists(aux_path):
                 raise ArcanaMissingDataException(
-                    "{} is missing '{}' side car in {}"
-                    .format(file_group, aux_name, self))
+                    f"{file_group} is missing '{aux_name}' side car "
+                    f"in {location_str}")
         return primary_path, side_cars
 
     def get_field(self, field):
@@ -180,8 +181,9 @@ class FileSystem(DataRepository):
 
     def find_items(self, data_node):
         # First ID can be omitted
-        self.find_items_in_dir(self.root_dir(data_node)
-                               / self.node_path(data_node))
+        self.find_items_in_dir(
+            self.root_dir(data_node) / self.node_path(data_node),
+            data_node)
 
     def find_items_in_dir(self, dpath, data_node):
         if not op.exists(dpath):
