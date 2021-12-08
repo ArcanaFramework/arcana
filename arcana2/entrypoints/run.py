@@ -2,6 +2,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 import tempfile
+import logging
 from typing import Sequence
 import arcana2.data.types
 from arcana2.exceptions import ArcanaUsageError
@@ -13,6 +14,7 @@ from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
 from .dataset import BaseDatasetCmd
 from arcana2.core.utils import resolve_class, resolve_datatype, list_instances
 
+logger = logging.getLogger('arcana')
 
 PYDRA_CACHE = 'pydra-cache'
 
@@ -113,7 +115,7 @@ class RunCmd(BaseDatasetCmd):
         if not args.dry_run:
             pipeline(ids=args.ids, plugin=args.pydra_plugin)
 
-        return pipeline
+        logger.info(f'"{args.app}"" app completed successfully')
 
     @classmethod
     def parse_input_args(cls, args):

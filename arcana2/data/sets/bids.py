@@ -464,6 +464,7 @@ class BidsApp:
                 ('dataset', Dataset),
                 ('frequency', Clinical),
                 ('outputs', list[tuple[str, str, type]]),
+                ('id', str),
                 ('app_completed', bool)],
             out_fields=[(o, str) for o in output_names],
             name='extract_bids',
@@ -614,10 +615,17 @@ def dataset_paths(dataset: Dataset, id: str):
             str(dataset.id / 'derivatives' / 'bids-app' / id))
 
 
-def extract_bids(dataset, frequency, outputs, id, app_completed):
+def extract_bids(dataset: Dataset,
+                 frequency: Clinical,
+                 outputs: list[tuple[str, str, type]],
+                 id: str,
+                 app_completed: bool):
     """Selects the items from the dataset corresponding to the input 
     sources and retrieves them from the repository to a cache on 
     the host
+
+    Parameters
+    ----------
     """
     output_paths = []
     data_node = dataset.node(frequency, id)
