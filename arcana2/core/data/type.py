@@ -3,6 +3,12 @@ from abc import abstractmethod, ABCMeta
 from collections import defaultdict
 from pathlib import Path
 import numpy as np
+import attr
+from typing import Any
+from pydra import Workflow
+from pydra.engine.core import TaskBase
+from .type import FileFormat
+from ..utils import func_task
 from arcana2.core.utils import split_extension
 import logging
 from arcana2.exceptions import (
@@ -227,13 +233,13 @@ class FileFormat(object):
             Keyword arguments passed through to the task interface on
             initialisation
         """
-        from .converter import DataConverter
+        from .converter import FileGroupConverter
         if inputs is None:
             inputs = {'path': 'in_file'}
         if outputs is None:
             outputs = {'path': 'out_file'}
         # Save the converter for when it is required
-        self._converters[file_format] = DataConverter(
+        self._converters[file_format] = FileGroupConverter(
             to_format=self,
             task=task,
             inputs=inputs,
@@ -594,3 +600,69 @@ class Converter(object):
         return "{}(input_format={}, output_format={})".format(
             type(self).__name__, self.input_format, self.output_format)
 
+
+@attr.s
+class MappedConverter:
+
+    from_format: FileFormat = attr.ib()
+    to_format: FileFormat = attr.ib()
+    task: TaskBase = attr.ib()
+    inputs: dict[str, str] = attr.ib()
+    outputs: dict[str, str] = attr.ib()
+    task_kwargs: dict[str, Any] = attr.ib()
+    
+    def __call__(self, name, **kwargs):
+        """
+        Create a Pydra workflow to convert a file group from one format to
+        another
+        """
+        from .item import FileGroup
+        wf = Workflow(name=name,
+                      input_spec=['in_file'] + list(self.from_format.side_cars),
+                      **kwargs)
+
+        # Add task collect the input paths to a common directory (as we
+        # assume the converter expects)
+        wf.add(func_task(
+            get_paths,
+            in_fields=[('file_group', FileGroup)],
+            out_fields=[('in_file', str)] + [
+                ()],
+            name='get_paths',
+            file_group=wf.lzin.to_convert))
+
+        # Add the actual converter node
+        conv_kwargs = {self.inputs[i]:
+                       getattr(wf.get_paths.lzout, i) for i in self.inputs}
+        conv_kwargs.update(self.task_kwargs)
+        conv_kwargs.update(kwargs)
+        wf.add(self.task(name='converter', **conv_kwargs))
+
+        wf.add(func_task(
+            collect_paths,
+            in_fields=[(o, str) for o in self.outputs],
+            out_fields=[('out_file', str)] + [
+                (o, str) for o in self.to_format.side_cars],
+            name='collect_paths',
+            file_format=self.to_format,
+            **{k: getattr(wf.converter.lzout, v)
+               for k, v in self.outputs.items()}))
+
+        # Set the outputs of the workflow
+        wf.set_output(('out_file', wf.collect_paths.lzout.file_group))
+
+        return wf
+
+
+def get_paths(file_group):
+    """Copies files into the CWD renaming so the basenames match
+    except for extensions"""
+    cpy = file_group.copy_to('./file-group', symlink=True)
+    return cpy.fs_path
+
+
+def collect_paths(file_format, primary, **cache_paths):
+    """Copies files into the CWD renaming so the basenames match
+    except for extensions"""
+    side_cars = cache_paths if cache_paths else None
+    

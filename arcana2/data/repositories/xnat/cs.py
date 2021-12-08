@@ -6,6 +6,7 @@ import os
 import re
 import json
 import logging
+from copy import copy
 from pathlib import Path
 import site
 import shutil
@@ -186,8 +187,8 @@ class XnatViaCS(Xnat):
                             maintainer,
                             build_dir,
                             base_image=None,
-                            requirements=None,
                             packages=None,
+                            python_packages=None,
                             extra_labels=None,
                             package_manager=None):
         """Constructs a dockerfile that wraps a with dependencies
@@ -207,9 +208,9 @@ class XnatViaCS(Xnat):
             files to
         base_image : str
             The base image to build from
-        requirements : list[tuple[str, str]]
+        packages : list[tuple[str, str, str?]]
             Name and version of the Neurodocker requirements to add to the image
-        packages : list[tuple[str, str]]
+        python_packages : list[tuple[str, str]]
             Name and version of the Python PyPI packages to add to the image
         registry : str
             URI of the Docker registry to upload the image to
@@ -227,10 +228,12 @@ class XnatViaCS(Xnat):
 
         if build_dir is None:
             build_dir = tempfile.mkdtemp()
-        if requirements is None:
-            requirements = []
         if packages is None:
             packages = []
+        if python_packages is None:
+            python_packages = []
+        else:
+            python_packages = copy(python_packages)
         if base_image is None:
             base_image = "debian:bullseye"
         if package_manager is None:
@@ -247,16 +250,20 @@ class XnatViaCS(Xnat):
 
         instructions = [
             ["base", base_image],
-            ["install", ["git", "vim", "ssh-client", "python3", "python3-pip"]]]
+            ["install", ["git", "vim", "ssh-client", "python3", "python3-pip", "dcm2niix"]]]
 
-        for req in requirements:
-            req_name = req[0]
+        for pkg in packages:
             install_props = {}
-            if len(req) > 1 and req[1] != '.':
-                install_props['version'] = req[1]
-            if len(req) > 2:
-                install_props['method'] = req[2]
-            instructions.append([req_name, install_props])
+            if isinstance(pkg, str):
+                pkg_name = pkg
+                install_props['version'] = 'master'
+            else:
+                pkg_name = pkg[0]
+                if len(pkg) > 1 and pkg[1] != '.':
+                    install_props['version'] = pkg[1]
+                if len(pkg) > 2:
+                    install_props['method'] = pkg[2]   
+            instructions.append([pkg_name, install_props])
 
         site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]
 
@@ -311,7 +318,7 @@ class XnatViaCS(Xnat):
                     pip_address = f"{durl['vcs']}+{durl['url']}@{durl['commit_id']}"
                 else:
                     pip_address = f"{pkg.key}=={pkg.version}"
-            packages.append(pip_address)
+            python_packages.append(pip_address)
 
         # instructions.append(['run', 'pip3 install ' + ' '.join(packages)])
 
@@ -322,7 +329,7 @@ class XnatViaCS(Xnat):
                     "python=" + natsorted(python_versions)[-1],
                     "numpy",
                     "traits"],
-                "pip_install": packages}])
+                "pip_install": python_packages}])
 
         if labels:
             instructions.append(["label", labels])
@@ -336,7 +343,6 @@ class XnatViaCS(Xnat):
         neurodocker_specs = {
             "pkg_manager": package_manager,
             "instructions": instructions}
-
 
         dockerfile = nd.Dockerfile(neurodocker_specs).render()
 

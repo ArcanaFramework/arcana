@@ -41,7 +41,7 @@ class Pipeline():
         Treat the 'lzout' of the source node as the 'lzin' of the pipeline to
         allow pipelines to be treated the same as normal Pydra workflow
         """
-        return self.wf.per_node.source.lzout
+        return self.wf.per_node.input_interface.lzout
 
     def set_output(self, connections):
         """Connect the output using the same syntax as used for a Pydra workflow
@@ -244,25 +244,34 @@ class Pipeline():
             ('id', str),
             ('inputs', ty.Sequence[str])]
 
-        source_out = [
-            (s,
-             (DataItem if dataset.column_specs[s].frequency.is_parent(
-                 frequency, if_match=True) else ty.Sequence[DataItem]))
-            for s in input_names]
+        source_out_dct = {
+            s: (DataItem
+                if dataset.column_specs[s].frequency.is_parent(
+                    frequency, if_match=True)
+                else ty.Sequence[DataItem])
+            for s in input_names}
 
         wf.per_node.add(func_task(
             source_items,
             in_fields=source_in,
-            out_fields=source_out,
+            out_fields=list(source_out_dct.items()),
             name='source',
             dataset=dataset,
             frequency=frequency,
             inputs=input_names,
             id=wf.per_node.lzin.id))
 
+        # Create identity node to accept connections from user-defined nodes
+        # via `set_output` method
+        wf.per_node.add(func_task(
+            identity,
+            in_fields=[(i, ty.Any) for i in input_names],
+            out_fields=[(i, ty.Any) for i in input_names],
+            name='input_interface'))        
+
         # Set the inputs
         for input_name in input_names:
-            setattr(pipeline.lzin, input_name,
+            setattr(wf.per_node.input_interface.inputs, input_name,
                     getattr(wf.per_node.source.lzout, input_name))
 
         # Do input format conversions if required
@@ -272,18 +281,18 @@ class Pipeline():
                 cname = f"{input_name}_input_converter"
                 converter_task = required_format.converter(stored_format)(
                     name=cname,
-                    to_convert=getattr(pipeline.lzin, input_name))
-                if source_out[input_name] == ty.Sequence[DataItem]:
+                    to_convert=getattr(wf.per_node.source.lzout, input_name))
+                if source_out_dct[input_name] == ty.Sequence[DataItem]:
                     # Iterate over all items in the sequence and convert them
                     converter_task.split('to_convert')
                 # Insert converter
                 wf.per_node.add(converter_task)
-                # Map converter output to workflow output
-                setattr(pipeline.lzin, input_name,
+                # Map converter output to input_interface
+                setattr(wf.per_node.input_interface.inputs, input_name,
                         getattr(wf.per_node, cname).lzout.converted)
 
-        # Create identity node to accept connections from user-defined nodes
-        # via `set_output` method
+        # Creates a node to accept values from user-defined nodes and
+        # encapsulate them into DataItems
         wf.per_node.add(func_task(
             identity,
             in_fields=[(o, ty.Any) for o in output_names],
@@ -305,7 +314,6 @@ class Pipeline():
                 # Map converter output to workflow output
                 to_sink[output_name] = getattr(wf.per_node,
                                                cname).lzout.converted
-
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
@@ -338,6 +346,15 @@ def identity(**kwargs):
         to_return = to_return[0]
     return to_return
 
+
+def extract_paths(**kwargs):
+    paths = tuple(i.value for i in kwargs.values())
+    return paths if len(paths) > 1 else paths[0]
+
+
+def encapsulate_paths(outputs, **kwargs):
+    items = [v.datatype(kwargs[k]) for k, v in outputs]
+    return items if len(items) > 1 else items[0]
 
 
 @mark.task
