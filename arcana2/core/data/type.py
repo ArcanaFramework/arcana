@@ -9,11 +9,9 @@ from typing import Any
 from pydra import Workflow
 from pydra.engine.core import TaskBase
 from ..utils import func_task
-from arcana2.core.utils import split_extension
 import logging
 from arcana2.exceptions import (
-    ArcanaFileFormatError, ArcanaUsageError, ArcanaNoConverterError,
-    ArcanaNameError)
+    ArcanaFileFormatError, ArcanaUsageError, ArcanaNoConverterError)
 import arcana2.core.data.item
 
 
