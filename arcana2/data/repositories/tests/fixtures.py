@@ -142,8 +142,8 @@ TEST_DATASET_BLUEPRINTS = {
         {}, {}, []),
     'concatenate_zip_test': TestDatasetBlueprint(
         [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [1, 1, 1, 2],
-        ['dir1.zip', 'dir2.zip'],
+        [1, 1, 1, 1],
+        ['file1.zip', 'file2.zip'],
         {}, {}, [])}
 
 

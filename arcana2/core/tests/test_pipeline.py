@@ -1,8 +1,10 @@
 
+import zipfile
+import tempfile
 from arcana2.data.repositories.tests.fixtures import (
     make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
 from arcana2.tasks.tests.fixtures import concatenate
-from arcana2.data.types.general import text
+from arcana2.data.types.general import text, zip
 
 
 def test_pipeline(work_dir):
@@ -36,16 +38,17 @@ def test_pipeline(work_dir):
 
 
 def test_pipeline_with_conversion(work_dir):
-    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_zip_test'], work_dir)
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_zip_test'],
+                           work_dir)
 
-    dataset.add_source('file1', text)
-    dataset.add_source('file2', text)
-    dataset.add_sink('deriv', text)
+    dataset.add_source('file1', zip)
+    dataset.add_source('file2', zip)
+    dataset.add_sink('deriv', zip)
 
     pipeline = dataset.new_pipeline(
         name='test_pipeline',
-        inputs=['file1', 'file2'],
-        outputs=['deriv'],
+        inputs=[('file1', text), ('file2', text)],
+        outputs=[('deriv', text)],
         frequency=TestDataSpace.abcd)
 
     pipeline.add(concatenate(in_file1=pipeline.lzin.file1,
@@ -60,6 +63,9 @@ def test_pipeline_with_conversion(work_dir):
     pipeline(ids=IDS, plugin='serial')
 
     for item in dataset['deriv']:
-        with open(item.fs_path) as f:
+        tmp_dir = tempfile.mkdtemp()
+        with zipfile.ZipFile(item.fs_path) as zfile:
+            zfile.extractall(path=tmp_dir)
+        with open(tmp_dir / 'deriv.txt') as f:
             contents = f.read()
-        assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)
+        assert contents == '\n'.join(['file1.zip', 'file2.zip'] * 2)
