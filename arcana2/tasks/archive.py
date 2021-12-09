@@ -2,6 +2,8 @@ import os.path
 import tempfile
 import tarfile
 import zipfile
+from pathlib import Path
+import attr
 from pydra import mark
 from pydra.engine.specs import (
     MultiInputObj, MultiOutputObj, File, Directory)
@@ -57,10 +59,10 @@ def create_tar(in_file, out_file=None, base_dir='.', filter=None,
 
 @mark.task
 @mark.annotate({'return': {'out_file': MultiOutputObj}})
-def extract_tar(in_file: File, extract_dir: Directory=None, bufsize: int=10240,
+def extract_tar(in_file: File, extract_dir: Directory, bufsize: int=10240,
                 compression_type: str='*'):
 
-    if not extract_dir:
+    if extract_dir == attr.NOTHING:
         extract_dir = tempfile.mkdtemp()
     else:
         extract_dir = os.path.abspath(extract_dir)
@@ -87,11 +89,14 @@ def extract_tar(in_file: File, extract_dir: Directory=None, bufsize: int=10240,
     'allowZip64': bool,
     'return': {
         'out_file': File}})
-def create_zip(in_file, out_file, compression=None, allowZip64=True,
-        compresslevel=None, base_dir='.', strict_timestamps=True):
+def create_zip(in_file, out_file, base_dir, compression='', allowZip64=True,
+               compresslevel=None, strict_timestamps=True):
 
-    if not compression:
-        compression = ''
+    if out_file == attr.NOTHING:
+        out_file = Path(in_file[0]).name + '.zip'
+
+    if base_dir == attr.NOTHING:
+        base_dir = Path(in_file[0]).parent
 
     out_file = os.path.abspath(out_file)
 
@@ -100,19 +105,22 @@ def create_zip(in_file, out_file, compression=None, allowZip64=True,
             allowZip64=allowZip64, compresslevel=compresslevel,
             strict_timestamps=strict_timestamps) as zfile, set_cwd(base_dir):
         for path in in_file:
-            for dpath, _, files in os.walk(path):
-                zfile.write(relative_path(dpath, base_dir))
-                for fname in files:
-                    fpath = os.path.join(dpath, fname)
-                    zfile.write(relative_path(fpath, base_dir))
+            if path.is_dir():
+                for dpath, _, files in os.walk(path):
+                    zfile.write(relative_path(dpath, base_dir))
+                    for fname in files:
+                        fpath = os.path.join(dpath, fname)
+                        zfile.write(relative_path(fpath, base_dir))
+            else:
+                zfile.write(relative_path(path, base_dir))
     return out_file
 
 
 @mark.task
 @mark.annotate({'return': {'out_file': MultiOutputObj}})
-def extract_zip(in_file: File, extract_dir: Directory=None):
+def extract_zip(in_file: File, extract_dir: Directory):
 
-    if not extract_dir:
+    if extract_dir == attr.NOTHING:
         extract_dir = tempfile.mkdtemp()
     else:
         extract_dir = os.path.abspath(extract_dir)

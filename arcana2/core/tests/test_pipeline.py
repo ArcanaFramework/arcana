@@ -1,6 +1,7 @@
 
 import zipfile
 import tempfile
+from pathlib import Path
 from arcana2.data.repositories.tests.fixtures import (
     make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
 from arcana2.tasks.tests.fixtures import concatenate
@@ -37,7 +38,9 @@ def test_pipeline(work_dir):
         assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)
 
 
-def test_pipeline_with_conversion(work_dir):
+def test_pipeline_with_implicit_conversion(work_dir):
+    """Input files are converted from zip to text, concatenated and then
+    written back as zip files into the data store"""
     dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_zip_test'],
                            work_dir)
 
@@ -63,9 +66,9 @@ def test_pipeline_with_conversion(work_dir):
     pipeline(ids=IDS, plugin='serial')
 
     for item in dataset['deriv']:
-        tmp_dir = tempfile.mkdtemp()
+        tmp_dir = Path(tempfile.mkdtemp())
         with zipfile.ZipFile(item.fs_path) as zfile:
             zfile.extractall(path=tmp_dir)
-        with open(tmp_dir / 'deriv.txt') as f:
+        with open(tmp_dir / 'out_file.txt') as f:
             contents = f.read()
         assert contents == '\n'.join(['file1.zip', 'file2.zip'] * 2)

@@ -234,9 +234,9 @@ class FileFormat(object):
             initialisation
         """
         if inputs is None:
-            inputs = {'path': 'in_file'}
+            inputs = {'primary': 'in_file'}
         if outputs is None:
-            outputs = {'path': 'out_file'}
+            outputs = {'primary': 'out_file'}
         # Save the converter for when it is required
         self._converters[file_format] = FileGroupConverter(
             from_format=file_format,
@@ -544,6 +544,18 @@ class FileGroupConverter:
     @outputs.default
     def outputs_default(self):
         return {'primary': 'out_file'}
+
+    @inputs.validator
+    def inputs_validator(self, _, inputs):
+        if 'primary' not in inputs:
+            raise ArcanaUsageError(
+                f"'primary' path must be present in converter inputs ({inputs.keys()})")
+
+    @outputs.validator
+    def outputs_validator(self, _, outputs):
+        if 'primary' not in outputs:
+            raise ArcanaUsageError(
+                f"'primary' path must be present in converter outputs ({outputs.keys()})")
     
     def __call__(self, name, **kwargs):
         """
@@ -559,9 +571,10 @@ class FileGroupConverter:
         # assume the converter expects)
         wf.add(func_task(
             extract_paths,
-            in_fields=[('to_convert', FileGroup)],
+            in_fields=[('from_format', type), ('file_group', FileGroup)],
             out_fields=[(i, str) for i in self.inputs],
             name='extract_paths',
+            from_format=self.from_format,
             file_group=wf.lzin.to_convert))
 
         # Add the actual converter node
@@ -574,10 +587,10 @@ class FileGroupConverter:
 
         wf.add(func_task(
             encapsulate_paths,
-            in_fields=[(o, str) for o in self.outputs],
+            in_fields=[('to_format', type)] + [(o, str) for o in self.outputs],
             out_fields=[('converted', FileGroup)],
             name='encapsulate_paths',
-            file_format=self.to_format,
+            to_format=self.to_format,
             **{k: getattr(wf.converter.lzout, v)
                for k, v in self.outputs.items()}))
 
@@ -592,12 +605,12 @@ def extract_paths(from_format, file_group):
     except for extensions"""
     if file_group.datatype != from_format:
         raise ValueError(f"Format of {file_group} doesn't match converter {from_format}")
-    cpy = file_group.copy_to('./file-group', symlink=True)
+    cpy = file_group.copy_to(Path(file_group.path).name, symlink=True)
     paths = (cpy.fs_path,) + tuple(cpy.side_cars.values())
     return paths if len(paths) > 1 else paths[0]
 
 
-def encapsulate_paths(to_format, primary_path, **side_car_paths):
+def encapsulate_paths(to_format, primary, **side_car_paths):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
-    return to_format.from_path(primary_path, side_cars=side_car_paths)
+    return to_format.from_path(primary, side_cars=side_car_paths)
