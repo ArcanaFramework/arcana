@@ -36,7 +36,7 @@ def test_pipeline(work_dir):
 
 
 def test_pipeline_with_conversion(work_dir):
-    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'], work_dir)
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_zip_test'], work_dir)
 
     dataset.add_source('file1', text)
     dataset.add_source('file2', text)

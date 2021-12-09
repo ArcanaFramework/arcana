@@ -225,22 +225,28 @@ def get_dataset_path(name, base_dir):
 
 
 def create_test_file(fname, dpath):
+    dpath = Path(dpath)
     os.makedirs(dpath, exist_ok=True)
-    fpath = Path(fname if not fname.endswith('.zip') else fname[:-4])
-    part = fname
+    next_part = fname
+    if next_part.endswith('.zip'):
+        next_part = next_part.strip('.zip')
+    fpath = Path(next_part)
     # Make double dir
-    if part.startswith('doubledir'):
+    if next_part.startswith('doubledir'):
         os.makedirs(dpath / fpath, exist_ok=True)
-        part = 'dir'
-        fpath /= part
-    if part.startswith('dir'):
+        next_part = 'dir'
+        fpath /= next_part
+    if next_part.startswith('dir'):
         os.makedirs(dpath / fpath, exist_ok=True)
-        part = 'test.txt'
-        fpath /= part
+        next_part = 'test.txt'
+        fpath /= next_part
+    if not fpath.suffix:
+        fpath = fpath.with_suffix('.txt')
     with open(dpath / fpath, 'w') as f:
         f.write(f'{fname}')
     if fname.endswith('.zip'):
-        with zipfile.ZipFile(fname, mode='w') as zfile, set_cwd(dpath):
+        with zipfile.ZipFile(dpath / fname, mode='w') as zfile, set_cwd(dpath):
             zfile.write(fpath)
-        fpath = fname
+        (dpath / fpath).unlink()
+        fpath = Path(fname)
     return fpath
