@@ -21,18 +21,17 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
     image_tag = f'arcana-concatenate{run_prefix}:latest'
 
     pipeline_name = 'detected_' + PIPELINE_NAME + run_prefix
-
-    pydra_task = concatenate()
+    task_location = 'arcana2.tasks.tests.fixtures:concatenate'
 
     json_config = XnatViaCS.generate_json_config(
         pipeline_name=pipeline_name,
-        pydra_task=pydra_task,
+        task_location=task_location,
         image_tag=image_tag,
         inputs=[
-            ('in_file1', text, Clinical.session),
-            ('in_file2', text, Clinical.session)],
+            ('to_concat1', 'in_file1', text, Clinical.session),
+            ('to_concat2', 'in_file2', text, Clinical.session)],
         outputs=[
-            ('out_file', text)],
+            ('concatenated', 'out_file', text)],
         parameters=['duplicates'],
         description="A pipeline to test Arcana's wrap4xnat function",
         version='0.1',
@@ -41,11 +40,12 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
         info_url=None)
 
     build_dir = XnatViaCS.generate_dockerfile(
+        task_location=task_location,
         json_config=json_config,
         maintainer='some.one@an.org',
         build_dir=build_dir,
-        requirements=[],
         packages=[],
+        python_packages=[],
         extra_labels={})
 
     dc = docker.from_env()
@@ -87,13 +87,13 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
 
     json_config = XnatViaCS.generate_json_config(
         pipeline_name=pipeline_name,
-        pydra_task=concatenate(),
+        task_location='arcana2.tasks.tests.fixtures:concatenate',
         image_tag=concatenate_container,
         inputs=[
-            ('in_file1', text, Clinical.session),
-            ('in_file2', text, Clinical.session)],
+            ('to_concat1', 'in_file1', text, Clinical.session),
+            ('to_concat2', 'in_file2', text, Clinical.session)],
         outputs=[
-            ('out_file', text)],
+            ('concatenated', 'out_file', text)],
         parameters=['duplicates'],
         description="A pipeline to test Arcana's wrap4xnat function",
         version='0.1',

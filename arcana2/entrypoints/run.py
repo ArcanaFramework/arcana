@@ -115,7 +115,7 @@ class RunCmd(BaseDatasetCmd):
         if not args.dry_run:
             pipeline(ids=args.ids, plugin=args.pydra_plugin)
 
-        logger.info(f'"{args.app}"" app completed successfully')
+        logger.info(f'"{args.app}" app completed successfully')
 
     @classmethod
     def parse_input_args(cls, args):

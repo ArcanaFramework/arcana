@@ -9,7 +9,7 @@ from pydra import Workflow, mark
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana2.exceptions import ArcanaNameError, ArcanaUsageError
-from .data.item import DataItem
+from .data.item import DataItem, FileGroup
 from .data.set import Dataset
 from .data.type import FileFormat
 from .data.space import DataSpace
@@ -167,11 +167,11 @@ class Pipeline():
         outputs = list(outputs)
 
         # Separate required formats and input names
-        input_formats = dict(i for i in inputs if not isinstance(i, str))
+        input_types = dict(i for i in inputs if not isinstance(i, str))
         input_names = [i if isinstance(i, str) else i[0] for i in inputs]
 
         # Separate produced formats and output names
-        output_formats = dict(o for o in outputs if not isinstance(o, str))
+        output_types = dict(o for o in outputs if not isinstance(o, str))
         output_names = [o if isinstance(o, str) else o[0] for o in outputs]
 
         # Create the outer workflow to link the analysis workflow with the
@@ -191,9 +191,9 @@ class Pipeline():
                     f"{input_name} is not the name of a source in {dataset}")
             sources[input_name] = source
             try:
-                required_format = input_formats[input_name]
+                required_format = input_types[input_name]
             except KeyError:
-                required_format = source.datatype
+                input_types[input_name] = required_format = source.datatype
             pipeline.inputs.append((input_name, required_format))
 
         # Add sinks for the output of the workflow
@@ -218,9 +218,9 @@ class Pipeline():
             sink.pipeline = pipeline
             sinks[output_name] = sink
             try:
-                produced_format = output_formats[output_name]
+                produced_format = output_types[output_name]
             except KeyError:
-                produced_format = sink.datatype
+                output_types[output_name] = produced_format = sink.datatype
             pipeline.outputs.append((output_name, produced_format))
 
         # Generate list of nodes to process checking existing outputs
@@ -261,18 +261,8 @@ class Pipeline():
             inputs=input_names,
             id=wf.per_node.lzin.id))
 
-        # Create identity node to accept connections from user-defined nodes
-        # via `set_output` method
-        wf.per_node.add(func_task(
-            identity,
-            in_fields=[(i, ty.Any) for i in input_names],
-            out_fields=[(i, ty.Any) for i in input_names],
-            name='input_interface'))        
-
         # Set the inputs
-        for input_name in input_names:
-            setattr(wf.per_node.input_interface.inputs, input_name,
-                    getattr(wf.per_node.source.lzout, input_name))
+        sourced = {i: getattr(wf.per_node.source.lzout, i) for i in input_names}
 
         # Do input format conversions if required
         for input_name, required_format in pipeline.inputs:
@@ -281,23 +271,33 @@ class Pipeline():
                 cname = f"{input_name}_input_converter"
                 converter_task = required_format.converter(stored_format)(
                     name=cname,
-                    to_convert=getattr(wf.per_node.source.lzout, input_name))
+                    to_convert=sourced[input_name])
                 if source_out_dct[input_name] == ty.Sequence[DataItem]:
                     # Iterate over all items in the sequence and convert them
                     converter_task.split('to_convert')
                 # Insert converter
                 wf.per_node.add(converter_task)
                 # Map converter output to input_interface
-                setattr(wf.per_node.input_interface.inputs, input_name,
-                        getattr(wf.per_node, cname).lzout.converted)
+                sourced[input_name] = getattr(wf.per_node, cname).lzout.converted
+
+        # Create identity node to accept connections from user-defined nodes
+        # via `set_output` method
+        wf.per_node.add(func_task(
+            extract_paths_and_values,
+            in_fields=[(i, DataItem) for i in input_names],
+            out_fields=[(i, ty.Any) for i in input_names],
+            name='input_interface',
+            **sourced))        
 
         # Creates a node to accept values from user-defined nodes and
         # encapsulate them into DataItems
         wf.per_node.add(func_task(
-            identity,
-            in_fields=[(o, ty.Any) for o in output_names],
-            out_fields=[(o, ty.Any) for o in output_names],
-            name='output_interface'))
+            encapsulate_paths_and_values,
+            in_fields=[('outputs', dict[str, type])] + [
+                (o, ty.Any) for o in output_names],
+            out_fields=[(o, DataItem) for o in output_names],
+            name='output_interface',
+            outputs=output_types))
 
         # Set format converters where required
         to_sink = {o: getattr(wf.per_node.output_interface.lzout, o)
@@ -339,22 +339,32 @@ class Pipeline():
         return pipeline
 
 
-def identity(**kwargs):
-    "Returns the keyword arguments as a tuple"
-    to_return = tuple(kwargs.values())
-    if len(to_return) == 1:
-        to_return = to_return[0]
-    return to_return
+# def identity(**kwargs):
+#     "Returns the keyword arguments as a tuple"
+#     to_return = tuple(kwargs.values())
+#     if len(to_return) == 1:
+#         to_return = to_return[0]
+#     return to_return
 
 
-def extract_paths(**kwargs):
-    paths = tuple(i.value for i in kwargs.values())
-    return paths if len(paths) > 1 else paths[0]
+# def extract_paths(**data_items):
+#     paths = tuple(i.value for i in kwargs.values())
+#     return paths if len(paths) > 1 else paths[0]
 
 
-def encapsulate_paths(outputs, **kwargs):
-    items = [v.datatype(kwargs[k]) for k, v in outputs]
-    return items if len(items) > 1 else items[0]
+# def encapsulate_paths(outputs, **kwargs):
+#     items = [v.datatype(kwargs[k]) for k, v in outputs]
+#     return items if len(items) > 1 else items[0]
+
+
+def append_side_car_suffix(name, suffix):
+    """Creates a new combined field name out of a basename and a side car"""
+    return f'{name}__o__{suffix}'
+
+
+def split_side_car_suffix(name):
+    """Splits the basename from a side car sufix (as combined by `append_side_car_suffix`"""
+    return name.split('__o__')
 
 
 @mark.task
@@ -391,7 +401,7 @@ def source_items(dataset, frequency, id, inputs):
         for inpt_name in inputs:
             item = data_node[inpt_name]
             item.get()  # download to host if required
-            outputs.append(item.value)
+            outputs.append(item)
     return tuple(outputs) if len(inputs) > 1 else outputs[0]
 
 
@@ -399,7 +409,32 @@ def sink_items(dataset, frequency, id, **to_sink):
     """Stores items generated by the pipeline back into the repository"""
     data_node = dataset.node(frequency, id)
     with dataset.repository:
-        for outpt_name, outpt_value in to_sink.items():
+        for outpt_name, output in to_sink.items():
             node_item = data_node[outpt_name]
-            node_item.put(outpt_value) # Store value/path in repository
+            node_item.put(output.value) # Store value/path in repository
     return id
+
+
+def extract_paths_and_values(**data_items):
+    """Copies files into the CWD renaming so the basenames match
+    except for extensions"""
+    values = []
+    for name, item in data_items.items():
+        if isinstance(item, FileGroup):
+            cpy = item.copy_to('./' + name, symlink=True)
+            values.append(cpy.fs_path)
+        else:
+            values.append(item.value)
+    return tuple(values) if len(values) > 1 else values[0]
+
+
+def encapsulate_paths_and_values(outputs, **kwargs):
+    """Copies files into the CWD renaming so the basenames match
+    except for extensions"""
+    items = []
+    for out_name, out_type in outputs.items():
+        if isinstance(out_type, FileFormat):
+            items.append(out_type.from_path(kwargs[out_name]))
+        else:
+            items.append(out_type(kwargs[out_name]))
+    return tuple(items) if len(items) > 1 else items[0]

@@ -172,11 +172,12 @@ def concatenate_container(xnat_repository, xnat_container_registry):
     image_tag = f'arcana-concatenate:latest'
 
     build_dir = XnatViaCS.generate_dockerfile(
+        task_location='arcana2.tasks.tests.fixtures:concatenate',
         json_config=None,
         maintainer='some.one@an.org',
         build_dir=DOCKER_BUILD_DIR,
-        requirements=[],
         packages=[],
+        python_packages=[],
         extra_labels={})
 
     dc = docker.from_env()

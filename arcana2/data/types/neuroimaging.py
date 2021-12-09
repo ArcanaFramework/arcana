@@ -332,24 +332,24 @@ mrtrix_image = FileFormat(name='mrtrix_image', extension='.mif',
 # Set converters between image formats
 
 niftix_gz.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
-                        inputs={'path': 'in_dir'},
-                        outputs={'path': 'out_file',
+                        inputs={'primary': 'in_dir'},
+                        outputs={'primary': 'out_file',
                                  'json': 'out_json'})
 
 niftix.set_converter(dicom, Dcm2Niix, compress='n', out_dir='.',
-                     inputs={'path': 'in_dir'},
-                     outputs={'path': 'out_file',
+                     inputs={'primary': 'in_dir'},
+                     outputs={'primary': 'out_file',
                               'json': 'out_json'})
 
 nifti.set_converter(dicom, Dcm2Niix, out_dir='.',
-                    inputs={'path': 'in_dir'})
+                    inputs={'primary': 'in_dir'})
 nifti.set_converter(analyze, MRConvert, out_file='file.nii')
 nifti.set_converter(nifti_gz, MRConvert, out_file='file.nii')
 nifti.set_converter(mrtrix_image, MRConvert, out_file='file.nii')
 nifti.set_converter(niftix_gz, MRConvert, out_file='file.nii')
 
 nifti_gz.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
-                       inputs={'path': 'in_dir'})
+                       inputs={'primary': 'in_dir'})
 nifti_gz.set_converter(nifti, MRConvert, out_file="file.nii.gz")
 nifti_gz.set_converter(analyze, MRConvert, out_file="file.nii.gz")
 nifti_gz.set_converter(mrtrix_image, MRConvert, out_file="file.nii.gz")

@@ -32,9 +32,9 @@ logger = logging.getLogger('arcana')
 
 
 def localhost_translation(server):
-    match = re.match(r'(https?://)localhost(.*)', server)
-    if match:
-        server = match.group(1) + 'host.docker.internal' + match.group(2)
+    # match = re.match(r'(https?://)localhost(.*)', server)
+    # if match:
+    #     server = match.group(1) + 'host.docker.internal' + match.group(2)
     return server
 
 @attr.s
@@ -432,9 +432,8 @@ class XnatViaCS(Xnat):
         # Add task inputs to inputs JSON specification
         input_args = []
         for inpt in inputs:
-            escaped_name = path2name(inpt.name)
-            replacement_key = f'[{escaped_name.upper()}_INPUT]'
-            spec = input_specs[escaped_name]
+            replacement_key = f'[{inpt.name.upper()}_INPUT]'
+            spec = input_specs[path2name(inpt.path)]
             
             desc = spec.metadata.get('help_string', '')
             if spec.type in (str, Path):
@@ -452,7 +451,7 @@ class XnatViaCS(Xnat):
                 "user-settable": True,
                 "replacement-key": replacement_key})
             input_args.append(
-                f'--input {escaped_name} {inpt.datatype} {replacement_key}')
+                f'--input {inpt.name} {inpt.datatype} {replacement_key}')
 
         # Add parameters as additional inputs to inputs JSON specification
         param_args = []
@@ -479,7 +478,7 @@ class XnatViaCS(Xnat):
         output_handlers = []
         output_args = []
         for output in outputs:
-            output_fname = path2name(output.name)
+            output_fname = output.path
             if output.datatype.extension is not None:
                 output_fname += output.datatype.extension
             # Set the path to the 

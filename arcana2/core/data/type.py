@@ -1,4 +1,5 @@
 import os.path as op
+from copy import copy
 from abc import abstractmethod, ABCMeta
 from collections import defaultdict
 from pathlib import Path
@@ -7,7 +8,6 @@ import attr
 from typing import Any
 from pydra import Workflow
 from pydra.engine.core import TaskBase
-from .type import FileFormat
 from ..utils import func_task
 from arcana2.core.utils import split_extension
 import logging
@@ -233,13 +233,13 @@ class FileFormat(object):
             Keyword arguments passed through to the task interface on
             initialisation
         """
-        from .converter import FileGroupConverter
         if inputs is None:
             inputs = {'path': 'in_file'}
         if outputs is None:
             outputs = {'path': 'out_file'}
         # Save the converter for when it is required
         self._converters[file_format] = FileGroupConverter(
+            from_format=file_format,
             to_format=self,
             task=task,
             inputs=inputs,
@@ -378,13 +378,13 @@ class FileFormat(object):
         ArcanaNameError
             [description]
         """
-        name_path = op.basename(file_path)
-        if not op.isdir(file_path):
-            name_path = split_extension(name_path)[0]
-        if not file_path.endswith(self.ext):
-            file_path += self.ext
-        return self.file_group_cls(name_path, fs_path=file_path, **kwargs)
-
+        name_path = Path(file_path).name
+        if name_path.endswith(self.ext):
+            name_path = name_path[:-len(self.ext)]
+        else:
+            file_path += self.ext       
+        return self.file_group_cls(name_path, fs_path=file_path, datatype=self,
+                                   **kwargs)
 
 
 class FileFormatAuxFile(object):
@@ -527,89 +527,23 @@ class Image(FileFormat, metaclass=ABCMeta):
                                - other_fileset.get_array()) ** 2))
 
 
-class Converter(object):
-    """
-    Base class for all Arcana data format converters
-
-    Parameters
-    ----------
-    input_format : FileFormat
-        The input format to convert from
-    output_format : FileFormat
-        The output format to convert to
-    """
-
-    requirements = []
-
-    def __init__(self, input_format, output_format, wall_time=None,
-                 mem_gb=None):
-        self._input_format = input_format
-        self._output_format = output_format
-        self._wall_time = wall_time
-        self._mem_gb = mem_gb
-
-    def __eq__(self, other):
-        return (self.input_format == self.input_format
-                and self._output_format == other.output_format)
-
-    @property
-    def input_format(self):
-        return self._input_format
-
-    @property
-    def output_format(self):
-        return self._output_format
-
-    @property
-    def interface(self):
-        # To be overridden by subclasses
-        return NotImplementedError
-
-    @property
-    def input(self):
-        # To be overridden by subclasses
-        return NotImplementedError
-
-    @property
-    def output(self):
-        # To be overridden by subclasses
-        return NotImplementedError
-
-    @property
-    def output_side_cars(self):
-        return {}
-
-    def output_aux(self, aux_name):
-        try:
-            return self.output_side_cars[aux_name]
-        except KeyError:
-            raise ArcanaNameError(
-                aux_name,
-                "No auxiliary file in output format {} named '{}".format(
-                    self.output_format, aux_name))
-
-    @property
-    def mem_gb(self):
-        return self._mem_gb
-
-    @property
-    def wall_time(self):
-        return self._wall_time
-
-    def __repr__(self):
-        return "{}(input_format={}, output_format={})".format(
-            type(self).__name__, self.input_format, self.output_format)
-
-
 @attr.s
-class MappedConverter:
+class FileGroupConverter:
 
     from_format: FileFormat = attr.ib()
     to_format: FileFormat = attr.ib()
     task: TaskBase = attr.ib()
     inputs: dict[str, str] = attr.ib()
     outputs: dict[str, str] = attr.ib()
-    task_kwargs: dict[str, Any] = attr.ib()
+    task_kwargs: dict[str, Any] = attr.ib(factory=dict)
+
+    @inputs.default
+    def inputs_default(self):
+        return {'primary': 'in_file'}
+
+    @outputs.default
+    def outputs_default(self):
+        return {'primary': 'out_file'}
     
     def __call__(self, name, **kwargs):
         """
@@ -618,51 +552,52 @@ class MappedConverter:
         """
         from .item import FileGroup
         wf = Workflow(name=name,
-                      input_spec=['in_file'] + list(self.from_format.side_cars),
+                      input_spec=['to_convert'],
                       **kwargs)
 
         # Add task collect the input paths to a common directory (as we
         # assume the converter expects)
         wf.add(func_task(
-            get_paths,
-            in_fields=[('file_group', FileGroup)],
-            out_fields=[('in_file', str)] + [
-                ()],
-            name='get_paths',
+            extract_paths,
+            in_fields=[('to_convert', FileGroup)],
+            out_fields=[(i, str) for i in self.inputs],
+            name='extract_paths',
             file_group=wf.lzin.to_convert))
 
         # Add the actual converter node
-        conv_kwargs = {self.inputs[i]:
-                       getattr(wf.get_paths.lzout, i) for i in self.inputs}
-        conv_kwargs.update(self.task_kwargs)
+        conv_kwargs = copy(self.task_kwargs)
         conv_kwargs.update(kwargs)
+        # Map 
+        conv_kwargs.update((self.inputs[i], getattr(wf.extract_paths.lzout, i))
+                            for i in self.inputs)
         wf.add(self.task(name='converter', **conv_kwargs))
 
         wf.add(func_task(
-            collect_paths,
+            encapsulate_paths,
             in_fields=[(o, str) for o in self.outputs],
-            out_fields=[('out_file', str)] + [
-                (o, str) for o in self.to_format.side_cars],
-            name='collect_paths',
+            out_fields=[('converted', FileGroup)],
+            name='encapsulate_paths',
             file_format=self.to_format,
             **{k: getattr(wf.converter.lzout, v)
                for k, v in self.outputs.items()}))
 
         # Set the outputs of the workflow
-        wf.set_output(('out_file', wf.collect_paths.lzout.file_group))
+        wf.set_output(('converted', wf.encapsulate_paths.lzout.converted))
 
         return wf
 
 
-def get_paths(file_group):
+def extract_paths(from_format, file_group):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
+    if file_group.datatype != from_format:
+        raise ValueError(f"Format of {file_group} doesn't match converter {from_format}")
     cpy = file_group.copy_to('./file-group', symlink=True)
-    return cpy.fs_path
+    paths = (cpy.fs_path,) + tuple(cpy.side_cars.values())
+    return paths if len(paths) > 1 else paths[0]
 
 
-def collect_paths(file_format, primary, **cache_paths):
+def encapsulate_paths(to_format, primary_path, **side_car_paths):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
-    side_cars = cache_paths if cache_paths else None
-    
+    return to_format.from_path(primary_path, side_cars=side_car_paths)

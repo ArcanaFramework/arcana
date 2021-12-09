@@ -130,7 +130,7 @@ class FileSystem(DataRepository):
             shutil.copytree(fs_path, target_path)
         else:
             raise ValueError(
-                f"Source path {fs_path} does not exist")
+                f"Source path '{fs_path}' to be set for {file_group} does not exist")
         if file_group.provenance is not None:
             file_group.provenance.save(self.prov_json_path(file_group))
 

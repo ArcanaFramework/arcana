@@ -1,12 +1,14 @@
 import os
 from tempfile import mkdtemp
 from pathlib import Path
+import zipfile
 from dataclasses import dataclass
 import shutil
 from itertools import product
 import pytest
 from arcana2.data.repositories.file_system import FileSystem
 from arcana2.core.data.space import DataSpace
+from arcana2.core.utils import set_cwd
 from arcana2.core.data.type import FileFormat
 from arcana2.data.types.general import text, directory, json
 from arcana2.data.spaces.clinical import Clinical
@@ -137,6 +139,11 @@ TEST_DATASET_BLUEPRINTS = {
         [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         [1, 1, 1, 2],
         ['file1.txt', 'file2.txt'],
+        {}, {}, []),
+    'concatenate_zip_test': TestDatasetBlueprint(
+        [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        [1, 1, 1, 2],
+        ['dir1.zip', 'dir2.zip'],
         {}, {}, [])}
 
 
@@ -218,17 +225,22 @@ def get_dataset_path(name, base_dir):
 
 
 def create_test_file(fname, dpath):
-    fpath = Path(fname)
     os.makedirs(dpath, exist_ok=True)
+    fpath = Path(fname if not fname.endswith('.zip') else fname[:-4])
+    part = fname
     # Make double dir
-    if fname.startswith('doubledir'):
+    if part.startswith('doubledir'):
         os.makedirs(dpath / fpath, exist_ok=True)
-        fname = 'dir'
-        fpath /= fname
-    if fname.startswith('dir'):
+        part = 'dir'
+        fpath /= part
+    if part.startswith('dir'):
         os.makedirs(dpath / fpath, exist_ok=True)
-        fname = 'test.txt'
-        fpath /= fname
+        part = 'test.txt'
+        fpath /= part
     with open(dpath / fpath, 'w') as f:
         f.write(f'{fname}')
+    if fname.endswith('.zip'):
+        with zipfile.ZipFile(fname, mode='w') as zfile, set_cwd(dpath):
+            zfile.write(fpath)
+        fpath = fname
     return fpath

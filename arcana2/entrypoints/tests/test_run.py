@@ -16,7 +16,7 @@ def test_run_app(work_dir, test_dataspace_location):
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
-        'arcana2.tasks.tests.fixtures.concatenate',
+        'arcana2.tasks.tests.fixtures:concatenate',
         str(dataset.id),
         '--repository', 'file_system',
         '--input', 'in_file1', 'text', 'file1', 
@@ -44,7 +44,7 @@ def test_run_app_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
-        'arcana2.tasks.tests.fixtures.concatenate',
+        'arcana2.tasks.tests.fixtures:concatenate',
         dataset.id,
         '--input', 'in_file1', 'text', 'scan1:text',
         '--input', 'in_file2', 'text', 'scan2:text',
@@ -77,7 +77,7 @@ def test_run_app_via_xnat_cs(xnat_repository, xnat_archive_dir, work_dir):
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
-        'arcana2.tasks.tests.fixtures.concatenate',
+        'arcana2.tasks.tests.fixtures:concatenate',
         dataset.id,
         '--input', 'in_file1', 'text', 'scan1:text',
         '--input', 'in_file2', 'text', 'scan2:text',

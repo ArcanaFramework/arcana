@@ -319,7 +319,9 @@ class FileGroup(DataItem):
             copy_file(self.fs_path, path + self.datatype.ext)
             for aux_name, aux_path in self.side_cars.items():
                 copy_file(aux_path, path + self.datatype.side_cars[aux_name])
-        return self.datatype.file_group_cls.from_path(path)
+        return self.datatype.from_path(path)
+
+    
 
 
 @attr.s
