@@ -135,7 +135,7 @@ class Pipeline():
             in a tuple (NAME, FORMAT)
         outputs : Sequence[str or tuple[str, FileFormat]]
             List of sink names to be connected to the outputs of the pipeline
-            If teh the input to be in a specific format, then it can be provided in
+            If the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)
         frequency : DataSpace, optional
             The frequency of the pipeline, i.e. the frequency of the
@@ -395,14 +395,14 @@ def source_items(dataset, frequency, id, inputs):
     """Selects the items from the dataset corresponding to the input 
     sources and retrieves them from the repository to a cache on 
     the host"""
-    outputs = []
+    sourced = []
     data_node = dataset.node(frequency, id)
     with dataset.repository:
         for inpt_name in inputs:
             item = data_node[inpt_name]
             item.get()  # download to host if required
-            outputs.append(item)
-    return tuple(outputs) if len(inputs) > 1 else outputs[0]
+            sourced.append(item)
+    return tuple(sourced) if len(inputs) > 1 else sourced[0]
 
 
 def sink_items(dataset, frequency, id, **to_sink):

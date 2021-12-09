@@ -379,10 +379,11 @@ class FileFormat(object):
             [description]
         """
         name_path = Path(file_path).name
-        if name_path.endswith(self.ext):
-            name_path = name_path[:-len(self.ext)]
-        else:
-            file_path += self.ext       
+        if self.ext is not None:
+            if name_path.endswith(self.ext):
+                name_path = name_path[:-len(self.ext)]
+            else:
+                file_path += self.ext       
         return self.file_group_cls(name_path, fs_path=file_path, datatype=self,
                                    **kwargs)
 
