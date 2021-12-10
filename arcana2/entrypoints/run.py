@@ -12,7 +12,8 @@ from arcana2.core.data.enum import DataQuality
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
 from .dataset import BaseDatasetCmd
-from arcana2.core.utils import resolve_class, resolve_datatype, list_instances
+from arcana2.core.utils import (
+    resolve_class, resolve_datatype, list_instances, set_loggers)
 
 logger = logging.getLogger('arcana')
 
@@ -64,6 +65,9 @@ class RunCmd(BaseDatasetCmd):
         parser.add_argument(
             '--dry_run', action='store_true', default=False,
             help=("Set up the workflow to test inputs but don't run the app"))
+        parser.add_argument(
+            '--loglevel', type=str, default='info',
+            help=("The level of detail logging information is presented"))
 
     @classmethod
     def construct_io_parser(cls, parser):
@@ -94,6 +98,8 @@ class RunCmd(BaseDatasetCmd):
 
     @classmethod
     def run(cls, args):
+
+        set_loggers(args.loglevel)
 
         work_dir = Path(args.work) if args.work is not None else Path(tempfile.mkdtemp())
         work_dir.mkdir(exist_ok=True)

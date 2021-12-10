@@ -95,19 +95,31 @@ except sp.CalledProcessError:
     HOSTNAME = None
 JSON_ENCODING = {'encoding': 'utf-8'}    
 
-def set_loggers(loggers):
+# def set_loggers(loggers):
 
-    # Overwrite earlier (default) versions of logger levels with later options
-    loggers = dict(loggers)
+#     # Overwrite earlier (default) versions of logger levels with later options
+#     loggers = dict(loggers)
 
-    for name, level in loggers.items():
-        logger = logging.getLogger(name)
-        logger.setLevel(level)
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter("%(levelname)s - %(message)s")
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+#     for name, level in loggers.items():
+#         logger = logging.getLogger(name)
+#         logger.setLevel(level)
+#         handler = logging.StreamHandler()
+#         formatter = logging.Formatter("%(levelname)s - %(message)s")
+#         handler.setFormatter(formatter)
+#         logger.addHandler(handler)
 
+
+def set_loggers(loglevel, pydra_level='warning', depend_level='warning'):
+    def parse(level):
+        if isinstance(level, str):
+            level = getattr(logging, level.upper())
+        return level
+
+    logging.getLogger("arcana").setLevel(parse(loglevel))
+    logging.getLogger("pydra").setLevel(parse(pydra_level))
+
+    # set logging format
+    logging.basicConfig(level=parse(depend_level))
 
 def to_list(arg):
     if arg is None:

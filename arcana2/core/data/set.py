@@ -516,8 +516,8 @@ class Dataset():
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
-        logger.info(f'Adding new {str(frequency)} node to {self.id} dataset: '
-                    + ', '.join(f'{str(f)}={i}' for f, i in ids.items()))
+        logger.debug(f'Adding new %s node to %s dataset: %s',
+                     frequency, self.id, ids)
         frequency = self._parse_freq(frequency)
         node = DataNode(ids, frequency, self)
         # Create new data node
@@ -533,12 +533,12 @@ class Dataset():
         for parent_freq, parent_id in node.ids.items():
             diff_freq = node.frequency - (parent_freq & node.frequency)
             if diff_freq and parent_freq:  # Don't need to insert root node again
-                logger.debug(f'Linking parent {parent_freq}: {parent_id}')
+                # logger.debug(f'Linking parent {parent_freq}: {parent_id}')
                 try:
                     parent_node = self.node(parent_freq, parent_id)
                 except ArcanaNameError:
-                    logger.debug(
-                        f'Parent {parent_freq}:{parent_id} not found, adding')
+                    # logger.debug(
+                    #     f'Parent {parent_freq}:{parent_id} not found, adding')
                     parent_ids = {f: i for f, i in node.ids.items()
                                   if (f.is_parent(parent_freq)
                                       or f == parent_freq)}

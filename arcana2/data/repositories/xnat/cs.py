@@ -30,13 +30,6 @@ from .api import Xnat
 
 logger = logging.getLogger('arcana')
 
-
-def localhost_translation(server):
-    # match = re.match(r'(https?://)localhost(.*)', server)
-    # if match:
-    #     server = match.group(1) + 'host.docker.internal' + match.group(2)
-    return server
-
 @attr.s
 class XnatViaCS(Xnat):
     """
@@ -73,14 +66,21 @@ class XnatViaCS(Xnat):
     node_id: str = attr.ib(default=None)
     input_mount: Path = attr.ib(default=INPUT_MOUNT, converter=Path)
     output_mount: Path = attr.ib(default=OUTPUT_MOUNT, converter=Path)
-    server: str = attr.ib(converter=localhost_translation)
+    server: str = attr.ib()
     user: str = attr.ib()
     password: str = attr.ib()
 
 
     @server.default
     def server_default(self):
-        return os.environ['XNAT_HOST']
+        server = os.environ['XNAT_HOST']
+        logger.debug("XNAT (via CS) server found %s", server)
+        # Convert localhost path to host.docker.internal by default
+        match = re.match(r'(https?://)localhost(.*)', server)
+        if match:
+            server = match.group(1) + 'host.docker.internal' + match.group(2)
+            logger.debug("Converted localhost server to %s", server)
+        return server
 
     @user.default
     def user_default(self):
@@ -89,7 +89,6 @@ class XnatViaCS(Xnat):
     @password.default
     def password_default(self):
         return os.environ['XNAT_PASS']
-
 
     def get_file_group(self, file_group):
         try:
@@ -147,25 +146,25 @@ class XnatViaCS(Xnat):
         # Update file-group with new values for local paths and XNAT URI
         file_group.set_fs_paths(primary_path, side_car_paths)
         file_group.uri = (self._make_uri(file_group.data_node)
-                          + '/RESOURCES/' + path2name(file_group.path))
+                          + '/RESOURCES/' + file_group.path)
         logger.info("Put %s into %s:%s node via direct access to archive directory",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)
 
     def get_output_paths(self, file_group):
-        escaped_name = path2name(file_group.path)
-        resource_path = self.output_mount / escaped_name
+        path_parts = file_group.path.split('/')
+        resource_path = self.output_mount / path_parts[:-1]
         side_car_paths = {}
         if file_group.datatype.directory:
             primary_path = resource_path
         else:
             os.makedirs(resource_path, exist_ok=True)
             # Upload primary file and add to cache
-            fname = escaped_name + file_group.datatype.extension
+            fname = path_parts[-1] + file_group.datatype.extension
             primary_path = resource_path / fname
             # Upload side cars and add them to cache
             for sc_name, sc_ext in file_group.datatype.side_cars.items():
-                sc_fname = escaped_name + sc_ext
+                sc_fname = path_parts[-1] + sc_ext
                 sc_fpath = resource_path / sc_fname
                 side_car_paths[sc_name] = sc_fpath
         return primary_path, side_car_paths
@@ -178,6 +177,285 @@ class XnatViaCS(Xnat):
             return self.input_mount / data_node.id
         else:
             raise ArcanaNoDirectXnatMountException
+
+    @classmethod
+    def generate_json_config(cls,
+                             pipeline_name: str,
+                             task_location: str,
+                             image_tag: str,
+                             inputs,
+                             outputs,
+                             description,
+                             version,
+                             parameters=None,
+                             frequency=Clinical.session,
+                             registry=DOCKER_HUB,
+                             info_url=None):
+        """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
+        should handle the containerised pipeline
+
+        Parameters
+        ----------
+        pipeline_name : str
+            Name of the pipeline
+        task_location : str
+            The module path to the task to execute
+        image_tag : str
+            Name + version of the Docker image to be created
+        inputs : list[InputArg or tuple]
+            Inputs to be provided to the container
+        outputs : list[OutputArg or tuple]
+            Outputs from the container 
+        description : str
+            User-facing description of the pipeline
+        version : str
+            Version string for the wrapped pipeline
+        parameters : list[str]
+            Parameters to be exposed in the CS command    
+        frequency : Clinical
+            Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
+        registry : str
+            URI of the Docker registry to upload the image to
+        info_url : str
+            URI explaining in detail what the pipeline does
+
+        Returns
+        -------
+        dict
+            JSON that can be used 
+
+        Raises
+        ------
+        ArcanaUsageError
+            [description]
+        """
+        if parameters is None:
+            parameters = []
+        if isinstance(frequency, str):
+            frequency = Clinical[frequency]
+        if frequency not in cls.VALID_FREQUENCIES:
+            raise ArcanaUsageError(
+                f"'{frequency}'' is not a valid option ('"
+                + "', '".join(cls.VALID_FREQUENCIES) + "')")
+
+        # Convert tuples to appropriate dataclasses for inputs and outputs
+        inputs = [cls.InputArg(*i) if not isinstance(i, cls.InputArg) else i
+                  for i in inputs]
+        outputs = [cls.OutputArg(*o) if not isinstance(o, cls.OutputArg) else o
+                   for o in outputs]
+        parameters = [cls.ParamArg(*p) if not isinstance(p, cls.ParamArg) else p
+                      for p in parameters]
+
+        pydra_task = resolve_class(task_location)
+        if not isinstance(pydra_task, TaskBase):
+            pydra_task = pydra_task()
+
+        input_specs = dict(f[:2] for f in pydra_task.input_spec.fields)
+        # output_specs = dict(f[:2] for f in pydra_task.output_spec.fields)
+
+        # JSON to define all inputs and parameters to the pipelines
+        inputs_json = []
+
+        # Add task inputs to inputs JSON specification
+        input_args = []
+        for inpt in inputs:
+            dialog_name = inpt.dialog_name if inpt.dialog_name else inpt.pydra_name
+            replacement_key = f'[{dialog_name.upper()}_INPUT]'
+            spec = input_specs[inpt.pydra_name]
+            
+            desc = spec.metadata.get('help_string', '')
+            if spec.type in (str, Path):
+                desc = (f"Match resource [PATH:STORED_DTYPE]: {desc} ")
+                input_type = 'string'
+            else:
+                desc = f"Match field ({spec.type}) [PATH:STORED_DTYPE]: {desc} "
+                input_type = cls.COMMAND_INPUT_TYPES.get(spec.type, 'string')
+            inputs_json.append({
+                "name": dialog_name,
+                "description": desc,
+                "type": input_type,
+                "default-value": "",
+                "required": True,
+                "user-settable": True,
+                "replacement-key": replacement_key})
+            input_args.append(
+                f"--input {inpt.pydra_name} {inpt.datatype} {replacement_key}")
+
+        # Add parameters as additional inputs to inputs JSON specification
+        param_args = []
+        for param in parameters:
+            dialog_name = param.dialog_name if param.dialog_name else param.pydra_name
+            spec = input_specs[param.pydra_name]
+            desc = f"Parameter ({spec.type}): " + spec.metadata.get('help_string', '')
+            required = spec._default is NOTHING
+            
+            replacement_key = f'[{dialog_name.upper()}_PARAM]'
+
+            inputs_json.append({
+                "name": dialog_name,
+                "description": desc,
+                "type": cls.COMMAND_INPUT_TYPES.get(spec.type, 'string'),
+                "default-value": (spec._default if not required else ""),
+                "required": required,
+                "user-settable": True,
+                "replacement-key": replacement_key})
+            param_args.append(
+                f"--parameter {param.pydra_name} {replacement_key}")
+
+        # Set up output handlers and arguments
+        outputs_json = []
+        output_handlers = []
+        output_args = []
+        for output in outputs:
+            xnat_path = output.xnat_path if output.xnat_path else output.pydra_name
+            label = xnat_path.split('/')[0]
+            # output_fname = xnat_path
+            # if output.datatype.extension is not None:
+            #     output_fname += output.datatype.extension
+            # Set the path to the 
+            outputs_json.append({
+                "name": output.pydra_name,
+                "description": f"{output.pydra_name} ({output.datatype})",
+                "required": True,
+                "mount": "out",
+                "path": label,
+                "glob": None})
+            output_handlers.append({
+                "name": f"{output.pydra_name}-resource",
+                "accepts-command-output": output.pydra_name,
+                "via-wrapup-command": None,
+                "as-a-child-of": "SESSION",
+                "type": "Resource",
+                "label": label,
+                "format": output.datatype.name})
+            output_args.append(
+                f'--output {output.pydra_name} {output.datatype} {xnat_path}')
+
+        input_args_str = ' '.join(input_args)
+        output_args_str = ' '.join(output_args)
+        param_args_str = ' '.join(param_args)
+
+        cmdline = (
+            f"conda run --no-capture-output -n arcana "  # activate conda
+            f"arcana run {task_location} "  # run pydra task in Arcana
+            f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
+            f"--pydra_plugin serial "  # Use serial processing instead of parallel to simplify outputs
+            f"--work {cls.WORK_MOUNT} "  # working directory
+            f"--repository xnat_via_cs {frequency} ")  # pass XNAT API details
+
+        # Create Project input that can be passed to the command line, which will
+        # be populated by inputs derived from the XNAT object passed to the pipeline
+        inputs_json.append(
+            {
+                "name": "PROJECT_ID",
+                "description": "Project ID",
+                "type": "string",
+                "required": True,
+                "user-settable": False,
+                "replacement-key": "[PROJECT_ID]"
+            })
+
+        # Access session via Container service args and derive 
+        if frequency == Clinical.session:
+            # Set the object the pipeline is to be run against
+            context = ["xnat:imageSessionData"]
+            cmdline += ' [SESSION_LABEL]'  # Pass node-id to XnatViaCS repo
+            # Create Session input that  can be passed to the command line, which
+            # will be populated by inputs derived from the XNAT session object
+            # passed to the pipeline.
+            inputs_json.append(
+                {
+                    "name": "SESSION_LABEL",
+                    "description": "Imaging session label",
+                    "type": "string",
+                    "required": True,
+                    "user-settable": False,
+                    "replacement-key": "[SESSION_LABEL]"
+                })
+            # Add specific session to process to command line args
+            cmdline += " --ids [SESSION_LABEL] "
+            # Access the session XNAT object passed to the pipeline
+            external_inputs = [
+                {
+                    "name": "SESSION",
+                    "description": "Imaging session",
+                    "type": "Session",
+                    "source": None,
+                    "default-value": None,
+                    "required": True,
+                    "replacement-key": None,
+                    "sensitive": None,
+                    "provides-value-for-command-input": None,
+                    "provides-files-for-command-mount": "in",
+                    "via-setup-command": None,
+                    "user-settable": False,
+                    "load-children": True}]
+            # Access to project ID and session label from session XNAT object
+            derived_inputs = [
+                {
+                    "name": "__SESSION_LABEL__",
+                    "type": "string",
+                    "derived-from-wrapper-input": "SESSION",
+                    "derived-from-xnat-object-property": "label",
+                    "provides-value-for-command-input": "SESSION_LABEL",
+                    "user-settable": False
+                },
+                {
+                    "name": "__PROJECT_ID__",
+                    "type": "string",
+                    "derived-from-wrapper-input": "SESSION",
+                    "derived-from-xnat-object-property": "project-id",
+                    "provides-value-for-command-input": "PROJECT_ID",
+                    "user-settable": False
+                }]
+        
+        else:
+            raise NotImplementedError(
+                "Wrapper currently only supports session-level pipelines")
+
+        # Generate the complete configuration JSON
+        json_config = {
+            "name": pipeline_name,
+            "description": description,
+            "label": pipeline_name,
+            "version": version,
+            "schema-version": "1.0",
+            "image": image_tag,
+            "index": registry,
+            "type": "docker",
+            "command-line": cmdline,
+            "override-entrypoint": True,
+            "mounts": [
+                {
+                    "name": "in",
+                    "writable": False,
+                    "path": str(cls.INPUT_MOUNT)
+                },
+                {
+                    "name": "out",
+                    "writable": True,
+                    "path": str(cls.OUTPUT_MOUNT)
+                }
+            ],
+            "ports": {},
+            "inputs": inputs_json,
+            "outputs": outputs_json,
+            "xnat": [
+                {
+                    "name": pipeline_name,
+                    "description": description,
+                    "contexts": context,
+                    "external-inputs": external_inputs,
+                    "derived-inputs": derived_inputs,
+                    "output-handlers": output_handlers
+                }
+            ]
+        }
+
+        if info_url:
+            json_config['info-url'] = info_url
+
+        return json_config
 
 
     @classmethod
@@ -355,290 +633,54 @@ class XnatViaCS(Xnat):
 
         return build_dir
 
-    @classmethod
-    def generate_json_config(cls,
-                             pipeline_name: str,
-                             task_location: str,
-                             image_tag: str,
-                             inputs,
-                             outputs,
-                             description,
-                             version,
-                             parameters=None,
-                             frequency=Clinical.session,
-                             registry=DOCKER_HUB,
-                             info_url=None):
-        """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
-        should handle the containerised pipeline
-
-        Parameters
-        ----------
-        pipeline_name : str
-            Name of the pipeline
-        task_location : str
-            The module path to the task to execute
-        image_tag : str
-            Name + version of the Docker image to be created
-        inputs : list[InputArg or tuple]
-            Inputs to be provided to the container
-        outputs : list[OutputArg or tuple]
-            Outputs from the container 
-        description : str
-            User-facing description of the pipeline
-        version : str
-            Version string for the wrapped pipeline
-        parameters : list[str]
-            Parameters to be exposed in the CS command    
-        frequency : Clinical
-            Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
-        registry : str
-            URI of the Docker registry to upload the image to
-        info_url : str
-            URI explaining in detail what the pipeline does
-
-        Returns
-        -------
-        dict
-            JSON that can be used 
-
-        Raises
-        ------
-        ArcanaUsageError
-            [description]
-        """
-        if parameters is None:
-            parameters = []
-        if isinstance(frequency, str):
-            frequency = Clinical[frequency]
-        if frequency not in cls.VALID_FREQUENCIES:
-            raise ArcanaUsageError(
-                f"'{frequency}'' is not a valid option ('"
-                + "', '".join(cls.VALID_FREQUENCIES) + "')")
-
-        # Convert tuples to appropriate dataclasses for inputs and outputs
-        inputs = [cls.InputArg(*i) for i in inputs if isinstance(i, tuple)]
-        outputs = [cls.OutputArg(*o) for o in outputs if isinstance(o, tuple)]
-
-        pydra_task = resolve_class(task_location)
-        if not isinstance(pydra_task, TaskBase):
-            pydra_task = pydra_task()
-
-        input_specs = dict(f[:2] for f in pydra_task.input_spec.fields)
-        # output_specs = dict(f[:2] for f in pydra_task.output_spec.fields)
-
-        # JSON to define all inputs and parameters to the pipelines
-        inputs_json = []
-
-        # Add task inputs to inputs JSON specification
-        input_args = []
-        for inpt in inputs:
-            replacement_key = f'[{inpt.name.upper()}_INPUT]'
-            spec = input_specs[path2name(inpt.path)]
-            
-            desc = spec.metadata.get('help_string', '')
-            if spec.type in (str, Path):
-                desc = (f"Match resource [PATH:STORED_DTYPE]: {desc} ")
-                input_type = 'string'
-            else:
-                desc = f"Match field ({spec.type}) [PATH:STORED_DTYPE]: {desc} "
-                input_type = cls.COMMAND_INPUT_TYPES.get(spec.type, 'string')
-            inputs_json.append({
-                "name": inpt.name.replace('/', '_'),
-                "description": desc,
-                "type": input_type,
-                "default-value": "",
-                "required": True,
-                "user-settable": True,
-                "replacement-key": replacement_key})
-            input_args.append(
-                f'--input {inpt.name} {inpt.datatype} {replacement_key}')
-
-        # Add parameters as additional inputs to inputs JSON specification
-        param_args = []
-        for param in parameters:
-            spec = input_specs[param]
-            desc = f"Parameter ({spec.type}): " + spec.metadata.get('help_string', '')
-            required = spec._default is NOTHING
-            
-            replacement_key = f'[{param.upper()}_PARAM]'
-
-            inputs_json.append({
-                "name": param,
-                "description": desc,
-                "type": cls.COMMAND_INPUT_TYPES.get(spec.type, 'string'),
-                "default-value": (spec._default if not required else ""),
-                "required": required,
-                "user-settable": True,
-                "replacement-key": replacement_key})
-            param_args.append(
-                f'--parameter {param} {replacement_key}')
-
-        # Set up output handlers and arguments
-        outputs_json = []
-        output_handlers = []
-        output_args = []
-        for output in outputs:
-            output_fname = output.path
-            if output.datatype.extension is not None:
-                output_fname += output.datatype.extension
-            # Set the path to the 
-            outputs_json.append({
-                "name": output.name.replace('/', '_'),
-                "description": f"{output.name} ({output.datatype})",
-                "required": True,
-                "mount": "out",
-                "path": f'{output.name}/{output_fname}',
-                "glob": None})
-            output_handlers.append({
-                "name": f"{output.name}-resource",
-                "accepts-command-output": output.name,
-                "via-wrapup-command": None,
-                "as-a-child-of": "SESSION",
-                "type": "Resource",
-                "label": output.name,
-                "format": output.datatype.name})
-            output_args.append(
-                f'--output {output.name} {output.datatype} {output_fname}')
-
-        input_args_str = ' '.join(input_args)
-        output_args_str = ' '.join(output_args)
-        param_args_str = ' '.join(param_args)
-
-        cmdline = (
-            f"conda run --no-capture-output -n arcana "  # activate conda
-            f"arcana run {task_location} "  # run pydra task in Arcana
-            f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
-            f"--pydra_plugin serial "  # Use serial processing instead of parallel to simplify outputs
-            f"--work {cls.WORK_MOUNT} "  # working directory
-            f"--repository xnat_via_cs {frequency} ")  # pass XNAT API details
-
-        # Create Project input that can be passed to the command line, which will
-        # be populated by inputs derived from the XNAT object passed to the pipeline
-        inputs_json.append(
-            {
-                "name": "PROJECT_ID",
-                "description": "Project ID",
-                "type": "string",
-                "required": True,
-                "user-settable": False,
-                "replacement-key": "[PROJECT_ID]"
-            })
-
-        # Access session via Container service args and derive 
-        if frequency == Clinical.session:
-            # Set the object the pipeline is to be run against
-            context = ["xnat:imageSessionData"]
-            cmdline += ' [SESSION_LABEL]'  # Pass node-id to XnatViaCS repo
-            # Create Session input that  can be passed to the command line, which
-            # will be populated by inputs derived from the XNAT session object
-            # passed to the pipeline.
-            inputs_json.append(
-                {
-                    "name": "SESSION_LABEL",
-                    "description": "Imaging session label",
-                    "type": "string",
-                    "required": True,
-                    "user-settable": False,
-                    "replacement-key": "[SESSION_LABEL]"
-                })
-            # Add specific session to process to command line args
-            cmdline += " --ids [SESSION_LABEL] "
-            # Access the session XNAT object passed to the pipeline
-            external_inputs = [
-                {
-                    "name": "SESSION",
-                    "description": "Imaging session",
-                    "type": "Session",
-                    "source": None,
-                    "default-value": None,
-                    "required": True,
-                    "replacement-key": None,
-                    "sensitive": None,
-                    "provides-value-for-command-input": None,
-                    "provides-files-for-command-mount": "in",
-                    "via-setup-command": None,
-                    "user-settable": False,
-                    "load-children": True}]
-            # Access to project ID and session label from session XNAT object
-            derived_inputs = [
-                {
-                    "name": "__SESSION_LABEL__",
-                    "type": "string",
-                    "derived-from-wrapper-input": "SESSION",
-                    "derived-from-xnat-object-property": "label",
-                    "provides-value-for-command-input": "SESSION_LABEL",
-                    "user-settable": False
-                },
-                {
-                    "name": "__PROJECT_ID__",
-                    "type": "string",
-                    "derived-from-wrapper-input": "SESSION",
-                    "derived-from-xnat-object-property": "project-id",
-                    "provides-value-for-command-input": "PROJECT_ID",
-                    "user-settable": False
-                }]
-        
-        else:
-            raise NotImplementedError(
-                "Wrapper currently only supports session-level pipelines")
-
-        # Generate the complete configuration JSON
-        json_config = {
-            "name": pipeline_name,
-            "description": description,
-            "label": pipeline_name,
-            "version": version,
-            "schema-version": "1.0",
-            "image": image_tag,
-            "index": registry,
-            "type": "docker",
-            "command-line": cmdline,
-            "override-entrypoint": True,
-            "mounts": [
-                {
-                    "name": "in",
-                    "writable": False,
-                    "path": str(cls.INPUT_MOUNT)
-                },
-                {
-                    "name": "out",
-                    "writable": True,
-                    "path": str(cls.OUTPUT_MOUNT)
-                }
-            ],
-            "ports": {},
-            "inputs": inputs_json,
-            "outputs": outputs_json,
-            "xnat": [
-                {
-                    "name": pipeline_name,
-                    "description": description,
-                    "contexts": context,
-                    "external-inputs": external_inputs,
-                    "derived-inputs": derived_inputs,
-                    "output-handlers": output_handlers
-                }
-            ]
-        }
-
-        if info_url:
-            json_config['info-url'] = info_url
-
-        return json_config
-
 
     @dataclass
     class InputArg():
-        name: str
-        path: str
+        pydra_name: str  # Must match the name of the Pydra task input
         datatype: FileFormat
+        dialog_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
         frequency: Clinical = Clinical.session
 
     @dataclass
     class OutputArg():
-        name: str
-        path: str
+        pydra_name: str  # Must match the name of the Pydra task output
         datatype: FileFormat
+        xnat_path: str = None  # The path the output is stored at in XNAT, defaults to the pydra name
+
+    @dataclass
+    class ParamArg():
+        pydra_name: str  # Name of parameter to expose in Pydra task
+        dialog_name: str = None  # defaults to pydra_name
+
+
+    COMMAND_INPUT_TYPES = {
+        bool: 'bool',
+        str: 'string',
+        int: 'number',
+        float: 'number'}
+
+    VALID_FREQUENCIES = (Clinical.session, Clinical.dataset)
+
+    DONT_COPY_INTO_BUILD = ['conftest.py', 'debug-build', '__pycache__',
+                            '.pytest_cache']
+    @dataclass
+    class InputArg():
+        pydra_name: str  # Must match the name of the Pydra task input
+        datatype: FileFormat
+        dialog_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
+        frequency: Clinical = Clinical.session
+
+    @dataclass
+    class OutputArg():
+        pydra_name: str  # Must match the name of the Pydra task output
+        datatype: FileFormat
+        xnat_path: str = None  # The path the output is stored at in XNAT, defaults to the pydra name
+
+    @dataclass
+    class ParamArg():
+        pydra_name: str  # Name of parameter to expose in Pydra task
+        dialog_name: str = None  # defaults to pydra_name
+
 
     COMMAND_INPUT_TYPES = {
         bool: 'bool',

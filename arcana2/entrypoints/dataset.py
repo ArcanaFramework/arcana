@@ -99,27 +99,25 @@ class BaseDatasetCmd(BaseCmd):
                     f"Incorrect number of arguments passed to an Xnat "
                     f"repository ({args}), at least 1 (SERVER) and no more "
                     f"than 3 are required (SERVER, USER, PASSWORD)")
+            optional_args = ['user', 'password']
             repository = Xnat(
                 server=repo_args[0],
-                user=repo_args[1] if nargs > 1 else None,
-                password=repo_args[2] if nargs > 2 else None,
-                cache_dir=work_dir / XNAT_CACHE_DIR)
+                cache_dir=work_dir / XNAT_CACHE_DIR,
+                **{k: v for k, v in zip(optional_args, repo_args[1:])})
             hierarchy = [Clinical.subject, Clinical.session]
         elif repo_type == 'xnat_via_cs':
             if nargs < 1 or nargs > 7:
                 raise ArcanaUsageError(
                     f"Incorrect number of arguments passed to an Xnat "
-                    f"repository ({args}), at least 1 (FREQUENCY) and no more "
-                    f"than 4 are required (FREQUENCY, NODE_ID, INPUT_MOUNT, OUTPUT_MOUNT)")
+                    f"repository ({args}), at least 1 (FREQUENCY) is required "
+                    "and no more than 7 are permitted (FREQUENCY, NODE_ID, "
+                    "SERVER, USER, PASSWORD, INPUT_MOUNT, OUTPUT_MOUNT)")
+            optional_args = ['node_id', 'server', 'user', 'password',
+                             'input_mount', 'output_mount']
             repository = XnatViaCS(
                 cache_dir=work_dir / XNAT_CACHE_DIR,
                 frequency=Clinical[repo_args[0]],
-                node_id=repo_args[1] if len(repo_args) > 1 else None,
-                server=repo_args[2] if len(repo_args) > 2 else os.environ['XNAT_HOST'],
-                user=repo_args[3] if len(repo_args) > 3 else os.environ['XNAT_USER'],
-                password=repo_args[4] if len(repo_args) > 4 else os.environ['XNAT_PASS'],
-                input_mount=repo_args[5] if len(repo_args) > 5 else XnatViaCS.INPUT_MOUNT,
-                output_mount=repo_args[6] if len(repo_args) > 6 else XnatViaCS.OUTPUT_MOUNT,)
+                **{k: v for k, v in zip(optional_args, repo_args[1:])})
             hierarchy = [Clinical.subject, Clinical.session]
         else:
             raise ArcanaUsageError(
@@ -168,3 +166,7 @@ class BaseDatasetCmd(BaseCmd):
         except ImportError:
             module = import_module(module_path)
         return getattr(module, cls_name)
+
+
+def optional_args(names, args):
+    kwargs = {}

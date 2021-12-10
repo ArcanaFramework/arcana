@@ -1,21 +1,17 @@
 import attr
 import re
 import json
-import os.path
 import tempfile
-import docker
-from copy import copy
+import typing as ty
 from dataclasses import dataclass
 from pathlib import Path
 from arcana2.__about__ import __version__
 from pydra import Workflow, mark
 from pydra.engine.task import (
-    FunctionTask, DockerTask, SingularityTask, ShellCommandTask)
+    DockerTask, SingularityTask, ShellCommandTask)
 from pydra.engine.specs import (
-    BaseSpec, LazyField, ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
-from pydra.engine.specs import Directory
+    LazyField, ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
 from arcana2.core.data.set import Dataset
-from arcana2.core.utils import path2name
 from arcana2.data.types.general import directory
 from arcana2.data.spaces.clinical import Clinical
 from ..repositories import FileSystem
@@ -356,7 +352,10 @@ class BidsFormat(FileSystem):
             val = super().get_field_val(field)
         return val
 
-    
+
+def outputs_converter(outputs):
+    """Sets the path of an output to '' if not provided or None"""
+    return [o[:2] + ('',) if len(o) < 3 or o[2] is None else o for o in outputs]
 
 @attr.s
 class BidsApp:
@@ -365,10 +364,11 @@ class BidsApp:
         metadata={'help_string': 'Name of the BIDS app image to wrap'})
     executable: str = attr.ib(
         metadata={'help_string': 'Name of the executable within the image to run (i.e. the entrypoint of the image). Required when extending the base image and launching Arcana within it'})
-    inputs: list[tuple[str, str, type]] = attr.ib(
+    inputs: list[tuple[str, type, str]] = attr.ib(
         metadata={'help_string': (
             "The inputs to be inserted into the BIDS dataset (NAME, BIDS_PATH, DTYPE)")})
-    outputs: list[tuple[str, str, type]] = attr.ib(
+    outputs: list[tuple[str, type, ty.Optional[str]]] = attr.ib(
+        converter=outputs_converter,
         metadata={'help_string': (
             "The outputs to be extracted from the derivatives directory (NAME, BIDS_PATH, DTYPE)")})
     parameters: dict[str, type] = attr.ib(
@@ -376,7 +376,7 @@ class BidsApp:
         default=None)
 
     def __call__(self, name=None, frequency: Clinical or str=Clinical.session,
-                 virtualisation: str=None, dataset: str or Path or Dataset=None) -> Workflow:
+                 virtualisation: str=None, dataset: ty.Optional[str or Path or Dataset]=None) -> Workflow:
         """Creates a Pydra workflow which takes inputs and maps them to
         a BIDS dataset, executes a BIDS app and extracts outputs from
         the derivatives stored back in the BIDS dataset
@@ -433,7 +433,7 @@ class BidsApp:
             to_bids,
             in_fields=(
                 [('frequency', Clinical),
-                 ('inputs', list[tuple[str, str, type]]),
+                 ('inputs', list[tuple[str, type, str]]),
                  ('dataset', Dataset or str),
                  ('id', str)]
                 + [(i, str) for i in input_names]),
@@ -463,7 +463,7 @@ class BidsApp:
             in_fields=[
                 ('dataset', Dataset),
                 ('frequency', Clinical),
-                ('outputs', list[tuple[str, str, type]]),
+                ('outputs', list[tuple[str, type, str]]),
                 ('id', str),
                 ('app_completed', bool)],
             out_fields=[(o, str) for o in output_names],
@@ -501,7 +501,6 @@ class BidsApp:
             ("output_path", str,
              {"help_string": "Directory where outputs will be written in the container",
               "position": 2,
-            #   "output_file_template": f"{name}_derivatives",
               "argstr": ""}),
             ("analysis_level", str,
              {"help_string": "The analysis level the app will be run at",
@@ -595,7 +594,7 @@ def bidsify_id(id):
 def to_bids(frequency, inputs, dataset, id, **input_values):
     """Takes generic inptus and stores them within a BIDS dataset
     """
-    for inpt_name, inpt_path, inpt_type in inputs:
+    for inpt_name, inpt_type, inpt_path in inputs:
         dataset.add_sink(inpt_name, inpt_type, path=inpt_path)
     data_node = dataset.node(frequency, id)
     with dataset.repository:
@@ -617,7 +616,7 @@ def dataset_paths(dataset: Dataset, id: str):
 
 def extract_bids(dataset: Dataset,
                  frequency: Clinical,
-                 outputs: list[tuple[str, str, type]],
+                 outputs: list[tuple[str, type, str]],
                  id: str,
                  app_completed: bool):
     """Selects the items from the dataset corresponding to the input 
@@ -629,7 +628,7 @@ def extract_bids(dataset: Dataset,
     """
     output_paths = []
     data_node = dataset.node(frequency, id)
-    for output_name, output_path, output_type in outputs:
+    for output_name, output_type, output_path in outputs:
         dataset.add_sink(output_name, output_type,
                             path='derivatives/bids-app/' + output_path)
     with dataset.repository:

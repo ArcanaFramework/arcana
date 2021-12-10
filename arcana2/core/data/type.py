@@ -561,6 +561,8 @@ class FileGroupConverter:
         Create a Pydra workflow to convert a file group from one format to
         another
         """
+        logger.debug("Adding implicit conversion (%s) from %s to %s",
+                     name, self.from_format, self.to_format)
         from .item import FileGroup
         wf = Workflow(name=name,
                       input_spec=['to_convert'],
@@ -602,6 +604,7 @@ class FileGroupConverter:
 def extract_paths(from_format, file_group):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
+    logger.debug("Extracting paths from %s (%s format) before conversion", file_group, from_format)
     if file_group.datatype != from_format:
         raise ValueError(f"Format of {file_group} doesn't match converter {from_format}")
     cpy = file_group.copy_to(Path(file_group.path).name, symlink=True)
@@ -612,4 +615,6 @@ def extract_paths(from_format, file_group):
 def encapsulate_paths(to_format, primary, **side_car_paths):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
+    logger.debug("Encapsulating %s and %s into %s format after conversion",
+                 primary, side_car_paths, to_format)
     return to_format.from_path(primary, side_cars=side_car_paths)
