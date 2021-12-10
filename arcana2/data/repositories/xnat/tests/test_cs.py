@@ -90,10 +90,10 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
         task_location='arcana2.tasks.tests.fixtures:concatenate',
         image_tag=concatenate_container,
         inputs=[
-            ('to_concat1', 'in_file1', text, Clinical.session),
-            ('to_concat2', 'in_file2', text, Clinical.session)],
+            ('in_file1', text, 'to_concat1', Clinical.session),
+            ('in_file2', text, 'to_concat2', Clinical.session)],
         outputs=[
-            ('concatenated', 'out_file', text)],
+            ('out_file', text, 'concatenated')],
         parameters=['duplicates'],
         description="A pipeline to test Arcana's wrap4xnat function",
         version='0.1',
@@ -132,7 +132,7 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
 
         for i in range(NUM_ATTEMPTS):
             wf_result = xlogin.get(f'/xapi/workflows/{workflow_id}').json()
-            if wf_result['status'] not in ('Pending', 'Running'):
+            if wf_result['status'] not in ('Pending', 'Running', '_Queued'):
                 break
             time.sleep(SLEEP_PERIOD)
         

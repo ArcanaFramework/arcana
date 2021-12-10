@@ -14,7 +14,6 @@ import tempfile
 import pkg_resources
 from dataclasses import dataclass
 import attr
-import cloudpickle as cp
 from attr import NOTHING
 from pydra.engine.task import TaskBase
 import neurodocker as nd
@@ -23,7 +22,7 @@ from arcana2.__about__ import install_requires
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.data.type import FileFormat
 from arcana2.core.data.space import DataSpace
-from arcana2.core.utils import resolve_class, DOCKER_HUB, path2name
+from arcana2.core.utils import resolve_class, DOCKER_HUB
 from arcana2.exceptions import ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException
 from arcana2.__about__ import PACKAGE_NAME, python_versions
 from .api import Xnat
@@ -153,7 +152,7 @@ class XnatViaCS(Xnat):
 
     def get_output_paths(self, file_group):
         path_parts = file_group.path.split('/')
-        resource_path = self.output_mount / path_parts[:-1]
+        resource_path = self.output_mount / '/'.join(path_parts[:-1])
         side_car_paths = {}
         if file_group.datatype.directory:
             primary_path = resource_path
@@ -238,13 +237,15 @@ class XnatViaCS(Xnat):
                 f"'{frequency}'' is not a valid option ('"
                 + "', '".join(cls.VALID_FREQUENCIES) + "')")
 
-        # Convert tuples to appropriate dataclasses for inputs and outputs
+        # Convert tuples to appropriate dataclasses for inputs, outputs and parameters
         inputs = [cls.InputArg(*i) if not isinstance(i, cls.InputArg) else i
                   for i in inputs]
         outputs = [cls.OutputArg(*o) if not isinstance(o, cls.OutputArg) else o
                    for o in outputs]
-        parameters = [cls.ParamArg(*p) if not isinstance(p, cls.ParamArg) else p
-                      for p in parameters]
+        parameters = [
+            cls.ParamArg(p) if isinstance(p, str) else (
+                cls.ParamArg(*p) if not isinstance(p, cls.ParamArg) else p)
+            for p in parameters]
 
         pydra_task = resolve_class(task_location)
         if not isinstance(pydra_task, TaskBase):
@@ -435,6 +436,11 @@ class XnatViaCS(Xnat):
                     "name": "out",
                     "writable": True,
                     "path": str(cls.OUTPUT_MOUNT)
+                },
+                {  # Saves the Pydra-cache directory outside of the container for easier debugging
+                    "name": "work",
+                    "writable": True,
+                    "path": str(cls.WORK_MOUNT)
                 }
             ],
             "ports": {},

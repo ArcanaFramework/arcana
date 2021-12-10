@@ -91,9 +91,8 @@ def test_run_app_via_xnat_cs(xnat_repository, xnat_archive_dir, work_dir):
         '--ids', session_label, '--pydra_plugin', 'serial'])
     RunCmd().run(args)
 
-    for output_path in output_dir.iterdir():
-        output_files = [p.name for p in output_path.iterdir()]
-        assert output_files == ['deriv.txt']
-        with open(output_path / 'deriv.txt') as f:
-            contents = f.read()
-        assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)
+    output_files = [p.name for p in output_dir.iterdir()]
+    assert output_files == ['deriv.txt']
+    with open(output_dir / 'deriv.txt') as f:
+        contents = f.read()
+    assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)
