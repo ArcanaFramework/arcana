@@ -155,7 +155,7 @@ class XnatViaCS(Xnat):
         resource_path = self.output_mount / '/'.join(path_parts[:-1])
         side_car_paths = {}
         if file_group.datatype.directory:
-            primary_path = resource_path
+            primary_path = resource_path / path_parts[-1]
         else:
             os.makedirs(resource_path, exist_ok=True)
             # Upload primary file and add to cache
