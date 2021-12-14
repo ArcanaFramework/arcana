@@ -202,7 +202,7 @@ class XnatViaCS(Xnat):
         image_tag : str
             Name + version of the Docker image to be created
         inputs : list[InputArg or tuple]
-            Inputs to be provided to the container
+            Inputs to be provided to the container (pydra_field, datatype, dialog_name, FREQUENCY)
         outputs : list[OutputArg or tuple]
             Outputs from the container 
         description : str
@@ -260,9 +260,9 @@ class XnatViaCS(Xnat):
         # Add task inputs to inputs JSON specification
         input_args = []
         for inpt in inputs:
-            dialog_name = inpt.dialog_name if inpt.dialog_name else inpt.pydra_name
+            dialog_name = inpt.dialog_name if inpt.dialog_name else inpt.pydra_field
             replacement_key = f'[{dialog_name.upper()}_INPUT]'
-            spec = input_specs[inpt.pydra_name]
+            spec = input_specs[inpt.pydra_field]
             
             desc = spec.metadata.get('help_string', '')
             if spec.type in (str, Path):
@@ -280,13 +280,13 @@ class XnatViaCS(Xnat):
                 "user-settable": True,
                 "replacement-key": replacement_key})
             input_args.append(
-                f"--input {inpt.pydra_name} {inpt.datatype} {replacement_key}")
+                f"--input {inpt.pydra_field} {inpt.datatype} {replacement_key}")
 
         # Add parameters as additional inputs to inputs JSON specification
         param_args = []
         for param in parameters:
-            dialog_name = param.dialog_name if param.dialog_name else param.pydra_name
-            spec = input_specs[param.pydra_name]
+            dialog_name = param.dialog_name if param.dialog_name else param.pydra_field
+            spec = input_specs[param.pydra_field]
             desc = f"Parameter ({spec.type}): " + spec.metadata.get('help_string', '')
             required = spec._default is NOTHING
             
@@ -301,36 +301,36 @@ class XnatViaCS(Xnat):
                 "user-settable": True,
                 "replacement-key": replacement_key})
             param_args.append(
-                f"--parameter {param.pydra_name} {replacement_key}")
+                f"--parameter {param.pydra_field} {replacement_key}")
 
         # Set up output handlers and arguments
         outputs_json = []
         output_handlers = []
         output_args = []
         for output in outputs:
-            xnat_path = output.xnat_path if output.xnat_path else output.pydra_name
+            xnat_path = output.xnat_path if output.xnat_path else output.pydra_field
             label = xnat_path.split('/')[0]
             # output_fname = xnat_path
             # if output.datatype.extension is not None:
             #     output_fname += output.datatype.extension
             # Set the path to the 
             outputs_json.append({
-                "name": output.pydra_name,
-                "description": f"{output.pydra_name} ({output.datatype})",
+                "name": output.pydra_field,
+                "description": f"{output.pydra_field} ({output.datatype})",
                 "required": True,
                 "mount": "out",
                 "path": label,
                 "glob": None})
             output_handlers.append({
-                "name": f"{output.pydra_name}-resource",
-                "accepts-command-output": output.pydra_name,
+                "name": f"{output.pydra_field}-resource",
+                "accepts-command-output": output.pydra_field,
                 "via-wrapup-command": None,
                 "as-a-child-of": "SESSION",
                 "type": "Resource",
                 "label": label,
                 "format": output.datatype.name})
             output_args.append(
-                f'--output {output.pydra_name} {output.datatype} {xnat_path}')
+                f'--output {output.pydra_field} {output.datatype} {xnat_path}')
 
         input_args_str = ' '.join(input_args)
         output_args_str = ' '.join(output_args)
@@ -340,6 +340,7 @@ class XnatViaCS(Xnat):
             f"conda run --no-capture-output -n arcana "  # activate conda
             f"arcana run {task_location} "  # run pydra task in Arcana
             f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
+            f"--ignore_blank_inputs "  # Allow input patterns to be blank, just ignore them in that case
             f"--pydra_plugin serial "  # Use serial processing instead of parallel to simplify outputs
             f"--work {cls.WORK_MOUNT} "  # working directory
             f"--repository xnat_via_cs {frequency} ")  # pass XNAT API details
@@ -638,54 +639,23 @@ class XnatViaCS(Xnat):
         logger.info("Dockerfile generated at %s", out_file)
 
         return build_dir
-
-
     @dataclass
     class InputArg():
-        pydra_name: str  # Must match the name of the Pydra task input
+        pydra_field: str  # Must match the name of the Pydra task input
         datatype: FileFormat
         dialog_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
         frequency: Clinical = Clinical.session
 
     @dataclass
     class OutputArg():
-        pydra_name: str  # Must match the name of the Pydra task output
+        pydra_field: str  # Must match the name of the Pydra task output
         datatype: FileFormat
         xnat_path: str = None  # The path the output is stored at in XNAT, defaults to the pydra name
 
     @dataclass
     class ParamArg():
-        pydra_name: str  # Name of parameter to expose in Pydra task
-        dialog_name: str = None  # defaults to pydra_name
-
-
-    COMMAND_INPUT_TYPES = {
-        bool: 'bool',
-        str: 'string',
-        int: 'number',
-        float: 'number'}
-
-    VALID_FREQUENCIES = (Clinical.session, Clinical.dataset)
-
-    DONT_COPY_INTO_BUILD = ['conftest.py', 'debug-build', '__pycache__',
-                            '.pytest_cache']
-    @dataclass
-    class InputArg():
-        pydra_name: str  # Must match the name of the Pydra task input
-        datatype: FileFormat
-        dialog_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
-        frequency: Clinical = Clinical.session
-
-    @dataclass
-    class OutputArg():
-        pydra_name: str  # Must match the name of the Pydra task output
-        datatype: FileFormat
-        xnat_path: str = None  # The path the output is stored at in XNAT, defaults to the pydra name
-
-    @dataclass
-    class ParamArg():
-        pydra_name: str  # Name of parameter to expose in Pydra task
-        dialog_name: str = None  # defaults to pydra_name
+        pydra_field: str  # Name of parameter to expose in Pydra task
+        dialog_name: str = None  # defaults to pydra_field
 
 
     COMMAND_INPUT_TYPES = {

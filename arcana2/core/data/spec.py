@@ -93,7 +93,6 @@ class DataSource():
         return (
             f" attempting to select an item from {node} matching {self}, "
             "found:\n" + "\n    ".join(str(m) for m in matches))
-        
 
 def match_path(item, path):
     "at the path {}"
@@ -101,6 +100,8 @@ def match_path(item, path):
 
 def match_path_regex(item, pattern):
     "with a path that matched the pattern {}"
+    if not pattern.endswith('$'):
+        pattern += '$'
     return re.match(pattern, item.path)
 
 def match_quality(item, threshold):

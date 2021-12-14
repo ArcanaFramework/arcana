@@ -39,9 +39,28 @@ class RunCmd(BaseDatasetCmd):
 
     @classmethod
     def construct_parser(cls, parser):
-        cls.construct_app_parser(parser)
+        parser.add_argument(
+            'app',
+            help=("The path to a Pydra interface that wraps the app "
+                  "convenience the 'pydra.tasks' prefix can be omitted "
+                  "(e.g. fsl.preprocess.first.First)"))        
+        parser.add_argument(
+            '--frequency', '-f', default='session',
+            help=("The level at which the analysis is performed. One of (per) "
+                  "dataset, group, subject, timepoint, group_timepoint or "
+                  "session"))
+        parser.add_argument(
+            '--parameter', '-p', metavar=('NAME', 'VAL'),
+            action='append', default=[], nargs=2,
+            help=("Parameter to pass to the app"))
         super().construct_parser(parser)
-        cls.construct_io_parser(parser)
+        parser.add_argument(
+            '--input', '-i', action='append', default=[], nargs='+',
+            help=cls.INPUT_HELP)
+        parser.add_argument(
+            '--output', '-o', action='append', default=[], nargs=3,
+            metavar=('VAR', 'PRODUCED_DTYPE', 'STORE_AT'),
+            help=cls.OUTPUT_HELP)
         parser.add_argument(
             '--ids', nargs='+', default=None,
             help=("IDs of the nodes to process (i.e. for the frequency that "
@@ -68,33 +87,14 @@ class RunCmd(BaseDatasetCmd):
         parser.add_argument(
             '--loglevel', type=str, default='info',
             help=("The level of detail logging information is presented"))
-
-    @classmethod
-    def construct_io_parser(cls, parser):
         parser.add_argument(
-            '--input', '-i', action='append', default=[], nargs='+',
-            help=cls.INPUT_HELP.format(var_desc=cls.VAR_DESC))
-        parser.add_argument(
-            '--output', '-o', action='append', default=[], nargs=3,
-            metavar=('VAR', 'PRODUCED_DTYPE', 'STORE_AT'),
-            help=cls.OUTPUT_HELP.format(var_desc=cls.VAR_DESC))
-
-    @classmethod
-    def construct_app_parser(cls, parser):
-        parser.add_argument(
-            'app',
-            help=("The path to a Pydra interface that wraps the app "
-                  "convenience the 'pydra.tasks' prefix can be omitted "
-                  "(e.g. fsl.preprocess.first.First)"))        
-        parser.add_argument(
-            '--frequency', '-f', default='session',
-            help=("The level at which the analysis is performed. One of (per) "
-                  "dataset, group, subject, timepoint, group_timepoint or "
-                  "session"))
-        parser.add_argument(
-            '--parameter', '-p', metavar=('NAME', 'VAL'),
-            action='append', default=[], nargs=2,
-            help=("Parameter to pass to the app"))
+            '--ignore_blank_inputs', action='store_true', default=False,
+            help=("Inputs with only 2 args (INTERFACE_FIELD and "
+                  "REQUIRED_FORMAT), i.e. empty criteria, are allowed but "
+                  "ignored. This enables inputs generated programmatically "
+                  "(e.g. XNAT CS dialog) to be ignored if they are provided "
+                  "an empty string. Otherwise, such inputs will raise an "
+                  "error as they are likely due a manual mistake."))
 
     @classmethod
     def run(cls, args):
@@ -142,6 +142,9 @@ class RunCmd(BaseDatasetCmd):
                 raise ArcanaUsageError(
                     f"An input datatype to match must be provided for input {i} ({inpt})")
             if not pattern:
+                if args.ignore_blank_inputs:
+                    logger.warning("Ignoring '{var}' input as pattern to match was not provided")
+                    continue  # Empty inputs are ignored to help facilitate GUIs (e.g. XNAT CS)
                 raise ArcanaUsageError(
                     f"A path pattern to match must be provided for input {i} ({inpt})")
             input_datatype = resolve_datatype(input_datatype_name)
@@ -319,11 +322,10 @@ class RunCmd(BaseDatasetCmd):
             app_args[name] = val
         return app_args
 
-    VAR_ARG = 'INTERFACE_NAME'
+    VAR_ARG = ''
 
     VAR_DESC = f"""
-        The {VAR_ARG} is the attribute in the Pydra interface to connect
-        the input to.
+        
     """
 
     @classmethod
@@ -338,7 +340,9 @@ class RunCmd(BaseDatasetCmd):
     INPUT_HELP = """
         A file-group input to provide to the app that is matched by the 
         provided criteria.
-        {var_desc}
+
+        The INTERFACE_FIELD is the name of the field in the Pydra interface to
+        connect the source to.
 
         REQUIRED_FORMAT is the format that the app requires the input in.
         If different from the FORMAT, an implicit conversions will
@@ -380,7 +384,9 @@ class RunCmd(BaseDatasetCmd):
 
     OUTPUT_HELP = """The outputs produced by the app to be stored in the "
         repository.
-        {var_desc}
+
+        The INTERFACE_FIELD is the name of the output field in the Pydra
+        interface to connect to the sink to.
 
         PRODUCED_FORMAT is the name of the file-format that the file be produced
         by the workflow in

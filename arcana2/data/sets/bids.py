@@ -366,11 +366,11 @@ class BidsApp:
         metadata={'help_string': 'Name of the executable within the image to run (i.e. the entrypoint of the image). Required when extending the base image and launching Arcana within it'})
     inputs: list[tuple[str, type, str]] = attr.ib(
         metadata={'help_string': (
-            "The inputs to be inserted into the BIDS dataset (NAME, BIDS_PATH, DTYPE)")})
+            "The inputs to be inserted into the BIDS dataset (NAME, DTYPE, BIDS_PATH)")})
     outputs: list[tuple[str, type, ty.Optional[str]]] = attr.ib(
         converter=outputs_converter,
         metadata={'help_string': (
-            "The outputs to be extracted from the derivatives directory (NAME, BIDS_PATH, DTYPE)")})
+            "The outputs to be extracted from the derivatives directory (NAME, DTYPE, BIDS_PATH)")})
     parameters: dict[str, type] = attr.ib(
         metadata={'help_string': 'The parameters of the app to be exposed to the interface'},
         default=None)
