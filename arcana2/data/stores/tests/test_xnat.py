@@ -7,7 +7,7 @@ from pathlib import Path
 import hashlib
 from tempfile import mkdtemp
 from functools import reduce
-from arcana2.data.spaces.clinical import Clinical
+from arcana2.data.dimensions.clinical import Clinical
 from arcana2.core.data.set import Dataset
 from arcana2.data.stores.xnat.tests.fixtures import create_test_file
 from arcana2.data.stores.tests.fixtures import create_test_file

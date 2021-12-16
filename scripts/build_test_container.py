@@ -7,7 +7,7 @@ import xnat
 from arcana2.tasks.tests.fixtures import concatenate
 from arcana2.data.stores.xnat.cs import XnatViaCS
 from arcana2.data.stores.xnat.tests.fixtures import DOCKER_REGISTRY_URI
-from arcana2.data.spaces.clinical import Clinical
+from arcana2.data.dimensions.clinical import Clinical
 from arcana2.data.types.general import text
 
 parser = ArgumentParser()

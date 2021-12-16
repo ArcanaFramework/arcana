@@ -4,7 +4,7 @@ from pydra import mark, Workflow
 from arcana2.core.data.set import Dataset
 from arcana2.core.data.spec import DataSource, DataSink
 from arcana2.data.stores.file_system import FileSystem
-from arcana2.data.spaces.clinical import Clinical as cl
+from arcana2.data.dimensions.clinical import Clinical as cl
 from arcana2.data.types.neuroimaging import dicom, niftix_gz
 
 

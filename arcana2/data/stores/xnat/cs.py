@@ -19,9 +19,9 @@ from pydra.engine.task import TaskBase
 import neurodocker as nd
 from natsort import natsorted
 from arcana2.__about__ import install_requires, __version__, PACKAGE_NAME
-from arcana2.data.spaces.clinical import Clinical
+from arcana2.data.dimensions.clinical import Clinical
 from arcana2.core.data.type import FileFormat
-from arcana2.core.data.space import DataSpace
+from arcana2.core.data.dimensions import DataDimensions
 from arcana2.core.utils import resolve_class, DOCKER_HUB
 from arcana2.exceptions import ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException
 from arcana2.__about__ import PACKAGE_NAME, python_versions
@@ -61,7 +61,7 @@ class XnatViaCS(Xnat):
     OUTPUT_MOUNT = Path("/output")
     WORK_MOUNT = Path('/work')
     
-    frequency: DataSpace = attr.ib(default=Clinical.session)
+    frequency: DataDimensions = attr.ib(default=Clinical.session)
     node_id: str = attr.ib(default=None)
     input_mount: Path = attr.ib(default=INPUT_MOUNT, converter=Path)
     output_mount: Path = attr.ib(default=OUTPUT_MOUNT, converter=Path)

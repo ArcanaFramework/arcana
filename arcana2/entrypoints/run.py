@@ -7,7 +7,7 @@ from typing import Sequence
 import arcana2.data.types
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.core.data.type import FileFormat
-from arcana2.core.data.space import DataSpace
+from arcana2.core.data.dimensions import DataDimensions
 from arcana2.core.data.enum import DataQuality
 from arcana2.__about__ import __version__
 from arcana2.tasks.bids import construct_bids, extract_bids, bids_app
@@ -403,7 +403,7 @@ class InputArg():
     path: Path
     input_datatype: FileFormat
     stored_datatype: FileFormat
-    frequency: DataSpace
+    frequency: DataDimensions
     order: int
     metadata: dict[str, str]
     is_regex: bool

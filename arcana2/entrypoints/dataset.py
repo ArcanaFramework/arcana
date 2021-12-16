@@ -1,7 +1,7 @@
 
 import os
 from importlib import import_module
-from arcana2.data.spaces.clinical import Clinical
+from arcana2.data.dimensions.clinical import Clinical
 from arcana2.exceptions import ArcanaUsageError
 from arcana2.data.stores.file_system import FileSystem
 from arcana2.data.stores.xnat import Xnat

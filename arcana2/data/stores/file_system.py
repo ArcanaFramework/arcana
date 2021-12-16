@@ -14,15 +14,15 @@ from arcana2.core.data.provenance import DataProvenance
 from arcana2.exceptions import ArcanaFileFormatError, ArcanaMissingDataException, ArcanaUsageError
 from arcana2.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana2.core.data.set import Dataset
-from arcana2.data.spaces.clinical import Clinical, DataSpace
-from arcana2.core.data.store import DataRepository
+from arcana2.data.dimensions.clinical import Clinical, DataDimensions
+from arcana2.core.data.store import DataStore
 
 
 logger = logging.getLogger('arcana')
 
 
 @attr.s
-class FileSystem(DataRepository):
+class FileSystem(DataStore):
     """
     A Repository class for data stored hierarchically within sub-directories
     of a file-system directory. The depth and which layer in the data tree
@@ -323,7 +323,7 @@ class FileSystem(DataRepository):
                                  
 
 
-def single_dataset(path: str, tree_dimensions: DataSpace=Clinical,
+def single_dataset(path: str, tree_dimensions: DataDimensions=Clinical,
                    **kwargs) -> Dataset:
     """
     Creates a Dataset from a file system path to a directory

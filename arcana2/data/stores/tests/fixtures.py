@@ -7,16 +7,16 @@ import shutil
 from itertools import product
 import pytest
 from arcana2.data.stores.file_system import FileSystem
-from arcana2.core.data.space import DataSpace
+from arcana2.core.data.dimensions import DataDimensions
 from arcana2.core.utils import set_cwd
 from arcana2.core.data.type import FileFormat
 from arcana2.data.types.general import text, directory, json
-from arcana2.data.spaces.clinical import Clinical
+from arcana2.data.dimensions.clinical import Clinical
 from arcana2.data.types.neuroimaging import (
     nifti_gz, niftix_gz, niftix, nifti, analyze, mrtrix_image)
 
 
-class TestDataSpace(DataSpace):
+class TestDataDimensions(DataDimensions):
     """Dummy data dimensions for ease of testing"""
 
     # Per dataset
@@ -46,7 +46,7 @@ class TestDataSpace(DataSpace):
     abcd = 0b1111
 
 
-td = TestDataSpace
+td = TestDataDimensions
 
 dummy_format = FileFormat(name='xyz', extension='.x',
                           side_cars={'y': '.y', 'z': '.z'})
@@ -59,12 +59,12 @@ dummy_format = FileFormat(name='xyz', extension='.x',
 @dataclass
 class TestDatasetBlueprint():
 
-    hierarchy: list[DataSpace]
+    hierarchy: list[DataDimensions]
     dim_lengths: list[int]  # size of layers a-d respectively
     files: list[str]  # files present at bottom layer
-    id_inference: dict[DataSpace, str]  # id_inference dict
+    id_inference: dict[DataDimensions, str]  # id_inference dict
     expected_formats: dict[str, tuple[FileFormat, list[str]]]  # expected formats
-    to_insert: list[str, tuple[DataSpace, FileFormat, list[str]]]  # files to insert as derivatives
+    to_insert: list[str, tuple[DataDimensions, FileFormat, list[str]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {
@@ -136,12 +136,12 @@ TEST_DATASET_BLUEPRINTS = {
         [('deriv1', td.d, json, ['file1.json'])]
     ),
     'concatenate_test': TestDatasetBlueprint(
-        [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        [TestDataDimensions.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         [1, 1, 1, 2],
         ['file1.txt', 'file2.txt'],
         {}, {}, []),
     'concatenate_zip_test': TestDatasetBlueprint(
-        [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        [TestDataDimensions.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         [1, 1, 1, 1],
         ['file1.zip', 'file2.zip'],
         {}, {}, [])}
@@ -156,12 +156,12 @@ GOOD_DATASETS = ['full', 'one_layer', 'skip_single', 'skip_with_inference',
 
 @pytest.fixture
 def test_dataspace():
-    return TestDataSpace
+    return TestDataDimensions
 
 
 @pytest.fixture
 def test_dataspace_location():
-    return __name__ + '.TestDataSpace'
+    return __name__ + '.TestDataDimensions'
 
 
 @pytest.fixture
@@ -202,7 +202,7 @@ def create_dataset_in_repo(blueprint, dataset_path):
     "Creates a dataset from parameters in TEST_DATASETS"
     dataset_path.mkdir(exist_ok=True, parents=True)
     for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
-        ids = dict(zip(TestDataSpace.basis(), id_tple))
+        ids = dict(zip(TestDataDimensions.basis(), id_tple))
         dpath = dataset_path
         for layer in blueprint.hierarchy:
             dpath /= ''.join(f'{b}{ids[b]}' for b in layer.nonzero_basis())

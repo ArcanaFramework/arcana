@@ -14,7 +14,7 @@ import shutil
 import attr
 import xnat
 from arcana2.core.utils import JSON_ENCODING
-from arcana2.core.data.store import DataRepository
+from arcana2.core.data.store import DataStore
 from arcana2.core.data.node import DataNode
 from arcana2.exceptions import (
     ArcanaError, ArcanaUsageError, ArcanaFileFormatError,
@@ -22,7 +22,7 @@ from arcana2.exceptions import (
 from arcana2.core.utils import dir_modtime, get_class_info, parse_value
 from arcana2.core.data.set import Dataset
 from arcana2.core.utils import path2name, name2path
-from arcana2.data.spaces.clinical import Clinical
+from arcana2.data.dimensions.clinical import Clinical
 
 
 logger = logging.getLogger('arcana')
@@ -40,7 +40,7 @@ COMMAND_INPUT_TYPES = {
     float: 'number'}
 
 @attr.s
-class Xnat(DataRepository):
+class Xnat(DataStore):
     """
     Access class for XNAT data repositories
 

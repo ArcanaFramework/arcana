@@ -13,7 +13,7 @@ from pydra.engine.specs import (
     LazyField, ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
 from arcana2.core.data.set import Dataset
 from arcana2.data.types.general import directory
-from arcana2.data.spaces.clinical import Clinical
+from arcana2.data.dimensions.clinical import Clinical
 from . import FileSystem
 from arcana2.exceptions import ArcanaError, ArcanaUsageError, ArcanaEmptyDatasetError
 from arcana2.core.utils import func_task

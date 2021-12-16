@@ -14,7 +14,7 @@ from .type import FileFormat
 from .item import DataItem
 from .provenance import DataProvenance
 from .enum import DataQuality
-from .space import DataSpace
+from .dimensions import DataDimensions
 
 
 @attr.s(auto_detect=True)
@@ -24,19 +24,19 @@ class DataNode():
 
     Parameters
     ----------
-    ids : Dict[DataSpace, str]
+    ids : Dict[DataDimensions, str]
         The ids for the frequency of the node and all "parent" frequencies
         within the tree
-    frequency : DataSpace
+    frequency : DataDimensions
         The frequency of the node
     dataset : Dataset
         A reference to the root of the data tree
     """
 
-    ids: ty.Dict[DataSpace, str] = attr.ib()
-    frequency: DataSpace = attr.ib()
+    ids: ty.Dict[DataDimensions, str] = attr.ib()
+    frequency: DataDimensions = attr.ib()
     dataset: arcana2.core.data.set.Dataset = attr.ib(repr=False)    
-    children: ty.DefaultDict[DataSpace,
+    children: ty.DefaultDict[DataDimensions,
                              ty.Dict[str or tuple[str], str]] = attr.ib(
         factory=lambda: defaultdict(dict), repr=False)
     _unresolved = attr.ib(default=None, repr=False)

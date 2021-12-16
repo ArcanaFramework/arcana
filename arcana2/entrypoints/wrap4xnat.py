@@ -5,7 +5,7 @@ from logging import getLogger
 import docker
 from arcana2.core.utils import resolve_class
 from arcana2.data.stores.xnat.cs import XnatViaCS
-from arcana2.data.spaces.clinical import Clinical
+from arcana2.data.dimensions.clinical import Clinical
 from arcana2.core.entrypoint import BaseCmd
 from arcana2.core.utils import resolve_datatype, DOCKER_HUB
 

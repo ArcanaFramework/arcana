@@ -1,6 +1,6 @@
-from arcana2.core.data.space import DataSpace
+from arcana2.core.data.dimensions import DataDimensions
 
-class Clinical(DataSpace):
+class Clinical(DataDimensions):
     """
     An enum that specifies the data hierarcy of data trees typical of
     clinical research, i.e. subjects split into groups scanned at different

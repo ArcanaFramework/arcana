@@ -3,7 +3,7 @@ import zipfile
 import tempfile
 from pathlib import Path
 from arcana2.data.stores.tests.fixtures import (
-    make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
+    make_dataset, TEST_DATASET_BLUEPRINTS, TestDataDimensions)
 from arcana2.tasks.tests.fixtures import concatenate
 from arcana2.data.types.general import text, zip
 
@@ -19,7 +19,7 @@ def test_pipeline(work_dir):
         name='test_pipeline',
         inputs=['file1', 'file2'],
         outputs=['deriv'],
-        frequency=TestDataSpace.abcd)
+        frequency=TestDataDimensions.abcd)
 
     pipeline.add(concatenate(in_file1=pipeline.lzin.file1,
                              in_file2=pipeline.lzin.file2,
@@ -52,7 +52,7 @@ def test_pipeline_with_implicit_conversion(work_dir):
         name='test_pipeline',
         inputs=[('file1', text), ('file2', text)],
         outputs=[('deriv', text)],
-        frequency=TestDataSpace.abcd)
+        frequency=TestDataDimensions.abcd)
 
     pipeline.add(concatenate(in_file1=pipeline.lzin.file1,
                              in_file2=pipeline.lzin.file2,

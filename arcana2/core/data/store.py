@@ -8,7 +8,7 @@ from . import set as set_module
 logger = logging.getLogger('arcana')
 
 @attr.s
-class DataRepository(metaclass=ABCMeta):
+class DataStore(metaclass=ABCMeta):
     """
     Abstract base class for all Repository systems, DaRIS, XNAT and
     local file system. Sets out the interface that all Repository
@@ -53,7 +53,7 @@ class DataRepository(metaclass=ABCMeta):
             A dictionary that maps "name-paths" of sinks analysis
             workflows to be stored in the dataset
         dimensions : EnumMeta
-            The DataSpace enum that defines the frequencies (e.g.
+            The DataDimensions enum that defines the frequencies (e.g.
             per-session, per-subject,...) present in the dataset.                       
         **kwargs:
             Keyword args passed on to the Dataset init method
