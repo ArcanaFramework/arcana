@@ -561,8 +561,6 @@ class FileGroupConverter:
         Create a Pydra workflow to convert a file group from one format to
         another
         """
-        logger.debug("Adding implicit conversion (%s) from %s to %s",
-                     name, self.from_format, self.to_format)
         from .item import FileGroup
         wf = Workflow(name=name,
                       input_spec=['to_convert'],

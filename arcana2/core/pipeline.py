@@ -268,7 +268,10 @@ class Pipeline():
         for input_name, required_format in pipeline.inputs:
             stored_format = dataset.column_specs[input_name].datatype
             if required_format != stored_format:
-                cname = f"{input_name}_input_converter"
+                logger.info("Adding implicit conversion for input '%s' "
+                            "from %s to %s", input_name, stored_format,
+                            required_format)
+                cname = f"{input_name}_input_converter"                
                 converter_task = required_format.converter(stored_format)(
                     name=cname,
                     to_convert=sourced[input_name])
@@ -307,6 +310,9 @@ class Pipeline():
         for output_name, produced_format in pipeline.outputs:
             stored_format = dataset.column_specs[output_name].datatype
             if produced_format != stored_format:
+                logger.info("Adding implicit conversion for output '%s' "
+                    "from %s to %s", output_name, produced_format,
+                    stored_format)
                 cname = f"{output_name}_output_converter"
                 # Insert converter
                 wf.per_node.add(stored_format.converter(produced_format)(

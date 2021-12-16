@@ -2,7 +2,7 @@ import re
 import typing as ty
 import attr
 from attr.converters import optional
-from pydra import Workflow
+# from arcana2.core.data.node import DataNode
 from arcana2.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError)
@@ -63,7 +63,8 @@ class DataSource():
         if not matches:
             raise ArcanaInputMissingMatchError(
                 f"Did not find any items matching data format "
-                f"{self.datatype} in {self}")
+                f"{self.datatype} in {node}, found unresolved items:\n"
+                + '\n'.join(str(i.path) for i in node.unresolved))
         # Apply all filters to find items that match criteria
         for func, arg in criteria:
             if arg is not None:

@@ -12,15 +12,15 @@ class DataSalience(Enum):
     are available to avoid cluttering help menus
     """
     
-    primary = (5, 'Primary input data, e.g. raw data or data reconstructed on '
+    primary = (100, 'Primary input data, e.g. raw data or data reconstructed on '
                'the scanner')
-    publication = (4, "Results that would typically be used as main outputs "
+    publication = (80, "Results that would typically be used as main outputs "
                    "in publications")
-    supplementary = (3, 'Derivatives that would typically only be provided in '
+    supplementary = (60, 'Derivatives that would typically only be provided in '
                      'supplementary material')
-    qa = (2, 'Derivatives that would typically be only kept for quality '
+    qa = (40, 'Derivatives that would typically be only kept for quality '
           'assurance of analysis workflows')
-    debug = (1, 'Derivatives that would typically only need to be checked '
+    debug = (20, 'Derivatives that would typically only need to be checked '
              'when debugging analysis workflows')
     temp = (0, "Data only temporarily stored to pass between pipelines")
 

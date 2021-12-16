@@ -55,9 +55,9 @@ class DataNode():
         DataItem
             The item matching the provided name specified by the column name
         """
-        try:
+        if column_name in self._items:
             return self._items[column_name]
-        except KeyError:
+        else:
             try:
                 spec = self.dataset.column_specs[column_name]
             except KeyError:

@@ -449,14 +449,13 @@ class BidsApp:
             dataset=workflow.to_bids.lzout.dataset,
             id=workflow.bidsify_id.lzout.out))
             
-        workflow.add(self.main_task(
-            name='bids_app',
+        self.add_main_task(
+            workflow=workflow,
             dataset_path=workflow.dataset_paths.lzout.base,
             output_path=workflow.dataset_paths.lzout.output,
             parameters={p: type(p) for p in parameters},
-            workflow=workflow,
             frequency=frequency,
-            virtualisation=virtualisation))
+            virtualisation=virtualisation)
 
         workflow.add(func_task(
             extract_bids,
@@ -480,14 +479,13 @@ class BidsApp:
 
         return workflow
 
-    def main_task(self,
-                  name: str,
-                  dataset_path: LazyField,
-                  output_path: LazyField,
-                  workflow: Workflow,
-                  frequency: Clinical,
-                  parameters: dict[str, type]=None,
-                  virtualisation=None) -> ShellCommandTask:
+    def add_main_task(self,
+                      workflow: Workflow,
+                      dataset_path: LazyField,
+                      output_path: LazyField,
+                      frequency: Clinical,
+                      parameters: dict[str, type]=None,
+                      virtualisation=None) -> ShellCommandTask:
 
         if parameters is None:
             parameters = {}
@@ -534,7 +532,8 @@ class BidsApp:
         else:
 
             workflow.add(make_bindings(
-                dataset=dataset_path,
+                name='make_bindings',
+                dataset_path=dataset_path,
                 derivatives_path=output_path))
 
             kwargs['bindings'] = workflow.make_bindings.lzout.out
@@ -562,8 +561,8 @@ class BidsApp:
         else:
             analysis_level = 'group'
 
-        return task_cls(
-            name=name,
+        return workflow.add(task_cls(
+            name='bids_app',
             input_spec=SpecInfo(name="Input", fields=input_fields,
                                 bases=(base_spec_cls,)),
             output_spec=SpecInfo(name="Output", fields=output_fields,
@@ -571,7 +570,7 @@ class BidsApp:
             dataset_path=dataset_path,
             output_path=output_path,
             analysis_level=analysis_level,
-            **kwargs)
+            **kwargs))
 
     # For running 
     CONTAINER_DERIV_PATH = '/arcana_bids_outputs'
@@ -608,7 +607,7 @@ def to_bids(frequency, inputs, dataset, id, **input_values):
 @mark.annotate(
     {'return':
         {'base': str,
-            'output': str}})
+         'output': str}})
 def dataset_paths(dataset: Dataset, id: str):
     return (str(dataset.id),
             str(dataset.id / 'derivatives' / 'bids-app' / id))
@@ -640,8 +639,8 @@ def extract_bids(dataset: Dataset,
 
 
 @mark.task
-def make_bindings(dataset: Dataset, output_path: str) -> list[tuple[str, str, str]]:
+def make_bindings(dataset_path: str, output_path: str) -> list[tuple[str, str, str]]:
     """Make bindings for directories to be mounted inside the container
         for both the input dataset and the output derivatives"""
-    return [(str(dataset.id), BidsApp.CONTAINER_DATASET_PATH, 'ro'),
+    return [(str(dataset_path), BidsApp.CONTAINER_DATASET_PATH, 'ro'),
             (str(output_path), BidsApp.CONTAINER_DERIV_PATH, 'rw')]

@@ -1,11 +1,13 @@
 from typing import Sequence
 import subprocess as sp
+import importlib.metadata
 import pkgutil
 import re
 from pathlib import Path
 from importlib import import_module
 from inspect import isclass
 from itertools import zip_longest
+import pkg_resources
 import os.path
 # from nipype.interfaces.matlab import MatlabCommand
 from contextlib import contextmanager
@@ -542,3 +544,31 @@ class classproperty(object):
         self.f = f
     def __get__(self, obj, owner):
         return self.f(owner)
+
+
+def get_pkg_name(module_path: str):
+    """Gets the name of the package that provides the given module
+
+    Parameters
+    ----------
+    module_path
+        The path to the module to retrieve the package for
+    """
+    if not isinstance(module_path, str):
+        module_path = module_path.__module__
+    module_path = importlib.metadata.PackagePath(module_path.replace('.', '/'))
+    for pkg in pkg_resources.working_set:
+        try:
+            paths = importlib.metadata.files(pkg.key)
+        except importlib.metadata.PackageNotFoundError:
+            continue
+        for path in paths:
+            if path.suffix != '.py':
+                continue
+            path = path.with_suffix('')
+            if path.name == '__init__':
+                path = path.parent
+            
+            if module_path in ([path] + list(path.parents)):
+                return pkg.key
+    raise ArcanaUsageError(f'{module_path} is not an installed module')
