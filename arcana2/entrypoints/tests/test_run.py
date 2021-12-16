@@ -1,8 +1,8 @@
 import tempfile
 from pathlib import Path
 from argparse import ArgumentParser
-from arcana2.data.repositories.tests.fixtures import TEST_DATASET_BLUEPRINTS, make_dataset
-from arcana2.data.repositories.xnat.tests.fixtures import (
+from arcana2.data.stores.tests.fixtures import TEST_DATASET_BLUEPRINTS, make_dataset
+from arcana2.data.stores.xnat.tests.fixtures import (
     make_mutable_dataset as make_xnat_dataset,
     TEST_DATASET_BLUEPRINTS as TEST_XNAT_DATASET_BLUEPRINTS)
 from arcana2.entrypoints.run import RunCmd

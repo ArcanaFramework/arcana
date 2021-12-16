@@ -22,6 +22,6 @@ __pycache__
 test.log
 .vscode
 *.egg-info
-/arcana2/data/repositories/xnat/tests/xnat_root
-/arcana2/data/repositories/xnat/tests/dicom-dataset/
-/arcana2/data/repositories/xnat/tests/docker-build/
+/arcana2/data/stores/xnat/tests/xnat_root
+/arcana2/data/stores/xnat/tests/dicom-dataset/
+/arcana2/data/stores/xnat/tests/docker-build/

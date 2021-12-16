@@ -28,12 +28,12 @@ def work_dir():
 
 
 # Import all test fixtures from `test_fixtures` sub-package
-from .data.repositories.tests.fixtures import (
+from .data.stores.tests.fixtures import (
     test_dataspace, test_dataspace_location, dataset, tmp_dir,
     test_dicom_dataset_dir, dicom_dataset)
 from .tasks.tests.fixtures import (
     pydra_task_details, pydra_task)
-from .data.repositories.xnat.tests.fixtures import (
+from .data.stores.xnat.tests.fixtures import (
     xnat_dataset, mutable_xnat_dataset, xnat_archive_dir, xnat_repository,
     xnat_container_registry, run_prefix, xnat_docker_network,
     concatenate_container, xnat_root_dir)

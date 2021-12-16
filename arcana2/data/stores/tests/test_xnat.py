@@ -9,8 +9,8 @@ from tempfile import mkdtemp
 from functools import reduce
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.data.set import Dataset
-from arcana2.data.repositories.xnat.tests.fixtures import create_test_file
-from arcana2.data.repositories.tests.fixtures import create_test_file
+from arcana2.data.stores.xnat.tests.fixtures import create_test_file
+from arcana2.data.stores.tests.fixtures import create_test_file
 
 # logger = logging.getLogger('arcana')
 # logger.setLevel(logging.INFO)

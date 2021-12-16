@@ -4,11 +4,11 @@ import logging
 import time
 import tempfile
 import docker.errors
-from arcana2.data.repositories.xnat.tests.fixtures import make_mutable_dataset
+from arcana2.data.stores.xnat.tests.fixtures import make_mutable_dataset
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.data.types import text
 from arcana2.tasks.tests.fixtures import concatenate
-from arcana2.data.repositories.xnat.cs import XnatViaCS
+from arcana2.data.stores.xnat.cs import XnatViaCS
 
 
 PIPELINE_NAME = 'test-concatenate'

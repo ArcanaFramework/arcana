@@ -1,5 +1,5 @@
 import os
-from arcana2.data.repositories.xnat.cs import XnatViaCS
+from arcana2.data.stores.xnat.cs import XnatViaCS
 
 os.environ['XNAT_HOST'] = 'http://localhost:8080'
 os.environ['XNAT_PASS'] = 'admin'

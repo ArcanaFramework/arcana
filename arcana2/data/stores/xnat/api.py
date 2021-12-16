@@ -14,7 +14,7 @@ import shutil
 import attr
 import xnat
 from arcana2.core.utils import JSON_ENCODING
-from arcana2.core.data.repository import DataRepository
+from arcana2.core.data.store import DataRepository
 from arcana2.core.data.node import DataNode
 from arcana2.exceptions import (
     ArcanaError, ArcanaUsageError, ArcanaFileFormatError,

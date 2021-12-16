@@ -6,7 +6,7 @@ import shutil
 import docker
 from arcana2.__about__ import __version__
 from arcana2.data.types import niftix
-from arcana2.data.sets.bids import BidsDataset
+from arcana2.data.stores.bids import BidsDataset
 
 BIDS_VALIDATOR_DOCKER = 'bids/validator'
 

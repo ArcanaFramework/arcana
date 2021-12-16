@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from arcana2.data.repositories.xnat.tests.fixtures import create_dataset_in_repo
+from arcana2.data.stores.xnat.tests.fixtures import create_dataset_in_repo
 
 
 parser = ArgumentParser()

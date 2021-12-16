@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import shutil
 from itertools import product
 import pytest
-from arcana2.data.repositories.file_system import FileSystem
+from arcana2.data.stores.file_system import FileSystem
 from arcana2.core.data.space import DataSpace
 from arcana2.core.utils import set_cwd
 from arcana2.core.data.type import FileFormat

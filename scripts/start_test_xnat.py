@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from arcana2.data.repositories.xnat.tests.fixtures import (
+from arcana2.data.stores.xnat.tests.fixtures import (
     start_xnat_container_registry, start_xnat_repository)
 
 

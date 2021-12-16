@@ -14,7 +14,7 @@ from pydra.engine.specs import (
 from arcana2.core.data.set import Dataset
 from arcana2.data.types.general import directory
 from arcana2.data.spaces.clinical import Clinical
-from ..repositories import FileSystem
+from . import FileSystem
 from arcana2.exceptions import ArcanaError, ArcanaUsageError, ArcanaEmptyDatasetError
 from arcana2.core.utils import func_task
 

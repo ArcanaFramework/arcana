@@ -2,7 +2,7 @@
 import zipfile
 import tempfile
 from pathlib import Path
-from arcana2.data.repositories.tests.fixtures import (
+from arcana2.data.stores.tests.fixtures import (
     make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
 from arcana2.tasks.tests.fixtures import concatenate
 from arcana2.data.types.general import text, zip

@@ -12,15 +12,15 @@ import requests
 import pytest
 import docker
 import xnat
-from arcana2.data.repositories import Xnat
-from arcana2.data.repositories.xnat.cs import XnatViaCS
+from arcana2.data.stores import Xnat
+from arcana2.data.stores.xnat.cs import XnatViaCS
 from arcana2.data.spaces.clinical import Clinical
 from arcana2.core.data.space import DataSpace
 from arcana2.core.data.type import FileFormat
 from arcana2.data.types.general import text, directory
 from arcana2.data.types.neuroimaging import niftix_gz, nifti_gz, dicom
 from arcana2.tasks.tests.fixtures import concatenate
-from arcana2.data.repositories.tests.fixtures import create_test_file
+from arcana2.data.stores.tests.fixtures import create_test_file
 
 
 # -----------------------
