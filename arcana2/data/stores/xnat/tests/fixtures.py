@@ -12,6 +12,8 @@ import requests
 import pytest
 import docker
 import xnat
+import tempfile
+import arcana2
 from arcana2.data.stores import Xnat
 from arcana2.data.stores.xnat.cs import XnatViaCS
 from arcana2.data.dimensions.clinical import Clinical
@@ -96,9 +98,15 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 # Pytest fixtures and helper functions
 # ------------------------------------
 
-DOCKER_SRC_DIR = Path(__file__).parent / 'docker-src'
-DOCKER_BUILD_DIR = Path(__file__).parent / 'docker-build'
-DOCKER_XNAT_ROOT = Path(__file__).parent / 'xnat_root'
+DOCKER_BUILD_ROOT = Path(arcana2.__file__).parent.parent / 'docker-tests'
+try:
+    DOCKER_BUILD_ROOT.mkdir(exist_ok=True)
+except:
+    DOCKER_BUILD_ROOT = Path(tempfile.mkdtemp())
+
+DOCKER_SRC_DIR = DOCKER_BUILD_ROOT / 'src'
+DOCKER_BUILD_DIR = DOCKER_BUILD_ROOT / 'build'
+DOCKER_XNAT_ROOT = DOCKER_BUILD_ROOT / 'xnat_root'
 DOCKER_XNAT_MNT_DIRS = [
     'home/logs', 'home/work', 'build', 'archive', 'prearchive']
 DOCKER_IMAGE = 'arcana-xnat'
@@ -172,8 +180,7 @@ def concatenate_container(xnat_repository, xnat_container_registry):
     image_tag = f'arcana-concatenate:latest'
 
     build_dir = XnatViaCS.generate_dockerfile(
-        task_location='arcana2.tasks.tests.fixtures:concatenate',
-        json_config=None,
+        xnat_commands=[],
         maintainer='some.one@an.org',
         build_dir=DOCKER_BUILD_DIR,
         packages=[],

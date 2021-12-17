@@ -23,15 +23,15 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
     pipeline_name = 'detected_' + PIPELINE_NAME + run_prefix
     task_location = 'arcana2.tasks.tests.fixtures:concatenate'
 
-    json_config = XnatViaCS.generate_json_config(
+    json_config = XnatViaCS.generate_xnat_command(
         pipeline_name=pipeline_name,
         task_location=task_location,
         image_tag=image_tag,
         inputs=[
-            ('to_concat1', 'in_file1', text, Clinical.session),
-            ('to_concat2', 'in_file2', text, Clinical.session)],
+            ('to_concat1', text, 'in_file1', Clinical.session),
+            ('to_concat2', text, 'in_file2', Clinical.session)],
         outputs=[
-            ('concatenated', 'out_file', text)],
+            ('concatenated', text, 'out_file')],
         parameters=['duplicates'],
         description="A pipeline to test Arcana's wrap4xnat function",
         version='0.1',
