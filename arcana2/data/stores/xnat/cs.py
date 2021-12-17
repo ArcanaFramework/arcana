@@ -310,6 +310,7 @@ class XnatViaCS(Xnat):
         for output in outputs:
             xnat_path = output.xnat_path if output.xnat_path else output.pydra_field
             label = xnat_path.split('/')[0]
+            out_fname = xnat_path + (output.datatype.ext if output.datatype.ext else '')
             # output_fname = xnat_path
             # if output.datatype.extension is not None:
             #     output_fname += output.datatype.extension
@@ -319,7 +320,7 @@ class XnatViaCS(Xnat):
                 "description": f"{output.pydra_field} ({output.datatype})",
                 "required": True,
                 "mount": "out",
-                "path": label,
+                "path": out_fname,
                 "glob": None})
             output_handlers.append({
                 "name": f"{output.pydra_field}-resource",
