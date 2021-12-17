@@ -3,10 +3,10 @@ from enum import Enum
 class DataSalience(Enum):
     """An enum that holds the salience levels options that can be used when
     specifying data. Salience is used to indicate whether it would be best to
-    store the data in the data repository or whether it can be just stored in
+    store the data in the data store or whether it can be just stored in
     the local file-system and discarded after it has been used. This choice
     is ultimately specified by the user by defining a salience threshold for
-    a repository.
+    a store.
 
     The salience is also used when providing information on what sinks
     are available to avoid cluttering help menus

@@ -57,7 +57,7 @@ def test_put_items(dataset: Dataset):
                 rel_path = '.'.join(test_file.suffixes)
             checksums[rel_path] = fhash.hexdigest()
             fs_paths.append(deriv_tmp_dir / test_file.parts[0])
-        # Test inserting the new item into the repository
+        # Test inserting the new item into the store
         for node in dataset.nodes(freq):
             item = node[name]
             item.put(*datatype.assort_files(fs_paths))
@@ -73,4 +73,4 @@ def test_put_items(dataset: Dataset):
                 assert all(p.exists() for p in item.fs_paths)
     check_inserted()  # Check that cached objects have been updated
     dataset.refresh()  # Clear object cache
-    check_inserted()  # Check that objects can be recreated from repository
+    check_inserted()  # Check that objects can be recreated from store

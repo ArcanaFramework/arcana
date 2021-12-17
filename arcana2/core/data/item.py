@@ -235,7 +235,7 @@ class FileGroup(DataItem):
         "Iterates through all files in the group and returns their file paths"
         if self.fs_path is None:
             raise ArcanaUsageError(
-                f"{self} has not be retrieved from the repository. Use 'get' "
+                f"{self} has not be retrieved from the store. Use 'get' "
                 "method first.")
         if self.datatype.directory:
             return chain(*((Path(root) / f for f in files)
@@ -254,10 +254,10 @@ class FileGroup(DataItem):
 
     def get_checksums(self, force_calculate=False):
         self._check_exists()
-        # Load checksums from repository (e.g. via API)
+        # Load checksums from store (e.g. via API)
         if self.data_node is not None and not force_calculate:
-            self._checksums = self.data_node.dataset.repository.get_checksums(self)
-        # If the repository cannot calculate the checksums do them manually
+            self._checksums = self.data_node.dataset.store.get_checksums(self)
+        # If the store cannot calculate the checksums do them manually
         else:
             self._checksums = self.calculate_checksums()
 

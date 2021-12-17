@@ -138,7 +138,7 @@ class BidsDataset(Dataset):
             hierarchy = [Clinical.subject, Clinical.timepoint]
         else:
             hierarchy = [Clinical.session]    
-        dataset = BidsDataset(path, repository=BidsFormat(),
+        dataset = BidsDataset(path, store=BidsFormat(),
                               hierarchy=hierarchy)
         dataset.load_metadata()
         return dataset
@@ -152,7 +152,7 @@ class BidsDataset(Dataset):
         else:
             hierarchy = [Clinical.session]
         dataset = BidsDataset(
-            path, repository=BidsFormat(), hierarchy=hierarchy,
+            path, store=BidsFormat(), hierarchy=hierarchy,
             name=name, **kwargs)
         # Create nodes
         for subject_id in subject_ids:
@@ -268,7 +268,7 @@ class BidsFormat(FileSystem):
 
     def find_nodes(self, dataset: BidsDataset):
         """
-        Find all nodes within the dataset stored in the repository and
+        Find all nodes within the dataset stored in the store and
         construct the data tree within the dataset
 
         Parameters
@@ -596,10 +596,10 @@ def to_bids(frequency, inputs, dataset, id, **input_values):
     for inpt_name, inpt_type, inpt_path in inputs:
         dataset.add_sink(inpt_name, inpt_type, path=inpt_path)
     data_node = dataset.node(frequency, id)
-    with dataset.repository:
+    with dataset.store:
         for inpt_name, inpt_value in input_values.items():
             node_item = data_node[inpt_name]
-            node_item.put(inpt_value) # Store value/path in repository
+            node_item.put(inpt_value) # Store value/path in store
     return dataset
 
 
@@ -619,7 +619,7 @@ def extract_bids(dataset: Dataset,
                  id: str,
                  app_completed: bool):
     """Selects the items from the dataset corresponding to the input 
-    sources and retrieves them from the repository to a cache on 
+    sources and retrieves them from the store to a cache on 
     the host
 
     Parameters
@@ -630,7 +630,7 @@ def extract_bids(dataset: Dataset,
     for output_name, output_type, output_path in outputs:
         dataset.add_sink(output_name, output_type,
                             path='derivatives/bids-app/' + output_path)
-    with dataset.repository:
+    with dataset.store:
         for output in outputs:
             item = data_node[output[0]]
             item.get()  # download to host if required

@@ -31,7 +31,7 @@ class RunCmd(BaseDatasetCmd):
     """
 
     cmd_name = 'run'
-    desc = ("Runs an app against a dataset stored in a repository. The app "
+    desc = ("Runs an app against a dataset stored in a store. The app "
             "needs to be wrapped in a Pydra interface that is on the Python "
             "path")
 
@@ -383,7 +383,7 @@ class RunCmd(BaseDatasetCmd):
 
 
     OUTPUT_HELP = """The outputs produced by the app to be stored in the "
-        repository.
+        store.
 
         The INTERFACE_FIELD is the name of the output field in the Pydra
         interface to connect to the sink to.
@@ -392,7 +392,7 @@ class RunCmd(BaseDatasetCmd):
         by the workflow in
 
         The STORE_AT:FORMAT arg specifies where the output should be stored within
-        the data node of the dataset in the repository. FORMAT is the name of
+        the data node of the dataset in the store. FORMAT is the name of
         the file-format the file will be stored at in the dataset.
         """
 

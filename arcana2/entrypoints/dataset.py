@@ -17,16 +17,16 @@ class BaseDatasetCmd(BaseCmd):
     def construct_parser(cls, parser):
         parser.add_argument(
             'dataset_name',
-            help=("Name of the dataset in the repository. For XNAT "
+            help=("Name of the dataset in the store. For XNAT "
                   "repositories this is the project name, for file-system "
-                  "repositories this is the path to the root directory"))    
+                  "stores this is the path to the root directory"))    
         parser.add_argument(
-            '--repository', '-r', nargs='+', default=['file_system'],
+            '--store', '-r', nargs='+', default=['file_system'],
             metavar='ARG',
-            help=("Specify the repository type and any options to be passed to"
-                  " it. The first argument is the type of repository, either "
+            help=("Specify the store type and any options to be passed to"
+                  " it. The first argument is the type of store, either "
                   "'file_system', 'xnat' or 'xnat_cs'. The remaining arguments"
-                  " depend on the type of repository:\n"
+                  " depend on the type of store:\n"
                   "\tfile_system: BASE_DIR\n"
                   "\txnat: SERVER_URL, USERNAME, PASSWORD\n"
                   "\txnat_cs: SUBJECT TIMEPOINT\n"))
@@ -73,7 +73,7 @@ class BaseDatasetCmd(BaseCmd):
         parser.add_argument(
             '--hierarchy', nargs='+', default=None,
             help=("The data frequencies that are present in the data tree. "
-                  "For some repository types this is fixed (e.g. XNAT) but "
+                  "For some store types this is fixed (e.g. XNAT) but "
                   "for more flexible (e.g. FileSystem) the number of hierarchy "
                   "in the data tree, and what each layer corresponds to, "
                   "needs to specified. Defaults to all the hierarchy in the "
@@ -81,26 +81,26 @@ class BaseDatasetCmd(BaseCmd):
 
     @classmethod
     def get_dataset(cls, args, work_dir):
-        """Initialises a repository and then gets a dataset from it
+        """Initialises a store and then gets a dataset from it
         """
 
         dimensions = cls.parse_dataspace(args)
         hierarchy = [dimensions[l]
                      for l in args.hierarchy] if args.hierarchy else None
         
-        repo_args = list(args.repository)
+        repo_args = list(args.store)
         repo_type = repo_args.pop(0)
         nargs = len(repo_args)
         if repo_type == 'file_system':
-            repository = FileSystem()
+            store = FileSystem()
         elif repo_type == 'xnat':
             if nargs < 1 or nargs > 3:
                 raise ArcanaUsageError(
                     f"Incorrect number of arguments passed to an Xnat "
-                    f"repository ({args}), at least 1 (SERVER) and no more "
+                    f"store ({args}), at least 1 (SERVER) and no more "
                     f"than 3 are required (SERVER, USER, PASSWORD)")
             optional_args = ['user', 'password']
-            repository = Xnat(
+            store = Xnat(
                 server=repo_args[0],
                 cache_dir=work_dir / XNAT_CACHE_DIR,
                 **{k: v for k, v in zip(optional_args, repo_args[1:])})
@@ -109,20 +109,20 @@ class BaseDatasetCmd(BaseCmd):
             if nargs < 1 or nargs > 7:
                 raise ArcanaUsageError(
                     f"Incorrect number of arguments passed to an Xnat "
-                    f"repository ({args}), at least 1 (FREQUENCY) is required "
+                    f"store ({args}), at least 1 (FREQUENCY) is required "
                     "and no more than 7 are permitted (FREQUENCY, NODE_ID, "
                     "SERVER, USER, PASSWORD, INPUT_MOUNT, OUTPUT_MOUNT)")
             optional_args = ['node_id', 'server', 'user', 'password',
                              'input_mount', 'output_mount']
-            repository = XnatViaCS(
+            store = XnatViaCS(
                 cache_dir=work_dir / XNAT_CACHE_DIR,
                 frequency=Clinical[repo_args[0]],
                 **{k: v for k, v in zip(optional_args, repo_args[1:])})
             hierarchy = [Clinical.subject, Clinical.session]
         else:
             raise ArcanaUsageError(
-                f"Unrecognised repository type provided as first argument "
-                f"to '--repository' option ({repo_type})")
+                f"Unrecognised store type provided as first argument "
+                f"to '--store' option ({repo_type})")
 
         if args.id_inference:
             id_inference = {t: (s, r) for t, s, r in args.ids_inference}
@@ -144,7 +144,7 @@ class BaseDatasetCmd(BaseCmd):
                 parsed_ids[freq] = ids
             return parsed_ids
         
-        return repository.dataset(args.dataset_name,
+        return store.dataset(args.dataset_name,
                                   hierarchy=hierarchy,
                                   id_inference=id_inference,
                                   included=parse_ids(args.included),

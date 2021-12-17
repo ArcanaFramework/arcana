@@ -99,7 +99,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
         # handlers of the container service
         check_inserted()
         # Check downloaded by deleting the cache dir
-        shutil.rmtree(mutable_xnat_dataset.repository.cache_dir / 'projects'
+        shutil.rmtree(mutable_xnat_dataset.store.cache_dir / 'projects'
                     / mutable_xnat_dataset.id)
         mutable_xnat_dataset.refresh()
         check_inserted()  

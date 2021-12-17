@@ -343,7 +343,7 @@ class XnatViaCS(Xnat):
             f"--ignore_blank_inputs "  # Allow input patterns to be blank, just ignore them in that case
             f"--pydra_plugin serial "  # Use serial processing instead of parallel to simplify outputs
             f"--work {cls.WORK_MOUNT} "  # working directory
-            f"--repository xnat_via_cs {frequency} ")  # pass XNAT API details
+            f"--store xnat_via_cs {frequency} ")  # pass XNAT API details
 
         # Create Project input that can be passed to the command line, which will
         # be populated by inputs derived from the XNAT object passed to the pipeline

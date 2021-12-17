@@ -31,7 +31,7 @@ class FileSystem(DataStore):
     Parameters
     ----------
     base_dir : str
-        Path to the base directory of the "repository", i.e. datasets are
+        Path to the base directory of the "store", i.e. datasets are
         arranged by name as sub-directories of the base dir.
 
     """
@@ -58,7 +58,7 @@ class FileSystem(DataStore):
 
     def get_file_group(self, file_group, **kwargs):
         """
-        Set the path of the file_group from the repository
+        Set the path of the file_group from the store
         """
         # Don't need to cache file_group as it is already local as long
         # as the path is set
@@ -78,7 +78,7 @@ class FileSystem(DataStore):
 
     def get_field(self, field):
         """
-        Update the value of the field from the repository
+        Update the value of the field from the store
         """
         self.cast_value(self.get_field_val(field))
 
@@ -93,14 +93,14 @@ class FileSystem(DataStore):
 
     def put_file_group(self, file_group, fs_path, side_cars):
         """
-        Inserts or updates a file_group in the repository
+        Inserts or updates a file_group in the store
         """
         fs_path = Path(fs_path)
         target_path = self.file_group_path(file_group)
         if fs_path == target_path:
             logger.info(
                 f"Attempted to set file path of {file_group} to its path in "
-                f"the repository {target_path}")
+                f"the store {target_path}")
             return
         # Create target directory if it doesn't exist already
         dname = target_path.parent
@@ -109,7 +109,7 @@ class FileSystem(DataStore):
         if fs_path.is_file():
             shutil.copyfile(fs_path, target_path)
             sc_target_paths = file_group.datatype.default_side_cars(target_path)
-            # Copy side car files into repository
+            # Copy side car files into store
             if side_cars is not None:
                 side_cars = copy(side_cars)
             for sc_name in file_group.datatype.side_cars:
@@ -136,7 +136,7 @@ class FileSystem(DataStore):
 
     def put_field(self, field, value):
         """
-        Inserts or updates a field in the repository
+        Inserts or updates a field in the store
         """
         fpath = self.fields_json_path(field)
         # Open fields JSON, locking to prevent other processes
@@ -160,7 +160,7 @@ class FileSystem(DataStore):
 
     def find_nodes(self, dataset: Dataset):
         """
-        Find all nodes within the dataset stored in the repository and
+        Find all nodes within the dataset stored in the store and
         construct the data tree within the dataset
 
         Parameters
@@ -318,7 +318,7 @@ class FileSystem(DataStore):
             except AttributeError:
                 pass
             raise ArcanaMissingDataException(
-                "{} does not exist in the local repository {}"
+                "{} does not exist in the local store {}"
                 .format(field.name, self))
                                  
 
@@ -334,7 +334,7 @@ def single_dataset(path: str, tree_dimensions: DataDimensions=Clinical,
         Path to directory containing the dataset
     tree_dimensions : type
         The enum class that defines the directory tree dimensions of the
-        repositories
+        stores
     """
 
     return FileSystem(op.join(path, '..'), **kwargs).dataset(

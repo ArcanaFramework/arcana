@@ -149,7 +149,7 @@ class ArcanaJobSubmittedException(ArcanaException):
 class ArcanaNoRunRequiredException(ArcanaException):
     """
     Used to signify when a pipeline doesn't need to be run as all
-    required outputs are already present in the repository
+    required outputs are already present in the store
     """
 
 
@@ -196,7 +196,7 @@ class ArcanaUriAlreadySetException(ArcanaException):
 
 
 class ArcanaDataTreeConstructionError(ArcanaError):
-    "Error in constructing data tree by repository find_nodes method"
+    "Error in constructing data tree by store find_nodes method"
 
 class ArcanaBadlyFormattedIDError(ArcanaDataTreeConstructionError):
     "Error attempting to extract an ID from a tree path using a user provided regex"

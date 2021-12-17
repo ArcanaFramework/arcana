@@ -188,7 +188,7 @@ class Xnat(DataStore):
             raise ArcanaUsageError(
                 "Attempting to download {}, which has not been assigned a "
                 "file format (see FileGroup.datatypeted)".format(file_group))
-        self._check_repository(file_group)
+        self._check_store(file_group)
         with self:  # Connect to the XNAT repository if haven't already
             xnode = self.get_xnode(file_group.data_node)
             if not file_group.uri:
@@ -243,7 +243,7 @@ class Xnat(DataStore):
                         # TODO: This should really take into account the
                         # size of the file being downloaded, and then the
                         # user can estimate the download speed for their
-                        # repository
+                        # store
                         self._delayed_download(
                             tmp_dir, xresource, file_group, cache_path,
                             delay=self._race_cond_delay)
@@ -274,7 +274,7 @@ class Xnat(DataStore):
             raise ArcanaFileFormatError(
                 "Format of {} needs to be set before it is uploaded to {}"
                 .format(file_group, self))
-        self._check_repository(file_group)
+        self._check_store(file_group)
         # Open XNAT session
         with self:
             # Add session for derived scans if not present
@@ -355,7 +355,7 @@ class Xnat(DataStore):
         value : float or int or str of list[float] or list[int] or list[str]
             The value of the field
         """
-        self._check_repository(field)
+        self._check_store(field)
         with self:
             xsession = self.get_xnode(field.data_node)
             val = xsession.fields[path2name(field)]
@@ -364,7 +364,7 @@ class Xnat(DataStore):
         return val
 
     def put_field(self, field, value):
-        self._check_repository(field)
+        self._check_store(field)
         if field.array:
             if field.datatype is str:
                 value = ['"{}"'.format(v) for v in value]
@@ -567,11 +567,11 @@ class Xnat(DataStore):
             raise ArcanaError("URI of item needs to be set before cache path")
         return self.cache_dir.joinpath(*uri.split('/')[3:])
 
-    def _check_repository(self, item):
-        if item.data_node.dataset.repository is not self:
+    def _check_store(self, item):
+        if item.data_node.dataset.store is not self:
             raise ArcanaWrongRepositoryError(
                 "{} is from {} instead of {}".format(
-                    item, item.dataset.repository, self))
+                    item, item.dataset.store, self))
 
     def _file_group_paths(self, file_group):
         cache_path = self.cache_path(file_group)

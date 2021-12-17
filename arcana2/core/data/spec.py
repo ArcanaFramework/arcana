@@ -127,7 +127,7 @@ class DataSink():
         stored within the nodes of the data tree.
     format : FileFormat or type
         The file format or data type used to store the corresponding items
-        in the repository dataset.
+        in the store dataset.
     frequency : DataDimensions
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'

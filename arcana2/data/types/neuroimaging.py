@@ -217,32 +217,31 @@ class DicomImage(BaseImage):
     def extract_id(self, fileset):
         return int(fileset.dicom_values([self.SERIES_NUMBER_TAG])[0])
 
-    def dicom_values(self, fileset, tags):
+    def dicom_values(self, file_group, tags):
         """
         Returns a dictionary with the DICOM header fields corresponding
         to the given tag names
 
         Parameters
         ----------
+        file_group : FileGroup
+            The file group to extract the DICOM header for
         tags : List[Tuple[str, str]]
             List of DICOM tag values as 2-tuple of strings, e.g.
             [('0080', '0020')]
-        repository_login : <repository-login-object>
-            A login object for the repository to avoid having to relogin
-            for every dicom_header call.
 
         Returns
         -------
         dct : Dict[Tuple[str, str], str|int|float]
         """
         try:
-            if (fileset._path is None and fileset._dataset is not None
-                    and hasattr(fileset.dataset.repository, 'dicom_header')):
-                hdr = fileset.dataset.repository.dicom_header(self)
+            if (file_group._path is None and file_group._dataset is not None
+                    and hasattr(file_group.dataset.store, 'dicom_header')):
+                hdr = file_group.dataset.store.dicom_header(self)
                 dct = [hdr[t] for t in tags]
             else:
                 # Get the DICOM object for the first file in the fileset
-                dcm = fileset.get_header(0)
+                dcm = file_group.get_header(0)
                 dct = [dcm[t].value for t in tags]
         except KeyError as e:
             e.msg = ("{} does not have dicom tag {}".format(

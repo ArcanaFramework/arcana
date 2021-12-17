@@ -5,6 +5,7 @@ from pathlib import Path
 from itertools import chain
 import re
 import attr
+import attr.filters
 from attr.converters import default_if_none
 from pydra import Workflow
 from arcana2.exceptions import (
@@ -30,9 +31,9 @@ class Dataset():
     ----------
     id : str
         The dataset id/path that uniquely identifies the datset within the
-        repository it is stored (e.g. FS directory path or project ID)
-    repository : Repository
-        The repository the dataset is stored into. Can be the local file
+        store it is stored (e.g. FS directory path or project ID)
+    store : Repository
+        The store the dataset is stored into. Can be the local file
         system by providing a FileSystem repo.
     hierarchy : Sequence[DataDimensions]
         The data frequencies that are explicitly present in the data tree.
@@ -43,7 +44,7 @@ class Dataset():
 
             [Clinical.subject, Clinical.timepoint]
 
-        Alternatively, in some repositories (e.g. XNAT) the second layer in the
+        Alternatively, in some stores (e.g. XNAT) the second layer in the
         hierarchy may be named with session ID that is unique across the project,
         in which case the layer dimensions would instead be
 
@@ -102,7 +103,7 @@ class Dataset():
     """
 
     id: str = attr.ib()
-    repository: store.DataStore = attr.ib()
+    store: store.DataStore = attr.ib()
     hierarchy: list[DataDimensions] = attr.ib()
     id_inference: (dict[DataDimensions, str] or ty.Callable) = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
@@ -182,12 +183,12 @@ class Dataset():
     def prov(self):
         return {
             'id': self.id,
-            'repository': self.repository.prov,
+            'store': self.store.prov,
             'ids': {str(freq): tuple(ids) for freq, ids in self.nodes.items()}}
 
     @property
     def root_node(self):
-        """Lazily loads the data tree from the repository on demand
+        """Lazily loads the data tree from the store on demand
 
         Returns
         -------
@@ -197,7 +198,7 @@ class Dataset():
         if self._root_node is None:
             self._root_node = DataNode({self.root_freq: None}, self.root_freq,
                                        self)
-            self.repository.find_nodes(self)
+            self.store.find_nodes(self)
         return self._root_node
 
     def refresh(self):
@@ -566,7 +567,7 @@ class Dataset():
         name : str
             A name for the workflow (must be globally unique)
         workflow : pydra.Workflow
-            The Pydra workflow to add to the repository
+            The Pydra workflow to add to the store
         inputs : Sequence[str or tuple[str, FileFormat]]
             List of column names (i.e. either data sources or sinks) to be
             connected to the inputs of the pipeline. If the pipelines requires

@@ -137,7 +137,7 @@ class DataNode():
     def unresolved(self):
         if self._unresolved is None:
             self._unresolved = []
-            self.dataset.repository.find_items(self)
+            self.dataset.store.find_items(self)
         return self._unresolved
 
     def resolved(self, format):
@@ -174,17 +174,17 @@ class DataNode():
             path=path, data_node=self, value=value, **kwargs))
 
     def get_file_group(self, file_group, **kwargs):
-        return self.dataset.repository.get_file_group(file_group, **kwargs)
+        return self.dataset.store.get_file_group(file_group, **kwargs)
 
     def get_field(self, field):
-        return self.dataset.repository.get_field(field)
+        return self.dataset.store.get_field(field)
 
     def put_file_group(self, file_group, fs_path, side_cars):
-        self.dataset.repository.put_file_group(
+        self.dataset.store.put_file_group(
             file_group, fs_path=fs_path, side_cars=side_cars)
 
     def put_field(self, field, value):
-        self.dataset.repository.put_field(field, value)
+        self.dataset.store.put_field(field, value)
 
 
 @attr.s
@@ -308,7 +308,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
     file_paths : Sequence[str] | None
         Path to the file-group in the local cache
     uris : Dict[str, str] | None
-        For repositories where the name of the file format is saved with the
+        For stores where the name of the file format is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
         format identification. It is stored here along with URIs corresponding
         to each resource        

@@ -22,7 +22,7 @@ class DataStore(metaclass=ABCMeta):
                                 eq=False)
 
     def __enter__(self):
-        # This allows the repository to be used within nested contexts
+        # This allows the store to be used within nested contexts
         # but still only use one connection. This is useful for calling
         # methods that need connections, and therefore control their
         # own connection, in batches using the same connection by
@@ -44,7 +44,7 @@ class DataStore(metaclass=ABCMeta):
         Parameters
         ----------
         name : str
-            The name, path or ID of the dataset within the repository
+            The name, path or ID of the dataset within the store
         sources : Dict[Str, DataSource]
             A dictionary that maps "name-paths" of input "columns" in the
             dataset to criteria in a Selector object that select the
@@ -64,16 +64,16 @@ class DataStore(metaclass=ABCMeta):
             except AttributeError:
                 raise ArcanaUsageError(
                     "'hierarchy' kwarg must be specified for datasets in "
-                    f"{type(self)} repositories")
+                    f"{type(self)} stores")
         return set_module.Dataset(name,
-                                  repository=self,
+                                  store=self,
                                   hierarchy=hierarchy,
                                   **kwargs)
 
     @abstractmethod
     def find_nodes(self, dataset):
         """
-        Find all data nodes for a dataset in the repository and populate the
+        Find all data nodes for a dataset in the store and populate the
         Dataset object using its `add_node` method.
 
         Parameters
@@ -124,7 +124,7 @@ class DataStore(metaclass=ABCMeta):
     @abstractmethod
     def get_field(self, field):
         """
-        Extract and return the value of the field from the repository
+        Extract and return the value of the field from the store
 
         Parameters
         ----------
@@ -140,29 +140,29 @@ class DataStore(metaclass=ABCMeta):
     @abstractmethod
     def put_file_group(self, file_group, fs_path, side_cars):
         """
-        Inserts or updates the file_group into the repository
+        Inserts or updates the file_group into the store
 
         Parameters
         ----------
         file_group : FileGroup
-            The file_group to insert into the repository
+            The file_group to insert into the store
         """
 
     @abstractmethod
     def put_field(self, field, value):
         """
-        Inserts or updates the fields into the repository
+        Inserts or updates the fields into the store
 
         Parameters
         ----------
         field : Field
-            The field to insert into the repository
+            The field to insert into the store
         """
 
     def get_checksums(self, file_group):
         """
         Returns the checksums for the files in the file_group that are stored
-        in the repository. If no checksums are stored in the repository then
+        in the store. If no checksums are stored in the store then
         this method should be left to return None and the checksums will be
         calculated by downloading the files and taking calculating the digests
 
@@ -183,12 +183,21 @@ class DataStore(metaclass=ABCMeta):
 
     def connect(self):
         """
-        If a connection session is required to the repository,
+        If a connection session is required to the store,
         manage it here
         """
 
     def disconnect(self):
         """
-        If a connection session is required to the repository,
+        If a connection session is required to the store,
         manage it here
         """
+
+    # @abstractmethod
+    # def save(self, dataset):
+    #     """Save metadata associated with the dataset in the store"""
+
+
+    # @abstractmethod
+    # def load(self, dataset):
+    #     """Load metadata associated with the dataset in the store"""

@@ -45,7 +45,7 @@ class FileFormat(object):
         the initialisation of the file_group, alternate locations can be specified
     alternate_names : List[str]
         A list of alternate names that might be used to refer to the format
-        when saved in a repository
+        when saved in a store
     file_group_cls : FileGroup
         The class that is used when the format of a file-group is resolved
     """
@@ -317,7 +317,7 @@ class FileFormat(object):
     #     """
     #     if file_group._format_name is not None:
     #         return (file_group._format_name in self.alternate_names(
-    #             file_group.dataset.repository.type))
+    #             file_group.dataset.store.type))
     #     elif self.directory:
     #         if op.isdir(file_group.path):
     #             if self.within_dir_exts is None:
