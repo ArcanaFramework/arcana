@@ -24,4 +24,4 @@ test.log
 *.egg-info
 /arcana2/data/stores/xnat/tests/xnat_root
 /arcana2/data/stores/xnat/tests/dicom-dataset/
-/docker-tests/*
+/docker-tests

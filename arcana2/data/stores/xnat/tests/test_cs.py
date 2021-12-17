@@ -23,15 +23,15 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
     pipeline_name = 'detected_' + PIPELINE_NAME + run_prefix
     task_location = 'arcana2.tasks.tests.fixtures:concatenate'
 
-    json_config = XnatViaCS.generate_xnat_command(
+    xnat_command = XnatViaCS.generate_xnat_command(
         pipeline_name=pipeline_name,
         task_location=task_location,
         image_tag=image_tag,
         inputs=[
-            ('to_concat1', text, 'in_file1', Clinical.session),
-            ('to_concat2', text, 'in_file2', Clinical.session)],
+            ('in_file1', text, 'to_concat1', Clinical.session),
+            ('in_file2', text, 'to_concat2', Clinical.session)],
         outputs=[
-            ('concatenated', text, 'out_file')],
+            ('out_file', text, 'concatenated')],
         parameters=['duplicates'],
         description="A pipeline to test Arcana's wrap4xnat function",
         version='0.1',
@@ -40,8 +40,7 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
         info_url=None)
 
     build_dir = XnatViaCS.generate_dockerfile(
-        task_location=task_location,
-        json_config=json_config,
+        xnat_commands=[xnat_command],
         maintainer='some.one@an.org',
         build_dir=build_dir,
         packages=[],
@@ -73,7 +72,7 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
 
         commands = {c['name']: c for c in xlogin.get(f'/xapi/commands/').json()}
         assert pipeline_name in commands, "Pipeline config wasn't detected automatically"
-        assert json_config == commands[pipeline_name]
+        assert xnat_command == commands[pipeline_name]
 
 
 def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,

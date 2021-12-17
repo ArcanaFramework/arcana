@@ -98,15 +98,14 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 # Pytest fixtures and helper functions
 # ------------------------------------
 
-DOCKER_BUILD_ROOT = Path(arcana2.__file__).parent.parent / 'docker-tests'
 try:
-    DOCKER_BUILD_ROOT.mkdir(exist_ok=True)
+    DOCKER_BUILD_ROOT = Path(os.environ['HOME']) / '.arcana-docker-tests'
 except:
     DOCKER_BUILD_ROOT = Path(tempfile.mkdtemp())
 
 DOCKER_SRC_DIR = DOCKER_BUILD_ROOT / 'src'
 DOCKER_BUILD_DIR = DOCKER_BUILD_ROOT / 'build'
-DOCKER_XNAT_ROOT = DOCKER_BUILD_ROOT / 'xnat_root'
+DOCKER_XNAT_ROOT = Path(__file__).parent / 'xnat_root'
 DOCKER_XNAT_MNT_DIRS = [
     'home/logs', 'home/work', 'build', 'archive', 'prearchive']
 DOCKER_IMAGE = 'arcana-xnat'
