@@ -25,7 +25,8 @@ def test_run_app(work_dir, test_dataspace_location):
         '--dataspace', test_dataspace_location,
         '--hierarchy', 'abcd',
         '--frequency', 'abcd',
-        '--parameter', 'duplicates', '2'])
+        '--parameter', 'duplicates', '2',
+        '--pydra_plugin', 'serial'])
     RunCmd().run(args)
 
     dataset.add_sink('deriv', text)

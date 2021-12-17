@@ -1,8 +1,8 @@
 from pathlib import Path
-import json
 import logging
 import time
 import tempfile
+import pytest
 import docker.errors
 from arcana2.data.stores.xnat.tests.fixtures import make_mutable_dataset
 from arcana2.data.dimensions.clinical import Clinical
@@ -13,6 +13,7 @@ from arcana2.data.stores.xnat.cs import XnatViaCS
 
 PIPELINE_NAME = 'test-concatenate'
 
+@pytest.mark.skip(reason="test container registry is not configured properly")
 def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
                             run_prefix):
 
@@ -84,7 +85,7 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
 
     pipeline_name = PIPELINE_NAME + run_prefix
 
-    json_config = XnatViaCS.generate_json_config(
+    xnat_command = XnatViaCS.generate_xnat_command(
         pipeline_name=pipeline_name,
         task_location='arcana2.tasks.tests.fixtures:concatenate',
         image_tag=concatenate_container,
@@ -104,7 +105,7 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
 
         xlogin = xnat_repository.login
 
-        cmd_id = xlogin.post('/xapi/commands', json=json_config).json()
+        cmd_id = xlogin.post('/xapi/commands', json=xnat_command).json()
 
         # Enable the command globally and in the project
         xlogin.put(
@@ -117,8 +118,8 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
         launch_result = xlogin.post(
             f"/xapi/projects/{dataset.id}/wrappers/{cmd_id}/root/SESSION/launch",
             json={'SESSION': f'/archive/experiments/{test_xsession.id}',
-                  'in_file1': 'scan1:text',
-                  'in_file2': 'scan2:text',
+                  'to_concat1': 'scan1:text',
+                  'to_concat2': 'scan2:text',
                   'duplicates': '2'}).json()
 
         assert launch_result['status'] == 'success'
@@ -129,9 +130,11 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
         SLEEP_PERIOD = 10
         max_runtime = NUM_ATTEMPTS * SLEEP_PERIOD
 
+        INCOMPLETE_STATES = ('Pending', 'Running', '_Queued', 'Staging')
+
         for i in range(NUM_ATTEMPTS):
             wf_result = xlogin.get(f'/xapi/workflows/{workflow_id}').json()
-            if wf_result['status'] not in ('Pending', 'Running', '_Queued'):
+            if wf_result['status'] not in INCOMPLETE_STATES:
                 break
             time.sleep(SLEEP_PERIOD)
         

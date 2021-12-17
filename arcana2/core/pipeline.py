@@ -166,6 +166,12 @@ class Pipeline():
         inputs = list(inputs)
         outputs = list(outputs)
 
+        if not inputs:
+            raise ArcanaUsageError(f"No inputs provided to {name} pipeline")
+
+        if not outputs:
+            raise ArcanaUsageError(f"No outputs provided to {name} pipeline")
+
         # Separate required formats and input names
         input_types = dict(i for i in inputs if not isinstance(i, str))
         input_names = [i if isinstance(i, str) else i[0] for i in inputs]
@@ -411,7 +417,7 @@ def source_items(dataset, frequency, id, inputs):
             item = data_node[inpt_name]
             item.get()  # download to host if required
             sourced.append(item)
-    return tuple(sourced) if len(inputs) > 1 else sourced[0]
+    return tuple(sourced) if len(sourced) > 1 else sourced[0]
 
 
 def sink_items(dataset, frequency, id, **to_sink):

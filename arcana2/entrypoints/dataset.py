@@ -162,7 +162,7 @@ class BaseDatasetCmd(BaseCmd):
         module_path = '.'.join(parts[:-1])
         cls_name = parts[-1]
         try:
-            module = import_module('arcana2.data.spaces.' + module_path)
+            module = import_module('arcana2.data.dimensions.' + module_path)
         except ImportError:
             module = import_module(module_path)
         return getattr(module, cls_name)

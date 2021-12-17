@@ -137,13 +137,13 @@ class RunCmd(BaseDatasetCmd):
                     inpt + [None] * (cls.MAX_INPUT_ARGS - len(inpt)))]
             if not var:
                 raise ArcanaUsageError(
-                    f"{cls.VAR_ARG} must be provided for input {i} ({inpt})")
+                    f"A Pydra task field must be provided for input {i} ({inpt})")
             if not input_datatype_name:
                 raise ArcanaUsageError(
                     f"An input datatype to match must be provided for input {i} ({inpt})")
             if not pattern:
                 if args.ignore_blank_inputs:
-                    logger.warning("Ignoring '{var}' input as pattern to match was not provided")
+                    logger.warning("Ignoring '%s' input as pattern to match was not provided", var)
                     continue  # Empty inputs are ignored to help facilitate GUIs (e.g. XNAT CS)
                 raise ArcanaUsageError(
                     f"A path pattern to match must be provided for input {i} ({inpt})")
