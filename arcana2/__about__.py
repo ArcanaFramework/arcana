@@ -7,7 +7,7 @@ __authors__ = [
 
 install_requires = [
     'xnat>=0.3.17',
-    'pydra>=0.14.1',
+    'pydra @ https://github.com/tclose/pydra/archive/serial-worker-fix.zip',
     'pydra-dcm2niix',
     'pydra-mrtrix3 @ https://github.com/nipype/pydra-mrtrix3/archive/master.zip',
     'pydicom>=1.0.2',
