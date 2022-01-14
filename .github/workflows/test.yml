@@ -42,7 +42,8 @@ jobs:
 
     - name: Install Pydra tests dependencies (develop or setup.py install)
       if: matrix.install == 'develop' || matrix.install == 'install'
-      run: pip install ".[test]"
+      run: pip install "."
+      # run: pip install ".[test]"
 
     - name: Install dependencies (setup.py install)
       if: matrix.install == 'install'
