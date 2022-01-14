@@ -59,7 +59,7 @@ jobs:
       run: pip install "$( ls dist/pydra*.whl )[test]"
 
     - name: Pytest
-      run: pytest -vs -n auto --cov arcana2  --cov-config .coveragerc --cov-report xml:cov.xml
+      run: pytest -vs --cov arcana2  --cov-config .coveragerc --cov-report xml:cov.xml
 
     - name: Upload to codecov
       run: codecov -f cov.xml -F unittests -e GITHUB_WORKFLOW
