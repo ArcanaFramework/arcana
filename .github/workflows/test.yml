@@ -10,9 +10,12 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: [3.7, 3.8, 3.9]
-        install: [install, develop, wheel]
+        os: [ubuntu-latest]
+        # [ubuntu-latest, windows-latest]
+        python-version: [3.9]
+        # [3.7, 3.8, 3.9]
+        install: [develop]
+        # [install, develop, wheel]
       fail-fast: false
     runs-on: ${{ matrix.os }}
 
