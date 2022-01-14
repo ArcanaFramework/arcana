@@ -98,10 +98,10 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 # Pytest fixtures and helper functions
 # ------------------------------------
 
-try:
-    DOCKER_BUILD_ROOT = Path(os.environ['HOME']) / '.arcana-docker-tests'
-except:
-    DOCKER_BUILD_ROOT = Path(tempfile.mkdtemp())
+# try:
+#     DOCKER_BUILD_ROOT = Path(os.environ['HOME']) / '.arcana-docker-tests'
+# except:
+DOCKER_BUILD_ROOT = Path(tempfile.mkdtemp())
 
 DOCKER_SRC_DIR = DOCKER_BUILD_ROOT / 'src'
 DOCKER_BUILD_DIR = DOCKER_BUILD_ROOT / 'build'
