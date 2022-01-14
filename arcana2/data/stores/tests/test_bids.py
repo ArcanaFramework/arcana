@@ -7,6 +7,8 @@ import docker
 from arcana2.__about__ import __version__
 from arcana2.data.types import niftix
 from arcana2.data.stores.bids import BidsDataset
+from arcana2.data.stores.bids import BidsApp
+
 
 BIDS_VALIDATOR_DOCKER = 'bids/validator'
 
@@ -71,4 +73,33 @@ def test_bids_roundtrip(work_dir):
     reloaded.add_sink('t1w', datatype=niftix, path='anat/T1w')
 
     assert dataset == reloaded
-    
+
+
+def test_run_bids_app(test_data_dir: Path, work_dir: Path):
+
+    kwargs = {}
+
+    task = BidsApp(
+        image=docker_image,
+        executable='mriqc',  # Extracted using `docker_image_executable(docker_image)`
+        inputs=BIDS_INPUTS,
+        outputs=BIDS_OUTPUTS)
+
+    task_location = 'australianimagingservice.mri.neuro.mriqc' + ':' + cmd_spec['pydra_task']
+    task = resolve_class(task_location)
+
+    for inpt, dtype in cmd_spec['inputs']:
+        esc_inpt = inpt
+        kwargs[esc_inpt] = test_data_dir / 'nifti' / 'ses-01' / (esc_inpt  + dtype.ext)
+
+    print(f"Running MRIQC on {work_dir}/bids dataset")
+
+    work_dir.mkdir(exist_ok=True)
+    bids_dir = work_dir / (spec['package_name'] + '-bids')
+
+    shutil.rmtree(bids_dir, ignore_errors=True)
+
+    result = task(dataset=bids_dir,
+                  virtualisation='docker')(plugin='serial', id='DEFAULT', **kwargs)
+
+    assert (Path(result.output.mriqc) / 'sub-DEFAULT_T1w.html').exists()

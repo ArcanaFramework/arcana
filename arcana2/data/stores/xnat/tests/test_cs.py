@@ -130,7 +130,8 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
         SLEEP_PERIOD = 10
         max_runtime = NUM_ATTEMPTS * SLEEP_PERIOD
 
-        INCOMPLETE_STATES = ('Pending', 'Running', '_Queued', 'Staging')
+        INCOMPLETE_STATES = ('Pending', 'Running', '_Queued', 'Staging',
+                             'Finalizing')
 
         for i in range(NUM_ATTEMPTS):
             wf_result = xlogin.get(f'/xapi/workflows/{workflow_id}').json()
