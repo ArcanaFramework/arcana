@@ -23,6 +23,7 @@ from arcana2.data.types.general import text, directory
 from arcana2.data.types.neuroimaging import niftix_gz, nifti_gz, dicom
 from arcana2.tasks.tests.fixtures import concatenate
 from arcana2.data.stores.tests.fixtures import create_test_file
+from arcana2.exceptions import ArcanaError
 
 
 # -----------------------
@@ -216,6 +217,10 @@ def start_xnat_repository(xnat_docker_network=None, remove=True,
     """
     if xnat_docker_network is None:
         xnat_docker_network = get_xnat_docker_network()
+
+    if not Path(DOCKER_SRC_DIR).is_dir():
+        raise ArcanaError(
+            f"DOCKER_SRC_DIR, '{DOCKER_SRC_DIR}' is not a valid directory")
 
     dc = docker.from_env()
 
