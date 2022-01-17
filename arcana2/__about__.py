@@ -20,7 +20,8 @@ install_requires = [
     # Tests
     'pytest>=5.4.3',
     'pytest-env>=0.6.2',
-    'pytest-cov>=2.12.1',]
+    'pytest-cov>=2.12.1',
+    'xnat4tests>=0.1']
 
 tests_require = []
 

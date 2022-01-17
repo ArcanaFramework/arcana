@@ -9,7 +9,6 @@
 .settings/
 *.swp 
 .settings/
-/arcana.egg-info/
 /build/
 /dist/
 /docs/build

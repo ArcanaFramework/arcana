@@ -4,16 +4,12 @@ from dataclasses import dataclass
 import shutil
 from pathlib import Path
 import random
-import time
-import contextlib
 from tempfile import mkdtemp
 from itertools import product
 import requests
 import pytest
 import docker
-import xnat
-import tempfile
-import arcana2
+from xnat4tests import config as xnat_config, launch_xnat, launch_docker_registry
 from arcana2.data.stores import Xnat
 from arcana2.data.stores.xnat.cs import XnatViaCS
 from arcana2.data.dimensions.clinical import Clinical
@@ -99,30 +95,6 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 # Pytest fixtures and helper functions
 # ------------------------------------
 
-# try:
-#     DOCKER_BUILD_ROOT = Path(os.environ['HOME']) / '.arcana-docker-tests'
-# except:
-DOCKER_BUILD_ROOT = Path(tempfile.mkdtemp())
-
-DOCKER_SRC_DIR = DOCKER_BUILD_ROOT / 'src'
-DOCKER_BUILD_DIR = DOCKER_BUILD_ROOT / 'build'
-DOCKER_XNAT_ROOT = Path(__file__).parent / 'xnat_root'
-DOCKER_XNAT_MNT_DIRS = [
-    'home/logs', 'home/work', 'build', 'archive', 'prearchive']
-DOCKER_IMAGE = 'arcana-xnat'
-DOCKER_HOST = 'localhost'
-DOCKER_XNAT_PORT = '8080'  # This shouldn't be changed as it needs to be the same as the internal
-DOCKER_REGISTRY_IMAGE = 'registry'
-DOCKER_REGISTRY_CONTAINER = 'arcana-docker-registry'
-DOCKER_NETWORK_NAME = 'arcana'
-DOCKER_REGISTRY_PORT = '80'  # Must be 80 to avoid bug in XNAT CS config
-DOCKER_XNAT_URI = f'http://{DOCKER_HOST}:{DOCKER_XNAT_PORT}'
-DOCKER_REGISTRY_URI = f'{DOCKER_HOST}:{DOCKER_REGISTRY_PORT}'
-DOCKER_XNAT_USER = 'admin'
-DOCKER_XNAT_PASSWORD = 'admin'
-CONNECTION_ATTEMPTS = 20
-CONNECTION_ATTEMPT_SLEEP = 5
-
 
 @pytest.fixture(params=GOOD_DATASETS, scope='session')
 def xnat_dataset(xnat_repository, xnat_archive_dir, request):
@@ -152,26 +124,22 @@ def xnat_archive_dir(xnat_root_dir):
 
 
 @pytest.fixture(scope='session')
-def xnat_repository(xnat_root_dir, run_prefix, xnat_docker_network):
+def xnat_repository(run_prefix):
 
-    container, already_running = start_xnat_repository(
-        xnat_root_dir=xnat_root_dir, xnat_docker_network=xnat_docker_network)
+    launch_xnat()
 
     repository = Xnat(
-        server=DOCKER_XNAT_URI,
-        user=DOCKER_XNAT_USER,
-        password=DOCKER_XNAT_PASSWORD,
+        server=xnat_config.XNAT_URI,
+        user=xnat_config.XNAT_USER,
+        password=xnat_config.XNAT_PASSWORD,
         cache_dir=mkdtemp())
 
     # Stash a project prefix in the repository object
-    repository.run_prefix = run_prefix if already_running else None
+    repository.run_prefix = run_prefix
 
     yield repository
 
-    # If container was run by this fixture (instead of already running) stop
-    # it afterwards
-    if not already_running:
-        container.stop()
+
 
 
 @pytest.fixture(scope='session')
@@ -195,88 +163,6 @@ def concatenate_container(xnat_repository, xnat_container_registry):
     return image_tag
 
 
-def start_xnat_repository(xnat_docker_network=None, remove=True,
-                          xnat_root_dir=DOCKER_XNAT_ROOT):
-    """Starts an XNAT repository within a single Docker container that has
-    has the container service plugin configured to access the Docker socket
-    to launch sibling containers.
-
-    Parameters
-    ----------
-    xnat_docker_network : [type], optional
-        [description], by default None
-    remove : bool, optional
-        [description], by default True
-    xnat_root_dir : [type], optional
-        [description], by default DOCKER_XNAT_ROOT
-
-    Returns
-    -------
-    [type]
-        [description]
-    """
-    if xnat_docker_network is None:
-        xnat_docker_network = get_xnat_docker_network()
-
-    if not Path(DOCKER_SRC_DIR).is_dir():
-        raise ArcanaError(
-            f"DOCKER_SRC_DIR, '{DOCKER_SRC_DIR}' is not a valid directory")
-
-    dc = docker.from_env()
-
-    try:
-        image = dc.images.get(DOCKER_IMAGE)
-    except docker.errors.ImageNotFound:
-        image, _ = dc.images.build(path=str(DOCKER_SRC_DIR), tag=DOCKER_IMAGE)
-    
-    try:
-        container = dc.containers.get(DOCKER_IMAGE)
-    except docker.errors.NotFound:
-        volumes = {'/var/run/docker.sock': {'bind': '/var/run/docker.sock',
-                                            'mode': 'rw'}}
-        # Mount in the XNAT root directory for debugging and to allow access
-        # from the Docker host when using the container service
-        if xnat_root_dir is not None:
-            # Clear previous ROOT directories
-            shutil.rmtree(xnat_root_dir, ignore_errors=True)
-            for  dname in DOCKER_XNAT_MNT_DIRS:
-                dpath = Path(xnat_root_dir) / dname
-                dpath.mkdir(parents=True)
-                volumes[str(dpath)] = {'bind': '/data/xnat/' + dname,
-                                       'mode': 'rw'}
-        container = dc.containers.run(
-            image.tags[0], detach=True, ports={
-                '8080/tcp': DOCKER_XNAT_PORT},
-            remove=remove, name=DOCKER_IMAGE,
-            # Expose the XNAT archive dir outside of the XNAT docker container
-            # to simulate what the XNAT container service exposes to running
-            # pipelines, and the Docker socket for the container service to
-            # to use
-            network=xnat_docker_network.id,
-            volumes=volumes)
-        already_running = False
-    else:
-        already_running = True
-
-    # Set the path translations to point to the mounted XNAT home directory
-    with connect(DOCKER_XNAT_URI) as login:
-        login.post('/xapi/docker/server', json={
-            # 'id': 2,
-            'name': 'Local socket',
-            'host': 'unix:///var/run/docker.sock',
-            'cert-path': '',
-            'swarm-mode': False,
-            'path-translation-xnat-prefix': '/data/xnat',
-            'path-translation-docker-prefix': str(DOCKER_XNAT_ROOT),
-            'pull-images-on-xnat-init': False,
-            'container-user': '',
-            'auto-cleanup': True,
-            'swarm-constraints': [],
-            'ping': True})
-    
-    return container, already_running
-
-
 @pytest.fixture(scope='session')
 def run_prefix():
     "A datetime string used to avoid stale data left over from previous tests"
@@ -292,55 +178,17 @@ def xnat_respository_uri(xnat_repository):
 def xnat_container_registry(xnat_repository, xnat_docker_network):
     "Stand up a Docker registry to use with the container service"
 
-    container, already_running = start_xnat_container_registry(xnat_docker_network)
+    launch_docker_registry()
 
-    uri = f'localhost'  # {DOCKER_REGISTRY_PORT}  # Needs to be on 80 to avoid bug with ':' in URI 
-
-    # Set it to the default registry in the XNAT repository
-    with connect(xnat_repository.server) as login:
-        login.post('/xapi/docker/hubs/1', json={
-            "name": "testregistry",
-            "url": f"https://host.docker.internal"})
-
-    yield uri
-
-    if not already_running:
-        container.stop()
+    return 'localhost'  # {DOCKER_REGISTRY_PORT}  # Needs to be on 80 to avoid bug with ':' in URI 
 
 
-def start_xnat_container_registry(xnat_docker_network=None):
-    if xnat_docker_network is None:
-        xnat_docker_network = get_xnat_docker_network()
-    dc = docker.from_env()
-    try:
-        image = dc.images.get(DOCKER_REGISTRY_IMAGE)
-    except docker.errors.ImageNotFound:
-        image = dc.images.pull(DOCKER_REGISTRY_IMAGE)
 
-    try:
-        container = dc.containers.get(DOCKER_REGISTRY_CONTAINER)
-    except docker.errors.NotFound:
-        container = dc.containers.run(
-            image.tags[0], detach=True,
-            ports={'5000/tcp': DOCKER_REGISTRY_PORT},
-            network=xnat_docker_network.id,
-            remove=True, name=DOCKER_REGISTRY_CONTAINER)
-        already_running = False
-    else:
-        already_running = True
-    return container, already_running
 
 @pytest.fixture(scope='session')
 def xnat_docker_network():
     return get_xnat_docker_network()
 
-def get_xnat_docker_network():
-    dc = docker.from_env()
-    try:
-        network = dc.networks.get(DOCKER_NETWORK_NAME)
-    except docker.errors.NotFound:
-        network = dc.networks.create(DOCKER_NETWORK_NAME)
-    return network
 
 
 def make_mutable_dataset(xnat_repository, xnat_archive_dir, test_name):
@@ -429,24 +277,3 @@ def create_dataset_in_repo(dataset_name, run_prefix='', test_suffix='',
                     for fname in fnames:
                         fpath = create_test_file(fname, tmp_dir)
                         xresource.upload(str(tmp_dir / fpath), str(fpath))
-
-
-@contextlib.contextmanager
-def connect(server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
-            password=DOCKER_XNAT_PASSWORD, max_attempts=CONNECTION_ATTEMPTS):
-    # Need to give time for XNAT to get itself ready after it has
-    # started so we try multiple times until giving up trying to connect
-    for attempts in range(1, max_attempts + 1):
-        try:
-            login = xnat.connect(server, user=user, password=password)
-        except (xnat.exceptions.XNATError, requests.ConnectionError):
-            if attempts == max_attempts:
-                raise
-            else:
-                time.sleep(CONNECTION_ATTEMPT_SLEEP)
-        else:
-            break
-    try:
-        yield login
-    finally:
-        login.disconnect()

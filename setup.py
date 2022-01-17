@@ -11,7 +11,7 @@ sys.path.pop(0)
 setup(
     name=PACKAGE_NAME,
     version=__version__,
-    author='Tom G. Close',
+    author='Thomas G. Close',
     author_email='tom.g.close@gmail.com',
     packages=find_packages(exclude=['tests']),
     url='https://github.com/australian-imaging-service/arcana2',

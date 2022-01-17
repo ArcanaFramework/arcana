@@ -471,7 +471,7 @@ class XnatViaCS(Xnat):
                             xnat_commands: list[dict[str, str or dict or list]],
                             python_packages: list[tuple[str, str]],
                             maintainer: str,
-                            build_dir: Path,
+                            build_dir: Path=None,
                             base_image: str=None,
                             packages: list[list[str, str]]=None,
                             extra_labels: dict[str, str]=None,
