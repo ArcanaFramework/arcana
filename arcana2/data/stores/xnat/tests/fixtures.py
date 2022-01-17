@@ -1,15 +1,12 @@
-import os
 from datetime import datetime
 from dataclasses import dataclass
-import shutil
 from pathlib import Path
 import random
 from tempfile import mkdtemp
 from itertools import product
-import requests
 import pytest
 import docker
-from xnat4tests import config as xnat_config, launch_xnat, launch_docker_registry
+import xnat4tests
 from arcana2.data.stores import Xnat
 from arcana2.data.stores.xnat.cs import XnatViaCS
 from arcana2.data.dimensions.clinical import Clinical
@@ -19,7 +16,6 @@ from arcana2.data.types.general import text, directory
 from arcana2.data.types.neuroimaging import niftix_gz, nifti_gz, dicom
 from arcana2.tasks.tests.fixtures import concatenate
 from arcana2.data.stores.tests.fixtures import create_test_file
-from arcana2.exceptions import ArcanaError
 
 
 # -----------------------
@@ -99,7 +95,7 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
 @pytest.fixture(params=GOOD_DATASETS, scope='session')
 def xnat_dataset(xnat_repository, xnat_archive_dir, request):
     dataset_name, access_method = request.param.split('.')
-    with connect() as login:
+    with xnat4tests.connect() as login:
         if project_name(dataset_name,
                         xnat_repository.run_prefix) not in login.projects:
             create_dataset_in_repo(dataset_name, xnat_repository.run_prefix)    
@@ -114,8 +110,7 @@ def mutable_xnat_dataset(xnat_repository, xnat_archive_dir, request):
 
 @pytest.fixture(scope='session')
 def xnat_root_dir():
-    DOCKER_XNAT_ROOT.mkdir(parents=True, exist_ok=True)
-    return DOCKER_XNAT_ROOT
+    return xnat4tests.config.XNAT_ROOT_DIR
 
 
 @pytest.fixture(scope='session')
@@ -126,20 +121,18 @@ def xnat_archive_dir(xnat_root_dir):
 @pytest.fixture(scope='session')
 def xnat_repository(run_prefix):
 
-    launch_xnat()
+    xnat4tests.launch_xnat()
 
     repository = Xnat(
-        server=xnat_config.XNAT_URI,
-        user=xnat_config.XNAT_USER,
-        password=xnat_config.XNAT_PASSWORD,
+        server=xnat4tests.config.XNAT_URI,
+        user=xnat4tests.config.XNAT_USER,
+        password=xnat4tests.config.XNAT_PASSWORD,
         cache_dir=mkdtemp())
 
     # Stash a project prefix in the repository object
     repository.run_prefix = run_prefix
 
     yield repository
-
-
 
 
 @pytest.fixture(scope='session')
@@ -150,15 +143,12 @@ def concatenate_container(xnat_repository, xnat_container_registry):
     build_dir = XnatViaCS.generate_dockerfile(
         xnat_commands=[],
         maintainer='some.one@an.org',
-        build_dir=DOCKER_BUILD_DIR,
         packages=[],
         python_packages=[],
         extra_labels={})
 
     dc = docker.from_env()
     dc.images.build(path=str(build_dir), tag=image_tag)
-
-    shutil.rmtree(DOCKER_BUILD_DIR)
 
     return image_tag
 
@@ -178,17 +168,9 @@ def xnat_respository_uri(xnat_repository):
 def xnat_container_registry(xnat_repository, xnat_docker_network):
     "Stand up a Docker registry to use with the container service"
 
-    launch_docker_registry()
+    xnat4tests.launch_docker_registry()
 
     return 'localhost'  # {DOCKER_REGISTRY_PORT}  # Needs to be on 80 to avoid bug with ':' in URI 
-
-
-
-
-@pytest.fixture(scope='session')
-def xnat_docker_network():
-    return get_xnat_docker_network()
-
 
 
 def make_mutable_dataset(xnat_repository, xnat_archive_dir, test_name):
@@ -234,20 +216,17 @@ def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
     return dataset
 
 
-def create_dataset_in_repo(dataset_name, run_prefix='', test_suffix='',
-                           server=DOCKER_XNAT_URI, user=DOCKER_XNAT_USER,
-                           password=DOCKER_XNAT_PASSWORD,
-                           max_attempts=CONNECTION_ATTEMPTS):
+def create_dataset_in_repo(dataset_name, run_prefix='', test_suffix=''):
     """
     Creates dataset for each entry in dataset_structures
     """
     blueprint  =  TEST_DATASET_BLUEPRINTS[dataset_name]
     proj_name = project_name(dataset_name, run_prefix, test_suffix)
 
-    with connect(server, user, password) as login:
+    with xnat4tests.connect() as login:
         login.put(f'/data/archive/projects/{proj_name}')
     
-    with connect(server, user, password) as login:
+    with xnat4tests.connect() as login:
         xproject = login.projects[proj_name]
         xclasses = login.classes
         for id_tple in product(*(list(range(d))
