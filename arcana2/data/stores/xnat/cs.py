@@ -18,13 +18,13 @@ from attr import NOTHING
 from pydra.engine.task import TaskBase
 import neurodocker as nd
 from natsort import natsorted
-from arcana2.__about__ import install_requires, __version__, PACKAGE_NAME
+from arcana2 import __version__
+from arcana2.__about__ import install_requires, PACKAGE_NAME, python_versions
 from arcana2.data.dimensions.clinical import Clinical
 from arcana2.core.data.type import FileFormat
 from arcana2.core.data.dimensions import DataDimensions
 from arcana2.core.utils import resolve_class, DOCKER_HUB
 from arcana2.exceptions import ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException
-from arcana2.__about__ import PACKAGE_NAME, python_versions
 from .api import Xnat
 
 logger = logging.getLogger('arcana')

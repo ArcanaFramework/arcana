@@ -165,7 +165,7 @@ def xnat_respository_uri(xnat_repository):
 
 
 @pytest.fixture(scope='session')
-def xnat_container_registry(xnat_repository, xnat_docker_network):
+def xnat_container_registry():
     "Stand up a Docker registry to use with the container service"
 
     xnat4tests.launch_docker_registry()

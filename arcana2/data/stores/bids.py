@@ -5,7 +5,7 @@ import tempfile
 import typing as ty
 from dataclasses import dataclass
 from pathlib import Path
-from arcana2.__about__ import __version__
+from arcana2 import __version__
 from pydra import Workflow, mark
 from pydra.engine.task import (
     DockerTask, SingularityTask, ShellCommandTask)
