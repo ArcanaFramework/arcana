@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 # Get version from module inside package
 sys.path.insert(0, str(Path(__file__).parent / 'arcana2'))
-from __about__ import __version__, PACKAGE_NAME, install_requires, tests_require, python_versions  # noqa pylint: disable=no-name-in-module
+from __about__ import PACKAGE_NAME, install_requires, tests_require, python_versions  # noqa pylint: disable=no-name-in-module
 sys.path.pop(0)
 
 
