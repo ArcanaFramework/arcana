@@ -4,3 +4,5 @@ include README.rst
 # Include the license file
 include LICENSE
 
+include versioneer.py
+include arcana2/_version.py

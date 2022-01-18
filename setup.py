@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import versioneer
 from setuptools import setup, find_packages
 
 # Get version from module inside package
@@ -10,7 +11,7 @@ sys.path.pop(0)
 
 setup(
     name=PACKAGE_NAME,
-    version=__version__,
+    version=versioneer.get_version(),
     author='Thomas G. Close',
     author_email='tom.g.close@gmail.com',
     packages=find_packages(exclude=['tests']),
@@ -25,6 +26,7 @@ setup(
         'console_scripts': ['arcana = arcana2.core.entrypoint:MainCmd.run']},
     extras_require={
         'test': tests_require},
+    cmdclass=versioneer.get_cmdclass(),
     classifiers=(
         ["Development Status :: 4 - Beta",
          "Intended Audience :: Healthcare Industry",
