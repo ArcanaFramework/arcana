@@ -4,20 +4,16 @@ import nibabel as nb
 import numpy.random
 import shutil
 import docker
-from arcana2.__about__ import __version__
+from arcana2 import __version__
 from arcana2.data.types import niftix
 from arcana2.data.stores.bids import BidsDataset
 from arcana2.data.stores.bids import BidsApp
+from arcana2.core.utils import resolve_class
 
 
 BIDS_VALIDATOR_DOCKER = 'bids/validator'
 
 def test_bids_roundtrip(work_dir):
-
-    work_dir = Path('/Users/tclose/Desktop/bids-test')
-
-    shutil.rmtree(work_dir)
-    work_dir.mkdir()
 
     path = work_dir / 'bids-dataset'
     name = 'bids-dataset'
@@ -75,27 +71,25 @@ def test_bids_roundtrip(work_dir):
     assert dataset == reloaded
 
 
-def test_run_bids_app(test_data_dir: Path, work_dir: Path):
+def test_run_bids_app(nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
+    INPUTS = ['bold', 'dwi', '']
 
     task = BidsApp(
-        image=docker_image,
+        image=BIDS_VALIDATOR_DOCKER,
         executable='mriqc',  # Extracted using `docker_image_executable(docker_image)`
         inputs=BIDS_INPUTS,
         outputs=BIDS_OUTPUTS)
 
-    task_location = 'australianimagingservice.mri.neuro.mriqc' + ':' + cmd_spec['pydra_task']
+    task_location = 'arcana2.tasks.tests.fixtures:concatenate'
     task = resolve_class(task_location)
 
     for inpt, dtype in cmd_spec['inputs']:
         esc_inpt = inpt
-        kwargs[esc_inpt] = test_data_dir / 'nifti' / 'ses-01' / (esc_inpt  + dtype.ext)
+        kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + dtype.ext)
 
-    print(f"Running MRIQC on {work_dir}/bids dataset")
-
-    work_dir.mkdir(exist_ok=True)
-    bids_dir = work_dir / (spec['package_name'] + '-bids')
+    bids_dir = work_dir / 'bids'
 
     shutil.rmtree(bids_dir, ignore_errors=True)
 
