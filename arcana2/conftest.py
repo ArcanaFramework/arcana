@@ -22,17 +22,17 @@ logger.addHandler(sch)
 
 @pytest.fixture
 def work_dir():
-    work_dir = Path.home() / '.arcana-tests'
-    work_dir.mkdir()
-    return work_dir
-    # work_dir = mkdtemp()
-    # yield Path(work_dir)
-    # shutil.rmtree(work_dir)
+    # work_dir = Path.home() / '.arcana-tests'
+    # work_dir.mkdir(exist_ok=True)
+    # return work_dir
+    work_dir = mkdtemp()
+    yield Path(work_dir)
+    shutil.rmtree(work_dir)
 
 
 @pytest.fixture
 def nifti_sample_dir():
-    return Path(__file__).parent / 'test-data'/ 'nifti'
+    return Path(__file__).parent.parent / 'test-data'/ 'nifti'
 
 
 # Import all test fixtures from `test_fixtures` sub-package

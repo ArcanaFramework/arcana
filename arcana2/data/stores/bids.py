@@ -6,6 +6,7 @@ import typing as ty
 from dataclasses import dataclass
 from pathlib import Path
 from arcana2 import __version__
+from arcana2.__about__ import PACKAGE_NAME, CODE_URL
 from pydra import Workflow, mark
 from pydra.engine.task import (
     DockerTask, SingularityTask, ShellCommandTask)
@@ -144,16 +145,35 @@ class BidsDataset(Dataset):
         return dataset
 
     @classmethod
-    def create(cls, path, name, subject_ids, session_ids=None, **kwargs):
+    def create(cls, path, name, subject_ids, session_ids=None,
+               readme=None, authors=None, generated_by=None, **kwargs):
         path = Path(path)
         path.mkdir()
         if session_ids is not None:
             hierarchy = [Clinical.subject, Clinical.timepoint]
         else:
             hierarchy = [Clinical.session]
+        if generated_by is None:
+            generated_by = [
+                GeneratorMetadata(
+                    name=PACKAGE_NAME,
+                    version=__version__,
+                    description=f"Empty dataset created by {PACKAGE_NAME}",
+                    code_url=CODE_URL)]
+        if readme is None:
+            readme = "Mock readme\n" * 20
+        if authors is None:
+            authors = ['Mock A. Author',
+                       'Mock B. Author']
         dataset = BidsDataset(
-            path, store=BidsFormat(), hierarchy=hierarchy,
-            name=name, **kwargs)
+            path,
+            store=BidsFormat(),
+            hierarchy=hierarchy,
+            name=name,
+            generated_by=generated_by,
+            readme=readme,
+            authors=authors,
+            **kwargs)
         # Create nodes
         for subject_id in subject_ids:
             if not subject_id.startswith('sub-'):
@@ -325,12 +345,13 @@ class BidsFormat(FileSystem):
             fs_path /= parts[0]
             fs_path /= parts[1]
             parts = parts[2:]
-        fs_path /= self.node_path(dn)
-        for part in parts[:-1]:
-            fs_path /= part
-        if parts:  # Often the whole folder is the output for a BIDS app
+        if parts:  # Often the whole derivatives folder is the output for a BIDS apps
+            fs_path /= self.node_path(dn)
+            for part in parts[:-1]:
+                fs_path /= part
+        
             fname = '_'.join(dn.ids[h]
-                            for h in dn.dataset.hierarchy) + '_' + parts[-1]
+                             for h in dn.dataset.hierarchy) + '_' + parts[-1]
             fs_path /= fname
         if file_group.datatype.extension:
             fs_path = fs_path.with_suffix(file_group.datatype.extension)
@@ -357,9 +378,14 @@ def outputs_converter(outputs):
     """Sets the path of an output to '' if not provided or None"""
     return [o[:2] + ('',) if len(o) < 3 or o[2] is None else o for o in outputs]
 
+
 @attr.s
 class BidsApp:
 
+    app_name: str = attr.ib(
+        metadata={'help_string': 
+            "Name of the BIDS app. Will be used to name the 'derivatives' "
+            "sub-directory where the app outputs are stored"})
     image: str = attr.ib(
         metadata={'help_string': 'Name of the BIDS app image to wrap'})
     executable: str = attr.ib(
@@ -406,7 +432,7 @@ class BidsApp:
         if isinstance(frequency, str):
             frequency = Clinical[frequency]
         if name is None:
-            name = re.sub(r'[^a-zA-Z0-9]', '_', self.image)
+            name = self.app_name
 
         # Create BIDS dataset to hold translated data
         if dataset is None:
@@ -446,6 +472,7 @@ class BidsApp:
             **{i: getattr(workflow.lzin, i) for i in input_names}))
 
         workflow.add(dataset_paths(
+            app_name=self.app_name,
             dataset=workflow.to_bids.lzout.dataset,
             id=workflow.bidsify_id.lzout.out))
             
@@ -455,6 +482,7 @@ class BidsApp:
             output_path=workflow.dataset_paths.lzout.output,
             parameters={p: type(p) for p in parameters},
             frequency=frequency,
+            id=workflow.bidsify_id.lzout.no_prefix,
             virtualisation=virtualisation)
 
         workflow.add(func_task(
@@ -463,11 +491,13 @@ class BidsApp:
                 ('dataset', Dataset),
                 ('frequency', Clinical),
                 ('outputs', list[tuple[str, type, str]]),
+                ('path_prefix', str),
                 ('id', str),
                 ('app_completed', bool)],
             out_fields=[(o, str) for o in output_names],
             name='extract_bids',
             dataset=workflow.to_bids.lzout.dataset,
+            path_prefix=workflow.dataset_paths.lzout.path_prefix,
             frequency=frequency,
             outputs=self.outputs,
             id=workflow.bidsify_id.lzout.out,
@@ -484,6 +514,7 @@ class BidsApp:
                       dataset_path: LazyField,
                       output_path: LazyField,
                       frequency: Clinical,
+                      id: str,
                       parameters: dict[str, type]=None,
                       virtualisation=None) -> ShellCommandTask:
 
@@ -534,7 +565,7 @@ class BidsApp:
             workflow.add(make_bindings(
                 name='make_bindings',
                 dataset_path=dataset_path,
-                derivatives_path=output_path))
+                output_path=output_path))
 
             kwargs['bindings'] = workflow.make_bindings.lzout.out
 
@@ -557,7 +588,7 @@ class BidsApp:
 
         if frequency == Clinical.session:
             analysis_level = 'participant'
-            kwargs['participant_label'] = workflow.lzin.id
+            kwargs['participant_label'] = id
         else:
             analysis_level = 'group'
 
@@ -580,6 +611,10 @@ class BidsApp:
 
 
 @mark.task
+@mark.annotate(
+    {'return':
+        {'out': str,
+         'no_prefix': str}})
 def bidsify_id(id):
     if id == attr.NOTHING:
         id = BidsApp.DEFAULT_ID
@@ -587,7 +622,7 @@ def bidsify_id(id):
         id = re.sub(r'[^a-zA-Z0-9]', '', id)
         if not id.startswith('sub-'):
             id = 'sub-' + id
-    return id
+    return id, id[len('sub-'):]
 
 
 def to_bids(frequency, inputs, dataset, id, **input_values):
@@ -607,15 +642,18 @@ def to_bids(frequency, inputs, dataset, id, **input_values):
 @mark.annotate(
     {'return':
         {'base': str,
+         'path_prefix': str,
          'output': str}})
-def dataset_paths(dataset: Dataset, id: str):
+def dataset_paths(app_name: str, dataset: Dataset, id: str):
     return (str(dataset.id),
-            str(dataset.id / 'derivatives' / 'bids-app' / id))
+            'derivatives' + '/' + app_name,
+            str(dataset.id / 'derivatives' / app_name / id))
 
 
 def extract_bids(dataset: Dataset,
                  frequency: Clinical,
                  outputs: list[tuple[str, type, str]],
+                 path_prefix: str,
                  id: str,
                  app_completed: bool):
     """Selects the items from the dataset corresponding to the input 
@@ -629,7 +667,7 @@ def extract_bids(dataset: Dataset,
     data_node = dataset.node(frequency, id)
     for output_name, output_type, output_path in outputs:
         dataset.add_sink(output_name, output_type,
-                            path='derivatives/bids-app/' + output_path)
+                         path=path_prefix + '/' + output_path)
     with dataset.store:
         for output in outputs:
             item = data_node[output[0]]

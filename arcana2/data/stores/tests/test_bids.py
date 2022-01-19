@@ -1,4 +1,5 @@
 import json
+import tempfile
 from pathlib import Path
 import nibabel as nb
 import numpy.random
@@ -8,23 +9,31 @@ from arcana2 import __version__
 from arcana2.data.types import niftix
 from arcana2.data.stores.bids import BidsDataset
 from arcana2.data.stores.bids import BidsApp
+from arcana2.data.types.general import text, directory
+from arcana2.data.types.neuroimaging import niftix_gz, niftix_fsldwi_gz
 from arcana2.core.utils import resolve_class
 
 
 BIDS_VALIDATOR_DOCKER = 'bids/validator'
+SUCCESS_STR = 'This dataset appears to be BIDS compatible'
+MOCK_BIDS_APP_IMAGE = 'arcana-mock-bids-app'
+MOCK_BIDS_APP_NAME = 'mockapp'
+MOCK_README = 'A dummy readme\n' * 100
+MOCK_AUTHORS = ['Dumm Y. Author',
+                'Another D. Author']
 
 def test_bids_roundtrip(work_dir):
 
     path = work_dir / 'bids-dataset'
     name = 'bids-dataset'
 
+    shutil.rmtree(path)
     dataset = BidsDataset.create(path, name,
                                  subject_ids=[str(i) for i in range(1, 4)],
-                                 session_ids=[str(i) for i in range(1, 3)])
+                                 session_ids=[str(i) for i in range(1, 3)],
+                                 readme=MOCK_README,
+                                 authors=MOCK_AUTHORS)
 
-    dataset.readme = 'A dummy readme\n' * 100
-    dataset.authors = ['Dumm Y. Author',
-                       'Another D. Author']
     dataset.add_generator_metadata(
         name='arcana', version=__version__,
         description='Dataset was created programmatically from scratch',
@@ -63,7 +72,7 @@ def test_bids_roundtrip(work_dir):
     result = dc.containers.run(BIDS_VALIDATOR_DOCKER, '/data',
                                volumes=[f'{path}:/data:ro'],
                                remove=True, stderr=True).decode('utf-8')
-    assert 'This dataset appears to be BIDS compatible' in result
+    assert SUCCESS_STR in result
     
     reloaded = BidsDataset.load(path)
     reloaded.add_sink('t1w', datatype=niftix, path='anat/T1w')
@@ -71,21 +80,44 @@ def test_bids_roundtrip(work_dir):
     assert dataset == reloaded
 
 
-def test_run_bids_app(nifti_sample_dir: Path, work_dir: Path):
+def test_run_bids_app_docker(nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = ['bold', 'dwi', '']
+    INPUTS = [('T1w', niftix_gz, 'anat/T1w'),
+              ('T2w', niftix_gz, 'anat/T2w'),
+              ('dwi', niftix_fsldwi_gz, 'dwi/dwi'),
+            #   ('bold', niftix_gz, 'func/task-REST_bold')
+              ]
+    OUTPUTS = [('whole_dir', directory, None),
+               ('out1', text, f'file1'),
+               ('out2', text, f'file2')]
 
-    task = BidsApp(
-        image=BIDS_VALIDATOR_DOCKER,
-        executable='mriqc',  # Extracted using `docker_image_executable(docker_image)`
-        inputs=BIDS_INPUTS,
-        outputs=BIDS_OUTPUTS)
+    dc = docker.from_env()
 
-    task_location = 'arcana2.tasks.tests.fixtures:concatenate'
-    task = resolve_class(task_location)
+    dc.images.pull(BIDS_VALIDATOR_DOCKER)
 
-    for inpt, dtype in cmd_spec['inputs']:
+    # Build mock BIDS app image
+    build_dir = Path(tempfile.mkdtemp())
+
+    # Create executable that runs validator then produces some mock output
+    # files
+    launch_sh = build_dir / 'launch.sh'
+    with open(launch_sh, 'w') as f:
+        f.write(LAUNCH_SH)
+
+    with open(build_dir / 'Dockerfile', 'w') as f:
+        f.write(MOCK_BIDS_APP_DOCKERFILE)
+    
+    dc.images.build(path=str(build_dir), tag=MOCK_BIDS_APP_IMAGE)
+
+    task_interface = BidsApp(
+        app_name=MOCK_BIDS_APP_NAME,
+        image=MOCK_BIDS_APP_IMAGE,
+        executable='/launch.sh',  # Extracted using `docker_image_executable(docker_image)`
+        inputs=INPUTS,
+        outputs=OUTPUTS)
+
+    for inpt, dtype, _ in INPUTS:
         esc_inpt = inpt
         kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + dtype.ext)
 
@@ -93,7 +125,31 @@ def test_run_bids_app(nifti_sample_dir: Path, work_dir: Path):
 
     shutil.rmtree(bids_dir, ignore_errors=True)
 
-    result = task(dataset=bids_dir,
-                  virtualisation='docker')(plugin='serial', id='DEFAULT', **kwargs)
+    task = task_interface(dataset=bids_dir, virtualisation='docker')
+    result = task(plugin='serial', **kwargs)
 
-    assert (Path(result.output.mriqc) / 'sub-DEFAULT_T1w.html').exists()
+    for output, dtype, _ in OUTPUTS:
+        assert Path(getattr(result.output, output)).exists()
+
+
+LAUNCH_SH = f"""#!/bin/sh
+BIDS_DATASET=$1
+OUTPUTS_DIR=$2
+SUBJ_ID=$5
+# Run BIDS validator to check whether BIDS dataset is created properly
+output=$(/usr/local/bin/bids-validator "$BIDS_DATASET")
+if [[ "$output" != *"{SUCCESS_STR}"* ]]; then
+    echo "BIDS validation was not successful, exiting:\n "
+    echo $output
+    exit 1;
+fi
+# Write mock output files to 'derivatives' directory
+mkdir -p $OUTPUTS_DIR
+echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
+echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
+"""
+
+MOCK_BIDS_APP_DOCKERFILE = f"""FROM {BIDS_VALIDATOR_DOCKER}:latest
+ADD ./launch.sh /launch.sh
+RUN chmod +x /launch.sh
+ENTRYPOINT ["/launch.sh"]"""
