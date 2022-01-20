@@ -48,19 +48,16 @@ def test_get_items(xnat_dataset, caplog):
                 try:
                     item.get()
                 except PermissionError:
-                    def get_perm(f):
+                    def get_perms(f):
                         st = os.stat(f)
                         return (
                             getpwuid(st.st_uid).pw_name,
                             getgrgid(st.st_gid).gr_name,
                             oct(st.st_mode))
-                    fs_path_perm = get_perm(item.fs_path)
                     current_user = getpwuid(os.getuid()).pw_name
-                    msg = f'Error accessing {item.fs_path} ({fs_path_perm}) as {current_user}:'
-                    for d in item.fs_path.parents:
-                        d_str = str(d)
-                        d_perm = get_perm(d)
-                        msg += f'\n{d_str}: {d_perm}'
+                    archive_dir = str(Path.home() / '.xnat4tests' / 'xnat_root' / 'archive')
+                    archive_perms = get_perms(archive_dir)
+                    msg = f"Error accessing {item} as '{current_user}' when '{archive_dir}' has {archive_perms} permissions"
                     raise PermissionError(msg)
                 if item.datatype.directory:
                     item_files = set(os.listdir(item.fs_path))
