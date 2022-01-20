@@ -609,13 +609,10 @@ class BidsApp:
                 name='copy_output_dir',
                 src=workflow.make_bindings.lzout.tmp_output_dir,
                 dest=output_path,
-                app_complted=workflow.bids_app.lzout.completed))
+                app_completed=workflow.bids_app.lzout.completed))
             completed = workflow.copy_output_dir.lzout.out
         else:
             completed = workflow.bids_app.lzout.completed
-
-        # FIXME: A workaround to avoid Pydra bug in sorting the graph correctly
-        workflow.graph_sorted
 
         return completed
 

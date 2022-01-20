@@ -1,3 +1,5 @@
+import os
+import stat
 import json
 import tempfile
 from pathlib import Path
@@ -172,17 +174,31 @@ def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
     # Create executable that runs validator then produces some mock output
     # files
     launch_sh = build_dir / 'launch.sh'
+
+    # Generate tests to see if input files have been created properly
+    file_tests = ''
+    for _, dtype, path in INPUTS:
+        subdir, suffix = path.split('/')
+        file_tests += f"""
+        if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}{dtype.ext_str}" ]; then
+            echo "Did not find {suffix} file"
+            exit 1;
+        fi
+        """
+    
     with open(launch_sh, 'w') as f:
         f.write(f"""#!/bin/sh
 BIDS_DATASET=$1
 OUTPUTS_DIR=$2
 SUBJ_ID=$5
-
+{file_tests}
 # Write mock output files to 'derivatives' directory
 mkdir -p $OUTPUTS_DIR
 echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
 echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
 """)
+
+    os.chmod(launch_sh, stat.S_IRWXU)
 
     task_interface = BidsApp(
         app_name=MOCK_BIDS_APP_NAME,
