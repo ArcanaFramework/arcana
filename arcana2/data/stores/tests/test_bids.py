@@ -27,7 +27,7 @@ def test_bids_roundtrip(work_dir):
     path = work_dir / 'bids-dataset'
     name = 'bids-dataset'
 
-    shutil.rmtree(path)
+    shutil.rmtree(path, ignore_errors=True)
     dataset = BidsDataset.create(path, name,
                                  subject_ids=[str(i) for i in range(1, 4)],
                                  session_ids=[str(i) for i in range(1, 3)],
@@ -103,10 +103,28 @@ def test_run_bids_app_docker(nifti_sample_dir: Path, work_dir: Path):
     # files
     launch_sh = build_dir / 'launch.sh'
     with open(launch_sh, 'w') as f:
-        f.write(LAUNCH_SH)
+        f.write(f"""#!/bin/sh
+BIDS_DATASET=$1
+OUTPUTS_DIR=$2
+SUBJ_ID=$5
+# Run BIDS validator to check whether BIDS dataset is created properly
+output=$(/usr/local/bin/bids-validator "$BIDS_DATASET")
+if [[ "$output" != *"{SUCCESS_STR}"* ]]; then
+    echo "BIDS validation was not successful, exiting:\n "
+    echo $output
+    exit 1;
+fi
+# Write mock output files to 'derivatives' directory
+mkdir -p $OUTPUTS_DIR
+echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
+echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
+""")
 
     with open(build_dir / 'Dockerfile', 'w') as f:
-        f.write(MOCK_BIDS_APP_DOCKERFILE)
+        f.write(f"""FROM {BIDS_VALIDATOR_DOCKER}:latest
+ADD ./launch.sh /launch.sh
+RUN chmod +x /launch.sh
+ENTRYPOINT ["/launch.sh"]""")
     
     dc.images.build(path=str(build_dir), tag=MOCK_BIDS_APP_IMAGE)
 
@@ -132,24 +150,57 @@ def test_run_bids_app_docker(nifti_sample_dir: Path, work_dir: Path):
         assert Path(getattr(result.output, output)).exists()
 
 
-LAUNCH_SH = f"""#!/bin/sh
+def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
+
+    kwargs = {}
+    INPUTS = [('T1w', niftix_gz, 'anat/T1w'),
+              ('T2w', niftix_gz, 'anat/T2w'),
+              ('dwi', niftix_fsldwi_gz, 'dwi/dwi'),
+            #   ('bold', niftix_gz, 'func/task-REST_bold')
+              ]
+    OUTPUTS = [('whole_dir', directory, None),
+               ('out1', text, f'file1'),
+               ('out2', text, f'file2')]
+
+    dc = docker.from_env()
+
+    dc.images.pull(BIDS_VALIDATOR_DOCKER)
+
+    # Build mock BIDS app image
+    build_dir = Path(tempfile.mkdtemp())
+
+    # Create executable that runs validator then produces some mock output
+    # files
+    launch_sh = build_dir / 'launch.sh'
+    with open(launch_sh, 'w') as f:
+        f.write(f"""#!/bin/sh
 BIDS_DATASET=$1
 OUTPUTS_DIR=$2
 SUBJ_ID=$5
-# Run BIDS validator to check whether BIDS dataset is created properly
-output=$(/usr/local/bin/bids-validator "$BIDS_DATASET")
-if [[ "$output" != *"{SUCCESS_STR}"* ]]; then
-    echo "BIDS validation was not successful, exiting:\n "
-    echo $output
-    exit 1;
-fi
+
 # Write mock output files to 'derivatives' directory
 mkdir -p $OUTPUTS_DIR
 echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
 echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
-"""
+""")
 
-MOCK_BIDS_APP_DOCKERFILE = f"""FROM {BIDS_VALIDATOR_DOCKER}:latest
-ADD ./launch.sh /launch.sh
-RUN chmod +x /launch.sh
-ENTRYPOINT ["/launch.sh"]"""
+    task_interface = BidsApp(
+        app_name=MOCK_BIDS_APP_NAME,
+        image=MOCK_BIDS_APP_IMAGE,
+        executable=launch_sh,  # Extracted using `docker_image_executable(docker_image)`
+        inputs=INPUTS,
+        outputs=OUTPUTS)
+
+    for inpt, dtype, _ in INPUTS:
+        esc_inpt = inpt
+        kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + dtype.ext)
+
+    bids_dir = work_dir / 'bids'
+
+    shutil.rmtree(bids_dir, ignore_errors=True)
+
+    task = task_interface(dataset=bids_dir, virtualisation=None)
+    result = task(plugin='serial', **kwargs)
+
+    for output, dtype, _ in OUTPUTS:
+        assert Path(getattr(result.output, output)).exists()

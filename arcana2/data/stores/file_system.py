@@ -65,14 +65,14 @@ class FileSystem(DataStore):
         primary_path = self.file_group_path(file_group)
         side_cars = file_group.datatype.default_side_cars(primary_path)
         location_str = (f"{file_group.data_node} node of "
-                        f"{file_group.data_node.dataset} on {self}")
+                        f"Dataset '{file_group.data_node.dataset.id}' on {self}")
         if not op.exists(primary_path):
             raise ArcanaMissingDataException(
-                f"{file_group} ({primary_path}) does not exist in {location_str}")
+                f"File-group '{file_group.path}' ({primary_path}) does not exist in {location_str}")
         for aux_name, aux_path in side_cars.items():
             if not op.exists(aux_path):
                 raise ArcanaMissingDataException(
-                    f"{file_group} is missing '{aux_name}' side car "
+                    f"File-group '{file_group.path}' is missing '{aux_name}' side car "
                     f"({aux_path}) in {location_str}")
         return primary_path, side_cars
 

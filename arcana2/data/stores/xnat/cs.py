@@ -510,6 +510,7 @@ class XnatViaCS(Xnat):
 
         if build_dir is None:
             build_dir = tempfile.mkdtemp()
+        build_dir = Path(build_dir)
         if packages is None:
             packages = []
         if python_packages is None:
@@ -600,8 +601,12 @@ class XnatViaCS(Xnat):
                 direct_url_path = Path(pkg.egg_info) / 'direct_url.json'
                 if direct_url_path.exists():
                     with open(direct_url_path) as f:
-                        durl = json.load(f)             
-                    pip_address = f"{durl['vcs']}+{durl['url']}@{durl['commit_id']}"
+                        durl = json.load(f)
+                    pip_address = durl['url']
+                    if 'vcs' in durl:
+                        pip_address = durl['vcs'] + '+' + pip_address
+                    if 'commit_id' in durl:
+                        pip_address += '@' + durl['commit_id']
                 else:
                     pip_address = f"{pkg.key}=={pkg.version}"
             resolved_python_packages.append(pip_address)

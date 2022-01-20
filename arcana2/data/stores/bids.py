@@ -4,6 +4,7 @@ import json
 import tempfile
 import typing as ty
 from dataclasses import dataclass
+import shutil
 from pathlib import Path
 from arcana2 import __version__
 from arcana2.__about__ import PACKAGE_NAME, CODE_URL
@@ -476,7 +477,7 @@ class BidsApp:
             dataset=workflow.to_bids.lzout.dataset,
             id=workflow.bidsify_id.lzout.out))
             
-        self.add_main_task(
+        app_completed = self.add_main_task(
             workflow=workflow,
             dataset_path=workflow.dataset_paths.lzout.base,
             output_path=workflow.dataset_paths.lzout.output,
@@ -501,7 +502,7 @@ class BidsApp:
             frequency=frequency,
             outputs=self.outputs,
             id=workflow.bidsify_id.lzout.out,
-            app_completed=workflow.bids_app.lzout.completed))
+            app_completed=app_completed))
 
         for output_name in output_names:
             workflow.set_output(
@@ -560,19 +561,19 @@ class BidsApp:
             task_cls = ShellCommandTask
             base_spec_cls = ShellSpec
             kwargs['executable'] = self.executable
+            app_output_path = output_path
         else:
 
             workflow.add(make_bindings(
                 name='make_bindings',
-                dataset_path=dataset_path,
-                output_path=output_path))
+                dataset_path=dataset_path))
 
-            kwargs['bindings'] = workflow.make_bindings.lzout.out
+            kwargs['bindings'] = workflow.make_bindings.lzout.bindings
 
             # Set input and output directories to "internal" paths within the
             # container
             dataset_path = self.CONTAINER_DATASET_PATH
-            output_path = self.CONTAINER_DERIV_PATH
+            app_output_path = self.CONTAINER_DERIV_PATH
             kwargs['image'] = self.image
 
             if virtualisation == 'docker':
@@ -592,16 +593,31 @@ class BidsApp:
         else:
             analysis_level = 'group'
 
-        return workflow.add(task_cls(
+        workflow.add(task_cls(
             name='bids_app',
             input_spec=SpecInfo(name="Input", fields=input_fields,
                                 bases=(base_spec_cls,)),
             output_spec=SpecInfo(name="Output", fields=output_fields,
                                  bases=(ShellOutSpec,)),
             dataset_path=dataset_path,
-            output_path=output_path,
+            output_path=app_output_path,
             analysis_level=analysis_level,
             **kwargs))
+
+        if virtualisation is not None:
+            workflow.add(copytree(
+                name='copy_output_dir',
+                src=workflow.make_bindings.lzout.tmp_output_dir,
+                dest=output_path,
+                app_complted=workflow.bids_app.lzout.completed))
+            completed = workflow.copy_output_dir.lzout.out
+        else:
+            completed = workflow.bids_app.lzout.completed
+
+        # FIXME: A workaround to avoid Pydra bug in sorting the graph correctly
+        workflow.graph_sorted
+
+        return completed
 
     # For running 
     CONTAINER_DERIV_PATH = '/arcana_bids_outputs'
@@ -677,8 +693,20 @@ def extract_bids(dataset: Dataset,
 
 
 @mark.task
-def make_bindings(dataset_path: str, output_path: str) -> list[tuple[str, str, str]]:
+@mark.annotate(
+    {'return':
+        {'bindings': list[tuple[str, str, str]],
+         'tmp_output_dir': Path}})
+def make_bindings(dataset_path: str):
     """Make bindings for directories to be mounted inside the container
         for both the input dataset and the output derivatives"""
-    return [(str(dataset_path), BidsApp.CONTAINER_DATASET_PATH, 'ro'),
-            (str(output_path), BidsApp.CONTAINER_DERIV_PATH, 'rw')]
+    tmp_output_dir = tempfile.mkdtemp()
+    bindings = [(str(dataset_path), BidsApp.CONTAINER_DATASET_PATH, 'ro'),
+                (tmp_output_dir, BidsApp.CONTAINER_DERIV_PATH, 'rw')]
+    return (bindings, Path(tmp_output_dir))
+
+
+@mark.task
+def copytree(src: str, dest: str, app_completed: bool) -> bool:
+    shutil.copytree(src, dest)
+    return app_completed
