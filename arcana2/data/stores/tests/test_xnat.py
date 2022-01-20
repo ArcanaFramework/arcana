@@ -55,7 +55,7 @@ def test_get_items(xnat_dataset, caplog):
                             getgrgid(st.st_gid).gr_name,
                             oct(st.st_mode))
                     current_user = getpwuid(os.getuid()).pw_name
-                    archive_dir = str(Path.home() / '.xnat4tests' / 'xnat_root' / 'archive')
+                    archive_dir = str(Path.home() / '.xnat4tests' / 'xnat_root' / 'archive' / xnat_dataset.id)
                     archive_perms = get_perms(archive_dir)
                     msg = f"Error accessing {item} as '{current_user}' when '{archive_dir}' has {archive_perms} permissions"
                     raise PermissionError(msg)
