@@ -1,4 +1,7 @@
 import os
+import os
+from pwd import getpwuid
+from grp import getgrgid
 import os.path
 import operator as op
 import shutil
@@ -47,13 +50,17 @@ def test_get_items(xnat_dataset, caplog):
                 except PermissionError:
                     def get_perm(f):
                         st = os.stat(f)
-                        return oct(st.st_mode)
+                        return (
+                            getpwuid(st.st_uid).pw_name,
+                            getgrgid(st.st_gid).gr_name,
+                            oct(st.st_mode))
                     fs_path_perm = get_perm(item.fs_path)
-                    msg = f'Error accessing {item.fs_path} ({fs_path_perm}):'
+                    current_user = getpwuid(os.getuid()).pw_name
+                    msg = f'Error accessing {item.fs_path} ({fs_path_perm}) as {current_user}:'
                     for d in item.fs_path.parents:
                         d_str = str(d)
                         d_perm = get_perm(d)
-                        msg += '\n{d_str}: {d_perm}'
+                        msg += f'\n{d_str}: {d_perm}'
                     raise PermissionError(msg)
                 if item.datatype.directory:
                     item_files = set(os.listdir(item.fs_path))
