@@ -46,7 +46,7 @@ def test_get_items(xnat_dataset, caplog):
                     item.get()
                 except PermissionError:
                     def get_perm(f):
-                        st = os.stat(d)
+                        st = os.stat(f)
                         return oct(st.st_mode)
                     fs_path_perm = get_perm(item.fs_path)
                     msg = f'Error accessing {item.fs_path} ({fs_path_perm}):'
