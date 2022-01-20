@@ -42,7 +42,19 @@ def test_get_items(xnat_dataset, caplog):
         for node in xnat_dataset.nodes(Clinical.session):
             for source_name, files in expected_files.items():
                 item = node[source_name]
-                item.get()
+                try:
+                    item.get()
+                except PermissionError:
+                    def get_perm(f):
+                        st = os.stat(d)
+                        return oct(st.st_mode)
+                    fs_path_perm = get_perm(item.fs_path)
+                    msg = f'Error accessing {item.fs_path} ({fs_path_perm}):'
+                    for d in item.fs_path.parents:
+                        d_str = str(d)
+                        d_perm = get_perm(d)
+                        msg += '\n{d_str}: {d_perm}'
+                    raise PermissionError(msg)
                 if item.datatype.directory:
                     item_files = set(os.listdir(item.fs_path))
                 else:
