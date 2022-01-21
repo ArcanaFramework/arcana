@@ -35,15 +35,6 @@ Arcana manages the loading and unloading of software modules per
 pipeline node.
 
 
-.. note::
-   For the legacy version of Arcana as described in
-   *Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `<10.1007/s12021-019-09430-1>`_
-   please see `<https://github.com/MonashBI/arcana>`_.
-   Conceptually, the legacy version and the versions in this repository (>=2) are very similar.
-   However, instead of Nipype, v2 uses the Pydra workflow engine (Nipype's successor)
-   and the syntax has been rewritten from scratch to make it more streamlined and intuitive.
-
-
 User/Developer Guide
 --------------------
 
@@ -53,3 +44,12 @@ User/Developer Guide
     installation
     design
     example
+
+
+.. note::
+   For the legacy version of Arcana as described in
+   *Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `<10.1007/s12021-019-09430-1>`_
+   please see `<https://github.com/MonashBI/arcana>`_.
+   Conceptually, the legacy version and the versions in this repository (>=2) are very similar.
+   However, instead of Nipype, v2 uses the Pydra workflow engine (Nipype's successor)
+   and the syntax has been rewritten from scratch to make it more streamlined and intuitive.
