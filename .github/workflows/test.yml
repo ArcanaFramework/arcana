@@ -60,7 +60,14 @@ jobs:
       run: pip install "$( ls dist/pydra*.whl )[test]"
 
     - name: Pytest
-      run: pytest -vs --cov arcana2  --cov-config .coveragerc --cov-report xml:cov.xml
+      run: pytest -vs --cov arcana  --cov-config .coveragerc --cov-report xml
 
-    - name: Upload to codecov
-      run: codecov -f cov.xml -F unittests -e GITHUB_WORKFLOW
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v2
+      with:
+        fail_ci_if_error: true
+        token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos      
+
+
+#     - name: Upload to codecov
+#       run: codecov -f cov.xml -F unittests -e GITHUB_WORKFLOW
