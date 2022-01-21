@@ -26,3 +26,4 @@ from .core.data.set import Dataset
 
 from . import _version
 __version__ = _version.get_versions()['version']
+from .__about__ import __authors__

@@ -22,7 +22,7 @@ package_path = op.abspath(
     op.join(op.dirname(op.abspath(__file__)), '..', '..'))
 
 sys.path.insert(0, package_path)
-from arcana.__about__ import __version__, __authors__  # @UnresolvedImport @IgnorePep8
+from arcana import __version__, __authors__  # @UnresolvedImport @IgnorePep8
 # from arcana import *
 
 
