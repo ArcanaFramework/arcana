@@ -4,8 +4,8 @@ import versioneer
 from setuptools import setup, find_packages
 
 # Get version from module inside package
-sys.path.insert(0, str(Path(__file__).parent / 'arcana2'))
-from __about__ import PACKAGE_NAME, install_requires, tests_require, python_versions  # noqa pylint: disable=no-name-in-module
+sys.path.insert(0, str(Path(__file__).parent / 'arcana'))
+from __about__ import PACKAGE_NAME, CODE_URL, install_requires, tests_require, python_versions  # noqa pylint: disable=no-name-in-module
 sys.path.pop(0)
 
 
@@ -15,7 +15,7 @@ setup(
     author='Thomas G. Close',
     author_email='tom.g.close@gmail.com',
     packages=find_packages(exclude=['tests']),
-    url='https://github.com/australian-imaging-service/arcana2',
+    url=CODE_URL,
     license='Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License',
     description=(
         'Abstraction of Repository-Centric ANAlysis framework'),
@@ -23,7 +23,7 @@ setup(
     install_requires=install_requires,
     tests_require=tests_require,
     entry_points={
-        'console_scripts': ['arcana = arcana2.core.entrypoint:MainCmd.run']},
+        'console_scripts': ['arcana = arcana.core.entrypoint:MainCmd.run']},
     extras_require={
         'test': tests_require},
     cmdclass=versioneer.get_cmdclass(),
