@@ -73,7 +73,7 @@ This work is licensed under a
 
 *Note: For the legacy version of Arcana as described in
 Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `<10.1007/s12021-019-09430-1>`_
-*please see* `<https://github.com/MonashBI/arcana>`_.
+*please see* `<https://github.com/MonashBI/arcana-legacy>`_.
 *Conceptually the legacy version and v2 are similar but v2 uses the Pydra
 engine instead of Nipype and the syntax has been rewritten from scratch to
 make it more streamlined and intuitive.*
