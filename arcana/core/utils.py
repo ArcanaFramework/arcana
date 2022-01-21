@@ -12,7 +12,6 @@ import os.path
 # from nipype.interfaces.matlab import MatlabCommand
 from contextlib import contextmanager
 from collections.abc import Iterable
-from __about__ import CODE_URL
 import logging
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo

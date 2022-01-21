@@ -1,0 +1,15 @@
+# requirements file for readthedocs.org
+docutils>=0.10
+mock>1.0
+numpydoc>=0.6.0
+sphinx-argparse>=0.2.0
+nipype>=1.0.4
+xnat>=0.3.7
+pydicom>=1.0.2
+networkx>=1.9
+fasteners>=0.7.0
+future>=0.16.0
+pybids>=0.5.1
+contextlib2>=0.5.5
+deepdiff>=3.3
+tqdm>=4.25.0
