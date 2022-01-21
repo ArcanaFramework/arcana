@@ -1,7 +1,6 @@
 /.project
 /.pydevproject
 *.pyc
-*/tests/data
 *.pklz
 *~
 .DS_Store
@@ -21,6 +20,5 @@ __pycache__
 test.log
 .vscode
 *.egg-info
-/arcana2/data/stores/xnat/tests/xnat_root
-/arcana2/data/stores/xnat/tests/dicom-dataset/
+/test-data/dicom-dataset/
 /docker-tests

@@ -1,4 +1,4 @@
-PACKAGE_NAME = 'arcana2'
+PACKAGE_NAME = 'arcana'
 CODE_URL = f'https://github.com/australian-imaging-service/{PACKAGE_NAME}'
 
 __authors__ = [
