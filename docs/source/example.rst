@@ -1,4 +1,5 @@
 Examples
 ========
 
-Under construction
+.. warning::
+    Under construction
