@@ -1,3 +1,3 @@
-from arcana2.core.entrypoint import MainCmd
+from arcana.core.entrypoint import MainCmd
 
 MainCmd.run()
