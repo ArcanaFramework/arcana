@@ -24,7 +24,7 @@ Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `<10.1007/s12021-0
 *please see* `<https://github.com/MonashBI/arcana>`_.
 *Conceptually the legacy version and v2 are similar but v2 uses the Pydra
 engine instead of Nipype and the syntax has been rewritten from scratch to
-streamline it and make it more intuitive.*
+make it more streamlined and intuitive.*
 
 Arcana_ interacts closely with a repository, storing intermediate
 outputs, along with the parameters used to derive them, for reuse by
