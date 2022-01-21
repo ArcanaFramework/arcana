@@ -157,12 +157,12 @@ class BaseDatasetCmd(BaseCmd):
             raise ArcanaUsageError(
                 f"Value provided to '--dataspace' arg ({args.dataspace}) "
                 "needs to include module, either relative to "
-                "'arcana2.dataspaces' (e.g. clinical.Clinical) or an "
+                "'arcana.dataspaces' (e.g. clinical.Clinical) or an "
                 "absolute path")
         module_path = '.'.join(parts[:-1])
         cls_name = parts[-1]
         try:
-            module = import_module('arcana2.data.dimensions.' + module_path)
+            module = import_module('arcana.data.dimensions.' + module_path)
         except ImportError:
             module = import_module(module_path)
         return getattr(module, cls_name)

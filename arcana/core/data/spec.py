@@ -2,7 +2,7 @@ import re
 import typing as ty
 import attr
 from attr.converters import optional
-# from arcana2.core.data.node import DataNode
+# from arcana.core.data.node import DataNode
 from arcana.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError)

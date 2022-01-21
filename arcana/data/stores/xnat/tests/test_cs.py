@@ -22,7 +22,7 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
     image_tag = f'arcana-concatenate{run_prefix}:latest'
 
     pipeline_name = 'detected_' + PIPELINE_NAME + run_prefix
-    task_location = 'arcana2.tasks.tests.fixtures:concatenate'
+    task_location = 'arcana.tasks.tests.fixtures:concatenate'
 
     xnat_command = XnatViaCS.generate_xnat_command(
         pipeline_name=pipeline_name,
@@ -87,7 +87,7 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
 
     xnat_command = XnatViaCS.generate_xnat_command(
         pipeline_name=pipeline_name,
-        task_location='arcana2.tasks.tests.fixtures:concatenate',
+        task_location='arcana.tasks.tests.fixtures:concatenate',
         image_tag=concatenate_container,
         inputs=[
             ('in_file1', text, 'to_concat1', Clinical.session),

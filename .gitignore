@@ -15,7 +15,6 @@
 .pytest_cache/
 /.history
 .env
-/arcana/arcana2/test.log
 __pycache__
 test.log
 .vscode

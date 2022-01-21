@@ -12,6 +12,7 @@ import os.path
 # from nipype.interfaces.matlab import MatlabCommand
 from contextlib import contextmanager
 from collections.abc import Iterable
+from __about__ import CODE_URL
 import logging
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
@@ -23,7 +24,7 @@ FIELD_SUFFIX = '_field'
 CHECKSUM_SUFFIX = '_checksum'
 
 DOCKER_HUB = 'https://index.docker.io/v1/'
-ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana2.git"
+ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
 
 
 def path2name(path):
@@ -187,7 +188,7 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
 
 
 # def resolve_datatype(name):
-#     """Resolves a in a sub-module of arcana2.data.types based on its
+#     """Resolves a in a sub-module of arcana.data.types based on its
 #     name
 
 #     Parameters
@@ -202,13 +203,13 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
 #     """
 #     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
 #         return eval(name)
-#     import arcana2.data.types
-#     import arcana2.core.data.datatype
-#     return resolve_subclass(arcana2.data.types,
-#                         arcana2.core.data.datatype.FileFormat, name)
+#     import arcana.data.types
+#     import arcana.core.data.datatype
+#     return resolve_subclass(arcana.data.types,
+#                         arcana.core.data.datatype.FileFormat, name)
 
 def resolve_datatype(name):
-    """Resolves a in a sub-module of arcana2.file_format based on its
+    """Resolves a in a sub-module of arcana.file_format based on its
     name
 
     Parameters
@@ -229,7 +230,7 @@ def resolve_datatype(name):
         i.name for i in pkgutil.iter_modules(
             [os.path.dirname(arcana.data.types.__file__)])]
     for module_name in module_names:
-        module = import_module('arcana2.data.types.' + module_name)
+        module = import_module('arcana.data.types.' + module_name)
         try:
             data_format = getattr(module, name)
         except AttributeError:

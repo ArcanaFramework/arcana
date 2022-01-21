@@ -5,4 +5,4 @@ include README.rst
 include LICENSE
 
 include versioneer.py
-include arcana2/_version.py
+include arcana/_version.py
