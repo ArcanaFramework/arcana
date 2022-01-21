@@ -75,7 +75,7 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
         assert pipeline_name in commands, "Pipeline config wasn't detected automatically"
         assert xnat_command == commands[pipeline_name]
 
-
+@pytest.mark.skip(reason="Waiting on next release of Pydra (0.16.3) for required bug-fixes")
 def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
                          xnat_container_registry, concatenate_container,
                          run_prefix):
