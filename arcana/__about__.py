@@ -24,4 +24,4 @@ install_requires = [
 
 tests_require = []
 
-python_versions = ['3.7', '3.8', '3.9']
+python_versions = ['3.8', '3.9']

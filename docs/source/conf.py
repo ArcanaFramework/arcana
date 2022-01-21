@@ -23,12 +23,7 @@ package_path = op.abspath(
 
 sys.path.insert(0, package_path)
 from arcana.__about__ import __version__, __authors__  # @UnresolvedImport @IgnorePep8
-import arcana.repository  # @UnusedImport @IgnorePep8
-import arcana.processor  # @UnusedImport @IgnorePep8
-import arcana.environment  # @UnusedImport @IgnorePep8
-import arcana.data  # @UnusedImport @IgnorePep8
-import arcana.analysis  # @UnusedImport @IgnorePep8
-from arcana import *
+# from arcana import *
 
 
 # If extensions (or modules to document with autodoc) are in another directory,
