@@ -1,4 +1,4 @@
-name: Test
+name: Tests
 
 on: [push, pull_request]
 
@@ -11,11 +11,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        # [ubuntu-latest, windows-latest]
-        python-version: [3.9]
-        # [3.7, 3.8, 3.9]
-        install: [develop]
-        # [install, develop, wheel]
+        python-version: [3.7, 3.8, 3.9]
+        install: [install, develop, wheel]
       fail-fast: false
     runs-on: ${{ matrix.os }}
 
@@ -27,9 +24,7 @@ jobs:
     - name: Docker Setup
       uses: docker/setup-buildx-action@v1.6.0
       with:
-        # Buildx version. (eg. v0.3.0)
         version: v0.3.0
-        # Sets up docker build command as an alias to docker buildx
         install: true
 
     - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
@@ -42,8 +37,7 @@ jobs:
 
     - name: Install Pydra tests dependencies (develop or setup.py install)
       if: matrix.install == 'develop' || matrix.install == 'install'
-      run: pip install "."
-      # run: pip install ".[test]"
+      run: pip install ".[test]"
 
     - name: Install dependencies (setup.py install)
       if: matrix.install == 'install'
@@ -66,8 +60,4 @@ jobs:
       uses: codecov/codecov-action@v2
       with:
         fail_ci_if_error: true
-        token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos      
-
-
-#     - name: Upload to codecov
-#       run: codecov -f cov.xml -F unittests -e GITHUB_WORKFLOW
+        token: ${{ secrets.CODECOV_TOKEN }}
