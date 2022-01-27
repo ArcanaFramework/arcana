@@ -5,7 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 import numpy as np
 import attr
-from typing import Any
+from typing import Any, Dict
 from pydra import Workflow
 from pydra.engine.core import TaskBase
 from ..utils import func_task
@@ -532,9 +532,9 @@ class FileGroupConverter:
     from_format: FileFormat = attr.ib()
     to_format: FileFormat = attr.ib()
     task: TaskBase = attr.ib()
-    inputs: dict[str, str] = attr.ib()
-    outputs: dict[str, str] = attr.ib()
-    task_kwargs: dict[str, Any] = attr.ib(factory=dict)
+    inputs: Dict[str, str] = attr.ib()
+    outputs: Dict[str, str] = attr.ib()
+    task_kwargs: Dict[str, Any] = attr.ib(factory=dict)
 
     @inputs.default
     def inputs_default(self):
