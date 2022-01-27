@@ -316,7 +316,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
 
     file_paths: ty.Sequence[Path] = attr.ib(factory=list,
                                             converter=normalise_paths)
-    uris: dict[str] = attr.ib(default=None)
+    uris: ty.Dict[str] = attr.ib(default=None)
 
     def _resolve(self, datatype):
         # Perform matching based on resource names in multi-format

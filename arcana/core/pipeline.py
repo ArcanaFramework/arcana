@@ -302,7 +302,7 @@ class Pipeline():
         # encapsulate them into DataItems
         wf.per_node.add(func_task(
             encapsulate_paths_and_values,
-            in_fields=[('outputs', dict[str, type])] + [
+            in_fields=[('outputs', ty.Dict[str, type])] + [
                 (o, ty.Any) for o in output_names],
             out_fields=[(o, DataItem) for o in output_names],
             name='output_interface',
