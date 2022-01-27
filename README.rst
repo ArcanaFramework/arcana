@@ -19,34 +19,16 @@ Abstraction of Repository-Centric ANAlysis (Arcana_) is Python framework
 for "repository-centric" analyses of study groups (e.g. NeuroImaging
 studies) built on Pydra_.
 
-Arcana_ interacts closely with a repository, storing intermediate
-outputs, along with the parameters used to derive them, for reuse by
-subsequent analyses. Repositories can either be XNAT_ repositories or
-plain file system directories, and a BIDS_ module is under development.
+Arcana_ interacts closely with a data store (e.g. XNAT repository or BIDS dataset),
+storing intermediate outputs, along with the parameters used to derive them,
+for reuse by subsequent analyses.
 
 Analysis workflows are constructed and executed using the Pydra_
 package, and can either be run locally or submitted to HPC
 schedulers using Pydra_'s execution plugins. For a requested analysis
 output, Arcana determines the required processing steps by querying
 the repository to check for missing intermediate outputs before
-constructing the workflow graph. When running in an environment
-with `Environment Modules`_ installed,
-Arcana manages the loading and unloading of software modules per
-pipeline node.
-
-Design
-------
-
-Arcana_ is designed with an object-oriented philosophy, with
-the acquired and derived data sets along with the analysis pipelines
-used to derive the derived data sets encapsulated within "Analysis" classes.
-
-The Arcana_ package itself only provides the abstract *Analysis* and
-*MultiAnalysis* base classes, which are designed to be sub-classed to provide
-specialised classes representing the analysis that can be performed on specific
-types of data (e.g. BoldAnalysis, PetAnalysis). These specific classes can then
-be sub-classed further into classes that are specific to a particular analysis,
-and integrate complete analysis workflows from preprocessing to statistics.
+constructing the workflow graph.
 
 Installation
 ------------
@@ -60,7 +42,6 @@ Arcana can be installed for Python 3 using *pip*::
 .. _XNAT: http://xnat.org
 .. _BIDS: http://bids.neuroimaging.io/
 .. _`Environment Modules`: http://modules.sourceforge.net
-
 
 
 This work is licensed under a
