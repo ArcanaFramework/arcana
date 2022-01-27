@@ -1,6 +1,7 @@
 import os
 from tempfile import mkdtemp
 from pathlib import Path
+import typing as ty
 import zipfile
 from dataclasses import dataclass
 import shutil
@@ -62,8 +63,8 @@ class TestDatasetBlueprint():
     hierarchy: list[DataDimensions]
     dim_lengths: list[int]  # size of layers a-d respectively
     files: list[str]  # files present at bottom layer
-    id_inference: dict[DataDimensions, str]  # id_inference dict
-    expected_formats: dict[str, tuple[FileFormat, list[str]]]  # expected formats
+    id_inference: ty.Dict[DataDimensions, str]  # id_inference dict
+    expected_formats: ty.Dict[str, tuple[FileFormat, list[str]]]  # expected formats
     to_insert: list[str, tuple[DataDimensions, FileFormat, list[str]]]  # files to insert as derivatives
 
 

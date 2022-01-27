@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import tempfile
 import logging
-from typing import Sequence
+from typing import Sequence, Dict
 import arcana.data.types
 from arcana.exceptions import ArcanaUsageError
 from arcana.core.data.type import FileFormat
@@ -405,7 +405,7 @@ class InputArg():
     stored_datatype: FileFormat
     frequency: DataDimensions
     order: int
-    metadata: dict[str, str]
+    metadata: ty.Dict[str, str]
     is_regex: bool
     quality_threshold: DataQuality
 

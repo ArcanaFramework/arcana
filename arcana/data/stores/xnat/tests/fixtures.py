@@ -4,6 +4,7 @@ from pathlib import Path
 import random
 from tempfile import mkdtemp
 from itertools import product
+import typing as ty
 import pytest
 import docker
 import xnat4tests
@@ -27,7 +28,7 @@ class TestDatasetBlueprint():
 
     dim_lengths: list[int]
     scans: list[tuple[str, list[tuple[str, FileFormat, list[str]]]]]
-    id_inference: dict[DataDimensions, str]
+    id_inference: ty.Dict[DataDimensions, str]
     to_insert: list[str, tuple[DataDimensions, FileFormat, list[str]]]  # files to insert as derivatives
 
 

@@ -105,16 +105,16 @@ class Dataset():
     id: str = attr.ib()
     store: store.DataStore = attr.ib()
     hierarchy: list[DataDimensions] = attr.ib()
-    id_inference: (dict[DataDimensions, str] or ty.Callable) = attr.ib(
+    id_inference: (ty.Dict[DataDimensions, str] or ty.Callable) = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
-    column_specs: dict[str, DataSource or DataSink] or None = attr.ib(
+    column_specs: ty.Dict[str, DataSource or DataSink] or None = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    included: dict[DataDimensions, ty.List[str]] = attr.ib(
+    included: ty.Dict[DataDimensions, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    excluded: dict[DataDimensions, ty.List[str]] = attr.ib(
+    excluded: ty.Dict[DataDimensions, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    workflows: dict[str, Workflow] = attr.ib(factory=dict, repr=False)
-    access_args: dict[str, ty.Any] = attr.ib(factory=dict)
+    workflows: ty.Dict[str, Workflow] = attr.ib(factory=dict, repr=False)
+    access_args: ty.Dict[str, ty.Any] = attr.ib(factory=dict)
     _root_node: DataNode = attr.ib(default=None, init=False, repr=False,
                                    eq=False)  
 

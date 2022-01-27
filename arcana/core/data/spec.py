@@ -49,7 +49,7 @@ class DataSource():
     quality_threshold: DataQuality = attr.ib(
         default=None, converter=optional(lambda q: DataQuality[str(q)]))
     order: int = attr.ib(default=None)
-    metadata: dict[str, ty.Any] = attr.ib(default=None)
+    metadata: ty.Dict[str, ty.Any] = attr.ib(default=None)
     is_regex: bool = attr.ib(default=False)
 
     def match(self, node):

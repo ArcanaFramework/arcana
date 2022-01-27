@@ -7,6 +7,7 @@ import re
 import json
 import logging
 from copy import copy
+import typing as ty
 from pathlib import Path
 import site
 import shutil
@@ -468,13 +469,13 @@ class XnatViaCS(Xnat):
 
     @classmethod
     def generate_dockerfile(cls,
-                            xnat_commands: list[dict[str, str or dict or list]],
+                            xnat_commands: list[ty.Dict[str, str or dict or list]],
                             python_packages: list[tuple[str, str]],
                             maintainer: str,
                             build_dir: Path=None,
                             base_image: str=None,
                             packages: list[list[str, str]]=None,
-                            extra_labels: dict[str, str]=None,
+                            extra_labels: ty.Dict[str, str]=None,
                             package_manager: str=None):
         """Constructs a dockerfile that wraps a with dependencies
 
