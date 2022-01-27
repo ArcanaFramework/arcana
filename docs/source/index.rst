@@ -1,7 +1,7 @@
 Arcana
 ======
-.. image:: https://github.com/australian-imaging-service/arcana/actions/workflows/test.yml/badge.svg
-   :target: https://github.com/australian-imaging-service/arcana/actions/workflows/test.yml
+.. image:: https://github.com/australian-imaging-service/arcana/actions/workflows/tests.yml/badge.svg
+   :target: https://github.com/australian-imaging-service/arcana/actions/workflows/tests.yml
 .. image:: https://codecov.io/gh/australian-imaging-service/arcana/branch/master/graph/badge.svg
    :target: https://codecov.io/gh/australian-imaging-service/arcana
 .. image:: https://img.shields.io/pypi/pyversions/arcana.svg
