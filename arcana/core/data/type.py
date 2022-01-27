@@ -260,7 +260,7 @@ class FileFormat(object):
 
         Parameters
         ----------
-        candidates : list[str]
+        candidates : ty.List[str]
             The list of filenames to assort
 
         Returns

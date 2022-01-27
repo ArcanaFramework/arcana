@@ -202,15 +202,15 @@ class XnatViaCS(Xnat):
             The module path to the task to execute
         image_tag : str
             Name + version of the Docker image to be created
-        inputs : list[InputArg or tuple]
+        inputs : ty.List[InputArg or tuple]
             Inputs to be provided to the container (pydra_field, datatype, dialog_name, FREQUENCY)
-        outputs : list[OutputArg or tuple]
+        outputs : ty.List[OutputArg or tuple]
             Outputs from the container 
         description : str
             User-facing description of the pipeline
         version : str
             Version string for the wrapped pipeline
-        parameters : list[str]
+        parameters : ty.List[str]
             Parameters to be exposed in the CS command    
         frequency : Clinical
             Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
@@ -469,12 +469,12 @@ class XnatViaCS(Xnat):
 
     @classmethod
     def generate_dockerfile(cls,
-                            xnat_commands: list[ty.Dict[str, str or dict or list]],
-                            python_packages: list[tuple[str, str]],
+                            xnat_commands: ty.List[ty.Dict[str, str or dict or list]],
+                            python_packages: ty.List[tuple[str, str]],
                             maintainer: str,
                             build_dir: Path=None,
                             base_image: str=None,
-                            packages: list[list[str, str]]=None,
+                            packages: ty.List[ty.List[ty.Tuple[str, str]]]=None,
                             extra_labels: ty.Dict[str, str]=None,
                             package_manager: str=None):
         """Constructs a dockerfile that wraps a with dependencies

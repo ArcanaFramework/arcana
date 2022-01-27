@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
+import typing as ty
 import tempfile
 import logging
 from typing import Sequence, Dict
@@ -199,7 +200,7 @@ class RunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        list[tuple[str, FileFormat]]
+        ty.List[tuple[str, FileFormat]]
             A sequence of input names and their required formats
 
         Raises
@@ -239,7 +240,7 @@ class RunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        list[tuple[str, FileFormat]]
+        ty.List[tuple[str, FileFormat]]
             A sequence of input names and the formats they are produced in
         """
         frequency = cls.parse_frequency(args)

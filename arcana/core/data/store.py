@@ -133,7 +133,7 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        value : int | float | str | list[int] | list[float] | list[str]
+        value : int | float | str | ty.List[int] | ty.List[float] | ty.List[str]
             The value of the Field
         """
 

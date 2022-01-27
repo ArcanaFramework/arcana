@@ -104,7 +104,7 @@ class Dataset():
 
     id: str = attr.ib()
     store: store.DataStore = attr.ib()
-    hierarchy: list[DataDimensions] = attr.ib()
+    hierarchy: ty.List[DataDimensions] = attr.ib()
     id_inference: (ty.Dict[DataDimensions, str] or ty.Callable) = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
     column_specs: ty.Dict[str, DataSource or DataSink] or None = attr.ib(

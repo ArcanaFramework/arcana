@@ -26,10 +26,10 @@ from arcana.data.stores.tests.fixtures import create_test_file
 @dataclass
 class TestDatasetBlueprint():
 
-    dim_lengths: list[int]
-    scans: list[tuple[str, list[tuple[str, FileFormat, list[str]]]]]
+    dim_lengths: ty.List[int]
+    scans: ty.List[ty.Tuple[str, ty.List[tuple[str, FileFormat, ty.List[str]]]]]
     id_inference: ty.Dict[DataDimensions, str]
-    to_insert: list[str, tuple[DataDimensions, FileFormat, list[str]]]  # files to insert as derivatives
+    to_insert: ty.List[ty.Tuple[str, tuple[DataDimensions, FileFormat, ty.List[str]]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {

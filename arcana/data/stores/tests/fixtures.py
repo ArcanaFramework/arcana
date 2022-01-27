@@ -60,12 +60,12 @@ dummy_format = FileFormat(name='xyz', extension='.x',
 @dataclass
 class TestDatasetBlueprint():
 
-    hierarchy: list[DataDimensions]
-    dim_lengths: list[int]  # size of layers a-d respectively
-    files: list[str]  # files present at bottom layer
+    hierarchy: ty.List[DataDimensions]
+    dim_lengths: ty.List[int]  # size of layers a-d respectively
+    files: ty.List[str]  # files present at bottom layer
     id_inference: ty.Dict[DataDimensions, str]  # id_inference dict
-    expected_formats: ty.Dict[str, tuple[FileFormat, list[str]]]  # expected formats
-    to_insert: list[str, tuple[DataDimensions, FileFormat, list[str]]]  # files to insert as derivatives
+    expected_formats: ty.Dict[str, tuple[FileFormat, ty.List[str]]]  # expected formats
+    to_insert: ty.List[ty.Tuple[str, tuple[DataDimensions, FileFormat, ty.List[str]]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {

@@ -267,7 +267,7 @@ class Xnat(DataStore):
 
         Returns
         -------
-        value : float or int or str of list[float] or list[int] or list[str]
+        value : float or int or str of ty.List[float] or ty.List[int] or ty.List[str]
             The value of the field
         """
         if file_group.datatype is None:
@@ -352,7 +352,7 @@ class Xnat(DataStore):
 
         Returns
         -------
-        value : float or int or str of list[float] or list[int] or list[str]
+        value : float or int or str of ty.List[float] or ty.List[int] or ty.List[str]
             The value of the field
         """
         self._check_store(field)

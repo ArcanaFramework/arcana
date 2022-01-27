@@ -31,8 +31,8 @@ class Pipeline():
 
     wf: Workflow = attr.ib()
     frequency: DataDimensions = attr.ib()
-    inputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
-    outputs: list[tuple[str, FileFormat]] = attr.ib(factory=list)
+    inputs: ty.List[tuple[str, FileFormat]] = attr.ib(factory=list)
+    outputs: ty.List[tuple[str, FileFormat]] = attr.ib(factory=list)
     _connected: set[str] = attr.ib(factory=set, repr=False)
 
     @property
@@ -48,7 +48,7 @@ class Pipeline():
 
         Parameters
         ----------
-        connections : list[tuple(str, ?)] or tuple(str, ?) or dict[str, ?]
+        connections : ty.List[tuple(str, ?)] or tuple(str, ?) or dict[str, ?]
             The connections to set
 
         Raises
@@ -386,8 +386,8 @@ def split_side_car_suffix(name):
     'outputs': ty.Sequence[str],
     'requested_ids': ty.Sequence[str] or None,
     'return': {
-        'ids': list[str],
-        'cant_process': list[str]}})
+        'ids': ty.List[str],
+        'cant_process': ty.List[str]}})
 def to_process(dataset, frequency, outputs, requested_ids):
     if requested_ids is None:
         requested_ids = dataset.node_ids(frequency)
