@@ -176,8 +176,9 @@ class FileGroup(DataItem):
                     "format ('{}')".format(
                         "', '".join(side_cars.keys()),
                         "', '".join(self.datatype.side_cars.keys())))
-            if missing_side_cars:= [f for f in side_cars.values()
-                                    if not op.exists(f)]:
+            missing_side_cars = [f for f in side_cars.values()
+                                 if not op.exists(f)]
+            if missing_side_cars:
                 raise ArcanaUsageError(
                     f"Attempting to set paths of auxiliary files for {self} "
                     "that don't exist ('{}')".format(

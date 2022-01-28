@@ -104,7 +104,8 @@ class Pipeline():
         return result
 
     def check_connections(self):
-        if missing:= set(self.output_names) - self._connected:
+        missing = set(self.output_names) - self._connected
+        if missing:
             raise Exception(
                 f"The following outputs haven't been connected: {missing}")
 

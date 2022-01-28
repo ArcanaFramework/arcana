@@ -120,17 +120,19 @@ class Dataset():
 
     @column_specs.validator
     def column_specs_validator(self, _, column_specs):
-        if wrong_freq := [m for m in column_specs.values()
-                          if not isinstance(m.frequency, self.space)]:
+        wrong_freq = [m for m in column_specs.values()
+                    if not isinstance(m.frequency, self.space)]
+        if wrong_freq:
             raise ArcanaUsageError(
                 f"Data hierarchy of {wrong_freq} column specs do(es) not match"
                 f" that of dataset {self.space}")
 
     @excluded.validator
     def excluded_validator(self, _, excluded):
-        if both:= [f for f in self.included
-                   if (self.included[f] is not None
-                       and excluded[f] is not None)]:
+        both = [f for f in self.included
+                if (self.included[f] is not None
+                    and excluded[f] is not None)]
+        if both:
             raise ArcanaUsageError(
                     "Cannot provide both 'included' and 'excluded' arguments "
                     "for frequencies ('{}') to Dataset".format(
@@ -140,9 +142,11 @@ class Dataset():
     def hierarchy_validator(self, _, hierarchy):
         if not hierarchy:
             raise ArcanaUsageError(
-                f"hierarchy provided to {self} cannot be empty")            
-        if not_valid := [f for f in hierarchy
-                         if not isinstance(f, self.space)]:
+                f"hierarchy provided to {self} cannot be empty")
+
+        not_valid = [f for f in hierarchy
+                     if not isinstance(f, self.space)]
+        if not_valid:
             raise ArcanaWrongDataDimensionssError(
                 "{} are not part of the {} data dimensions"
                 .format(', '.join(not_valid), self.space))

@@ -271,7 +271,11 @@ class BidsDataset(Dataset):
         self.participants = {}
         with open(self.root_dir / 'participants.tsv') as f:
             cols = f.readline()[:-1].split('\t')
-            while line:= f.readline()[:-1]:
+            while True:
+                line = f.readline()[:-1]
+                if not line:
+                    break
+
                 d = dict(zip(cols, line.split('\t')))
                 self.participants[d.pop('participant_id')] = d
 
