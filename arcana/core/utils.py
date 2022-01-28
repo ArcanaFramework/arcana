@@ -1,6 +1,6 @@
 from typing import Sequence
 import subprocess as sp
-import importlib.metadata
+import importlib_metadata
 import pkgutil
 import re
 from pathlib import Path
@@ -556,11 +556,11 @@ def get_pkg_name(module_path: str):
     """
     if not isinstance(module_path, str):
         module_path = module_path.__module__
-    module_path = importlib.metadata.PackagePath(module_path.replace('.', '/'))
+    module_path = importlib_metadata.PackagePath(module_path.replace('.', '/'))
     for pkg in pkg_resources.working_set:
         try:
-            paths = importlib.metadata.files(pkg.key)
-        except importlib.metadata.PackageNotFoundError:
+            paths = importlib_metadata.files(pkg.key)
+        except importlib_metadata.PackageNotFoundError:
             continue
         for path in paths:
             if path.suffix != '.py':

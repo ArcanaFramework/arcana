@@ -16,6 +16,7 @@ install_requires = [
     'docker>=5.0.2',
     'neurodocker==0.7.0',
     'deepdiff>=3.3',
+    'importlib_metadata>=1.4',
     # Tests
     'pytest>=5.4.3',
     'pytest-env>=0.6.2',
