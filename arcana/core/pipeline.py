@@ -31,9 +31,9 @@ class Pipeline():
 
     wf: Workflow = attr.ib()
     frequency: DataDimensions = attr.ib()
-    inputs: ty.List[tuple[str, FileFormat]] = attr.ib(factory=list)
-    outputs: ty.List[tuple[str, FileFormat]] = attr.ib(factory=list)
-    _connected: set[str] = attr.ib(factory=set, repr=False)
+    inputs: ty.List[ty.Tuple[str, FileFormat]] = attr.ib(factory=list)
+    outputs: ty.List[ty.Tuple[str, FileFormat]] = attr.ib(factory=list)
+    _connected: ty.Set[str] = attr.ib(factory=set, repr=False)
 
     @property
     def lzin(self):
@@ -48,7 +48,7 @@ class Pipeline():
 
         Parameters
         ----------
-        connections : ty.List[tuple(str, ?)] or tuple(str, ?) or dict[str, ?]
+        connections : ty.List[ty.Tuple[str, ty.Any]] or ty.Tuple[str, ty.Any] or ty.Dict[str, ty.Any]
             The connections to set
 
         Raises
@@ -128,12 +128,12 @@ class Pipeline():
             Name of the pipeline
         dataset : Dataset
             The dataset to connect the pipeline to
-        inputs : Sequence[str or tuple[str, FileFormat]]
+        inputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
             List of column names (i.e. either data sources or sinks) to be
             connected to the inputs of the pipeline. If the pipelines requires
             the input to be in a format to the source, then it can be specified
             in a tuple (NAME, FORMAT)
-        outputs : Sequence[str or tuple[str, FileFormat]]
+        outputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
             List of sink names to be connected to the outputs of the pipeline
             If the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)

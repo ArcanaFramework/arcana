@@ -98,7 +98,7 @@ class Dataset():
         omitted or its value is None, then all available will be used
     workflows : Dict[str, pydra.Workflow]
         Workflows that have been applied to the dataset to generate sink
-    access_args: dict[str, Any]
+    access_args: ty.Dict[str, Any]
         Repository specific args used to control the way the dataset is accessed
     """
 
@@ -107,7 +107,7 @@ class Dataset():
     hierarchy: ty.List[DataDimensions] = attr.ib()
     id_inference: (ty.Dict[DataDimensions, str] or ty.Callable) = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
-    column_specs: ty.Dict[str, DataSource or DataSink] or None = attr.ib(
+    column_specs: ty.Optional[ty.Dict[str, ty.Union[DataSource, DataSink]]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     included: ty.Dict[DataDimensions, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
@@ -224,7 +224,7 @@ class Dataset():
             The frequency of the source within the dataset            
         overwrite : bool
             Whether to overwrite existing columns
-        **kwargs : dict[str, Any]
+        **kwargs : ty.Dict[str, Any]
             Additional kwargs to pass to DataSource.__init__
         """
         frequency = self._parse_freq(frequency)
@@ -573,7 +573,7 @@ class Dataset():
             connected to the inputs of the pipeline. If the pipelines requires
             the input to be in a format to the source, then it can be specified
             in a tuple (NAME, FORMAT)
-        outputs : Sequence[str or tuple[str, FileFormat]]
+        outputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
             List of sink names to be connected to the outputs of the pipeline
             If teh the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)

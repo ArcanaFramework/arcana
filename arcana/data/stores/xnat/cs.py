@@ -202,9 +202,9 @@ class XnatViaCS(Xnat):
             The module path to the task to execute
         image_tag : str
             Name + version of the Docker image to be created
-        inputs : ty.List[InputArg or tuple]
+        inputs : ty.List[ty.Union[InputArg, tuple]]
             Inputs to be provided to the container (pydra_field, datatype, dialog_name, FREQUENCY)
-        outputs : ty.List[OutputArg or tuple]
+        outputs : ty.List[ty.Union[OutputArg, tuple]]
             Outputs from the container 
         description : str
             User-facing description of the pipeline
@@ -469,8 +469,8 @@ class XnatViaCS(Xnat):
 
     @classmethod
     def generate_dockerfile(cls,
-                            xnat_commands: ty.List[ty.Dict[str, str or dict or list]],
-                            python_packages: ty.List[tuple[str, str]],
+                            xnat_commands: ty.List[ty.Dict[str, ty.Union[str, dict, list]]],
+                            python_packages: ty.List[ty.Tuple[str, str]],
                             maintainer: str,
                             build_dir: Path=None,
                             base_image: str=None,
@@ -497,7 +497,7 @@ class XnatViaCS(Xnat):
             Name and version of the Python PyPI packages to add to the image
         registry
             URI of the Docker registry to upload the image to
-        extra_labels : dict[str, str], optional
+        extra_labels : ty.Dict[str, str], optional
             Additional labels to be added to the image
 
         Returns

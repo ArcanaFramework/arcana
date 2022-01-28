@@ -65,9 +65,9 @@ def func_task(func, in_fields, out_fields, **inputs):
     ----------
     func : Callable
         The function to wrap
-    input_fields : ty.List[tuple[str, type]]
+    input_fields : ty.List[ty.Tuple[str, type]]
         The list of input fields to create for the task
-    output_fields : ty.List[tuple[str, type]]
+    output_fields : ty.List[ty.Tuple[str, type]]
         The list of output fields to create for the task
     **inputs
         Inputs to set for the task

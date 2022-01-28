@@ -391,10 +391,10 @@ class BidsApp:
         metadata={'help_string': 'Name of the BIDS app image to wrap'})
     executable: str = attr.ib(
         metadata={'help_string': 'Name of the executable within the image to run (i.e. the entrypoint of the image). Required when extending the base image and launching Arcana within it'})
-    inputs: ty.List[tuple[str, type, str]] = attr.ib(
+    inputs: ty.List[ty.Tuple[str, type, str]] = attr.ib(
         metadata={'help_string': (
             "The inputs to be inserted into the BIDS dataset (NAME, DTYPE, BIDS_PATH)")})
-    outputs: ty.List[tuple[str, type, ty.Optional[str]]] = attr.ib(
+    outputs: ty.List[ty.Tuple[str, type, ty.Optional[str]]] = attr.ib(
         converter=outputs_converter,
         metadata={'help_string': (
             "The outputs to be extracted from the derivatives directory (NAME, DTYPE, BIDS_PATH)")})
@@ -403,7 +403,7 @@ class BidsApp:
         default=None)
 
     def __call__(self, name=None, frequency: Clinical or str=Clinical.session,
-                 virtualisation: str=None, dataset: ty.Optional[str or Path or Dataset]=None) -> Workflow:
+                 virtualisation: str=None, dataset: ty.Optional[ty.Union[str, Path, Dataset]]=None) -> Workflow:
         """Creates a Pydra workflow which takes inputs and maps them to
         a BIDS dataset, executes a BIDS app and extracts outputs from
         the derivatives stored back in the BIDS dataset
@@ -460,7 +460,7 @@ class BidsApp:
             to_bids,
             in_fields=(
                 [('frequency', Clinical),
-                 ('inputs', ty.List[tuple[str, type, str]]),
+                 ('inputs', ty.List[ty.Tuple[str, type, str]]),
                  ('dataset', Dataset or str),
                  ('id', str)]
                 + [(i, str) for i in input_names]),
@@ -491,7 +491,7 @@ class BidsApp:
             in_fields=[
                 ('dataset', Dataset),
                 ('frequency', Clinical),
-                ('outputs', ty.List[tuple[str, type, str]]),
+                ('outputs', ty.List[ty.Tuple[str, type, str]]),
                 ('path_prefix', str),
                 ('id', str),
                 ('app_completed', bool)],
@@ -665,7 +665,7 @@ def dataset_paths(app_name: str, dataset: Dataset, id: str):
 
 def extract_bids(dataset: Dataset,
                  frequency: Clinical,
-                 outputs: ty.List[tuple[str, type, str]],
+                 outputs: ty.List[ty.Tuple[str, type, str]],
                  path_prefix: str,
                  id: str,
                  app_completed: bool):
@@ -692,7 +692,7 @@ def extract_bids(dataset: Dataset,
 @mark.task
 @mark.annotate(
     {'return':
-        {'bindings': ty.List[tuple[str, str, str]],
+        {'bindings': ty.List[ty.Tuple[str, str, str]],
          'tmp_output_dir': Path}})
 def make_bindings(dataset_path: str):
     """Make bindings for directories to be mounted inside the container

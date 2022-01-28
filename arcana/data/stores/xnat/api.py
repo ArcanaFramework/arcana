@@ -177,7 +177,7 @@ class Xnat(DataStore):
         -------
         primary_path : str
             The name_path of the primary file once it has been cached
-        side_cars : dict[str, str]
+        side_cars : ty.Dict[str, str]
             A dictionary containing a mapping of auxiliary file names to
             name_paths
         """
@@ -267,7 +267,7 @@ class Xnat(DataStore):
 
         Returns
         -------
-        value : float or int or str of ty.List[float] or ty.List[int] or ty.List[str]
+        value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
             The value of the field
         """
         if file_group.datatype is None:
@@ -352,7 +352,7 @@ class Xnat(DataStore):
 
         Returns
         -------
-        value : float or int or str of ty.List[float] or ty.List[int] or ty.List[str]
+        value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
             The value of the field
         """
         self._check_store(field)

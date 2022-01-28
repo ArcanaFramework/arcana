@@ -129,10 +129,10 @@ class FileGroup(DataItem):
         if applicable
     fs_path : str | None
         Path to the primary file or directory on the local file system
-    side_cars : dict[str, str] | None
+    side_cars : ty.Dict[str, str] | None
         Additional files in the file_group. Keys should match corresponding
         side_cars dictionary in format.
-    checksums : dict[str, str]
+    checksums : ty.Dict[str, str]
         A checksums of all files within the file_group in a dictionary sorted
         bys relative file name_paths
     """

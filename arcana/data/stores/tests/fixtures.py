@@ -64,8 +64,8 @@ class TestDatasetBlueprint():
     dim_lengths: ty.List[int]  # size of layers a-d respectively
     files: ty.List[str]  # files present at bottom layer
     id_inference: ty.Dict[DataDimensions, str]  # id_inference dict
-    expected_formats: ty.Dict[str, tuple[FileFormat, ty.List[str]]]  # expected formats
-    to_insert: ty.List[ty.Tuple[str, tuple[DataDimensions, FileFormat, ty.List[str]]]]  # files to insert as derivatives
+    expected_formats: ty.Dict[str, ty.Tuple[FileFormat, ty.List[str]]]  # expected formats
+    to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataDimensions, FileFormat, ty.List[str]]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {
