@@ -12,7 +12,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: [3.7, 3.8, 3.9]
-        install: [install, develop, wheel]
+        install: [install, develop]
       fail-fast: false
     runs-on: ${{ matrix.os }}
 
@@ -42,16 +42,6 @@ jobs:
     - name: Install dependencies (setup.py install)
       if: matrix.install == 'install'
       run: python setup.py install
-
-    - name: Install dependencies (wheel)
-      if: matrix.install == 'wheel'
-      run: |
-        python setup.py bdist_wheel
-        pip install dist/*.whl
-
-    - name: Install Pydra tests dependencies (wheel)
-      if: matrix.install == 'wheel'
-      run: pip install "$( ls dist/pydra*.whl )"
 
     - name: Pytest
       run: pytest -vs --cov arcana  --cov-config .coveragerc --cov-report xml
