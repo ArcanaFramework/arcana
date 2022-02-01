@@ -283,10 +283,10 @@ class MrtrixImage(BaseImage):
         return hdr, array
 
     def get_header(self, fileset):
-        self._load_header_and_array(fileset)[0]
+        return self._load_header_and_array(fileset)[0]
 
     def get_array(self, fileset):
-        self._load_header_and_array(fileset)[1]
+        return self._load_header_and_array(fileset)[1]
 
     def get_vox_sizes(self, fileset):
         return self.get_header(fileset)['vox']

@@ -129,10 +129,10 @@ class FileGroup(DataItem):
         if applicable
     fs_path : str | None
         Path to the primary file or directory on the local file system
-    side_cars : dict[str, str] | None
+    side_cars : ty.Dict[str, str] | None
         Additional files in the file_group. Keys should match corresponding
         side_cars dictionary in format.
-    checksums : dict[str, str]
+    checksums : ty.Dict[str, str]
         A checksums of all files within the file_group in a dictionary sorted
         bys relative file name_paths
     """
@@ -176,8 +176,9 @@ class FileGroup(DataItem):
                     "format ('{}')".format(
                         "', '".join(side_cars.keys()),
                         "', '".join(self.datatype.side_cars.keys())))
-            if missing_side_cars:= [f for f in side_cars.values()
-                                    if not op.exists(f)]:
+            missing_side_cars = [f for f in side_cars.values()
+                                 if not op.exists(f)]
+            if missing_side_cars:
                 raise ArcanaUsageError(
                     f"Attempting to set paths of auxiliary files for {self} "
                     "that don't exist ('{}')".format(

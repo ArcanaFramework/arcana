@@ -37,7 +37,7 @@ class DataNode():
     frequency: DataDimensions = attr.ib()
     dataset: arcana.core.data.set.Dataset = attr.ib(repr=False)    
     children: ty.DefaultDict[DataDimensions,
-                             ty.Dict[str or tuple[str], str]] = attr.ib(
+                             ty.Dict[ty.Union[str, ty.Tuple[str]], str]] = attr.ib(
         factory=lambda: defaultdict(dict), repr=False)
     _unresolved = attr.ib(default=None, repr=False)
     _items = attr.ib(factory=dict, init=False, repr=False)
@@ -393,8 +393,9 @@ class UnresolvedField(UnresolvedDataItem):
         The data node that the field belongs to
     """
 
-    value: (int or float or str or ty.Sequence[int] or ty.Sequence[float]
-            or ty.Sequence[str]) = attr.ib(default=None)
+    value: ty.Union[
+        float, int, str, ty.List[float], ty.List[int], ty.List[str]
+    ] = attr.ib(default=None)
 
     def _resolve(self, datatype):
         try:

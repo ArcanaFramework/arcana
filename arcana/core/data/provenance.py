@@ -19,7 +19,7 @@ class DataProvenance():
 
     Parameters
     ----------
-    dct : dict[str, Any]
+    dct : ty.Dict[str, Any]
         A dictionary containing the provenance record
     """
 
@@ -67,7 +67,7 @@ class DataProvenance():
         ----------
         name_path : str
             Path to save the generated JSON file
-        inputs : dict[str, str | ty.List[str] | ty.List[ty.List[str]]] | None
+        inputs : ty.Dict[str, str | ty.List[str] | ty.List[ty.List[str]]] | None
             Checksums of all pipeline inputs used by the pipeline. For inputs
             of matching frequency to the output sink associated with the
             provenance object, the values of the dictionary will be single
@@ -75,7 +75,7 @@ class DataProvenance():
             of checksums or in the case of 'per_session' inputs to 'per_dataset'
             outputs, lists of lists of checksum. They need to be provided here
             if the provenance object was initialised without checksums
-        outputs : dict[str, str] | None
+        outputs : ty.Dict[str, str] | None
             Checksums of all pipeline outputs. They need to be provided here
             if the provenance object was initialised without checksums
         """

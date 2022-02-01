@@ -200,7 +200,7 @@ class RunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        ty.List[tuple[str, FileFormat]]
+        ty.List[ty.Tuple[str, FileFormat]]
             A sequence of input names and their required formats
 
         Raises
@@ -240,7 +240,7 @@ class RunCmd(BaseDatasetCmd):
 
         Returns
         -------
-        ty.List[tuple[str, FileFormat]]
+        ty.List[ty.Tuple[str, FileFormat]]
             A sequence of input names and the formats they are produced in
         """
         frequency = cls.parse_frequency(args)

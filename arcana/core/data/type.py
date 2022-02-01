@@ -37,7 +37,7 @@ class FileFormat(object):
         A list of extensions that are found within the top level of
         the directory (for directory formats). Used to identify
         formats from paths.
-    side_cars : dict[str, str]
+    side_cars : ty.Dict[str, str]
         A dictionary of side cars (e.g. header or NIfTI json side cars) aside
         from the primary file, along with their expected extension.
         Automatically they will be assumed to be located adjancent to the
@@ -159,7 +159,7 @@ class FileFormat(object):
 
         Returns
         -------
-        aux_paths : dict[str, str]
+        aux_paths : ty.Dict[str, str]
             A dictionary of auxiliary file names and default paths
         """
         return dict((n, str(primary_path)[:-len(self.ext)] + ext)

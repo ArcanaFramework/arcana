@@ -1,4 +1,5 @@
 import os.path
+import sys
 import tempfile
 import tarfile
 import zipfile
@@ -100,10 +101,18 @@ def create_zip(in_file, out_file, base_dir, compression='', allowZip64=True,
 
     out_file = os.path.abspath(out_file)
 
+    zip_kwargs = {}
+    if not strict_timestamps:  # Truthy is the default in earlier versions
+        if sys.version_info.major <= 3 and sys.version_info.minor < 8:
+            raise Exception("Must be using Python >= 3.8 to pass "
+                            f"strict_timestamps={strict_timestamps!r}")
+
+        zip_kwargs['strict_timestamps'] = strict_timestamps
+
     with zipfile.ZipFile(
             out_file, mode='w', compression=ZIP_COMPRESSION_TYPES[compression],
             allowZip64=allowZip64, compresslevel=compresslevel,
-            strict_timestamps=strict_timestamps) as zfile, set_cwd(base_dir):
+            **zip_kwargs) as zfile, set_cwd(base_dir):
         for path in in_file:
             path = Path(path)
             if path.is_dir():

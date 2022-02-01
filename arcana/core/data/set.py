@@ -98,7 +98,7 @@ class Dataset():
         omitted or its value is None, then all available will be used
     workflows : Dict[str, pydra.Workflow]
         Workflows that have been applied to the dataset to generate sink
-    access_args: dict[str, Any]
+    access_args: ty.Dict[str, Any]
         Repository specific args used to control the way the dataset is accessed
     """
 
@@ -107,7 +107,7 @@ class Dataset():
     hierarchy: ty.List[DataDimensions] = attr.ib()
     id_inference: (ty.Dict[DataDimensions, str] or ty.Callable) = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
-    column_specs: ty.Dict[str, DataSource or DataSink] or None = attr.ib(
+    column_specs: ty.Optional[ty.Dict[str, ty.Union[DataSource, DataSink]]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     included: ty.Dict[DataDimensions, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
@@ -120,17 +120,19 @@ class Dataset():
 
     @column_specs.validator
     def column_specs_validator(self, _, column_specs):
-        if wrong_freq := [m for m in column_specs.values()
-                          if not isinstance(m.frequency, self.space)]:
+        wrong_freq = [m for m in column_specs.values()
+                    if not isinstance(m.frequency, self.space)]
+        if wrong_freq:
             raise ArcanaUsageError(
                 f"Data hierarchy of {wrong_freq} column specs do(es) not match"
                 f" that of dataset {self.space}")
 
     @excluded.validator
     def excluded_validator(self, _, excluded):
-        if both:= [f for f in self.included
-                   if (self.included[f] is not None
-                       and excluded[f] is not None)]:
+        both = [f for f in self.included
+                if (self.included[f] is not None
+                    and excluded[f] is not None)]
+        if both:
             raise ArcanaUsageError(
                     "Cannot provide both 'included' and 'excluded' arguments "
                     "for frequencies ('{}') to Dataset".format(
@@ -140,9 +142,11 @@ class Dataset():
     def hierarchy_validator(self, _, hierarchy):
         if not hierarchy:
             raise ArcanaUsageError(
-                f"hierarchy provided to {self} cannot be empty")            
-        if not_valid := [f for f in hierarchy
-                         if not isinstance(f, self.space)]:
+                f"hierarchy provided to {self} cannot be empty")
+
+        not_valid = [f for f in hierarchy
+                     if not isinstance(f, self.space)]
+        if not_valid:
             raise ArcanaWrongDataDimensionssError(
                 "{} are not part of the {} data dimensions"
                 .format(', '.join(not_valid), self.space))
@@ -224,7 +228,7 @@ class Dataset():
             The frequency of the source within the dataset            
         overwrite : bool
             Whether to overwrite existing columns
-        **kwargs : dict[str, Any]
+        **kwargs : ty.Dict[str, Any]
             Additional kwargs to pass to DataSource.__init__
         """
         frequency = self._parse_freq(frequency)
@@ -573,7 +577,7 @@ class Dataset():
             connected to the inputs of the pipeline. If the pipelines requires
             the input to be in a format to the source, then it can be specified
             in a tuple (NAME, FORMAT)
-        outputs : Sequence[str or tuple[str, FileFormat]]
+        outputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
             List of sink names to be connected to the outputs of the pipeline
             If teh the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)
