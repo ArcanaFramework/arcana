@@ -51,7 +51,7 @@ jobs:
 
     - name: Install Pydra tests dependencies (wheel)
       if: matrix.install == 'wheel'
-      run: pip install "$( ls dist/pydra*.whl )[test]"
+      run: pip install "$( ls dist/pydra*.whl )"
 
     - name: Pytest
       run: pytest -vs --cov arcana  --cov-config .coveragerc --cov-report xml
