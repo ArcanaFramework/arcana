@@ -537,7 +537,7 @@ class XnatViaCS(Xnat):
 
         instructions = [
             ["base", base_image],
-            ["install", ["git", "vim", "ssh-client", "python3", "python3-pip", "dcm2niix"]]]
+            ["install", ["git", "vim", "ssh-client", "python3", "python3-pip"]]]
 
         for pkg in packages:
             install_props = {}
@@ -618,8 +618,11 @@ class XnatViaCS(Xnat):
                 "conda_install": [
                     "python=" + natsorted(python_versions)[-1],
                     "numpy",
-                    "traits"],
-                "pip_install": resolved_python_packages}])
+                    "traits",
+                    "dcm2niix",
+                    "mrtrix3"],
+                "conda_opts": "--channel mrtrix3",
+                "pip_install": resolved_python_packages}])  
 
         if labels:
             instructions.append(["label", labels])
