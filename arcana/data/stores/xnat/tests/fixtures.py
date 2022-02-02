@@ -146,7 +146,8 @@ def concatenate_container(xnat_repository, xnat_container_registry):
         maintainer='some.one@an.org',
         packages=[],
         python_packages=[],
-        extra_labels={})
+        extra_labels={},
+        pkg_extras=['test'])
 
     dc = docker.from_env()
     dc.images.build(path=str(build_dir), tag=image_tag)

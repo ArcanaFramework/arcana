@@ -141,4 +141,4 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
         assert i != 99, f"Workflow {workflow_id} did not complete in {max_runtime}"
         assert wf_result['status'] == 'Complete'
 
-        assert list(test_xsession.resources['out_file'].files) == ['out_file.txt']
+        assert list(test_xsession.resources['concatenated'].files) == ['concatenated.txt']

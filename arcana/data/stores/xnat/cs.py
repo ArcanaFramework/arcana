@@ -476,7 +476,8 @@ class XnatViaCS(Xnat):
                             base_image: str=None,
                             packages: ty.List[ty.List[ty.Tuple[str, str]]]=None,
                             extra_labels: ty.Dict[str, str]=None,
-                            package_manager: str=None):
+                            package_manager: str=None,
+                            pkg_extras: ty.List[str]=[]):
         """Constructs a dockerfile that wraps a with dependencies
 
         Parameters
@@ -499,6 +500,9 @@ class XnatViaCS(Xnat):
             URI of the Docker registry to upload the image to
         extra_labels : ty.Dict[str, str], optional
             Additional labels to be added to the image
+        pkg_extras
+            Extras that need to be installed (e.g. tests) into the dockerfile
+            for the Arcana package
 
         Returns
         -------
@@ -555,7 +559,10 @@ class XnatViaCS(Xnat):
         site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]
 
         python_packages = copy(python_packages)
-        python_packages.append(PACKAGE_NAME)
+        pkg_name = PACKAGE_NAME
+        if pkg_extras:
+            pkg_name += '[' + ','.join(pkg_extras) + ']'
+        python_packages.append(pkg_name)
         python_packages.extend(re.match(r'([a-zA-Z0-9\-_]+)', r).group(1)
                                for r in install_requires)
 
@@ -563,10 +570,12 @@ class XnatViaCS(Xnat):
         # docker image if present instead of relying on the PyPI version,
         # which might be missing bugfixes local changes
         resolved_python_packages = []
-        for pkg_name in python_packages:
-            
-            pkg = next(p for p in pkg_resources.working_set
-                       if p.key == pkg_name)
+        for pkg_spec in python_packages:
+
+            # Split out the package name from the extra installs
+            pkg_name = pkg_spec.split('[')[0]
+
+            pkg = next(p for p in pkg_resources.working_set if p.key == pkg_name)
             pkg_loc = Path(pkg.location).resolve()
             # Determine whether installed version of requirement is locally
             # installed (and therefore needs to be copied into image) or can
@@ -596,8 +605,9 @@ class XnatViaCS(Xnat):
                 else:
                     ignore = shutil.ignore_patterns('*.pyc', '__pycache__')
                 shutil.copytree(pkg_loc, build_dir / pkg_name, ignore=ignore)
-                pip_address = '/python-packages/' + pkg_name
-                instructions.append(['copy', ['./' + pkg_name, pip_address]])
+                pip_address = '/python-packages/' + pkg_spec
+                instructions.append(['copy', ['./' + pkg_name,
+                                              '/python-packages/' + pkg_name]])
             else:
                 direct_url_path = Path(pkg.egg_info) / 'direct_url.json'
                 if direct_url_path.exists():
