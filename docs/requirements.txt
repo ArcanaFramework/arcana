@@ -4,9 +4,9 @@ mock>1.0
 numpydoc>=0.6.0
 sphinx-argparse>=0.2.0
 xnat>=0.3.17
-pydra @ https://github.com/tclose/pydra/archive/serial-worker-fix.zip
-pydra-dcm2niix @ https://github.com/tclose/pydra-dcm2niix/archive/pydra-branch.zip
-pydra-mrtrix3 @ https://github.com/tclose/pydra-mrtrix3/archive/pydra-branch.zip
+pydra>=0.17
+pydra-dcm2niix>=1.0.0rc2
+pydra-mrtrix3>=0.1
 pydicom>=1.0.2
 nibabel>=3.2.1
 natsort>=7.1.1
@@ -14,3 +14,4 @@ fasteners>=0.7.0
 docker>=5.0.2
 neurodocker==0.7.0
 deepdiff>=3.3
+importlib-metadata>=1.4
