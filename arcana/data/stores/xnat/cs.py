@@ -556,7 +556,7 @@ class XnatViaCS(Xnat):
 
         python_packages = copy(python_packages)
         python_packages.append(PACKAGE_NAME)
-        python_packages.extend(re.match(r'([a-zA-Z0-9\-]+)', r).group(1)
+        python_packages.extend(re.match(r'([a-zA-Z0-9\-_]+)', r).group(1)
                                for r in install_requires)
 
         # Copies the local development copies of Python dependencies into the

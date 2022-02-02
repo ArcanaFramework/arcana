@@ -75,7 +75,6 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
         assert pipeline_name in commands, "Pipeline config wasn't detected automatically"
         assert xnat_command == commands[pipeline_name]
 
-@pytest.mark.skip(reason="Waiting on next release of Pydra (0.16.3) for required bug-fixes")
 def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
                          xnat_container_registry, concatenate_container,
                          run_prefix):
@@ -131,7 +130,7 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
         max_runtime = NUM_ATTEMPTS * SLEEP_PERIOD
 
         INCOMPLETE_STATES = ('Pending', 'Running', '_Queued', 'Staging',
-                             'Finalizing')
+                             'Finalizing', 'Created')
 
         for i in range(NUM_ATTEMPTS):
             wf_result = xlogin.get(f'/xapi/workflows/{workflow_id}').json()
