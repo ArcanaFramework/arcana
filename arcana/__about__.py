@@ -6,6 +6,7 @@ __authors__ = [
 
 install_requires = [
     'xnat>=0.3.17',
+    # 'requests>=2.0',
     'pydra>=0.17',
     'pydra-dcm2niix>=1.0.0rc2',
     'pydra-mrtrix3>=0.1',

@@ -4,6 +4,9 @@ import importlib_metadata
 import pkgutil
 import re
 from pathlib import Path
+import importlib
+import sys
+from traceback import format_exc
 from importlib import import_module
 from inspect import isclass
 from itertools import zip_longest
@@ -572,3 +575,27 @@ def get_pkg_name(module_path: str):
             if module_path in ([path] + list(path.parents)):
                 return pkg.key
     raise ArcanaUsageError(f'{module_path} is not an installed module')
+
+def extract_wrapper_specs(package_path):
+    package_path = Path(package_path)
+    def error_msg(name):
+        exception = format_exc()
+        logging.error(
+            f"Error attempting to import {name} module.\n\n{exception}")
+
+    # Ensure base package is importable
+    sys.path.append(str(package_path.parent))
+
+    wrapper_specs = {}
+    for _, mod_path, ispkg in pkgutil.walk_packages(
+            [package_path], prefix=package_path.name + '.',
+            onerror=error_msg):
+        if not ispkg:
+            mod = importlib.import_module(mod_path)
+            try:
+                wrapper_specs[mod.__name__] = mod.spec
+            except AttributeError:
+                logging.warning("No `spec` dictionary found in %s, skipping",
+                                mod_path)
+
+    return wrapper_specs

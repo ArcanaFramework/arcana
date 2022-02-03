@@ -16,19 +16,24 @@ import pkg_resources
 from dataclasses import dataclass
 import attr
 from attr import NOTHING
-from pydra.engine.task import TaskBase
+# import requests
 import neurodocker as nd
 from natsort import natsorted
+import docker
 from arcana import __version__
 from arcana.__about__ import install_requires, PACKAGE_NAME, python_versions
+from arcana.core.utils import get_pkg_name
 from arcana.data.dimensions.clinical import Clinical
 from arcana.core.data.type import FileFormat
 from arcana.core.data.dimensions import DataDimensions
 from arcana.core.utils import resolve_class, DOCKER_HUB
-from arcana.exceptions import ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException
+from arcana.exceptions import (
+    ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException,
+    ArcanaBuildError)
 from .api import Xnat
 
 logger = logging.getLogger('arcana')
+
 
 @attr.s
 class XnatViaCS(Xnat):
@@ -180,17 +185,17 @@ class XnatViaCS(Xnat):
 
     @classmethod
     def generate_xnat_command(cls,
-                             pipeline_name: str,
-                             task_location: str,
-                             image_tag: str,
-                             inputs,
-                             outputs,
-                             description,
-                             version,
-                             parameters=None,
-                             frequency=Clinical.session,
-                             registry=DOCKER_HUB,
-                             info_url=None):
+                              pipeline_name: str,
+                              task_location: str,
+                              image_tag: str,
+                              inputs,
+                              outputs,
+                              description,
+                              version,
+                              parameters=None,
+                              frequency=Clinical.session,
+                              registry=DOCKER_HUB,
+                              info_url=None):
         """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
         should handle the containerised pipeline
 
@@ -198,8 +203,9 @@ class XnatViaCS(Xnat):
         ----------
         pipeline_name : str
             Name of the pipeline
-        task_location : str
-            The module path to the task to execute
+        task_location
+            The module path and name (separated by ':') to the task to execute,
+            e.g. australianimagingservice.mri.neuro.mriqc:task
         image_tag : str
             Name + version of the Docker image to be created
         inputs : ty.List[ty.Union[InputArg, tuple]]
@@ -248,10 +254,7 @@ class XnatViaCS(Xnat):
                 cls.ParamArg(*p) if not isinstance(p, cls.ParamArg) else p)
             for p in parameters]
 
-        pydra_task = resolve_class(task_location)
-        if not isinstance(pydra_task, TaskBase):
-            pydra_task = pydra_task()
-
+        pydra_task = resolve_class(task_location)()
         input_specs = dict(f[:2] for f in pydra_task.input_spec.fields)
         # output_specs = dict(f[:2] for f in pydra_task.output_spec.fields)
 
@@ -671,6 +674,88 @@ class XnatViaCS(Xnat):
 
         return build_dir
 
+    @classmethod
+    def create_wrapper_image(cls,
+                             pkg_name: str,
+                             commands: ty.List[ty.Dict[str, ty.Any]],
+                             pkg_version: str,
+                             authors: ty.List[ty.Tuple[str, str]],
+                             info_url: str,
+                             docker_org: str,
+                             docker_registry: str,
+                             wrapper_version: str=None,
+                             **kwargs):
+        """Creates a Docker image containing one or more XNAT commands ready
+        to be installed.
+
+        Parameters
+        ----------
+        pkg_name
+            Name of the package as a whole
+        commands
+            List of command specifications (in dicts) to be installed on the
+            image, see `generate_xnat_command` for valid args (dictionary keys).
+        pkg_version
+            Version of the package the commands are drawn from (could be 3.0.3
+            for MRtrix3 for example)
+        authors
+            Names and emails of the maintainers of the wrapper pipeline
+        info_url
+            The URL of the package website explaining the analysis software
+            and what it does
+        docker_org
+            The docker organisation the image will uploaded to
+        docker_registry
+            The Docker registry the image will be uploaded to
+        wrapper_version
+            The version of the wrapper specific to the pkg version. It will be
+            appended to the package version, e.g. 0.16.2 -> 0.16.2--1
+        """
+
+        full_version = str(pkg_version)
+        if wrapper_version is not None:
+            full_version += f"-{wrapper_version}"
+        image_tag = f"{docker_org}/{pkg_name.lower().replace('-', '_')}:{full_version}"
+
+        xnat_commands = []
+        python_packages = kwargs.pop('python_packages', [])
+        for cmd_spec in commands:
+
+            cmd_name = cmd_spec.pop('name', pkg_name)
+
+            xnat_cmd = XnatViaCS.generate_xnat_command(
+                pipeline_name=cmd_name,
+                info_url=info_url,
+                image_tag=image_tag,
+                version=full_version,
+                registry=docker_registry,
+                **cmd_spec)
+
+            python_package = get_pkg_name(cmd_spec['task_location'].split(':')[0])
+            if python_package not in [p.split('[')[0] for p in python_packages]:
+                python_packages.append(python_package)
+
+            xnat_commands.append(xnat_cmd)
+
+        build_dir = XnatViaCS.generate_dockerfile(
+            xnat_commands=xnat_commands,
+            maintainer=authors[0][1],
+            python_packages=python_packages,
+            **kwargs)
+
+        dc = docker.from_env()
+        try:
+            dc.images.build(path=str(build_dir), tag=image_tag)
+        except docker.errors.BuildError as e:
+            raise ArcanaBuildError(
+                f"Error building docker file in {build_dir}"
+                + '\n'.join(l.get('stream', '') for l in e.build_log))
+
+        logging.info("Built docker image %s", image_tag)
+
+        return docker_registry + '/' + image_tag
+
+
     @dataclass
     class InputArg():
         pydra_field: str  # Must match the name of the Pydra task input
@@ -708,3 +793,9 @@ class XnatViaCS(Xnat):
     {}
     
     """
+
+
+# def get_existing_docker_tags(docker_registry, docker_org, image_name):
+#     result = requests.get(
+#         f'https://{docker_registry}/v2/repositories/{docker_org}/{image_name}/tags')
+#     return [r['name'] for r in result.json()]

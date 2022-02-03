@@ -212,3 +212,7 @@ class ArcanaNoDirectXnatMountException(ArcanaException):
 
 class ArcanaEmptyDatasetError(ArcanaException):
     pass
+
+
+class ArcanaBuildError(ArcanaError):
+    pass
