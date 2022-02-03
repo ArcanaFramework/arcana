@@ -72,7 +72,7 @@ def wrap4xnat(package_path, registry, loglevel, build_dir):
 
 @click.command(help="""Extract the executable from a Docker image""")
 @click.argument('image_tag')
-def extract_exec(image_tag):
+def extract_docker_exec(image_tag):
     """Pulls a given Docker image tag and inspects the image to get its
     entrypoint/cmd
 
