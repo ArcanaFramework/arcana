@@ -564,7 +564,14 @@ class XnatViaCS(Xnat):
         python_packages = copy(python_packages)
         pkg_name = PACKAGE_NAME
         if pkg_extras:
+            # Ensure there is only one version of arcana in the dependencies and
+            # it has the right extras
+            if pkg_name in python_packages:
+                python_packages.remove(pkg_name)
             pkg_name += '[' + ','.join(pkg_extras) + ']'
+            python_packages.append(pkg_name)
+        elif pkg_name not in python_packages:
+            python_packages.append(pkg_name)
         python_packages.extend(re.match(r'([a-zA-Z0-9\-_]+)', r).group(1)
                                for r in install_requires)
 
