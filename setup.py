@@ -23,7 +23,8 @@ setup(
     install_requires=install_requires,
     tests_require=tests_require,
     entry_points={
-        'console_scripts': ['arcana = arcana.core.entrypoint:MainCmd.run']},
+        'console_scripts': ['arcana = arcana.core.entrypoint:MainCmd.run',
+                            'build-xnat-wrappers = arcana.entrypoints.wrap4xnat:build_xnat_wrappers']},
     extras_require={
         'test': tests_require},
     cmdclass=versioneer.get_cmdclass(),

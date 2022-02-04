@@ -1,9 +1,11 @@
 from pathlib import Path
 import logging
+import yaml
+import ast
 import click
 import docker.errors
 from arcana.data.stores.xnat.cs import XnatViaCS
-from arcana.core.utils import extract_wrapper_specs
+from arcana.core.utils import extract_wrapper_specs, resolve_class
 
 DOCKER_REGISTRY = 'docker.io'
 
@@ -46,7 +48,9 @@ DOCKER_REGISTRY = 'docker.io'
               help="The level to display logs at")
 @click.option('--build_dir', default=None, type=Path,
               help="Specify the directory to build the Docker image in")
-def wrap4xnat(package_path, registry, loglevel, build_dir):
+@click.option('--docs', '-d', default=None, type=Path,
+              help="Create markdown documents in output path")
+def build_xnat_wrappers(package_path, registry, loglevel, build_dir, docs):
     """Creates a Docker image that wraps a Pydra task so that it can
     be run in XNAT's container service, then pushes it to AIS's Docker Hub
     organisation for deployment
@@ -55,6 +59,9 @@ def wrap4xnat(package_path, registry, loglevel, build_dir):
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
     org_name = Path(package_path).name
+
+    if docs:
+        docs.mkdir(parents=True)
 
     built_images = []
     for mod_name, spec in extract_wrapper_specs(package_path).items():
@@ -66,6 +73,8 @@ def wrap4xnat(package_path, registry, loglevel, build_dir):
                 docker_registry=registry,
                 **spec))
         logging.info("Successfully built %s wrapper", mod_name)
+        if docs:
+            create_doc(spec, docs, mod_name)
 
     print('\n'.join(built_images))
 
@@ -97,3 +106,93 @@ def extract_docker_exec(image_tag):
         executable = image_attrs['Cmd']
 
     print(executable)
+
+
+def create_doc(spec, doc_dir, pkg_name):
+
+    header = {
+        "title": spec["package_name"],
+        "weight": 10,
+        "source_file": pkg_name,
+    }
+
+    task = resolve_class(spec['task_location'])
+
+    with open(doc_dir / pkg_name, "w") as f:
+        f.write("---\n")
+        yaml.dump(header, f)
+        f.write("\n---\n\n")
+
+        f.write(f'{spec["description"]}\n\n')
+
+        f.write("### Info\n")
+        tbl_info = MarkdownTable(f, "Key", "Value")
+        if "version" in spec:
+            tbl_info.write_row("Version", spec["version"])
+        if "pkg_version" in spec:
+            tbl_info.write_row("App version", spec["pkg_version"])
+        if task.image:
+            tbl_info.write_row("Image", escaped_md(task.image))
+        if "base_image" in spec and task.image != spec["base_image"]:
+            tbl_info.write_row("Base image", escaped_md(spec["base_image"]))
+        if "maintainer" in spec:
+            tbl_info.write_row("Maintainer", spec["maintainer"])
+        if "info_url" in spec:
+            tbl_info.write_row("Info URL", spec["info_url"])
+        if "frequency" in spec:
+            tbl_info.write_row("Frequency", spec["frequency"].name.title())
+
+        f.write("\n")
+
+        f.write("### Inputs\n")
+        tbl_inputs = MarkdownTable(f, "Name", "Bids path", "Data type")
+        for x in task.inputs:
+            name, dtype, path = x
+            tbl_inputs.write_row(escaped_md(name), escaped_md(path), escaped_md(dtype))
+        f.write("\n")
+
+        f.write("### Outputs\n")
+        tbl_outputs = MarkdownTable(f, "Name", "Data type")
+        for x in task.outputs:
+            name, dtype, path = x
+            tbl_outputs.write_row(escaped_md(name), escaped_md(dtype))
+        f.write("\n")
+
+        f.write("### Parameters\n")
+        if not spec.get("parameters", None):
+            f.write("None\n")
+        else:
+            tbl_params = MarkdownTable(f, "Name", "Data type")
+            for param in spec["parameters"]:
+                tbl_params.write_row("Todo", "Todo", "Todo")
+        f.write("\n")
+
+
+def escaped_md(value: str) -> str:
+    if not value:
+        return ""
+    return f"`{value}`"
+
+
+class MarkdownTable:
+    def __init__(self, f, *headers: str) -> None:
+        self.headers = tuple(headers)
+
+        self.f = f
+        self._write_header()
+
+    def _write_header(self):
+        self.write_row(*self.headers)
+        self.write_row(*("-" * len(x) for x in self.headers))
+
+    def write_row(self, *cols: str):
+        cols = list(cols)
+        if len(cols) > len(self.headers):
+            raise ValueError(
+                f"More entries in row ({len(cols)} than columns ({len(self.headers)})")
+
+        # pad empty column entries if there's not enough
+        cols += [""] * (len(self.headers) - len(cols))
+
+        # TODO handle new lines in col
+        self.f.write("|" + "|".join(col.replace("|", "\\|") for col in cols) + "|\n")
