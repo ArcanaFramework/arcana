@@ -1,11 +1,14 @@
 from pathlib import Path
 import logging
 import yaml
-import ast
+import pkgutil
+import importlib
+import sys
+from traceback import format_exc
 import click
 import docker.errors
 from arcana.data.stores.xnat.cs import XnatViaCS
-from arcana.core.utils import extract_wrapper_specs, resolve_class
+from arcana.core.utils import resolve_class
 
 DOCKER_REGISTRY = 'docker.io'
 
@@ -67,7 +70,7 @@ def build_xnat_wrappers(package_path, registry, loglevel, build_dir, docs):
     for mod_name, spec in extract_wrapper_specs(package_path).items():
         built_images.append(
             XnatViaCS.create_wrapper_image(
-                pkg_name=mod_name[len(org_name) + 1:],
+                pkg_name=mod_name,
                 docker_org=org_name,
                 build_dir=build_dir / mod_name,
                 docker_registry=registry,
@@ -106,6 +109,30 @@ def extract_docker_exec(image_tag):
         executable = image_attrs['Cmd']
 
     print(executable)
+
+
+def extract_wrapper_specs(package_path):
+    package_path = Path(package_path)
+    def error_msg(name):
+        exception = format_exc()
+        logging.error(
+            f"Error attempting to import {name} module.\n\n{exception}")
+
+    # Ensure base package is importable
+    sys.path.append(str(package_path))
+
+    wrapper_specs = {}
+    for _, mod_path, ispkg in pkgutil.walk_packages([package_path],
+                                                    onerror=error_msg):
+        if not ispkg:
+            mod = importlib.import_module(mod_path)
+            try:
+                wrapper_specs[mod.__name__] = mod.spec
+            except AttributeError:
+                logging.warning("No `spec` dictionary found in %s, skipping",
+                                mod_path)
+
+    return wrapper_specs
 
 
 def create_doc(spec, doc_dir, pkg_name):

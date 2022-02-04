@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 from click.testing import CliRunner
-from arcana.entrypoints.wrap4xnat import wrap4xnat
+from arcana.entrypoints.wrap4xnat import build_xnat_wrappers
 
 def test_wrap4xnat():
 
@@ -17,7 +17,7 @@ def test_wrap4xnat():
         f.write(concatenate_module_contents)
 
     runner = CliRunner()
-    result = runner.invoke(wrap4xnat,
+    result = runner.invoke(build_xnat_wrappers,
                            [str(pkg_dir), '--build_dir', str(build_dir)])
     assert result.exit_code == 0
     assert result.output == 'docker.io/arcanatest/wrapper.concatenate:1.0-1\n'
