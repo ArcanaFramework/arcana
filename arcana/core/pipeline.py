@@ -96,6 +96,7 @@ class Pipeline():
 
     def __call__(self, *args, **kwargs):
         self.check_connections()
+        prov = self.generate_provenance(kwargs)
         result = self.wf(*args, **kwargs)
         # Set derivatives as existing
         for node in self.dataset.nodes(self.frequency):
@@ -116,6 +117,31 @@ class Pipeline():
     @property
     def output_names(self):
         return (n for n, _ in self.outputs)
+
+    def generate_provenance(self, additional_args):
+        """
+        Generates provenance information for the pipeline
+
+        Returns
+        -------
+        prov : dict[str, *]
+            A dictionary containing the provenance information to record
+            for the pipeline
+        """
+        dependency_versions = {d: extract_package_version(d)
+                               for d in ARCANA_DEPENDENCIES}
+        pkg_versions = {'arcana': __version__}
+        pkg_versions.update((k, v) for k, v in dependency_versions.items()
+                            if v is not None)
+        prov = {
+            '__prov_version__': self.PROVENANCE_VERSION,
+            'name': self.name,
+            'workflow': wf_dict,
+            'analysis': self.analysis.prov,
+            'pkg_versions': pkg_versions,
+            'python_version': sys.version,
+            'joined_ids': self._joined_ids()}
+        return prov
 
     @classmethod
     def factory(cls, name, dataset, inputs, outputs, frequency=None,
@@ -352,6 +378,9 @@ class Pipeline():
         return pipeline
 
 
+    PROVENANCE_VERSION = '1.0'
+
+
 # def identity(**kwargs):
 #     "Returns the keyword arguments as a tuple"
 #     to_return = tuple(kwargs.values())
@@ -386,10 +415,12 @@ def split_side_car_suffix(name):
     'frequency': DataDimensions,
     'outputs': ty.Sequence[str],
     'requested_ids': ty.Sequence[str] or None,
+    'parameterisation': ty.Dict[str, ty.Any],
     'return': {
         'ids': ty.List[str],
-        'cant_process': ty.List[str]}})
-def to_process(dataset, frequency, outputs, requested_ids):
+        'cant_process': ty.List[str],
+        'provenance': ty.Dict[str, ty.Any]}})
+def to_process(dataset, frequency, outputs, requested_ids, parameterisation):
     if requested_ids is None:
         requested_ids = dataset.node_ids(frequency)
     ids = []
