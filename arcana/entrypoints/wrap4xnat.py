@@ -64,7 +64,7 @@ def build_xnat_wrappers(package_path, registry, loglevel, build_dir, docs):
     org_name = Path(package_path).name
 
     if docs:
-        docs.mkdir(parents=True)
+        docs.mkdir(parents=True, exist_ok=True)
 
     built_images = []
     for mod_name, spec in extract_wrapper_specs(package_path).items():

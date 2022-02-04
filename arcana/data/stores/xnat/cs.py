@@ -565,7 +565,6 @@ class XnatViaCS(Xnat):
         pkg_name = PACKAGE_NAME
         if pkg_extras:
             pkg_name += '[' + ','.join(pkg_extras) + ']'
-        python_packages.append(pkg_name)
         python_packages.extend(re.match(r'([a-zA-Z0-9\-_]+)', r).group(1)
                                for r in install_requires)
 
@@ -580,11 +579,13 @@ class XnatViaCS(Xnat):
 
             try:
                 pkg = next(p for p in pkg_resources.working_set
-                           if p.key == pkg_name)
+                           if p.project_name == pkg_name)
             except StopIteration:
                 raise ArcanaBuildError(
                     f"Did not find {pkg_name} in installed working set:\n"
-                    "\n".join(p.key for p in pkg_resources.working_set))
+                    + "\n".join(sorted(
+                        p.key + '/' + p.project_name
+                        for p in pkg_resources.working_set)))
             pkg_loc = Path(pkg.location).resolve()
             # Determine whether installed version of requirement is locally
             # installed (and therefore needs to be copied into image) or can
