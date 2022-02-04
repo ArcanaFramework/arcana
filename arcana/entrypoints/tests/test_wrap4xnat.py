@@ -6,6 +6,7 @@ from arcana.entrypoints.wrap4xnat import build_xnat_wrappers
 def test_wrap4xnat():
 
     build_dir = Path(tempfile.mkdtemp())
+    docs_dir = Path(tempfile.mkdtemp())
     pkg_dir = Path(tempfile.mkdtemp()) / 'arcanatest'
     sub_pkg_dir = pkg_dir / 'wrapper'
     sub_pkg_dir.mkdir(parents=True)
@@ -18,7 +19,8 @@ def test_wrap4xnat():
 
     runner = CliRunner()
     result = runner.invoke(build_xnat_wrappers,
-                           [str(pkg_dir), '--build_dir', str(build_dir)])
+                           [str(pkg_dir), '--build_dir', str(build_dir),
+                            '--docs', str(docs_dir)])
     assert result.exit_code == 0
     assert result.output == 'docker.io/arcanatest/wrapper.concatenate:1.0-1\n'
 

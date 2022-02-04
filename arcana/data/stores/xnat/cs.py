@@ -584,7 +584,7 @@ class XnatViaCS(Xnat):
             except StopIteration:
                 raise ArcanaBuildError(
                     f"Did not find {pkg_name} in installed working set:\n"
-                    "\n".join(pkg_resources.working_set))
+                    "\n".join(p.key for p in pkg_resources.working_setStopIteration))
             pkg_loc = Path(pkg.location).resolve()
             # Determine whether installed version of requirement is locally
             # installed (and therefore needs to be copied into image) or can
