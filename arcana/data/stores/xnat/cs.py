@@ -578,7 +578,13 @@ class XnatViaCS(Xnat):
             # Split out the package name from the extra installs
             pkg_name = pkg_spec.split('[')[0]
 
-            pkg = next(p for p in pkg_resources.working_set if p.key == pkg_name)
+            try:
+                pkg = next(p for p in pkg_resources.working_set
+                           if p.key == pkg_name)
+            except StopIteration:
+                raise ArcanaBuildError(
+                    f"Did not find {pkg_name} in installed working set:\n"
+                    "\n".join(pkg_resources.working_set))
             pkg_loc = Path(pkg.location).resolve()
             # Determine whether installed version of requirement is locally
             # installed (and therefore needs to be copied into image) or can
