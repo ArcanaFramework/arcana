@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 from click.testing import CliRunner
-from arcana.entrypoints.wrap4xnat import build_xnat_wrappers
+from arcana.cli.wrap4xnat import build_xnat_wrappers
 
 def test_wrap4xnat():
 

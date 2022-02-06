@@ -1,6 +1,8 @@
 import logging
 from abc import abstractmethod, ABCMeta
 import attr
+import yaml
+from arcana.core.utils import get_rc_file_path
 from arcana.exceptions import ArcanaUsageError
 from . import set as set_module
 
@@ -18,8 +20,29 @@ class DataStore(metaclass=ABCMeta):
 
     """
 
+    name: str = attr.ib()
     _connection_depth = attr.ib(default=0, init=False, hash=False, repr=False,
                                 eq=False)
+
+
+    _loaded = {}
+
+    @classmethod
+    def load(cls, name):
+        pass
+
+    @classmethod
+    def remove(cls, store):
+        del cls._loaded[store.name]
+
+    def save(self):
+        DataStore._loaded[self.name] = self
+        
+    @classmethod
+    def _load_rc_file(cls):
+        with open(get_rc_file_path('store')) as f:
+            d = yaml.load(f)
+
 
     def __enter__(self):
         # This allows the store to be used within nested contexts

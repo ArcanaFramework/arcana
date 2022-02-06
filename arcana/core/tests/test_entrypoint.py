@@ -1,4 +1,4 @@
-from arcana.core.entrypoint import MainCmd
+from arcana.core.cli import MainCmd
 
 
 def test_commands():

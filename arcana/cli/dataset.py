@@ -1,83 +1,85 @@
 
 import os
 from importlib import import_module
+import click
 from arcana.data.dimensions.clinical import Clinical
 from arcana.exceptions import ArcanaUsageError
 from arcana.data.stores.file_system import FileSystem
 from arcana.data.stores.xnat import Xnat
 from arcana.data.stores.xnat.cs import XnatViaCS
-from arcana.core.entrypoint import BaseCmd
+from arcana.core.cli import cli
 
 
 XNAT_CACHE_DIR = 'xnat-cache'
 
-class BaseDatasetCmd(BaseCmd):
+@cli.command(help=(
+    "Name of the dataset in the store. For XNAT "
+    "repositories this is the project name, for file-system "
+    "stores this is the path to the root directory"))
+@click.argument('dataset_name')
+@click.option(
+    '--store', '-r', nargs='+', default=['file_system'],
+    metavar='ARG',
+    help=("Specify the store type and any options to be passed to"
+            " it. The first argument is the type of store, either "
+            "'file_system', 'xnat' or 'xnat_cs'. The remaining arguments"
+            " depend on the type of store:\n"
+            "\tfile_system: BASE_DIR\n"
+            "\txnat: SERVER_URL, USERNAME, PASSWORD\n"
+            "\txnat_cs: SUBJECT TIMEPOINT\n"))
+@click.option(
+    '--included', nargs=2, default=[], metavar=('FREQ', 'ID'),
+    action='append',
+    help=("The nodes to include in the dataset. First value is the "
+            "frequency of the ID (e.g. 'group', 'subject', 'session') "
+            "followed by the IDs to be included in the dataset. "
+            "If the second arg contains '/' then it is interpreted as "
+            "the path to a text file containing a list of IDs"))
+@click.option(
+    '--excluded', nargs=2, default=[], metavar=('FREQ', 'ID'),
+    action='append',
+    help=("The nodes to exclude from the dataset. First value is the "
+            "frequency of the ID (e.g. 'group', 'subject', 'session') "
+            "followed by the IDs to be included in the dataset. "
+            "If the second arg contains '/' then it is interpreted as "
+            "the path to a text file containing a list of IDs"))    
+@click.option(
+    '--dataspace', type=str, default='clinical.Clinical',
+    help=("The enum that specifies the data dimensions of the dataset. "
+            "Defaults to `Clinical`, which "
+            "consists of the typical dataset>group>subject>session "
+            "data tree used in clinical trials/studies"))
+@click.option(
+    '--id_inference', nargs=2, metavar=('SOURCE', 'REGEX'),
+    action='append',
+    help="""Specifies how IDs of node frequencies that not explicitly
+provided are inferred from the IDs that are. For example, given a set
+of subject IDs that are a combination of the ID of the group that they belong
+to + their member IDs (i.e. matched test/controls have same member ID), e.g.
+
+CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
+
+the group ID can be extracted by providing the ID to source it from
+(i.e. subject) and a regular expression (in Python regex syntax:
+https://docs.python.org/3/library/re.html) with a named
+groups corresponding to the inferred IDs
+
+--id_inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
+
+""")
+@click.option(
+    '--hierarchy', nargs='+', default=None,
+    help=("The data frequencies that are present in the data tree. "
+            "For some store types this is fixed (e.g. XNAT) but "
+            "for more flexible (e.g. FileSystem) the number of hierarchy "
+            "in the data tree, and what each layer corresponds to, "
+            "needs to specified. Defaults to all the hierarchy in the "
+            "data dimensions"))
+def dataset():
 
     @classmethod
     def construct_parser(cls, parser):
-        parser.add_argument(
-            'dataset_name',
-            help=("Name of the dataset in the store. For XNAT "
-                  "repositories this is the project name, for file-system "
-                  "stores this is the path to the root directory"))    
-        parser.add_argument(
-            '--store', '-r', nargs='+', default=['file_system'],
-            metavar='ARG',
-            help=("Specify the store type and any options to be passed to"
-                  " it. The first argument is the type of store, either "
-                  "'file_system', 'xnat' or 'xnat_cs'. The remaining arguments"
-                  " depend on the type of store:\n"
-                  "\tfile_system: BASE_DIR\n"
-                  "\txnat: SERVER_URL, USERNAME, PASSWORD\n"
-                  "\txnat_cs: SUBJECT TIMEPOINT\n"))
-        parser.add_argument(
-            '--included', nargs=2, default=[], metavar=('FREQ', 'ID'),
-            action='append',
-            help=("The nodes to include in the dataset. First value is the "
-                  "frequency of the ID (e.g. 'group', 'subject', 'session') "
-                  "followed by the IDs to be included in the dataset. "
-                  "If the second arg contains '/' then it is interpreted as "
-                  "the path to a text file containing a list of IDs"))
-        parser.add_argument(
-            '--excluded', nargs=2, default=[], metavar=('FREQ', 'ID'),
-            action='append',
-            help=("The nodes to exclude from the dataset. First value is the "
-                  "frequency of the ID (e.g. 'group', 'subject', 'session') "
-                  "followed by the IDs to be included in the dataset. "
-                  "If the second arg contains '/' then it is interpreted as "
-                  "the path to a text file containing a list of IDs"))    
-        parser.add_argument(
-            '--dataspace', type=str, default='clinical.Clinical',
-            help=("The enum that specifies the data dimensions of the dataset. "
-                  "Defaults to `Clinical`, which "
-                  "consists of the typical dataset>group>subject>session "
-                  "data tree used in clinical trials/studies"))
-        parser.add_argument(
-            '--id_inference', nargs=2, metavar=('SOURCE', 'REGEX'),
-            action='append',
-            help="""Specifies how IDs of node frequencies that not explicitly
-    provided are inferred from the IDs that are. For example, given a set
-    of subject IDs that are a combination of the ID of the group that they belong
-    to + their member IDs (i.e. matched test/controls have same member ID), e.g.
-
-        CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
-
-    the group ID can be extracted by providing the ID to source it from
-    (i.e. subject) and a regular expression (in Python regex syntax:
-    https://docs.python.org/3/library/re.html) with a named
-    groups corresponding to the inferred IDs
-
-        --id_inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
-
-""")
-        parser.add_argument(
-            '--hierarchy', nargs='+', default=None,
-            help=("The data frequencies that are present in the data tree. "
-                  "For some store types this is fixed (e.g. XNAT) but "
-                  "for more flexible (e.g. FileSystem) the number of hierarchy "
-                  "in the data tree, and what each layer corresponds to, "
-                  "needs to specified. Defaults to all the hierarchy in the "
-                  "data dimensions"))
+        
 
     @classmethod
     def get_dataset(cls, args, work_dir):
