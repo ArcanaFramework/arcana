@@ -9,41 +9,50 @@ import click
 import docker.errors
 from arcana.data.stores.xnat.cs import XnatViaCS
 from arcana.core.utils import resolve_class
+from arcana.core.cli import cli
 
 DOCKER_REGISTRY = 'docker.io'
 
+@cli.group()
+def wrapper():
+    pass
 
-@click.command(help="""The relative path to a module in the 'australianimagingservice'
-        package containing a
-        member called `task`, a Pydra task or function that takes a name and
-        inputs and returns a workflow, and another called  `spec`,
-        a dictionary with the following items:
 
-            name : str\n
-                Name of the pipeline\n
-            pydra_task : pydra.task\n
-                The pydra task to be wrapped for the XNAT container service\n
-            inputs : list[XnatViaCS.InputArg or tuple]\n
-                Inputs to be provided to the container\n
-            outputs : list[XnatViaCS.OutputArg or tuple]\n
-                Outputs from the container\n
-            parameters : list[str]\n
-                Parameters to be exposed in the CS command\n
-            description : str\n
-                User-facing description of the pipeline\n
-            version : str\n
-                Version string for the wrapped pipeline\n
-            packages : list[tuple[str, str]]\n
-                Name and version of the Neurodocker requirements to add to the image\n
-            python_packages : list[tuple[str, str]]\n
-                Name and version of the Python PyPI packages to add to the image\n
-            maintainer : str\n
-                The name and email of the developer creating the wrapper (i.e. you)\n
-            info_url : str\n
-                URI explaining in detail what the pipeline does\n
-            frequency : Clinical\n
-                The frequency of the data nodes on which the pipeline operates
-                on (can be either per- 'dataset' or 'session' at the moment)\n""")
+spec_help = """
+        name : str\n
+            Name of the pipeline\n
+        pydra_task : pydra.task\n
+            The pydra task to be wrapped for the XNAT container service\n
+        inputs : list[XnatViaCS.InputArg or tuple]\n
+            Inputs to be provided to the container\n
+        outputs : list[XnatViaCS.OutputArg or tuple]\n
+            Outputs from the container\n
+        parameters : list[str]\n
+            Parameters to be exposed in the CS command\n
+        description : str\n
+            User-facing description of the pipeline\n
+        version : str\n
+            Version string for the wrapped pipeline\n
+        packages : list[tuple[str, str]]\n
+            Name and version of the Neurodocker requirements to add to the image\n
+        python_packages : list[tuple[str, str]]\n
+            Name and version of the Python PyPI packages to add to the image\n
+        maintainer : str\n
+            The name and email of the developer creating the wrapper (i.e. you)\n
+        info_url : str\n
+            URI explaining in detail what the pipeline does\n
+        frequency : Clinical\n
+            The frequency of the data nodes on which the pipeline operates
+            on (can be either per- 'dataset' or 'session' at the moment)
+"""
+
+
+@click.command(name='build-all', help=f"""Build all wrapper images specified
+in sub-modules under the package path.
+
+package_path
+    The file-system path containing the image specifications: Python dictionaries
+    named `spec` in sub-modules with the following keys:{spec_help}""")
 @click.argument('package_path')
 @click.option('--registry', default=DOCKER_REGISTRY,
               help="The Docker registry to deploy the pipeline to")
@@ -53,7 +62,7 @@ DOCKER_REGISTRY = 'docker.io'
               help="Specify the directory to build the Docker image in")
 @click.option('--docs', '-d', default=None, type=Path,
               help="Create markdown documents in output path")
-def build_xnat_wrappers(package_path, registry, loglevel, build_dir, docs):
+def build_all(package_path, registry, loglevel, build_dir, docs):
     """Creates a Docker image that wraps a Pydra task so that it can
     be run in XNAT's container service, then pushes it to AIS's Docker Hub
     organisation for deployment
@@ -79,12 +88,22 @@ def build_xnat_wrappers(package_path, registry, loglevel, build_dir, docs):
         if docs:
             create_doc(spec, docs, mod_name)
 
-    print('\n'.join(built_images))
+    click.echo('\n'.join(built_images))
 
 
-@click.command(help="""Extract the executable from a Docker image""")
+@wrapper.command(help="""Build a wrapper image specified in a module
+
+module_path
+    The file system path to the module to build""")
+@click.argument('module_path')
+def build(module_path):
+    pass
+
+
+@click.command(name='inspect-docker-exec', 
+               help="""Extract the executable from a Docker image""")
 @click.argument('image_tag')
-def extract_docker_exec(image_tag):
+def inspect_docker_exec(image_tag):
     """Pulls a given Docker image tag and inspects the image to get its
     entrypoint/cmd
 
@@ -108,7 +127,7 @@ def extract_docker_exec(image_tag):
     if executable is None:
         executable = image_attrs['Cmd']
 
-    print(executable)
+    click.echo(executable)
 
 
 def extract_wrapper_specs(package_path):
@@ -223,3 +242,4 @@ class MarkdownTable:
 
         # TODO handle new lines in col
         self.f.write("|" + "|".join(col.replace("|", "\\|") for col in cols) + "|\n")
+

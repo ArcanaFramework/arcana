@@ -1,10 +1,10 @@
 import logging
 from abc import abstractmethod, ABCMeta
+from copy import copy
 import attr
 import yaml
-from arcana.core.utils import get_rc_file_path
-from arcana.exceptions import ArcanaUsageError
-from . import set as set_module
+from arcana.core.utils import get_rc_file_path, list_subclasses, resolve_subclass
+from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
 
 logger = logging.getLogger('arcana')
@@ -20,29 +20,89 @@ class DataStore(metaclass=ABCMeta):
 
     """
 
-    name: str = attr.ib()
     _connection_depth = attr.ib(default=0, init=False, hash=False, repr=False,
                                 eq=False)
 
-
-    _loaded = {}
-
-    @classmethod
-    def load(cls, name):
-        pass
+    SAVED_FILENAME = 'stores'
+    _singletons = []
 
     @classmethod
-    def remove(cls, store):
-        del cls._loaded[store.name]
+    def load(cls, name: str):
+        """Loads a DataStore from that has been saved in the 'stores.yml'
+        configuration file
 
-    def save(self):
-        DataStore._loaded[self.name] = self
-        
+        Parameters
+        ----------
+        name
+            Name that the store was saved under
+
+        Returns
+        -------
+        DataStore
+            The data store retrieved from the stores.yml file
+
+        Raises
+        ------
+        ArcanaNameError
+            If the name is not found in the saved stores
+        """
+        with open(get_rc_file_path(cls.SAVED_FILENAME)) as f:
+            entries = yaml.load(f)
+        try:
+            entry = next(e for e in entries if e['name'] == name)
+        except StopIteration:
+            raise ArcanaNameError(
+                name,
+                f"Did not find saved store entry for {name}")
+        import arcana.data.stores
+        store_cls = resolve_subclass(arcana.data.stores, cls, entry.pop('type'))
+        del entry['name']
+        return store_cls(**entry)
+
     @classmethod
-    def _load_rc_file(cls):
-        with open(get_rc_file_path('store')) as f:
-            d = yaml.load(f)
+    def save(cls, name, store):
+        """Saves the configuration of a DataStore in 'stores.yml' 
 
+        Parameters
+        ----------
+        name
+            The name under which to save the data store
+        store : DataStore
+            The DataStore to save
+        """
+        with open(get_rc_file_path(cls.SAVED_FILENAME)) as f:
+            entries = yaml.load(f)
+        for entry in copy(entries):
+            if entry['name'] == name:
+                entries.remove(entry)
+        entries.append(attr.asdict(store))
+        with open(get_rc_file_path(cls.SAVED_FILENAME), 'w') as f:
+            yaml.dump(entries, f)
+
+    @classmethod
+    def singletons(cls):
+        """Return all DataStore sub-classes that can be initialised without any
+        arguments and therefore only need to be instantiated once
+        """
+        singletons = {}
+        import arcana.data.stores
+        for subclass in list_subclasses(arcana.data.stores, cls):
+            try:
+                singleton = subclass()
+            except TypeError:
+                continue
+            else:
+                try:
+                    name = singleton.alias
+                except AttributeError:
+                    name = subclass.__module__ + ':' + subclass.__name__
+                if name in singletons:
+                    raise ArcanaNameError(
+                        name,
+                        f"Found multiple DataStore classes with alias '{name}: "
+                        f"{subclass} and {singletons[name]}")
+                singletons[name] = singleton
+        return singletons 
 
     def __enter__(self):
         # This allows the store to be used within nested contexts
@@ -88,10 +148,8 @@ class DataStore(metaclass=ABCMeta):
                 raise ArcanaUsageError(
                     "'hierarchy' kwarg must be specified for datasets in "
                     f"{type(self)} stores")
-        return set_module.Dataset(name,
-                                  store=self,
-                                  hierarchy=hierarchy,
-                                  **kwargs)
+        from arcana.core.data.set import Dataset  # avoid circular imports
+        return Dataset(name, store=self, hierarchy=hierarchy, **kwargs)
 
     @abstractmethod
     def find_nodes(self, dataset):

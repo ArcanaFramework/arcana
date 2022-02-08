@@ -76,6 +76,8 @@ class XnatViaCS(Xnat):
     password: str = attr.ib()
 
 
+    alias = 'xnat_via_cs'
+
     @server.default
     def server_default(self):
         server = os.environ['XNAT_HOST']

@@ -74,7 +74,7 @@ class Xnat(DataStore):
     _cached_datasets: ty.Dict[str, Dataset]= attr.ib(factory=dict, init=False)
     _login = attr.ib(default=None, init=False)
 
-    type = 'xnat'
+    alias = 'xnat'
     MD5_SUFFIX = '.md5.json'
     PROV_SUFFIX = '.__prov__.json'
     FIELD_PROV_RESOURCE = '__provenance__'

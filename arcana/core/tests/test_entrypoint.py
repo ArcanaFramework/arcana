@@ -1,6 +1,5 @@
-from arcana.core.cli import MainCmd
+# from arcana.core.cli import MainCmd
 
 
-def test_commands():
-    assert sorted(MainCmd.commands) == ['help', 'run']
-
+# def test_commands():
+#     assert sorted(MainCmd.commands) 

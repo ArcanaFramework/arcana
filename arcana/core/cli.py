@@ -2,7 +2,7 @@ import click
 
 
 # Define the base CLI entrypoint
-@click.group
+@click.group()
 def cli():
     pass
 

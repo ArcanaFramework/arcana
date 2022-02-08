@@ -291,6 +291,8 @@ class BidsFormat(FileSystem):
     """Repository for working with data stored on the file-system in BIDS format 
     """
 
+    alias = "bids"
+
     def find_nodes(self, dataset: BidsDataset):
         """
         Find all nodes within the dataset stored in the store and

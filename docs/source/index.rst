@@ -39,7 +39,7 @@ User/Developer Guide
     :maxdepth: 2
 
     installation
-    design
+    data_access
     example
 
 
