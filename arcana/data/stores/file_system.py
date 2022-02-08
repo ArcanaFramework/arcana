@@ -36,7 +36,7 @@ class FileSystem(DataStore):
 
     """
 
-    alias = 'file_system'
+    alias = 'file'
     PROV_SUFFIX = '.prov'
     FIELDS_FNAME = '__fields__.json'
     LOCK_SUFFIX = '.lock'

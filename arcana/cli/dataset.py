@@ -17,23 +17,26 @@ def dataset():
     pass
 
 
-@dataset.command(help=("""Define a dataset in a data store
+@dataset.command(help=("""Define the tree structure and IDs to include in a
+dataset. Where possible, the definition file is saved inside the dataset for
+use by multiple users, if not possible it is stored in the ~/.arcana directory.
 
+store
+    The name data store the dataset is located in (see 'arcana store' command).
+    For basic file system directories use 'file', and bids-formatted directories
+    use 'bids'.
 id
     ID of the dataset in the data store. For XNAT repositories this is the
-    project ID, for file-system stores this is the path to the root directory
-store
-    The data store in the dataset is stored in
+    project ID, for file-system directories this is the path to the rdirectory
 hierarchy
     The data frequencies that are present in the data tree. "
-    For some store types this is fixed (e.g. XNAT) but "
-    for more flexible (e.g. FileSystem) the number of hierarchy "
-    in the data tree, and what each layer corresponds to, "
-    needs to specified. Defaults to all the hierarchy in the "
-    data dimensions"
+    For some store types this is fixed (e.g. XNAT-> subject > session) but "
+    for more flexible (e.g. FileSystem), which dimension each layer of
+    sub-directories corresponds to can be arbitrarily specified. dimensions
+    "
 """))
-@click.argument('id')
 @click.argument('store')
+@click.argument('id')
 @click.argument('hierarchy', nargs=-1)
 @click.option(
     '--included', nargs=2, default=[], metavar=('FREQ', 'ID'),
@@ -52,7 +55,7 @@ hierarchy
           "If the second arg contains '/' then it is interpreted as "
           "the path to a text file containing a list of IDs"))    
 @click.option(
-    '--dataspace', type=str, default='clinical.Clinical',
+    '--dimensions', type=str, default='clinical.Clinical',
     help=("The enum that specifies the data dimensions of the dataset. "
           "Defaults to `Clinical`, which "
           "consists of the typical dataset>group>subject>session "
@@ -81,7 +84,7 @@ groups corresponding to the inferred IDs
           "directory/project (e.g. with different sub-sets of subjects)."))
 def define(id, store, hierarchy):
 
-    dimensions = cls.parse_dataspace(args)
+    dimensions = cls.parse_dimensions(args)
     hierarchy = [dimensions[l]
                     for l in args.hierarchy] if args.hierarchy else None
     
@@ -158,23 +161,6 @@ new_name
 @click.argument('new_name')
 def rename(old_name, new_name):
     pass
-
-
-def parse_dataspace(args):
-    parts = args.dataspace.split('.')
-    if len(parts) < 2:
-        raise ArcanaUsageError(
-            f"Value provided to '--dataspace' arg ({args.dataspace}) "
-            "needs to include module, either relative to "
-            "'arcana.dataspaces' (e.g. clinical.Clinical) or an "
-            "absolute path")
-    module_path = '.'.join(parts[:-1])
-    cls_name = parts[-1]
-    try:
-        module = import_module('arcana.data.dimensions.' + module_path)
-    except ImportError:
-        module = import_module(module_path)
-    return getattr(module, cls_name)
 
 
 def optional_args(names, args):
