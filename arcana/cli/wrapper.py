@@ -47,7 +47,7 @@ spec_help = """
 """
 
 
-@click.command(name='build-all', help=f"""Build all wrapper images specified
+@wrapper.command(name='build-all', help=f"""Build all wrapper images specified
 in sub-modules under the package path.
 
 package_path

@@ -24,19 +24,20 @@ id
     project ID, for file-system stores this is the path to the root directory
 store
     The data store in the dataset is stored in
+hierarchy
+    The data frequencies that are present in the data tree. "
+    For some store types this is fixed (e.g. XNAT) but "
+    for more flexible (e.g. FileSystem) the number of hierarchy "
+    in the data tree, and what each layer corresponds to, "
+    needs to specified. Defaults to all the hierarchy in the "
+    data dimensions"
 """))
 @click.argument('id')
 @click.argument('store')
-@click.argument('hierarchy', nargs=-1, default=[],
-    help=("The data frequencies that are present in the data tree. "
-          "For some store types this is fixed (e.g. XNAT) but "
-          "for more flexible (e.g. FileSystem) the number of hierarchy "
-          "in the data tree, and what each layer corresponds to, "
-          "needs to specified. Defaults to all the hierarchy in the "
-          "data dimensions"))
+@click.argument('hierarchy', nargs=-1)
 @click.option(
     '--included', nargs=2, default=[], metavar=('FREQ', 'ID'),
-    action='append',
+    multiple=True,
     help=("The nodes to include in the dataset. First value is the "
            "frequency of the ID (e.g. 'group', 'subject', 'session') "
            "followed by the IDs to be included in the dataset. "
@@ -44,7 +45,7 @@ store
            "the path to a text file containing a list of IDs"))
 @click.option(
     '--excluded', nargs=2, default=[], metavar=('FREQ', 'ID'),
-    action='append',
+    multiple=True,
     help=("The nodes to exclude from the dataset. First value is the "
           "frequency of the ID (e.g. 'group', 'subject', 'session') "
           "followed by the IDs to be included in the dataset. "
@@ -58,7 +59,7 @@ store
           "data tree used in clinical trials/studies"))
 @click.option(
     '--id_inference', nargs=2, metavar=('SOURCE', 'REGEX'),
-    action='append',
+    multiple=True,
     help="""Specifies how IDs of node frequencies that not explicitly
 provided are inferred from the IDs that are. For example, given a set
 of subject IDs that are a combination of the ID of the group that they belong

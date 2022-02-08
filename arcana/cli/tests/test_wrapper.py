@@ -1,7 +1,7 @@
 import tempfile
 from pathlib import Path
 from click.testing import CliRunner
-from arcana.cli.wrapper import build_xnat_wrappers
+from arcana.cli.wrapper import build_all
 
 def test_wrap4xnat():
 
@@ -18,7 +18,7 @@ def test_wrap4xnat():
         f.write(concatenate_module_contents)
 
     runner = CliRunner()
-    result = runner.invoke(build_xnat_wrappers,
+    result = runner.invoke(build_all,
                            [str(pkg_dir), '--build_dir', str(build_dir),
                             '--docs', str(docs_dir)])
     assert result.exit_code == 0

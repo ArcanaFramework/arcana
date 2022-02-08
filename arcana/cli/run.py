@@ -12,7 +12,6 @@ from arcana.core.data.dimensions import DataDimensions
 from arcana.core.data.enum import DataQuality
 from arcana import __version__
 from arcana.tasks.bids import construct_bids, extract_bids, bids_app
-from .dataset import BaseDatasetCmd
 from arcana.core.utils import (
     resolve_class, resolve_datatype, list_instances, set_loggers)
 
