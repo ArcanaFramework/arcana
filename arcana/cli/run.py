@@ -58,10 +58,10 @@ pydra_task
                     + JSON side-car required for BIDS 
 
     The 3rd argument to the input contains the criteria used to match the
-    input and can contain any combination of PATH, FORMAT, ORDER and QUALITY
-    separated by ':'. Criteria that are not needed can be omitted, e.g.
-    to select the fist scan of the session with usable quality the following
-    value,
+    input and can contain any combination of PATH, FORMAT, ORDER, QUALITY,
+    METADATA and FREQUENCY separated by ':'. Criteria that are not needed can
+    be omitted, e.g. to select the fist scan of the session with usable quality
+    the following value,
 
         ::1:usable
 
@@ -78,15 +78,15 @@ pydra_task
     QUALITY is the the minimum usuable quality to be considered for a match.
     Can be one of 'usable', 'questionable' or 'unusable'
 
-    semicolon-separated list of header_vals values
-                    in NAME:VALUE form. For DICOM headers
+    METADATA semicolon-separated list of header_vals values
+                    in NAME=VALUE form. For DICOM headers
                     NAME is the numeric values of the DICOM tag, e.g
                     (0008,0008) -> 00080008
-        frequency - The frequency of the file-group within the dataset.
-                    Can be either 'dataset', 'group', 'subject',
-                    'timepoint', 'session', 'unique_subject', 'group_visit'
-                    or 'subject_timepoint'. Typically only required for
-                    derivatives
+    FREQUENCY The frequency of the file-group within the dataset.
+    Can be either 'dataset', 'group', 'subject',
+    'timepoint', 'session', 'unique_subject', 'group_visit'
+    or 'subject_timepoint'. Typically only required for
+    derivatives
 
     Trailing args can be dropped if default, 
 
