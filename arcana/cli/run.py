@@ -200,7 +200,7 @@ def _datatype_from_path(path, default, datatype_name=None):
     return path, datatype
 
 
-def add_input_sources(dataset, inputs, frequency):
+def add_input_sources(dataset, inputs, default_frequency):
     """Parses input arguments into dictionary of DataSources
 
     Parameters
@@ -229,10 +229,12 @@ def add_input_sources(dataset, inputs, frequency):
     for name, input_datatype_str, criteria in inputs:
         parts = criteria.split(':')
         (pattern, stored_datatype_str,
-         order, quality_threshold, metadata) = parts + [None] * (5 - len(parts))
+         order, quality_threshold, metadata, frequency) = parts + [None] * (6 - len(parts))
         input_datatype = resolve_datatype(input_datatype_str)
         pattern, stored_datatype = _datatype_from_path(pattern, input_datatype,
                                                        stored_datatype_str)
+        if frequency is None:
+            frequency = default_frequency
         dataset.add_source(
             name=name,
             path=pattern,
