@@ -5,6 +5,7 @@ from pathlib import Path
 import typing as ty
 from glob import glob
 import time
+import tempfile
 import logging
 import errno
 import json
@@ -80,6 +81,43 @@ class Xnat(DataStore):
     FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
     DEFAULT_HIERARCHY = [Clinical.subject, Clinical.session]
+    METADATA_RESOURCE = '__arcana__'
+
+
+    def save_dataset_metadata(self, dataset, metadata,
+                              name=DataStore.DEFAULT_DATASET_NAME):
+        with self:
+            root_xnode = self.get_xnode(dataset.root)
+            try:
+                xresource = root_xnode.resources[self.METADATA_RESOURCE]
+            except KeyError:
+                # Create the new resource for the file_group
+                xresource = self.login.classes.ResourceCatalog(
+                    parent=root_xnode, label=self.METADATA_RESOURCE,
+                    format='json')
+            metadata_file = Path(tempfile.mkdtemp()) / name + '.json'
+            with open(metadata_file, 'w') as f:
+                json.dump(metadata, f)
+            xresource.upload(str(metadata_file), name + '.json')
+
+    def load_dataset_metadata(self, dataset_id,
+                              name=DataStore.DEFAULT_DATASET_NAME):
+        with self:
+            root_xnode = self.get_xnode(self.dataset(dataset_id).root)
+            try:
+                xresource = root_xnode.resources[self.METADATA_RESOURCE]
+            except KeyError:
+                metadata = None
+            else:
+                download_dir = Path(tempfile.mkdtemp())
+                xresource.download_dir(download_dir)
+                fpath = download_dir / name + '.json'
+                if fpath.exists():
+                    with open(fpath) as f:
+                        metadata = json.load(f)
+                else:
+                    metadata = None
+        return metadata
 
     @property
     def prov(self):
@@ -120,6 +158,12 @@ class Xnat(DataStore):
     def disconnect(self):
         self.login.disconnect()
         self._login = None
+
+    def save(self, dataset):
+        pass
+
+    def load(self, name=None):
+        pass
 
     def find_nodes(self, dataset: Dataset, **kwargs):
         """

@@ -42,13 +42,30 @@ class FileSystem(DataStore):
     LOCK_SUFFIX = '.lock'
     PROV_KEY = '__provenance__'
     VALUE_KEY = '__value__'
+    METADATA_DIR = '.arcana'
     
-    def dataset(self, name, *args, **kwargs):
-        name = Path(name)
-        if not name.exists():
+    def dataset(self, id, *args, **kwargs):
+        path = Path(id)
+        if not path.exists():
             raise ArcanaUsageError(
-                f"Path to dataset root '{str(name)}'' does not exist")
-        return super().dataset(name, *args, **kwargs)        
+                f"Path to dataset root '{str(path)}'' does not exist")
+        return super().dataset(path, *args, **kwargs)
+
+    def save_dataset_metadata(self, dataset_id, metadata, name):
+        with open(self._metadata_fpath(dataset_id, name), 'w') as f:
+            json.dump(metadata, f)
+
+    def load_dataset_metadata(self, dataset_id, name):
+        fpath = self._metadata_fpath(dataset_id, name)
+        if fpath.exists():
+            with open(fpath) as f:
+                metadata = json.load(f)
+        else:
+            metadata = None
+        return metadata
+
+    def _metadata_fpath(self, dataset_id, name):
+        return Path(dataset_id) / self.METADATA_DIR / name + '.json'
 
     @property
     def provenance(self):

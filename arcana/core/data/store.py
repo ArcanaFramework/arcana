@@ -1,9 +1,11 @@
 import logging
 from abc import abstractmethod, ABCMeta
-from copy import copy
+import inspect
 import attr
+import typing as ty
 import yaml
-from arcana.core.utils import get_rc_file_path, list_subclasses, resolve_subclass
+from arcana.core.utils import (
+    get_config_file_path, list_subclasses, resolve_class, class_location)
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
 
@@ -23,111 +25,18 @@ class DataStore(metaclass=ABCMeta):
     _connection_depth = attr.ib(default=0, init=False, hash=False, repr=False,
                                 eq=False)
 
-    SAVED_FILENAME = 'stores'
-    _singletons = []
+    CONFIG_NAME = 'stores'
+    DEFAULT_DATASET_NAME = 'default'
 
-    @classmethod
-    def load(cls, name: str):
-        """Loads a DataStore from that has been saved in the 'stores.yml'
-        configuration file
-
-        Parameters
-        ----------
-        name
-            Name that the store was saved under
-
-        Returns
-        -------
-        DataStore
-            The data store retrieved from the stores.yml file
-
-        Raises
-        ------
-        ArcanaNameError
-            If the name is not found in the saved stores
-        """
-        with open(get_rc_file_path(cls.SAVED_FILENAME)) as f:
-            entries = yaml.load(f)
-        try:
-            entry = next(e for e in entries if e['name'] == name)
-        except StopIteration:
-            raise ArcanaNameError(
-                name,
-                f"Did not find saved store entry for {name}")
-        import arcana.data.stores
-        store_cls = resolve_subclass(arcana.data.stores, cls, entry.pop('type'))
-        del entry['name']
-        return store_cls(**entry)
-
-    @classmethod
-    def save(cls, name, store):
-        """Saves the configuration of a DataStore in 'stores.yml' 
-
-        Parameters
-        ----------
-        name
-            The name under which to save the data store
-        store : DataStore
-            The DataStore to save
-        """
-        with open(get_rc_file_path(cls.SAVED_FILENAME)) as f:
-            entries = yaml.load(f)
-        for entry in copy(entries):
-            if entry['name'] == name:
-                entries.remove(entry)
-        entries.append(attr.asdict(store))
-        with open(get_rc_file_path(cls.SAVED_FILENAME), 'w') as f:
-            yaml.dump(entries, f)
-
-    @classmethod
-    def singletons(cls):
-        """Return all DataStore sub-classes that can be initialised without any
-        arguments and therefore only need to be instantiated once
-        """
-        singletons = {}
-        import arcana.data.stores
-        for subclass in list_subclasses(arcana.data.stores, cls):
-            try:
-                singleton = subclass()
-            except TypeError:
-                continue
-            else:
-                try:
-                    name = singleton.alias
-                except AttributeError:
-                    name = subclass.__module__ + ':' + subclass.__name__
-                if name in singletons:
-                    raise ArcanaNameError(
-                        name,
-                        f"Found multiple DataStore classes with alias '{name}: "
-                        f"{subclass} and {singletons[name]}")
-                singletons[name] = singleton
-        return singletons 
-
-    def __enter__(self):
-        # This allows the store to be used within nested contexts
-        # but still only use one connection. This is useful for calling
-        # methods that need connections, and therefore control their
-        # own connection, in batches using the same connection by
-        # placing the batch calls within an outer context.
-        if self._connection_depth == 0:
-            self.connect()
-        self._connection_depth += 1
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._connection_depth -= 1
-        if self._connection_depth == 0:
-            self.disconnect()
-
-    def dataset(self, name, hierarchy=None, **kwargs):
+    def dataset(self, id, hierarchy=None, name=DEFAULT_DATASET_NAME, **kwargs):
         """
         Returns a dataset from the XNAT repository
 
         Parameters
         ----------
-        name : str
-            The name, path or ID of the dataset within the store
+        id : str
+            The ID (or file-system path) of the project (or directory) within
+            the store
         sources : Dict[Str, DataSource]
             A dictionary that maps "name-paths" of input "columns" in the
             dataset to criteria in a Selector object that select the
@@ -148,8 +57,21 @@ class DataStore(metaclass=ABCMeta):
                 raise ArcanaUsageError(
                     "'hierarchy' kwarg must be specified for datasets in "
                     f"{type(self)} stores")
-        from arcana.core.data.set import Dataset  # avoid circular imports
-        return Dataset(name, store=self, hierarchy=hierarchy, **kwargs)
+        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
+        metadata = self.load_dataset_metadata(id, name)
+        if metadata is None:
+            dataset = Dataset(id, store=self, hierarchy=hierarchy, **kwargs)
+        else:
+            if hierarchy is not None or kwargs:
+                raise ArcanaUsageError(
+                    f"Existing dataset defined for '{name}', to update metadata "
+                    f"please edit it instead attempting to create new dataset "
+                    "with the same name")
+            dataset = Dataset.load(id, self, metadata)
+        return dataset
+        
+            
+    
 
     @abstractmethod
     def find_nodes(self, dataset):
@@ -163,6 +85,7 @@ class DataStore(metaclass=ABCMeta):
             The dataset to populate with nodes
         """
 
+    @abstractmethod
     def find_items(self, data_node):
         """
         Find all data items within a data node and populate the DataNode object
@@ -239,13 +162,30 @@ class DataStore(metaclass=ABCMeta):
         field : Field
             The field to insert into the store
         """
+        
+    @abstractmethod
+    def save_dataset_metadata(self, dataset_id: str,
+                              metadata: ty.Dict[str, ty.Any], name: str):
+        """Save metadata associated with the dataset in the store
+
+        Parameters
+        ----------
+        dataset_id
+            The ID/path of the dataset within the store
+        metadata
+            A dictionary 
+            """
+
+    @abstractmethod
+    def load_dataset_metadata(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
+        """Load metadata associated with the dataset in the store"""        
 
     def get_checksums(self, file_group):
         """
-        Returns the checksums for the files in the file_group that are stored
-        in the store. If no checksums are stored in the store then
-        this method should be left to return None and the checksums will be
-        calculated by downloading the files and taking calculating the digests
+        Override this method to return checksums for files that are stored
+        with remote files (e.g. in XNAT). If no checksums are stored in the
+        store then just leave this method to just access the file and
+        recalculate them.
 
         Parameters
         ----------
@@ -264,21 +204,127 @@ class DataStore(metaclass=ABCMeta):
 
     def connect(self):
         """
-        If a connection session is required to the store,
-        manage it here
+        If a connection session is required to the store manage it here
         """
 
     def disconnect(self):
         """
-        If a connection session is required to the store,
-        manage it here
+        If a connection session is required to the store manage it here
         """
 
-    # @abstractmethod
-    # def save(self, dataset):
-    #     """Save metadata associated with the dataset in the store"""
+    @classmethod
+    def save(cls, name: str, store):
+        """Saves the configuration of a DataStore in 'stores.yml' 
 
+        Parameters
+        ----------
+        name
+            The name under which to save the data store
+        store : DataStore
+            The DataStore to save
+        """
+        entries = cls._load_saved()
+        entries[name] = attr.asdict(store)
+        entries[name] = class_location(store)
+        cls._save_loaded(entries)
 
-    # @abstractmethod
-    # def load(self, dataset):
-    #     """Load metadata associated with the dataset in the store"""
+    @classmethod
+    def remove(cls, name: str):
+        """Removes the entry saved under 'name' in the config file
+
+        Parameters
+        ----------
+        name
+            Name of the configuration to remove
+        """
+        entries = cls._load_saved()
+        del entries[name]
+        cls._save_loaded(entries)
+
+    @classmethod
+    def load(cls, name: str):
+        """Loads a DataStore from that has been saved in the configuration file.
+        If no entry is saved under that name, then it searches for DataStore
+        sub-classes with aliases matching `name` and checks whether they can
+        be initialised without any parameters.
+
+        Parameters
+        ----------
+        name
+            Name that the store was saved under
+
+        Returns
+        -------
+        DataStore
+            The data store retrieved from the stores.yml file
+
+        Raises
+        ------
+        ArcanaNameError
+            If the name is not found in the saved stores
+        """
+        entries = cls._load_saved()
+        try:
+            entry = entries[name]
+        except KeyError:
+            # If not saved in the configuration file search for sub-classes
+            # whose alias matches `name` and can be initialised without params
+            import arcana.data.stores
+            try:
+                store_cls = next(
+                    c for c in list_subclasses(arcana.data.stores, DataStore)
+                    if c.get_alias() == name)
+            except StopIteration:
+                raise ArcanaNameError(
+                    name, f"Did not find saved store entry for {name}")
+            else:
+                try:
+                    store = store_cls()
+                except TypeError:
+                    raise ArcanaNameError(
+                        name,
+                        f"Found DataStore type {store_cls} that matches "
+                        f"'{name}' alias but it can't be initialised without "
+                        f"any parameters ({inspect.signature(store_cls)}")
+        else:
+            store = resolve_class(entry.pop('type'))(**entry)
+        return store
+
+    @classmethod
+    def _load_saved(cls):
+        fpath = get_config_file_path(cls.CONFIG_NAME)
+        if fpath.exists():
+            with open(fpath) as f:
+                entries = yaml.load(f)
+        else:
+            entries = {}
+        return entries
+
+    @classmethod
+    def _save_loaded(cls, entries):
+        with open(get_config_file_path(cls.CONFIG_NAME), 'w') as f:
+            yaml.dump(entries, f)
+
+    def __enter__(self):
+        # This allows the store to be used within nested contexts
+        # but still only use one connection. This is useful for calling
+        # methods that need connections, and therefore control their
+        # own connection, in batches using the same connection by
+        # placing the batch calls within an outer context.
+        if self._connection_depth == 0:
+            self.connect()
+        self._connection_depth += 1
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._connection_depth -= 1
+        if self._connection_depth == 0:
+            self.disconnect()
+
+    @classmethod
+    def get_alias(cls):
+        try:
+            alias = cls.alias
+        except AttributeError:
+            alias = cls.__name__.lower()
+        return alias

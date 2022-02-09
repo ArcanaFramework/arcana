@@ -27,7 +27,7 @@ RC_DIRECTORY = '.arcana'
 DOCKER_HUB = 'https://index.docker.io/v1/'
 ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
 
-def get_rc_file_path(name: str):
+def get_config_file_path(name: str):
     """Gets the file path for the configuration file corresponding to `name`
 
     Parameters
@@ -143,6 +143,7 @@ def set_loggers(loglevel, pydra_level='warning', depend_level='warning'):
     # set logging format
     logging.basicConfig(level=parse(depend_level))
 
+
 def to_list(arg):
     if arg is None:
         arg = []
@@ -159,9 +160,16 @@ def to_dict(arg):
     return arg
 
 
+
+def class_location(obj):
+    """Records the location of a class so it can be loaded later using 
+    `resolve_class`, in the format <module-name>:<class-name>"""
+    return obj.__module__ + ':' + obj.__name__
+
+
 def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     """
-    Resolves a class from the '.' delimted module + class name string
+    Resolves a class from a location string in the format "<module-name>:<class-name>"
 
     Parameters
     ----------

@@ -116,7 +116,19 @@ class Dataset():
     workflows: ty.Dict[str, Workflow] = attr.ib(factory=dict, repr=False)
     access_args: ty.Dict[str, ty.Any] = attr.ib(factory=dict)
     _root_node: DataNode = attr.ib(default=None, init=False, repr=False,
-                                   eq=False)  
+                                   eq=False)
+
+    EXCLUDE_METADATA = ('id', 'store', '_root_node', 'column_specs', 'workflows')
+
+    def save(self):
+        """Save metadata in project definition file for future reference"""
+        metadata = attr.asdict(
+            self, filter=lambda a, _: a.name not in self.EXCLUDE_METADATA)
+        self.store.save_dataset_metadata(self, metadata)
+
+    @classmethod
+    def load(cls, id, store, metadata):
+        return cls(id, store, **metadata)
 
     @column_specs.validator
     def column_specs_validator(self, _, column_specs):

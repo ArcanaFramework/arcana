@@ -9,39 +9,50 @@ def store():
     pass
 
 
-@store.command("""Adds a new store to the Arcana configuration
-    Usage
-    ----
-    name
-        The name given to the store for reference in other commands
-    type
-        The storage class and the module it is defined in, e.g.
-        `arcana.data.store.xnat:Xnat`
-    location
-        The location of the store, e.g. server address
+@store.command("""Saves the details for a new data store in the configuration
+file ('~/.arcana/stores.yml').
+
+Arguments
+---------
+nickname
+    The name given to the store for reference in other commands
+type
+    The storage class and the module it is defined in, e.g.
+    `arcana.data.store.xnat:Xnat`
+location
+    The location of the store, e.g. server address
 """)
-@click.argument('name')
+@click.argument('nickname')
 @click.argument('type')
-@click.argument('address')
-def add(name, type, address):
+@click.argument('location')
+@click.argument('varargs', nargs=-1)
+def add(nickname, type, location, varargs):
     store_cls = resolve_class(type)
-    store = store_cls(address)
-    DataStore.save(name, store)
+    store = store_cls(location, *varargs)
+    DataStore.save(nickname, store)
 
 
 @store.command(help="""
-Renames a data store saved in the stores.yml to a new name
+Gives a data store saved in the config file ('~/.arcana/stores.yml') a new
+nickname
 
-old_name
+Arguments
+---------
+old_nickname
     The current name of the store
-new_name
+new_nickname
     The new name for the store""")
-@click.argument('old_name')
-@click.argument('new_name')
-def rename(old_name, new_name):
-    DataStore.save(new_name,  DataStore.load(old_name))
+@click.argument('old_nickname')
+@click.argument('new_nickname')
+def rename(old_nickname, new_nickname):
+    DataStore.save(new_nickname,  DataStore.load(old_nickname))
 
 
-@store.command()
-def remove(name):
-    DataStore.remove(name)
+@store.command("""Remove a saved data store from the config file
+
+Arguments
+---------
+nickname
+    The nickname the store was given when its details were saved""")
+def remove(nickname):
+    DataStore.remove(nickname)
