@@ -1,7 +1,8 @@
 import typing as ty
+import re
 from operator import __or__
 from enum import Enum
-
+from arcana.core.utils import class_location, resolve_class
 
 class DataDimensions(Enum):
     """
@@ -161,3 +162,11 @@ class DataDimensions(Enum):
             True if self is parent of child
         """
         return ((self & child) == self) and (child != self or if_match)
+
+    def tostr(self):
+        return f'{class_location(self)}[{str(self)}]'
+
+    @classmethod
+    def fromstr(cls, s):
+        class_loc, val = re.match(r'(.*)\[([^\]]+)\]', s).groups()
+        return resolve_class(class_loc)[val]

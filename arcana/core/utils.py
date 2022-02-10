@@ -22,10 +22,17 @@ PATH_SUFFIX = '_path'
 FIELD_SUFFIX = '_field'
 CHECKSUM_SUFFIX = '_checksum'
 
-RC_DIRECTORY = '.arcana'
+ARCANA_HOME_DIR = Path.home() / '.arcana'
 
 DOCKER_HUB = 'https://index.docker.io/v1/'
 ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
+
+
+def get_home_dir():
+    if not ARCANA_HOME_DIR.exists():
+        ARCANA_HOME_DIR.mkdir()
+    return ARCANA_HOME_DIR
+
 
 def get_config_file_path(name: str):
     """Gets the file path for the configuration file corresponding to `name`
@@ -40,10 +47,7 @@ def get_config_file_path(name: str):
     Path
         Path to configuration file
     """
-    rc_dir = Path.home() / RC_DIRECTORY
-    if not rc_dir.exists():
-        rc_dir.mkdir()
-    return rc_dir / name + '.yml'
+    return get_home_dir() / name + '.yml'
 
 
 def path2name(path):

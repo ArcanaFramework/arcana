@@ -39,7 +39,7 @@ User/Developer Guide
     :maxdepth: 2
 
     installation
-    data_access
+    data_model
     example
 
 

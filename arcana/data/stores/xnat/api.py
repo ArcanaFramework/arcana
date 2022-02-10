@@ -688,10 +688,6 @@ class Xnat(DataStore):
             # xresource = xnode.create_resource(format_name)
         xresource.upload(cache_path, fname)
 
-    def get_direct_mount(self, data_node: DataNode):
-        mounts = data_node.dataset.access_args['mounts']
-        return mounts[(data_node.frequency, data_node.id)]
-
 def append_suffix(path, suffix):
     "Appends a string suffix to a Path object"
     return Path(str(path) + suffix)

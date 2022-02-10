@@ -81,9 +81,6 @@ class Dataset():
 
             id_inference=[(Clinical.subject,
                            r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')}
-
-        Alternatively, a general function with signature `f(ids)` that returns
-        a dictionary with the mapped IDs can be provided instead.
     column_specs : Dict[str, DataSource or DataSink]
         The sources and sinks to be initially added to the dataset (columns are
         explicitly added when workflows are applied to the dataset).
@@ -105,30 +102,49 @@ class Dataset():
     id: str = attr.ib()
     store: store.DataStore = attr.ib()
     hierarchy: ty.List[DataDimensions] = attr.ib()
-    id_inference: (ty.Dict[DataDimensions, str] or ty.Callable) = attr.ib(
+    id_inference: ty.Dict[DataDimensions, str] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
-    column_specs: ty.Optional[ty.Dict[str, ty.Union[DataSource, DataSink]]] = attr.ib(
-        factory=dict, converter=default_if_none(factory=dict), repr=False)
     included: ty.Dict[DataDimensions, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     excluded: ty.Dict[DataDimensions, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    workflows: ty.Dict[str, Workflow] = attr.ib(factory=dict, repr=False)
-    access_args: ty.Dict[str, ty.Any] = attr.ib(factory=dict)
+    column_specs: ty.Optional[ty.Dict[str, ty.Union[DataSource, DataSink]]] = attr.ib(
+        factory=dict, converter=default_if_none(factory=dict), repr=False)
+    workflows: ty.Dict[str, Workflow] = attr.ib(
+        factory=dict, converter=default_if_none(factory=dict), repr=False)
     _root_node: DataNode = attr.ib(default=None, init=False, repr=False,
                                    eq=False)
 
-    EXCLUDE_METADATA = ('id', 'store', '_root_node', 'column_specs', 'workflows')
+    
+    EXCLUDE_METADATA = ('id', 'store', '_root_node', 'column_specs',
+                        'workflows')
 
-    def save(self):
+    DEFAULT_NAME = 'default'
+
+    def save(self, name=None):
         """Save metadata in project definition file for future reference"""
-        metadata = attr.asdict(
-            self, filter=lambda a, _: a.name not in self.EXCLUDE_METADATA)
-        self.store.save_dataset_metadata(self, metadata)
+        # TODO: column_specs and workflows should be included ideally
+        metadata = {
+            'hierarchy': [h.tostr() for h in self.hierarchy],
+            'id_inference': {k.tostr(): v for k, v in self.id_inference.items()},
+            'included': {k.tostr(): v for k, v in self.included.items()},
+            'excluded': {k.tostr(): v for k, v in self.excluded.items()}}
+        if name is None:
+            name = self.DEFAULT_NAME
+        self.store.save_dataset_metadata(self, metadata, name=name)
 
     @classmethod
-    def load(cls, id, store, metadata):
-        return cls(id, store, **metadata)
+    def load_from_metadata(cls, id, store, metadata):
+        kwargs = {
+            'hierarchy': [DataDimensions.fromstr(h)
+                          for h in metadata['hierarchy']],
+            'id_inference': {DataDimensions.fromstr(k): v
+                             for k, v in metadata['id_inference'].items()},
+            'included': {DataDimensions.fromstr(k): v
+                         for k, v in metadata['included'].items()},
+            'excluded': {DataDimensions.fromstr(k): v
+                         for k, v in metadata['excluded'].items()}}
+        return cls(id, store, **kwargs)
 
     @column_specs.validator
     def column_specs_validator(self, _, column_specs):

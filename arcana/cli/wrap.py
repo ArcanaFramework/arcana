@@ -14,7 +14,7 @@ from arcana.core.cli import cli
 DOCKER_REGISTRY = 'docker.io'
 
 @cli.group()
-def wrapper():
+def wrap():
     pass
 
 
@@ -47,7 +47,7 @@ spec_help = """
 """
 
 
-@wrapper.command(name='build-all', help=f"""Build all wrapper images specified
+@wrap.command(name='build-all', help=f"""Build all wrapper images specified
 in sub-modules under the package path.
 
 package_path
@@ -91,7 +91,7 @@ def build_all(package_path, registry, loglevel, build_dir, docs):
     click.echo('\n'.join(built_images))
 
 
-@wrapper.command(help="""Build a wrapper image specified in a module
+@wrap.command(help="""Build a wrapper image specified in a module
 
 module_path
     The file system path to the module to build""")

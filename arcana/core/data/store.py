@@ -26,9 +26,8 @@ class DataStore(metaclass=ABCMeta):
                                 eq=False)
 
     CONFIG_NAME = 'stores'
-    DEFAULT_DATASET_NAME = 'default'
 
-    def dataset(self, id, hierarchy=None, name=DEFAULT_DATASET_NAME, **kwargs):
+    def dataset(self, id, hierarchy=None, **kwargs):
         """
         Returns a dataset from the XNAT repository
 
@@ -58,20 +57,15 @@ class DataStore(metaclass=ABCMeta):
                     "'hierarchy' kwarg must be specified for datasets in "
                     f"{type(self)} stores")
         from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
-        metadata = self.load_dataset_metadata(id, name)
-        if metadata is None:
-            dataset = Dataset(id, store=self, hierarchy=hierarchy, **kwargs)
-        else:
-            if hierarchy is not None or kwargs:
-                raise ArcanaUsageError(
-                    f"Existing dataset defined for '{name}', to update metadata "
-                    f"please edit it instead attempting to create new dataset "
-                    "with the same name")
-            dataset = Dataset.load(id, self, metadata)
+        dataset = Dataset(id, store=self, hierarchy=hierarchy, **kwargs)           
         return dataset
-        
-            
-    
+
+    def load_dataset(self, id, name=None):
+        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
+        if name is None:
+            name = Dataset.DEFAULT_NAME
+        metadata = self.load_dataset_metadata(id, name)
+        return Dataset.load(id, self, name, metadata)
 
     @abstractmethod
     def find_nodes(self, dataset):
