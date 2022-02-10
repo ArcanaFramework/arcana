@@ -35,7 +35,6 @@ hierarchy
     sub-directories corresponds to can be arbitrarily specified. dimensions
     "
 """))
-@click.argument('store')
 @click.argument('id')
 @click.argument('hierarchy', nargs=-1)
 @click.option(
@@ -53,7 +52,11 @@ hierarchy
           "frequency of the ID (e.g. 'group', 'subject', 'session') "
           "followed by the IDs to be included in the dataset. "
           "If the second arg contains '/' then it is interpreted as "
-          "the path to a text file containing a list of IDs"))    
+          "the path to a text file containing a list of IDs"))
+@click.option(
+    '--store', '-s', type=str,
+    help=("The nickname of the store (as added by `arcana store add ...`) the "
+          "dataset is stored in"))
 @click.option(
     '--dimensions', type=str, default='clinical.Clinical',
     help=("The enum that specifies the data dimensions of the dataset. "
@@ -78,11 +81,8 @@ groups corresponding to the inferred IDs
 --id_inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
 
 """)
-@click.option(
-    '--name', '-n', default='default',
-    help=("A name to distinguish this dataset from the others defined for this "
-          "directory/project (e.g. with different sub-sets of subjects)."))
-def define(id, store, hierarchy):
+def define(id, hierarchy, included, excluded, store, dimensions, id_inference,
+           name):
 
     dimensions = cls.parse_dimensions(args)
     hierarchy = [dimensions[l]
