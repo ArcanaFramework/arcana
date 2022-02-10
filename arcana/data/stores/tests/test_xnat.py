@@ -10,7 +10,7 @@ from pathlib import Path
 import hashlib
 from tempfile import mkdtemp
 from functools import reduce
-from arcana.data.dimensions.clinical import Clinical
+from arcana.data.dimensions.medicalimaging import ClinicalTrial
 from arcana.core.data.set import Dataset
 from arcana.data.stores.xnat.tests.fixtures import create_test_file
 from arcana.data.stores.tests.fixtures import create_test_file
@@ -19,7 +19,7 @@ from arcana.data.stores.tests.fixtures import create_test_file
 # logger.setLevel(logging.INFO)
 
 def test_find_nodes(xnat_dataset):
-    for freq in Clinical:
+    for freq in ClinicalTrial:
         # For all non-zero bases in the frequency, multiply the dim lengths
         # together to get the combined number of nodes expected for that
         # frequency
@@ -42,7 +42,7 @@ def test_get_items(xnat_dataset, caplog):
                                         datatype=datatype)
                 expected_files[source_name] = set(files)
     with caplog.at_level(logging.INFO, logger='arcana'):
-        for node in xnat_dataset.nodes(Clinical.session):
+        for node in xnat_dataset.nodes(ClinicalTrial.session):
             for source_name, files in expected_files.items():
                 item = node[source_name]
                 try:

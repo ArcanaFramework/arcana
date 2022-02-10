@@ -5,7 +5,7 @@ import tempfile
 import pytest
 import docker.errors
 from arcana.data.stores.xnat.tests.fixtures import make_mutable_dataset
-from arcana.data.dimensions.clinical import Clinical
+from arcana.data.dimensions.medicalimaging import ClinicalTrial
 from arcana.data.types import text
 from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.xnat.cs import XnatViaCS
@@ -29,15 +29,15 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
         task_location=task_location,
         image_tag=image_tag,
         inputs=[
-            ('in_file1', text, 'to_concat1', Clinical.session),
-            ('in_file2', text, 'to_concat2', Clinical.session)],
+            ('in_file1', text, 'to_concat1', ClinicalTrial.session),
+            ('in_file2', text, 'to_concat2', ClinicalTrial.session)],
         outputs=[
             ('out_file', text, 'concatenated')],
         parameters=['duplicates'],
         description="A pipeline to test Arcana's wrap4xnat function",
         version='0.1',
         registry=xnat_container_registry,
-        frequency=Clinical.session,
+        frequency=ClinicalTrial.session,
         info_url=None)
 
     build_dir = XnatViaCS.generate_dockerfile(
@@ -89,15 +89,15 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
         task_location='arcana.tasks.tests.fixtures:concatenate',
         image_tag=concatenate_container,
         inputs=[
-            ('in_file1', text, 'to_concat1', Clinical.session),
-            ('in_file2', text, 'to_concat2', Clinical.session)],
+            ('in_file1', text, 'to_concat1', ClinicalTrial.session),
+            ('in_file2', text, 'to_concat2', ClinicalTrial.session)],
         outputs=[
             ('out_file', text, 'concatenated')],
         parameters=['duplicates'],
         description="A pipeline to test Arcana's wrap4xnat function",
         version='0.1',
         registry=xnat_container_registry,
-        frequency=Clinical.session,
+        frequency=ClinicalTrial.session,
         info_url=None)
 
     with xnat_repository:

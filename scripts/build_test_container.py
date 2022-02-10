@@ -7,7 +7,7 @@ import xnat
 from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.xnat.cs import XnatViaCS
 from arcana.data.stores.xnat.tests.fixtures import DOCKER_REGISTRY_URI
-from arcana.data.dimensions.clinical import Clinical
+from arcana.data.dimensions.medicalimaging import ClinicalTrial
 from arcana.data.types.general import text
 
 parser = ArgumentParser()
@@ -42,15 +42,15 @@ json_config = XnatViaCS.generate_json_config(
     pydra_task=pydra_task,
     image_tag=image_tag,
     inputs=[
-        ('in_file1', text, Clinical.session),
-        ('in_file2', text, Clinical.session)],
+        ('in_file1', text, ClinicalTrial.session),
+        ('in_file2', text, ClinicalTrial.session)],
     outputs=[
         ('out_file', text)],
     parameters=['duplicates'],
     description="Test wrap4xnat function",
     version='0.1',
     registry=args.container_registry,
-    frequency=Clinical.session,
+    frequency=ClinicalTrial.session,
     info_url=None)
 
 dockerfile, build_dir = XnatViaCS.generate_dockerfile(

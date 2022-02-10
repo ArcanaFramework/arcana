@@ -1,2 +1,2 @@
 from .general import *
-from .neuroimaging import *
+from .medicalimaging import *

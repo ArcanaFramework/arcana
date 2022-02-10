@@ -12,8 +12,8 @@ from arcana.core.data.dimensions import DataDimensions
 from arcana.core.utils import set_cwd
 from arcana.core.data.type import FileFormat
 from arcana.data.types.general import text, directory, json
-from arcana.data.dimensions.clinical import Clinical
-from arcana.data.types.neuroimaging import (
+from arcana.data.dimensions.medicalimaging import ClinicalTrial
+from arcana.data.types.medicalimaging import (
     nifti_gz, niftix_gz, niftix, nifti, analyze, mrtrix_image)
 
 
@@ -174,7 +174,7 @@ def test_dicom_dataset_dir(test_ref_data_dir):
 def dicom_dataset(test_dicom_dataset_dir):
     return FileSystem().dataset(
         test_dicom_dataset_dir,
-        hierarchy=[Clinical.session])
+        hierarchy=[ClinicalTrial.session])
 
 
 @pytest.fixture(params=GOOD_DATASETS)

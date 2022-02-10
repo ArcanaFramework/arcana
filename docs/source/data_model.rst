@@ -1,44 +1,45 @@
 Data Model
 ==========
 
-Arcana handles all workflow file/network I/O interactions, making pipeline
+Arcana handles all workflow inputs and outputs to file/network, making pipeline
 implementations transportable between storage systems and allowing workflow
-designers to focus on the analysis being implemented rather than boring details.
-As such Arcana contains a rich and flexible data model consisting of
-``DataStore``, ``Dataset``, ``DataDimension``, ``DataColumn``, ``DataNode`` and
-``DataItem`` classes and their corresponding sub-classes.
+designers to focus on the analysis being implemented rather than menial details.
+To manage this, Arcana contains a rich and flexible data model consisting of
+``DataStore``, ``Dataset``, ``DataDimension``, ``DataNode``, ``DataColumn``, and
+``DataItem`` classes and sub-classes customised for different data types and
+storage systems.
 
 
 Stores
 ------
 
-Support for different storage techniques is provided by modular ``DataStore``
-objects. ``DataStore`` objects not only encapsulate where the data is stored
-(e.g. on local disk or remote repository) but also how the data is accessed
-(whether it is in BIDS format or not, or whether using the XNAT container
-service or purely the XNAT API).
+Support for different storage techniques is provided by sub-classes of the
+ ``DataStore`` class. ``DataStore`` sub-classes not only encapsulate where the
+ data is stored (e.g. on local disk or remote repository) but also how the data
+ is accessed (whether it is in BIDS format or not, or whether using the XNAT
+ container service or purely the XNAT API).
 
-There are currently three ``DataStore`` sub-types implemented in Arcana:
+There are currently four implemented ``DataStore`` sub-classes:
 
-* FileSystem - access data simply organised within a directory tree on the file system
+* FileSystem - access data organised within a arbitrary directory tree on the file system
 * BidsFormat - access data on file systems organised in the
                `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__
-               format (neuroscience-specific)
-* Xnat - access data stored in XNAT_ repositories by its REST API (only)
+               format (neuroimaging-specific)
+* Xnat - access data stored in XNAT_ repositories by its REST API
 * XnatViaCS - access data stored in XNAT_ repositories as exposed to integrated
-              pipelines run in XNAT_'s container service (using a combination
-              of direct access to data archive and API)
+              pipelines run in XNAT_'s container service using a combination
+              of direct access to the archive disk and the REST API
 
-Alternative storage systems can be implemented by extending the base
-``DataStore`` class. The developers are interested to add support for new systems,
+Alternative storage systems can be implemented by writing a new sub-class of
+``DataStore``. The developers are interested in adding support for new systems,
 so if you would like to use Arcana with a different storage system please
-create an issue for it `here <https://github.com/Australian-Imaging-Service/arcana/issues>`__.
+create an issue for it in the `GitHub Issue Tracker <https://github.com/Australian-Imaging-Service/arcana/issues>`__.
 
-Configuring access via API
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Configuring store access via API
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To configure access to a data store a via the API initialise the ``DataStore``
-sub-class corresponding to your required data location/access-method then save
+To configure access to a data store a via the API, initialise the ``DataStore``
+sub-class corresponding to the required data location/access-method then save
 it to the YAML configuration file stored at `~/.arcana/stores.yml`, e.g.
 
 .. code-block:: python
@@ -48,28 +49,28 @@ it to the YAML configuration file stored at `~/.arcana/stores.yml`, e.g.
 
     # Initialise the data store object
     xnat_store = Xnat(
-        server='http://central.xnat.org',
+        server='https://central.xnat.org',
         user='user123',
         password=os.environ['XNAT_PASS'],
         cache_dir='/work/xnat-cache'
     )
 
-    # Save it to the configuration file
+    # Save it to the configuration file with the nickname 'central-xnat'
     xnat_store.save('central-xnat')
 
     # Reload store from configuration file
     reloaded = DataStore.load('central-xnat')
 
 
-Configuring access via CLI
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Configuring store access via CLI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To configure access to a store via the CLI use the ``arcana store add`` sub-command
 
 .. code-block:: bash
 
-    $ arcana store add central-xnat xnat http://central.xnat.org --user user123 --cache_dir /work/xnat-cache --password
-    Please enter you password for 'central-xnat': *******
+    $ arcana store add central-xnat xnat https://central.xnat.org --user user123 --cache_dir /work/xnat-cache --password
+    Password:
 
 
 See also ``arcana store rename`` and ``arcana store remove``.
@@ -81,19 +82,19 @@ See also ``arcana store rename`` and ``arcana store remove``.
     ``file`` and ``bids`` when defining a dataset.
 
 
-Datasets and Data Dimensions
-----------------------------
+Datasets, Dimensions and Nodes
+------------------------------
 
-In Arcana, "datasets" refer to collection of data organised into a tree, which
-branches across different "dimensions" of the data (e.g. over separate groups,
-subjects or sessions), consisting of both "source data" (typically
+In Arcana, *datasets* refer to collection of data organised into a tree, which
+branches across different *dimensions* of the data (e.g. over separate groups,
+subjects or sessions), consisting of both source data (typically
 acquired from an instrument) and data that has been derived from the source
 data. Datasets are typically stored in a single location (although support for
 distributed datasets is planned) such as a file-system directory or an
 XNAT project. Workflows and analyses in Arcana operate on and over whole
 datasets.
 
-Data items can exist at any "node" within the data tree, and along any
+Data items can exist at any *node* within the data tree, and along any
 axis of the dataset even if it is not in the original tree, e.g. summary
 statistics that are analysed across the combination of group and time-points
 from a data tree organised by group> subject> session.
@@ -102,8 +103,8 @@ When defining a dataset, you specify its tree structure and which nodes are to
 be included in the analysis (e.g. the ones that passed QC). The first thing
 to define is the dimensions of the dataset, which should be set to a sub-class of
 ``DataDimension`` enum. By default, Arcana will assume 
-``arcana.data.dimensions.clinical:Clinical`` is applicable, which is able to
-represents the typical structure of a longintudinal clinical trial with multiple
+``arcana.data.dimensions.medicalimaging:ClinicalTrial`` is applicable, which is able to
+represents the typical structure of a longintudinal medicalimaging trial with multiple
 groups, subjects and sessions at different time-points (noting that a dataset
 can singletons nodes along a dimension, e.g. a single group or time-point).
 
@@ -112,11 +113,34 @@ the hierarchy of each dimension in the dataset tree needs to be provided, i.e.
 whether the sub-directories immediately below the root contain data for different
 groups, subjects, time-points or sessions, and the what the sub-directory layer
 below that corresponds to (if present) and so on. This is defined by providing
-a list of values, e.g. ``[Clinical.subject, Clinical.session]``.
+a list of values, e.g. ``[ClinicalTrial.subject, ClinicalTrial.session]``.
 
-<para on inferring IDs from others>
+In some datasets, especially in stores where the tree hierarchy is fixed (e.g. XNAT),
+you may need to infer the ID(s) for one or more dimensions from the combination
+with other IDs following an arbitrary naming convention. For example, given an
+XNAT project where all the test subjects are numbered "TEST01", "TEST02", "TEST03",...
+and the matched control subjects are numbered "CON01", "CON02", "CON03",...,
+the group and (matched) "member" IDs need to be inferred from the subject ID.
+This can be done by providing an ``id_inference`` argument which takes a list
+of tuples, consisting of the frequency of the ID to infer from and a
+regular-expression (Python syntax), with named groups corresponding to inferred
+IDs.
 
-<para on including/excluding certain ids>
+After datasets have undergone quality control checks there are often a number
+of data nodes that need to be omitted from a given analysis. These nodes can
+be specified using the ``excluded`` argument, which takes the data dimension and
+and a list of IDs to be excluded from it. You can exclude over multiple dimensions,
+noting that if you exclude along the lower levels of your hierarchy then corresponding
+IDs at higher levels will also be excluded. For example, if you exclude the timepoint 2
+imaging session for subject 5, then both Timepoint 2 and Subject 5 will be dropped)
+therefore it is typically better to exclude at a higher level (e.g. Subject 5).
+The ``include`` argument is the inverse of exclude and can be more convenient when
+you only want to select a small sample from a larger dataset.
+
+You may want multiple dataset definitions for a given project/directory, e.g. with
+different subsets of IDs, for different analyses. To avoid conflicts you can
+assign a dataset definition a ``name``, which is used differentiate between multiple
+dataset definitions stored in the same project/directory.
 
 
 Defining a dataset via API
@@ -128,18 +152,18 @@ Datasets can be defined in from data store using the ``DataStore.dataset()`` met
 
     from arcana.data.stores.xnat import Xnat
     from arcana.data.stores.file_system import FileSystem
-    from arcana.data.dimensions.clinical import Clinical
+    from arcana.data.dimensions.medicalimaging import ClinicalTrial
 
     xnat_dataset = xnat_store.dataset(
         id='MYXNATPROJECT',
-        excluded={Clinical.subject: ['09', '11']},
+        excluded={ClinicalTrial.subject: ['09', '11']},
         included={Clincial.timepoint: ['T1']}
-        id_inference={
-            Clinical.subject: r'(?P<group>[A-Z]+)_(?P<member>\d+)'})
-    
+        id_inference=[
+            (ClinicalTrial.subject, r'(?P<group>[A-Z]+)_(?P<member>\d+)')])
+
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
-        hierarchy=[Clinical.group, Clinical.subject])
+        hierarchy=[ClinicalTrial.group, ClinicalTrial.subject])
 
 Dataset definitions can be saved inside the project directory and then reloaded
 in new sessions.
@@ -150,10 +174,8 @@ in new sessions.
 
     reloaded = xnat_store.load_dataset('MYXNATPROJECT')
 
-Sometimes, multiple dataset definitions may need to be saved inside a single
-project (e.g. defining different subsets of subjects), this can be done by
-providing the ``name`` parameter to the ``Dataset.save()`` and
-``DataStore.load_dataset()`` methods.
+Naming of the dataset can be done providing the ``name`` parameter to the
+``Dataset.save()`` and ``DataStore.load_dataset()`` methods.
 
 .. code-block:: python
 
@@ -165,8 +187,9 @@ providing the ``name`` parameter to the ``Dataset.save()`` and
 Defining a dataset via CLI
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Datasets can also be defined via the CLI using the ``arcana dataset define``
-command, prepending the data store nickname to the project ID separated by '//'
+Datasets can also be defined and saved via the CLI using the ``arcana dataset define``
+command. The store the dataset belongs to is prepended to the project ID
+separated by '//', e.g.
 
 .. code-block:: bash
 
@@ -174,7 +197,8 @@ command, prepending the data store nickname to the project ID separated by '//'
       --excluded subject sub09,sub11 --included timepoint T1 \
       --id_inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)'
 
-To give the dataset definition a name append it to the ID string separated by ':'
+To give the dataset definition a name, append the name to the dataset's ID
+string separated by ':'
 
 .. code-block:: bash
 
@@ -182,14 +206,85 @@ To give the dataset definition a name append it to the ID string separated by ':
       --include subject 10:20
 
 
-Columns
--------
+Items, Data Types (Fields and FileGroups) and Columns
+-----------------------------------------------------
 
-The collection of corresponding items along a dimension of the dataset is
-referred to as a "data column", drawing parallels with the way data is organised
-in tabular data formats such as those used by Excel and Pandas. However, data
-columns in Arcana occur at different "frequencies", some only have nodes per
-subject (e.g. DOB), others per group (e.g. )
+When specifying a dataset column, the data type of the items stored in the column
+needs to be specified. Datatypes can either be *fields* (int, float, str
+or bool), field arrays (list[int or float or str or bool])
+or *file groups* (single files, files + header/side-car or directories).
+
+Corresponding items in the dataset (e.g. all subject ages or all 'T1-weighted MRI
+images') are referred collectively as *columns*, analogous of tabular formats such as
+those used by Excel and Pandas. However, unlike in tabular formats, items in
+data columns in Arcana occur at different *frequencies*, e.g. 'age values occur
+per subject and T1-weighted images occur per session.
+
+Before data can be accessed or new data appended to a dataset, columns need to be
+added. There are two types of columns *sources* and *sinks*. Source columns
+select corresponding items from existing data in the dataset using a range of
+possible criteria: path (can be regex), data type, frequency,
+quality threshold (an XNAT feature), order within node and header values.
+Sink columns define how new data will be written to the dataset.
+
+Columns are given a name, which is used to access them and map the
+inputs/outputs of pipelines onto. By default, this name is used by sinks to
+name the output fields/files stored in the dataset. However, if a specific
+output path is required it can be specified by the ``path`` argument.
+
+
+Adding columns via API
+~~~~~~~~~~~~~~~~~~~~~~
+
+Use the ``Dataset.add_source()`` and ``Dataset.add_sink()`` methods to add
+sources and sinks via the API.
+
+.. code-block:: python
+
+    from arcana.data.dimensions.medicalimaging import ClinicalTrial
+    from arcana.data.types.medicalimaging import dicom, nifti_gz
+
+    xnat_dataset.add_source(
+        name='T1w',
+        path=r'.*t1_mprage.*'
+        datatype=dicom,
+        order=1,
+        quality_threshold='usable',
+        is_regex=True
+    )
+
+    fs_dataset.add_sink(
+        name='brain_template',
+        datatype=nifti_gz,
+        frequency=ClinicalTrial.group
+    )
+
+To access the data in the columns once they are defined use the ``Dataset[]``
+operator
+
+.. code-block:: python
+
+    import matplotlib.pyplot as plt
+
+    # Get a column containing all T1-weighted MRI images across the dataset
+    t1w = xnat_dataset['T1w']
+
+    # Plot a slice of the image data from a sample image (Note: such data access
+    # is only available for select data types that have convenient Python readers)
+    plt.imshow(t1w['sub01_tpoint2'].data[:,:,30])
+
+
+Adding columns via CLI
+~~~~~~~~~~~~~~~~~~~~~~
+
+Use the ``arcana source add`` and ``arcana sink add`` commands to add sources/sinks
+to a dataset using the CLI.
+
+.. code-block:: bash
+
+    $ arcana source add 'central-xnat//MYXNATPROJECT' T1w --path '.*t1_mprage.*' --datatype medicalimaging:dicom --order 1 --quality usable --regex
+
+    $ arcana sink add 'file///data/imaging/my-project:training' brain_template --datatype medicalimaging:nifti_gz --frequency group
 
 
 .. _Arcana: http://arcana.readthedocs.io

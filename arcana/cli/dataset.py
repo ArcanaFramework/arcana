@@ -2,7 +2,7 @@
 import os
 from importlib import import_module
 import click
-from arcana.data.dimensions.clinical import Clinical
+from arcana.data.dimensions.medicalimaging import ClinicalTrial
 from arcana.exceptions import ArcanaUsageError
 from arcana.data.stores.file_system import FileSystem
 from arcana.data.stores.xnat import Xnat
@@ -58,11 +58,11 @@ hierarchy
     help=("The nickname of the store (as added by `arcana store add ...`) the "
           "dataset is stored in"))
 @click.option(
-    '--dimensions', type=str, default='clinical.Clinical',
+    '--dimensions', type=str, default='medicalimaging.ClinicalTrial',
     help=("The enum that specifies the data dimensions of the dataset. "
-          "Defaults to `Clinical`, which "
+          "Defaults to `ClinicalTrial`, which "
           "consists of the typical dataset>group>subject>session "
-          "data tree used in clinical trials/studies"))
+          "data tree used in medicalimaging trials/studies"))
 @click.option(
     '--id_inference', nargs=2, metavar=('SOURCE', 'REGEX'),
     multiple=True,
@@ -104,7 +104,7 @@ def define(id, hierarchy, included, excluded, store, dimensions, id_inference,
             server=repo_args[0],
             cache_dir=work_dir / XNAT_CACHE_DIR,
             **{k: v for k, v in zip(optional_args, repo_args[1:])})
-        hierarchy = [Clinical.subject, Clinical.session]
+        hierarchy = [ClinicalTrial.subject, ClinicalTrial.session]
     elif repo_type == 'xnat_via_cs':
         if nargs < 1 or nargs > 7:
             raise ArcanaUsageError(
@@ -116,9 +116,9 @@ def define(id, hierarchy, included, excluded, store, dimensions, id_inference,
                             'input_mount', 'output_mount']
         store = XnatViaCS(
             cache_dir=work_dir / XNAT_CACHE_DIR,
-            frequency=Clinical[repo_args[0]],
+            frequency=ClinicalTrial[repo_args[0]],
             **{k: v for k, v in zip(optional_args, repo_args[1:])})
-        hierarchy = [Clinical.subject, Clinical.session]
+        hierarchy = [ClinicalTrial.subject, ClinicalTrial.session]
     else:
         raise ArcanaUsageError(
             f"Unrecognised store type provided as first argument "

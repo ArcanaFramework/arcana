@@ -1,9 +1,9 @@
 from arcana.core.data.dimensions import DataDimensions
 
-class Clinical(DataDimensions):
+class ClinicalTrial(DataDimensions):
     """
     An enum that specifies the data hierarcy of data trees typical of
-    clinical research, i.e. subjects split into groups scanned at different
+    medicalimaging research, i.e. subjects split into groups scanned at different
     timepoints (in longitudinal studies).
     """
 

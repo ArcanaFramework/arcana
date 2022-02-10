@@ -15,7 +15,7 @@ from pydra.engine.specs import (
     LazyField, ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
 from arcana.core.data.set import Dataset
 from arcana.data.types.general import directory
-from arcana.data.dimensions.clinical import Clinical
+from arcana.data.dimensions.medicalimaging import ClinicalTrial
 from . import FileSystem
 from arcana.exceptions import ArcanaError, ArcanaUsageError, ArcanaEmptyDatasetError
 from arcana.core.utils import func_task
@@ -137,9 +137,9 @@ class BidsDataset(Dataset):
     @classmethod
     def load(cls, path):
         if list(Path(path).glob('**/sub-*/ses-*')):
-            hierarchy = [Clinical.subject, Clinical.timepoint]
+            hierarchy = [ClinicalTrial.subject, ClinicalTrial.timepoint]
         else:
-            hierarchy = [Clinical.session]    
+            hierarchy = [ClinicalTrial.session]    
         dataset = BidsDataset(path, store=BidsFormat(),
                               hierarchy=hierarchy)
         dataset.load_metadata()
@@ -151,9 +151,9 @@ class BidsDataset(Dataset):
         path = Path(path)
         path.mkdir()
         if session_ids is not None:
-            hierarchy = [Clinical.subject, Clinical.timepoint]
+            hierarchy = [ClinicalTrial.subject, ClinicalTrial.timepoint]
         else:
-            hierarchy = [Clinical.session]
+            hierarchy = [ClinicalTrial.session]
         if generated_by is None:
             generated_by = [
                 GeneratorMetadata(
@@ -311,7 +311,7 @@ class BidsFormat(FileSystem):
 
         for subject_id, participant in dataset.participants.items():
             try:
-                explicit_ids = {Clinical.group: participant['group']}
+                explicit_ids = {ClinicalTrial.group: participant['group']}
             except KeyError:
                 explicit_ids = {}
             if dataset.is_multi_session():
@@ -375,7 +375,7 @@ class BidsFormat(FileSystem):
         data_node = field.data_node
         dataset = data_node.dataset
         if field.name in dataset.participant_attrs:
-            val = dataset.participants[data_node.ids[Clinical.subject]]
+            val = dataset.participants[data_node.ids[ClinicalTrial.subject]]
         else:
             val = super().get_field_val(field)
         return val
@@ -408,7 +408,7 @@ class BidsApp:
         metadata={'help_string': 'The parameters of the app to be exposed to the interface'},
         default=None)
 
-    def __call__(self, name=None, frequency: Clinical or str=Clinical.session,
+    def __call__(self, name=None, frequency: ClinicalTrial or str=ClinicalTrial.session,
                  virtualisation: str=None, dataset: ty.Optional[ty.Union[str, Path, Dataset]]=None) -> Workflow:
         """Creates a Pydra workflow which takes inputs and maps them to
         a BIDS dataset, executes a BIDS app and extracts outputs from
@@ -418,7 +418,7 @@ class BidsApp:
         ----------
         name : str
             Name for the workflow
-        frequency : Clinical
+        frequency : ClinicalTrial
             Frequency to run the app at, i.e. per-"session" or per-"dataset"
         virtualisation : str or None
             The virtualisation method to run the main app task, can be one of
@@ -437,7 +437,7 @@ class BidsApp:
         if self.parameters is None:
             parameters = {}
         if isinstance(frequency, str):
-            frequency = Clinical[frequency]
+            frequency = ClinicalTrial[frequency]
         if name is None:
             name = self.app_name
 
@@ -465,7 +465,7 @@ class BidsApp:
         workflow.add(func_task(
             to_bids,
             in_fields=(
-                [('frequency', Clinical),
+                [('frequency', ClinicalTrial),
                  ('inputs', ty.List[ty.Tuple[str, type, str]]),
                  ('dataset', Dataset or str),
                  ('id', str)]
@@ -496,7 +496,7 @@ class BidsApp:
             extract_bids,
             in_fields=[
                 ('dataset', Dataset),
-                ('frequency', Clinical),
+                ('frequency', ClinicalTrial),
                 ('outputs', ty.List[ty.Tuple[str, type, str]]),
                 ('path_prefix', str),
                 ('id', str),
@@ -520,7 +520,7 @@ class BidsApp:
                       workflow: Workflow,
                       dataset_path: LazyField,
                       output_path: LazyField,
-                      frequency: Clinical,
+                      frequency: ClinicalTrial,
                       id: str,
                       parameters: ty.Dict[str, type]=None,
                       virtualisation=None) -> ShellCommandTask:
@@ -593,7 +593,7 @@ class BidsApp:
                     f"Unrecognised container type {virtualisation} "
                     "(can be docker or singularity)")
 
-        if frequency == Clinical.session:
+        if frequency == ClinicalTrial.session:
             analysis_level = 'participant'
             kwargs['participant_label'] = id
         else:
@@ -670,7 +670,7 @@ def dataset_paths(app_name: str, dataset: Dataset, id: str):
 
 
 def extract_bids(dataset: Dataset,
-                 frequency: Clinical,
+                 frequency: ClinicalTrial,
                  outputs: ty.List[ty.Tuple[str, type, str]],
                  path_prefix: str,
                  id: str,

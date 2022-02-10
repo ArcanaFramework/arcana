@@ -4,8 +4,8 @@ from pydra import mark, Workflow
 from arcana.core.data.set import Dataset
 from arcana.core.data.spec import DataSource, DataSink
 from arcana.data.stores.file_system import FileSystem
-from arcana.data.dimensions.clinical import Clinical as cl
-from arcana.data.types.neuroimaging import dicom, niftix_gz
+from arcana.data.dimensions.medicalimaging import ClinicalTrial as cl
+from arcana.data.types.medicalimaging import dicom, niftix_gz
 
 
 def test_dataset_pickle(dataset: Dataset, tmp_dir: Path):

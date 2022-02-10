@@ -36,7 +36,7 @@ class DataSource():
         session (0-indexed). Based on the scan ID but is more robust to small
         changes to the IDs within the session if for example there are
         two scans of the same type taken before and after a task.
-    metadata : Dict[str, str]
+    header_vals : Dict[str, str]
         To be used to distinguish multiple items that match the
         the other criteria. The provided dictionary contains
         header values that must match the stored header_vals exactly.   
@@ -49,7 +49,7 @@ class DataSource():
     quality_threshold: DataQuality = attr.ib(
         default=None, converter=optional(lambda q: DataQuality[str(q)]))
     order: int = attr.ib(default=None)
-    metadata: ty.Dict[str, ty.Any] = attr.ib(default=None)
+    header_vals: ty.Dict[str, ty.Any] = attr.ib(default=None)
     is_regex: bool = attr.ib(default=False)
 
     def match(self, node):
@@ -57,7 +57,7 @@ class DataSource():
             (match_path, self.path if not self.is_regex else None),
             (match_path_regex, self.path if self.is_regex else None),
             (match_quality, self.quality_threshold),
-            (match_metadata, self.metadata)]
+            (match_header_vals, self.header_vals)]
         # Get all items that match the data format of the source
         matches = node.resolved(self.datatype)
         if not matches:
@@ -109,9 +109,9 @@ def match_quality(item, threshold):
     "with an acceptable quality {}"
     return item.quality >= threshold
 
-def match_metadata(item, metadata):
+def match_header_vals(item, header_vals):
     "with the header values {}"
-    return all(item.metadata(k) == v for k, v in metadata.items())
+    return all(item.header(k) == v for k, v in header_vals.items())
 
 
 @attr.s

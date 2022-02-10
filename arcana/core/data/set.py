@@ -42,13 +42,13 @@ class Dataset():
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
 
-            [Clinical.subject, Clinical.timepoint]
+            [ClinicalTrial.subject, ClinicalTrial.timepoint]
 
         Alternatively, in some stores (e.g. XNAT) the second layer in the
         hierarchy may be named with session ID that is unique across the project,
         in which case the layer dimensions would instead be
 
-            [Clinical.subject, Clinical.session]
+            [ClinicalTrial.subject, ClinicalTrial.session]
         
         In such cases, if there are multiple timepoints, the timepoint ID of the
         session will need to be extracted using the `id_inference` argument.
@@ -58,12 +58,12 @@ class Dataset():
         labelled by member ID, with the final layer containing sessions of
         matched members labelled by their groups (e.g. test & control):
 
-            [Clinical.timepoint, Clinical.member, Clinical.group]
+            [ClinicalTrial.timepoint, ClinicalTrial.member, ClinicalTrial.group]
 
         Note that the combination of layers in the hierarchy must span the
         space defined in the DataDimensions enum, i.e. the "bitwise or" of the
         layer values of the hierarchy must be 1 across all bits
-        (e.g. Clinical.session: 0b111).
+        (e.g. ClinicalTrial.session: 0b111).
     id_inference : Dict[DataDimensions, str]
         Not all IDs will appear explicitly within the hierarchy of the data
         tree, and some will need to be inferred by extracting components of
@@ -79,7 +79,7 @@ class Dataset():
         containing ID to source the inferred IDs from coupled with a regular
         expression with named groups
 
-            id_inference=[(Clinical.subject,
+            id_inference=[(ClinicalTrial.subject,
                            r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')}
     column_specs : Dict[str, DataSource or DataSink]
         The sources and sinks to be initially added to the dataset (columns are
@@ -481,7 +481,7 @@ class Dataset():
                 # with the least significant bit (the order of the bits in the
                 # DataDimensions class should be arranged to account for this)
                 # can be considered be considered to be equivalent to the label.
-                # E.g. Given a hierarchy of [Clinical.subject, Clinical.session]
+                # E.g. Given a hierarchy of [ClinicalTrial.subject, ClinicalTrial.session]
                 # no groups are assumed to be present by default (although this
                 # can be overridden by the `id_inference` attr) and the `member`
                 # ID is assumed to be equivalent to the `subject` ID. Conversely,
@@ -496,7 +496,7 @@ class Dataset():
                 # extracted with the
                 #
                 #       id_inference={
-                #           Clinical.session: r'.*(?P<timepoint>0-9+)$'}
+                #           ClinicalTrial.session: r'.*(?P<timepoint>0-9+)$'}
                 if not (layer & frequency):
                     ids[layer.nonzero_basis()[-1]] = label
             else:
