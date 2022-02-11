@@ -10,6 +10,14 @@ the unit-test suite Docker, Arcana_ needs Docker to be installed. Please see
 the Docker docs for how to do this, `<https://docs.docker.com/engine/install/>`_.
 
 
+Third-party dependencies
+------------------------
+
+One of the main strengths of Pydra is the ability to link 3rd party tools into
+coherent workflows. Obviously these software also need to be installed separately
+unless they run within Docker containers (recommended). See  
+
+
 Python package
 --------------
 

@@ -83,6 +83,7 @@ groups corresponding to the inferred IDs
 """)
 def define(id, hierarchy, included, excluded, store, dimensions, id_inference,
            name):
+    raise NotImplementedError
 
     dimensions = cls.parse_dimensions(args)
     hierarchy = [dimensions[l]
@@ -160,7 +161,7 @@ new_name
 @click.argument('old_name')
 @click.argument('new_name')
 def rename(old_name, new_name):
-    pass
+    raise NotImplementedError
 
 
 def optional_args(names, args):

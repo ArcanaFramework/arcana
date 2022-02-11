@@ -10,25 +10,35 @@ To manage this, Arcana contains a rich and flexible data model consisting of
 storage systems.
 
 
+Items (Fields and FileGroups)
+-----------------------------
+
+``DataItem`` objects are the atomic elements of Arcana datasets and can be either
+*fields* (int, float, str or bool), field arrays (list[int or float or str or bool])
+or *file groups* (single files, files + header/side-car or directories). ``FileGroup``
+sub-classes may contain methods for accessing the file data and header metadata,
+which can be useful in selecting from a collection of acquired data and exploration
+of the data.
+
+Data items act as pointers to the data associated provenance in the
+dataset and provide methods for pulling and pushing data to the store.
+
+
 Stores
 ------
 
 Support for different storage techniques is provided by sub-classes of the
- ``DataStore`` class. ``DataStore`` sub-classes not only encapsulate where the
- data is stored (e.g. on local disk or remote repository) but also how the data
- is accessed (whether it is in BIDS format or not, or whether using the XNAT
- container service or purely the XNAT API).
+``DataStore`` class. ``DataStore`` sub-classes not only encapsulate where the
+data is stored, e.g. on local disk or remote repository, but also how the data
+is accessed, e.g. whether it is in BIDS format or not, or whether using the XNAT
+container service or purely the XNAT API.
 
 There are currently four implemented ``DataStore`` sub-classes:
 
-* FileSystem - access data organised within a arbitrary directory tree on the file system
-* BidsFormat - access data on file systems organised in the
-               `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__
-               format (neuroimaging-specific)
-* Xnat - access data stored in XNAT_ repositories by its REST API
-* XnatViaCS - access data stored in XNAT_ repositories as exposed to integrated
-              pipelines run in XNAT_'s container service using a combination
-              of direct access to the archive disk and the REST API
+* **FileSystem** - access data organised within a arbitrary directory tree on the file system
+* **BidsFormat** - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific)
+* **Xnat** - access data stored in XNAT_ repositories by its REST API
+* **XnatViaCS** - access data stored in XNAT_ repositories as exposed to integrated pipelines run in XNAT_'s container service using a combination of direct access to the archive disk and the REST API
 
 Alternative storage systems can be implemented by writing a new sub-class of
 ``DataStore``. The developers are interested in adding support for new systems,
@@ -40,7 +50,7 @@ Configuring store access via API
 
 To configure access to a data store a via the API, initialise the ``DataStore``
 sub-class corresponding to the required data location/access-method then save
-it to the YAML configuration file stored at `~/.arcana/stores.yml`, e.g.
+it to the YAML configuration file stored at `~/.arcana/stores.yml`.
 
 .. code-block:: python
 
@@ -206,24 +216,22 @@ string separated by ':'
       --include subject 10:20
 
 
-Items, Data Types (Fields and FileGroups) and Columns
------------------------------------------------------
+.. _data_columns:
 
-When specifying a dataset column, the data type of the items stored in the column
-needs to be specified. Datatypes can either be *fields* (int, float, str
-or bool), field arrays (list[int or float or str or bool])
-or *file groups* (single files, files + header/side-car or directories).
+Columns
+-------
 
-Corresponding items in the dataset (e.g. all subject ages or all 'T1-weighted MRI
-images') are referred collectively as *columns*, analogous of tabular formats such as
-those used by Excel and Pandas. However, unlike in tabular formats, items in
-data columns in Arcana occur at different *frequencies*, e.g. 'age values occur
-per subject and T1-weighted images occur per session.
+Matching items across a dataset (e.g. all subject ages or all 'T1-weighted MRI
+images') are referred collectively as *columns*, loosely analogous to tabular
+formats such as those used by Excel and Pandas. However, unlike in tabular
+formats, items in data columns in Arcana occur at different *frequencies*,
+e.g. 'age values occur per subject and T1-weighted images occur per session.
+When specifying a column, the datatype of the items in the column needs to be specified. 
 
 Before data can be accessed or new data appended to a dataset, columns need to be
 added. There are two types of columns *sources* and *sinks*. Source columns
 select corresponding items from existing data in the dataset using a range of
-possible criteria: path (can be regex), data type, frequency,
+possible criteria: path (can be a regular-expression), data type, frequency,
 quality threshold (an XNAT feature), order within node and header values.
 Sink columns define how new data will be written to the dataset.
 
@@ -265,8 +273,10 @@ operator
 .. code-block:: python
 
     import matplotlib.pyplot as plt
+    from arcana.core.data.store import DataStore
 
     # Get a column containing all T1-weighted MRI images across the dataset
+    xnat_dataset = DataStore.load('central-xnat').load_dataset('MYXNATPROJECT')
     t1w = xnat_dataset['T1w']
 
     # Plot a slice of the image data from a sample image (Note: such data access
@@ -282,9 +292,9 @@ to a dataset using the CLI.
 
 .. code-block:: bash
 
-    $ arcana source add 'central-xnat//MYXNATPROJECT' T1w --path '.*t1_mprage.*' --datatype medicalimaging:dicom --order 1 --quality usable --regex
+    $ arcana source add 'central-xnat//MYXNATPROJECT' T1w medicalimaging:dicom --path '.*t1_mprage.*' --order 1 --quality usable --regex
 
-    $ arcana sink add 'file///data/imaging/my-project:training' brain_template --datatype medicalimaging:nifti_gz --frequency group
+    $ arcana sink add 'file///data/imaging/my-project:training' brain_template medicalimaging:nifti_gz --frequency group
 
 
 .. _Arcana: http://arcana.readthedocs.io

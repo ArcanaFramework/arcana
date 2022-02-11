@@ -18,6 +18,15 @@ def wrap():
     pass
 
 
+@wrap.command(help="""Build a wrapper image specified in a module
+
+module_path
+    The file system path to the module to build""")
+@click.argument('module_path')
+def build(module_path):
+    raise NotImplementedError
+
+
 spec_help = """
         name : str\n
             Name of the pipeline\n
@@ -50,6 +59,8 @@ spec_help = """
 @wrap.command(name='build-all', help=f"""Build all wrapper images specified
 in sub-modules under the package path.
 
+Arguments
+---------
 package_path
     The file-system path containing the image specifications: Python dictionaries
     named `spec` in sub-modules with the following keys:{spec_help}""")
@@ -60,8 +71,6 @@ package_path
               help="The level to display logs at")
 @click.option('--build_dir', default=None, type=Path,
               help="Specify the directory to build the Docker image in")
-@click.option('--docs', '-d', default=None, type=Path,
-              help="Create markdown documents in output path")
 def build_all(package_path, registry, loglevel, build_dir, docs):
     """Creates a Docker image that wraps a Pydra task so that it can
     be run in XNAT's container service, then pushes it to AIS's Docker Hub
@@ -91,13 +100,52 @@ def build_all(package_path, registry, loglevel, build_dir, docs):
     click.echo('\n'.join(built_images))
 
 
-@wrap.command(help="""Build a wrapper image specified in a module
+@wrap.command(name='build-docs', help="""Build docs for a wrappper
 
+Arguments
+---------
 module_path
     The file system path to the module to build""")
 @click.argument('module_path')
-def build(module_path):
-    pass
+def build_docs(module_path):
+    raise NotImplementedError
+
+
+@wrap.command(name='build-all-docs', help="""Build docs for all wrappper modules
+in a package.
+
+Arguments
+---------
+package_path
+    The file-system path containing the image specifications: Python dictionaries
+    named `spec` in sub-modules with the following keys:{spec_help}""")
+@click.argument('package_path')
+def build_all_docs(package_path):
+    raise NotImplementedError
+
+
+@wrap.command(name='test', help="""Test a wrapper pipeline defined in a module
+
+Arguments
+---------
+module_path
+    The file system path to the module to build""")
+@click.argument('module_path')
+def test(module_path):
+    raise NotImplementedError
+
+
+@wrap.command(name='test-all', help="""Test all wrapper pipelines
+in a package.
+
+Arguments
+---------
+package_path
+    The file-system path containing the image specifications: Python dictionaries
+    named `spec` in sub-modules with the following keys:{spec_help}""")
+@click.argument('package_path')
+def build_all_docs(package_path):
+    raise NotImplementedError
 
 
 @click.command(name='inspect-docker-exec', 
@@ -242,4 +290,3 @@ class MarkdownTable:
 
         # TODO handle new lines in col
         self.f.write("|" + "|".join(col.replace("|", "\\|") for col in cols) + "|\n")
-

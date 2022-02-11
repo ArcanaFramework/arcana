@@ -17,19 +17,19 @@ Arcana
 
 Arcana_ (Abstraction of Repository-Centric ANAlysis) is Python framework
 for "repository-centric" analyses of study groups (e.g. NeuroImaging
-studies) built on Pydra_.
+studies) built on the Pydra_ workflow engine.
 
-Arcana_ interacts closely with a data stores (repositories), storing intermediate
+Arcana_ interacts closely with a data stores (e.g. repositories), storing intermediate
 outputs, along with the parameters used to derive them, for reuse by
-subsequent analyses. Data stores can either be file systems, XNAT_ repositories,
-and support is available for reading and writing BIDS_ formatted datasets.
+subsequent analyses. Currently, data stores can either be file systems or XNAT_
+repositories.
 
 Analysis workflows are constructed and executed using the Pydra_
 package, and can either be run locally or submitted to HPC
 schedulers using Pydra_'s execution plugins. For a requested analysis
 output, Arcana determines the required processing steps by querying
 the repository to check for missing intermediate outputs before
-constructing the workflow graph.
+constructing a combined workflow graph.
 
 
 User/Developer Guide
@@ -40,7 +40,8 @@ User/Developer Guide
 
     installation
     data_model
-    example
+    processing
+    deployment
 
 
 .. note::

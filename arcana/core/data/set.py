@@ -146,6 +146,10 @@ class Dataset():
                          for k, v in metadata['excluded'].items()}}
         return cls(id, store, **kwargs)
 
+    @classmethod
+    def load(cls, id, store=None, name=None):
+        raise NotImplementedError
+
     @column_specs.validator
     def column_specs_validator(self, _, column_specs):
         wrong_freq = [m for m in column_specs.values()
