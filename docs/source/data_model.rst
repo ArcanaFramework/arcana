@@ -206,9 +206,6 @@ string separated by ':'
       --include subject 10:20
 
 
-.. _data_columns:
-
-
 Items and data types
 --------------------
 
@@ -229,6 +226,8 @@ of the data.
 .. warning::
     Under construction
 
+
+.. _data_columns:
 
 Columns
 -------
