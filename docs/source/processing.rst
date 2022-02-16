@@ -13,12 +13,16 @@ pipelines.
 Pipelines
 ---------
 
-Pipeline objects wrap around the "inner" workflow, which can consist of a
-single Pydra task or a series of processing steps in a Pydra workflow to
-process/analyse the data. The "outer" workflow implicitly created by the
-pipeline object, adds tasks to iterate over data nodes, handle storage and
-retrieval to and from the data store, convert data between file formats and
-management of provenance and previously generated derivatives.
+Pipeline objects wrap around an "inner" workflow, which can consist of a
+single Pydra task, or a Pydra workflow containing several tasks, to
+process/analyse the data. An "outer" workflow is implicitly created by the
+pipeline object, which adds tasks to iterate over the relevant nodes in the
+dataset, handle storage and retrieval to and from the data store,
+convert data between different file formats and ensure that previously
+generated derivatives were generated with equivalent parameterisations
+and software versions.
+
+By default, pipelines will iterate over all 
 
 Connecting a pipeline via API
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -66,8 +70,8 @@ add the sources and sinks in one step
         sources=[('T1w', 'in_file', medicalimaging.nifti_gz)],
         sinks=[('fast/gm', 'gm', medicalimaging.nifti_gz)])
 
-      # Save pipeline to dataset metadata for subsequent reuse.
-      dataset.save()
+    # Save pipeline to dataset metadata for subsequent reuse.
+    dataset.save()
 
 
 Connecting a pipeline via CLI
@@ -119,7 +123,7 @@ Generating derivatives via API
 
   dataset = Dataset.load('file///data/openneuro/ds00014:test')
 
-  dataset.derive('fast/gm')
+  dataset.derive('fast/gm', work_dir='/work/temp-dir')
 
   # Print URI of generated dataset
   print(dataset['fast/gm']['sub11'].uri)
@@ -133,7 +137,18 @@ Generating derivatives via CLI
   $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all
 
 
-Under the hood, Arcana uses the Pydra workflow engine to execute the 
+Under the hood, Arcana uses the Pydra workflow engine to execute the pipelines.
+By default it will use the Pydra's "cf" plugin, which uses "concurrent-futures"
+to split workflows over multiple processes. You can specify which plugin, and
+thereby how the workflow is executed via the ``pydra_plugin`` option, and pass
+options to it with ``pydra_option``.
+
+
+.. code-block:: bash
+
+  $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all \
+    --pydra_plugin slurm --pydra_option poll_delay 5 --pydra_option max_jobs 10
+
 
 Provenance
 ----------
@@ -145,6 +160,95 @@ metadata includes:
 * Full workflow graph with connections between, and parameterisations of, Pydra tasks
 * Container image tags for tasks that ran inside containers
 * Python dependencies and versions used.
+
+How these provenance metadata are stored will depend on the type data store,
+but often it will be stored in a JSON file. An example provenance JSON file
+for 
+
+.. code-block:: javascript
+
+  {
+    "checksums": {
+      "inputs": {
+        // MD5 Checksums for all files in the file group. "." refers to the
+        // "primary file" in the file group.
+        "T1w_reg_dwi": {
+          ".": "4838470888DBBEADEAD91089DD4DFC55",
+          "json": "7500099D8BE29EF9057D6DE5D515DFFE"
+        },
+        "T2w_reg_dwi": {
+          ".": "4838470888DBBEADEAD91089DD4DFC55",
+          "json": "5625E881E32AE6415E7E9AF9AEC59FD6"
+        },
+        "dwi_fod": {
+          ".": "92EF19B942DD019BF8D32A2CE2A3652F"
+        }
+      },
+      "outputs": {
+        "wm_tracks": {
+          ".": "D30073044A7B1239EFF753C85BC1C5B3"
+        }
+      }
+    },
+    "pipeline": {
+      "name": "anatomically_constrained_tractography",
+      // List all tasks in the pipeline and the inputs to them. 
+      "tasks": [
+        {
+          "name": "5ttgen",
+          "task": {
+            "module": "pydra.tasks.mrtrix3.preprocess",
+            "name": "FiveTissueTypes",
+            "package": "pydra-mrtrix",
+            "version": "0.1.1"
+          }
+          "inputs": {
+            "in_file": {
+              "field": "T1w_reg_dwi"
+            }
+            "t2": {
+              "field": "T1w_reg_dwi"
+            }
+            "sgm_amyg_hipp": true
+          },
+          "image": {
+            "type": "docker",
+            "tag": "mrtrix3/mrtrix3"
+          }
+        },
+        {
+          "name": "tckgen",
+          "task": {
+            "module": "pydra.tasks.mrtrix3.tractography",
+            "name": "TrackGen",
+            "package": "pydra-mrtrix",
+            "version": "0.1.1"
+          }
+          "inputs": {
+            "in_file": {
+              "field": "dwi_fod"
+            },
+            "act": {
+              "task": "5ttgen",
+              "field": "out_file"
+            },
+            "select": 100000000,
+          },
+          "image": {
+            "type": "docker",
+            "tag": "mrtrix3/mrtrix3"
+          }
+        }
+      ],
+      "outputs": {
+        "wm_tracks": {
+          "task": "tckgen",
+          "field": "out_file"
+        }
+      }
+    }
+  }
+
 
 Before derivatives are generated, the provenance metadata of prerequisite
 derivatives (i.e. inputs of the pipeline and prerequisite pipelines, etc...)

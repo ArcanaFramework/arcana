@@ -78,7 +78,7 @@ See also ``arcana store rename`` and ``arcana store remove``.
     ``file`` and ``bids`` when defining a dataset.
 
 
-Datasets, Dimensions and Nodes
+Datasets, dimensions and nodes
 ------------------------------
 
 In Arcana, *datasets* refer to collection of data organised into a tree, which
@@ -209,8 +209,8 @@ string separated by ':'
 .. _data_columns:
 
 
-Items and Data Types (Fields, ArrayFields and FileGroups)
----------------------------------------------------------
+Items and data types
+--------------------
 
 ``DataItem`` objects are atomic elements in Arcana datasets, and can be either
 *fields* (int, float, str or bool), *array fields* (sequence[int or float or str or bool])

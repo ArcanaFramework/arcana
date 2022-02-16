@@ -1,34 +1,15 @@
 Arcana
 ======
-.. image:: https://github.com/australian-imaging-service/arcana/actions/workflows/tests.yml/badge.svg
-   :target: https://github.com/australian-imaging-service/arcana/actions/workflows/tests.yml
-.. image:: https://codecov.io/gh/australian-imaging-service/arcana/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/australian-imaging-service/arcana
-.. image:: https://img.shields.io/pypi/pyversions/arcana.svg
-   :target: https://pypi.python.org/pypi/arcana/
-   :alt: Supported Python versions
-.. image:: https://img.shields.io/pypi/v/arcana.svg
-   :target: https://pypi.python.org/pypi/arcana/
-   :alt: Latest Version
-.. image:: https://readthedocs.org/projects/arcana/badge/?version=latest
-  :target: http://arcana.readthedocs.io/en/latest/?badge=latest
-  :alt: Documentation Status
 
+Arcana_ (Abstraction of Repository-Centric ANAlysis) is Python framework for
+analysing datasets "in-place", i.e. pulling data from a data store, performing
+computations on it, and then uploading the processed data alongside the original.
+Derivatives are generated incrementally, allowing intermediate products to be
+manually checked before subsequent stages are processed.
 
-Arcana_ (Abstraction of Repository-Centric ANAlysis) is Python framework
-for "repository-centric" analyses of study groups (e.g. NeuroImaging
-studies) built on the Pydra_ workflow engine. The framework handles
-all interactions with a data stores (e.g. repositories), storing
-derivatives, along with the parameters used to derive them, in the data store
-for reuse by subsequent analyses. Currently, data stores can either be file
-systems or XNAT_ repositories.
-
-Derivatives are generated using workflows constructed and run within the Pydra_
-workflow engine. Therefore, they can be executed locally or submitted to HPC
-schedulers using Pydra_'s various execution plugins. For a requested analysis
-output, Arcana determines the required processing steps by querying
-the data store to check for missing outputs prerequisite derivatives before
-constructing workflows to perform them.
+All processing is performed by the Pydra_ workflow engine, which enables tasks
+to be spread over multiple cores or submitted to job-schedulers typically used
+by high-performance clusters (i.e. SLURM and SGE).
 
 Guide
 -----
@@ -41,14 +22,15 @@ Guide
    processing
    deployment
    developer
+   api
 
-
+|
 .. note::
    For the legacy version of Arcana as described in
    *Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `<10.1007/s12021-019-09430-1>`_
    please see `<https://github.com/MonashBI/arcana>`_.
-   Conceptually, the legacy version and the versions in this repository (>=2) are very similar.
-   However, instead of Nipype, v2 uses the Pydra workflow engine (Nipype's successor)
+   Conceptually, the legacy version and the versions in this repository (version >= 2.0) are similar.
+   However, instead of Nipype, versions >= 2 use the Pydra_ workflow engine (Nipype's successor)
    and the syntax has been rewritten from scratch to make it more streamlined and intuitive.
 
 

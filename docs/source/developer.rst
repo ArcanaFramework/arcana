@@ -9,5 +9,5 @@ Adding new data types
 
 
 
-Supporting alternative storage methods
---------------------------------------
+Implementing alternative data store types
+-----------------------------------------
