@@ -10,20 +10,6 @@ To manage this, Arcana contains a rich and flexible data model consisting of
 storage systems.
 
 
-Items (Fields and FileGroups)
------------------------------
-
-``DataItem`` objects are the atomic elements of Arcana datasets and can be either
-*fields* (int, float, str or bool), field arrays (list[int or float or str or bool])
-or *file groups* (single files, files + header/side-car or directories). ``FileGroup``
-sub-classes may contain methods for accessing the file data and header metadata,
-which can be useful in selecting from a collection of acquired data and exploration
-of the data.
-
-Data items act as pointers to the data associated provenance in the
-dataset and provide methods for pulling and pushing data to the store.
-
-
 Stores
 ------
 
@@ -79,7 +65,7 @@ To configure access to a store via the CLI use the ``arcana store add`` sub-comm
 
 .. code-block:: bash
 
-    $ arcana store add central-xnat xnat https://central.xnat.org --user user123 --cache_dir /work/xnat-cache --password
+    $ arcana store add central-xnat xnat https://central.xnat.org --user user123 --cache_dir /work/xnat-cache
     Password:
 
 
@@ -152,6 +138,10 @@ different subsets of IDs, for different analyses. To avoid conflicts you can
 assign a dataset definition a ``name``, which is used differentiate between multiple
 dataset definitions stored in the same project/directory.
 
+.. warning::
+
+    This needs to be broken up into smaller parts
+
 
 Defining a dataset via API
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -166,7 +156,7 @@ Datasets can be defined in from data store using the ``DataStore.dataset()`` met
 
     xnat_dataset = xnat_store.dataset(
         id='MYXNATPROJECT',
-        excluded={ClinicalTrial.subject: ['09', '11']},
+        excluded={ClinicalTrial.subject: ['09', '11']},  # Alternatively use 'subject' string instead of enum
         included={Clincial.timepoint: ['T1']}
         id_inference=[
             (ClinicalTrial.subject, r'(?P<group>[A-Z]+)_(?P<member>\d+)')])
@@ -217,6 +207,28 @@ string separated by ':'
 
 
 .. _data_columns:
+
+
+Items and Data Types (Fields, ArrayFields and FileGroups)
+---------------------------------------------------------
+
+``DataItem`` objects are atomic elements in Arcana datasets, and can be either
+*fields* (int, float, str or bool), *array fields* (sequence[int or float or str or bool])
+or *file groups* (single files, files + header/side-cars or directories).
+Data items act as pointers to the data associated provenance in the
+dataset and provide methods for pulling and pushing data to the store.
+
+Arcana implicitly handles conversions between different file formats
+
+``FileGroup`` sub-classes may contain methods for accessing the file data and header metadata,
+which can be useful in selecting from a collection of acquired data and exploration
+of the data.
+
+<explain how to reference them from the command line>
+
+.. warning::
+    Under construction
+
 
 Columns
 -------
@@ -273,10 +285,10 @@ operator
 .. code-block:: python
 
     import matplotlib.pyplot as plt
-    from arcana.core.data.store import DataStore
+    from arcana.core.data.store import Dataset
 
     # Get a column containing all T1-weighted MRI images across the dataset
-    xnat_dataset = DataStore.load('central-xnat').load_dataset('MYXNATPROJECT')
+    xnat_dataset = Dataset.load('central-xnat//MYXNATPROJECT')
     t1w = xnat_dataset['T1w']
 
     # Plot a slice of the image data from a sample image (Note: such data access
@@ -292,10 +304,30 @@ to a dataset using the CLI.
 
 .. code-block:: bash
 
-    $ arcana source add 'central-xnat//MYXNATPROJECT' T1w medicalimaging:dicom --path '.*t1_mprage.*' --order 1 --quality usable --regex
+    $ arcana source add 'central-xnat//MYXNATPROJECT' T1w \
+      medicalimaging:dicom --path '.*t1_mprage.*' \
+      --order 1 --quality usable --regex
 
-    $ arcana sink add 'file///data/imaging/my-project:training' brain_template medicalimaging:nifti_gz --frequency group
+    $ arcana sink add 'file///data/imaging/my-project:training' brain_template \
+      medicalimaging:nifti_gz --frequency group
 
 
-.. _Arcana: http://arcana.readthedocs.io
-.. _XNAT: http://xnat.org
+One of the main benefits of using datasets in BIDS_ format is that the names
+and file formats of the data are strictly defined. This allows the ``BidsFormat``
+data store object to automatically add sources to the dataset when it is
+initialised.
+
+.. code-block:: python
+
+    from arcana.data.stores.bids import BidsFormat
+    from arcana.data.stores.file_system import FileSystem
+    from arcana.data.dimensions.medicalimaging import ClinicalTrial
+
+    bids_dataset = BidsFormat().dataset(
+        id='/data/openneuro/ds00014')
+
+    print(bids_dataset['T1w']['sub01'].header['dim'])
+
+.. _Arcana: https://arcana.readthedocs.io
+.. _XNAT: https://xnat.org
+.. _BIDS: https://bids.neuroimaging.io
