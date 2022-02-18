@@ -1,40 +1,54 @@
 Arcana
 ======
 
-Arcana_ (Abstraction of Repository-Centric ANAlysis) is Python framework for
-analysing datasets "in-place", i.e. pulling data from a data store, performing
-computations on it, and then uploading the processed data alongside the original.
-Derivatives are generated incrementally, allowing intermediate products to be
-manually checked before subsequent stages are processed.
+Arcana (Abstraction of Repository-Centric ANAlysis) is framework for
+analysing datasets "in-place", i.e. pulling data from a data store to a
+(typically neighbouring) computing resource, performing computations on the
+data, and then uploading the processed data back to the store alongside the
+original. Data store interactions are abstracted by modular handlers, making
+analyses portable between different storage systems. Many other menial aspects
+of workflow design, such as node iteration, format conversions and provenance
+handling are also abstracted away from the designer, enabling them to focus on
+the core logic of the analysis to be implemented.
 
-All processing is performed by the Pydra_ workflow engine, which enables tasks
-to be spread over multiple cores or submitted to job-schedulers typically used
-by high-performance clusters (i.e. SLURM and SGE).
+This approach has several advantages over typical analysis workflows, particularly when analysing large datasets:
 
-Guide
------
+* Derivatives are kept in central location, avoiding duplication of processing
+* Incremental generation of derivatvies facilitates manual-checks of intermediate products
+* Portability and extensibility facilitates the development of shared workflow libraries that can be refined by multiple collaborators to capture the “arcana" of domain-specific data analysis, the obscure knowledge required to apply an appropriate combination of software tools and parameters.
+
+The framework also includes tools for deploying pipelines in Docker images that
+can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_
+or as `BIDS apps <https://bids-apps.neuroimaging.io/>`_. These tools can be used
+to maintain continuous integration and deployment of pipeline suites (see
+`<https://github.com/australian-imaging-service/pipelines-core>`).
+
+
+Contents
+--------
 
 .. toctree::
    :maxdepth: 2
 
-   installation
+   getting_started
    data_model
    processing
    deployment
-   developer
    api
+   cli
+   developer
+  
 
 |
 .. note::
    For the legacy version of Arcana as described in
-   *Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `<10.1007/s12021-019-09430-1>`_
-   please see `<https://github.com/MonashBI/arcana>`_.
+   *Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `10.1007/s12021-019-09430-1 <https://doi.org/10.1007/s12021-019-09430-1>`_
+   please see `<https://github.com/MonashBI/arcana-legacy>`_.
    Conceptually, the legacy version and the versions in this repository (version >= 2.0) are similar.
    However, instead of Nipype, versions >= 2 use the Pydra_ workflow engine (Nipype's successor)
    and the syntax has been rewritten from scratch to make it more streamlined and intuitive.
 
 
-.. _Arcana: http://arcana.readthedocs.io
 .. _Pydra: http://pydra.readthedocs.io
 .. _XNAT: http://xnat.org
 .. _BIDS: http://bids.neuroimaging.io/

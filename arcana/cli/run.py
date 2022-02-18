@@ -30,7 +30,7 @@ def sanitize_path(path):
     return sanitize_path_re.sub(path, '_')
 
 
-@cli.command("""Run a Pydra task/workflow on a dataset.
+@cli.command(help="""Run a Pydra task/workflow on a dataset.
 
 dataset
     The path to the dataset to run the workflow on.
@@ -39,12 +39,12 @@ pydra_task
     with the module path + ':' + task-name, e.g.
         pydra.tasks.fsl.preprocess.fast:FAST
     For convenience the 'pydra.tasks' prefix can be omitted,
-    e.g. fsl.preprocess.fast:FAST)""")
+    e.g. fsl.preprocess.fast:FAST)
+""")
 @click.argument('dataset')
 @click.argument('pydra_task')
 @click.option(
-    '--input', '-i', multiple=True, nargs=3, name='input_specs',
-    metavar=('INTERFACE_FIELD', 'REQUIRED_FORMAT', 'PATH:FORMAT:ORDER:QUALITY'),
+    '--input', '-i', 'input_specs', multiple=True, nargs=3,  metavar='<criteria>',
     help="""A file-group input to provide to the task that is matched by the 
     provided criteria.
 
@@ -96,8 +96,8 @@ pydra_task
 
         --input in_file.nii.gz 't1_mprage.*' * * questionable""")
 @click.option(
-    '--output', '-o', multiple=True, nargs=3, name='output_specs',
-    metavar=('VAR', 'PRODUCED_DTYPE', 'STORE_AT:FORMAT'),
+    '--output', '-o', 'output_specs', multiple=True, nargs=3, 
+    metavar='<spec>',
     help="""The outputs produced by the task to be stored.
 
     The INTERFACE_FIELD is the name of the output field in the Pydra
@@ -112,11 +112,11 @@ pydra_task
     FORMAT is the name of
     the file-format the file will be stored at in the dataset.""")
 @click.option(
-    '--parameter', '-p', metavar=('NAME', 'VAL'), name='parameters',
+    '--parameter', '-p', 'parameters', metavar='<name-val>', 
     multiple=True, nargs=2,
     help=("Parameter to pass to the app"))
 @click.option(
-    '--id', multiple=True, default=None, name='ids',
+    '--id', 'ids', multiple=True, default=None, 
     help=("IDs of the nodes to process (i.e. for the frequency that "
           "the app runs at)."))
 @click.option(
@@ -126,23 +126,23 @@ pydra_task
           "session"))
 @click.option(
     '--container', nargs=2, default=None,
-    metavar=('ENGINE', 'IMAGE'),
+    metavar='<engine-tag>',
     help=("The container engine ('docker'|'singularity') and the image"
             " to run the app in"))
 @click.option(
-    '--work', '-w', default=None, name='work_dir',
+    '--work', '-w', 'work_dir', default=None,
     help=("The location of the directory where the working files "
           "created during the pipeline execution will be stored"))
 @click.option(
     '--pydra_plugin', default='cf',
     help=("The Pydra plugin with which to process the workflow"))
 @click.option(
-    '--virtualisation', default='none', type=str,
-    choices=('docker', 'singularity', 'none'),
+    '--virtualisation', default='none',
+    type=click.Choice(['docker', 'singularity', 'none'], case_sensitive=False),
     help=("The virtualisation method to run with the task with (only "
           "applicable to BIDS app tasks)"))
 @click.option(
-    '--dry_run', action='store_true', default=False,
+    '--dry_run', is_flag=True, default=False,
     help=("Set up the workflow to test inputs but don't run the app"))
 @click.option(
     '--loglevel', type=str, default='info',

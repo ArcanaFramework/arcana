@@ -8,7 +8,7 @@ def column():
     pass
 
 
-@column.command("""Adds a source column to a dataset. A source column
+@column.command(name='add-source', help="""Adds a source column to a dataset. A source column
 selects comparable items along a dimension of the dataset to serve as
 an input to pipelines and analyses.
 
@@ -23,12 +23,12 @@ datatype
     The data type of the column. Can be a field (int|float|str|bool),
     field array (list[int|float|str|bool]) or "file-group"
     (file, file+header/side-cars or directory)
-""", name='add-source')
+""")
 @click.argument('dataset_path')
-@click.argument('name')
+@click.argument('column_name')
 @click.argument('datatype')
 @click.option(
-    '--frequency', '-f', metavar=('DIMENSION'),
+    '--frequency', '-f', metavar='<dimension>',
     help=("The frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
           "medicalimaging:ClinicalTrial data dimensions"),
@@ -46,20 +46,20 @@ datatype
     help=("For data stores that enable flagging of data quality, "
           "this option can filter out poor quality scans"))
 @click.option(
-    '--regex/--no-regex', name='is_regex', default=True,
+    '--regex/--no-regex', 'is_regex', default=True,
     help=("Whether the 'path' option should be treated as a regular expression "
           "or not"))
 @click.option(
-    '--header', '-h', nargs=2, metavar=('KEY', 'VAL'),
+    '--header', '-h', nargs=2, metavar='<key-val>',
     help=("Match on specific header value. This option is only valid for "
           "select datatypes that the implement the 'header_val()' method "
           "(e.g. medicalimaging:dicom)."))
-def add_source(dataset_path, name, datatype, frequency, path, order, quality,
-               is_regex, header):
+def add_source(dataset_path, column_name, datatype, frequency, path, order,
+               quality, is_regex, header):
     raise NotImplementedError
 
 
-@column.command("""Adds a sink column to a dataset. A sink column
+@column.command(name='add-sink', help="""Adds a sink column to a dataset. A sink column
 specifies how data should be writen into the dataset.
 
 Arguments
@@ -73,12 +73,12 @@ datatype
     The data type of the column. Can be a field (int|float|str|bool),
     field array (list[int|float|str|bool]) or "file-group"
     (file, file+header/side-cars or directory)
-""", name='add-sink')
+""")
 @click.argument('dataset_path')
 @click.argument('name')
 @click.argument('datatype')
 @click.option(
-    '--frequency', '-f', metavar=('DIMENSION'),
+    '--frequency', '-f', metavar='<dimension>',
     help=("The frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
           "medicalimaging:ClinicalTrial data dimensions"),
@@ -91,7 +91,7 @@ def add_sink(dataset_path, name, datatype, frequency, path):
     raise NotImplementedError
 
 
-@column.command("""Removes an existing source column from a dataset
+@column.command(help="""Removes an existing source column from a dataset
 
 Arguments
 ---------
@@ -103,7 +103,7 @@ def remove(name):
     raise NotImplementedError
 
 
-@column.command("""Finds the IDs of nodes that are missing a valid entry for the
+@column.command(help="""Finds the IDs of nodes that are missing a valid entry for the
 column.
 
 Arguments

@@ -1,13 +1,21 @@
 Developer Guide
 ===============
 
+
 .. warning::
     Under construction
 
-Adding new data types
----------------------
+
+Contributing
+------------
+
+Adding new data formats
+-----------------------
 
 
+Designing Analysis classes
+--------------------------
 
-Implementing alternative data store types
------------------------------------------
+
+Implementing alternative data stores
+------------------------------------

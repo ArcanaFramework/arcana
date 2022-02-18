@@ -11,7 +11,7 @@ def store():
     pass
 
 
-@store.command("""Saves the details for a new data store in the configuration
+@store.command(help="""Saves the details for a new data store in the configuration
 file ('~/.arcana/stores.yml').
 
 Arguments
@@ -63,7 +63,7 @@ def rename(old_nickname, new_nickname):
     DataStore.remove(old_nickname)
 
 
-@store.command("""Remove a saved data store from the config file
+@store.command(help="""Remove a saved data store from the config file
 
 Arguments
 ---------
@@ -73,7 +73,7 @@ def remove(nickname):
     DataStore.remove(nickname)
 
 
-@store.command("""Refreshes credentials saved for the given store
+@store.command(help="""Refreshes credentials saved for the given store
 (typically a token that expires)
 
 Arguments

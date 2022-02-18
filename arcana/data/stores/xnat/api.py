@@ -84,8 +84,7 @@ class Xnat(DataStore):
     METADATA_RESOURCE = '__arcana__'
 
 
-    def save_dataset_metadata(self, dataset, metadata,
-                              name=DataStore.DEFAULT_DATASET_NAME):
+    def save_dataset_metadata(self, dataset, metadata, name):
         with self:
             root_xnode = self.get_xnode(dataset.root)
             try:
@@ -100,8 +99,7 @@ class Xnat(DataStore):
                 json.dump(metadata, f)
             xresource.upload(str(metadata_file), name + '.json')
 
-    def load_dataset_metadata(self, dataset_id,
-                              name=DataStore.DEFAULT_DATASET_NAME):
+    def load_dataset_metadata(self, dataset_id, name):
         with self:
             root_xnode = self.get_xnode(self.dataset(dataset_id).root)
             try:
