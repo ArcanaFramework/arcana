@@ -24,20 +24,32 @@ to maintain continuous integration and deployment of pipeline suites (see
 `<https://github.com/australian-imaging-service/pipelines-core>`).
 
 
-Contents
---------
-
 .. toctree::
    :maxdepth: 2
+   :caption: User Guide
+   :hidden:
 
    getting_started
    data_model
    processing
    deployment
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Developer Guide
+   :hidden:
+   
+   dev_formats
+   dev_analyses
+   dev_stores
+  
+.. toctree::
+   :maxdepth: 2
+   :caption: Reference
+   :hidden:
+
    api
    cli
-   developer
-  
 
 |
 .. note::

@@ -16,3 +16,4 @@ neurodocker==0.7.0
 deepdiff>=3.3
 importlib-metadata>=1.4
 sphinx-click>=3.1
+furo>=2022.2.14.1
