@@ -1,14 +1,16 @@
 Data Model
 ==========
 
-Arcana handles all workflow inputs and outputs to file/network, making pipeline
-implementations transportable between storage systems and allowing workflow
-designers to focus on the analysis being implemented rather than menial details.
-To manage this, Arcana contains a rich and flexible data model consisting of
-``DataStore``, ``Dataset``, ``DataDimension``, ``DataNode``, ``DataColumn``, and
-``DataItem`` classes and sub-classes customised for different data types and
-storage systems.
+Arcana handles all workflow inputs and outputs to file or network locations.
+To manage these interactions, Arcana contains a rich and flexible
+object model. They key classes of Arcana's data model are:
 
+* :class:`arcana.core.data.store.DataStore` - abstraction of the storage system/format, which is sub-classed for different storage systems/formats
+* :class:`arcana.core.data.set.Dataset` - Encapsulates a set of data to be analysed, e.g. XNAT project or BIDS dataset
+* :class:`arcana.core.data.dimensions.DataDimensions` - Defines the repetitive structure of a class of datasets, i.e. do the datasets contain a consistent of measurements for each subject/time-point or rather each weather-station/day
+* :class:`arcana.core.data.node.DataNode` - a set of measurements that are repeated in the dataset, e.g. imaging session
+* :class:`arcana.core.data.column.DataColumn` - a single type of measurement repeated across the dataset
+* :class:`arcana.core.data.item.DataItem` - a single measurement, e.g. T1-weighted MRI scan, humidity
 
 Stores
 ------
@@ -16,8 +18,9 @@ Stores
 Support for different storage techniques is provided by sub-classes of the
 ``DataStore`` class. ``DataStore`` sub-classes not only encapsulate where the
 data is stored, e.g. on local disk or remote repository, but also how the data
-is accessed, e.g. whether it is in BIDS format or not, or whether using the XNAT
-container service or purely the XNAT API.
+is accessed, e.g. whether it is in BIDS format or not, or whether to access
+data in an XNAT repository as exposed to the container service or purely by
+the XNAT API.
 
 There are currently four implemented ``DataStore`` sub-classes:
 
@@ -30,9 +33,6 @@ Alternative storage systems can be implemented by writing a new sub-class of
 ``DataStore``. The developers are interested in adding support for new systems,
 so if you would like to use Arcana with a different storage system please
 create an issue for it in the `GitHub Issue Tracker <https://github.com/Australian-Imaging-Service/arcana/issues>`__.
-
-Configuring store access via API
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To configure access to a data store a via the API, initialise the ``DataStore``
 sub-class corresponding to the required data location/access-method then save
@@ -51,21 +51,20 @@ it to the YAML configuration file stored at `~/.arcana/stores.yml`.
         cache_dir='/work/xnat-cache'
     )
 
-    # Save it to the configuration file with the nickname 'central-xnat'
-    xnat_store.save('central-xnat')
+    # Save it to the configuration file stored at '~/.arcana/stores.yml' with
+    # the nickname 'xnat-central'
+    xnat_store.save('xnat-central')
 
     # Reload store from configuration file
-    reloaded = DataStore.load('central-xnat')
+    reloaded = DataStore.load('xnat-central')
 
-
-Configuring store access via CLI
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To configure access to a store via the CLI use the ``arcana store add`` sub-command
 
 .. code-block:: bash
 
-    $ arcana store add central-xnat xnat https://central.xnat.org --user user123 --cache_dir /work/xnat-cache
+    $ arcana store add xnat-central xnat https://central.xnat.org --user user123 \
+      --cache_dir /work/xnat-cache
     Password:
 
 
@@ -143,9 +142,6 @@ dataset definitions stored in the same project/directory.
     This needs to be broken up into smaller parts
 
 
-Defining a dataset via API
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 Datasets can be defined in from data store using the ``DataStore.dataset()`` method,
 
 .. code-block:: python
@@ -184,16 +180,13 @@ Naming of the dataset can be done providing the ``name`` parameter to the
     dwi_dataset = xnat_store.load_dataset('MYXNATPROJECT', 'passed_dwi_qc')
 
 
-Defining a dataset via CLI
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 Datasets can also be defined and saved via the CLI using the ``arcana dataset define``
 command. The store the dataset belongs to is prepended to the project ID
 separated by '//', e.g.
 
 .. code-block:: bash
 
-    $ arcana dataset define 'central-xnat//MYXNATPROJECT' \
+    $ arcana dataset define 'xnat-central//MYXNATPROJECT' \
       --excluded subject sub09,sub11 --included timepoint T1 \
       --id_inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)'
 
@@ -233,8 +226,8 @@ Columns
 -------
 
 Matching items across a dataset (e.g. all subject ages or all 'T1-weighted MRI
-images') are referred collectively as *columns*, loosely analogous to tabular
-formats such as those used by Excel and Pandas. However, unlike in tabular
+images') are referred collectively as *columns*, loosely analogous to its use
+in tabular datasets, such as those used by Excel and Pandas. However, unlike in tabular
 formats, items in data columns in Arcana occur at different *frequencies*,
 e.g. 'age values occur per subject and T1-weighted images occur per session.
 When specifying a column, the datatype of the items in the column needs to be specified. 
@@ -250,10 +243,6 @@ Columns are given a name, which is used to access them and map the
 inputs/outputs of pipelines onto. By default, this name is used by sinks to
 name the output fields/files stored in the dataset. However, if a specific
 output path is required it can be specified by the ``path`` argument.
-
-
-Adding columns via API
-~~~~~~~~~~~~~~~~~~~~~~
 
 Use the ``Dataset.add_source()`` and ``Dataset.add_sink()`` methods to add
 sources and sinks via the API.
@@ -287,7 +276,7 @@ operator
     from arcana.core.data.store import Dataset
 
     # Get a column containing all T1-weighted MRI images across the dataset
-    xnat_dataset = Dataset.load('central-xnat//MYXNATPROJECT')
+    xnat_dataset = Dataset.load('xnat-central//MYXNATPROJECT')
     t1w = xnat_dataset['T1w']
 
     # Plot a slice of the image data from a sample image (Note: such data access
@@ -295,15 +284,12 @@ operator
     plt.imshow(t1w['sub01_tpoint2'].data[:,:,30])
 
 
-Adding columns via CLI
-~~~~~~~~~~~~~~~~~~~~~~
-
 Use the ``arcana source add`` and ``arcana sink add`` commands to add sources/sinks
 to a dataset using the CLI.
 
 .. code-block:: bash
 
-    $ arcana source add 'central-xnat//MYXNATPROJECT' T1w \
+    $ arcana source add 'xnat-central//MYXNATPROJECT' T1w \
       medicalimaging:dicom --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 

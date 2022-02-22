@@ -1,5 +1,5 @@
-Public API
-==========
+API
+===
 
 The core of Arcana's framework is located under the ``arcana.core`` sub-package,
 which contains all the domain-independent logic. Domain-specific extensions
@@ -34,6 +34,8 @@ Core
 .. autoclass:: arcana.core.data.item.FileGroup
 
 .. autoclass:: arcana.core.data.item.Field
+
+.. autoclass:: arcana.core.data.item.DataItem
 
 
 Stores

@@ -1,5 +1,5 @@
-Alternative data stores
-=======================
+Alternative storage systems
+===========================
 
 
 .. warning::

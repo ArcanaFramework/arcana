@@ -1,5 +1,5 @@
-Adding new data formats
-=======================
+Adding data formats
+===================
 
 
 .. warning::

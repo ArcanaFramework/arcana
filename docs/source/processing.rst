@@ -308,11 +308,5 @@ or via the CLI
   $ arcana ignore 'myuni-xnat//myproject:training' freesurfer --param freesurfer_task num_iterations 3
 
 
-Analysis classes
-----------------
-
-.. warning::
-    Under construction
-
 
 .. _Pydra: http://pydra.readthedocs.io
