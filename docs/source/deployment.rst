@@ -5,28 +5,20 @@ Deployment
     Under construction
 
 
-Building Docker pipelines
--------------------------
+Building
+--------
 
-Building individual images via API
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Building individual images via CLI
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Building suite via CLI
-~~~~~~~~~~~~~~~~~~~~~~
+* Building individual images via API
+* Building individual images via CLI
+* Building suite via CLI
 
 
-Testing pipelines
------------------
+Testing
+-------
 
-Testing individual pipelines
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Testing suite via CLI
-~~~~~~~~~~~~~~~~~~~~~
-
+* Testing individual images via API
+* Testing individual images via CLI
+* Testing suite via CLI
 
 Generating documentation
 ------------------------

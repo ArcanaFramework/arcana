@@ -5,12 +5,12 @@ Arcana handles all workflow inputs and outputs to file or network locations.
 To manage these interactions, Arcana contains a rich and flexible
 object model. They key classes of Arcana's data model are:
 
-* :class:`arcana.core.data.store.DataStore` - abstraction of the storage system/format, which is sub-classed for different storage systems/formats
-* :class:`arcana.core.data.set.Dataset` - Encapsulates a set of data to be analysed, e.g. XNAT project or BIDS dataset
-* :class:`arcana.core.data.dimensions.DataDimensions` - Defines the repetitive structure of a class of datasets, i.e. do the datasets contain a consistent of measurements for each subject/time-point or rather each weather-station/day
-* :class:`arcana.core.data.node.DataNode` - a set of measurements that are repeated in the dataset, e.g. imaging session
-* :class:`arcana.core.data.column.DataColumn` - a single type of measurement repeated across the dataset
-* :class:`arcana.core.data.item.DataItem` - a single measurement, e.g. T1-weighted MRI scan, humidity
+* **DataStore** - abstraction of the storage system/format, which is sub-classed for different storage systems/formats
+* **Dataset** - Encapsulates a set of data items (files, fields or arrays) repeated across a range of data points (e.g. subjects)
+* **DataDimensions** - Defines the repetition structure (or "data space") for a class of datasets, e.g. whether there are data points for each subject and time-point, or each weather-station/day
+* **DataNode** - a set of data items at a common data point, e.g. imaging session
+* **DataColumn** - a single type of measurement repeated across the dataset
+* **DataItem** - a single measurement or acquisition, e.g. T1-weighted MRI scan, humidity measurement
 
 Stores
 ------

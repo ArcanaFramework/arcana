@@ -134,8 +134,7 @@ If pipeline inputs are sink columns to be derived by prerequisite pipelines,
 then the prerequisites are executed first.
 
 
-Generating derivatives via API
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To generate derivatives via the API
 
 .. code-block:: python
 
@@ -147,8 +146,7 @@ Generating derivatives via API
   print(dataset['fast/gm']['sub11'].uri)
 
 
-Generating derivatives via CLI
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To generate derivatives via the CLI
 
 .. code-block:: bash
 
@@ -166,6 +164,14 @@ options to it with ``pydra_option``.
 
   $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all \
     --pydra_plugin slurm --pydra_option poll_delay 5 --pydra_option max_jobs 10
+
+
+Analysis classes
+----------------
+
+.. warning::
+
+  Under construction
 
 
 Provenance

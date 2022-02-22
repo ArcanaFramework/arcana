@@ -42,15 +42,15 @@ applied to datasets from any field.
    analysis_classes
    deployment
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Development
-   :hidden:
+.. .. toctree::
+..    :maxdepth: 2
+..    :caption: Development
+..    :hidden:
    
-   dev_contributing
-   dev_formats
-   dev_analyses
-   dev_stores
+..    dev_contributing
+..    dev_formats
+..    dev_analyses
+..    dev_stores
   
 .. toctree::
    :maxdepth: 2
