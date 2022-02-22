@@ -3,21 +3,23 @@
 Arcana
 ======
 
-Arcana (Abstraction of Repository-Centric ANAlysis) is framework for
+Arcana (Abstraction of Repository-Centric ANAlysis) is a framework for
 analysing datasets "in-place", i.e. pulling data from a data store to a
 (typically neighbouring) computing resource, performing computations on the
 data, and then uploading the processed data back to the store alongside the
 original. Data store interactions are abstracted by modular handlers, making
-worklows portable between different storage systems. Many menial aspects
-of workflow design, such as node iteration, format conversions and provenance
-handling are also abstracted away from the designer, enabling them to focus on
-the core logic of the analysis to be implemented.
+worklows portable between different storage systems. Many tedious design tasks
+required to make the workflows iterate over data nodes, converting between
+file formats and storing/checking provenance metadata are also abstracted away
+from the designer, enabling them to focus on the core logic of the analysis
+to be implemented.
 
-This approach has several advantages over typical workflow design, particularly when analysing large datasets:
+This approach has several advantages over typical workflow design, particularly
+when analysing large datasets:
 
 * Derivatives are kept in central location, avoiding duplication of processing
-* Incremental processing works well with manual-QC of intermediate products at key milestones in the workflow (e.g. brain masks)
-* Portability and extensibility facilitates the development of shared workflow libraries that can be refined by multiple collaborators to capture the “arcana" of domain-specific data analysis, the obscure knowledge required to apply an appropriate combination of software tools and parameters.
+* Incremental processing facilitates manual-QC of intermediate products at key milestones in the workflow (e.g. brain masks)
+* Portability and extensibility encourages the development of shared workflow libraries that can be refined by multiple collaborators in order to capture the "data analysis arcana", the obscure knowledge required to apply an appropriate combination of software tools and parameters to analyse the data appropriately, for a given domain.
 
 The framework also includes tools for deploying pipelines in Docker images that
 can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_
@@ -29,8 +31,9 @@ Arcana was initially developed for neuroimaging analysis, and therefore is
 designed to efficiently handle the requirements typical of neuroimaging
 workflows (i.e. manipulation of file-based images by various third-party
 tools). However, at its core, Arcana is a general framework, which could be
-applied to datasets from any field.
-
+applied to datasets from any field. If you do end up using Arcana for in
+different domain please post an issue on the `issue tracker <https://github.com/Australian-Imaging-Service/arcana/issues>`_
+to let us know!
 
 .. toctree::
    :maxdepth: 2
