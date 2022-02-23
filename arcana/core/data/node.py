@@ -14,7 +14,7 @@ from .format import FileFormat
 from .item import DataItem
 from .provenance import DataProvenance
 from .enum import DataQuality
-from .spaces import DataSpace
+from .space import DataSpace
 
 
 @attr.s(auto_detect=True)

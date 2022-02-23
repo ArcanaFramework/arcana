@@ -12,7 +12,7 @@ from arcana.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.item import DataItem, FileGroup
 from .data.set import Dataset
 from .data.format import FileFormat
-from .data.spaces import DataSpace
+from .data.space import DataSpace
 from .utils import func_task
 
 logger = logging.getLogger('arcana')

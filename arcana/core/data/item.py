@@ -57,10 +57,26 @@ class DataItem(metaclass=ABCMeta):
 
     @abstractmethod
     def get(self, assume_exists=False):
+        """Pulls data from the store (if remote) and caches locally
+
+        Parameters
+        ----------
+        assume_exists: bool
+            If set, checks to see whether the item exists are skipped (used
+            to pull data after a successful workflow run)
+            """
         raise NotImplementedError
 
     @abstractmethod
     def put(self, value):
+        """Updates the value of the item in the store to the provided value,
+        pushing remotely if necessary.
+
+        Parameters
+        ----------
+        value : ty.Any
+            The value to update
+        """
         raise NotImplementedError
 
     @property
@@ -321,8 +337,6 @@ class FileGroup(DataItem):
             for aux_name, aux_path in self.side_cars.items():
                 copy_file(aux_path, path + self.datatype.side_cars[aux_name])
         return self.datatype.from_path(path)
-
-    
 
 
 @attr.s

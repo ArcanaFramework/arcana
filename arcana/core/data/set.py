@@ -11,7 +11,7 @@ from pydra import Workflow
 from arcana.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
     ArcanaBadlyFormattedIDError, ArcanaWrongDataSpacesError)
-from .spaces import DataSpace
+from .space import DataSpace
 from .spec import DataSink, DataSource
 from . import store
 

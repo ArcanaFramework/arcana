@@ -7,7 +7,7 @@ from arcana.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError)
 from .enum import DataQuality, DataSalience
-from .spaces import DataSpace
+from .space import DataSpace
 
 
 @attr.s

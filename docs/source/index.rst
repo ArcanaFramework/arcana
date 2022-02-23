@@ -12,19 +12,19 @@ faced when analysing large medical imaging projects, but should make your
 life easier no matter the size of your dataset or field of study!
 
 Data store interactions are abstracted by modular handlers, making
-worklows portable between different storage systems. Many tedious aspects of
-workflow design, such as handling iteration over data nodes, file-formats conversions
-and management of provenance data are also abstracted away from the designer, enabling them
+worklows portable between different storage systems. Other tedious aspects of
+workflow design, such as iteration, file-format conversions and management of
+provenance data are also abstracted away from the designer, enabling them
 to focus on the core logic of the analysis to be implemented.
 
-This approach has several advantages over typical workflow design, particularly
+Arcana's approach has several advantages over typical workflow design, particularly
 when analysing large datasets:
 
 * Derivatives are kept in central location, avoiding duplication of processing
 * Incremental processing facilitates manual-QC of intermediate products at key milestones in the workflow (e.g. brain masks)
-* Portability and extensibility encourages the development of shared workflow libraries that can be refined by multiple collaborators in order to capture the "arcana of data analysis", the obscure knowledge required to apply an appropriate combination of software tools and parameters to analyse the data appropriately, for a given domain.
+* Abstraction of site-specific implementation details encourages the development of shared workflow libraries. Such libraries can be refined by multiple collaborators over time to capture the domain-specific **"arcana of data analysis"**, the obscure knowledge required to apply a combination of tools and parameters to appropriately analyse complex datasets.
 
-The framework also includes tools for deploying pipelines in Docker images that
+Arcana also includes tools for deploying pipelines in Docker images that
 can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_
 or as `BIDS apps <https://bids-apps.neuroimaging.io/>`_. These tools can be used
 to maintain continuous integration and deployment of pipeline suites (see
@@ -32,7 +32,7 @@ to maintain continuous integration and deployment of pipeline suites (see
 
 Although designed to efficiently handle the requirements typical of medical imaging
 workflows (i.e. manipulation of file-based images by various third-party
-tools), at its core, Arcana is a general framework, which could be
+tools), at its core, Arcana is a common framework, which could be
 used to design analyses in any field. If you do end up using Arcana in a
 different domain please post an issue about it in the
 `issue tracker <https://github.com/Australian-Imaging-Service/arcana/issues>`_
@@ -45,18 +45,17 @@ to let us know!
    getting_started
    data_model
    processing
-   analysis_classes
    deployment
 
-.. .. toctree::
-..    :maxdepth: 2
-..    :caption: Development
-..    :hidden:
+.. toctree::
+   :maxdepth: 2
+   :caption: Development
+   :hidden:
    
-..    dev_contributing
-..    dev_formats
-..    dev_analyses
-..    dev_stores
+   contributing
+   adding_formats
+   design_analyses
+   alternative_stores
   
 .. toctree::
    :maxdepth: 2
@@ -68,6 +67,7 @@ to let us know!
 
 |
 .. note::
+
    For the legacy version of Arcana as described in
    *Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `10.1007/s12021-019-09430-1 <https://doi.org/10.1007/s12021-019-09430-1>`_
    please see `<https://github.com/MonashBI/arcana-legacy>`_.

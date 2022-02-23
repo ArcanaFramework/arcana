@@ -31,7 +31,7 @@ To add a pipeline to a dataset via the API use the ``Dataset.pipeline()`` method
 .. code-block:: python
 
     from pydra.tasks.freesurfer import Freesurfer
-    from arcana.data.formats import general, medicalimaging
+    from arcana.data.formats import common, medicalimaging
 
     dataset = Dataset.load('myuni-xnat//myproject:training')
 
@@ -40,7 +40,7 @@ To add a pipeline to a dataset via the API use the ``Dataset.pipeline()`` method
     dataset.add_source('T2w', medicalimaging.dicom, path='.*t2spc.*',
                        is_regex=True)
 
-    dataset.add_sink('freesurfer/recon-all', general.directory)
+    dataset.add_sink('freesurfer/recon-all', common.directory)
 
     dataset.pipeline(
         name='freesurfer,
@@ -49,7 +49,7 @@ To add a pipeline to a dataset via the API use the ``Dataset.pipeline()`` method
             param2=20.0),
         inputs=[('T1w', 'in_file', medicalimaging.nifti_gz),
                 ('T2w', 'peel', medicalimaging.nifti_gz)],
-        outputs=[('freesurfer/recon-all', 'out_file', general.directory)])
+        outputs=[('freesurfer/recon-all', 'out_file', common.directory)])
 
 Alternatively, if the source can be referenced by its path alone you can
 add the sources and sinks in one step
@@ -57,7 +57,7 @@ add the sources and sinks in one step
 .. code-block:: python
 
     from pydra.tasks.fsl.preprocess.fast import FAST
-    from arcana.data.formats import general, medicalimaging
+    from arcana.data.formats import common, medicalimaging
 
     dataset = Dataset.load('file///data/openneuro/ds00014:test')
 
@@ -84,7 +84,7 @@ To connect a workflow via the CLI
       pydra.tasks.freesurfer:Freesurfer \
       --input T1w in_file medicalimaging:nifti_gz \
       --input T2w peel medicalimaging:nifti_gz \
-      --output freesurfer/recon-all out_file general:directory \
+      --output freesurfer/recon-all out_file common:directory \
       --parameter param1 10.0 \
       --parameter param2 20.0
 
@@ -110,7 +110,7 @@ in the following code-block will only run once per dataset.
 .. code-block:: python
 
     from myworkflows import vbm_template
-    from arcana.data.formats import general, medicalimaging
+    from arcana.data.formats import common, medicalimaging
     from arcana.data.spaces.medicalimaging import ClinicalTrial
 
     dataset = Dataset.load('file///data/openneuro/ds00014:test')

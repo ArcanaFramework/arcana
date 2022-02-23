@@ -9,7 +9,7 @@ from typing import Sequence, Dict
 import arcana.data.formats
 from arcana.exceptions import ArcanaUsageError
 from arcana.core.data.format import FileFormat
-from arcana.core.data.spaces import DataSpace
+from arcana.core.data.space import DataSpace
 from arcana.core.data.enum import DataQuality
 from arcana import __version__
 from arcana.tasks.bids import construct_bids, extract_bids, bids_app

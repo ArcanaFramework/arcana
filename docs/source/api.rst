@@ -22,8 +22,9 @@ Core
 .. autoclass:: arcana.core.data.store.DataStore
 
 .. autoclass:: arcana.core.data.set.Dataset
+    :members: add_source, add_sink
 
-.. autoclass:: arcana.core.data.spaces.DataSpace
+.. autoclass:: arcana.core.data.space.DataSpace
 
 .. autoclass:: arcana.core.data.node.DataNode
 
@@ -31,11 +32,12 @@ Core
 
 .. autoclass:: arcana.core.data.spec.DataSink
 
+.. autoclass:: arcana.core.data.item.DataItem
+    :members: get, put
+
 .. autoclass:: arcana.core.data.item.FileGroup
 
 .. autoclass:: arcana.core.data.item.Field
-
-.. autoclass:: arcana.core.data.item.DataItem
 
 
 Stores

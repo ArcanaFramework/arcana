@@ -11,9 +11,9 @@ import xnat4tests
 from arcana.data.stores import Xnat
 from arcana.data.stores.xnat.cs import XnatViaCS
 from arcana.data.spaces.medicalimaging import ClinicalTrial
-from arcana.core.data.spaces import DataSpace
+from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileFormat
-from arcana.data.formats.general import text, directory
+from arcana.data.formats.common import text, directory
 from arcana.data.formats.medicalimaging import niftix_gz, nifti_gz, dicom
 from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.tests.fixtures import create_test_file

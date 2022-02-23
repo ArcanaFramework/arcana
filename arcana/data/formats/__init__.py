@@ -1,2 +1,2 @@
-from .general import *
+from .common import *
 from .medicalimaging import *
