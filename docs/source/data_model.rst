@@ -1,40 +1,36 @@
 Data Model
 ==========
 
-Arcana handles all workflow inputs and outputs to file or network locations.
-To manage these interactions, Arcana contains a rich and flexible
-object model. They key classes of Arcana's data model are:
+Arcana contains a rich and flexible object model to access and manipulate data
+within data stores. While the framework hides most of the implementation details
+from the user, it is important to be familiar with the general concepts. They
+key base classes of the data model are:
 
-* **DataStore** - abstraction of the storage system/format, which is sub-classed for different storage systems/formats
-* **Dataset** - Encapsulates a set of data items (files, fields or arrays) repeated across a range of data points (e.g. subjects)
-* **DataDimensions** - Defines the repetition structure (or "data space") for a class of datasets, e.g. whether there are data points for each subject and time-point, or each weather-station/day
-* **DataNode** - a set of data items at a common data point, e.g. imaging session
-* **DataColumn** - a single type of measurement repeated across the dataset
-* **DataItem** - a single measurement or acquisition, e.g. T1-weighted MRI scan, humidity measurement
+* :class:`.DataStore` - abstraction of the storage system/format, which is sub-classed for different storage systems/formats
+* :class:`.DataDimensions` - defines the repetitive structure (or "data space") for a class of datasets, e.g. whether there are data points for each subject and time-point, or each weather-station/day
+* :class:`.DataNode` - a set of data items at a common data point, e.g. imaging session
+* :class:`.Dataset` - encapsulates a set of data items (files, fields or arrays) repeated across a range of data points (e.g. subjects)
+* :class:`.DataItem` - a single measurement or acquisition, e.g. T1-weighted MRI scan, humidity measurement
+* :class:`.DataColumn` - a single type of measurement repeated across the dataset
 
 Stores
 ------
 
 Support for different storage techniques is provided by sub-classes of the
-``DataStore`` class. ``DataStore`` sub-classes not only encapsulate where the
+:class:`.DataStore` class. :class:`.DataStore` classes not only encapsulate where the
 data is stored, e.g. on local disk or remote repository, but also how the data
-is accessed, e.g. whether it is in BIDS format or not, or whether to access
-data in an XNAT repository as exposed to the container service or purely by
-the XNAT API.
+is accessed, e.g. whether it is in BIDS format, or whether to access files in
+an XNAT repository directly (i.e. as exposed to the container service) or purely
+using the API.
 
-There are currently four implemented ``DataStore`` sub-classes:
+There are four currently implemented :class:`.DataStore` classes:
 
-* **FileSystem** - access data organised within a arbitrary directory tree on the file system
-* **BidsFormat** - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific)
-* **Xnat** - access data stored in XNAT_ repositories by its REST API
-* **XnatViaCS** - access data stored in XNAT_ repositories as exposed to integrated pipelines run in XNAT_'s container service using a combination of direct access to the archive disk and the REST API
+* :class:`.FileSystem` - access data organised within a arbitrary directory tree on the file system
+* :class:`.BidsFormat` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific)
+* :class:`.Xnat` - access data stored in XNAT_ repositories by its REST API
+* :class:`.XnatViaCS` - access data stored in XNAT_ repositories as exposed to integrated pipelines run in XNAT_'s container service using a combination of direct access to the archive disk and the REST API
 
-Alternative storage systems can be implemented by writing a new sub-class of
-``DataStore``. The developers are interested in adding support for new systems,
-so if you would like to use Arcana with a different storage system please
-create an issue for it in the `GitHub Issue Tracker <https://github.com/Australian-Imaging-Service/arcana/issues>`__.
-
-To configure access to a data store a via the API, initialise the ``DataStore``
+To configure access to a data store a via the API, initialise the :class:`.DataStore`
 sub-class corresponding to the required data location/access-method then save
 it to the YAML configuration file stored at `~/.arcana/stores.yml`.
 
@@ -63,8 +59,8 @@ To configure access to a store via the CLI use the ``arcana store add`` sub-comm
 
 .. code-block:: bash
 
-    $ arcana store add xnat-central xnat https://central.xnat.org --user user123 \
-      --cache_dir /work/xnat-cache
+    $ arcana store add xnat xnat-central https://central.xnat.org \
+      --user user123 --cache_dir /work/xnat-cache
     Password:
 
 
@@ -72,106 +68,247 @@ See also ``arcana store rename`` and ``arcana store remove``.
 
 .. note::
 
-    Data stores that don't require any parameters such as ``FileSystem`` and
-    ``BIDS`` don't need to be configured and can be accessed via their aliases,
+    Data stores that don't require any parameters such as :class:`.FileSystem` and
+    :class:`.BidsFormat` don't need to be configured and can be accessed via their aliases,
     ``file`` and ``bids`` when defining a dataset.
 
+.. _data_dimensions:
 
-Datasets, dimensions and nodes
-------------------------------
+Dataset dimensions
+------------------
 
-In Arcana, *datasets* refer to collection of data organised into a tree, which
+A key concept in Arcana's data model is that of "dataset dimensions".
+This refers to the structure of repeated measurement events within
+a class of datasets. Where a measurement event could be an MRI session in a
+clinical trial or a football player's performance as part of a scouting analysis
+for example.
+
+Such measurements events can be categorised in a number of ways. Taking the clinical trial example,
+each MRI session will belong to a particular subject and may also belong to
+a longitudinal timepoint and/or a particular study group.
+In the case of the scouting program, a player's performance will
+belong to a particular player, team, match, league, season, field position,
+and more. In Arcana, these category groups are considered to form the "dimensions"
+of the dataset, drawing a loose analogy with a multi-dimensional space where
+each measurement event exists as a point on a grid.
+
+Different dataset dimensions are defined in Arcana by sub-classes of the
+:class:`.DataDimensions` enum. Enum members define both the "primary axes" of
+the grid and also the combinations of these axes (planes/sub-spaces if you will)
+that make up the possible "frequencies" data can occur at. For example,
+the :class:`.ClinicalTrial` has the primary axes of ``group``, ``member`` and
+``timepoint``, corresponding to the study group (e.g. 'test' or 'control'),
+within-group ID (particularly relevant for matched controls otherwise just needs
+to be unique), and longintudinal timepoint.
+
+Note that a particular dataset can have a singleton along any dimension
+(e.g. one study group or timepoint). Therefore, when designing analyses for a
+particular it is better to include as
+many possible axes 
+
+
+Nodes
+-----
+
+
+which
 branches across different *dimensions* of the data (e.g. over separate groups,
 subjects or sessions), consisting of both source data (typically
-acquired from an instrument) and data that has been derived from the source
-data. Datasets are typically stored in a single location (although support for
-distributed datasets is planned) such as a file-system directory or an
-XNAT project. Workflows and analyses in Arcana operate on and over whole
-datasets.
+acquired from an instrument)
+
+for a class of datasets, e.g. whether there are data points for each subject and time-point, or each weather-station/day
 
 Data items can exist at any *node* within the data tree, and along any
 axis of the dataset even if it is not in the original tree, e.g. summary
 statistics that are analysed across the combination of group and time-points
 from a data tree organised by group> subject> session.
 
-When defining a dataset, you specify its tree structure and which nodes are to
-be included in the analysis (e.g. the ones that passed QC). The first thing
-to define is the dimensions of the dataset, which should be set to a sub-class of
-``DataDimension`` enum. By default, Arcana will assume 
-``arcana.data.dimensions.medicalimaging:ClinicalTrial`` is applicable, which is able to
+which should be set to a sub-class of :class:`.DataDimensions` enum. By default, Arcana will assume 
+:class:`.medicalimaging.ClinicalTrial` is applicable, which is able to
 represents the typical structure of a longintudinal medicalimaging trial with multiple
 groups, subjects and sessions at different time-points (noting that a dataset
 can singletons nodes along a dimension, e.g. a single group or time-point).
 
-For stores that can store arbitrary tree structures (e.g. file-system directories),
-the hierarchy of each dimension in the dataset tree needs to be provided, i.e.
-whether the sub-directories immediately below the root contain data for different
-groups, subjects, time-points or sessions, and the what the sub-directory layer
-below that corresponds to (if present) and so on. This is defined by providing
-a list of values, e.g. ``[ClinicalTrial.subject, ClinicalTrial.session]``.
+Base class for all "data dimensions" enums. DataDimensions enums specify
+the relationships between nodes of a dataset.
 
-In some datasets, especially in stores where the tree hierarchy is fixed (e.g. XNAT),
-you may need to infer the ID(s) for one or more dimensions from the combination
-with other IDs following an arbitrary naming convention. For example, given an
-XNAT project where all the test subjects are numbered "TEST01", "TEST02", "TEST03",...
-and the matched control subjects are numbered "CON01", "CON02", "CON03",...,
-the group and (matched) "member" IDs need to be inferred from the subject ID.
-This can be done by providing an ``id_inference`` argument which takes a list
-of tuples, consisting of the frequency of the ID to infer from and a
-regular-expression (Python syntax), with named groups corresponding to inferred
-IDs.
+For example in imaging studies, scannings sessions are typically organised
+by analysis group (e.g. test & control), membership within the group (i.e
+matched subjects) and time-points (for longitudinal studies). We can
+visualise the nodes arranged in a 3-D grid along the `group`, `member`, and
+`timepoint` dimensions. Note that datasets that only contain one group or
+time-point can still be represented in the same space, and just be of
+depth=1 along those dimensions.
 
-After datasets have undergone quality control checks there are often a number
-of data nodes that need to be omitted from a given analysis. These nodes can
-be specified using the ``excluded`` argument, which takes the data dimension and
-and a list of IDs to be excluded from it. You can exclude over multiple dimensions,
-noting that if you exclude along the lower levels of your hierarchy then corresponding
-IDs at higher levels will also be excluded. For example, if you exclude the timepoint 2
-imaging session for subject 5, then both Timepoint 2 and Subject 5 will be dropped)
-therefore it is typically better to exclude at a higher level (e.g. Subject 5).
-The ``include`` argument is the inverse of exclude and can be more convenient when
-you only want to select a small sample from a larger dataset.
+All dimensions should be included as members of a DataDimensions subclass
+enum with orthogonal binary vector values, e.g.
 
-You may want multiple dataset definitions for a given project/directory, e.g. with
-different subsets of IDs, for different analyses. To avoid conflicts you can
-assign a dataset definition a ``name``, which is used differentiate between multiple
-dataset definitions stored in the same project/directory.
+    member = 0b001
+    group = 0b010
+    timepoint = 0b100
 
-.. warning::
+In this space, an imaging session node is uniquely defined by its member,
+group and timepoint ID. The most commonly present dimension should be given
+the least frequent bit (e.g. imaging datasets will not always have
+different groups or time-points but will always have different members
+(equivalent to subjects when there is one group).
 
-    This needs to be broken up into smaller parts
+In addition to the data items stored in the data nodes for each session,
+some items only vary along a particular dimension of the grid. The
+"frequency" of these nodes can be specified using the "basis" members
+(i.e. member, group, timepoint) in contrast to the `session` frequency,
+which is the combination of all three
+
+    session = 0b111
+
+Additionally, some data is stored in aggregated nodes that across a plane
+of the grid. These frequencies should also be added to the enum (all
+combinations of the basis frequencies must be included) and given intuitive
+names if possible, e.g.
+
+    subject = 0b011 - uniquely identified subject within in the dataset.
+    batch = 0b110 - separate group+timepoint combinations
+    matchedpoint = 0b101 - matched members and time-points aggregated across groups
+
+Finally, for items that are singular across the whole dataset there should
+also be a dataset-wide member with value=0:
+
+    dataset = 0b000
 
 
-Datasets can be defined in from data store using the ``DataStore.dataset()`` method,
+Datasets
+--------
+
+In Arcana, a *dataset* refers to a collection of comparable data to be jointly
+analysed (e.g. in a research study). Datasets contain both source data and
+the derivatives generated from them. Datasets are typically organised into a
+tree with a defined "hierarchy" of data frequencies. For example the following tree
+structure has a hierarchy of "subjects" > "sessions"
+
+.. code-block::
+
+    my-dataset
+    ├── subject1
+    │   ├── session1
+    │   │   ├── t1_mprage
+    │   │   ├── t2_space
+    │   │   └── bold_rest
+    │   └── session2
+    │       ├── t1_mprage
+    │       ├── t2_space
+    │       └── bold_rest
+    ├── subject2
+    │   ├── session1
+    │   │   ├── t1_mprage
+    │   │   ├── t2_space
+    │   │   └── bold_rest
+    │   └── session2
+    │       ├── t1_mprage
+    │       ├── t2_space
+    │       └── bold_rest
+    └── subject1
+        ├── session1
+        │   ├── t1_mprage
+        │   ├── t2_space
+        │   └── bold_rest
+        └── session2
+            ├── t1_mprage
+            ├── t2_space
+            └── bold_rest
+
+Datasets can be defined via the API using the :meth:`.DataStore.dataset` method.
+For example, to define a new dataset corresponding to the XNAT project ID
+*MYXNATPROJECT*
+
 
 .. code-block:: python
 
-    from arcana.data.stores.xnat import Xnat
+    xnat_dataset = xnat_store.dataset(id='MYXNATPROJECT')
+
+For stores that can store arbitrary tree structures (e.g. file-system directories),
+the hierarchy of the dataset tree needs to be provided (see :ref:`data_dimensions`).
+This is specified by providing a list of data frequencies corresponding to
+descending layers of the directory tree
+
+.. code-block:: python
+
     from arcana.data.stores.file_system import FileSystem
     from arcana.data.dimensions.medicalimaging import ClinicalTrial
-
-    xnat_dataset = xnat_store.dataset(
-        id='MYXNATPROJECT',
-        excluded={ClinicalTrial.subject: ['09', '11']},  # Alternatively use 'subject' string instead of enum
-        included={Clincial.timepoint: ['T1']}
-        id_inference=[
-            (ClinicalTrial.subject, r'(?P<group>[A-Z]+)_(?P<member>\d+)')])
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
         hierarchy=[ClinicalTrial.group, ClinicalTrial.subject])
 
-Dataset definitions can be saved inside the project directory and then reloaded
-in new sessions.
+These definitions can be saved inside the project directory and then reloaded
+in new Python contexts.
 
 .. code-block:: python
 
-    xnat_dataset.save()
+    fs_dataset.save()
 
-    reloaded = xnat_store.load_dataset('MYXNATPROJECT')
+    ...
 
-Naming of the dataset can be done providing the ``name`` parameter to the
-``Dataset.save()`` and ``DataStore.load_dataset()`` methods.
+    reloaded = FileSystem().load_dataset('/data/imaging/my-project')
+
+
+For some datasets, especially in stores where the tree hierarchy is fixed (e.g. XNAT),
+you may need to infer the ID(s) for one or more dimensions from the node labels
+following a given naming convention. For example, given an
+XNAT project where all the test subjects are numbered *TEST01*, *TEST02*, *TEST03*,...
+and the matched control subjects are numbered *CON01*, *CON02*, *CON03*,...,
+the group and matched "member" IDs need to be inferred from the subject ID.
+This can be done by providing an ``id_inference`` argument which takes a list
+of tuples, consisting of the dimension of the ID to infer from and a
+regular-expression (Python syntax), with named groups corresponding to inferred
+IDs.
+
+.. code-block:: python
+
+    xnat_dataset = xnat_store.dataset(
+        id='MYXNATPROJECT',
+        id_inference=[
+            (ClinicalTrial.subject, r'(?P<group>[A-Z]+)(?P<member>\d+)')])
+
+
+Often there are nodes that need to be omitted from a given analysis due to
+missing or corrupted data. Such nodes can be excluded with the
+``excluded`` argument, which takes a dictionary mapping the data
+dimension to the list of IDs to exclude.
+
+You can exclude nodes at different levels of data tree, even within in the same dataset.
+Note however, that if you exclude nodes low level of the dataset's hierarchy then
+corresponding nodes at higher levels will also be excluded. For example,
+if you exclude the imaging session for subject 5 at Timepoint 2, then both
+Timepoint 2 (for all subjects) and Subject 5 (at all timepoints) will be
+dropped from the analysis. Therefore it is typically better to exclude nodes
+higher up the tree (e.g. Subject 5).
+
+.. code-block:: python
+
+    fs_dataset = FileSystem().dataset(
+        id='/data/imaging/my-project',
+        excluded={ClinicalTrial.subject: ['09', '11']})  # Alternatively use 'subject' string instead of enum
+
+
+The ``included`` argument is the inverse of exclude and can be more convenient when
+you only want to select a small sample. ``included`` can be used in conjunction
+with ``excluded`` the frequencies must be orthogonal.
+
+.. code-block:: python
+
+    fs_dataset = FileSystem().dataset(
+        id='/data/imaging/my-project',
+        excluded={ClinicalTrial.subject: ['09', '11']},
+        included={Clincial.timepoint: ['T1']})
+
+
+You may want multiple dataset definitions for a given project/directory,
+for different analysese.g. with different subsets of IDs depending on which
+scans have passed quality control. To avoid conflicts, you can
+assign a dataset definition a name, which is used differentiate between multiple
+dataset definitions stored in the same project/directory. To do this simply
+provide the ``name`` parameter to the :meth:`.Dataset.save` and
+:meth:`.DataStore.load_dataset` methods.
 
 .. code-block:: python
 
@@ -191,7 +328,7 @@ separated by '//', e.g.
       --id_inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)'
 
 To give the dataset definition a name, append the name to the dataset's ID
-string separated by ':'
+string separated by ':', e.g.
 
 .. code-block:: bash
 
@@ -199,10 +336,10 @@ string separated by ':'
       --include subject 10:20
 
 
-Items and data types
---------------------
+Fields, file-groups and formats
+-------------------------------
 
-``DataItem`` objects are atomic elements in Arcana datasets, and can be either
+:class:`.DataItem` objects are atomic elements in Arcana datasets, and can be either
 *fields* (int, float, str or bool), *array fields* (sequence[int or float or str or bool])
 or *file groups* (single files, files + header/side-cars or directories).
 Data items act as pointers to the data associated provenance in the
@@ -210,7 +347,7 @@ dataset and provide methods for pulling and pushing data to the store.
 
 Arcana implicitly handles conversions between different file formats
 
-``FileGroup`` sub-classes may contain methods for accessing the file data and header metadata,
+:class:`.FileGroup` sub-classes may contain methods for accessing the file data and header metadata,
 which can be useful in selecting from a collection of acquired data and exploration
 of the data.
 
@@ -244,7 +381,7 @@ inputs/outputs of pipelines onto. By default, this name is used by sinks to
 name the output fields/files stored in the dataset. However, if a specific
 output path is required it can be specified by the ``path`` argument.
 
-Use the ``Dataset.add_source()`` and ``Dataset.add_sink()`` methods to add
+Use the :meth:`.Dataset.add_source` and :meth:`.Dataset.add_sink` methods to add
 sources and sinks via the API.
 
 .. code-block:: python
@@ -298,7 +435,7 @@ to a dataset using the CLI.
 
 
 One of the main benefits of using datasets in BIDS_ format is that the names
-and file formats of the data are strictly defined. This allows the ``BidsFormat``
+and file formats of the data are strictly defined. This allows the :class:`.BidsFormat`
 data store object to automatically add sources to the dataset when it is
 initialised.
 

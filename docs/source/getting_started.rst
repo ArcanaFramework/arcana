@@ -65,10 +65,10 @@ API or via the command-line interface (CLI).
 
 The basic usage pattern is
 
-* Specify a :ref:`Dataset` to work with
-* Define columns to access and store data
-* Apply a Pydra_ task or workflow, or an :ref:`Analysis classes` to the dataset
-* Generate selected derivatives
+* Define a dataset to work with
+* Specify columns in the dataset to access data from and store data to.
+* Apply a Pydra_ task or workflow, or an Arcana analysis class, to connect the dataset columns
+* Request selected derivatives to generate
 
 For example, to execute FSL's Brain Extraction Tool (BET) over all subjects of
 a dataset stored within the ``/data/my-dataset`` directory (which contains
@@ -101,13 +101,13 @@ respectively) via the API
     # Generate brain mask derivative
     my_dataset.derive('brain_mask')
 
-This will iterate over all imaging sessions in the directory tree, find and
+This code will iterate over all imaging sessions in the directory tree, find and
 convert T1-weighted images (which contain 'mprage' in their names) from
-DICOM to gzipped NIfTI file formats and then execute BET on the converted
+DICOM into the required zipped NIfTI format, and then execute BET on the converted
 files before they are saved back into the directory structure at
-``<subject-id>/<timepoint-id>/derivs/brain_mask.nifti_gz``.
+``<subject-id>/<session-id>/derivs/brain_mask.nifti_gz``.
 
-Alternatively, the same steps can be performed using the command line
+Alternatively, the same steps can be performed using the command line interface
 
 .. code-block:: bash
 
@@ -120,10 +120,11 @@ Alternatively, the same steps can be performed using the command line
     $ arcana derive brain_mask
 
 Applying an Analysis class instead of a Pydra task/workflow follows the same
-steps up to the 'add-sink' call (sinks are automatically added by the analysis).
-The following example applies a generic T1w analysis class to the dataset,
-calculates the average cortical thickness for each session of each subject,
-and then plots a histogram of the distribution at Timepoint 'T3'.
+steps up to 'add-source' (sinks are automatically added by the analysis class).
+The following example applies methods for analysing T1-weighted MRI images to the
+dataset, then calls the methods calculates the average cortical thickness for
+each session of each subject, and then plots a histogram of the distribution at
+Timepoint 'T3'.
 
 
 .. code-block:: python
@@ -157,7 +158,7 @@ Arcana >=v2.0 is licenced under the `Creative Commons Attribution-NonCommercial-
 (see `LICENCE <https://raw.githubusercontent.com/Australian-Imaging-Service/arcana/master/LICENSE>`_).
 Non-commercial usage is permitted freely on the condition that Arcana is
 appropriately acknowledged in related publications. Commercial usage is encouraged,
-but consent from the authors for particular use cases must be granted first
+but permission from the authors for specific uses must be granted first
 (see `AUTHORS <https://raw.githubusercontent.com/Australian-Imaging-Service/arcana/master/AUTHORS>`_).
 
 
