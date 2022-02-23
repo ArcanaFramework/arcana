@@ -6,9 +6,9 @@ import tempfile
 import logging
 import click
 from typing import Sequence, Dict
-import arcana.data.types
+import arcana.data.formats
 from arcana.exceptions import ArcanaUsageError
-from arcana.core.data.type import FileFormat
+from arcana.core.data.format import FileFormat
 from arcana.core.data.spaces import DataSpace
 from arcana.core.data.enum import DataQuality
 from arcana import __version__
@@ -191,7 +191,7 @@ def _datatype_from_path(path, default, datatype_name=None):
         path = path.parent / path.stem
         # FIXME: Need a more robust way of determining datatype
         # from output path extension
-        for dtype in list_instances(arcana.data.types, FileFormat):
+        for dtype in list_instances(arcana.data.formats, FileFormat):
             if dtype.extension == path_ext:
                 datatype = dtype
                 break

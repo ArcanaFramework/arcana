@@ -387,7 +387,7 @@ sources and sinks via the API.
 .. code-block:: python
 
     from arcana.data.spaces.medicalimaging import ClinicalTrial
-    from arcana.data.types.medicalimaging import dicom, nifti_gz
+    from arcana.data.formats.medicalimaging import dicom, nifti_gz
 
     xnat_dataset.add_source(
         name='T1w',

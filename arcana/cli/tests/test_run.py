@@ -6,7 +6,7 @@ from arcana.data.stores.xnat.tests.fixtures import (
     make_mutable_dataset as make_xnat_dataset,
     TEST_DATASET_BLUEPRINTS as TEST_XNAT_DATASET_BLUEPRINTS)
 from arcana.cli.run import RunCmd
-from arcana.data.types import text
+from arcana.data.formats import text
 
 
 def test_run_app(work_dir, test_dataspace_location):

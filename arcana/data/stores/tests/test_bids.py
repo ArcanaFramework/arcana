@@ -8,11 +8,11 @@ import numpy.random
 import shutil
 import docker
 from arcana import __version__
-from arcana.data.types import niftix
+from arcana.data.formats import niftix
 from arcana.data.stores.bids import BidsDataset
 from arcana.data.stores.bids import BidsApp
-from arcana.data.types.general import text, directory
-from arcana.data.types.medicalimaging import niftix_gz, niftix_fsldwi_gz
+from arcana.data.formats.general import text, directory
+from arcana.data.formats.medicalimaging import niftix_gz, niftix_fsldwi_gz
 from arcana.core.utils import resolve_class
 
 

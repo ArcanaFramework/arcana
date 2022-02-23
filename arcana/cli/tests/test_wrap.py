@@ -24,7 +24,7 @@ def test_wrap4xnat():
     assert result.exit_code == 0
     assert result.output == 'docker.io/arcanatest/wrapper.concatenate:1.0-1\n'
 
-concatenate_module_contents = """from arcana.data.types.general import text
+concatenate_module_contents = """from arcana.data.formats.general import text
 
 spec = {
     'commands': [

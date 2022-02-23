@@ -11,7 +11,7 @@ from pydra.tasks.dcm2niix import Dcm2Niix
 from pydra.tasks.mrtrix3.utils import MRConvert
 from arcana.exceptions import ArcanaUsageError
 from arcana.tasks.utils import identity_converter
-from arcana.core.data.type import FileFormat
+from arcana.core.data.format import FileFormat
 from arcana.core.data.item import FileGroup
 
 

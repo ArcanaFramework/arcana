@@ -5,7 +5,7 @@ from arcana.core.data.set import Dataset
 from arcana.core.data.spec import DataSource, DataSink
 from arcana.data.stores.file_system import FileSystem
 from arcana.data.spaces.medicalimaging import ClinicalTrial as cl
-from arcana.data.types.medicalimaging import dicom, niftix_gz
+from arcana.data.formats.medicalimaging import dicom, niftix_gz
 
 
 def test_dataset_pickle(dataset: Dataset, tmp_dir: Path):

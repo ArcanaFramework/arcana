@@ -10,10 +10,10 @@ import pytest
 from arcana.data.stores.file_system import FileSystem
 from arcana.core.data.spaces import DataSpace
 from arcana.core.utils import set_cwd
-from arcana.core.data.type import FileFormat
-from arcana.data.types.general import text, directory, json
+from arcana.core.data.format import FileFormat
+from arcana.data.formats.general import text, directory, json
 from arcana.data.spaces.medicalimaging import ClinicalTrial
-from arcana.data.types.medicalimaging import (
+from arcana.data.formats.medicalimaging import (
     nifti_gz, niftix_gz, niftix, nifti, analyze, mrtrix_image)
 
 

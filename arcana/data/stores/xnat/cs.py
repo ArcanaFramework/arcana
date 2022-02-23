@@ -24,7 +24,7 @@ from arcana import __version__
 from arcana.__about__ import install_requires, PACKAGE_NAME, python_versions
 from arcana.core.utils import get_pkg_name
 from arcana.data.spaces.medicalimaging import ClinicalTrial
-from arcana.core.data.type import FileFormat
+from arcana.core.data.format import FileFormat
 from arcana.core.data.spaces import DataSpace
 from arcana.core.utils import resolve_class, DOCKER_HUB
 from arcana.exceptions import (

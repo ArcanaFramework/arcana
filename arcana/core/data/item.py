@@ -13,7 +13,7 @@ from arcana.exceptions import (
     ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
     ArcanaDataNotDerivedYetError)
 from .enum import DataQuality
-from .type import FileFormat
+from .format import FileFormat
 from .provenance import DataProvenance
 
 

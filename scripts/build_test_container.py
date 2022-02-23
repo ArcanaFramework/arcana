@@ -8,7 +8,7 @@ from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.xnat.cs import XnatViaCS
 from arcana.data.stores.xnat.tests.fixtures import DOCKER_REGISTRY_URI
 from arcana.data.spaces.medicalimaging import ClinicalTrial
-from arcana.data.types.general import text
+from arcana.data.formats.general import text
 
 parser = ArgumentParser()
 parser.add_argument('image_name',

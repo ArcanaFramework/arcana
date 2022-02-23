@@ -6,7 +6,7 @@ import pytest
 import docker.errors
 from arcana.data.stores.xnat.tests.fixtures import make_mutable_dataset
 from arcana.data.spaces.medicalimaging import ClinicalTrial
-from arcana.data.types import text
+from arcana.data.formats import text
 from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.xnat.cs import XnatViaCS
 

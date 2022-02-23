@@ -5,7 +5,7 @@ from pathlib import Path
 from arcana.data.stores.tests.fixtures import (
     make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
 from arcana.tasks.tests.fixtures import concatenate
-from arcana.data.types.general import text, zip
+from arcana.data.formats.general import text, zip
 
 
 def test_pipeline(work_dir):

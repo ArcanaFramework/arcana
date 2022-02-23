@@ -31,7 +31,7 @@ To add a pipeline to a dataset via the API use the ``Dataset.pipeline()`` method
 .. code-block:: python
 
     from pydra.tasks.freesurfer import Freesurfer
-    from arcana.data.types import general, medicalimaging
+    from arcana.data.formats import general, medicalimaging
 
     dataset = Dataset.load('myuni-xnat//myproject:training')
 
@@ -57,7 +57,7 @@ add the sources and sinks in one step
 .. code-block:: python
 
     from pydra.tasks.fsl.preprocess.fast import FAST
-    from arcana.data.types import general, medicalimaging
+    from arcana.data.formats import general, medicalimaging
 
     dataset = Dataset.load('file///data/openneuro/ds00014:test')
 
@@ -110,7 +110,7 @@ in the following code-block will only run once per dataset.
 .. code-block:: python
 
     from myworkflows import vbm_template
-    from arcana.data.types import general, medicalimaging
+    from arcana.data.formats import general, medicalimaging
     from arcana.data.spaces.medicalimaging import ClinicalTrial
 
     dataset = Dataset.load('file///data/openneuro/ds00014:test')
