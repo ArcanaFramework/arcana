@@ -111,7 +111,7 @@ in the following code-block will only run once per dataset.
 
     from myworkflows import vbm_template
     from arcana.data.types import general, medicalimaging
-    from arcana.data.dimensions.medicalimaging import ClinicalTrial
+    from arcana.data.spaces.medicalimaging import ClinicalTrial
 
     dataset = Dataset.load('file///data/openneuro/ds00014:test')
 

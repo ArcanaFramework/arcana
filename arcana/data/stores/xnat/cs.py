@@ -23,9 +23,9 @@ import docker
 from arcana import __version__
 from arcana.__about__ import install_requires, PACKAGE_NAME, python_versions
 from arcana.core.utils import get_pkg_name
-from arcana.data.dimensions.medicalimaging import ClinicalTrial
+from arcana.data.spaces.medicalimaging import ClinicalTrial
 from arcana.core.data.type import FileFormat
-from arcana.core.data.dimensions import DataDimensions
+from arcana.core.data.spaces import DataSpace
 from arcana.core.utils import resolve_class, DOCKER_HUB
 from arcana.exceptions import (
     ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException,
@@ -67,7 +67,7 @@ class XnatViaCS(Xnat):
     OUTPUT_MOUNT = Path("/output")
     WORK_MOUNT = Path('/work')
     
-    frequency: DataDimensions = attr.ib(default=ClinicalTrial.session)
+    frequency: DataSpace = attr.ib(default=ClinicalTrial.session)
     node_id: str = attr.ib(default=None)
     input_mount: Path = attr.ib(default=INPUT_MOUNT, converter=Path)
     output_mount: Path = attr.ib(default=OUTPUT_MOUNT, converter=Path)

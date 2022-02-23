@@ -4,7 +4,7 @@ API
 The core of Arcana's framework is located under the ``arcana.core`` sub-package,
 which contains all the domain-independent logic. Domain-specific extensions
 for alternative data stores, dimensions and formats should be placed in
-``arcana.data.stores``, ``arcana.data.dimensions`` and ``arcana.data.formats``
+``arcana.data.stores``, ``arcana.data.spaces`` and ``arcana.data.formats``
 respectively.
 
 
@@ -23,7 +23,7 @@ Core
 
 .. autoclass:: arcana.core.data.set.Dataset
 
-.. autoclass:: arcana.core.data.dimensions.DataDimensions
+.. autoclass:: arcana.core.data.spaces.DataSpace
 
 .. autoclass:: arcana.core.data.node.DataNode
 

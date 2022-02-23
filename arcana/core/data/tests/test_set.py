@@ -4,7 +4,7 @@ from pydra import mark, Workflow
 from arcana.core.data.set import Dataset
 from arcana.core.data.spec import DataSource, DataSink
 from arcana.data.stores.file_system import FileSystem
-from arcana.data.dimensions.medicalimaging import ClinicalTrial as cl
+from arcana.data.spaces.medicalimaging import ClinicalTrial as cl
 from arcana.data.types.medicalimaging import dicom, niftix_gz
 
 

@@ -9,7 +9,7 @@ from typing import Sequence, Dict
 import arcana.data.types
 from arcana.exceptions import ArcanaUsageError
 from arcana.core.data.type import FileFormat
-from arcana.core.data.dimensions import DataDimensions
+from arcana.core.data.spaces import DataSpace
 from arcana.core.data.enum import DataQuality
 from arcana import __version__
 from arcana.tasks.bids import construct_bids, extract_bids, bids_app
@@ -353,7 +353,7 @@ def workflow_name(pydra_task):
 #     path: Path
 #     input_datatype: FileFormat
 #     stored_datatype: FileFormat
-#     frequency: DataDimensions
+#     frequency: DataSpace
 #     order: int
 #     metadata: ty.Dict[str, str]
 #     is_regex: bool

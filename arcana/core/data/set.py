@@ -10,8 +10,8 @@ from attr.converters import default_if_none
 from pydra import Workflow
 from arcana.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
-    ArcanaBadlyFormattedIDError, ArcanaWrongDataDimensionssError)
-from .dimensions import DataDimensions
+    ArcanaBadlyFormattedIDError, ArcanaWrongDataSpacesError)
+from .spaces import DataSpace
 from .spec import DataSink, DataSource
 from . import store
 
@@ -35,7 +35,7 @@ class Dataset():
     store : Repository
         The store the dataset is stored into. Can be the local file
         system by providing a FileSystem repo.
-    hierarchy : Sequence[DataDimensions]
+    hierarchy : Sequence[DataSpace]
         The data frequencies that are explicitly present in the data tree.
         For example, if a FileSystem dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
@@ -61,10 +61,10 @@ class Dataset():
             [ClinicalTrial.timepoint, ClinicalTrial.member, ClinicalTrial.group]
 
         Note that the combination of layers in the hierarchy must span the
-        space defined in the DataDimensions enum, i.e. the "bitwise or" of the
+        space defined in the DataSpace enum, i.e. the "bitwise or" of the
         layer values of the hierarchy must be 1 across all bits
         (e.g. ClinicalTrial.session: 0b111).
-    id_inference : Dict[DataDimensions, str]
+    id_inference : Dict[DataSpace, str]
         Not all IDs will appear explicitly within the hierarchy of the data
         tree, and some will need to be inferred by extracting components of
         more specific lables.
@@ -84,12 +84,12 @@ class Dataset():
     column_specs : Dict[str, DataSource or DataSink]
         The sources and sinks to be initially added to the dataset (columns are
         explicitly added when workflows are applied to the dataset).
-    included : Dict[DataDimensions, List[str]]
+    included : Dict[DataSpace, List[str]]
         The IDs to be included in the dataset per frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
         QC. If a frequency is omitted or its value is None, then all available
         will be used
-    excluded : Dict[DataDimensions, List[str]]
+    excluded : Dict[DataSpace, List[str]]
         The IDs to be excluded in the dataset per frequency. E.g. can be
         used to exclude specific subjects that failed QC. If a frequency is
         omitted or its value is None, then all available will be used
@@ -101,12 +101,12 @@ class Dataset():
 
     id: str = attr.ib()
     store: store.DataStore = attr.ib()
-    hierarchy: ty.List[DataDimensions] = attr.ib()
-    id_inference: ty.Dict[DataDimensions, str] = attr.ib(
+    hierarchy: ty.List[DataSpace] = attr.ib()
+    id_inference: ty.Dict[DataSpace, str] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
-    included: ty.Dict[DataDimensions, ty.List[str]] = attr.ib(
+    included: ty.Dict[DataSpace, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    excluded: ty.Dict[DataDimensions, ty.List[str]] = attr.ib(
+    excluded: ty.Dict[DataSpace, ty.List[str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     column_specs: ty.Optional[ty.Dict[str, ty.Union[DataSource, DataSink]]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
@@ -136,13 +136,13 @@ class Dataset():
     @classmethod
     def load_from_metadata(cls, id, store, metadata):
         kwargs = {
-            'hierarchy': [DataDimensions.fromstr(h)
+            'hierarchy': [DataSpace.fromstr(h)
                           for h in metadata['hierarchy']],
-            'id_inference': {DataDimensions.fromstr(k): v
+            'id_inference': {DataSpace.fromstr(k): v
                              for k, v in metadata['id_inference'].items()},
-            'included': {DataDimensions.fromstr(k): v
+            'included': {DataSpace.fromstr(k): v
                          for k, v in metadata['included'].items()},
-            'excluded': {DataDimensions.fromstr(k): v
+            'excluded': {DataSpace.fromstr(k): v
                          for k, v in metadata['excluded'].items()}}
         return cls(id, store, **kwargs)
 
@@ -179,7 +179,7 @@ class Dataset():
         not_valid = [f for f in hierarchy
                      if not isinstance(f, self.space)]
         if not_valid:
-            raise ArcanaWrongDataDimensionssError(
+            raise ArcanaWrongDataSpacesError(
                 "{} are not part of the {} data dimensions"
                 .format(', '.join(not_valid), self.space))
         # Check that all data frequencies are "covered" by the hierarchy and
@@ -256,7 +256,7 @@ class Dataset():
             that the source will be stored in within the dataset
         path : str, default `name`
             The location of the source within the dataset
-        frequency : DataDimensions, default self.leaf_freq
+        frequency : DataSpace, default self.leaf_freq
             The frequency of the source within the dataset            
         overwrite : bool
             Whether to overwrite existing columns
@@ -284,7 +284,7 @@ class Dataset():
             that the sink will be stored in within the dataset
         path : str, default `name`
             The location of the sink within the dataset            
-        frequency : DataDimensions, default self.leaf_freq
+        frequency : DataSpace, default self.leaf_freq
             The frequency of the sink within the dataset            
         overwrite : bool
             Whether to overwrite an existing sink
@@ -314,7 +314,7 @@ class Dataset():
 
         Parameters
         ----------
-        frequency : DataDimensions or str
+        frequency : DataSpace or str
             The frequency of the node
         id : str or Tuple[str], optional
             The ID of the node to 
@@ -348,7 +348,7 @@ class Dataset():
                 raise ArcanaUsageError(
                     f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
                     f"provided to `node` method of {self}")
-            # Convert to the DataDimensions of the dataset
+            # Convert to the DataSpace of the dataset
             node = self.root_node
             for freq, id in id_kwargs.items():
                 try:
@@ -374,7 +374,7 @@ class Dataset():
 
         Parameters
         ----------
-        frequency : DataDimensions or None
+        frequency : DataSpace or None
             The "frequency" of the nodes, e.g. per-session, per-subject. If
             None then all nodes are returned
         ids : Sequence[str or Tuple[str]]
@@ -401,7 +401,7 @@ class Dataset():
 
         Parameters
         ----------
-        frequency : DataDimensions
+        frequency : DataSpace
             The "frequency" of the nodes, e.g. per-session, per-subject...
 
         Returns
@@ -451,7 +451,7 @@ class Dataset():
         tree_path : Sequence[str]
             The sequence of labels for each layer in the hierarchy of the
             dataset leading to the current node.
-        explicit_ids : dict[DataDimensions, str]
+        explicit_ids : dict[DataSpace, str]
             IDs for frequencies not in the dataset hierarchy that are to be
             set explicitly
 
@@ -483,7 +483,7 @@ class Dataset():
             except KeyError:
                 # If the layer introduces completely new bases then the basis
                 # with the least significant bit (the order of the bits in the
-                # DataDimensions class should be arranged to account for this)
+                # DataSpace class should be arranged to account for this)
                 # can be considered be considered to be equivalent to the label.
                 # E.g. Given a hierarchy of [ClinicalTrial.subject, ClinicalTrial.session]
                 # no groups are assumed to be present by default (although this
@@ -613,7 +613,7 @@ class Dataset():
             List of sink names to be connected to the outputs of the pipeline
             If teh the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)
-        frequency : DataDimensions, optional
+        frequency : DataSpace, optional
             The frequency of the pipeline, i.e. the frequency of the
             derivatvies within the dataset, e.g. per-session, per-subject, etc,
             by default None
@@ -657,7 +657,7 @@ class Dataset():
             elif not isinstance(freq, self.space):
                 raise KeyError
         except KeyError:
-            raise ArcanaWrongDataDimensionssError(
+            raise ArcanaWrongDataSpacesError(
                 f"{freq} is not a valid dimension for {self} "
                 f"({self.space})")
         return freq

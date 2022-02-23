@@ -23,7 +23,7 @@ from arcana.exceptions import (
 from arcana.core.utils import dir_modtime, get_class_info, parse_value
 from arcana.core.data.set import Dataset
 from arcana.core.utils import path2name, name2path
-from arcana.data.dimensions.medicalimaging import ClinicalTrial
+from arcana.data.spaces.medicalimaging import ClinicalTrial
 
 
 logger = logging.getLogger('arcana')

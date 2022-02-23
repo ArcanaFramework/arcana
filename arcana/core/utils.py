@@ -607,7 +607,7 @@ def get_pkg_name(module_path: str):
 
 
 def parse_dimensions(dimensions_str):
-    """Parse a string representation of DataDimensions"""
+    """Parse a string representation of DataSpace"""
     parts = dimensions_str.split('.')
     if len(parts) < 2:
         raise ArcanaUsageError(
@@ -618,7 +618,7 @@ def parse_dimensions(dimensions_str):
     module_path = '.'.join(parts[:-1])
     cls_name = parts[-1]
     try:
-        module = import_module('arcana.data.dimensions.' + module_path)
+        module = import_module('arcana.data.spaces.' + module_path)
     except ImportError:
         module = import_module(module_path)
     return getattr(module, cls_name)

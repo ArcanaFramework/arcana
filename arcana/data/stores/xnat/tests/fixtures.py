@@ -10,8 +10,8 @@ import docker
 import xnat4tests
 from arcana.data.stores import Xnat
 from arcana.data.stores.xnat.cs import XnatViaCS
-from arcana.data.dimensions.medicalimaging import ClinicalTrial
-from arcana.core.data.dimensions import DataDimensions
+from arcana.data.spaces.medicalimaging import ClinicalTrial
+from arcana.core.data.spaces import DataSpace
 from arcana.core.data.type import FileFormat
 from arcana.data.types.general import text, directory
 from arcana.data.types.medicalimaging import niftix_gz, nifti_gz, dicom
@@ -28,8 +28,8 @@ class TestDatasetBlueprint():
 
     dim_lengths: ty.List[int]
     scans: ty.List[ty.Tuple[str, ty.List[ty.Tuple[str, FileFormat, ty.List[str]]]]]
-    id_inference: ty.Dict[DataDimensions, str]
-    to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataDimensions, FileFormat, ty.List[str]]]]  # files to insert as derivatives
+    id_inference: ty.Dict[DataSpace, str]
+    to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataSpace, FileFormat, ty.List[str]]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {

@@ -7,7 +7,7 @@ from the user, it is important to be familiar with the general concepts. They
 key base classes of the data model are:
 
 * :class:`.DataStore` - abstraction of the storage system/format, which is sub-classed for different storage systems/formats
-* :class:`.DataDimensions` - defines the repetitive structure (or "data space") for a class of datasets, e.g. whether there are data points for each subject and time-point, or each weather-station/day
+* :class:`.DataSpace` - defines the repetitive structure (or "data space") for a class of datasets, e.g. whether there are data points for each subject and time-point, or each weather-station/day
 * :class:`.DataNode` - a set of data items at a common data point, e.g. imaging session
 * :class:`.Dataset` - encapsulates a set of data items (files, fields or arrays) repeated across a range of data points (e.g. subjects)
 * :class:`.DataItem` - a single measurement or acquisition, e.g. T1-weighted MRI scan, humidity measurement
@@ -93,7 +93,7 @@ of the dataset, drawing a loose analogy with a multi-dimensional space where
 each measurement event exists as a point on a grid.
 
 Different dataset dimensions are defined in Arcana by sub-classes of the
-:class:`.DataDimensions` enum. Enum members define both the "primary axes" of
+:class:`.DataSpace` enum. Enum members define both the "primary axes" of
 the grid and also the combinations of these axes (planes/sub-spaces if you will)
 that make up the possible "frequencies" data can occur at. For example,
 the :class:`.ClinicalTrial` has the primary axes of ``group``, ``member`` and
@@ -123,13 +123,13 @@ axis of the dataset even if it is not in the original tree, e.g. summary
 statistics that are analysed across the combination of group and time-points
 from a data tree organised by group> subject> session.
 
-which should be set to a sub-class of :class:`.DataDimensions` enum. By default, Arcana will assume 
+which should be set to a sub-class of :class:`.DataSpace` enum. By default, Arcana will assume 
 :class:`.medicalimaging.ClinicalTrial` is applicable, which is able to
 represents the typical structure of a longintudinal medicalimaging trial with multiple
 groups, subjects and sessions at different time-points (noting that a dataset
 can singletons nodes along a dimension, e.g. a single group or time-point).
 
-Base class for all "data dimensions" enums. DataDimensions enums specify
+Base class for all "data dimensions" enums. DataSpace enums specify
 the relationships between nodes of a dataset.
 
 For example in imaging studies, scannings sessions are typically organised
@@ -140,7 +140,7 @@ visualise the nodes arranged in a 3-D grid along the `group`, `member`, and
 time-point can still be represented in the same space, and just be of
 depth=1 along those dimensions.
 
-All dimensions should be included as members of a DataDimensions subclass
+All dimensions should be included as members of a DataSpace subclass
 enum with orthogonal binary vector values, e.g.
 
     member = 0b001
@@ -233,7 +233,7 @@ descending layers of the directory tree
 .. code-block:: python
 
     from arcana.data.stores.file_system import FileSystem
-    from arcana.data.dimensions.medicalimaging import ClinicalTrial
+    from arcana.data.spaces.medicalimaging import ClinicalTrial
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
@@ -386,7 +386,7 @@ sources and sinks via the API.
 
 .. code-block:: python
 
-    from arcana.data.dimensions.medicalimaging import ClinicalTrial
+    from arcana.data.spaces.medicalimaging import ClinicalTrial
     from arcana.data.types.medicalimaging import dicom, nifti_gz
 
     xnat_dataset.add_source(
@@ -443,7 +443,7 @@ initialised.
 
     from arcana.data.stores.bids import BidsFormat
     from arcana.data.stores.file_system import FileSystem
-    from arcana.data.dimensions.medicalimaging import ClinicalTrial
+    from arcana.data.spaces.medicalimaging import ClinicalTrial
 
     bids_dataset = BidsFormat().dataset(
         id='/data/openneuro/ds00014')

@@ -7,7 +7,7 @@ from arcana.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError)
 from .enum import DataQuality, DataSalience
-from .dimensions import DataDimensions
+from .spaces import DataSpace
 
 
 @attr.s
@@ -24,7 +24,7 @@ class DataSource():
         is used instead.
     datatype : FileFormat or type
         File format that data will be 
-    frequency : DataDimensions
+    frequency : DataSpace
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
     quality_threshold : DataQuality
@@ -45,7 +45,7 @@ class DataSource():
     """
     path: str = attr.ib()
     datatype = attr.ib()
-    frequency: DataDimensions = attr.ib()
+    frequency: DataSpace = attr.ib()
     quality_threshold: DataQuality = attr.ib(
         default=None, converter=optional(lambda q: DataQuality[str(q)]))
     order: int = attr.ib(default=None)
@@ -128,7 +128,7 @@ class DataSink():
     format : FileFormat or type
         The file format or data type used to store the corresponding items
         in the store dataset.
-    frequency : DataDimensions
+    frequency : DataSpace
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
     salience : Salience
@@ -142,7 +142,7 @@ class DataSink():
 
     path: str = attr.ib()
     datatype = attr.ib()
-    frequency: DataDimensions = attr.ib()
+    frequency: DataSpace = attr.ib()
     salience: DataSalience = attr.ib(default=DataSalience.supplementary)
     pipeline: str = attr.ib(default=None)
 

@@ -2,7 +2,7 @@
 import os
 from importlib import import_module
 import click
-from arcana.data.dimensions.medicalimaging import ClinicalTrial
+from arcana.data.spaces.medicalimaging import ClinicalTrial
 from arcana.exceptions import ArcanaUsageError
 from arcana.data.stores.file_system import FileSystem
 from arcana.data.stores.xnat import Xnat

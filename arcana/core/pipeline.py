@@ -12,7 +12,7 @@ from arcana.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.item import DataItem, FileGroup
 from .data.set import Dataset
 from .data.type import FileFormat
-from .data.dimensions import DataDimensions
+from .data.spaces import DataSpace
 from .utils import func_task
 
 logger = logging.getLogger('arcana')
@@ -30,7 +30,7 @@ class Pipeline():
     """
 
     wf: Workflow = attr.ib()
-    frequency: DataDimensions = attr.ib()
+    frequency: DataSpace = attr.ib()
     inputs: ty.List[ty.Tuple[str, FileFormat]] = attr.ib(factory=list)
     outputs: ty.List[ty.Tuple[str, FileFormat]] = attr.ib(factory=list)
     _connected: ty.Set[str] = attr.ib(factory=set, repr=False)
@@ -155,7 +155,7 @@ class Pipeline():
             List of sink names to be connected to the outputs of the pipeline
             If the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)
-        frequency : DataDimensions, optional
+        frequency : DataSpace, optional
             The frequency of the pipeline, i.e. the frequency of the
             derivatvies within the dataset, e.g. per-session, per-subject, etc,
             by default None
@@ -264,7 +264,7 @@ class Pipeline():
 
         source_in = [
             ('dataset', Dataset),
-            ('frequency', DataDimensions),
+            ('frequency', DataSpace),
             ('id', str),
             ('inputs', ty.Sequence[str]),
             ('parameterisation', ty.Dict[str, ty.Any])]
@@ -353,7 +353,7 @@ class Pipeline():
             sink_items,
             in_fields=(
                 [('dataset', Dataset),
-                 ('frequency', DataDimensions),
+                 ('frequency', DataSpace),
                  ('id', str),
                  ('provenance', ty.Dict[str, ty.Any])]
                 + [(s, DataItem) for s in to_sink]),
@@ -409,7 +409,7 @@ def split_side_car_suffix(name):
 @mark.task
 @mark.annotate({
     'dataset': Dataset,
-    'frequency': DataDimensions,
+    'frequency': DataSpace,
     'outputs': ty.Sequence[str],
     'requested_ids': ty.Sequence[str] or None,
     'parameterisation': ty.Dict[str, ty.Any],
