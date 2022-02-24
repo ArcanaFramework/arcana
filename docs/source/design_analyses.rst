@@ -1,3 +1,5 @@
+.. _design_analyses:
+
 Designing Analysis classes
 ==========================
 

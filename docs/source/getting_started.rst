@@ -139,7 +139,7 @@ Timepoint 'T3'.
     # the T1wAnalysis class
     my_dataset.derive('avg_cortical_thickness')
 
-    plt.histogram(my_dataset['avg_cortical_thickness'][:, 'T3'])
+    plt.histogram(my_dataset['avg_cortical_thickness']['T3', :])
 
 
 To apply the Analysis class and derive the metric via the command line you can

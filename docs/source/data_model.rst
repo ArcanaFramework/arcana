@@ -91,12 +91,13 @@ each data point exists on a grid).
 
 Different data spaces are defined in Arcana by subclassing the
 :class:`.DataSpace` enum. Enum members define both the dimensions of
-the space and also the combinations of these dimension (into planes/sub-spaces
-if you will) that make up the possible "frequencies" data can occur at. For example,
+the space and also the combinations of these dimensions (subspaces
+to extend the analogy) that make up the possible "frequencies" data can occur at. For example,
 the :class:`.ClinicalTrial` has the dimensions of **group**, **member** and
 **timepoint**, corresponding to the study group (e.g. 'test' or 'control'),
 within-group ID, and longintudinal timepoint. These dimensions can be combined
-to give all the possible frequencies data can exist at within the dataset (per):
+to give all the possible frequencies data can exist at within the dataset,
+i.e. (per):
 
 * **group** (group)
 * **member** (member)
@@ -110,7 +111,7 @@ to give all the possible frequencies data can exist at within the dataset (per):
 Note that a particular dataset can have singleton dimensions
 (e.g. one study group or timepoint) and still exist in the data space.
 Therefore, when creating data spaces it is better to include
-all potential categories (dimensions) to make them more common.
+all potential dimensions(categories) to make them more generalisable.
 
 
 Datasets
@@ -119,8 +120,9 @@ Datasets
 In Arcana, a *dataset* refers to a collection of comparable data to be jointly
 analysed (e.g. data from a research study). Datasets contain both source data and
 the derivatives generated from them. Datasets are typically organised into a
-tree with a defined "hierarchy" of data frequencies. For example the following
-dataset stored in a directory tree has a hierarchy of "subjects" > "sessions"
+tree with a defined "hierarchy" of data frequencies (see :ref:`Spaces`).
+For example, the following dataset stored in a directory tree within in the
+:class:`.ClinicalTrial` space, has a hierarchy of "subjects" > "sessions"
 
 .. code-block::
 
@@ -282,6 +284,7 @@ string separated by ':', e.g.
     $ arcana dataset define 'file///data/imaging/my-project:training' group subject \
       --include subject 10:20
 
+.. _data_formats:
 
 Items and formats
 -----------------
@@ -360,7 +363,7 @@ sources and sinks via the API.
     xnat_dataset.add_source(
         name='T1w',
         path=r'.*t1_mprage.*'
-        datatype=dicom,
+        format=dicom,
         order=1,
         quality_threshold='usable',
         is_regex=True
@@ -368,7 +371,7 @@ sources and sinks via the API.
 
     fs_dataset.add_sink(
         name='brain_template',
-        datatype=nifti_gz,
+        format=nifti_gz,
         frequency=ClinicalTrial.group
     )
 
