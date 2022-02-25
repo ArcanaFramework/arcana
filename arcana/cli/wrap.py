@@ -1,15 +1,13 @@
-from pathlib import Path
 import logging
-import yaml
-import pkgutil
-import importlib
-import sys
-from traceback import format_exc
+import os
+from pathlib import Path
+
 import click
 import docker.errors
-from arcana.data.stores.xnat.cs import XnatViaCS
-from arcana.core.utils import resolve_class
+import yaml
+
 from arcana.core.cli import cli
+from arcana.data.spaces.medicalimaging import ClinicalTrial
 
 DOCKER_REGISTRY = 'docker.io'
 
@@ -71,6 +69,8 @@ package_path
               help="The level to display logs at")
 @click.option('--build_dir', default=None, type=Path,
               help="Specify the directory to build the Docker image in")
+@click.option('--docs', default=None, type=Path,
+              help="Specify the directory to build the Documentation image in")
 def build_all(package_path, registry, loglevel, build_dir, docs):
     """Creates a Docker image that wraps a Pydra task so that it can
     be run in XNAT's container service, then pushes it to AIS's Docker Hub
@@ -178,26 +178,52 @@ def inspect_docker_exec(image_tag):
     click.echo(executable)
 
 
+def load_yaml_spec(path):
+    def concat(loader, node):
+        seq = loader.construct_sequence(node)
+        return ''.join([str(i) for i in seq])
+
+    def slice(loader, node):
+        list, start, end = loader.construct_sequence(node)
+        return list[start:end]
+
+    def sliceeach(loader, node):
+        _, start, end = loader.construct_sequence(node)
+        return [
+            loader.construct_sequence(x)[start:end] for x in node.value[0].value
+        ]
+
+    yaml.SafeLoader.add_constructor(tag='!join', constructor=concat)
+    yaml.SafeLoader.add_constructor(tag='!concat', constructor=concat)
+    yaml.SafeLoader.add_constructor(tag='!slice', constructor=slice)
+    yaml.SafeLoader.add_constructor(tag='!sliceeach', constructor=sliceeach)
+
+    with open(path, 'r') as f:
+        data = yaml.load(f, Loader=yaml.SafeLoader)
+
+    frequency = data.get('frequency', None)
+    if frequency:
+        # TODO: Handle other frequency types, are there any?
+        data['frequency'] = ClinicalTrial[frequency.split('.')[-1]]
+
+    return data
+
+
 def extract_wrapper_specs(package_path):
     package_path = Path(package_path)
-    def error_msg(name):
-        exception = format_exc()
-        logging.error(
-            f"Error attempting to import {name} module.\n\n{exception}")
-
-    # Ensure base package is importable
-    sys.path.append(str(package_path))
 
     wrapper_specs = {}
-    for _, mod_path, ispkg in pkgutil.walk_packages([package_path],
-                                                    onerror=error_msg):
-        if not ispkg:
-            mod = importlib.import_module(mod_path)
-            try:
-                wrapper_specs[mod.__name__] = mod.spec
-            except AttributeError:
-                logging.warning("No `spec` dictionary found in %s, skipping",
-                                mod_path)
+
+    for root, dirs, files in os.walk(package_path):
+        for fn in files:
+            if '.' not in fn:
+                continue
+
+            name, ext = fn.rsplit('.', maxsplit=1)
+            if ext not in ('yaml', 'yml'):
+                continue
+
+            wrapper_specs[name] = load_yaml_spec(os.path.join(root, fn))
 
     return wrapper_specs
 
@@ -210,9 +236,9 @@ def create_doc(spec, doc_dir, pkg_name):
         "source_file": pkg_name,
     }
 
-    task = resolve_class(spec['pydra_task'])
+    # task = resolve_class(spec['pydra_task'])
 
-    with open(doc_dir / pkg_name, "w") as f:
+    with open(f"{doc_dir}/{pkg_name}.md", "w") as f:
         f.write("---\n")
         yaml.dump(header, f)
         f.write("\n---\n\n")
@@ -221,39 +247,42 @@ def create_doc(spec, doc_dir, pkg_name):
 
         f.write("### Info\n")
         tbl_info = MarkdownTable(f, "Key", "Value")
-        if "version" in spec:
+        if spec.get("version", None):
             tbl_info.write_row("Version", spec["version"])
-        if "pkg_version" in spec:
+        if spec.get("pkg_version", None):
             tbl_info.write_row("App version", spec["pkg_version"])
-        if task.image:
-            tbl_info.write_row("Image", escaped_md(task.image))
-        if "base_image" in spec and task.image != spec["base_image"]:
+        # if task.image and task.image != ':':
+        #     tbl_info.write_row("Image", escaped_md(task.image))
+        if spec.get("base_image", None):  # and task.image != spec["base_image"]:
             tbl_info.write_row("Base image", escaped_md(spec["base_image"]))
-        if "maintainer" in spec:
+        if spec.get("maintainer", None):
             tbl_info.write_row("Maintainer", spec["maintainer"])
-        if "info_url" in spec:
+        if spec.get("info_url", None):
             tbl_info.write_row("Info URL", spec["info_url"])
-        if "frequency" in spec:
+        if spec.get("frequency", None):
             tbl_info.write_row("Frequency", spec["frequency"].name.title())
 
         f.write("\n")
 
+        first_cmd = spec['commands'][0]
+
         f.write("### Inputs\n")
         tbl_inputs = MarkdownTable(f, "Name", "Bids path", "Data type")
-        for x in task.inputs:
+        # for x in task.inputs:
+        for x in first_cmd.get('inputs', []):
             name, dtype, path = x
             tbl_inputs.write_row(escaped_md(name), escaped_md(path), escaped_md(dtype))
         f.write("\n")
 
         f.write("### Outputs\n")
         tbl_outputs = MarkdownTable(f, "Name", "Data type")
-        for x in task.outputs:
-            name, dtype, path = x
+        # for x in task.outputs:
+        for name, dtype in first_cmd.get('outputs', []):
             tbl_outputs.write_row(escaped_md(name), escaped_md(dtype))
         f.write("\n")
 
         f.write("### Parameters\n")
-        if not spec.get("parameters", None):
+        if not first_cmd.get("parameters", None):
             f.write("None\n")
         else:
             tbl_params = MarkdownTable(f, "Name", "Data type")
