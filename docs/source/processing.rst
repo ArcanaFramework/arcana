@@ -2,8 +2,9 @@ Processing
 ==========
 
 All data processing in Arcana is performed by the Pydra_ dataflow engine, which
-defines a declarative workflow language and enables the execution of workflows
-to be split over multiple cores or high-performance clusters (i.e. SLURM and SGE).
+specifies a declarative domain-specific language (DSL) for creating workflows
+in Python, and enables the execution of workflows to be split over multiple
+cores or high-performance clusters (i.e. SLURM and SGE).
 
 Processed derivatives are computed by "pipelines", modular Pydra_ workflows
 that connect dataset columns (see :ref:`data_columns`). Pipeline outputs are
@@ -15,8 +16,8 @@ By connecting pipeline inputs to the outputs of other pipelines,
 complex processing chains/webs can be created (reminiscent of a makefile),
 in which intermediate products will be stored in the dataset for subsequent
 analysis. Alternatively, :class:`.Analysis` classes can be used to implement
-processing webs independently of a specific dataset so that they can be applied
-to multiple studies in a reproducible way. If required, :class:`.Analysis`
+processing chains/webs independently of a specific dataset so that they can be applied
+to new studies in a reproducible way. If required, :class:`.Analysis`
 classes can be customised for particular use cases via combination of new
 parameterisations and overriding selected methods in subclasses (see :ref:`design_analyses`).
 
@@ -30,14 +31,14 @@ parameterisations and overriding selected methods in subclasses (see :ref:`desig
 Pipelines
 ---------
 
-:class:`.Pipeline` objects wrap Pydra_ workflows or individual tasks to prepend/append
-tasks to the workflow to
+:class:`.Pipeline` objects wrap Pydra_ workflows/tasks to prepend and append
+additional tasks to
 
-* iterate over the relevant nodes
+* iterate over the relevant nodes in the dataset
 * manage storage and retrieval of data to and from the data store
-* conversion between between different file formats
+* convert between between mismatching file formats
 * write provenance metadata
-* check saved provenance metadata to ensure prerequisite derivatives were generated with equivalent parameterisations and software versions, and reprocess them if not
+* check saved provenance metadata to ensure prerequisite derivatives were generated with equivalent parameterisations and software versions (and potentially reprocess them if not)
 
 To add a pipeline to a dataset via the API use the :meth:`Dataset.pipeline` method
 mapping the inputs and outputs of the Pydra_ workflow/task (``in_file``, ``peel``
@@ -144,14 +145,14 @@ back to the dataset.
 
     dataset = Dataset.load('bids///data/openneuro/ds00014')
 
-    # Add sink column with `dataset` row frequency
+    # Add sink column with "dataset" row frequency
     dataset.add_sink(
       name='vbm_template',
       format=medicalimaging.nifti_gz
       frequency=ClinicalTrial.dataset
     )
 
-    # Connect pipeline to `dataset` row frequency sink column. Needs to be
+    # Connect pipeline to a "dataset" row-frequency sink column. Needs to be
     # of `dataset` frequency itself or Arcana will raise an error
     dataset.pipeline(
         name='vbm_template',
@@ -161,75 +162,16 @@ back to the dataset.
         frequency=ClinicalTrial.dataset)
 
 
-Analysis classes
-----------------
-
-Analysis classes can be used to implement pipeline chains that are independent of
-specific datasets. 
-
-Analysis classes are specified using a domain-specific language based on the
-`attrs <https://www.attrs.org/en/stable/>`_ package (see `https://www.attrs.org/en/stable/extending.html`_).
-
-
-.. code-block:: python
-
-  from pydra.tasks.mrtrix3.preprocess import FslPreproc
-  from arcana.core.mark import Pipeline, analysis, column, pipeline
-  from arcana.core.enum import DataSalience as ds
-  from arcana.data.formats.medicalimaging import (
-    DwiImage, NiftiGzXD, MrtrixIF, MrtrixTF)
-
-
-  @analysis
-  class DwiAnalysis():
-
-      # Define the columns for the dataset.
-      dw_images: DwiImage = column(
-        "Reconstructed diffusion-weighted images acquired from scanner",
-        salience=ds.primary)
-      reverse_phase: DwiImage = column(
-        "Reverse-phase encoded used to correct for phase-encoding distortions",
-        salience=ds.primary)
-      preprocessed: NiftiGzXD = column(
-        "Preprocesed and corrected diffusion-weighted images", salience=ds.debug)
-      wm_odf: MrtrixIF = column(
-        "White matter orientation distributions", salience=ds.debug)
-      afd: MrtrixIF = column(
-        "Apparent fibre orientations", salience=ds.publication)
-      global_tracks: MrtrixTF = column(
-        "Tracking of white matter tracts across brain", salience=ds.publication)
-
-      # Define a pipeline constructor method to generate the 'preprocessed'
-      # derivative.
-      @pipeline(preprocessed)
-      def preprocess(self,
-                     pipeline: Pipeline,
-                     dw_images: NiftiGzXD,
-                     reverse_phase: NiftiGzXD):
-
-          # Add tasks to the pipeline using Pydra workflow syntax
-          pipeline.add(
-            name='preprocess',
-            task=FslPreproc(
-              in_file=dwi_images
-              reverse_phase=reverse_phase))
-
-          pipeline.set_output(('preprocessed', pipeline.preprocess.out_file))
-      
-      
-
-
-
 
 Derivatives
 -----------
 
-After pipelines have been connected to a sink column, the its data can be
+After pipelines have been connected to sink columns, derivatives can be
 generated using :meth:`.Dataset.derive`. This method checks the
-dataset to see whether the source data is present and executes the
-pipelines over all nodes of the dataset with available source data by default.
+data store to see whether the source data is present and executes the
+pipelines over all nodes of the dataset with available source data.
 If pipeline inputs are sink columns to be derived by prerequisite pipelines,
-then the prerequisite pipelines will be prepended onto the pipeline stack.
+then the prerequisite pipelines will be prepended onto the execution stack.
 
 To generate derivatives via the API
 
@@ -260,6 +202,157 @@ options to it with ``pydra_option``.
 
   $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all \
     --pydra_plugin slurm --pydra_option poll_delay 5 --pydra_option max_jobs 10
+
+
+Analysis classes
+----------------
+
+:class:`.Analysis` classes are used to implement pipeline chains/webs that
+can be applied to types of datasets in a reproducible manner. The syntax used is
+an extension of the attrs_ package (see `https://www.attrs.org/en/stable/extending.html
+<https://www.attrs.org/en/stable/extending.html>`_). In this syntax, member
+attributes are either free parameters or placeholders for columns in the
+dataset the analysis is applied to. Decorated "pipeline constructor" methods
+build the pipelines to perform the analysis.
+
+The following toy example has two column placeholders, ``recorded_datafile``
+and ``recorded_metadata``, to be linked to source data (*Line 13 & 14*), and
+three column placeholders, ``preprocessed``, ``derived_image`` and
+``summary_metric`` (*Line 15-17*) that can be derived by pipelines created by
+one of the two implemented pipeline constructor methods ``preprocess_pipeline``
+(*Line 26*) and ``create_image_pipeline`` (*Line 56*).
+
+The :func:`arcana.core.mark.analysis` decorator is used to specify an
+analysis class (*Line 6*). By default, class attributes are assumed to be
+column placeholders of :func:`arcana.core.mark.column` type (*Line 13-17*).
+Class attributes can also be free parameters of the analysis by using the
+:func:`arcana.core.mark.parameter` instead (*Line 21*).
+
+The :func:`arca.acore.mark.pipeline` decorator specifies pipeline constructor
+methods, and takes the columns the pipeline outputs are connected to as arguments
+(*Line 26 & 54*). More details on the design of analysis classes see
+:ref:`design_analyses`.
+
+.. code-block:: python
+  :linenos:
+
+  from pydra.tasks.example import Preprocess, ExtractFromJson, MakeImage
+  from arcana.core.mark import analysis, pipeline, parameter
+  from arcana.data.formats.common import ZippedDir, Directory, Json, Png, Gif
+
+
+  @analysis
+  class ExampleAnalysis():
+
+      # Define the columns for the dataset along with their formats.
+      # The `column` decorator can be used to specify additional options but
+      # is not required by default. The data formats specify the format
+      # that the column data will be stored in
+      recorded_datafile: ZippedDir  # Not derived by a pipeline, should be linked to existing dataset column
+      recorded_metadata: Json  # "     "     "     "
+      preprocessed: ZippedDir  # Derived by 'preprocess_pipeline' pipeline
+      derived_image: Png  # Derived by 'create_image_pipeline' pipeline
+      summary_metric: float  # Derived by 'create_image_pipeline' pipeline
+
+      # Define an analysis-wide parameter that can be used in multiple
+      # pipelines/tasks
+      contrast: float = parameter(default=0.5)
+
+      # Define a "pipeline constructor method" to generate the 'preprocessed'
+      # derivative. Arcana automagically maps column names to arguments of the
+      # constructor methods.
+      @pipeline(preprocessed)
+      def preprocess_pipeline(
+              self,
+              pipeline,
+              recorded_datafile: Directory,  # Automatic conversion from stored Zip format before pipeline is run
+              recorded_metadata):  # Format/datatype is the same as class definition so can be omitted
+
+          # A simple task to extract the "temperature" field from a JSON
+          # metadata
+          pipeline.add(
+              name='extract_metadata',
+              ExtractFromJson(
+                  in_file=recorded_metadata,
+                  field='temperature'))
+
+          # Add tasks to the pipeline using Pydra workflow syntax
+          pipeline.add(
+              name='preprocess',
+              task=Task1(
+                in_file=recorded_datafile,
+                temperature=pipeline.extract_metadata.lzout.out_field))
+
+          # Map the output of the pipeline to the "preprocessed" column.
+          pipeline.set_output(
+              ('preprocessed', pipeline.preprocess.lzout.out_file))
+      
+      # The 'create_image' pipeline derives two columns 'derived_image' and
+      # 'summary_metric'
+      @pipeline(derived_image,
+                summary_metric)
+      def create_image_pipeline(
+              self,
+              pipeline,
+              preprocessed: Directory,  # Automatic conversion from stored Zip format before pipeline is run
+              contrast: float):  # Parameters are also automagically mapped to method args
+        
+          # Add a task that creates an image from the preprocessed data, using
+          # the 'contrast' parameter
+          pipeline.add(
+              name="create_image",
+              task=MakeImage(
+                in_file=preprocessed,
+                contrast=contrast))
+
+          # Since the specified output format of derived image ('Gif') differs
+          # from that specified for the column ('Png'), an automatic conversion
+          # setp will be performed before it is stored.
+          pipeline.set_output(
+             ('derived_image', pipeline.create_image.lzout.out_file, Gif),
+             ('summary_metric', pipeline.create_image.lzout.summary))
+
+Analyses are applied to datasets using the :meth:`.Dataset.apply` method, which
+takes an :class:`.Analysis` object, instantiated with the names of columns in
+the dataset to link placeholders to and any parameters.
+
+.. code-block:: python
+
+  from arcana.core.data.set import Dataset
+  from arcana.data.formats.common import Yaml
+  from arcana.analyses.example import ExampleAnalysis
+
+  a_dataset = Dataset.load('file///data/a-dataset')
+
+  dataset.add_source(
+    name='datafile',
+    path='a-long-arbitrary-name',
+    format=ZippedDir)
+
+  dataset.add_source(
+    name='metadata',
+    path='another-long-arbitrary-name',
+    format=Yaml)  # The format the data is in the dataset, will be automatically converted
+
+  dataset.apply(
+      ExampleAnalysis(
+        recorded_datafile='datafile',
+        recorded_metadata='metadata',
+        contrast=0.75))
+
+  # Derive the summary metric column. Will first run the `preprocess_pipeline`
+  # to generate `preprocessed` before running the `create_image_pipeline`
+  dataset.derive('summary_metric')
+
+To apply an analysis via the command-line
+
+.. code-block:: bash
+
+  $ arcana apply 'file///data/a-dataset' example:ExampleAnalysis \
+    --link recorded_datafile datafile \ 
+    --link recorded_metadata metadata \
+    --parameter contrast 0.75
+  $ arcana derive 'file///data/a-dataset' summary_metric
 
 
 Provenance
@@ -374,8 +467,8 @@ Before derivatives are generated, provenance metadata of prerequisite
 derivatives (i.e. inputs of the pipeline and prerequisite pipelines, etc...)
 are checked to see if there have been any alterations to the configuration of
 the pipelines that generated them. If so, any affected nodes will not be
-processed, and a warning will be generated, unless the ``reprocess`` flag is
-set
+processed, and a warning will be generated. Previously generated derivatives
+can be reprocessed by setting the ``reprocess`` when calling :meth:`.Dataset.derive`
 
 .. code-block:: python
 
@@ -388,7 +481,7 @@ or
   $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all  --reprocess
 
 
-To ingore differences between pipeline versions you can use the ``ignore``
+To ingore differences between pipeline configurations you can use the :meth:`.Dataset.ignore`
 method
 
 .. code-block:: python
@@ -404,3 +497,5 @@ or via the CLI
 
 
 .. _Pydra: http://pydra.readthedocs.io
+.. _attrs: https://www.attrs.org/en/stable/
+.. _dataclasses: https://docs.python.org/3/library/dataclasses.html
