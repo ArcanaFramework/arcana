@@ -1,5 +1,7 @@
 # Contributing to Arcana
 
+\[adapted from [Pydra contributing guide](https://github.com/nipype/pydra/blob/master/CONTRIBUTING.md)\]
+
 Welcome to the Arcana repository! We're excited you're here and want to contribute.
 
 These guidelines are designed to make it as easy as possible to get involved.
@@ -57,7 +59,7 @@ in your Python environment (Python 3.7 or higher), run `pip install -e ".[dev]"`
 from your local Arcana directory.
 
 In order to check if everything is working correctly, run the tests
-using [pytest](https://docs.pytest.org/en/latest/), e.g. `pytest -vs Arcana`
+using [pytest](https://docs.pytest.org/en/latest/), e.g. `pytest -vs arcana`
 
 **v. Install pre-commit.**
 

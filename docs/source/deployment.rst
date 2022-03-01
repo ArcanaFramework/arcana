@@ -21,9 +21,10 @@ installed using Anaconda.
 
 The :meth:`.XnatViaCS.generate_xnat_command` method is used to create the
 `command configuration files <https://wiki.xnat.org/container-service/command-resolution-122978876.html>`_
-that are read by the XNAT container service to resolve the availabe commands on an image.
-There are four key fields that will determine the functionality of the command
-(the rest are metadata fields that are just exposed to the UI):
+that are read by the XNAT container service to resolve the available pipelines
+installed on an image. There are four key fields that will determine the
+functionality of the command (the rest are metadata fields that are exposed to
+the UI):
 
 * task_location
 * inputs
@@ -34,13 +35,14 @@ The ``task_location`` keyword argument should be the path to an installed
 Python module containing a Pydra task followed by a colon and the name of
 the task, e.g. ``pydra.tasks.fsl.preprocess.fast:Fast``. Note that Arcana
 will attempt to resolve the package that contains the Pydra task and install the
-same version (including local development versions) within the Anaconda_ environment.
+same version (including local development versions) within the Anaconda_ environment
+in the image.
 
-The inputs and parameters fields expose input fields to the user when
+The inputs and parameters fields expose input text boxes to the user when
 the pipelines are run. Inputs prompt the user to enter selection criteria for
 input data and are used by the entrypoint of the Docker containers to add
-source columns to the dataset (see :ref:`data_columns`). Parameter inputs are passed
-directly through the pipeline add method (see :ref:`Pipelines`).
+source columns to the dataset (see :ref:`data_columns`). Parameter inputs are
+passed directly through the pipeline add method (see :ref:`Pipelines`).
 
 .. code-block:: python
 
