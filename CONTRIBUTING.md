@@ -61,14 +61,14 @@ from your local Arcana directory.
 In order to check if everything is working correctly, run the tests
 using [pytest](https://docs.pytest.org/en/latest/), e.g. `pytest -vs arcana`
 
-**v. Install pre-commit.**
+<!-- **v. Install pre-commit.**
 
 [pre-commit](https://pre-commit.com/) is a git hook for running operations at commit time. To use it in
 your environment, do `pip install pre-commit` following by `pre-commit install`
-inside your source directory.
+inside your source directory. -->
 
 
-**vi. Make the changes you've discussed.**
+**v. Make the changes you've discussed.**
 
 It's a good practice to create [a new branch](https://help.github.com/articles/about-branches/)
 of the repository for a new set of changes.
@@ -77,7 +77,7 @@ It's also a good idea to [commit][link_commit] your changes whenever
 you finish specific task, and [push][link_push] your work to your GitHub repository.
 
 
-**vii. Submit a [pull request][link_pullrequest].**
+**vi. Submit a [pull request][link_pullrequest].**
 
 A new pull request for your changes should be created from your fork of the repository
 after you push all the changes you made on your local machine.
