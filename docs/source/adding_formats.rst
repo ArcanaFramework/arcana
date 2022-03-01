@@ -8,7 +8,8 @@ Arcana
 File formats
 ------------
 
-All file formats inherit from the ``FileGroup`` class.
+All file formats inherit from the :class:`.FileGroup` base class, which represent
+single files, files with headers or side cars or directories.
 
 
 Data spaces
@@ -18,7 +19,7 @@ New data spaces (see :ref:`data_spaces`) are defined by extending the
 :class:`.DataSpace` abstract base class. :class:`.DataSpace` subclasses are be
 `enums <https://docs.python.org/3/library/enum.html>`_ with binary string
 values of consistent length (i.e. all of length 2 or all of length 3, etc...).
-The length of the binary string defines the number of "dimensions" the space has,
+The length of the binary string defines the rank of the data space,
 i.e. the maximum depth of a data tree within the space. The enum must contain
 members for each permutation of the bit string (e.g. for 2 dimensions, there
 must be members corresponding to the values 0b00, 0b01, 0b10, 0b11).
@@ -32,7 +33,7 @@ time-point can still be represented in this space, and just be singleton along
 the corresponding dimensions.
 
 All dimensions should be included as members of a DataSpace subclass
-enum as orthogonal binary vectors, e.g.::
+enum with orthogonal binary vector values, e.g.::
 
     member = 0b001
     group = 0b010

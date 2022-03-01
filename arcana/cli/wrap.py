@@ -210,7 +210,7 @@ def create_doc(spec, doc_dir, pkg_name):
         "source_file": pkg_name,
     }
 
-    task = resolve_class(spec['task_location'])
+    task = resolve_class(spec['pydra_task'])
 
     with open(doc_dir / pkg_name, "w") as f:
         f.write("---\n")

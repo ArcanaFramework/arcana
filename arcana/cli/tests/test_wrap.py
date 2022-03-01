@@ -28,7 +28,7 @@ concatenate_module_contents = """from arcana.data.formats.common import text
 
 spec = {
     'commands': [
-        {'task_location': 'arcana.tasks.tests.fixtures:concatenate',
+        {'pydra_task': 'arcana.tasks.tests.fixtures:concatenate',
          'inputs': [('in_file1', text), ('in_file2', text)],
          'outputs': [('out_file', text)],
          'parameters': ['duplicates'],

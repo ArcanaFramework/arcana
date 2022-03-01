@@ -5,27 +5,28 @@ Getting started
 Pydra
 -----
 
-Pipelines in Arcana are implemented in, and executed with, the Pydra_ dataflow
+Pipelines in Arcana are implemented in and executed with the Pydra_ dataflow
 engine, so before getting started with Arcana it is a good idea to familiarise
 yourself with Pydra_'s syntax and concepts. There is short Jupyter notebook
 tutorial available at `<https://github.com/nipype/pydra-tutorial>`_, which is a
-nice place to start with this.
+nice place to start with this after the reading the
+`official docs <https://pydra.readthedocs.io>`_.
 
 Software requirements
 ---------------------
 
-Arcana requires recent version of Python (>=3.8) to run. So you may
+Arcana requires a recent version of Python (>=3.8) to run. So you may
 need to upgrade your Python version before it is installed. The best way
 to install Python depends on your OS:
 
-* Windows - it is strongly recommended to use Anaconda_ to install Python
+* Windows - it is very strongly recommended to use Anaconda_ to install Python because it will manage C dependencies as well
 * Mac - either `Homebrew <https://brew.sh/>`_ or Anaconda_ are good options
-* Linux - the native package manager should work ok unless you are using an old distribution, in which case `Linuxbrew <https://docs.brew.sh/Homebrew-on-Linux>`_ is a good option
+* Linux - the native package manager should work ok unless you are using an old Linux distribution that doesn't support Python 3.8, in which case `Linuxbrew <https://docs.brew.sh/Homebrew-on-Linux>`_ is a good option
 
 
 To deploy Arcana pipelines to Docker_ images XNAT's container service,
 Docker_ needs to be installed. Please see the Docker_ docs for how to do this,
-`<https://docs.docker.com/engine/install/>`_.
+`<https://docs.docker.com/engine/install/>`_ for your system.
 
 One of the main strengths of Pydra is the ability to link 3rd party tools
 together into coherent workflows. 3rd party tools are best run within software
@@ -41,9 +42,9 @@ for implicit file-format conversions are
 * `Dcm2Niix <https://github.com/rordenlab/dcm2niix>`_
 * `Mrtrix3 <https://mrtrix3.readthedocs.io>`_
 
-Both these packages can be installed using \*Brew (you will need to tap
+Both these packages can be installed using Home/LinuxBrew (you will need to tap
 ``MRtrix3/mrtrix3``) and Anaconda_ (use the ``conda-forge`` and ``mrtrix3``
-packages for Dcm2Niix and MRtrix3 respectively).
+repositories for Dcm2Niix and MRtrix3 respectively).
 
 
 Installation
@@ -65,37 +66,37 @@ API or via the command-line interface (CLI).
 
 The basic usage pattern is
 
-* Define a dataset to work with
-* Specify columns in the dataset to access data from and store data to.
-* Apply a Pydra_ task or workflow, or an Arcana analysis class, to connect the dataset columns
-* Request selected derivatives to generate
+* Define a dataset to work with (see :ref:`Datasets`)
+* Specify columns in the dataset to access data from and store data to (see :ref:`data_columns`)
+* Connect a `Pydra task or workflow <https://pydra.readthedocs.io/en/latest/components.html#dataflows-components-task-and-workflow>`_, or an analysis class between columns (see :ref:`Analysis classes`)
+* Request selected derivatives to generate (see :ref:`Derivatives`)
 
-For example, to execute FSL's Brain Extraction Tool (BET) over all subjects of
-a dataset stored within the ``/data/my-dataset`` directory (which contains
-two-layers of sub-directories, for subjects and longitudinal time-points
-respectively) via the API
+For example, given a dataset stored within the ``/data/my-dataset`` directory,
+which contains two-layers of sub-directories, for subjects and sessions
+respectively, FSL's Brain Extraction Tool (BET) can be executed
+over all sessions with the API
 
 .. code-block:: python
 
     # Import arcana module
     from pydra.tasks.fsl.preprocess.bet import BET
     from arcana.core.data import Dataset
-    from arcana.data.formats.medicalimaging import dicom, nifti_gz
+    from arcana.data.formats.medicalimaging import Dicom, NiftiGz
 
     # Load dataset
     my_dataset = Dataset('file///data/my-dataset', ['subject', 'session'])
 
     # Add source column to select T1-weighted images in each sub-directory
-    my_dataset.add_source('T1w', '.*mprage.*', format=dicom, is_regex=True)
+    my_dataset.add_source('T1w', '.*mprage.*', format=Dicom, is_regex=True)
 
     # Add sink column to store brain mask
-    my_dataset.add_sink('brain_mask', 'derivs/brain_mask', format=nifti_gz)
+    my_dataset.add_sink('brain_mask', 'derivs/brain_mask', format=NiftiGz)
 
     # Apply BET Pydra task, connecting it betwee between the source and sink
-    my_dataset.pipeline(
+    my_dataset.apply_pipeline(
         'brain_extraction',
         BET(),
-        inputs=[('T1w', 'in_file', nifti_gz)],
+        inputs=[('T1w', 'in_file', NiftiGz)],
         outputs=[('brain_mask', 'out_file')])
 
     # Generate brain mask derivative
@@ -103,9 +104,9 @@ respectively) via the API
 
 This code will iterate over all imaging sessions in the directory tree, find and
 convert T1-weighted images (which contain 'mprage' in their names) from
-DICOM into the required zipped NIfTI format, and then execute BET on the converted
+DICOM into the required gzipped NIfTI format, and then execute BET on the converted
 files before they are saved back into the directory structure at
-``<subject-id>/<session-id>/derivs/brain_mask.nifti_gz``.
+``<subject-id>/<session-id>/derivs/brain_mask.nii.gz``.
 
 Alternatively, the same steps can be performed using the command line interface
 
@@ -114,7 +115,7 @@ Alternatively, the same steps can be performed using the command line interface
     $ arcana dataset define 'file///data/my-project' subject session
     $ arcana column add-source 'file///data/my-dataset' T1w '.*mprage.*' medicalimaging:dicom --regex
     $ arcana column add-sink 'file///data/my-dataset' brain_mask medicalimaging:nifti_gz
-    $ arcana pipeline add 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
+    $ arcana apply pipeline 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
       --input T1w in_file medicalimaging:nifti_gz \
       --output brain_mask out_file medicalimaging:nifti_gz
     $ arcana derive brain_mask
@@ -123,8 +124,8 @@ Applying an Analysis class instead of a Pydra task/workflow follows the same
 steps up to 'add-source' (sinks are automatically added by the analysis class).
 The following example applies methods for analysing T1-weighted MRI images to the
 dataset, then calls the methods calculates the average cortical thickness for
-each session of each subject, and then plots a histogram of the distribution at
-Timepoint 'T3'.
+each session of each subject, and then plots a histogram of the distribution
+over all subjects at Timepoint 'T3'.
 
 
 .. code-block:: python
@@ -139,7 +140,10 @@ Timepoint 'T3'.
     # the T1wAnalysis class
     my_dataset.derive('avg_cortical_thickness')
 
-    plt.histogram(my_dataset['avg_cortical_thickness']['T3', :])
+    # Get all members at the 'T3' timepoint. Indexing of a column can either
+    # be a single arg in order to use the IDs for the frequency of the column
+    # ('session') in this case, or the rank of the data space
+    plt.histogram(my_dataset['avg_cortical_thickness']['T3', None, :])
 
 
 To apply the Analysis class and derive the metric via the command line you can
@@ -147,7 +151,7 @@ use
 
 .. code-block:: bash
 
-    $ arcana analysis apply 'file///data/my-project' bids.mri:T1wAnalysis
+    $ arcana apply analysis 'file///data/my-project' bids.mri:T1wAnalysis
     $ arcana derive 'file///data/my-project' avg_cortical_thickness
 
 

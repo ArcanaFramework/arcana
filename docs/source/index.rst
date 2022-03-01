@@ -32,7 +32,7 @@ to maintain continuous integration and deployment of pipeline suites (see
 
 Although designed to efficiently handle the requirements typical of medical imaging
 workflows (i.e. manipulation of file-based images by various third-party
-tools), at its core, Arcana is a common framework, which could be
+tools), at its core, Arcana is a general framework, which could be
 used to design analyses in any field. If you do end up using Arcana in a
 different domain please post an issue about it in the
 `issue tracker <https://github.com/Australian-Imaging-Service/arcana/issues>`_

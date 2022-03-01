@@ -16,8 +16,8 @@ and can therefore work with any Debian/Ubuntu or Red-Hat based images
 (using a value for ``package_manager`` keyword argument of ``"apt"`` for
 Debian-based or ``"yum"`` for Red Hat). Arcana installs itself into the Docker image
 within an Anaconda_ environment named "arcana". Therefore, it won't typically
-conflict with Docker images for existing pipelines unless they are also
-installed using Anaconda.
+conflict with packages on existing Docker images for third-party pipelines
+unless they are also installed using Anaconda.
 
 The :meth:`.XnatViaCS.generate_xnat_command` method is used to create the
 `command configuration files <https://wiki.xnat.org/container-service/command-resolution-122978876.html>`_
@@ -26,12 +26,12 @@ installed on an image. There are four key fields that will determine the
 functionality of the command (the rest are metadata fields that are exposed to
 the UI):
 
-* task_location
+* pydra_task
 * inputs
 * outputs
 * parameters 
 
-The ``task_location`` keyword argument should be the path to an installed
+The ``pydra_task`` keyword argument should be the path to an installed
 Python module containing a Pydra task followed by a colon and the name of
 the task, e.g. ``pydra.tasks.fsl.preprocess.fast:Fast``. Note that Arcana
 will attempt to resolve the package that contains the Pydra task and install the
@@ -47,11 +47,18 @@ passed directly through the pipeline add method (see :ref:`Pipelines`).
 .. code-block:: python
 
     from arcana.data.stores.xnat import XnatViaCS
+    from arcana.data.spaces.medicalimaging import ClinicalTrial
+    from arcana.data.formats.medicalimaging import NiftiGz
+
 
     XnatViaCS.generate_xnat_command(
         pipeline_name='example_pipeline',
-        task_locaiton='pydra.tasks.fsl.preprocess.fast:Fast',
-    )
+        pydra_task='pydra.tasks.fsl.preprocess.fast:Fast',
+        image_tag='example/0.1',
+        inputs=[
+            ('in_files', NiftiGz, 'File to segment', ClinicalTrial.session),
+            ('number_of_classes', int, 'Number of classes', ClinicalTrial.session)],
+        outputs=[])
 
 
 Testing
@@ -61,8 +68,9 @@ Testing
 * Testing individual images via CLI
 * Testing suite via CLI
 
-Generating documentation
-------------------------
+
+Documenting
+-----------
 
 Documentation can be automatically generated using the metadata saved in the
 pipeline definitions.

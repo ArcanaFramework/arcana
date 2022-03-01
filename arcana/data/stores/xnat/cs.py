@@ -188,7 +188,7 @@ class XnatViaCS(Xnat):
     @classmethod
     def generate_xnat_command(cls,
                               pipeline_name: str,
-                              task_location: str,
+                              pydra_task: str,
                               image_tag: str,
                               inputs,
                               outputs,
@@ -205,15 +205,20 @@ class XnatViaCS(Xnat):
         ----------
         pipeline_name : str
             Name of the pipeline
-        task_location
+        pydra_task
             The module path and name (separated by ':') to the task to execute,
             e.g. australianimagingservice.mri.neuro.mriqc:task
         image_tag : str
             Name + version of the Docker image to be created
         inputs : ty.List[ty.Union[InputArg, tuple]]
-            Inputs to be provided to the container (pydra_field, datatype, dialog_name, FREQUENCY)
+            Inputs to be provided to the container (pydra_field, datatype, dialog_name, frequency).
+            'pydra_field' and 'datatype' will be passed to "inputs" arg of the Dataset.pipeline() method,
+            'frequency' to the Dataset.add_source() method and 'dialog_name' is displayed in the XNAT
+            UI
         outputs : ty.List[ty.Union[OutputArg, tuple]]
-            Outputs from the container 
+            Outputs to extract from the container (pydra_field, datatype, output_path).
+            'pydra_field' and 'datatype' will be passed as "outputs" arg the Dataset.pipeline() method,
+            'output_path' determines the path the output will saved in the XNAT data tree.
         description : str
             User-facing description of the pipeline
         version : str
@@ -256,7 +261,7 @@ class XnatViaCS(Xnat):
                 cls.ParamArg(*p) if not isinstance(p, cls.ParamArg) else p)
             for p in parameters]
 
-        pydra_task = resolve_class(task_location)()
+        pydra_task = resolve_class(pydra_task)()
         input_specs = dict(f[:2] for f in pydra_task.input_spec.fields)
         # output_specs = dict(f[:2] for f in pydra_task.output_spec.fields)
 
@@ -345,7 +350,7 @@ class XnatViaCS(Xnat):
 
         cmdline = (
             f"conda run --no-capture-output -n arcana "  # activate conda
-            f"arcana run {task_location} "  # run pydra task in Arcana
+            f"arcana run {pydra_task} "  # run pydra task in Arcana
             f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
             f"--ignore_blank_inputs "  # Allow input patterns to be blank, just ignore them in that case
             f"--pydra_plugin serial "  # Use serial processing instead of parallel to simplify outputs
@@ -749,7 +754,7 @@ class XnatViaCS(Xnat):
                 registry=docker_registry,
                 **cmd_spec)
 
-            python_package = get_pkg_name(cmd_spec['task_location'].split(':')[0])
+            python_package = get_pkg_name(cmd_spec['pydra_task'].split(':')[0])
             if python_package not in [p.split('[')[0] for p in python_packages]:
                 python_packages.append(python_package)
 

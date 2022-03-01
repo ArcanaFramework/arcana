@@ -8,7 +8,7 @@ from the user, it is important to be familiar with the core concepts:
 * :ref:`Stores` - abstraction of different storage systems and formats
 * :ref:`Spaces` - define the structure for a class of datasets
 * :ref:`Datasets` - sets of comparable data to be analysed (e.g. XNAT project or BIDS dataset)
-* :ref:`Items and formats` - the atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the formats they come in
+* :ref:`Items and formats` - the atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the file formats they are stored in
 * :ref:`Columns` - the set of comparable elements across a dataset (e.g. T1-weighted MRI scans across every session, ages across all subjects)
 
 Stores
@@ -21,12 +21,13 @@ is accessed, e.g. whether it is in BIDS format, or whether to access files in
 an XNAT repository directly (i.e. as exposed to the container service) or purely
 using the API.
 
-There are four :class:`.DataStore` classes currently implemented:
+There are four :class:`.DataStore` classes currently implemented (for
+instructions on how to add support for new systems see :ref:`alternative_stores`):
 
-* :class:`.FileSystem` - access data organised within a arbitrary directory tree on the file system
+* :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system
 * :class:`.BidsFormat` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific)
 * :class:`.Xnat` - access data stored in XNAT_ repositories by its REST API
-* :class:`.XnatViaCS` - access data stored in XNAT_ repositories as exposed to integrated pipelines run in XNAT_'s container service using a combination of direct access to the archive disk and the REST API
+* :class:`.XnatViaCS` - access data stored in XNAT_ repositories as exposed to integrated pipelines run in `XNAT's container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_ using a combination of direct access to the archive disk and the REST API
 
 To configure access to a data store a via the API, initialise the :class:`.DataStore`
 sub-class corresponding to the required data location/access-method then save
@@ -76,28 +77,30 @@ Spaces
 ------
 
 A key concept in Arcana's data model is that of "data spaces".
-This refers to the structure of data points within a given class of datasets,
-where a data point could be an MRI session in a clinical trial or a
+This refers to the structure of measurement events within a given class of datasets,
+where a measurement event could be an MRI session in a clinical trial or a
 football player's performance in a scouting team's analysis for example.
 
-Data points in a dataset can be categorised in a number of ways. Taking the
+Measurement events in a dataset can typically be categorised in a number of ways. Taking the
 clinical trial example, each MRI session will belong to a particular subject
 and may also belong to a longitudinal timepoint and/or a particular study group.
 In the case of the scouting program, a set of player performance metrics will
 belong to a particular player, competition round, league, season and more.
 In Arcana, these category groups are considered to form the "data space"
-of the dataset (drawing a loose analogy with a multi-dimensional space where
-each data point exists on a grid).
+of the dataset, drawing a loose analogy with a multi-dimensional space where
+each category groups are aligned along different dimensions and
+measurement events exist at points on a grid.
 
 Different data spaces are defined in Arcana by subclassing the
 :class:`.DataSpace` enum. Enum members define both the dimensions of
-the space and also the combinations of these dimensions (subspaces
-to extend the analogy) that make up the possible "frequencies" data can occur at. For example,
-the :class:`.ClinicalTrial` has the dimensions of **group**, **member** and
+the space and all the combinations of these dimensions (subspaces
+to stretch the analogy if you will). For example, the :class:`.ClinicalTrial`
+has the dimensions of **group**, **member** and
 **timepoint**, corresponding to the study group (e.g. 'test' or 'control'),
-within-group ID, and longintudinal timepoint. These dimensions can be combined
-to give all the possible frequencies data can exist at within the dataset,
-i.e. (per):
+within-group ID (relevant for matched control studies and arbitrary otherwise,
+equivalent to subject ID when there is only on study group), and longintudinal
+timepoint. These dimensions can be combined to give all the possible "frequencies"
+data can exist at within the dataset, i.e. (per):
 
 * **group** (group)
 * **member** (member)
@@ -110,16 +113,17 @@ i.e. (per):
 
 Note that a particular dataset can have singleton dimensions
 (e.g. one study group or timepoint) and still exist in the data space.
-Therefore, when creating data spaces it is better to include
-all potential dimensions(categories) to make them more generalisable.
+Therefore, when creating data spaces it is better to be inclusive of
+all potential dimensions (categories) in order to make them more general.
 
 
 Datasets
 --------
 
 In Arcana, a *dataset* refers to a collection of comparable data to be jointly
-analysed (e.g. data from a research study). Datasets contain both source data and
-the derivatives generated from them. Datasets are typically organised into a
+analysed (e.g. data from a single research study or collection such as the
+Human Connectome Project). Arcana datasets consist of both source data and the
+derivatives generated from them. Datasets are typically organised into a
 tree with a defined "hierarchy" of data frequencies (see :ref:`Spaces`).
 For example, the following dataset stored in a directory tree within in the
 :class:`.ClinicalTrial` space, has a hierarchy of "subjects" > "sessions"
@@ -156,14 +160,14 @@ For example, the following dataset stored in a directory tree within in the
             └── bold_rest
 
 where *session1* is acquired at Timepoint 1 and *session2* is acquired at
-Timepoint 2.
+Timepoint 2. Note that there is only one study group in this example so it does
+not appear in the hierarchy.
 
 While the majority of data items are stored in the "leaf nodes" of the tree (e.g. per-session),
 data can exist at "nodes" of any frequency in the data space (e.g. per-subject, per-timepoint),
-whether it fits into the original tree structure of the dataset or not.
-For example, statistics derived across all subjects at each
-longitudinal timepoint in the above example will be saved in new sub-directories of
-the root directory.
+whether it fits into the hierarchy of the dataset or not. For example, statistics
+derived across all subjects at each longitudinal timepoint in the above example
+will be saved in new sub-directories of the root directory.
 
 Datasets can be defined via the API using the :meth:`.DataStore.dataset` method.
 For example, to define a new dataset corresponding to the XNAT project ID
@@ -174,10 +178,10 @@ For example, to define a new dataset corresponding to the XNAT project ID
 
     xnat_dataset = xnat_store.dataset(id='MYXNATPROJECT')
 
-For stores that can store arbitrary tree structures (e.g. file-system directories),
+For stores that can store datasets with arbitrary tree structures (e.g. file-system directories),
 the hierarchy of the dataset tree needs to be provided (see :ref:`data_spaces`).
 This is specified by providing a list of data frequencies corresponding to
-descending layers of the directory tree
+layers of the directory tree in descending order.
 
 .. code-block:: python
 
@@ -213,10 +217,12 @@ IDs.
 
 .. code-block:: python
 
+    # NB: 'subject' instead of ClinicalTrial.subject can be used in this
+    # example as the data-space defaults to ClinicalTrial for XNAT stores
     xnat_dataset = xnat_store.dataset(
         id='MYXNATPROJECT',
         id_inference=[
-            (ClinicalTrial.subject, r'(?P<group>[A-Z]+)(?P<member>\d+)')])
+            ('subject', r'(?P<group>[A-Z]+)(?P<member>\d+)')])   
 
 
 Often there are nodes that need to be omitted from a given analysis due to
@@ -225,18 +231,19 @@ missing or corrupted data. Such nodes can be excluded with the
 dimension to the list of IDs to exclude.
 
 You can exclude nodes at different levels of data tree, even within in the same dataset.
-Note however, that if you exclude nodes low level of the dataset's hierarchy then
+Note however, that if you exclude nodes at a low level of the dataset's hierarchy then
 corresponding nodes at higher levels will also be excluded. For example,
 if you exclude the imaging session for subject 5 at Timepoint 2, then both
 Timepoint 2 (for all subjects) and Subject 5 (at all timepoints) will be
-dropped from the analysis. Therefore it is typically better to exclude nodes
-higher up the tree (e.g. Subject 5).
+dropped from the analysis when generating summary derivatives per timepoint or
+subject. Therefore it is typically better to exclude nodes higher up the tree
+(e.g. Subject 5).
 
 .. code-block:: python
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
-        excluded={ClinicalTrial.subject: ['09', '11']})  # Alternatively use 'subject' string instead of enum
+        excluded={'subject': ['09', '11']})
 
 
 The ``included`` argument is the inverse of exclude and can be more convenient when
@@ -247,8 +254,8 @@ with ``excluded`` the frequencies must be orthogonal.
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
-        excluded={ClinicalTrial.subject: ['09', '11']},
-        included={Clincial.timepoint: ['T1']})
+        excluded={'subject': ['09', '11']},
+        included={'timepoint': ['T1']})
 
 
 You may want multiple dataset definitions for a given project/directory,
@@ -283,6 +290,7 @@ string separated by ':', e.g.
 
     $ arcana dataset define 'file///data/imaging/my-project:training' group subject \
       --include subject 10:20
+
 
 .. _data_formats:
 
@@ -328,24 +336,24 @@ e.g. ages for every subject or T1-weighted MRI images for every session.
 Referring to them as "columns" is intended to draw a loose analogy with
 `data-frame columns in Pandas <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.columns.html>`_,
 as conceptually they are similar. However, unlike Pandas columns, Arcana
-columns can have different "row frequencies".
+columns can have different row frequencies (see :ref:`Spaces`).
 For example, age fields occur per subject, whereas T1-weighted images occur per
 imaging session. Items in a column do not need to be named consistently
 (although it is a good practice where possible), however,
 they must be of the same data format. 
 
-There are two types of columns in Arcana datasets, *sources* and *sinks*. Source columns
-select corresponding items from existing data in the data store using a set of
-criteria including:
+There are two types of columns in Arcana datasets, *sources* and *sinks*.
+Source columns select matching items across the dataset from existing data
+using a range of criteria:
 
 * path (can be a regular-expression)
 * data type
 * row frequency
-* quality threshold (only implemented in XNAT)
-* order within node
+* quality threshold (only currently implemented for XNAT_ stores)
 * header values (only available for selected formats)
+* order within the data node (e.g. first T1-weighted scan that meets all other criteria in a session)
 
-Sink columns define how new data will be written to the dataset.
+Sink columns define how derived data will be written to the dataset.
 
 Columns are given a name, which is used to map to the inputs/outputs of pipelines.
 By default, this name is used by sinks to name the output fields/files stored
@@ -358,12 +366,12 @@ sources and sinks via the API.
 .. code-block:: python
 
     from arcana.data.spaces.medicalimaging import ClinicalTrial
-    from arcana.data.formats.medicalimaging import dicom, nifti_gz
+    from arcana.data.formats.medicalimaging import Dicom, NiftiGz
 
     xnat_dataset.add_source(
         name='T1w',
         path=r'.*t1_mprage.*'
-        format=dicom,
+        format=Dicom,
         order=1,
         quality_threshold='usable',
         is_regex=True
@@ -371,8 +379,8 @@ sources and sinks via the API.
 
     fs_dataset.add_sink(
         name='brain_template',
-        format=nifti_gz,
-        frequency=ClinicalTrial.group
+        format=NiftiGz,
+        frequency='group'
     )
 
 To access the data in the columns once they are defined use the ``Dataset[]``
@@ -390,7 +398,7 @@ operator
     # Plot a slice of the image data from a Subject sub01's imaging session
     # at Timepoint T2. (Note: such data access is only available for selected
     # data formats that have convenient Python readers)
-    plt.imshow(t1w['T2', 'sub01'].data[:,:,30])
+    plt.imshow(t1w['T2', 'sub01'].data[:, :, 30])
 
 
 Use the ``arcana source add`` and ``arcana sink add`` commands to add sources/sinks
@@ -399,11 +407,11 @@ to a dataset using the CLI.
 .. code-block:: bash
 
     $ arcana source add 'xnat-central//MYXNATPROJECT' T1w \
-      medicalimaging:dicom --path '.*t1_mprage.*' \
+      medicalimaging:Dicom --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
     $ arcana sink add 'file///data/imaging/my-project:training' brain_template \
-      medicalimaging:nifti_gz --frequency group
+      medicalimaging:NiftiGz --frequency group
 
 
 One of the main benefits of using datasets in BIDS_ format is that the names

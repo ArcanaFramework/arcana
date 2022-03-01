@@ -1,3 +1,5 @@
+.. _alternative_stores:
+
 Alternative store types
 =======================
 
