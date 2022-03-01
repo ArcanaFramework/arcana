@@ -70,7 +70,7 @@ See also ``arcana store rename`` and ``arcana store remove``.
     :class:`.BidsFormat` don't need to be configured and can be accessed via their aliases,
     ``file`` and ``bids`` when defining a dataset.
 
-.. _data_dimensions:
+.. _data_spaces:
 
 Spaces
 ------
@@ -175,7 +175,7 @@ For example, to define a new dataset corresponding to the XNAT project ID
     xnat_dataset = xnat_store.dataset(id='MYXNATPROJECT')
 
 For stores that can store arbitrary tree structures (e.g. file-system directories),
-the hierarchy of the dataset tree needs to be provided (see :ref:`data_dimensions`).
+the hierarchy of the dataset tree needs to be provided (see :ref:`data_spaces`).
 This is specified by providing a list of data frequencies corresponding to
 descending layers of the directory tree
 
