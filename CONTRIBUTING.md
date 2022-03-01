@@ -7,7 +7,7 @@ If you have any questions that aren't discussed below, please let us know by ope
 
 Before you start you'll need to set up a free GitHub account and sign in, here are some [instructions][link_signupinstructions].
 If you are not familiar with version control systems such as git,
- introductions and tutorials may be found [here](http://www.reproducibleimaging.org/module-reproducible-basics/02-vcs/).
+  introductions and tutorials may be found [here](http://www.reproducibleimaging.org/module-reproducible-basics/02-vcs/).
 
 
 ## How can you contribute
@@ -132,8 +132,8 @@ If you are new to the project, don't forget to add your name and affiliation the
 
 [link_Arcana]: https://github.com/australian-imaging-service/arcana
 [link_signupinstructions]: https://help.github.com/articles/signing-up-for-a-new-github-account
-[link_new_issues]: https://github.com/nipype/Arcana/issues/new/choose
-[link_doc_issues]: https://github.com/nipype/Arcana/issues/new?assignees=&labels=documentation&template=documentation.md&title=
+[link_new_issues]: https://github.com/australian-imaging-service/Arcana/issues/new/choose
+[link_doc_issues]: https://github.com/australian-imaging-service/Arcana/issues/new?assignees=&labels=documentation&template=documentation.md&title=
 
 [link_pullrequest]: https://help.github.com/articles/creating-a-pull-request-from-a-fork/
 [link_fork]: https://help.github.com/articles/fork-a-repo/
