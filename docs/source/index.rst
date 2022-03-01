@@ -51,8 +51,7 @@ to let us know!
    :maxdepth: 2
    :caption: Development
    :hidden:
-   
-   contributing
+
    adding_formats
    design_analyses
    alternative_stores
@@ -62,8 +61,8 @@ to let us know!
    :caption: Reference
    :hidden:
 
-   api
-   cli
+   API <api.rst>
+   CLI <cli.rst>
 
 |
 .. note::

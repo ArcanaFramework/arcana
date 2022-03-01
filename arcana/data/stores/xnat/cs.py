@@ -726,6 +726,8 @@ class XnatViaCS(Xnat):
         wrapper_version
             The version of the wrapper specific to the pkg version. It will be
             appended to the package version, e.g. 0.16.2 -> 0.16.2--1
+        **kwargs:
+            Passed on to `generate_dockerfile` method
         """
 
         full_version = str(pkg_version)

@@ -223,7 +223,8 @@ one of the two implemented pipeline constructor methods ``preprocess_pipeline``
 (*Line 26*) and ``create_image_pipeline`` (*Line 56*).
 
 The :func:`arcana.core.mark.analysis` decorator is used to specify an
-analysis class (*Line 6*). By default, class attributes are assumed to be
+analysis class (*Line 6*), taking the dataset space that the class operates on
+as an argument. By default, class attributes are assumed to be
 column placeholders of :func:`arcana.core.mark.column` type (*Line 13-17*).
 Class attributes can also be free parameters of the analysis by using the
 :func:`arcana.core.mark.parameter` instead (*Line 21*).
@@ -238,10 +239,11 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 
   from pydra.tasks.example import Preprocess, ExtractFromJson, MakeImage
   from arcana.core.mark import analysis, pipeline, parameter
+  from arcana.data.spaces.example import ExampleDataSpace
   from arcana.data.formats.common import ZippedDir, Directory, Json, Png, Gif
 
 
-  @analysis
+  @analysis(ExampleDataSpace)
   class ExampleAnalysis():
 
       # Define the columns for the dataset along with their formats.
@@ -353,6 +355,25 @@ To apply an analysis via the command-line
     --link recorded_metadata metadata \
     --parameter contrast 0.75
   $ arcana derive 'file///data/a-dataset' summary_metric
+
+To list the derivatives that can be derived from a dataset once you have
+applied an analysis class you can use the ``menu`` command
+
+.. code-block:: bash
+
+  $ arcana menu 'file///data/a-dataset'
+
+  Derivatives
+  -----------
+  recorded_datafile (ZippedDir)
+  recorded_metadata (Json)
+  preprocessed (ZippedDir)
+  derived_image (Png)
+  summary_metric (float)
+
+  Parameters
+  ----------
+  contrast (float) - default: 0.5
 
 
 Provenance

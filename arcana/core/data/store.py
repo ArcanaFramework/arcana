@@ -13,14 +13,11 @@ logger = logging.getLogger('arcana')
 
 @attr.s
 class DataStore(metaclass=ABCMeta):
-    """
-    Abstract base class for all Repository systems, DaRIS, XNAT and
-    local file system. Sets out the interface that all Repository
-    classes should implement.
-
-    Parameters
-
-    """
+    # """
+    # Abstract base class for all Repository systems, DaRIS, XNAT and
+    # local file system. Sets out the interface that all Repository
+    # classes should implement.
+    # """
 
     _connection_depth = attr.ib(default=0, init=False, hash=False, repr=False,
                                 eq=False)

@@ -1,5 +1,5 @@
-API
-===
+Application Programming Interface (API)
+=======================================
 
 The core of Arcana's framework is located under the ``arcana.core`` sub-package,
 which contains all the domain-independent logic. Domain-specific extensions
@@ -49,7 +49,8 @@ Stores
 
 .. autoclass:: arcana.data.stores.xnat.Xnat
 
-.. autoclass:: arcana.data.stores.xnat.XnatViaCS    
+.. autoclass:: arcana.data.stores.xnat.XnatViaCS
+    :members: generate_xnat_command, generate_dockerfile, create_wrapper_image
 
 
 

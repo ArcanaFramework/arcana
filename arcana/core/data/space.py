@@ -6,7 +6,7 @@ from arcana.core.utils import class_location, resolve_class
 
 class DataSpace(Enum):
     """
-    Base class for all "data dimensions" enums. DataSpace enums specify
+    Base class for all "data space" enums. DataSpace enums specify
     the relationships between nodes of a dataset.
 
     For example in imaging studies, scannings sessions are typically organised
