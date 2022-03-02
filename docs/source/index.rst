@@ -53,6 +53,7 @@ to let us know!
    :caption: Development
    :hidden:
 
+   contributing
    adding_formats
    design_analyses
    alternative_stores

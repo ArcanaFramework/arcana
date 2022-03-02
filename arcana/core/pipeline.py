@@ -209,10 +209,10 @@ class Pipeline():
         for input_name in input_names:
             try:
                 source = dataset.column_specs[input_name]
-            except KeyError:
+            except KeyError as e:
                 raise ArcanaNameError(
                     input_name,
-                    f"{input_name} is not the name of a source in {dataset}")
+                    f"{input_name} is not the name of a source in {dataset}") from e
             sources[input_name] = source
             try:
                 required_format = input_types[input_name]
@@ -225,10 +225,10 @@ class Pipeline():
         for output_name in output_names:
             try:
                 sink = dataset.column_specs[output_name]
-            except KeyError:
+            except KeyError as e:
                 raise ArcanaNameError(
                     output_name,
-                    f"{output_name} is not the name of a sink in {dataset}")
+                    f"{output_name} is not the name of a sink in {dataset}") from e
             if sink.pipeline is not None:
                 if overwrite:
                     logger.info(

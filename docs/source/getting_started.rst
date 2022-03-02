@@ -53,7 +53,7 @@ Installation
 Arcana can be installed along with its Python dependencies from the
 `Python Package Index <http://pypi.org>`_ using *Pip3*
 
-.. code-block:: bash
+.. code-block:: console
 
     $ pip3 install arcana
 
@@ -110,7 +110,7 @@ files before they are saved back into the directory structure at
 
 Alternatively, the same steps can be performed using the command line interface
 
-.. code-block:: bash
+.. code-block:: console
 
     $ arcana dataset define 'file///data/my-project' subject session
     $ arcana column add-source 'file///data/my-dataset' T1w '.*mprage.*' medicalimaging:dicom --regex
@@ -149,7 +149,7 @@ over all subjects at Timepoint 'T3'.
 To apply the Analysis class and derive the metric via the command line you can
 use
 
-.. code-block:: bash
+.. code-block:: console
 
     $ arcana apply analysis 'file///data/my-project' bids.mri:T1wAnalysis
     $ arcana derive 'file///data/my-project' avg_cortical_thickness

@@ -132,10 +132,10 @@ class FileSystem(DataStore):
             for sc_name in file_group.datatype.side_cars:
                 try:
                     sc_path = side_cars.pop(sc_name)
-                except KeyError:
+                except KeyError as e:
                     raise ArcanaFileFormatError(
                         f"Missing side car '{sc_name}' when attempting to "
-                        f"put file_group")
+                        f"put file_group") from e
                 shutil.copyfile(str(sc_path), str(sc_target_paths[sc_name]))
             if side_cars:
                 raise ArcanaFileFormatError(

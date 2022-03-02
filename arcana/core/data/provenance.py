@@ -82,10 +82,10 @@ class DataProvenance():
         with open(file_path, 'w') as f:
             try:
                 json.dump(self.dct, f, sort_keys=True, indent=2)
-            except TypeError:
+            except TypeError as e:
                 raise ArcanaError(
                     "Could not serialise provenance provenance dictionary:\n{}"
-                    .format(pformat(self.dct)))
+                    .format(pformat(self.dct))) from e
 
     @classmethod
     def load(cls, file_path, ignore_missing=False):

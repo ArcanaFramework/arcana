@@ -156,7 +156,7 @@ args for :meth:`.XnatViaCS.generate_xnat_command` omitting ``image_tag`` and
 
 The CLI command to build the image from the configuration YAML_ is then
 
-.. code-block:: bash
+.. code-block:: console
 
     $ arcana deploy build 'your-pipeline-config.yml'
     Successfully built "FSL" image with ["fast"] commands
@@ -165,10 +165,13 @@ To build a suite of pipelines from a series of YAML_ files stored in a directory
 simply provide the root directory instead and Arcana will walk the sub-directories
 and attempt to build any YAML_ files it finds, e.g.
 
-.. code-block:: bash
+.. code-block:: console
 
     $ arcana deploy build 'config-root-dir'
-    ./config-root-dir/
+    ./config-root-dir/mri/neuro/fsl.yml: FSL [fast]
+    ./config-root-dir/mri/neuro/mrtrix3.yml: MRtrix3 [dwi2fod, dwi2tensor, tckgen]
+    ./config-root-dir/mri/neuro/freesurfer.yml: Freesurfer [recon-all]
+    ...
 
 
 Testing
@@ -228,7 +231,7 @@ Specifying two tests ('test1' and 'test2') for the FSL FAST example given above
 To run a test via the CLI point the test command to the YAML_ configuration
 file and the data directory containing the test data, e.g.
 
-.. code-block:: 
+.. code-block:: console
     
     $ arcana deploy test ./fast.yml ./fast-data
     Pipeline test 'test1' ran successfully and outputs matched saved
@@ -288,7 +291,7 @@ The test data should be laid out like
 Like in the case of a single YAML_ configuration file, the CLI command to test
 a suite of image/command configurations is.
 
-.. code-block:: 
+.. code-block:: console
     
     $ arcana deploy test ./mri ./mri-data --output test-results.json
     ...E..F..
@@ -309,7 +312,7 @@ Autodocs
 Documentation can be automatically generated using from the
 pipeline configuration YAML_ files (see :ref:`Building`) using
 
-.. code-block:: 
+.. code-block:: console
     
     $ arcana deploy docs <path-to-yaml-or-directory> <docs-output-dir>
 

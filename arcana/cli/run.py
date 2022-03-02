@@ -335,10 +335,10 @@ def parse_parameters(parameters, task_cls):
         else:
             try:
                 val = arg_type(val)
-            except TypeError:
+            except TypeError as e:
                 raise ArcanaUsageError(
                     f"Value supplied to '{name}' field in {task.name} "
-                    f"cannot be converted to type {arg_spec[1]}") 
+                    f"cannot be converted to type {arg_spec[1]}") from e
         app_args[name] = val
     return app_args
 

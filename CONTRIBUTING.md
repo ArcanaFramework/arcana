@@ -1,6 +1,6 @@
 # Contributing to Arcana
 
-\[adapted from [Pydra contributing guide](https://github.com/nipype/pydra/blob/master/CONTRIBUTING.md)\]
+\[adapted from the [Pydra contribution guide](https://github.com/nipype/pydra/blob/master/CONTRIBUTING.md)\]
 
 Welcome to the Arcana repository! We're excited you're here and want to contribute.
 

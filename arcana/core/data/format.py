@@ -195,10 +195,10 @@ class FileFormat(object):
     def converter(self, file_format):
         try:
             return self._converters[file_format]
-        except KeyError:
+        except KeyError as e:
             raise ArcanaNoConverterError(
                 f"No converter set for conversion between {self} and "
-                f"{file_format}")
+                f"{file_format}") from e
 
     def input_spec_fields(self):
         return ['in_file'] + list(self.side_cars)

@@ -775,7 +775,7 @@ class XnatViaCS(Xnat):
         except docker.errors.BuildError as e:
             raise ArcanaBuildError(
                 f"Error building docker file in {build_dir}"
-                + '\n'.join(l.get('stream', '') for l in e.build_log))
+                + '\n'.join(l.get('stream', '') for l in e.build_log)) from e
 
         logging.info("Built docker image %s", image_tag)
 

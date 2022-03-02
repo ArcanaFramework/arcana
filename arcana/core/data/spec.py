@@ -78,11 +78,11 @@ class DataSource():
         if self.order is not None:
             try:
                 match = matches[self.order]
-            except IndexError:
+            except IndexError as e:
                 raise ArcanaInputMissingMatchError(
                     "Not enough matching items to select one at index "
                     f"{self.order}, found "
-                    + ", ".join(str(m) for m in matches))
+                    + ", ".join(str(m) for m in matches)) from e
         elif len(matches) > 1:
             raise ArcanaMultipleMatchesInputError(
                 "Found multiple matches " + self._error_msg(node, matches))

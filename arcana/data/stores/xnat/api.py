@@ -499,7 +499,7 @@ class Xnat(DataStore):
         except BadZipfile as e:
             raise ArcanaError(
                 "Could not unzip file '{}' ({})"
-                .format(xresource.id, e))
+                .format(xresource.id, e)) from e
         data_path = glob(expanded_dir + '/**/files', recursive=True)[0]
         # Remove existing cache if present
         try:

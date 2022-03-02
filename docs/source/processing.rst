@@ -96,7 +96,7 @@ and sinks in one step
 
 To connect a workflow via the CLI
 
-.. code-block:: bash
+.. code-block:: console
 
     $ arcana column add-source 'myuni-xnat//myproject:training' T1w \
       medicalimaging:dicom --path '.*mprage.*'
@@ -113,7 +113,7 @@ To connect a workflow via the CLI
 Adding sinks and sources in one step where they can be specified by their
 path and format alone looks like
 
-.. code-block:: bash
+.. code-block:: console
 
     $ arcana pipeline 'file///data/openneuro/ds00014:test' segmentation \
       pydra.tasks.fsl.preprocess.fast:FAST \
@@ -187,7 +187,7 @@ To generate derivatives via the API
 
 To generate derivatives via the CLI
 
-.. code-block:: bash
+.. code-block:: console
 
   $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all
 
@@ -198,7 +198,7 @@ thereby how the workflow is executed via the ``pydra_plugin`` option, and pass
 options to it with ``pydra_option``.
 
 
-.. code-block:: bash
+.. code-block:: console
 
   $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all \
     --pydra_plugin slurm --pydra_option poll_delay 5 --pydra_option max_jobs 10
@@ -348,7 +348,7 @@ the dataset to link placeholders to and any parameters.
 
 To apply an analysis via the command-line
 
-.. code-block:: bash
+.. code-block:: console
 
   $ arcana apply 'file///data/a-dataset' example:ExampleAnalysis \
     --link recorded_datafile datafile \ 
@@ -359,7 +359,7 @@ To apply an analysis via the command-line
 To list the derivatives that can be derived from a dataset once you have
 applied an analysis class you can use the ``menu`` command
 
-.. code-block:: bash
+.. code-block:: console
 
   $ arcana menu 'file///data/a-dataset'
 
@@ -497,7 +497,7 @@ can be reprocessed by setting the ``reprocess`` when calling :meth:`.Dataset.der
 
 or 
 
-.. code-block:: bash
+.. code-block:: console
 
   $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all  --reprocess
 
@@ -511,7 +511,7 @@ method
 
 or via the CLI
 
-.. code-block:: bash
+.. code-block:: console
 
   $ arcana ignore 'myuni-xnat//myproject:training' freesurfer --param freesurfer_task num_iterations 3
 

@@ -49,10 +49,10 @@ class DataStore(metaclass=ABCMeta):
         if not hierarchy:
             try:
                 hierarchy = self.DEFAULT_HIERARCHY
-            except AttributeError:
+            except AttributeError as e:
                 raise ArcanaUsageError(
                     "'hierarchy' kwarg must be specified for datasets in "
-                    f"{type(self)} stores")
+                    f"{type(self)} stores") from e
         from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
         dataset = Dataset(id, store=self, hierarchy=hierarchy, **kwargs)           
         return dataset
@@ -271,12 +271,12 @@ class DataStore(metaclass=ABCMeta):
             else:
                 try:
                     store = store_cls()
-                except TypeError:
+                except TypeError as e:
                     raise ArcanaNameError(
                         name,
                         f"Found DataStore type {store_cls} that matches "
                         f"'{name}' alias but it can't be initialised without "
-                        f"any parameters ({inspect.signature(store_cls)}")
+                        f"any parameters ({inspect.signature(store_cls)}") from e
         else:
             store = resolve_class(entry.pop('type'))(**entry)
         return store

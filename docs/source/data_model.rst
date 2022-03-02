@@ -56,7 +56,7 @@ it to the YAML configuration file stored at `~/.arcana/stores.yml`.
 
 To configure access to a store via the CLI use the ``arcana store add`` sub-command
 
-.. code-block:: bash
+.. code-block:: console
 
     $ arcana store add xnat xnat-central https://central.xnat.org \
       --user user123 --cache_dir /work/xnat-cache
@@ -88,19 +88,19 @@ In the case of the scouting program, a set of player performance metrics will
 belong to a particular player, competition round, league, season and more.
 In Arcana, these category groups are considered to form the "data space"
 of the dataset, drawing a loose analogy with a multi-dimensional space where
-each category groups are aligned along different dimensions and
+each category groups are aligned along different axes and
 measurement events exist at points on a grid.
 
 Different data spaces are defined in Arcana by subclassing the
-:class:`.DataSpace` enum. Enum members define both the dimensions of
-the space and all the combinations of these dimensions (subspaces
+:class:`.DataSpace` enum. Enum members define both the axes of
+the space and all possible combinations of these axes (subspaces
 to stretch the analogy if you will). For example, the :class:`.ClinicalTrial`
-has the dimensions of **group**, **member** and
-**timepoint**, corresponding to the study group (e.g. 'test' or 'control'),
-within-group ID (relevant for matched control studies and arbitrary otherwise,
-equivalent to subject ID when there is only on study group), and longintudinal
-timepoint. These dimensions can be combined to give all the possible "frequencies"
-data can exist at within the dataset, i.e. (per):
+has the axes of **group**, **member** and **timepoint**, corresponding to the
+study group (e.g. 'test' or 'control'), within-group ID (relevant for matched
+control studies and arbitrary otherwise, equivalent to subject ID when there is
+only on study group), and longintudinal timepoint. These dimensions can be
+combined to give all the possible "frequencies" data can exist at within the
+dataset, i.e. (per):
 
 * **group** (group)
 * **member** (member)
@@ -277,7 +277,7 @@ Datasets can also be defined and saved via the CLI using the ``arcana dataset de
 command. The store the dataset belongs to is prepended to the project ID
 separated by '//', e.g.
 
-.. code-block:: bash
+.. code-block:: console
 
     $ arcana dataset define 'xnat-central//MYXNATPROJECT' \
       --excluded subject sub09,sub11 --included timepoint T1 \
@@ -286,7 +286,7 @@ separated by '//', e.g.
 To give the dataset definition a name, append the name to the dataset's ID
 string separated by ':', e.g.
 
-.. code-block:: bash
+.. code-block:: console
 
     $ arcana dataset define 'file///data/imaging/my-project:training' group subject \
       --include subject 10:20
@@ -404,7 +404,7 @@ operator
 Use the ``arcana source add`` and ``arcana sink add`` commands to add sources/sinks
 to a dataset using the CLI.
 
-.. code-block:: bash
+.. code-block:: console
 
     $ arcana source add 'xnat-central//MYXNATPROJECT' T1w \
       medicalimaging:Dicom --path '.*t1_mprage.*' \

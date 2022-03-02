@@ -60,12 +60,12 @@ class DataNode():
         else:
             try:
                 spec = self.dataset.column_specs[column_name]
-            except KeyError:
+            except KeyError as e:
                 raise ArcanaNameError(
                     column_name,
                     f"{column_name} is not the name of a column in "
                     f"{self.dataset.id} dataset ('" + "', '".join(
-                        self.dataset.column_specs) + "')")
+                        self.dataset.column_specs) + "')") from e
             if spec.frequency != self.frequency:
                 return ArcanaWrongFrequencyError(
                     column_name,
@@ -409,10 +409,10 @@ class UnresolvedField(UnresolvedDataItem):
                             for v in self.value[1:-1].split(',')]
             else:
                 value = datatype(self.value)
-        except ValueError:
+        except ValueError as e:
             raise ArcanaUnresolvableFormatException(
                     f"Could not convert value of {self} ({self.value}) "
-                    f"to datatype {datatype}")
+                    f"to datatype {datatype}") from e
         else:
             item = DataItem(value=value, **self.item_kwargs)
         return item

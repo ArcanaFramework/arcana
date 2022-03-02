@@ -353,21 +353,21 @@ class Dataset():
             for freq, id in id_kwargs.items():
                 try:
                     children_dict = node.children[self.space[freq]]
-                except KeyError:
+                except KeyError as e:
                     raise ArcanaNameError(
-                        freq, f"{freq} is not a child frequency of {node}")
+                        freq, f"{freq} is not a child frequency of {node}") from e
                 try:
                     node = children_dict[id]
-                except KeyError:
+                except KeyError as e:
                     raise ArcanaNameError(
-                        id, f"{id} ({freq}) not a child node of {node}")
+                        id, f"{id} ({freq}) not a child node of {node}") from e
         else:
             try:
                 return self.root_node.children[frequency][id]
-            except KeyError:
+            except KeyError as e:
                 raise ArcanaNameError(
                     id, f"{id} not present in data tree "
-                    f"({list(self.node_ids(frequency))})")
+                    f"({list(self.node_ids(frequency))})") from e
 
     def nodes(self, frequency=None, ids=None):
         """Return all the IDs in the dataset for a given frequency
@@ -656,10 +656,10 @@ class Dataset():
                 freq = self.space[freq]
             elif not isinstance(freq, self.space):
                 raise KeyError
-        except KeyError:
+        except KeyError as e:
             raise ArcanaWrongDataSpacesError(
                 f"{freq} is not a valid dimension for {self} "
-                f"({self.space})")
+                f"({self.space})") from e
         return freq
 
     @classmethod
