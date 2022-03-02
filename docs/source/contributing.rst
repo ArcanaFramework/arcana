@@ -11,7 +11,8 @@ Code structure
 
 The Arcana code base is separated into :mod:`arcana.core`, where all the core
 elements of the framework reside, and sub-packages to hold framework implementations
-added by the sub-packages
+added by sub-packages (e.g. ``arcana-common``, ``arcana-medicalimaging``,
+``arcana-bids``)
 
 * :mod:`arcana.data.spaces` - data space definitions (see :ref:`Spaces`)
 * :mod:`arcana.data.formats` - file format definitions (see :ref:`data_formats`)

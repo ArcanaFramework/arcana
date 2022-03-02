@@ -14,9 +14,69 @@ in order to use Arcana on data from other fields.
 File formats
 ------------
 
-A new file format can be created by extend the :class:`.FileGroup` base class.
-"File group" is a catch-all term that encompasses single files,
-files with headers or side cars, and directories. 
+File formats are defined by subclasses of the :class:`.FileGroup` base class.
+"File group" is a catch-all term that encompasses three sub-types, each with
+their own :class:`.FileGroup` subclass:
+
+* :class:`.File` - single files
+* :class:`.FileWithSidecars` - files with headers or side cars
+* :class:`.Directory` - directories with arbitrary contents
+
+New format classes should extend one of these classes or an existing file
+format class (or both) as they include methods to interact with the data
+store.
+
+.. note:: 
+    :class:`.File` is a base class of :class:`.FileWithSidecars` so multiple
+    inheritance is possible where a format with side cars inherits from the
+    same format without side-cars without messing up the MRO for the data
+    handling calls.
+
+
+:class:`.File` subclasses typically only need to set an ``ext`` attribute
+to the extension used to identify the type of file.
+
+.. code-block:: python
+
+    from arcana.core.data.format import File
+
+    class Json(File):
+
+        ext = '.json'
+
+
+If the file format doesn't have an identifiable extension it is possible to
+override the :meth:`File.from_paths` method and peak inside the contents of the
+file, but this shouldn't be necessary in most cases.
+
+:class:`.FileWithSidecars` subclasses typically set the ``ext`` and ``side_cars``
+attributes. The ``side_cars`` attribute is a tuple of the side cars extensions
+in the file-group
+
+.. code-block:: python
+
+    from arcana.core.data.format import FileWithSidecars
+
+    class Analyze(FileWithSidecars):
+
+        ext = '.img'
+        side_cars = ('hdr',)
+
+
+:class:`.Directory` subclasses can set ``ext`` but will typically only set
+the ``contents`` attribute. The ``contents`` attribute is a tuple of the
+file-groups that are expected within the directory. The list is not exclusive
+so other files if other files are present within the directory, it will still
+match the format.
+
+.. code-block:: python
+
+    from arcana.core.data.format import Directory
+    from arcana.data.formats.medicalimaging import Dicom
+
+    class DicomDir(Directory):
+
+        contents = (Dicom,)
 
 
 Data spaces
@@ -68,7 +128,7 @@ permutations of the base dimensions must be included and given intuitive
 names if possible::
 
     subject = 0b011 - uniquely identified subject within in the dataset.
-    batch = 0b110 - separate group+timepoint combinations
+    batch = 0b110 - separate group + timepoint combinations
     matchedpoint = 0b101 - matched members and time-points aggregated across groups
 
 Finally, for items that are singular across the whole dataset there should
