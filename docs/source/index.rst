@@ -25,8 +25,9 @@ when analysing large datasets:
 * Abstraction of site-specific implementation details encourages the development of shared workflow libraries. Such libraries can be refined by multiple collaborators over time to capture the domain-specific **"arcana of data analysis"**, the obscure knowledge required to apply a combination of tools and parameters to appropriately analyse complex datasets.
 
 Arcana also includes tools for deploying pipelines in Docker images that
-can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_
-or as `BIDS apps <https://bids-apps.neuroimaging.io/>`_. These tools can be used
+can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_.
+.. or as `BIDS apps <https://bids-apps.neuroimaging.io/>`_.
+These tools can be used
 to maintain continuous integration and deployment of pipeline suites (see
 `Australian Imaging Service Pipelines <https://github.com/australian-imaging-service/pipelines-core>`_).
 
@@ -62,7 +63,7 @@ to let us know!
    :hidden:
 
    API <api.rst>
-   CLI <cli.rst>
+   Command line (CLI) <cli.rst>
 
 |
 .. note::

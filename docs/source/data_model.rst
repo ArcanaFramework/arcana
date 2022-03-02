@@ -1,4 +1,4 @@
-Data Model
+Data model
 ==========
 
 Arcana contains a rich and flexible object model to access and manipulate data

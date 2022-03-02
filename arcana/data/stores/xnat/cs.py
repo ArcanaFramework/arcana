@@ -12,6 +12,7 @@ from pathlib import Path
 import site
 import shutil
 import tempfile
+from numpy import str0
 import pkg_resources
 from dataclasses import dataclass
 import attr
@@ -482,12 +483,12 @@ class XnatViaCS(Xnat):
                             xnat_commands: ty.List[ty.Dict[str, ty.Union[str, dict, list]]],
                             python_packages: ty.List[ty.Tuple[str, str]],
                             maintainer: str,
-                            build_dir: Path=None,
                             base_image: str=None,
                             packages: ty.List[ty.List[ty.Tuple[str, str]]]=None,
                             extra_labels: ty.Dict[str, str]=None,
                             package_manager: str=None,
-                            pkg_extras: ty.List[str]=[]):
+                            arcana_extras: ty.List[str]=None,
+                            build_dir: Path=None):
         """Constructs a dockerfile that wraps a with dependencies
 
         Parameters
@@ -510,7 +511,7 @@ class XnatViaCS(Xnat):
             URI of the Docker registry to upload the image to
         extra_labels : ty.Dict[str, str], optional
             Additional labels to be added to the image
-        pkg_extras
+        arcana_extras
             Extras that need to be installed (e.g. tests) into the dockerfile
             for the Arcana package
 
@@ -536,6 +537,8 @@ class XnatViaCS(Xnat):
             base_image = "debian:bullseye"
         if package_manager is None:
             package_manager = 'apt'
+        if arcana_extras is None:
+            arcana_extras = []
 
         if maintainer:
             labels["maintainer"] = maintainer
@@ -570,12 +573,12 @@ class XnatViaCS(Xnat):
 
         python_packages = copy(python_packages)
         pkg_name = PACKAGE_NAME
-        if pkg_extras:
+        if arcana_extras:
             # Ensure there is only one version of arcana in the dependencies and
             # it has the right extras
             if pkg_name in python_packages:
                 python_packages.remove(pkg_name)
-            pkg_name += '[' + ','.join(pkg_extras) + ']'
+            pkg_name += '[' + ','.join(arcana_extras) + ']'
             python_packages.append(pkg_name)
         elif pkg_name not in python_packages:
             python_packages.append(pkg_name)
