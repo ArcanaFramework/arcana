@@ -204,6 +204,8 @@ options to it with ``pydra_option``.
     --pydra_plugin slurm --pydra_option poll_delay 5 --pydra_option max_jobs 10
 
 
+.. _analysis_classes:
+
 Analysis classes
 ----------------
 
@@ -365,10 +367,10 @@ applied an analysis class you can use the ``menu`` command
 
   Derivatives
   -----------
-  recorded_datafile (ZippedDir)
-  recorded_metadata (Json)
-  preprocessed (ZippedDir)
-  derived_image (Png)
+  recorded_datafile (zippeddir)
+  recorded_metadata (json)
+  preprocessed (zippeddir)
+  derived_image (png)
   summary_metric (float)
 
   Parameters

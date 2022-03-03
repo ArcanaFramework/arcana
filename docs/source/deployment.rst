@@ -19,6 +19,9 @@ within an Anaconda_ environment named "arcana". Therefore, it won't typically
 conflict with packages on existing Docker images for third-party pipelines
 unless they are also installed using Anaconda.
 
+Via API
+~~~~~~~
+
 The XNAT container service uses `command configuration files <https://wiki.xnat.org/container-service/command-resolution-122978876.html>`_
 saved in the `org.nrg.commands` image label to resolve metadata for the pipelines
 that available on a given Docker image. The :meth:`.XnatViaCS.generate_xnat_command`
@@ -102,8 +105,13 @@ which takes lists of system and python packages to be installed with NeuroDocker
         arcana_extras=[]  # install extras for Arcana package (e.g. 'test'
     ))
 
-The full build process can be called from the CLI using configurations stored
-in YAML_ files. The keys for the top-level mapping in the YAML_ config files
+Via CLI
+~~~~~~~
+
+Alternatively, the full build process can be initiated from the CLI using the
+same information passed to :meth:`.XnatViaCS.generate_dockerfile` and
+:meth:`.XnatViaCS.generate_xnat_command` but stored in YAML_ files instead.
+The keys for the top-level mapping in the YAML_ config files
 are the same as the args for :meth:`.XnatViaCS.create_wrapper_image`, with the
 ``commands`` value taking a list of nested mappings with keys the same as the
 args for :meth:`.XnatViaCS.generate_xnat_command` omitting ``image_tag`` and

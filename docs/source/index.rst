@@ -54,9 +54,9 @@ to let us know!
    :hidden:
 
    contributing
-   adding_formats
    design_analyses
-   alternative_stores
+   adding_formats
+   Alternative storage <alternative_stores.rst>
   
 .. toctree::
    :maxdepth: 2

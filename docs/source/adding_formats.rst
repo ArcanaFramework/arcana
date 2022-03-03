@@ -113,10 +113,11 @@ and they should return a lazy field that will contain the path to the converted 
         ext = 'nii'
 
         @converter(Dicom)
-        def from_dicom(cls, pipeline: Pipeline, node_name: str, dicom: LazyField):
+        def from_dicom(cls, pipeline: Pipeline, node_name: str,
+                       dicom: LazyField):
             node = pipeline.add(
-                name=node_name,
-                task=Dcm2niix(
+                Dcm2niix(
+                    name=node_name,
                     in_file=dicom,
                     compress='n'))
             return node.lzout.out_file
@@ -125,8 +126,8 @@ and they should return a lazy field that will contain the path to the converted 
         def from_analyze(cls, pipeline: Pipeline, node_name: str,
                          analyze: LazyField, hdr: LazyField):
             node = pipeline.add(
-                name=node_name,
-                task=MRConvert(
+                MRConvert(
+                    name=node_name,
                     in_file=analyze,
                     out_file='out.' + cls.ext))
             return node.lzout.out_file
@@ -150,7 +151,7 @@ converter method with an arbitrary value.
             node = getattr(pipeline, node_name)
             return node.lzout.out_file, node.lzout.out_json
 
-        from_analyse = None  # Only dcm2niix produces the required JSON files for NiftiX
+        from_analyze = None  # Only dcm2niix produces the required JSON files for NiftiX
 
 
 Use dummy base classes in order to avoid circular reference issues when defining
@@ -168,8 +169,8 @@ two-way conversions between formats
         @converter(ExampleFormat2Base)
         def from_example1(cls, pipeline: Pipeline, node_name: str, example1: LazyField):
             node = pipeline.add(
-                name=node_name,
-                task=Converter2to1(
+                Converter2to1(
+                    name=node_name,
                     in_file=example1))
             return node.lzout.out_file
 
@@ -179,11 +180,17 @@ two-way conversions between formats
         @converter(ExampleFormat1)
         def from_example1(cls, pipeline: Pipeline, node_name: str, example1: LazyField):
             node = pipeline.add(
-                name=node_name,
-                task=Converter1to2(
+                Converter1to2(
+                    name=node_name,
                     in_file=example1))
             return node.lzout.out_file
 
+While not necessary, it can be convenient to add methods for accessing
+file-group data within Python. This makes it possible to write generic methods
+to generate publication outputs. Some suggested methods are
+
+* ``data`` - access data array, particuarly relevant for imaging data
+* ``metadata`` - access a dictionary containing metadata extracted from a header or side-car
 
 
 Data spaces

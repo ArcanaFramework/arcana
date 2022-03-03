@@ -73,6 +73,25 @@ class Pipeline():
             self._connected.add(out_name)
 
     def add(self, task):
+        """Adds a Pydra task to the pipeline
+
+        Parameters
+        ----------
+        task : _type_
+            _description_
+
+        Returns
+        -------
+        _type_
+            _description_
+
+        Raises
+        ------
+        ValueError
+            _description_
+        ValueError
+            _description_
+        """
         if task.name in self.wf.name2obj:
             raise ValueError(
                 "Another task named {} is already added to the pipeline"
@@ -84,7 +103,10 @@ class Pipeline():
         self.wf.per_node.add(task)
         # Favour setting a proper attribute instead of using __getattr__ to
         # redirect to name2obj
-        setattr(self, task.name, task)
+        node = getattr(self.wf, task.name)
+        setattr(self, task.name, node)
+        # Note that this is a qualitatively different return value to Workflow.add, which
+        return node
 
     @property
     def nodes(self):
