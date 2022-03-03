@@ -1,7 +1,7 @@
 .. _design_analyses:
 
-Analysis design
-===============
+Designing Analyses
+==================
 
 
 .. warning::
