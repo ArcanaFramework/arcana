@@ -19,8 +19,8 @@ File formats are defined by subclasses of the :class:`.FileGroup` base class.
 their own :class:`.FileGroup` subclass:
 
 * :class:`.File` - single files
-* :class:`.FileWithSidecars` - files with headers or side cars
-* :class:`.Directory` - directories with arbitrary contents
+* :class:`.FileWithSidecars` - files with side car files (e.g. separate headers)
+* :class:`.Directory` - directories with specific contents
 
 New format classes should extend one of these classes or an existing file
 format class (or both) as they include methods to interact with the data
@@ -40,7 +40,6 @@ to the extension string used to identify the type of file, e.g.
     class Json(File):
         ext = 'json'
 
-
 If the file format doesn't have an identifiable extension it is possible to
 override the :meth:`File.from_paths` method and peak inside the contents of the
 file to determine its type, but this shouldn't be necessary in most cases.
@@ -56,7 +55,6 @@ in the file-group
     class Analyze(FileWithSidecars):
         ext = 'img'
         side_cars = ('hdr',)
-
 
 :class:`.Directory` subclasses can set ``ext`` but will typically only set
 the ``content_types`` attribute. The ``content_types`` attribute is a tuple of
@@ -75,7 +73,6 @@ identification.
     class Dicom(Directory):
         contents = (DicomFile,)
 
-
 It is a good idea to make use of class inheritance when defining related
 formats, for example adding a format to handle the Siemens-variant DICOM
 format which has '.IMA' extensions to capture the relationship between them.
@@ -84,7 +81,6 @@ format which has '.IMA' extensions to capture the relationship between them.
 
     class SiemensDicomFile(DicomFile):
         ext = 'IMA'
-
 
     class SiemensDicom(Dicom):
         contents = (SiemensDicomFile,)
@@ -118,25 +114,21 @@ and they should return a lazy field that will contain the path to the converted 
 
         @converter(Dicom)
         def from_dicom(cls, pipeline: Pipeline, node_name: str, dicom: LazyField):
-
             node = pipeline.add(
                 name=node_name,
                 task=Dcm2niix(
                     in_file=dicom,
                     compress='n'))
-
             return node.lzout.out_file
 
         @converter(Analyze)
         def from_analyze(cls, pipeline: Pipeline, node_name: str,
                          analyze: LazyField, hdr: LazyField):
-
             node = pipeline.add(
                 name=node_name,
                 task=MRConvert(
                     in_file=analyze,
                     out_file='out.' + cls.ext))
-
             return node.lzout.out_file
 
 If the class to convert to is a :class:`.FileWithSidecars` subclass then the return value
@@ -169,7 +161,6 @@ two-way conversions between formats
 
     class ExampleFormat2Base(File):
         pass
-
 
     class ExampleFormat1(File):
         ext = 'exm1'
