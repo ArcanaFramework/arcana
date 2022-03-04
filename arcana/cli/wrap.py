@@ -69,9 +69,7 @@ package_path
               help="The level to display logs at")
 @click.option('--build_dir', default=None, type=Path,
               help="Specify the directory to build the Docker image in")
-@click.option('--docs', default=None, type=Path,
-              help="Specify the directory to build the Documentation image in")
-def build_all(package_path, registry, loglevel, build_dir, docs):
+def build_all(package_path, registry, loglevel, build_dir):
     """Creates a Docker image that wraps a Pydra task so that it can
     be run in XNAT's container service, then pushes it to AIS's Docker Hub
     organisation for deployment
@@ -80,9 +78,6 @@ def build_all(package_path, registry, loglevel, build_dir, docs):
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
     org_name = Path(package_path).name
-
-    if docs:
-        docs.mkdir(parents=True, exist_ok=True)
 
     built_images = []
     for mod_name, spec in extract_wrapper_specs(package_path).items():
@@ -94,34 +89,32 @@ def build_all(package_path, registry, loglevel, build_dir, docs):
                 docker_registry=registry,
                 **spec))
         logging.info("Successfully built %s wrapper", mod_name)
-        if docs:
-            create_doc(spec, docs, mod_name)
 
     click.echo('\n'.join(built_images))
 
 
-@wrap.command(name='build-docs', help="""Build docs for a wrappper
+@wrap.command(name='docs', help="""Build docs for one or more yaml wrapppers
 
-Arguments
----------
-module_path
-    The file system path to the module to build""")
-@click.argument('module_path')
-def build_docs(module_path):
-    raise NotImplementedError
+SPEC is the path of a YAML spec file or directory containing one or more such files.
 
+The generated documentation will be saved to OUTPUT.
+""")
+@click.argument('spec', type=click.Path(exists=True, path_type=Path))
+@click.argument('output', type=click.Path(path_type=Path))
+@click.option('--flatten/--no-flatten', default=False)
+def build_docs(spec, output, flatten):
+    output.mkdir(parents=True, exist_ok=True)
 
-@wrap.command(name='build-all-docs', help="""Build docs for all wrappper modules
-in a package.
+    if spec.resolve().is_dir():
+        for mod_name, spec_info in extract_wrapper_specs(spec).items():
+            click.echo(mod_name)
 
-Arguments
----------
-package_path
-    The file-system path containing the image specifications: Python dictionaries
-    named `spec` in sub-modules with the following keys:{spec_help}""")
-@click.argument('package_path')
-def build_all_docs(package_path):
-    raise NotImplementedError
+            create_doc(spec_info, output, mod_name, flatten=flatten)
+    else:
+        spec_info = load_yaml_spec(spec)
+        click.echo(spec_info['_module_name'])
+
+        create_doc(spec_info, output, spec_info['_module_name'], flatten=flatten)
 
 
 @wrap.command(name='test', help="""Test a wrapper pipeline defined in a module
@@ -144,7 +137,7 @@ package_path
     The file-system path containing the image specifications: Python dictionaries
     named `spec` in sub-modules with the following keys:{spec_help}""")
 @click.argument('package_path')
-def build_all_docs(package_path):
+def test_all(package_path):
     raise NotImplementedError
 
 
@@ -178,7 +171,7 @@ def inspect_docker_exec(image_tag):
     click.echo(executable)
 
 
-def load_yaml_spec(path):
+def load_yaml_spec(path, base_dir=None):
     def concat(loader, node):
         seq = loader.construct_sequence(node)
         return ''.join([str(i) for i in seq])
@@ -206,6 +199,9 @@ def load_yaml_spec(path):
         # TODO: Handle other frequency types, are there any?
         data['frequency'] = ClinicalTrial[frequency.split('.')[-1]]
 
+    data['_relative_dir'] = os.path.dirname(os.path.relpath(path, base_dir)) if base_dir else ''
+    data['_module_name'] = os.path.basename(path).rsplit('.', maxsplit=1)[0]
+
     return data
 
 
@@ -223,22 +219,32 @@ def extract_wrapper_specs(package_path):
             if ext not in ('yaml', 'yml'):
                 continue
 
-            wrapper_specs[name] = load_yaml_spec(os.path.join(root, fn))
+            wrapper_specs[name] = load_yaml_spec(os.path.join(root, fn), package_path)
 
     return wrapper_specs
 
 
-def create_doc(spec, doc_dir, pkg_name):
-
+def create_doc(spec, doc_dir, pkg_name, flatten: bool):
     header = {
         "title": spec["package_name"],
         "weight": 10,
         "source_file": pkg_name,
     }
 
+    if flatten:
+        out_dir = doc_dir
+    else:
+        assert isinstance(doc_dir, Path)
+
+        out_dir = doc_dir.joinpath(spec['_relative_dir'])
+
+        assert doc_dir in out_dir.parents
+
+        out_dir.mkdir(parents=True)
+
     # task = resolve_class(spec['pydra_task'])
 
-    with open(f"{doc_dir}/{pkg_name}.md", "w") as f:
+    with open(f"{out_dir}/{pkg_name}.md", "w") as f:
         f.write("---\n")
         yaml.dump(header, f)
         f.write("\n---\n\n")
