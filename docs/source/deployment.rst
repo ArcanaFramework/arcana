@@ -30,10 +30,10 @@ method is used to generate the JSON metadata to be saved in this field.
 There are four key fields that will determine the functionality of the command
 (the rest are metadata fields that are exposed to the XNAT UI):
 
-* pydra_task
-* inputs
-* outputs
-* parameters 
+* ``pydra_task``
+* ``inputs``
+* ``outputs``
+* ``parameters``
 
 The ``pydra_task`` keyword argument should be the path to an installed
 Python module containing a Pydra task followed by a colon and the name of
@@ -42,7 +42,7 @@ will attempt to resolve the package that contains the Pydra task and install the
 same version (including local development versions) within the Anaconda_ environment
 in the image.
 
-The inputs and parameters fields expose input text boxes to the user when
+The ``inputs`` and ``parameters`` fields expose input text boxes to the user when
 the pipelines are run. Inputs prompt the user to enter selection criteria for
 input data and are used by the entrypoint of the Docker containers to add
 source columns to the dataset (see :ref:`data_columns`). Parameter inputs are
@@ -137,10 +137,10 @@ args for :meth:`.XnatViaCS.generate_xnat_command` omitting ``image_tag`` and
     commands:
         pipeline_name: fast
         pydra_task: pydra.tasks.fsl.preprocess.fast:FAST
-        description: -
-            FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of 
-            the brain into different tissue types (Grey Matter, White Matter, 
-            CSF, etc.), whilst also correcting for spatial intensity variations 
+        description:
+            FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of
+            the brain into different tissue types (Grey Matter, White Matter,
+            CSF, etc.), whilst also correcting for spatial intensity variations
             (also known as bias field or RF inhomogeneities).
         version: 1
         info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
