@@ -50,7 +50,7 @@ spec_help = """
             The name and email of the developer creating the wrapper (i.e. you)\n
         info_url : str\n
             URI explaining in detail what the pipeline does\n
-        frequency : ClinicalTrial\n
+        frequency : Clinical\n
             The frequency of the data nodes on which the pipeline operates
             on (can be either per- 'dataset' or 'session' at the moment)
 """

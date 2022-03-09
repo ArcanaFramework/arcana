@@ -100,7 +100,7 @@ over all sessions with the API
         outputs=[('brain_mask', 'out_file')])
 
     # Generate brain mask derivative
-    my_dataset.derive('brain_mask')
+    my_dataset['brain_mask'].derive()
 
 This code will iterate over all imaging sessions in the directory tree, find and
 convert T1-weighted images (which contain 'mprage' in their names) from
@@ -138,7 +138,7 @@ over all subjects at Timepoint 'T3'.
 
     # Generate the average cortical thickness derivative that was added by
     # the T1wAnalysis class
-    my_dataset.derive('avg_cortical_thickness')
+    my_dataset['avg_cortical_thickness'].derive()
 
     # Get all members at the 'T3' timepoint. Indexing of a column can either
     # be a single arg in order to use the IDs for the frequency of the column

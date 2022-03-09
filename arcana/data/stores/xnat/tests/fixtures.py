@@ -10,7 +10,7 @@ import docker
 import xnat4tests
 from arcana.data.stores import Xnat
 from arcana.data.stores.xnat.cs import XnatViaCS
-from arcana.data.spaces.medicalimaging import ClinicalTrial
+from arcana.data.spaces.medicalimaging import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileFormat
 from arcana.data.formats.common import text, directory
@@ -53,10 +53,10 @@ TEST_DATASET_BLUEPRINTS = {
            ('BIDS', None, ['file1.json']),
            ('SNAPSHOT', None, ['file1.png'])])],
         {},
-        [('deriv1', ClinicalTrial.timepoint, text, ['file.txt']),
-         ('deriv2', ClinicalTrial.subject, niftix_gz, ['file.nii.gz', 'file.json']),
-         ('deriv3', ClinicalTrial.batch, directory, ['dir']),
-         ('deriv4', ClinicalTrial.dataset, text, ['file.txt']),
+        [('deriv1', Clinical.timepoint, text, ['file.txt']),
+         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.batch, directory, ['dir']),
+         ('deriv4', Clinical.dataset, text, ['file.txt']),
          ]),  # id_inference dict
     'multi': TestDatasetBlueprint(  # dataset name
         [2, 2, 2],  # number of timepoints, groups and members respectively
@@ -65,17 +65,17 @@ TEST_DATASET_BLUEPRINTS = {
              [('TEXT',  # resource name
                text, 
                ['file.txt'])])],
-        {ClinicalTrial.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
-         ClinicalTrial.session: r'timepoint(?P<timepoint>\d+).*'},  # id_inference dict
+        {Clinical.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
+         Clinical.session: r'timepoint(?P<timepoint>\d+).*'},  # id_inference dict
         [
-         ('deriv1', ClinicalTrial.session, text, ['file.txt']),
-         ('deriv2', ClinicalTrial.subject, niftix_gz, ['file.nii.gz', 'file.json']),
-         ('deriv3', ClinicalTrial.timepoint, directory, ['doubledir']),
-         ('deriv4', ClinicalTrial.member, text, ['file.txt']),
-         ('deriv5', ClinicalTrial.dataset, text, ['file.txt']),
-         ('deriv6', ClinicalTrial.batch, text, ['file.txt']),
-         ('deriv7', ClinicalTrial.matchedpoint, text, ['file.txt']),
-         ('deriv8', ClinicalTrial.group, text, ['file.txt']),
+         ('deriv1', Clinical.session, text, ['file.txt']),
+         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.timepoint, directory, ['doubledir']),
+         ('deriv4', Clinical.member, text, ['file.txt']),
+         ('deriv5', Clinical.dataset, text, ['file.txt']),
+         ('deriv6', Clinical.batch, text, ['file.txt']),
+         ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
+         ('deriv8', Clinical.group, text, ['file.txt']),
          ]),
     'concatenate_test': TestDatasetBlueprint(
         [1, 1, 2],
@@ -203,7 +203,7 @@ def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
             user=repository.user,
             password=repository.password,
             cache_dir=repository.cache_dir,
-            frequency=ClinicalTrial.dataset,
+            frequency=Clinical.dataset,
             input_mount=proj_dir,
             output_mount=Path(mkdtemp()))
     elif access_method != 'api':
@@ -233,15 +233,15 @@ def create_dataset_in_repo(dataset_name, run_prefix='', test_suffix=''):
         xclasses = login.classes
         for id_tple in product(*(list(range(d))
                                  for d in blueprint.dim_lengths)):
-            ids = dict(zip(ClinicalTrial.basis(), id_tple))
+            ids = dict(zip(Clinical.basis(), id_tple))
             # Create subject
             subject_label = ''.join(
-                f'{b}{ids[b]}' for b in ClinicalTrial.subject.nonzero_basis())
+                f'{b}{ids[b]}' for b in Clinical.subject.nonzero_basis())
             xsubject = xclasses.SubjectData(label=subject_label,
                                             parent=xproject)
             # Create session
             session_label = ''.join(
-                f'{b}{ids[b]}' for b in ClinicalTrial.session.nonzero_basis())
+                f'{b}{ids[b]}' for b in Clinical.session.nonzero_basis())
             xsession = xclasses.MrSessionData(label=session_label,
                                               parent=xsubject)
             

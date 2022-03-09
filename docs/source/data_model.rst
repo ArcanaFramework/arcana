@@ -94,7 +94,7 @@ measurement events exist at points on a grid.
 Different data spaces are defined in Arcana by subclassing the
 :class:`.DataSpace` enum. Enum members define both the axes of
 the space and all possible combinations of these axes (subspaces
-to stretch the analogy if you will). For example, the :class:`.ClinicalTrial`
+to stretch the analogy if you will). For example, the :class:`.Clinical`
 has the axes of **group**, **member** and **timepoint**, corresponding to the
 study group (e.g. 'test' or 'control'), within-group ID (relevant for matched
 control studies and arbitrary otherwise, equivalent to subject ID when there is
@@ -126,7 +126,7 @@ Human Connectome Project). Arcana datasets consist of both source data and the
 derivatives generated from them. Datasets are typically organised into a
 tree with a defined "hierarchy" of data frequencies (see :ref:`Spaces`).
 For example, the following dataset stored in a directory tree within in the
-:class:`.ClinicalTrial` space, has a hierarchy of "subjects" > "sessions"
+:class:`.Clinical` space, has a hierarchy of "subjects" > "sessions"
 
 .. code-block::
 
@@ -186,11 +186,11 @@ layers of the directory tree in descending order.
 .. code-block:: python
 
     from arcana.data.stores.file_system import FileSystem
-    from arcana.data.spaces.medicalimaging import ClinicalTrial
+    from arcana.data.spaces.medicalimaging import Clinical
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
-        hierarchy=[ClinicalTrial.group, ClinicalTrial.subject])
+        hierarchy=[Clinical.group, Clinical.subject])
 
 These definitions can be saved inside the project directory and then reloaded
 in new Python contexts.
@@ -217,8 +217,8 @@ IDs.
 
 .. code-block:: python
 
-    # NB: 'subject' instead of ClinicalTrial.subject can be used in this
-    # example as the data-space defaults to ClinicalTrial for XNAT stores
+    # NB: 'subject' instead of Clinical.subject can be used in this
+    # example as the data-space defaults to Clinical for XNAT stores
     xnat_dataset = xnat_store.dataset(
         id='MYXNATPROJECT',
         id_inference=[
@@ -359,7 +359,7 @@ sources and sinks via the API.
 
 .. code-block:: python
 
-    from arcana.data.spaces.medicalimaging import ClinicalTrial
+    from arcana.data.spaces.medicalimaging import Clinical
     from arcana.data.formats.medicalimaging import Dicom, NiftiGz
 
     xnat_dataset.add_source(
@@ -417,7 +417,7 @@ initialised.
 
     from arcana.data.stores.bids import BidsFormat
     from arcana.data.stores.file_system import FileSystem
-    from arcana.data.spaces.medicalimaging import ClinicalTrial
+    from arcana.data.spaces.medicalimaging import Clinical
 
     bids_dataset = BidsFormat().dataset(
         id='/data/openneuro/ds00014')

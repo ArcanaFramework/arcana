@@ -123,7 +123,7 @@ path and format alone looks like
 
 
 By default, pipelines will iterate all leaf nodes of the data tree (e.g. ``session``
-for datasets in the :class:`.ClinicalTrial` space). However, pipelines can be run
+for datasets in the :class:`.Clinical` space). However, pipelines can be run
 at any row frequency of the dataset, e.g. per subject, per timepoint, or on the
 dataset as a whole (to create single templates/statistics).
 
@@ -141,7 +141,7 @@ back to the dataset.
 
     from myworkflows import vbm_template
     from arcana.data.formats import common, medicalimaging
-    from arcana.data.spaces.medicalimaging import ClinicalTrial
+    from arcana.data.spaces.medicalimaging import Clinical
 
     dataset = Dataset.load('bids///data/openneuro/ds00014')
 
@@ -149,7 +149,7 @@ back to the dataset.
     dataset.add_sink(
       name='vbm_template',
       format=medicalimaging.nifti_gz
-      frequency=ClinicalTrial.dataset
+      frequency=Clinical.dataset
     )
 
     # Connect pipeline to a "dataset" row-frequency sink column. Needs to be
@@ -159,7 +159,7 @@ back to the dataset.
         workflow=vbm_template(),
         inputs=[('in_file', 'T1w')],
         outputs=[('out_file', 'vbm_template')],
-        frequency=ClinicalTrial.dataset)
+        frequency=Clinical.dataset)
 
 
 

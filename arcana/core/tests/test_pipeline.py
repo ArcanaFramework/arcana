@@ -72,3 +72,30 @@ def test_pipeline_with_implicit_conversion(work_dir):
         with open(tmp_dir / 'out_file.txt') as f:
             contents = f.read()
         assert contents == '\n'.join(['file1.zip', 'file2.zip'] * 2)
+
+
+def test_apply_pipeline(work_dir):
+
+    # Import arcana module
+    from pydra.tasks.fsl.preprocess.bet import BET
+    from arcana.core.data import Dataset
+    from arcana.data.formats.medicalimaging import Dicom, NiftiGz
+
+    # Load dataset
+    my_dataset = Dataset('file///data/my-dataset', ['subject', 'session'])
+
+    # Add source column to select T1-weighted images in each sub-directory
+    my_dataset.add_source('T1w', '.*mprage.*', format=Dicom, is_regex=True)
+
+    # Add sink column to store brain mask
+    my_dataset.add_sink('brain_mask', 'derivs/brain_mask', format=NiftiGz)
+
+    # Apply BET Pydra task, connecting it betwee between the source and sink
+    my_dataset.apply_pipeline(
+        'brain_extraction',
+        BET(),
+        inputs=[('T1w', 'in_file', NiftiGz)],
+        outputs=[('brain_mask', 'out_file')])
+
+    # Generate brain mask derivative
+    my_dataset.derive('brain_mask')

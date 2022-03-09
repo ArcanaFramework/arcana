@@ -24,7 +24,7 @@ import docker
 from arcana import __version__
 from arcana.__about__ import install_requires, PACKAGE_NAME, python_versions
 from arcana.core.utils import get_pkg_name
-from arcana.data.spaces.medicalimaging import ClinicalTrial
+from arcana.data.spaces.medicalimaging import Clinical
 from arcana.core.data.format import FileFormat
 from arcana.core.data.space import DataSpace
 from arcana.core.utils import resolve_class, DOCKER_HUB
@@ -68,7 +68,7 @@ class XnatViaCS(Xnat):
     OUTPUT_MOUNT = Path("/output")
     WORK_MOUNT = Path('/work')
     
-    frequency: DataSpace = attr.ib(default=ClinicalTrial.session)
+    frequency: DataSpace = attr.ib(default=Clinical.session)
     node_id: str = attr.ib(default=None)
     input_mount: Path = attr.ib(default=INPUT_MOUNT, converter=Path)
     output_mount: Path = attr.ib(default=OUTPUT_MOUNT, converter=Path)
@@ -181,7 +181,7 @@ class XnatViaCS(Xnat):
         data_node = file_group.data_node
         if self.frequency == data_node.frequency:
             return self.input_mount
-        elif self.frequency == ClinicalTrial.dataset and data_node.frequency == ClinicalTrial.session:
+        elif self.frequency == Clinical.dataset and data_node.frequency == Clinical.session:
             return self.input_mount / data_node.id
         else:
             raise ArcanaNoDirectXnatMountException
@@ -196,7 +196,7 @@ class XnatViaCS(Xnat):
                               description,
                               version,
                               parameters=None,
-                              frequency=ClinicalTrial.session,
+                              frequency=Clinical.session,
                               registry=DOCKER_HUB,
                               info_url=None):
         """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
@@ -226,7 +226,7 @@ class XnatViaCS(Xnat):
             Version string for the wrapped pipeline
         parameters : ty.List[str]
             Parameters to be exposed in the CS command    
-        frequency : ClinicalTrial
+        frequency : Clinical
             Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
         registry : str
             URI of the Docker registry to upload the image to
@@ -246,7 +246,7 @@ class XnatViaCS(Xnat):
         if parameters is None:
             parameters = []
         if isinstance(frequency, str):
-            frequency = ClinicalTrial[frequency]
+            frequency = Clinical[frequency]
         if frequency not in cls.VALID_FREQUENCIES:
             raise ArcanaUsageError(
                 f"'{frequency}'' is not a valid option ('"
@@ -371,7 +371,7 @@ class XnatViaCS(Xnat):
             })
 
         # Access session via Container service args and derive 
-        if frequency == ClinicalTrial.session:
+        if frequency == Clinical.session:
             # Set the object the pipeline is to be run against
             context = ["xnat:imageSessionData"]
             cmdline += ' [SESSION_LABEL]'  # Pass node-id to XnatViaCS repo
@@ -787,7 +787,7 @@ class XnatViaCS(Xnat):
         pydra_field: str  # Must match the name of the Pydra task input
         datatype: FileFormat
         dialog_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
-        frequency: ClinicalTrial = ClinicalTrial.session
+        frequency: Clinical = Clinical.session
 
     @dataclass
     class OutputArg():
@@ -807,7 +807,7 @@ class XnatViaCS(Xnat):
         int: 'number',
         float: 'number'}
 
-    VALID_FREQUENCIES = (ClinicalTrial.session, ClinicalTrial.dataset)
+    VALID_FREQUENCIES = (Clinical.session, Clinical.dataset)
 
     DONT_COPY_INTO_BUILD = ['conftest.py', 'debug-build', '__pycache__',
                             '.pytest_cache']

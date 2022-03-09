@@ -69,7 +69,7 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 .. code-block:: python
 
     from arcana.data.stores.xnat import XnatViaCS
-    from arcana.data.spaces.medicalimaging import ClinicalTrial
+    from arcana.data.spaces.medicalimaging import Clinical
     from arcana.data.formats.medicalimaging import NiftiGz
 
 
@@ -101,7 +101,7 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
             ('output_biascorrected', True),
             ('bias_lowpass', 5.0)],
         registry='ghrc.io',
-        frequency=ClinicalTrial.session)
+        frequency=Clinical.session)
 
 The Docker image to run the commands on is built with :meth:`.XnatViaCS.generate_dockerfile`,
 which takes lists of system and python packages to be installed with NeuroDocker_
@@ -177,7 +177,7 @@ args for :meth:`.XnatViaCS.generate_xnat_command` omitting ``image_tag`` and
             - [output_biasfield, True]
             - [output_biascorrected, True]
             - [bias_lowpass, 5.0]
-        frequency: medicalimaging:ClinicalTrial.session
+        frequency: medicalimaging:Clinical.session
 
 The CLI command to build the image from the configuration YAML_ is then
 

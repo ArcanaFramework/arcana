@@ -2,7 +2,7 @@
 import os
 from importlib import import_module
 import click
-from arcana.data.spaces.medicalimaging import ClinicalTrial
+from arcana.data.spaces.medicalimaging import Clinical
 from arcana.exceptions import ArcanaUsageError
 from arcana.data.stores.file_system import FileSystem
 from arcana.data.stores.xnat import Xnat
@@ -58,9 +58,9 @@ hierarchy
     help=("The nickname of the store (as added by `arcana store add ...`) the "
           "dataset is stored in"))
 @click.option(
-    '--dimensions', type=str, default='medicalimaging.ClinicalTrial',
+    '--dimensions', type=str, default='medicalimaging.Clinical',
     help=("The enum that specifies the data dimensions of the dataset. "
-          "Defaults to `ClinicalTrial`, which "
+          "Defaults to `Clinical`, which "
           "consists of the typical dataset>group>subject>session "
           "data tree used in medicalimaging trials/studies"))
 @click.option(
@@ -105,7 +105,7 @@ def define(id, hierarchy, included, excluded, store, dimensions, id_inference,
             server=repo_args[0],
             cache_dir=work_dir / XNAT_CACHE_DIR,
             **{k: v for k, v in zip(optional_args, repo_args[1:])})
-        hierarchy = [ClinicalTrial.subject, ClinicalTrial.session]
+        hierarchy = [Clinical.subject, Clinical.session]
     elif repo_type == 'xnat_via_cs':
         if nargs < 1 or nargs > 7:
             raise ArcanaUsageError(
@@ -117,9 +117,9 @@ def define(id, hierarchy, included, excluded, store, dimensions, id_inference,
                             'input_mount', 'output_mount']
         store = XnatViaCS(
             cache_dir=work_dir / XNAT_CACHE_DIR,
-            frequency=ClinicalTrial[repo_args[0]],
+            frequency=Clinical[repo_args[0]],
             **{k: v for k, v in zip(optional_args, repo_args[1:])})
-        hierarchy = [ClinicalTrial.subject, ClinicalTrial.session]
+        hierarchy = [Clinical.subject, Clinical.session]
     else:
         raise ArcanaUsageError(
             f"Unrecognised store type provided as first argument "

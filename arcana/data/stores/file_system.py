@@ -14,7 +14,7 @@ from arcana.core.data.provenance import DataProvenance
 from arcana.exceptions import ArcanaFileFormatError, ArcanaMissingDataException, ArcanaUsageError
 from arcana.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana.core.data.set import Dataset
-from arcana.data.spaces.medicalimaging import ClinicalTrial, DataSpace
+from arcana.data.spaces.medicalimaging import Clinical, DataSpace
 from arcana.core.data.store import DataStore
 
 
@@ -340,7 +340,7 @@ class FileSystem(DataStore):
                                  
 
 
-def single_dataset(path: str, tree_dimensions: DataSpace=ClinicalTrial,
+def single_dataset(path: str, tree_dimensions: DataSpace=Clinical,
                    **kwargs) -> Dataset:
     """
     Creates a Dataset from a file system path to a directory

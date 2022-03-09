@@ -31,7 +31,7 @@ datatype
     '--frequency', '-f', metavar='<dimension>',
     help=("The frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
-          "medicalimaging:ClinicalTrial data dimensions"),
+          "medicalimaging:Clinical data dimensions"),
     show_default="highest")
 @click.option(
     '--path', '-p',
@@ -81,7 +81,7 @@ datatype
     '--frequency', '-f', metavar='<dimension>',
     help=("The frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
-          "medicalimaging:ClinicalTrial data dimensions"),
+          "medicalimaging:Clinical data dimensions"),
     show_default="highest")
 @click.option(
     '--path', '-p',

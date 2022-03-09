@@ -23,7 +23,7 @@ from arcana.exceptions import (
 from arcana.core.utils import dir_modtime, get_class_info, parse_value
 from arcana.core.data.set import Dataset
 from arcana.core.utils import path2name, name2path
-from arcana.data.spaces.medicalimaging import ClinicalTrial
+from arcana.data.spaces.medicalimaging import Clinical
 
 
 logger = logging.getLogger('arcana')
@@ -80,7 +80,7 @@ class Xnat(DataStore):
     PROV_SUFFIX = '.__prov__.json'
     FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
-    DEFAULT_HIERARCHY = [ClinicalTrial.subject, ClinicalTrial.session]
+    DEFAULT_HIERARCHY = [Clinical.subject, Clinical.session]
     METADATA_RESOURCE = '__arcana__'
 
 
@@ -551,12 +551,12 @@ class Xnat(DataStore):
         """
         with self:
             xproject = self.login.projects[data_node.dataset.id]
-            if data_node.frequency == ClinicalTrial.dataset:
+            if data_node.frequency == Clinical.dataset:
                 xnode = xproject
-            elif data_node.frequency == ClinicalTrial.subject:
-                xnode = xproject.subjects[data_node.ids[ClinicalTrial.subject]]
-            elif data_node.frequency == ClinicalTrial.session:
-                xnode = xproject.experiments[data_node.ids[ClinicalTrial.session]]
+            elif data_node.frequency == Clinical.subject:
+                xnode = xproject.subjects[data_node.ids[Clinical.subject]]
+            elif data_node.frequency == Clinical.session:
+                xnode = xproject.experiments[data_node.ids[Clinical.session]]
             else:
                 xnode = self.login.classes.SubjectData(
                     label=self._make_node_name(data_node), parent=xproject)
@@ -576,11 +576,11 @@ class Xnat(DataStore):
 
     def _make_uri(self, data_node: DataNode):
         uri = '/data/archive/projects/' + data_node.dataset.id
-        if data_node.frequency == ClinicalTrial.session:
+        if data_node.frequency == Clinical.session:
             uri += '/experiments/' + data_node.id
-        elif data_node.frequency == ClinicalTrial.subject:
+        elif data_node.frequency == Clinical.subject:
             uri += '/subjects/' + data_node.id
-        elif data_node.frequency != ClinicalTrial.dataset:
+        elif data_node.frequency != Clinical.dataset:
             uri += '/subjects/' + self._make_node_name(data_node)
         return uri
 
