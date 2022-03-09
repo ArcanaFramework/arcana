@@ -6,7 +6,7 @@ from attr.converters import optional
 from arcana.exceptions import (
     ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
     ArcanaInputMissingMatchError)
-from .enum import DataQuality, DataSalience
+from ..enum import DataQuality, DataSalience
 from .space import DataSpace
 
 

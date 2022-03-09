@@ -54,7 +54,28 @@ Stores
 
 
 
+
+
 Processing
 ----------
 
 .. autoclass:: arcana.core.pipeline.Pipeline
+
+
+Enums
+~~~~~
+
+.. autoclass:: arcana.core.enum.DataSalience
+    :members:
+    :undoc-members:                                  
+    :member-order: bysource  
+
+.. autoclass:: arcana.core.enum.ParamSalience
+    :members:
+    :undoc-members:                                  
+    :member-order: bysource  
+
+.. autoclass:: arcana.core.enum.DataQuality
+    :members:
+    :undoc-members:                                  
+    :member-order: bysource  

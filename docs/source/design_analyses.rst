@@ -4,22 +4,31 @@ Designing Analyses
 ==================
 
 An great way to contribute to the development of Arcana is to implement new
-:class:`.Analysis` classes or extend existing ones. :class:`.Analysis`
+:class:`.Analysis` classes or extend existing ones. Analysis
 classes are designed to be able to be tailored to meet specific requirements of
 particular use cases/research studies.
 
-This page builds upon the description of :class:`.Analysis` class design
+This page builds upon the description of analysis-class design
 introduced in :ref:`analysis_classes`. The basic building blocks of the design
-are described in detail in the :ref:`column_param_specs`, :ref:`pipeline_builders`
-and :ref:`analysis_outputs` sections, while more advanced concepts involved in
-extending existing classes and merging multiple classes into large analsyes are
-covered in the :ref:`inheritance` and :ref:`subanalyses` sections respectively.
-Finally, a examples showing all potential features is given in
-:ref:`comprehensive_example`.
+are described in detail in the :ref:`Basics` section, while more advanced
+concepts involved in extending existing classes and merging multiple classes
+into large analsyes are covered in the :ref:`Advanced` section.
+Finally, examples showing all features in action are given in
+:ref:`analysis_examples`.
 
 
 Basics
 ------
+
+There are two main components of analysis classes, column specifications
+(:ref:`column_param_specs`), which define the data to be provided to and
+derived by the class, and pipeline builder methods (:ref:`pipeline_builders`),
+which construct the `Pydra workflows <https://pydra.readthedocs.io/en/latest/components.html#workflows>`_
+used to generate the derivatives. Parameter attributes (:ref:`column_param_specs`)
+expose key parameters used by the workflow construction and output methods
+(:ref:`analysis_outputs`) provide a convenient way to include the final steps
+analyses (e.g. plotting figures) all in the one place.
+
 
 .. _column_param_specs:
 
@@ -47,10 +56,22 @@ in the ``desc`` keyword arg.
         derived_image: Png = column(
             desc="Map of the processed data")
         summary_metric: float = column(
-            desc="A summary metric extracted from the derived image")
+            desc="A summary metric extracted from the derived image",
+            frequency='dataset')
 
 The column spec descriptions will be shown to the user when they use the :meth:`.Dataset.menu()`
-or ``arcana menu`` CLI command.
+or ``arcana menu`` CLI command. The row frequency of the column (e.g. per-session,
+per-subject, per-group, once per-dataset etc..., see :ref:`data_spaces` and
+:ref:`data_columns`) is specified by the ``frequency``
+keyword argument. The frequency should be a member of the data space(see :ref:`data_spaces`)
+provided to the :func:`arcana.core.mark.analysis` class decorator.
+
+Not all columns specifications are created equal. Some refer to key inputs
+(e.g. the primary MRI image) or outputs (e.g. lesion load) and others just need
+to be sanity checked or useful in debugging. Therefore, to avoid the menu being
+cluttered up with non-salient specifications, the "salience" of the columns can
+be specified in addition to a description via the ``salience`` keyword arg.
+Values for ``salience`` must be drawn from the :class:`arcana.core.enum.DataSalience` enum:
 
 * **primary** - Primary input data, e.g. raw data or data reconstructed on the scanner 
 * **output** - Results that would typically be used as main outputs in publications 
@@ -59,13 +80,8 @@ or ``arcana menu`` CLI command.
 * **debug** - Derivatives that would typically only need to be checked when debugging analysis workflows 
 * **temp** - Data only temporarily stored to pass between pipelines 
 
-The row frequency of the column (e.g. per-session, per-subject, per-group, etc...
-see :ref:`data_spaces` and :ref:`data_columns`) is specified by the ``frequency``
-keyword argument, and should match the data space (see :ref:`data_spaces`)
-provided to the :func:`arcana.core.mark.analysis` class decorator.
-
 Descriptions and saliences can also be set for parameter attributes, where the
-saliences are drawn from :class:`.ParamSalience` enum.
+saliences are drawn from :class:`arcana.core.enum.ParamSalience` enum.
 
 * **debug** - typically only needs to be altered for debugging  
 * **recommended** - recommended to keep default value
@@ -236,7 +252,7 @@ CLI
 
 .. code-block:: console
 
-    $ arcana derive output 'file///data/my-dataset' connectivity-matrix \
+    $ arcana derive output 'file///data/my-dataset' connectivity_matrix_plot \
       --save '~/Documents/papers/my-connectivity-paper/' \
       --option figsize 10,10
 
@@ -257,8 +273,10 @@ isn't provided.
 
         ...
 
-        @output('connectivity-matrix')
-        def plot_connectivity_matrix(self, save_dir: str=None, figsize: tuple[float]=(5, 5)):
+        @output
+        def connectivity_matrix_plot(self, save_dir: str=None, figsize: tuple[float]=(5, 5)):
+            """Plots the connectivity matrix as an image
+            """
             plt.figure(figsize=figsize)
             plt.imshow(self['connectivity_matrix'].data)
             if save_dir:
@@ -273,10 +291,21 @@ Advanced
 .. warning::
     Under construction
 
+In every software framework, there are always corner cases that are
+more complicated than the basic logic can handle. In designing
+informatics frameworks, these challenges often arise when attempting to write
+portable workflows, due to slight differences in the data and and end goals of
+the application. This is particularly true in academia, where novelty is a key
+criteria. To address these requirements, this section introduces some more
+complex concepts, which can be used to customise and combine analysis methods
+into powerful new classes: conditional pipelines (:ref:`conditional_pipelines`),
+class inheritance (:ref:`inheritance`) and sub-analyses (:ref:`subanalyses`).
+
+
 .. _conditional_pipelines:
 
-Conditional pipelines
-~~~~~~~~~~~~~~~~~~~~~
+Conditionals
+~~~~~~~~~~~~
 
 
 * conditions + symbolic logic

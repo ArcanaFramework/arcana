@@ -1,6 +1,6 @@
 import click
 from arcana.core.cli import cli
-from arcana.core.data.enum import DataQuality
+from arcana.core.enum import DataQuality
 
 
 @cli.group()

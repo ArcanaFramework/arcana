@@ -274,7 +274,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 
             # A simple task to extract the "temperature" field from a JSON
             # metadata
-            pipeline.add(
+            extract_metadata = pipeline.add(
                 ExtractFromJson(
                     name='extract_metadata',
                     in_file=recorded_metadata,
@@ -285,7 +285,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
                 Task1(
                     name='preprocess',
                     in_file=recorded_datafile,
-                    temperature=pipeline.extract_metadata.lzout.out_field))
+                    temperature=extract_metadata.lzout.out_field))
 
             # Map the output of the pipeline to the "preprocessed" column specified
             # in the @pipeline decorator

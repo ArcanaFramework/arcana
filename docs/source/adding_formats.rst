@@ -270,5 +270,8 @@ axes for the date and weather station of the recordings, with the following code
         recording = 0b11
         dataset = 0b00
 
+.. note::
+
+    All permutations of *N*-D binary strings need to be named within the enum.
 
 .. _Pydra: http://pydra.readthedocs.io

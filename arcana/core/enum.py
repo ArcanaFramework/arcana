@@ -2,7 +2,7 @@ from enum import Enum
 
 class DataSalience(Enum):
     """An enum that holds the salience levels options that can be used when
-    specifying data. Salience is used to indicate whether it would be best to
+    specifying data columns. Salience is used to indicate whether it would be best to
     store the data in the data store or whether it can be just stored in
     the local file-system and discarded after it has been used. This choice
     is ultimately specified by the user by defining a salience threshold for
@@ -36,6 +36,21 @@ class DataSalience(Enum):
 
     def __str__(self):
         return self.name
+
+
+class ParamSalience(Enum):
+    """An enum that holds the salience levels options that can be used when
+    specifying class parameters. Salience is used to indicate whether the
+    parameter should show up by default when listing the available parameters
+    of an Analysis class in a menu.
+    """
+    
+    debug = (0, "typically only needed to be altered for debugging")
+    recommended = (20, "recommended to keep defaults")
+    dependent = (40, "best value can be dependent on the context of the analysis, but the default should work for most cases")
+    check = (60, "default value should be checked for validity for particular use case")
+    arbitrary = (80, "a default is provided, but it is not clear which value is best")
+    required = (100, "No sensible default value, should be provided")
 
     
 class DataQuality(Enum):

@@ -10,7 +10,7 @@ import arcana.data.formats
 from arcana.exceptions import ArcanaUsageError
 from arcana.core.data.format import FileFormat
 from arcana.core.data.space import DataSpace
-from arcana.core.data.enum import DataQuality
+from arcana.core.enum import DataQuality
 from arcana import __version__
 from arcana.tasks.bids import construct_bids, extract_bids, bids_app
 from arcana.core.cli import cli
