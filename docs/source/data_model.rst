@@ -230,14 +230,8 @@ missing or corrupted data. Such nodes can be excluded with the
 ``excluded`` argument, which takes a dictionary mapping the data
 dimension to the list of IDs to exclude.
 
-You can exclude nodes at different levels of data tree, even within in the same dataset.
-Note however, that if you exclude nodes at a low level of the dataset's hierarchy then
-corresponding nodes at higher levels will also be excluded. For example,
-if you exclude the imaging session for subject 5 at Timepoint 2, then both
-Timepoint 2 (for all subjects) and Subject 5 (at all timepoints) will be
-dropped from the analysis when generating summary derivatives per timepoint or
-subject. Therefore it is typically better to exclude nodes higher up the tree
-(e.g. Subject 5).
+You can exclude nodes at different levels of data tree by provided ``excluded``,
+even within in the same dataset.
 
 .. code-block:: python
 
@@ -248,7 +242,7 @@ subject. Therefore it is typically better to exclude nodes higher up the tree
 
 The ``included`` argument is the inverse of exclude and can be more convenient when
 you only want to select a small sample. ``included`` can be used in conjunction
-with ``excluded`` the frequencies must be orthogonal.
+with ``excluded`` but not for the same frequencies.
 
 .. code-block:: python
 

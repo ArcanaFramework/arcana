@@ -250,5 +250,25 @@ also be a dataset-wide member with value=0::
 
     dataset = 0b000
 
+For example, if you wanted to analyse daily recordings from various
+weather stations you could define a 2-dimensional "Weather" data space with
+axes for the date and weather station of the recordings, with the following code
+
+.. _weather_example:
+
+.. code-block:: python
+
+    from arcana.core.data.space import DataSpace
+
+    class Weather(DataSpace):
+
+        # Define the axes of the dataspace    
+        timepoint = 0b01
+        station = 0b10
+
+        # Name the leaf and root frequencies of the data space
+        recording = 0b11
+        dataset = 0b00
+
 
 .. _Pydra: http://pydra.readthedocs.io

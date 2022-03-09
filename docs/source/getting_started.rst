@@ -118,7 +118,7 @@ Alternatively, the same steps can be performed using the command line interface
     $ arcana apply pipeline 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
       --input T1w in_file medicalimaging:nifti_gz \
       --output brain_mask out_file medicalimaging:nifti_gz
-    $ arcana derive brain_mask
+    $ arcana derive column brain_mask
 
 Applying an Analysis class instead of a Pydra task/workflow follows the same
 steps up to 'add-source' (sinks are automatically added by the analysis class).
@@ -152,7 +152,7 @@ use
 .. code-block:: console
 
     $ arcana apply analysis 'file///data/my-project' bids.mri:T1wAnalysis
-    $ arcana derive 'file///data/my-project' avg_cortical_thickness
+    $ arcana derive column 'file///data/my-project' avg_cortical_thickness
 
 
 Licence

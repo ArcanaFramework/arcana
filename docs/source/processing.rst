@@ -189,7 +189,7 @@ To generate derivatives via the CLI
 
 .. code-block:: console
 
-  $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all
+  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all
 
 
 By default Pydra_ uses the "concurrent-futures" (`'cf'`) plugin, which
@@ -200,7 +200,7 @@ options to it with ``pydra_option``.
 
 .. code-block:: console
 
-  $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all \
+  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all \
     --pydra_plugin slurm --pydra_option poll_delay 5 --pydra_option max_jobs 10
 
 
@@ -214,14 +214,14 @@ can be applied to types of datasets in a reproducible manner. The syntax used is
 an extension of the attrs_ package (see `https://www.attrs.org/en/stable/extending.html
 <https://www.attrs.org/en/stable/extending.html>`_). In this syntax, member
 attributes are either free parameters or placeholders for columns in the
-dataset the analysis is applied to. Decorated "pipeline constructor" methods
-build the pipelines to perform the analysis.
+dataset the analysis is applied to. Decorated "pipeline builder" methods
+construct the pipelines to perform the analysis.
 
 The following toy example has two column placeholders, ``recorded_datafile``
 and ``recorded_metadata``, to be linked to source data (*Line 13 & 14*), and
 three column placeholders, ``preprocessed``, ``derived_image`` and
 ``summary_metric`` (*Line 15-17*) that can be derived by pipelines created by
-one of the two implemented pipeline constructor methods ``preprocess_pipeline``
+one of the two implemented pipeline builder methods ``preprocess_pipeline``
 (*Line 26*) and ``create_image_pipeline`` (*Line 56*).
 
 The :func:`arcana.core.mark.analysis` decorator is used to specify an
@@ -231,7 +231,7 @@ column placeholders of :func:`arcana.core.mark.column` type (*Line 13-17*).
 Class attributes can also be free parameters of the analysis by using the
 :func:`arcana.core.mark.parameter` instead (*Line 21*).
 
-The :func:`arca.acore.mark.pipeline` decorator specifies pipeline constructor
+The :func:`arca.acore.mark.pipeline` decorator specifies pipeline builder
 methods, and takes the columns the pipeline outputs are connected to as arguments
 (*Line 26 & 54*). More details on the design of analysis classes see
 :ref:`design_analyses`.
@@ -262,9 +262,9 @@ methods, and takes the columns the pipeline outputs are connected to as argument
         contrast: float = parameter(default=0.5)
         kernel_fwhms: list[float] = parameter(default=[0.5, 0.3, 0.1])
 
-        # Define a "pipeline constructor method" to generate the 'preprocessed'
+        # Define a "pipeline builder method" to generate the 'preprocessed'
         # derivative. Arcana automagically maps column names to arguments of the
-        # constructor methods.
+        # builder methods.
         @pipeline(preprocessed)
         def preprocess_pipeline(
                 self,
@@ -354,7 +354,7 @@ To apply an analysis via the command-line
     --link recorded_datafile datafile \ 
     --link recorded_metadata metadata \
     --parameter contrast 0.75
-  $ arcana derive column 'file///data/a-dataset' summary_metric
+  $ arcana derive column column 'file///data/a-dataset' summary_metric
 
 To list the derivatives that can be derived from a dataset once you have
 applied an analysis class you can use the ``menu`` command
@@ -527,7 +527,7 @@ or
 
 .. code-block:: console
 
-  $ arcana derive 'myuni-xnat//myproject:training' freesurfer/recon-all  --reprocess
+  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all  --reprocess
 
 
 To ingore differences between pipeline configurations you can use the :meth:`.Dataset.ignore`
