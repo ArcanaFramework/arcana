@@ -28,11 +28,13 @@ parameterisations and overriding selected methods in subclasses (see :ref:`desig
   you will need to create your own Pydra_ wrappers for other tools used in other
   domains.
 
-Pipelines
----------
+Pydra workflows
+---------------
 
-:class:`.Pipeline` objects wrap Pydra_ workflows/tasks to prepend and append
-additional tasks to
+`Pydra workflows`_, or individual `Pydra tasks`_, can be applied to dataset in
+order to operate on the data within it. Workflows are connected from source or sink
+columns to sink columns. During the application process :class:`.Pipeline` objects
+are created to wrap the workflow and prepend and append additional tasks to
 
 * iterate over the relevant nodes in the dataset
 * manage storage and retrieval of data to and from the data store
@@ -40,7 +42,7 @@ additional tasks to
 * write provenance metadata
 * check saved provenance metadata to ensure prerequisite derivatives were generated with equivalent parameterisations and software versions (and potentially reprocess them if not)
 
-To add a pipeline to a dataset via the API use the :meth:`Dataset.pipeline` method
+To add a workflow to a dataset via the API use the :meth:`Dataset.apply_workflow` method
 mapping the inputs and outputs of the Pydra_ workflow/task (``in_file``, ``peel``
 and ``out_file`` in the example below) to appropriate columns in the dataset
 (``T1w``, ``T2w`` and ``freesurfer/recon-all`` respectively)
@@ -52,26 +54,26 @@ and ``out_file`` in the example below) to appropriate columns in the dataset
 
     dataset = Dataset.load('myuni-xnat//myproject:training')
 
-    dataset.add_source('T1w', format=medicalimaging.dicom, path='.*mprage.*',
+    dataset.add_source('T1w', format=medicalimaging.Dicom, path='.*mprage.*',
                        is_regex=True)
-    dataset.add_source('T2w', format=medicalimaging.dicom, path='.*t2spc.*',
+    dataset.add_source('T2w', format=medicalimaging.Dicom, path='.*t2spc.*',
                        is_regex=True)
 
-    dataset.add_sink('freesurfer/recon-all', common.directory)
+    dataset.add_sink('freesurfer/recon-all', common.Directory)
 
-    dataset.apply_pipeline(
-        name='freesurfer,
+    dataset.apply_workflow(
         workflow=Freesurfer(
+            name='freesurfer,
             param1=10.0,
             param2=20.0),
-        inputs=[('T1w', 'in_file', medicalimaging.nifti_gz),
-                ('T2w', 'peel', medicalimaging.nifti_gz)],
-        outputs=[('freesurfer/recon-all', 'out_file', common.directory)])
+        inputs=[('T1w', 'in_file', medicalimaging.NiftiGz),
+                ('T2w', 'peel', medicalimaging.NiftiGz)],
+        outputs=[('freesurfer/recon-all', 'out_file', common.Directory)])
 
 If there is a mismatch in the data format (see :ref:`data_formats`) between the
-workflow inputs/outputs and the columns they are connected to, the pipeline will
-insert a task to perform the conversion if a converter method between the two
-formats exists.
+workflow inputs/outputs and the columns they are connected to, a format conversion
+task will be inserted into the pipeline if converter method between the two
+formats exists (see :ref:`file_formats`).
 
 If the source can be referenced by its path alone, then you can add the sources
 and sinks in one step
@@ -83,12 +85,12 @@ and sinks in one step
 
     dataset = Dataset.load('file///data/openneuro/ds00014:test')
 
-    dataset.apply_pipeline(
-        name='segmentation',
+    dataset.apply_workflow(
         workflow=FAST(
+            name='segmentation',
             method='a-method'),
-        sources=[('T1w', 'in_file', medicalimaging.nifti_gz)],
-        sinks=[('fast/gm', 'gm', medicalimaging.nifti_gz)])
+        sources=[('T1w', 'in_file', medicalimaging.NiftiGz)],
+        sinks=[('fast/gm', 'gm', medicalimaging.NiftiGz)])
 
     # Save pipeline to dataset metadata for subsequent reuse.
     dataset.save()
@@ -99,14 +101,14 @@ To connect a workflow via the CLI
 .. code-block:: console
 
     $ arcana column add-source 'myuni-xnat//myproject:training' T1w \
-      medicalimaging:dicom --path '.*mprage.*'
+      medicalimaging:Dicom --path '.*mprage.*'
     $ arcana column add-source 'myuni-xnat//myproject:training' T2w \
-      medicalimaging:dicom --path '.*t2spc.*'
-    $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
+      medicalimaging:Dicom --path '.*t2spc.*'
+    $ arcana apply workflow 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
-      --input T1w in_file medicalimaging:nifti_gz \
-      --input T2w peel medicalimaging:nifti_gz \
-      --output freesurfer/recon-all out_file common:directory \
+      --input T1w in_file medicalimaging:NiftiGz \
+      --input T2w peel medicalimaging:NiftiGz \
+      --output freesurfer/recon-all out_file common:Directory \
       --parameter param1 10 \
       --parameter param2 20
 
@@ -115,17 +117,17 @@ path and format alone looks like
 
 .. code-block:: console
 
-    $ arcana apply pipeline 'file///data/openneuro/ds00014:test' segmentation \
+    $ arcana apply workflow 'file///data/openneuro/ds00014:test' segmentation \
       pydra.tasks.fsl.preprocess.fast:FAST \
-      --source T1w in_file medicalimaging:nifti_gz \
-      --sink fast/gm gm medicalimaging:nifti_gz \
+      --source T1w in_file medicalimaging:NiftiGz \
+      --sink fast/gm gm medicalimaging:NiftiGz \
       --parameter method a-method
 
 
-By default, pipelines will iterate all leaf nodes of the data tree (e.g. ``session``
+By default, pipelines will iterate all "leaf nodes" of the data tree (e.g. ``session``
 for datasets in the :class:`.Clinical` space). However, pipelines can be run
-at any row frequency of the dataset, e.g. per subject, per timepoint, or on the
-dataset as a whole (to create single templates/statistics).
+at any row frequency of the dataset (see :ref:`data_spaces`), e.g. per subject,
+per timepoint, or on the dataset as a whole (to create single templates/statistics).
 
 Pipeline outputs must be connected to sinks of the same row frequency. However,
 inputs can be drawn from columns of any row frequency. In this case,
@@ -147,31 +149,31 @@ back to the dataset.
 
     # Add sink column with "dataset" row frequency
     dataset.add_sink(
-      name='vbm_template',
-      format=medicalimaging.nifti_gz
-      frequency=Clinical.dataset
-    )
+        name='vbm_template',
+        format=medicalimaging.NiftiGz
+        frequency='dataset')
 
     # Connect pipeline to a "dataset" row-frequency sink column. Needs to be
     # of `dataset` frequency itself or Arcana will raise an error
-    dataset.apply_pipeline(
+    dataset.apply_workflow(
         name='vbm_template',
         workflow=vbm_template(),
         inputs=[('in_file', 'T1w')],
         outputs=[('out_file', 'vbm_template')],
-        frequency=Clinical.dataset)
+        frequency='dataset')
 
 
 
 Derivatives
 -----------
 
-After pipelines have been connected to sink columns, derivatives can be
-generated using :meth:`.Dataset.derive`. This method checks the
-data store to see whether the source data is present and executes the
-pipelines over all nodes of the dataset with available source data.
-If pipeline inputs are sink columns to be derived by prerequisite pipelines,
-then the prerequisite pipelines will be prepended onto the execution stack.
+After pipelines have been connected between data columns, derivatives can be
+generated using :meth:`.Dataset.derive` or alternatively :meth:`.Column.derive`
+for single columns. These methods check the data store to see whether the
+source data is present and executes the pipelines over all nodes of the dataset
+with available source data. If pipeline inputs are sink columns to be derived
+by prerequisite pipelines, then the prerequisite pipelines will be prepended
+onto the execution stack.
 
 To generate derivatives via the API
 
@@ -327,20 +329,20 @@ the dataset to link placeholders to and any parameters.
   a_dataset = Dataset.load('file///data/a-dataset')
 
   dataset.add_source(
-    name='datafile',
-    path='a-long-arbitrary-name',
-    format=ZippedDir)
+      name='datafile',
+      path='a-long-arbitrary-name',
+      format=ZippedDir)
 
   dataset.add_source(
-    name='metadata',
-    path='another-long-arbitrary-name',
-    format=Yaml)  # The format the data is in the dataset, will be automatically converted
+      name='metadata',
+      path='another-long-arbitrary-name',
+      format=Yaml)  # The format the data is in the dataset, will be automatically converted
 
   dataset.apply(
       ExampleAnalysis(
-        recorded_datafile='datafile',
-        recorded_metadata='metadata',
-        contrast=0.75))
+          recorded_datafile='datafile',
+          recorded_metadata='metadata',
+          contrast=0.75))
 
   # Derive the summary metric column. Will first run the `preprocess_pipeline`
   # to generate `preprocessed` before running the `create_image_pipeline`
@@ -354,10 +356,13 @@ To apply an analysis via the command-line
     --link recorded_datafile datafile \ 
     --link recorded_metadata metadata \
     --parameter contrast 0.75
-  $ arcana derive column column 'file///data/a-dataset' summary_metric
+  $ arcana derive column 'file///data/a-dataset' summary_metric
+
+Menus and salience
+------------------
 
 To list the derivatives that can be derived from a dataset once you have
-applied an analysis class you can use the ``menu`` command
+applied workflows or analysis classes you can use the ``menu`` command
 
 .. code-block:: console
 
@@ -377,10 +382,10 @@ applied an analysis class you can use the ``menu`` command
   kernel_fwhms (list[float]) default=[0.5, 0.3, 0.1]
 
 For large analysis classes with many column specs this list could become
-overwhelming, so when designing a class it is good practice to set the
-"salience" of columns (see :ref:`column_param_specs`) to a member of the
-:class:`.DataSalience` enum. The menu can then be filtered to show only the
-more salient columns (the default is to only show "supplementary" and above).
+overwhelming, so when designing an analysis class it is good practice to set the
+"salience" of columns and parameters (see :ref:`column_param_specs`). The menu
+can then be filtered to show only the more salient columns (the default is to
+only show "supplementary" and above).
 Parameters can similarily be filtered by their salience (see :class:`.ParamSalience`),
 by default only showing parameters "check" and above.
 For example, the following menu call will show all columns and parameters with 
@@ -390,8 +395,9 @@ salience >= 'qa' and 'recommended', respectively.
 
   $ arcana menu 'file///data/another-dataset' --columns qa --parameters recommended
 
-The ``salience_threshold`` argument can also be used to control which derivatives
-are stored in the data store when applying an analysis to a dataset in order to
+The ``salience_threshold`` argument can also be used to filter out derivatives
+from the data store when applying an analysis to a dataset. This
+allows the user to control how much derivative data are saved to
 avoid filling up (potentially expensive) storage. The following call will only
 attempt to store data columns with "qa" or greater salience in XNAT, keeping the
 remaining only in local cache.
@@ -546,5 +552,7 @@ or via the CLI
 
 
 .. _Pydra: http://pydra.readthedocs.io
+.. _`Pydra workflows`: https://pydra.readthedocs.io/en/latest/components.html#workflows
+.. _`Pydra tasks`: https://pydra.readthedocs.io/en/latest/components.html#function-tasks
 .. _attrs: https://www.attrs.org/en/stable/
 .. _dataclasses: https://docs.python.org/3/library/dataclasses.html

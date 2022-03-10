@@ -74,7 +74,7 @@ def test_pipeline_with_implicit_conversion(work_dir):
         assert contents == '\n'.join(['file1.zip', 'file2.zip'] * 2)
 
 
-def test_apply_pipeline(work_dir):
+def test_apply_workflow(work_dir):
 
     # Import arcana module
     from pydra.tasks.fsl.preprocess.bet import BET
@@ -91,7 +91,7 @@ def test_apply_pipeline(work_dir):
     my_dataset.add_sink('brain_mask', 'derivs/brain_mask', format=NiftiGz)
 
     # Apply BET Pydra task, connecting it betwee between the source and sink
-    my_dataset.apply_pipeline(
+    my_dataset.apply_workflow(
         'brain_extraction',
         BET(),
         inputs=[('T1w', 'in_file', NiftiGz)],

@@ -93,7 +93,7 @@ over all sessions with the API
     my_dataset.add_sink('brain_mask', 'derivs/brain_mask', format=NiftiGz)
 
     # Apply BET Pydra task, connecting it between the source and sink
-    my_dataset.apply_pipeline(
+    my_dataset.apply_workflow(
         BET(name='brain_extraction'),
         inputs=[('T1w', 'in_file', NiftiGz)],  # Specify required input format
         outputs=[('brain_mask', 'out_file')])  # Output format matches stored so can be omitted
@@ -112,13 +112,22 @@ Alternatively, the same steps can be performed using the command line interface
 .. code-block:: console
 
     $ arcana dataset define 'file///data/my-project' subject session
-    $ arcana column add-source 'file///data/my-dataset' T1w '.*mprage.*' medicalimaging:dicom --regex
-    $ arcana column add-sink 'file///data/my-dataset' brain_mask medicalimaging:nifti_gz
-    $ arcana apply pipeline 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
+    $ arcana column add-source 'file///data/my-dataset' T1w '.*mprage.*' medicalimaging:Dicom --regex
+    $ arcana column add-sink 'file///data/my-dataset' brain_mask medicalimaging:NiftiGz
+    $ arcana apply workflow 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
       --arg name brain_extraction \
-      --input T1w in_file medicalimaging:nifti_gz \
+      --input T1w in_file medicalimaging:NiftiGz \
       --output brain_mask out_file .
     $ arcana derive column 'file///data/my-dataset' brain_mask
+
+.. note::
+
+    When referencing objects within the ``arcana`` package from the CLI such
+    as file-format classes or data spaces (see :ref:`data_spaces`), the
+    standard ``arcana.*.`` prefix can be dropped, e.g. ``medicalimaging:Dicom``
+    instead of the full path ``arcana.data.formats.medicalimaging:Dicom``.
+    Classes installed outside of the Arcana package, should be referred to
+    with their full import path.
 
 Applying an Analysis class instead of a Pydra task/workflow follows the same
 steps up to 'add-source' (sinks are automatically added by the analysis class).

@@ -190,7 +190,8 @@ layers of the directory tree in descending order.
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
-        hierarchy=[Clinical.group, Clinical.subject])
+        space=Clinical,
+        hierarchy=['group', 'subject'])  # Members of Clinical data space
 
 These definitions can be saved inside the project directory and then reloaded
 in new Python contexts.
@@ -282,7 +283,8 @@ string separated by ':', e.g.
 
 .. code-block:: console
 
-    $ arcana dataset define 'file///data/imaging/my-project:training' group subject \
+    $ arcana dataset define 'file///data/imaging/my-project:training' \
+      medicalimaging:Clinical group subject \
       --include subject 10:20
 
 
