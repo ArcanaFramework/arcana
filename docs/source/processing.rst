@@ -75,8 +75,9 @@ workflow inputs/outputs and the columns they are connected to, a format conversi
 task will be inserted into the pipeline if converter method between the two
 formats exists (see :ref:`file_formats`).
 
-If the source can be referenced by its path alone, then you can add the sources
-and sinks in one step
+If the source can be referenced by its path alone and the formats of the source
+and sink columns match those expected and produced by the workflow, then you
+can all add the sources and sinks in one step
 
 .. code-block:: python
 

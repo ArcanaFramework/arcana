@@ -5,8 +5,9 @@ Designing Analyses
 
 An great way to contribute to the development of Arcana is to implement new
 :class:`.Analysis` classes or extend existing ones. Analysis
-classes are designed to be able to be tailored to meet specific requirements of
-particular use cases/research studies.
+classes are designed to be able generic enough to be used widely, but able to
+be tailored to meet specific requirements of particular use cases/research studies
+via class inheritance where required (see :ref:`inheritance`).
 
 This page builds upon the description of analysis-class design
 introduced in :ref:`analysis_classes`. The basic building blocks of the design
