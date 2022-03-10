@@ -86,20 +86,19 @@ over all sessions with the API
     # Load dataset
     my_dataset = Dataset('file///data/my-dataset', ['subject', 'session'])
 
-    # Add source column to select T1-weighted images in each sub-directory
+    # Add source column to select a single T1-weighted image in each session subdirectory
     my_dataset.add_source('T1w', '.*mprage.*', format=Dicom, is_regex=True)
 
     # Add sink column to store brain mask
     my_dataset.add_sink('brain_mask', 'derivs/brain_mask', format=NiftiGz)
 
-    # Apply BET Pydra task, connecting it betwee between the source and sink
+    # Apply BET Pydra task, connecting it between the source and sink
     my_dataset.apply_pipeline(
-        'brain_extraction',
-        BET(),
-        inputs=[('T1w', 'in_file', NiftiGz)],
-        outputs=[('brain_mask', 'out_file')])
+        BET(name='brain_extraction'),
+        inputs=[('T1w', 'in_file', NiftiGz)],  # Specify required input format
+        outputs=[('brain_mask', 'out_file')])  # Output format matches stored so can be omitted
 
-    # Generate brain mask derivative
+    # Derive brain masks for all imaging sessions in dataset
     my_dataset['brain_mask'].derive()
 
 This code will iterate over all imaging sessions in the directory tree, find and
@@ -116,9 +115,10 @@ Alternatively, the same steps can be performed using the command line interface
     $ arcana column add-source 'file///data/my-dataset' T1w '.*mprage.*' medicalimaging:dicom --regex
     $ arcana column add-sink 'file///data/my-dataset' brain_mask medicalimaging:nifti_gz
     $ arcana apply pipeline 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
+      --arg name brain_extraction \
       --input T1w in_file medicalimaging:nifti_gz \
-      --output brain_mask out_file medicalimaging:nifti_gz
-    $ arcana derive column brain_mask
+      --output brain_mask out_file .
+    $ arcana derive column 'file///data/my-dataset' brain_mask
 
 Applying an Analysis class instead of a Pydra task/workflow follows the same
 steps up to 'add-source' (sinks are automatically added by the analysis class).

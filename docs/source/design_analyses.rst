@@ -267,6 +267,7 @@ isn't provided.
 .. code-block:: python
 
     import matplotlib.pyplot as plt
+    from arcana.data.spaces.medicalimaging import Clinical
 
     @analysis(Clinical)
     class ExampleAnalysis2():

@@ -400,11 +400,11 @@ to a dataset using the CLI.
 
 .. code-block:: console
 
-    $ arcana source add 'xnat-central//MYXNATPROJECT' T1w \
+    $ arcana column add-source 'xnat-central//MYXNATPROJECT' T1w \
       medicalimaging:Dicom --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
-    $ arcana sink add 'file///data/imaging/my-project:training' brain_template \
+    $ arcana column add-sink 'file///data/imaging/my-project:training' brain_template \
       medicalimaging:NiftiGz --frequency group
 
 
