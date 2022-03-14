@@ -1,24 +1,23 @@
-from pathlib import Path
 import logging
-import yaml
-import pkgutil
-import importlib
-import sys
-from traceback import format_exc
+import os
+from pathlib import Path
+
 import click
 import docker.errors
-from arcana.data.stores.xnat.cs import XnatViaCS
-from arcana.core.utils import resolve_class
+import yaml
+
 from arcana.core.cli import cli
+from arcana.data.spaces.medicalimaging import ClinicalTrial
 
 DOCKER_REGISTRY = 'docker.io'
 
+
 @cli.group()
-def wrap():
+def deploy():
     pass
 
 
-@wrap.command(help="""Build a wrapper image specified in a module
+@deploy.command(help="""Build a wrapper image specified in a module
 
 module_path
     The file system path to the module to build""")
@@ -56,7 +55,7 @@ spec_help = """
 """
 
 
-@wrap.command(name='build-all', help=f"""Build all wrapper images specified
+@deploy.command(name='build-all', help=f"""Build all wrapper images specified
 in sub-modules under the package path.
 
 Arguments
@@ -71,7 +70,7 @@ package_path
               help="The level to display logs at")
 @click.option('--build_dir', default=None, type=Path,
               help="Specify the directory to build the Docker image in")
-def build_all(package_path, registry, loglevel, build_dir, docs):
+def build_all(package_path, registry, loglevel, build_dir):
     """Creates a Docker image that wraps a Pydra task so that it can
     be run in XNAT's container service, then pushes it to AIS's Docker Hub
     organisation for deployment
@@ -80,9 +79,6 @@ def build_all(package_path, registry, loglevel, build_dir, docs):
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
     org_name = Path(package_path).name
-
-    if docs:
-        docs.mkdir(parents=True, exist_ok=True)
 
     built_images = []
     for mod_name, spec in extract_wrapper_specs(package_path).items():
@@ -94,37 +90,35 @@ def build_all(package_path, registry, loglevel, build_dir, docs):
                 docker_registry=registry,
                 **spec))
         logging.info("Successfully built %s wrapper", mod_name)
-        if docs:
-            create_doc(spec, docs, mod_name)
 
     click.echo('\n'.join(built_images))
 
 
-@wrap.command(name='build-docs', help="""Build docs for a wrappper
+@deploy.command(name='docs', help="""Build docs for one or more yaml wrappers
 
-Arguments
----------
-module_path
-    The file system path to the module to build""")
-@click.argument('module_path')
-def build_docs(module_path):
-    raise NotImplementedError
+SPEC is the path of a YAML spec file or directory containing one or more such files.
+
+The generated documentation will be saved to OUTPUT.
+""")
+@click.argument('spec', type=click.Path(exists=True, path_type=Path))
+@click.argument('output', type=click.Path(path_type=Path))
+@click.option('--flatten/--no-flatten', default=False)
+def build_docs(spec, output, flatten):
+    output.mkdir(parents=True, exist_ok=True)
+
+    if spec.resolve().is_dir():
+        for mod_name, spec_info in extract_wrapper_specs(spec).items():
+            click.echo(mod_name)
+
+            create_doc(spec_info, output, mod_name, flatten=flatten)
+    else:
+        spec_info = load_yaml_spec(spec)
+        click.echo(spec_info['_module_name'])
+
+        create_doc(spec_info, output, spec_info['_module_name'], flatten=flatten)
 
 
-@wrap.command(name='build-all-docs', help="""Build docs for all wrappper modules
-in a package.
-
-Arguments
----------
-package_path
-    The file-system path containing the image specifications: Python dictionaries
-    named `spec` in sub-modules with the following keys:{spec_help}""")
-@click.argument('package_path')
-def build_all_docs(package_path):
-    raise NotImplementedError
-
-
-@wrap.command(name='test', help="""Test a wrapper pipeline defined in a module
+@deploy.command(name='test', help="""Test a wrapper pipeline defined in a module
 
 Arguments
 ---------
@@ -135,7 +129,7 @@ def test(module_path):
     raise NotImplementedError
 
 
-@wrap.command(name='test-all', help="""Test all wrapper pipelines
+@deploy.command(name='test-all', help="""Test all wrapper pipelines
 in a package.
 
 Arguments
@@ -144,7 +138,7 @@ package_path
     The file-system path containing the image specifications: Python dictionaries
     named `spec` in sub-modules with the following keys:{spec_help}""")
 @click.argument('package_path')
-def build_all_docs(package_path):
+def test_all(package_path):
     raise NotImplementedError
 
 
@@ -178,41 +172,80 @@ def inspect_docker_exec(image_tag):
     click.echo(executable)
 
 
+def load_yaml_spec(path, base_dir=None):
+    def concat(loader, node):
+        seq = loader.construct_sequence(node)
+        return ''.join([str(i) for i in seq])
+
+    def slice(loader, node):
+        list, start, end = loader.construct_sequence(node)
+        return list[start:end]
+
+    def sliceeach(loader, node):
+        _, start, end = loader.construct_sequence(node)
+        return [
+            loader.construct_sequence(x)[start:end] for x in node.value[0].value
+        ]
+
+    yaml.SafeLoader.add_constructor(tag='!join', constructor=concat)
+    yaml.SafeLoader.add_constructor(tag='!concat', constructor=concat)
+    yaml.SafeLoader.add_constructor(tag='!slice', constructor=slice)
+    yaml.SafeLoader.add_constructor(tag='!sliceeach', constructor=sliceeach)
+
+    with open(path, 'r') as f:
+        data = yaml.load(f, Loader=yaml.SafeLoader)
+
+    frequency = data.get('frequency', None)
+    if frequency:
+        # TODO: Handle other frequency types, are there any?
+        data['frequency'] = ClinicalTrial[frequency.split('.')[-1]]
+
+    data['_relative_dir'] = os.path.dirname(os.path.relpath(path, base_dir)) if base_dir else ''
+    data['_module_name'] = os.path.basename(path).rsplit('.', maxsplit=1)[0]
+
+    return data
+
+
 def extract_wrapper_specs(package_path):
     package_path = Path(package_path)
-    def error_msg(name):
-        exception = format_exc()
-        logging.error(
-            f"Error attempting to import {name} module.\n\n{exception}")
-
-    # Ensure base package is importable
-    sys.path.append(str(package_path))
 
     wrapper_specs = {}
-    for _, mod_path, ispkg in pkgutil.walk_packages([package_path],
-                                                    onerror=error_msg):
-        if not ispkg:
-            mod = importlib.import_module(mod_path)
-            try:
-                wrapper_specs[mod.__name__] = mod.spec
-            except AttributeError:
-                logging.warning("No `spec` dictionary found in %s, skipping",
-                                mod_path)
+
+    for root, dirs, files in os.walk(package_path):
+        for fn in files:
+            if '.' not in fn:
+                continue
+
+            name, ext = fn.rsplit('.', maxsplit=1)
+            if ext not in ('yaml', 'yml'):
+                continue
+
+            wrapper_specs[name] = load_yaml_spec(os.path.join(root, fn), package_path)
 
     return wrapper_specs
 
 
-def create_doc(spec, doc_dir, pkg_name):
-
+def create_doc(spec, doc_dir, pkg_name, flatten: bool):
     header = {
         "title": spec["package_name"],
         "weight": 10,
         "source_file": pkg_name,
     }
 
-    task = resolve_class(spec['pydra_task'])
+    if flatten:
+        out_dir = doc_dir
+    else:
+        assert isinstance(doc_dir, Path)
 
-    with open(doc_dir / pkg_name, "w") as f:
+        out_dir = doc_dir.joinpath(spec['_relative_dir'])
+
+        assert doc_dir in out_dir.parents
+
+        out_dir.mkdir(parents=True)
+
+    # task = resolve_class(spec['pydra_task'])
+
+    with open(f"{out_dir}/{pkg_name}.md", "w") as f:
         f.write("---\n")
         yaml.dump(header, f)
         f.write("\n---\n\n")
@@ -221,39 +254,42 @@ def create_doc(spec, doc_dir, pkg_name):
 
         f.write("### Info\n")
         tbl_info = MarkdownTable(f, "Key", "Value")
-        if "version" in spec:
+        if spec.get("version", None):
             tbl_info.write_row("Version", spec["version"])
-        if "pkg_version" in spec:
+        if spec.get("pkg_version", None):
             tbl_info.write_row("App version", spec["pkg_version"])
-        if task.image:
-            tbl_info.write_row("Image", escaped_md(task.image))
-        if "base_image" in spec and task.image != spec["base_image"]:
+        # if task.image and task.image != ':':
+        #     tbl_info.write_row("Image", escaped_md(task.image))
+        if spec.get("base_image", None):  # and task.image != spec["base_image"]:
             tbl_info.write_row("Base image", escaped_md(spec["base_image"]))
-        if "maintainer" in spec:
+        if spec.get("maintainer", None):
             tbl_info.write_row("Maintainer", spec["maintainer"])
-        if "info_url" in spec:
+        if spec.get("info_url", None):
             tbl_info.write_row("Info URL", spec["info_url"])
-        if "frequency" in spec:
+        if spec.get("frequency", None):
             tbl_info.write_row("Frequency", spec["frequency"].name.title())
 
         f.write("\n")
 
+        first_cmd = spec['commands'][0]
+
         f.write("### Inputs\n")
         tbl_inputs = MarkdownTable(f, "Name", "Bids path", "Data type")
-        for x in task.inputs:
+        # for x in task.inputs:
+        for x in first_cmd.get('inputs', []):
             name, dtype, path = x
             tbl_inputs.write_row(escaped_md(name), escaped_md(path), escaped_md(dtype))
         f.write("\n")
 
         f.write("### Outputs\n")
         tbl_outputs = MarkdownTable(f, "Name", "Data type")
-        for x in task.outputs:
-            name, dtype, path = x
+        # for x in task.outputs:
+        for name, dtype in first_cmd.get('outputs', []):
             tbl_outputs.write_row(escaped_md(name), escaped_md(dtype))
         f.write("\n")
 
         f.write("### Parameters\n")
-        if not spec.get("parameters", None):
+        if not first_cmd.get("parameters", None):
             f.write("None\n")
         else:
             tbl_params = MarkdownTable(f, "Name", "Data type")
