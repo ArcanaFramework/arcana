@@ -2,11 +2,27 @@ Command-line interface (CLI)
 ============================
 
 
-.. warning::
-    Under construction
+Data stores
+-----------
+
+Commands used to access remove data stores and save them for further use
+
+.. click:: arcana.cli.store:add
+   :prog: arcana store add
+
+.. click:: arcana.cli.store:rename
+   :prog: arcana store rename
+
+.. click:: arcana.cli.store:remove
+   :prog: arcana store remove
 
 
-.. click:: arcana.cli:cli
-   :prog: arcana
-   :nested: full
+Datasets
+--------
 
+.. click:: arcana.cli.dataset:define
+   :prog: arcana dataset define
+
+
+.. click:: arcana.cli.dataset:rename
+   :prog: arcana dataset rename
