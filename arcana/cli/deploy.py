@@ -11,12 +11,13 @@ from arcana.data.spaces.medicalimaging import ClinicalTrial
 
 DOCKER_REGISTRY = 'docker.io'
 
+
 @cli.group()
-def wrap():
+def deploy():
     pass
 
 
-@wrap.command(help="""Build a wrapper image specified in a module
+@deploy.command(help="""Build a wrapper image specified in a module
 
 module_path
     The file system path to the module to build""")
@@ -54,7 +55,7 @@ spec_help = """
 """
 
 
-@wrap.command(name='build-all', help=f"""Build all wrapper images specified
+@deploy.command(name='build-all', help=f"""Build all wrapper images specified
 in sub-modules under the package path.
 
 Arguments
@@ -93,7 +94,7 @@ def build_all(package_path, registry, loglevel, build_dir):
     click.echo('\n'.join(built_images))
 
 
-@wrap.command(name='docs', help="""Build docs for one or more yaml wrapppers
+@deploy.command(name='docs', help="""Build docs for one or more yaml wrappers
 
 SPEC is the path of a YAML spec file or directory containing one or more such files.
 
@@ -117,7 +118,7 @@ def build_docs(spec, output, flatten):
         create_doc(spec_info, output, spec_info['_module_name'], flatten=flatten)
 
 
-@wrap.command(name='test', help="""Test a wrapper pipeline defined in a module
+@deploy.command(name='test', help="""Test a wrapper pipeline defined in a module
 
 Arguments
 ---------
@@ -128,7 +129,7 @@ def test(module_path):
     raise NotImplementedError
 
 
-@wrap.command(name='test-all', help="""Test all wrapper pipelines
+@deploy.command(name='test-all', help="""Test all wrapper pipelines
 in a package.
 
 Arguments
