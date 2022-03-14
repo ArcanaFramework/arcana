@@ -50,7 +50,7 @@ to let us know!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Development
+   :caption: Advanced
    :hidden:
 
    contributing

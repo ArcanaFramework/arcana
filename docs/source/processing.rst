@@ -59,7 +59,7 @@ and ``out_file`` in the example below) to appropriate columns in the dataset
 
     dataset.add_sink('freesurfer/recon-all', common.directory)
 
-    dataset.pipeline(
+    dataset.apply_pipeline(
         name='freesurfer,
         workflow=Freesurfer(
             param1=10.0,
@@ -83,7 +83,7 @@ and sinks in one step
 
     dataset = Dataset.load('file///data/openneuro/ds00014:test')
 
-    dataset.pipeline(
+    dataset.apply_pipeline(
         name='segmentation',
         workflow=FAST(
             method='a-method'),
@@ -102,7 +102,7 @@ To connect a workflow via the CLI
       medicalimaging:dicom --path '.*mprage.*'
     $ arcana column add-source 'myuni-xnat//myproject:training' T2w \
       medicalimaging:dicom --path '.*t2spc.*'
-    $ arcana pipeline 'myuni-xnat//myproject:training' freesurfer \
+    $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
       --input T1w in_file medicalimaging:nifti_gz \
       --input T2w peel medicalimaging:nifti_gz \
@@ -115,7 +115,7 @@ path and format alone looks like
 
 .. code-block:: console
 
-    $ arcana pipeline 'file///data/openneuro/ds00014:test' segmentation \
+    $ arcana apply pipeline 'file///data/openneuro/ds00014:test' segmentation \
       pydra.tasks.fsl.preprocess.fast:FAST \
       --source T1w in_file medicalimaging:nifti_gz \
       --sink fast/gm gm medicalimaging:nifti_gz \
@@ -154,7 +154,7 @@ back to the dataset.
 
     # Connect pipeline to a "dataset" row-frequency sink column. Needs to be
     # of `dataset` frequency itself or Arcana will raise an error
-    dataset.pipeline(
+    dataset.apply_pipeline(
         name='vbm_template',
         workflow=vbm_template(),
         inputs=[('in_file', 'T1w')],
@@ -236,85 +236,83 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 (*Line 26 & 54*). More details on the design of analysis classes see
 :ref:`design_analyses`.
 
-.. code-block:: python
-  :linenos:
+..  code-block:: python
+    :linenos:
 
-  from pydra.tasks.example import Preprocess, ExtractFromJson, MakeImage
-  from arcana.core.mark import analysis, pipeline, parameter
-  from arcana.data.spaces.example import ExampleDataSpace
-  from arcana.data.formats.common import ZippedDir, Directory, Json, Png, Gif
+    from pydra.tasks.example import Preprocess, ExtractFromJson, MakeImage
+    from arcana.core.mark import analysis, pipeline, parameter
+    from arcana.data.spaces.example import ExampleDataSpace
+    from arcana.data.formats.common import ZippedDir, Directory, Json, Png, Gif
 
+    @analysis(ExampleDataSpace)
+    class ExampleAnalysis():
 
-  @analysis(ExampleDataSpace)
-  class ExampleAnalysis():
+        # Define the columns for the dataset along with their formats.
+        # The `column` decorator can be used to specify additional options but
+        # is not required by default. The data formats specify the format
+        # that the column data will be stored in
+        recorded_datafile: ZippedDir  # Not derived by a pipeline, should be linked to existing dataset column
+        recorded_metadata: Json  # "     "     "     "
+        preprocessed: ZippedDir  # Derived by 'preprocess_pipeline' pipeline
+        derived_image: Png  # Derived by 'create_image_pipeline' pipeline
+        summary_metric: float  # Derived by 'create_image_pipeline' pipeline
 
-      # Define the columns for the dataset along with their formats.
-      # The `column` decorator can be used to specify additional options but
-      # is not required by default. The data formats specify the format
-      # that the column data will be stored in
-      recorded_datafile: ZippedDir  # Not derived by a pipeline, should be linked to existing dataset column
-      recorded_metadata: Json  # "     "     "     "
-      preprocessed: ZippedDir  # Derived by 'preprocess_pipeline' pipeline
-      derived_image: Png  # Derived by 'create_image_pipeline' pipeline
-      summary_metric: float  # Derived by 'create_image_pipeline' pipeline
+        # Define an analysis-wide parameters that can be used in multiple
+        # pipelines/tasks
+        contrast: float = parameter(default=0.5)
+        kernel_fwhms: list[float] = parameter(default=[0.5, 0.3, 0.1])
 
-      # Define an analysis-wide parameter that can be used in multiple
-      # pipelines/tasks
-      contrast: float = parameter(default=0.5)
+        # Define a "pipeline constructor method" to generate the 'preprocessed'
+        # derivative. Arcana automagically maps column names to arguments of the
+        # constructor methods.
+        @pipeline(preprocessed)
+        def preprocess_pipeline(
+                self,
+                pipeline,
+                recorded_datafile: Directory,  # Automatic conversion from stored Zip format before pipeline is run
+                recorded_metadata):  # Format/datatype is the same as class definition so can be omitted
 
-      # Define a "pipeline constructor method" to generate the 'preprocessed'
-      # derivative. Arcana automagically maps column names to arguments of the
-      # constructor methods.
-      @pipeline(preprocessed)
-      def preprocess_pipeline(
-              self,
-              pipeline,
-              recorded_datafile: Directory,  # Automatic conversion from stored Zip format before pipeline is run
-              recorded_metadata):  # Format/datatype is the same as class definition so can be omitted
+            # A simple task to extract the "temperature" field from a JSON
+            # metadata
+            pipeline.add(
+                ExtractFromJson(
+                    name='extract_metadata',
+                    in_file=recorded_metadata,
+                    field='temperature'))
 
-          # A simple task to extract the "temperature" field from a JSON
-          # metadata
-          pipeline.add(
-              name='extract_metadata',
-              ExtractFromJson(
-                  in_file=recorded_metadata,
-                  field='temperature'))
+            # Add tasks to the pipeline using Pydra workflow syntax
+            preprocess = pipeline.add(
+                Task1(
+                    name='preprocess',
+                    in_file=recorded_datafile,
+                    temperature=pipeline.extract_metadata.lzout.out_field))
 
-          # Add tasks to the pipeline using Pydra workflow syntax
-          pipeline.add(
-              name='preprocess',
-              task=Task1(
-                in_file=recorded_datafile,
-                temperature=pipeline.extract_metadata.lzout.out_field))
+            # Map the output of the pipeline to the "preprocessed" column specified
+            # in the @pipeline decorator
+            return preprocess.lzout.out_file
 
-          # Map the output of the pipeline to the "preprocessed" column.
-          pipeline.set_output(
-              ('preprocessed', pipeline.preprocess.lzout.out_file))
-      
-      # The 'create_image' pipeline derives two columns 'derived_image' and
-      # 'summary_metric'
-      @pipeline(derived_image,
-                summary_metric)
-      def create_image_pipeline(
-              self,
-              pipeline,
-              preprocessed: Directory,  # Automatic conversion from stored Zip format before pipeline is run
-              contrast: float):  # Parameters are also automagically mapped to method args
-        
-          # Add a task that creates an image from the preprocessed data, using
-          # the 'contrast' parameter
-          pipeline.add(
-              name="create_image",
-              task=MakeImage(
-                in_file=preprocessed,
-                contrast=contrast))
+        # The 'create_image' pipeline derives two columns 'derived_image' and
+        # 'summary_metric'
+        @pipeline(derived_image,
+                  summary_metric)
+        def create_image_pipeline(
+                self,
+                pipeline,
+                preprocessed: Directory,  # Automatic conversion from stored Zip format before pipeline is run
+                contrast: float):  # Parameters are also automagically mapped to method args
 
-          # Since the specified output format of derived image ('Gif') differs
-          # from that specified for the column ('Png'), an automatic conversion
-          # setp will be performed before it is stored.
-          pipeline.set_output(
-             ('derived_image', pipeline.create_image.lzout.out_file, Gif),
-             ('summary_metric', pipeline.create_image.lzout.summary))
+            # Add a task that creates an image from the preprocessed data, using
+            # the 'contrast' parameter
+            create_image = pipeline.add(
+                MakeImage(
+                    name="create_image",
+                    in_file=preprocessed,
+                    contrast=contrast))
+
+            # Since the output format of derived image created by the pipeline ('Gif')
+            # differs from that specified for the column ('Png'), an automatic conversion
+            # setp will be added by Arcana before the image is stored.
+            return (create_image.lzout.out_file, Gif), create_image.lzout.summary
 
 Analyses are applied to datasets using the :meth:`.Dataset.apply` method, which
 takes an :class:`.Analysis` object, instantiated with the names of columns in
@@ -352,11 +350,11 @@ To apply an analysis via the command-line
 
 .. code-block:: console
 
-  $ arcana apply 'file///data/a-dataset' example:ExampleAnalysis \
+  $ arcana apply analysis 'file///data/a-dataset' example:ExampleAnalysis \
     --link recorded_datafile datafile \ 
     --link recorded_metadata metadata \
     --parameter contrast 0.75
-  $ arcana derive 'file///data/a-dataset' summary_metric
+  $ arcana derive column 'file///data/a-dataset' summary_metric
 
 To list the derivatives that can be derived from a dataset once you have
 applied an analysis class you can use the ``menu`` command
@@ -375,8 +373,36 @@ applied an analysis class you can use the ``menu`` command
 
   Parameters
   ----------
-  contrast (float) - default: 0.5
+  contrast (float) default=0.5
+  kernel_fwhms (list[float]) default=[0.5, 0.3, 0.1]
 
+For large analysis classes with many column specs this list could become
+overwhelming, so when designing a class it is good practice to set the
+"salience" of columns (see :ref:`column_param_specs`) to a member of the
+:class:`.DataSalience` enum. The menu can then be filtered to show only the
+more salient columns (the default is to only show "supplementary" and above).
+Parameters can similarily be filtered by their salience (see :class:`.ParamSalience`),
+by default only showing parameters "check" and above.
+For example, the following menu call will show all columns and parameters with 
+salience >= 'qa' and 'recommended', respectively.
+
+.. code-block:: console
+
+  $ arcana menu 'file///data/another-dataset' --columns qa --parameters recommended
+
+The ``salience_threshold`` argument can also be used to control which derivatives
+are stored in the data store when applying an analysis to a dataset in order to
+avoid filling up (potentially expensive) storage. The following call will only
+attempt to store data columns with "qa" or greater salience in XNAT, keeping the
+remaining only in local cache.
+
+.. code-block:: console
+
+  $ arcana apply analysis 'my-unis-xnat//MYPROJECT:test' example:ExampleAnalysis \
+    --link recorded_datafile datafile \ 
+    --link recorded_metadata metadata \
+    --parameter contrast 0.75
+    --salience_threshold qa
 
 Provenance
 ----------

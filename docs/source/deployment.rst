@@ -40,14 +40,31 @@ Python module containing a Pydra task followed by a colon and the name of
 the task, e.g. ``pydra.tasks.fsl.preprocess.fast:Fast``. Note that Arcana
 will attempt to resolve the package that contains the Pydra task and install the
 same version (including local development versions) within the Anaconda_ environment
-in the image.
+in the image. ``inputs`` and ``parameters`` expose text boxes in the XNAT dialog when
+the pipelines are run. ``outputs`` determine where the outputs will
+be stored in the XNAT data tree.
 
-The ``inputs`` and ``parameters`` fields expose input text boxes to the user when
-the pipelines are run. Inputs prompt the user to enter selection criteria for
+Inputs prompt the user to enter selection criteria for
 input data and are used by the entrypoint of the Docker containers to add
-source columns to the dataset (see :ref:`data_columns`). Parameter inputs are
-passed directly through the pipeline add method (see :ref:`Pipelines`) that
-is run in the container.
+source columns to the dataset (see :ref:`data_columns`). They are specified by
+4-tuple consisting of
+
+* name of field in the pydra task input interface
+* format required by pydra task
+* description of input that will be exposed to the XNAT UI
+* the row frequency of the column (see :ref:`data_spaces` and :ref:`data_columns`)
+
+Parameters are passed directly through the pipeline add method (see :ref:`Pipelines`) that
+is run in the container, and consist of a 2-tuple with
+
+* name of field in the pydra task input interface
+* description of parameters that will be exposed to the XNAT UI
+
+Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
+
+* name of field in the pydra task output interface
+* format produced by pydra task
+* destination path (slashes are permitted interpreted as a relative path from the derivatives root)
 
 .. code-block:: python
 
