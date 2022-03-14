@@ -5,7 +5,7 @@ from arcana.data.stores.tests.fixtures import TEST_DATASET_BLUEPRINTS, make_data
 from arcana.data.stores.xnat.tests.fixtures import (
     make_mutable_dataset as make_xnat_dataset,
     TEST_DATASET_BLUEPRINTS as TEST_XNAT_DATASET_BLUEPRINTS)
-from arcana.cli.run import RunCmd
+from arcana.cli.derive import RunCmd
 from arcana.data.formats import text
 
 

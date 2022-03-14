@@ -265,9 +265,9 @@ def remove_column(name):
 
 
 @dataset.command(
-    name="missing-source",
-    help="""Finds the IDs of nodes that are missing a valid entry for the
-column.
+    name="missing-items",
+    help="""Finds the IDs of nodes that are missing a valid entry for an item in
+the column.
 
 Arguments
 ---------
@@ -279,7 +279,7 @@ name
 """)
 @click.argument('dataset_path')
 @click.argument('name')
-def missing_source(name):
+def missing_items(name):
     raise NotImplementedError
 
     
