@@ -1,5 +1,5 @@
-Command-line interface (CLI)
-============================
+Command-line interface
+======================
 
 Arcana's command line interface is grouped into five categories, `store`,
 `dataset`, `apply`, `derive`, and `deploy`. Below these categories are the
