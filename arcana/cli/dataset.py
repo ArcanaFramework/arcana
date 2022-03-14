@@ -2,6 +2,7 @@
 import os
 from importlib import import_module
 import click
+from arcana.core.cli import cli
 from arcana.data.spaces.medicalimaging import Clinical
 from arcana.exceptions import ArcanaUsageError
 from arcana.data.stores.file_system import FileSystem
@@ -12,7 +13,7 @@ from arcana.data.stores.xnat.cs import XnatViaCS
 
 XNAT_CACHE_DIR = 'xnat-cache'
 
-@click.group()
+@cli.group()
 def dataset():
     pass
 

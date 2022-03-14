@@ -24,7 +24,7 @@ type
 location
     The location of the store, e.g. server address
 *varargs
-    Sub-class specific parameters
+    Parameters that are specific to the 'type' of storage class to be added
 """)
 @click.argument('nickname')
 @click.argument('type')
