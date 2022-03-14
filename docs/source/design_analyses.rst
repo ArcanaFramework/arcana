@@ -9,17 +9,17 @@ classes are designed to be able generic enough to be used widely, but able to
 be tailored to meet specific requirements of particular use cases/research studies
 via class inheritance where required (see :ref:`inheritance`).
 
-This page builds upon the description of analysis-class design
-introduced in :ref:`analysis_classes`. The basic building blocks of the design
-are described in detail in the :ref:`Basics` section, while more advanced
-concepts involved in extending existing classes and merging multiple classes
-into large analsyes are covered in the :ref:`Advanced` section.
-Finally, examples showing all features in action are given in
-:ref:`analysis_examples`.
+.. This page builds upon the description of analysis-class design
+.. introduced in :ref:`analysis_classes`. The basic building blocks of the design
+.. are described in detail in the :ref:`Basics` section, while more advanced
+.. concepts involved in extending existing classes and merging multiple classes
+.. into large analsyes are covered in the :ref:`Advanced` section.
+.. Finally, examples showing all features in action are given in
+.. :ref:`analysis_examples`.
 
 
-Basics
-------
+.. Basics
+.. ------
 
 There are two main components of analysis classes, column specifications
 (:ref:`column_param_specs`), which define the data to be provided to and
@@ -287,91 +287,88 @@ isn't provided.
                 plt.show()
 
 
-Advanced
---------
+.. Advanced
+.. --------
 
-.. warning::
-    Under construction
+.. .. warning::
+..     Under construction
 
-In every software framework, there are always corner cases that are
-more complicated than the basic logic can handle. In designing
-informatics frameworks, these challenges often arise when attempting to write
-portable workflows, due to slight differences in the data and and end goals of
-the application. This is particularly true in academia, where novelty is a key
-criteria. To address these requirements, this section introduces some more
-complex concepts, which can be used to customise and combine analysis methods
-into powerful new classes: conditional pipelines (:ref:`conditional_pipelines`),
-class inheritance (:ref:`inheritance`) and sub-analyses (:ref:`subanalyses`).
-
-
-.. _conditional_pipelines:
-
-Conditionals
-~~~~~~~~~~~~
+.. In every software framework, there are always corner cases that are
+.. more complicated than the basic logic can handle. In designing
+.. informatics frameworks, these challenges often arise when attempting to write
+.. portable workflows, due to slight differences in the data and and end goals of
+.. the application. This is particularly true in academia, where novelty is a key
+.. criteria. To address these requirements, this section introduces some more
+.. complex concepts, which can be used to customise and combine analysis methods
+.. into powerful new classes: conditional pipelines (:ref:`conditional_pipelines`),
+.. class inheritance (:ref:`inheritance`) and sub-analyses (:ref:`subanalyses`).
 
 
-* conditions + symbolic logic
-* resolution order
+.. .. _conditional_pipelines:
 
-.. _inheritance:
-
-Inheritance
-~~~~~~~~~~~
+.. Conditionals
+.. ~~~~~~~~~~~~
 
 
-* overriding methods
-* accessing columns from base classes
-* mixins
+.. * conditions + symbolic logic
+.. * resolution order
 
-.. _subanalyses:
+.. .. _inheritance:
 
-Sub-analyses
-~~~~~~~~~~~~
+.. Inheritance
+.. ~~~~~~~~~~~
 
 
-* How to define sub-analyses
-* sub-analysis arrays (e.g. for fMRI tasks)
+.. * overriding methods
+.. * accessing columns from base classes
+.. * mixins
+
+.. .. _subanalyses:
+
+.. Sub-analyses
+.. ~~~~~~~~~~~~
+
+
+.. * How to define sub-analyses
+.. * sub-analysis arrays (e.g. for fMRI tasks)
 
 
 .. _analysis_examples:
 
-Examples
---------
-
-.. warning::
-    Under construction
+.. Examples
+.. --------
 
 
-.. code-block:: python
-    :linenos:
+.. .. code-block:: python
+..     :linenos:
 
-    @analysis(ExampleDataSpace)
-    class ExampleAnalysis():
+..     @analysis(ExampleDataSpace)
+..     class ExampleAnalysis():
 
-        recorded_datafile: ZippedDir  = column(
-            desc=("Datafile acquired from an example scanner. Contains key "
-                  "data to analyse"),
-            salience='primary')
-        recorded_metadata: Json = column(
-            desc="Metadata accompanying the recorded data",
-            salience='primary')
-        preprocessed: ZippedDir = column(
-            desc="Preprocessed data file, corrected for distortions",
-            salience='qa')
-        derived_image: Png = column(
-            desc="Map of the processed data",
-            salience='supplementary')
-        summary_metric: float = column(
-            desc="A summary metric extracted from the derived image",
-            salience='output')
-        contrast: float = parameter(
-            default=0.5,
-            desc="Contrast of derived image",
-            salience='arbitrary')
-        kernel_fwhms: list[float] = parameter(
-            default=[0.5, 0.3, 0.1],
-            desc=("Kernel full-width-at-half-maxium values for iterative "
-                  "smoothing in preprocessing"),
-            salience='dependent')    
+..         recorded_datafile: ZippedDir  = column(
+..             desc=("Datafile acquired from an example scanner. Contains key "
+..                   "data to analyse"),
+..             salience='primary')
+..         recorded_metadata: Json = column(
+..             desc="Metadata accompanying the recorded data",
+..             salience='primary')
+..         preprocessed: ZippedDir = column(
+..             desc="Preprocessed data file, corrected for distortions",
+..             salience='qa')
+..         derived_image: Png = column(
+..             desc="Map of the processed data",
+..             salience='supplementary')
+..         summary_metric: float = column(
+..             desc="A summary metric extracted from the derived image",
+..             salience='output')
+..         contrast: float = parameter(
+..             default=0.5,
+..             desc="Contrast of derived image",
+..             salience='arbitrary')
+..         kernel_fwhms: list[float] = parameter(
+..             default=[0.5, 0.3, 0.1],
+..             desc=("Kernel full-width-at-half-maxium values for iterative "
+..                   "smoothing in preprocessing"),
+..             salience='dependent')    
 
         
