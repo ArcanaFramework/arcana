@@ -19,10 +19,10 @@ method is used to generate the JSON metadata to be saved in this field.
 There are four key fields that will determine the functionality of the command
 (the rest are metadata fields that are exposed to the XNAT UI):
 
-* pydra_task
-* inputs
-* outputs
-* parameters 
+* ``pydra_task``
+* ``inputs``
+* ``outputs``
+* ``parameters``
 
 The ``pydra_task`` keyword argument should be the path to an installed
 Python module containing a Pydra task followed by a colon and the name of
@@ -166,10 +166,10 @@ the full configuration required to build an XNAT docker image looks like
     commands:
         pipeline_name: fast
         pydra_task: pydra.tasks.fsl.preprocess.fast:FAST
-        description: -
-            FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of 
-            the brain into different tissue types (Grey Matter, White Matter, 
-            CSF, etc.), whilst also correcting for spatial intensity variations 
+        description:
+            FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of
+            the brain into different tissue types (Grey Matter, White Matter,
+            CSF, etc.), whilst also correcting for spatial intensity variations
             (also known as bias field or RF inhomogeneities).
         version: 1
         info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
