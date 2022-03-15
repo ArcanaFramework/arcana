@@ -252,19 +252,6 @@ def add_sink(dataset_path, name, datatype, frequency, path):
     raise NotImplementedError
 
 
-@dataset.command(name='remove-column',
-                 help="""Removes an existing source column from a dataset
-
-Arguments
----------
-name
-    The name of the source column
-""")
-def remove_column(name):
-    # TODO: Should check to see if column has been used in workflows
-    raise NotImplementedError
-
-
 @dataset.command(
     name="missing-items",
     help="""Finds the IDs of nodes that are missing a valid entry for an item in

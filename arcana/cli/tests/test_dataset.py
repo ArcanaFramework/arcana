@@ -1,7 +1,7 @@
 import pytest
 from click.testing import CliRunner
 from arcana.core.data.set import Dataset
-from ..dataset import define
+from arcana.cli.dataset import define, add_source, add_sink, missing_items
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
 ARBITRARY_INTS_B = [353726, 29202, 32867, 129872, 12281, 776524, 908763]
@@ -14,7 +14,14 @@ def get_arbitrary_slice(i, dim_length):
     return lower, upper
 
 
-@pytest.skip('Not implemented yet')
+@pytest.mark.skip("Not implemented")
+def test_add_source_cli(dataset):
+  runner = CliRunner()
+  result = runner.invoke(add_source, [])
+  assert result.exit_code == 0
+
+
+@pytest.mark.skip('Not implemented')
 def test_dataset_define_cli(dataset):
     runner = CliRunner()
     # Get CLI name for dataset (i.e. file system path prepended by 'file/')
@@ -47,3 +54,4 @@ def test_dataset_define_cli(dataset):
     assert loaded_dataset.hierarchy == dataset.blueprint.hierarchy
     assert loaded_dataset.included == included
     assert loaded_dataset.excluded == excluded
+
