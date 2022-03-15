@@ -1,4 +1,5 @@
 
+import pytest
 import zipfile
 import tempfile
 from pathlib import Path
@@ -6,6 +7,10 @@ from arcana.data.stores.tests.fixtures import (
     make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
 from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.formats.common import text, zip
+# # Import arcana module
+# from pydra.tasks.fsl.preprocess.bet import BET
+from arcana.core.data.set import Dataset
+# from arcana.data.formats.medicalimaging import Dicom, NiftiGz
 
 
 def test_pipeline(work_dir):
@@ -74,12 +79,8 @@ def test_pipeline_with_implicit_conversion(work_dir):
         assert contents == '\n'.join(['file1.zip', 'file2.zip'] * 2)
 
 
+@pytest.mark.skip("Not implemented yet")
 def test_apply_workflow(work_dir):
-
-    # Import arcana module
-    from pydra.tasks.fsl.preprocess.bet import BET
-    from arcana.core.data import Dataset
-    from arcana.data.formats.medicalimaging import Dicom, NiftiGz
 
     # Load dataset
     my_dataset = Dataset('file///data/my-dataset', ['subject', 'session'])

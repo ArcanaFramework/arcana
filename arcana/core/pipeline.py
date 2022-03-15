@@ -103,7 +103,7 @@ class Pipeline():
         self.wf.per_node.add(task)
         # Favour setting a proper attribute instead of using __getattr__ to
         # redirect to name2obj
-        node = getattr(self.wf, task.name)
+        node = getattr(self.wf.per_node, task.name)
         setattr(self, task.name, node)
         # Note that this is a qualitatively different return value to Workflow.add, which
         return node
