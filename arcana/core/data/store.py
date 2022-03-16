@@ -1,6 +1,7 @@
 import logging
 from abc import abstractmethod, ABCMeta
 import inspect
+from pathlib import Path
 import attr
 import typing as ty
 import yaml
@@ -203,8 +204,7 @@ class DataStore(metaclass=ABCMeta):
         If a connection session is required to the store manage it here
         """
 
-    @classmethod
-    def save(cls, name: str, store):
+    def save(self, name: str):
         """Saves the configuration of a DataStore in 'stores.yml' 
 
         Parameters
@@ -214,13 +214,17 @@ class DataStore(metaclass=ABCMeta):
         store : DataStore
             The DataStore to save
         """
-        if name in cls.singletons():
+        if name in self.singletons():
             raise ArcanaNameError(
                 name, f"Name '{name}' clashes with built-in type of store")
-        entries = cls.load_saved_entries()
-        entries[name] = attr.asdict(store)
-        entries[name] = class_location(store)
-        cls.save_entries(entries)
+        entries = self.load_saved_entries()
+        entries[name] = attr.asdict(
+            self,
+            filter=lambda a, v: a.init,
+            value_serializer=lambda _, __, v: (
+                str(v) if isinstance(v, Path) else v))
+        entries[name]['type'] = class_location(self)
+        self.save_entries(entries)
 
     @classmethod
     def remove(cls, name: str):
@@ -294,7 +298,7 @@ class DataStore(metaclass=ABCMeta):
         fpath = get_config_file_path(cls.CONFIG_NAME)
         if fpath.exists():
             with open(fpath) as f:
-                entries = yaml.load(f)
+                entries = yaml.load(f, Loader=yaml.Loader)
         else:
             entries = {}
         return entries

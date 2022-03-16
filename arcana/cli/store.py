@@ -44,7 +44,7 @@ def add(nickname, type, location, varargs, cache, user, password):
     store_cls = resolve_class(type, ['arcana.data.stores'])
     store = store_cls(location, *varargs, cache_dir=cache,
                       user=user, password=password)
-    DataStore.save(nickname, store)
+    store.save(nickname)
 
 
 @store.command(help="""
@@ -60,7 +60,7 @@ new_nickname
 @click.argument('old_nickname')
 @click.argument('new_nickname')
 def rename(old_nickname, new_nickname):
-    DataStore.save(new_nickname,  DataStore.load(old_nickname))
+    DataStore.load(old_nickname).save(new_nickname)
     DataStore.remove(old_nickname)
 
 
@@ -89,7 +89,7 @@ def refresh(nickname, user, password):
     store.password = password
     store.save()
     DataStore.remove(nickname)
-    DataStore.save(nickname, store)
+    store.save(nickname)
 
 
 @store.command(name='list', help="""List available stores that have been saved""")
@@ -98,8 +98,7 @@ def list_cli():
     for name, store in sorted(DataStore.singletons().items(), key=itemgetter(0)):
         click.echo(f'{name} - {class_location(store)}')
     click.echo("\nSaved stores\n-------------")
-    for entry in DataStore.load_saved_entries():
-        name = entry.pop('name')
+    for name, entry in DataStore.load_saved_entries().items():
         store_type = entry.pop('type')
         click.echo(f"{name} - {store_type}")
         for key, val in sorted(entry.items(), key=itemgetter(0)):

@@ -63,7 +63,7 @@ To configure access to a store via the CLI use the ``arcana store add`` sub-comm
     Password:
 
 
-See also ``arcana store rename`` and ``arcana store remove``.
+See also ``arcana store rename``, ``arcana store remove`` and ``arcana store list``.
 
 .. note::
 
