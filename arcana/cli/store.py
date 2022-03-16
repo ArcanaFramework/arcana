@@ -92,8 +92,8 @@ def refresh(nickname, user, password):
     store.save(nickname)
 
 
-@store.command(name='list', help="""List available stores that have been saved""")
-def list_cli():
+@store.command(help="""List available stores that have been saved""")
+def ls():
     click.echo("Built-in stores\n---------------")
     for name, store in sorted(DataStore.singletons().items(), key=itemgetter(0)):
         click.echo(f'{name} - {class_location(store)}')

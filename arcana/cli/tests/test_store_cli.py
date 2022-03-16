@@ -1,6 +1,6 @@
 import os
 from unittest.mock import patch
-from arcana.cli.store import add, list_cli
+from arcana.cli.store import add, ls
 
 
 def test_store_cli(xnat_repository, cli_runner, work_dir):
@@ -15,7 +15,7 @@ def test_store_cli(xnat_repository, cli_runner, work_dir):
              '--password', xnat_repository.password])
         assert result.exit_code == 0
         # List all saved and built-in stores
-        result = cli_runner(list_cli, [])
+        result = cli_runner(ls, [])
         assert result.exit_code == 0
         assert 'bids - arcana.data.stores.bids:BidsFormat' in result.output
         assert 'file - arcana.data.stores.file_system:FileSystem' in result.output
