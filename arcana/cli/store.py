@@ -1,9 +1,10 @@
 from inspect import Arguments
+from operator import itemgetter
 import click
 from arcana.core.utils import resolve_class
 from arcana.core.data.store import DataStore
 from arcana.core.cli import cli
-from arcana.core.utils import get_home_dir
+from arcana.core.utils import get_home_dir, class_location
 
 
 @cli.group()
@@ -40,7 +41,7 @@ location
 def add(nickname, type, location, varargs, cache, user, password):
     if cache is None:
         cache = get_home_dir() / 'cache' / nickname
-    store_cls = resolve_class(type)
+    store_cls = resolve_class(type, ['arcana.data.stores'])
     store = store_cls(location, *varargs, cache_dir=cache,
                       user=user, password=password)
     DataStore.save(nickname, store)
@@ -65,8 +66,6 @@ def rename(old_nickname, new_nickname):
 
 @store.command(help="""Remove a saved data store from the config file
 
-Arguments
----------
 nickname
     The nickname the store was given when its details were saved""")
 def remove(nickname):
@@ -76,8 +75,6 @@ def remove(nickname):
 @store.command(help="""Refreshes credentials saved for the given store
 (typically a token that expires)
 
-Arguments
----------
 nickname
     Nickname given to the store to refresh the credentials of""")
 @click.argument('nickanme')
@@ -92,4 +89,18 @@ def refresh(nickname, user, password):
     store.password = password
     store.save()
     DataStore.remove(nickname)
-    DataStore.save(nickname,  store)
+    DataStore.save(nickname, store)
+
+
+@store.command(name='list', help="""List available stores that have been saved""")
+def list_cli():
+    click.echo("Built-in stores\n---------------")
+    for name, store in sorted(DataStore.singletons().items(), key=itemgetter(0)):
+        click.echo(f'{name} - {class_location(store)}')
+    click.echo("\nSaved stores\n-------------")
+    for entry in DataStore.load_saved_entries():
+        name = entry.pop('name')
+        store_type = entry.pop('type')
+        click.echo(f"{name} - {store_type}")
+        for key, val in sorted(entry.items(), key=itemgetter(0)):
+            click.echo(f"    {key}: {val}")

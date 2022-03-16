@@ -21,8 +21,22 @@ def test_add_source_cli(dataset):
   assert result.exit_code == 0
 
 
+@pytest.mark.skip("Not implemented")
+def test_add_sink_cli(dataset):
+  runner = CliRunner()
+  result = runner.invoke(add_sink, [])
+  assert result.exit_code == 0
+
+
+@pytest.mark.skip("Not implemented")
+def test_add_missing_items_cli(dataset):
+  runner = CliRunner()
+  result = runner.invoke(missing_items, [])
+  assert result.exit_code == 0
+
+
 @pytest.mark.skip('Not implemented')
-def test_dataset_define_cli(dataset):
+def test_define_cli(dataset):
     runner = CliRunner()
     # Get CLI name for dataset (i.e. file system path prepended by 'file/')
     path = 'file/' + dataset.id
@@ -33,7 +47,7 @@ def test_dataset_define_cli(dataset):
     included = {}
     excluded = {}
     for i, (dim_length, axis) in enumerate(zip(dataset.blueprint.dim_lengths,
-                                            dataset.space.axes)):
+                                               dataset.space.axes)):
         slce = get_arbitrary_slice(i, dim_length)
         if i % 2:
             included[axis] = slce

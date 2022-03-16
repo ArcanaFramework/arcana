@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 from tempfile import mkdtemp
 import pytest
+from click.testing import CliRunner
 
 
 # Set DEBUG logging for unittests
@@ -57,3 +58,16 @@ if os.getenv('_PYTEST_RAISE', "0") != "0":
     @pytest.hookimpl(tryfirst=True)
     def pytest_internalerror(excinfo):
         raise excinfo.value
+
+    catch_cli_exceptions = False
+else:
+    catch_cli_exceptions = True
+
+@pytest.fixture
+def cli_runner():
+    def invoke(*args, **kwargs):
+        runner = CliRunner()
+        result = runner.invoke(*args, catch_exceptions=catch_cli_exceptions,
+                               **kwargs)
+        return result
+    return invoke

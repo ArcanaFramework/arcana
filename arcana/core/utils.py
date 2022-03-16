@@ -29,9 +29,13 @@ ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
 
 
 def get_home_dir():
-    if not ARCANA_HOME_DIR.exists():
-        ARCANA_HOME_DIR.mkdir()
-    return ARCANA_HOME_DIR
+    try:
+        home_dir = Path(os.environ['ARCANA_HOME'])
+    except KeyError:
+        home_dir = ARCANA_HOME_DIR
+    if not home_dir.exists():
+        home_dir.mkdir()
+    return home_dir
 
 
 def get_config_file_path(name: str):
@@ -47,7 +51,7 @@ def get_config_file_path(name: str):
     Path
         Path to configuration file
     """
-    return get_home_dir() / name + '.yml'
+    return get_home_dir() / (name + '.yml')
 
 
 def path2name(path):
@@ -165,10 +169,12 @@ def to_dict(arg):
 
 
 
-def class_location(obj):
+def class_location(cls):
     """Records the location of a class so it can be loaded later using 
     `resolve_class`, in the format <module-name>:<class-name>"""
-    return obj.__module__ + ':' + obj.__name__
+    if not isinstance(cls, type):
+        cls = type(cls)  # Get the class rather than the object
+    return cls.__module__ + ':' + cls.__name__
 
 
 def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:

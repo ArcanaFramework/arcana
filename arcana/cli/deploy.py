@@ -19,8 +19,7 @@ def deploy():
 
 @deploy.command(help="""Build a wrapper image specified in a module
 
-module_path
-    The file system path to the module to build""")
+module_path - the file system path to the module to build""")
 @click.argument('module_path')
 def build(module_path):
     raise NotImplementedError
@@ -129,8 +128,7 @@ def test(module_path):
     raise NotImplementedError
 
 
-@deploy.command(name='test-all', help="""Test all wrapper pipelines
-in a package.
+@deploy.command(name='test-all', help="""Test all wrapper pipelines in a package.
 
 Arguments
 ---------
@@ -147,17 +145,17 @@ def test_all(package_path):
 @click.argument('image_tag')
 def inspect_docker(image_tag):
     """Pulls a given Docker image tag and inspects the image to get its
-    entrypoint/cmd
+entrypoint/cmd
 
-    Parameters
-    ----------
-    image_tag : str
-        Docker image tag
+Parameters
+----------
+image_tag : str
+    Docker image tag
 
-    Returns
-    -------
-    str
-        The entrypoint or default command of the Docker image
+Returns
+-------
+str
+    The entrypoint or default command of the Docker image
     """
     dc = docker.from_env()
 
