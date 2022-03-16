@@ -218,13 +218,17 @@ class DataStore(metaclass=ABCMeta):
             raise ArcanaNameError(
                 name, f"Name '{name}' clashes with built-in type of store")
         entries = self.load_saved_entries()
-        entries[name] = attr.asdict(
+        entries[name] = self.asdict()
+        self.save_entries(entries)
+
+    def asdict(self):
+        dct = attr.asdict(
             self,
             filter=lambda a, v: a.init,
             value_serializer=lambda _, __, v: (
                 str(v) if isinstance(v, Path) else v))
-        entries[name]['type'] = class_location(self)
-        self.save_entries(entries)
+        dct['type'] = class_location(self)
+        return dct
 
     @classmethod
     def remove(cls, name: str):
