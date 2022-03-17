@@ -51,20 +51,20 @@ class FileSystem(DataStore):
                 f"Path to dataset root '{str(path)}'' does not exist")
         return super().dataset(path, *args, **kwargs)
 
-    def save_dataset_metadata(self, dataset_id, metadata, name):
-        with open(self._metadata_fpath(dataset_id, name), 'w') as f:
-            json.dump(metadata, f)
+    def save_dataset_definition(self, dataset_id, definition, name):
+        with open(self.definition_save_path(dataset_id, name), 'w') as f:
+            json.dump(definition, f)
 
-    def load_dataset_metadata(self, dataset_id, name):
-        fpath = self._metadata_fpath(dataset_id, name)
+    def load_dataset_definition(self, dataset_id, name):
+        fpath = self.definition_save_path(dataset_id, name)
         if fpath.exists():
             with open(fpath) as f:
-                metadata = json.load(f)
+                definition = json.load(f)
         else:
-            metadata = None
-        return metadata
+            definition = None
+        return definition
 
-    def _metadata_fpath(self, dataset_id, name):
+    def definition_save_path(self, dataset_id, name):
         return Path(dataset_id) / self.METADATA_DIR / name + '.json'
 
     @property

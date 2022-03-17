@@ -185,7 +185,7 @@ layers of the directory tree in descending order.
 
 .. code-block:: python
 
-    from arcana.data.stores.file_system import FileSystem
+    from arcana.data.stores.common import FileSystem
     from arcana.data.spaces.medicalimaging import Clinical
 
     fs_dataset = FileSystem().dataset(
@@ -418,7 +418,7 @@ initialised.
 .. code-block:: python
 
     from arcana.data.stores.bids import BidsFormat
-    from arcana.data.stores.file_system import FileSystem
+    from arcana.data.stores.common import FileSystem
     from arcana.data.spaces.medicalimaging import Clinical
 
     bids_dataset = BidsFormat().dataset(

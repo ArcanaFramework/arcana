@@ -99,7 +99,7 @@ def xnat_dataset(xnat_repository, xnat_archive_dir, request):
     with xnat4tests.connect() as login:
         if project_name(dataset_name,
                         xnat_repository.run_prefix) not in login.projects:
-            create_dataset_in_repo(dataset_name, xnat_repository.run_prefix)    
+            create_dataset_data_in_repo(dataset_name, xnat_repository.run_prefix)    
     return access_dataset(xnat_repository, dataset_name, access_method,
                           xnat_archive_dir)    
 
@@ -180,7 +180,7 @@ def make_mutable_dataset(xnat_repository, xnat_archive_dir, test_name):
     test_suffix = 'mutable' + access_method + str(hex(random.getrandbits(16)))[2:]
     # Need to create a new dataset per function so it can be safely modified
     # by the test without messing up other tests.
-    create_dataset_in_repo(dataset_name, xnat_repository.run_prefix,
+    create_dataset_data_in_repo(dataset_name, xnat_repository.run_prefix,
                            test_suffix=test_suffix)
     return access_dataset(xnat_repository, dataset_name, access_method,
                           xnat_archive_dir, test_suffix)
@@ -218,7 +218,7 @@ def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
     return dataset
 
 
-def create_dataset_in_repo(dataset_name, run_prefix='', test_suffix=''):
+def create_dataset_data_in_repo(dataset_name, run_prefix='', test_suffix=''):
     """
     Creates dataset for each entry in dataset_structures
     """

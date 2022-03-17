@@ -5,7 +5,7 @@ import click
 from arcana.core.cli import cli
 from arcana.data.spaces.medicalimaging import Clinical
 from arcana.exceptions import ArcanaUsageError
-from arcana.data.stores.file_system import FileSystem
+from arcana.data.stores.common import FileSystem
 from arcana.data.stores.xnat import Xnat
 from arcana.data.stores.xnat.cs import XnatViaCS
 

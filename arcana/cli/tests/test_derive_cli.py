@@ -19,7 +19,7 @@ def test_run_app(work_dir, test_dataspace_location):
     args = parser.parse_args([
         'arcana.tasks.tests.fixtures:concatenate',
         str(dataset.id),
-        '--store', 'file_system',
+        '--store', 'common',
         '--input', 'in_file1', 'text', 'file1', 
         '--input', 'in_file2', 'text','file2',
         '--output', 'out_file', 'text', 'deriv',

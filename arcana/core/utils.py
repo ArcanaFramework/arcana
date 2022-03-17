@@ -4,6 +4,7 @@ import importlib_metadata
 import pkgutil
 import re
 from pathlib import Path
+import packaging
 from importlib import import_module
 from inspect import isclass
 from itertools import zip_longest
@@ -13,9 +14,11 @@ import os.path
 from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
+import attr
+from arcana._version import __version__
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
-from arcana.exceptions import ArcanaUsageError, ArcanaNameError
+from arcana.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaVersionError
 
 
 PATH_SUFFIX = '_path'
@@ -628,3 +631,68 @@ def parse_dimensions(dimensions_str):
     except ImportError:
         module = import_module(module_path)
     return getattr(module, cls_name)
+
+
+def serialise(obj, skip=()):
+    """Serialises an object of a class defined with attrs to a dictionary
+
+    Parameters
+    ----------
+    obj
+        The Arcana object to serialised. Must be defined using the attrs
+        decorator
+    skip: Sequence[str]
+        The names of attributes to skip"""
+
+    if hasattr(obj, 'serialise'):
+        serialised = obj.serialise()
+    elif hasattr(obj, '__attrs_attrs__'):
+        serialised = attr.asdict(
+            obj,
+            recurse=False,
+            filter=lambda a, v: a.init and a.name not in skip,
+            value_serializer=lambda _, __, v: serialise(v))
+        serialised['type'] = class_location(obj)
+        serialised['arcana_version'] = __version__
+    elif isinstance(obj, Path):
+        serialised = str(obj)
+    elif not isinstance(obj, str) and isinstance(obj, Sequence):
+        serialised = [serialise(x) for x in obj]
+    else:
+        serialised = obj
+
+    return serialised
+
+
+def unserialise(serialised: dict, **kwargs):
+    """Unserialises an object serialised by the `serialise` method from a
+    dictionary
+
+    Parameters
+    ----------
+    serialised : dict
+        A dictionary containing a serialsed Arcana object such as a data store
+        or dataset definition
+    **kwargs : dict[str, Any]
+        Additional initialisation arguments for the object when it is reinitialised.
+        Overrides those stored"""
+    if isinstance(serialised, dict) and 'type' in serialised:
+        serialised_cls = resolve_class(serialised.pop('type'))
+        serialised_version = serialised.pop('arcana_version')
+        if packaging.version.parse(serialised_version) < packaging.version.parse(MIN_SERIAL_VERSION):
+            raise ArcanaVersionError(
+                f"Serialised version ('{serialised_version}' is too old to be "
+                f"read by this version of arcana ('{__version__}'), the minimum "
+                f"version is {MIN_SERIAL_VERSION}")
+        init_args = {k: unserialise(v) for k, v in serialised.items()}
+        init_args.update(kwargs)
+        unserialised = serialised_cls(**init_args)
+    elif isinstance(serialised, list):
+        unserialised = [unserialise(x) for x in serialised]
+    else:
+        unserialised = serialised
+
+    return unserialised
+
+# Minimum version of Arcana that this 
+MIN_SERIAL_VERSION = '0.0.0'

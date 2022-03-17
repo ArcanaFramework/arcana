@@ -81,10 +81,12 @@ over all sessions with the API
     # Import arcana module
     from pydra.tasks.fsl.preprocess.bet import BET
     from arcana.core.data import Dataset
+    from arcana.data.spaces.medicalimaging import Clinical
     from arcana.data.formats.medicalimaging import Dicom, NiftiGz
 
     # Load dataset
-    my_dataset = Dataset('file///data/my-dataset', ['subject', 'session'])
+    my_dataset = Dataset.load('file///data/my-dataset', space=Clinical,
+                              hierarchy=['subject', 'session'])
 
     # Add source column to select a single T1-weighted image in each session subdirectory
     my_dataset.add_source('T1w', '.*mprage.*', format=Dicom, is_regex=True)

@@ -10,7 +10,8 @@ from attr.converters import default_if_none
 from pydra import Workflow
 from arcana.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
-    ArcanaBadlyFormattedIDError, ArcanaWrongDataSpacesError)
+    ArcanaBadlyFormattedIDError, ArcanaWrongDataSpaceError)
+from arcana.core.utils import serialise
 from .space import DataSpace
 from .spec import DataSink, DataSource
 from . import store
@@ -99,9 +100,10 @@ class Dataset():
         Repository specific args used to control the way the dataset is accessed
     """
 
-    id: str = attr.ib()
+    id: str = attr.ib(converter=str)
     store: store.DataStore = attr.ib()
-    hierarchy: ty.List[DataSpace] = attr.ib()
+    space: DataSpace = attr.ib()
+    hierarchy: ty.List[str] = attr.ib(converter=lambda lst: [str(l) for l in lst])
     id_inference: ty.Dict[DataSpace, str] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
     included: ty.Dict[DataSpace, ty.List[str]] = attr.ib(
@@ -124,14 +126,10 @@ class Dataset():
     def save(self, name=None):
         """Save metadata in project definition file for future reference"""
         # TODO: column_specs and workflows should be included ideally
-        metadata = {
-            'hierarchy': [h.tostr() for h in self.hierarchy],
-            'id_inference': {k.tostr(): v for k, v in self.id_inference.items()},
-            'included': {k.tostr(): v for k, v in self.included.items()},
-            'excluded': {k.tostr(): v for k, v in self.excluded.items()}}
+        definition = serialise(self, skip=['store'])
         if name is None:
             name = self.DEFAULT_NAME
-        self.store.save_dataset_metadata(self, metadata, name=name)
+        self.store.save_dataset_definition(self, definition, name=name)
 
     @classmethod
     def load_from_metadata(cls, id, store, metadata):
@@ -148,7 +146,10 @@ class Dataset():
 
     @classmethod
     def load(cls, id, store=None, name=None):
-        raise NotImplementedError
+        if store is None:
+            parts = id.split('//')
+            if len(parts) == 1:
+                from data.stores.common import FileSystem
 
     @column_specs.validator
     def column_specs_validator(self, _, column_specs):
@@ -177,15 +178,16 @@ class Dataset():
                 f"hierarchy provided to {self} cannot be empty")
 
         not_valid = [f for f in hierarchy
-                     if not isinstance(f, self.space)]
+                     if f not in self.space.__members__]
         if not_valid:
-            raise ArcanaWrongDataSpacesError(
-                "{} are not part of the {} data dimensions"
+            raise ArcanaWrongDataSpaceError(
+                "{} are not part of the {} data space"
                 .format(', '.join(not_valid), self.space))
         # Check that all data frequencies are "covered" by the hierarchy and
         # each subsequent
         covered = self.space(0)
-        for i, layer in enumerate(hierarchy):
+        for i, layer_name in enumerate(hierarchy):
+            layer = self.space[layer_name]
             diff = layer - covered
             if not diff:
                 raise ArcanaUsageError(
@@ -198,10 +200,6 @@ class Dataset():
                 f"basis frequencies "
                 + ', '.join(str(m) for m in (~covered).nonzero_basis()) +
                 f"f the {self.space} data dimensions")
-
-    @property
-    def space(self):
-        return type(self.hierarchy[0])
 
     @property
     def root_freq(self):
@@ -476,7 +474,8 @@ class Dataset():
         ids = {f: None for f in self.space}
         # Calculate the combined freqs after each layer is added
         frequency = self.space(0)
-        for layer, label in zip(self.hierarchy, tree_path):
+        for layer_name, label in zip(self.hierarchy, tree_path):
+            layer = self.space[layer_name]
             ids[layer] = label
             try:
                 regex = self.id_inference[layer]
@@ -657,7 +656,7 @@ class Dataset():
             elif not isinstance(freq, self.space):
                 raise KeyError
         except KeyError as e:
-            raise ArcanaWrongDataSpacesError(
+            raise ArcanaWrongDataSpaceError(
                 f"{freq} is not a valid dimension for {self} "
                 f"({self.space})") from e
         return freq

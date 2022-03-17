@@ -6,7 +6,8 @@ import attr
 import typing as ty
 import yaml
 from arcana.core.utils import (
-    get_config_file_path, list_subclasses, resolve_class, class_location)
+    get_config_file_path, list_subclasses, resolve_class, class_location,
+    serialise)
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
 
@@ -25,7 +26,7 @@ class DataStore(metaclass=ABCMeta):
 
     CONFIG_NAME = 'stores'
 
-    def dataset(self, id, hierarchy=None, **kwargs):
+    def dataset(self, id, space=None, hierarchy=None, **kwargs):
         """
         Returns a dataset from the XNAT repository
 
@@ -54,8 +55,16 @@ class DataStore(metaclass=ABCMeta):
                 raise ArcanaUsageError(
                     "'hierarchy' kwarg must be specified for datasets in "
                     f"{type(self)} stores") from e
+        if not space:
+            try:
+                space = self.DEFAULT_SPACE
+            except AttributeError as e:
+                raise ArcanaUsageError(
+                    "'space' kwarg must be specified for datasets in "
+                    f"{type(self)} stores") from e                
         from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
-        dataset = Dataset(id, store=self, hierarchy=hierarchy, **kwargs)           
+        dataset = Dataset(id, store=self, space=space, hierarchy=hierarchy,
+                          **kwargs)           
         return dataset
 
     def load_dataset(self, id, name=None):
@@ -156,8 +165,8 @@ class DataStore(metaclass=ABCMeta):
         """
         
     @abstractmethod
-    def save_dataset_metadata(self, dataset_id: str,
-                              metadata: ty.Dict[str, ty.Any], name: str):
+    def save_dataset_definition(self, dataset_id: str,
+                                metadata: ty.Dict[str, ty.Any], name: str):
         """Save metadata associated with the dataset in the store
 
         Parameters
@@ -169,7 +178,7 @@ class DataStore(metaclass=ABCMeta):
             """
 
     @abstractmethod
-    def load_dataset_metadata(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
+    def load_dataset_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
         """Load metadata associated with the dataset in the store"""        
 
     def get_checksums(self, file_group):
@@ -218,17 +227,11 @@ class DataStore(metaclass=ABCMeta):
             raise ArcanaNameError(
                 name, f"Name '{name}' clashes with built-in type of store")
         entries = self.load_saved_entries()
-        entries[name] = self.asdict()
+        # connect to store in case it is needed in the serialise method and to
+        # test the connection in general before it is saved
+        with self:  
+            entries[name] = serialise(self)
         self.save_entries(entries)
-
-    def asdict(self):
-        dct = attr.asdict(
-            self,
-            filter=lambda a, v: a.init,
-            value_serializer=lambda _, __, v: (
-                str(v) if isinstance(v, Path) else v))
-        dct['type'] = class_location(self)
-        return dct
 
     @classmethod
     def remove(cls, name: str):

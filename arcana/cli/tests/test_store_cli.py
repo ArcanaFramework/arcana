@@ -18,7 +18,7 @@ def test_store_cli(xnat_repository, cli_runner, work_dir):
         result = cli_runner(ls, [])
         assert result.exit_code == 0
         assert 'bids - arcana.data.stores.bids:BidsFormat' in result.output
-        assert 'file - arcana.data.stores.file_system:FileSystem' in result.output
+        assert 'file - arcana.data.stores.common:FileSystem' in result.output
         assert 'test-xnat - arcana.data.stores.xnat.api:Xnat' in result.output
         assert '    server: ' + xnat_repository.server in result.output
         

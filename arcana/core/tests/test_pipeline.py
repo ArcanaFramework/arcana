@@ -83,7 +83,8 @@ def test_pipeline_with_implicit_conversion(work_dir):
 def test_apply_workflow(work_dir):
 
     # Load dataset
-    my_dataset = Dataset('file///data/my-dataset', ['subject', 'session'])
+    my_dataset = Dataset.load('file///data/my-dataset',
+                              hierarchy=['subject', 'session'])
 
     # Add source column to select T1-weighted images in each sub-directory
     my_dataset.add_source('T1w', '.*mprage.*', format=Dicom, is_regex=True)

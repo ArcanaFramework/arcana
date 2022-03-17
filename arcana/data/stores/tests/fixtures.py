@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import shutil
 from itertools import product
 import pytest
-from arcana.data.stores.file_system import FileSystem
+from arcana.data.stores.common import FileSystem
 from arcana.core.data.space import DataSpace
 from arcana.core.utils import set_cwd
 from arcana.core.data.format import FileFormat
@@ -195,11 +195,11 @@ def tmp_dir():
 
 
 def make_dataset(blueprint, dataset_path):
-    create_dataset_in_repo(blueprint, dataset_path)
+    create_dataset_data_in_repo(blueprint, dataset_path)
     return access_dataset(blueprint, dataset_path)
 
 
-def create_dataset_in_repo(blueprint, dataset_path):
+def create_dataset_data_in_repo(blueprint, dataset_path):
     "Creates a dataset from parameters in TEST_DATASETS"
     dataset_path.mkdir(exist_ok=True, parents=True)
     for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
@@ -213,8 +213,10 @@ def create_dataset_in_repo(blueprint, dataset_path):
 
 
 def access_dataset(blueprint, dataset_path):
+    space = type(blueprint.hierarchy[0])
     dataset = FileSystem().dataset(
         dataset_path,
+        space=space,
         hierarchy=blueprint.hierarchy,
         id_inference=blueprint.id_inference)
     dataset.blueprint = blueprint

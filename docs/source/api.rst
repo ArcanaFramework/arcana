@@ -43,7 +43,7 @@ Core
 Stores
 ~~~~~~
 
-.. autoclass:: arcana.data.stores.file_system.FileSystem
+.. autoclass:: arcana.data.stores.common.FileSystem
 
 .. autoclass:: arcana.data.stores.bids.BidsFormat
 

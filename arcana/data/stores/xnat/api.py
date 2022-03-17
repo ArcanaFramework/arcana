@@ -80,11 +80,12 @@ class Xnat(DataStore):
     PROV_SUFFIX = '.__prov__.json'
     FIELD_PROV_RESOURCE = '__provenance__'
     depth = 2
-    DEFAULT_HIERARCHY = [Clinical.subject, Clinical.session]
+    DEFAULT_SPACE = Clinical
+    DEFAULT_HIERARCHY = ['subject', 'session']
     METADATA_RESOURCE = '__arcana__'
 
 
-    def save_dataset_metadata(self, dataset, metadata, name):
+    def save_dataset_definition(self, dataset, definition, name):
         with self:
             root_xnode = self.get_xnode(dataset.root)
             try:
@@ -94,28 +95,28 @@ class Xnat(DataStore):
                 xresource = self.login.classes.ResourceCatalog(
                     parent=root_xnode, label=self.METADATA_RESOURCE,
                     format='json')
-            metadata_file = Path(tempfile.mkdtemp()) / name + '.json'
-            with open(metadata_file, 'w') as f:
-                json.dump(metadata, f)
-            xresource.upload(str(metadata_file), name + '.json')
+            definition_file = Path(tempfile.mkdtemp()) / name + '.json'
+            with open(definition_file, 'w') as f:
+                json.dump(definition, f)
+            xresource.upload(str(definition_file), name + '.json')
 
-    def load_dataset_metadata(self, dataset_id, name):
+    def load_dataset_definition(self, dataset_id, name):
         with self:
             root_xnode = self.get_xnode(self.dataset(dataset_id).root)
             try:
                 xresource = root_xnode.resources[self.METADATA_RESOURCE]
             except KeyError:
-                metadata = None
+                definition = None
             else:
                 download_dir = Path(tempfile.mkdtemp())
                 xresource.download_dir(download_dir)
                 fpath = download_dir / name + '.json'
                 if fpath.exists():
                     with open(fpath) as f:
-                        metadata = json.load(f)
+                        definition = json.load(f)
                 else:
-                    metadata = None
-        return metadata
+                    definition = None
+        return definition
 
     @property
     def prov(self):
