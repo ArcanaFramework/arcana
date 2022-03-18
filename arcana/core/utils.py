@@ -2,6 +2,7 @@ from typing import Sequence
 import subprocess as sp
 import importlib_metadata
 import pkgutil
+from enum import Enum
 import re
 from pathlib import Path
 import packaging
@@ -656,6 +657,10 @@ def serialise(obj, skip=()):
         serialised['arcana_version'] = __version__
     elif isinstance(obj, Path):
         serialised = str(obj)
+    elif isinstance(obj, Enum):
+        serialised = str(obj)
+    elif isclass(obj):
+        serialised = '<' + class_location(obj) + '>'
     elif not isinstance(obj, str) and isinstance(obj, Sequence):
         serialised = [serialise(x) for x in obj]
     else:
@@ -684,11 +689,15 @@ def unserialise(serialised: dict, **kwargs):
                 f"Serialised version ('{serialised_version}' is too old to be "
                 f"read by this version of arcana ('{__version__}'), the minimum "
                 f"version is {MIN_SERIAL_VERSION}")
-        init_args = {k: unserialise(v) for k, v in serialised.items()}
+        init_args = {}
+        for k, v in serialised.items():
+            init_args[k] = unserialise(v)
         init_args.update(kwargs)
         unserialised = serialised_cls(**init_args)
     elif isinstance(serialised, list):
         unserialised = [unserialise(x) for x in serialised]
+    elif isinstance(serialised, str) and re.match(r'<.*>', serialised):
+        unserialised = resolve_class(serialised[1:-1])
     else:
         unserialised = serialised
 

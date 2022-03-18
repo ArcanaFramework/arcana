@@ -52,7 +52,7 @@ TEST_DATASET_BLUEPRINTS = {
            ('NIFTI', nifti_gz, ['file1.nii.gz']),
            ('BIDS', None, ['file1.json']),
            ('SNAPSHOT', None, ['file1.png'])])],
-        {},
+        [],
         [('deriv1', Clinical.timepoint, text, ['file.txt']),
          ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
          ('deriv3', Clinical.batch, directory, ['dir']),
@@ -65,8 +65,8 @@ TEST_DATASET_BLUEPRINTS = {
              [('TEXT',  # resource name
                text, 
                ['file.txt'])])],
-        {Clinical.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
-         Clinical.session: r'timepoint(?P<timepoint>\d+).*'},  # id_inference dict
+        [('subject', r'group(?P<group>\d+)member(?P<member>\d+)'),
+         ('session', r'timepoint(?P<timepoint>\d+).*')],  # id_inference dict
         [
          ('deriv1', Clinical.session, text, ['file.txt']),
          ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
@@ -209,8 +209,8 @@ def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
     elif access_method != 'api':
         assert False
     
-    dataset = repository.dataset(proj_name,
-                                 id_inference=blueprint.id_inference)
+    dataset = repository.new_dataset(proj_name,
+                                     id_inference=blueprint.id_inference)
     # Stash the args used to create the dataset in attributes so they can be
     # used by tests
     dataset.blueprint = blueprint
@@ -233,15 +233,15 @@ def create_dataset_data_in_repo(dataset_name, run_prefix='', test_suffix=''):
         xclasses = login.classes
         for id_tple in product(*(list(range(d))
                                  for d in blueprint.dim_lengths)):
-            ids = dict(zip(Clinical.basis(), id_tple))
+            ids = dict(zip(Clinical.axes(), id_tple))
             # Create subject
             subject_label = ''.join(
-                f'{b}{ids[b]}' for b in Clinical.subject.nonzero_basis())
+                f'{b}{ids[b]}' for b in Clinical.subject.span())
             xsubject = xclasses.SubjectData(label=subject_label,
                                             parent=xproject)
             # Create session
             session_label = ''.join(
-                f'{b}{ids[b]}' for b in Clinical.session.nonzero_basis())
+                f'{b}{ids[b]}' for b in Clinical.session.span())
             xsession = xclasses.MrSessionData(label=session_label,
                                               parent=xsubject)
             

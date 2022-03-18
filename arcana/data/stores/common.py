@@ -1,3 +1,4 @@
+from genericpath import exists
 import os
 import os.path as op
 from pathlib import Path
@@ -44,15 +45,16 @@ class FileSystem(DataStore):
     VALUE_KEY = '__value__'
     METADATA_DIR = '.arcana'
     
-    def dataset(self, id, *args, **kwargs):
-        path = Path(id)
-        if not path.exists():
+    def new_dataset(self, id, *args, **kwargs):
+        if not Path(id).exists():
             raise ArcanaUsageError(
-                f"Path to dataset root '{str(path)}'' does not exist")
-        return super().dataset(path, *args, **kwargs)
+                f"Path to dataset root '{id}'' does not exist")
+        return super().new_dataset(id, *args, **kwargs)
 
     def save_dataset_definition(self, dataset_id, definition, name):
-        with open(self.definition_save_path(dataset_id, name), 'w') as f:
+        definition_path = self.definition_save_path(dataset_id, name)
+        definition_path.parent.mkdir(exist_ok=True)
+        with open(definition_path, 'w') as f:
             json.dump(definition, f)
 
     def load_dataset_definition(self, dataset_id, name):
@@ -65,7 +67,7 @@ class FileSystem(DataStore):
         return definition
 
     def definition_save_path(self, dataset_id, name):
-        return Path(dataset_id) / self.METADATA_DIR / name + '.json'
+        return Path(dataset_id) / self.METADATA_DIR / (name + '.json')
 
     @property
     def provenance(self):

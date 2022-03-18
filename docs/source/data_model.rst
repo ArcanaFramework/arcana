@@ -228,29 +228,29 @@ IDs.
 
 Often there are nodes that need to be omitted from a given analysis due to
 missing or corrupted data. Such nodes can be excluded with the
-``excluded`` argument, which takes a dictionary mapping the data
+``exclude`` argument, which takes a dictionary mapping the data
 dimension to the list of IDs to exclude.
 
-You can exclude nodes at different levels of data tree by provided ``excluded``,
+You can exclude nodes at different levels of data tree by provided ``exclude``,
 even within in the same dataset.
 
 .. code-block:: python
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
-        excluded={'subject': ['09', '11']})
+        exclude={'subject': ['09', '11']})
 
 
-The ``included`` argument is the inverse of exclude and can be more convenient when
-you only want to select a small sample. ``included`` can be used in conjunction
-with ``excluded`` but not for the same frequencies.
+The ``include`` argument is the inverse of exclude and can be more convenient when
+you only want to select a small sample. ``include`` can be used in conjunction
+with ``exclude`` but not for the same frequencies.
 
 .. code-block:: python
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
-        excluded={'subject': ['09', '11']},
-        included={'timepoint': ['T1']})
+        exclude={'subject': ['09', '11']},
+        include={'timepoint': ['T1']})
 
 
 You may want multiple dataset definitions for a given project/directory,
@@ -275,7 +275,7 @@ separated by '//', e.g.
 .. code-block:: console
 
     $ arcana dataset define 'xnat-central//MYXNATPROJECT' \
-      --excluded subject sub09,sub11 --included timepoint T1 \
+      --exclude subject sub09,sub11 --include timepoint T1 \
       --id_inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)'
 
 To give the dataset definition a name, append the name to the dataset's ID

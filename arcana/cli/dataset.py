@@ -1,14 +1,11 @@
 
-import os
-from importlib import import_module
+from collections import defaultdict
 import click
 from arcana.core.cli import cli
-from arcana.data.spaces.medicalimaging import Clinical
 from arcana.exceptions import ArcanaUsageError
-from arcana.data.stores.common import FileSystem
-from arcana.data.stores.xnat import Xnat
-from arcana.data.stores.xnat.cs import XnatViaCS
-
+from arcana.core.data.set import Dataset
+from arcana.core.data.store import DataStore
+from arcana.core.utils import resolve_class
 
 
 XNAT_CACHE_DIR = 'xnat-cache'
@@ -18,7 +15,8 @@ def dataset():
     pass
 
 
-@dataset.command(help=("""Define the tree structure and IDs to include in a
+@dataset.command(name='define',
+                 help=("""Define the tree structure and IDs to include in a
 dataset. Where possible, the definition file is saved inside the dataset for
 use by multiple users, if not possible it is stored in the ~/.arcana directory.
 
@@ -39,7 +37,11 @@ hierarchy
 @click.argument('id')
 @click.argument('hierarchy', nargs=-1)
 @click.option(
-    '--included', nargs=2, default=[], metavar='<freq-id>',
+    '--space', type=str, default=None,
+    help=("The \"space\" of the dataset, defines the dimensions along the ids "
+          "of node can vary"))
+@click.option(
+    '--include', nargs=2, default=[], metavar='<freq-id>',
     multiple=True,
     help=("The nodes to include in the dataset. First value is the "
            "frequency of the ID (e.g. 'group', 'subject', 'session') "
@@ -47,7 +49,7 @@ hierarchy
            "If the second arg contains '/' then it is interpreted as "
            "the path to a text file containing a list of IDs"))
 @click.option(
-    '--excluded', nargs=2, default=[], metavar='<freq-id>',
+    '--exclude', nargs=2, default=[], metavar='<freq-id>',
     multiple=True,
     help=("The nodes to exclude from the dataset. First value is the "
           "frequency of the ID (e.g. 'group', 'subject', 'session') "
@@ -55,7 +57,7 @@ hierarchy
           "If the second arg contains '/' then it is interpreted as "
           "the path to a text file containing a list of IDs"))
 @click.option(
-    '--space', type=str, default='medicalimaging.Clinical',
+    '--space', default='medicalimaging:Clinical',
     help=("The enum that specifies the data dimensions of the dataset. "
           "Defaults to `Clinical`, which "
           "consists of the typical dataset>group>subject>session "
@@ -78,43 +80,27 @@ groups corresponding to the inferred IDs
 --id_inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
 
 """)
-def define(id, hierarchy, included, excluded, space, id_inference):
+def define(id, hierarchy, include, exclude, space, id_inference):
 
+    store_name, id, name = Dataset.parse_id_str(id)
 
+    if not hierarchy:
+        hierarchy = None
 
-    hierarchy = [dimensions[l]
-                    for l in args.hierarchy] if args.hierarchy else None
+    store = DataStore.load(store_name)
+
+    if space:
+        space = resolve_class(space, ['arcana.data.spaces'])
     
-    repo_args = list(args.store)
-    repo_type = repo_args.pop(0)
-    nargs = len(repo_args)
+    dataset = store.new_dataset(
+        id,
+        hierarchy=hierarchy,
+        space=space,
+        id_inference=id_inference,
+        include=include,
+        exclude=exclude)
 
-
-    if args.id_inference:
-        id_inference = {t: (s, r) for t, s, r in args.ids_inference}
-    else:
-        id_inference = None
-
-    if hierarchy is None:
-        hierarchy = [max(dimensions)]
-
-    def parse_ids(ids_args):
-        parsed_ids = {}
-        for iargs in ids_args:
-            freq = dimensions[iargs.pop(0)]
-            if len(iargs) == 1 and '/' in iargs[0]:
-                with open(args.ids[0]) as f:
-                    ids = f.read().split()
-            else:
-                ids = args.ids
-            parsed_ids[freq] = ids
-        return parsed_ids
-    
-    return store.dataset(args.dataset_name,
-                                hierarchy=hierarchy,
-                                id_inference=id_inference,
-                                included=parse_ids(args.included),
-                                excluded=parse_ids(args.excluded))
+    dataset.save(name)
 
 @dataset.command(help="""
 Renames a data store saved in the stores.yml to a new name

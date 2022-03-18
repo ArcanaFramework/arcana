@@ -73,7 +73,7 @@ TEST_DATASET_BLUEPRINTS = {
         [td.a, td.b, td.c, td.d],
         [2, 3, 4, 5],
         ['file1.txt', 'file2.nii.gz', 'dir1'],
-        {},
+        [],
         {'file1': [
             (text, ['file1.txt'])],
          'file2': [
@@ -88,7 +88,7 @@ TEST_DATASET_BLUEPRINTS = {
         [td.abcd],
         [1, 1, 1, 5],
         ['file1.nii.gz', 'file1.json', 'file2.nii', 'file2.json'],
-        {},
+        [],
         {'file1': [
             (niftix_gz, ['file1.nii.gz', 'file1.json']),
             (nifti_gz, ['file1.nii.gz']),
@@ -105,7 +105,7 @@ TEST_DATASET_BLUEPRINTS = {
         [td.a, td.bc, td.d],
         [2, 1, 2, 3],
         ['doubledir1', 'doubledir2'],
-        {},
+        [],
         {'doubledir1': [
             (directory, ['doubledir1'])],
          'doubledir2': [
@@ -116,8 +116,8 @@ TEST_DATASET_BLUEPRINTS = {
         [td.bc, td.ad],
         [2, 3, 2, 4],
         ['file1.img', 'file1.hdr', 'file2.mif'],
-        {td.bc: r'b(?P<b>\d+)c(?P<c>\d+)',
-         td.ad: r'a(?P<a>\d+)d(?P<d>\d+)'},
+        [(td.bc, r'b(?P<b>\d+)c(?P<c>\d+)'),
+         (td.ad, r'a(?P<a>\d+)d(?P<d>\d+)')],
         {'file1': [
             (analyze, ['file1.hdr', 'file1.img'])],
          'file2': [
@@ -128,8 +128,8 @@ TEST_DATASET_BLUEPRINTS = {
         [td.abc, td.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         [3, 4, 5, 6],
         ['doubledir', 'file1.x', 'file1.y', 'file1.z'],
-        {td.abc: r'a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)',
-         td.abcd: r'a\d+b\d+c\d+d(?P<d>\d+)'},
+        [(td.abc, r'a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)'),
+         (td.abcd, r'a\d+b\d+c\d+d(?P<d>\d+)')],
         {'doubledir': [
             (directory, ['doubledir'])],
          'file1': [
@@ -203,10 +203,10 @@ def create_dataset_data_in_repo(blueprint, dataset_path):
     "Creates a dataset from parameters in TEST_DATASETS"
     dataset_path.mkdir(exist_ok=True, parents=True)
     for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
-        ids = dict(zip(TestDataSpace.basis(), id_tple))
+        ids = dict(zip(TestDataSpace.axes(), id_tple))
         dpath = dataset_path
         for layer in blueprint.hierarchy:
-            dpath /= ''.join(f'{b}{ids[b]}' for b in layer.nonzero_basis())
+            dpath /= ''.join(f'{b}{ids[b]}' for b in layer.span())
         os.makedirs(dpath)
         for fname in blueprint.files:
             create_test_file(fname, dpath)
@@ -214,7 +214,7 @@ def create_dataset_data_in_repo(blueprint, dataset_path):
 
 def access_dataset(blueprint, dataset_path):
     space = type(blueprint.hierarchy[0])
-    dataset = FileSystem().dataset(
+    dataset = FileSystem().new_dataset(
         dataset_path,
         space=space,
         hierarchy=blueprint.hierarchy,

@@ -664,9 +664,9 @@ def to_bids(frequency, inputs, dataset, id, **input_values):
          'path_prefix': str,
          'output': str}})
 def dataset_paths(app_name: str, dataset: Dataset, id: str):
-    return (str(dataset.id),
+    return (dataset.id,
             'derivatives' + '/' + app_name,
-            str(dataset.id / 'derivatives' / app_name / id))
+            str(Path(dataset.id) / 'derivatives' / app_name / id))
 
 
 def extract_bids(dataset: Dataset,

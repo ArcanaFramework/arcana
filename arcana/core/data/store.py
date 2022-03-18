@@ -7,7 +7,7 @@ import typing as ty
 import yaml
 from arcana.core.utils import (
     get_config_file_path, list_subclasses, resolve_class, class_location,
-    serialise)
+    serialise, unserialise)
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
 
@@ -25,54 +25,6 @@ class DataStore(metaclass=ABCMeta):
                                 eq=False)
 
     CONFIG_NAME = 'stores'
-
-    def dataset(self, id, space=None, hierarchy=None, **kwargs):
-        """
-        Returns a dataset from the XNAT repository
-
-        Parameters
-        ----------
-        id : str
-            The ID (or file-system path) of the project (or directory) within
-            the store
-        sources : Dict[Str, DataSource]
-            A dictionary that maps "name-paths" of input "columns" in the
-            dataset to criteria in a Selector object that select the
-            corresponding items in the dataset
-        sinks : Dict[str, Spec]
-            A dictionary that maps "name-paths" of sinks analysis
-            workflows to be stored in the dataset
-        dimensions : EnumMeta
-            The DataSpace enum that defines the frequencies (e.g.
-            per-session, per-subject,...) present in the dataset.                       
-        **kwargs:
-            Keyword args passed on to the Dataset init method
-        """
-        if not hierarchy:
-            try:
-                hierarchy = self.DEFAULT_HIERARCHY
-            except AttributeError as e:
-                raise ArcanaUsageError(
-                    "'hierarchy' kwarg must be specified for datasets in "
-                    f"{type(self)} stores") from e
-        if not space:
-            try:
-                space = self.DEFAULT_SPACE
-            except AttributeError as e:
-                raise ArcanaUsageError(
-                    "'space' kwarg must be specified for datasets in "
-                    f"{type(self)} stores") from e                
-        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
-        dataset = Dataset(id, store=self, space=space, hierarchy=hierarchy,
-                          **kwargs)           
-        return dataset
-
-    def load_dataset(self, id, name=None):
-        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
-        if name is None:
-            name = Dataset.DEFAULT_NAME
-        metadata = self.load_dataset_metadata(id, name)
-        return Dataset.load(id, self, name, metadata)
 
     @abstractmethod
     def find_nodes(self, dataset):
@@ -165,21 +117,41 @@ class DataStore(metaclass=ABCMeta):
         """
         
     @abstractmethod
-    def save_dataset_definition(self, dataset_id: str,
-                                metadata: ty.Dict[str, ty.Any], name: str):
-        """Save metadata associated with the dataset in the store
+    def save_dataset_definition(self,
+                                dataset_id: str,
+                                definition: ty.Dict[str, ty.Any],
+                                name: str):
+        """Save definition of dataset within the store
 
         Parameters
         ----------
-        dataset_id
+        dataset_id: str
             The ID/path of the dataset within the store
-        metadata
-            A dictionary 
-            """
+        definition: dict[str, Any]
+            A dictionary containing the serialised Dataset to be saved. The
+            dictionary is in a format ready to be dumped to file as JSON or
+            YAML.
+        name: str
+            Name for the dataset definition to distinguish it from other
+            definitions for the same directory/project"""
 
     @abstractmethod
     def load_dataset_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
-        """Load metadata associated with the dataset in the store"""        
+        """Load definition of a dataset saved within the store
+
+        Parameters
+        ----------
+        dataset_id: str
+            The ID (e.g. file-system path, XNAT project ID) of the project
+        name: str
+            Name for the dataset definition to distinguish it from other
+            definitions for the same directory/project
+
+        Returns
+        -------
+        definition: dict[str, Any]
+            A serialised Dataset object that was saved in the data store
+        """
 
     def get_checksums(self, file_group):
         """
@@ -281,6 +253,53 @@ class DataStore(metaclass=ABCMeta):
         else:
             store = resolve_class(entry.pop('type'))(**entry)
         return store
+
+
+    def new_dataset(self, id, hierarchy=None, space=None, **kwargs):
+        """
+        Returns a dataset from the XNAT repository
+
+        Parameters
+        ----------
+        id : str
+            The ID (or file-system path) of the project (or directory) within
+            the store
+        space: DataSpace
+            The data space of the dataset
+        hierarchy: list[DataSpace or str]
+            The hierarchy of the dataset
+        space : EnumMeta
+            The DataSpace enum that defines the frequencies (e.g.
+            per-session, per-subject,...) present in the dataset.                       
+        **kwargs:
+            Keyword args passed on to the Dataset init method
+        """
+        if not hierarchy:
+            try:
+                hierarchy = self.DEFAULT_HIERARCHY
+            except AttributeError as e:
+                raise ArcanaUsageError(
+                    "'hierarchy' kwarg must be specified for datasets in "
+                    f"{type(self)} stores") from e
+        if not space:
+            try:
+                space = self.DEFAULT_SPACE
+            except AttributeError as e:
+                raise ArcanaUsageError(
+                    "'space' kwarg must be specified for datasets in "
+                    f"{type(self)} stores") from e                
+        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
+        dataset = Dataset(id, store=self, space=space, hierarchy=hierarchy,
+                          **kwargs)           
+        return dataset
+
+    def load_dataset(self, id, name=None):
+        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
+        if name is None:
+            name = Dataset.DEFAULT_NAME
+        serialised = self.load_dataset_definition(id, name)
+        return unserialise(serialised, store=self)
+
 
     @classmethod
     def singletons(cls):
