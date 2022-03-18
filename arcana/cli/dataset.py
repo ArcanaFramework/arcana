@@ -105,14 +105,15 @@ def define(id, hierarchy, include, exclude, space, id_inference):
 @dataset.command(help="""
 Renames a data store saved in the stores.yml to a new name
 
-old_name
+dataset_path
     The current name of the store
 new_name
     The new name for the store""")
-@click.argument('old_name')
+@click.argument('dataset_path')
 @click.argument('new_name')
-def rename(old_name, new_name):
-    raise NotImplementedError
+def copy(dataset_path, new_name):
+    dataset = Dataset.load(dataset_path)
+    dataset.save(new_name)
 
 
 def optional_args(names, args):
@@ -136,8 +137,8 @@ datatype
     (file, file+header/side-cars or directory)
 """)
 @click.argument('dataset_path')
-@click.argument('column_name')
-@click.argument('datatype')
+@click.argument('name')
+@click.argument('format')
 @click.option(
     '--frequency', '-f', metavar='<dimension>',
     help=("The frequency that items appear in the dataset (e.g. per "
@@ -165,9 +166,19 @@ datatype
     help=("Match on specific header value. This option is only valid for "
           "select datatypes that the implement the 'header_val()' method "
           "(e.g. medicalimaging:dicom)."))
-def add_source(dataset_path, column_name, datatype, frequency, path, order,
+def add_source(dataset_path, name, format, frequency, path, order,
                quality, is_regex, header):
-    raise NotImplementedError
+    dataset = Dataset.load(dataset_path)
+    dataset.add_source(
+        name=name,
+        path=path,
+        format=resolve_class(format, prefixes=['arcana.data.formats']),
+        frequency=frequency,
+        quality_threshold=quality,
+        order=order,
+        header_vals=dict(header),
+        is_regex=is_regex)
+    dataset.save()
 
 
 @dataset.command(name='add-sink', help="""Adds a sink column to a dataset. A sink column
@@ -187,7 +198,7 @@ datatype
 """)
 @click.argument('dataset_path')
 @click.argument('name')
-@click.argument('datatype')
+@click.argument('format')
 @click.option(
     '--frequency', '-f', metavar='<dimension>',
     help=("The frequency that items appear in the dataset (e.g. per "
@@ -198,8 +209,19 @@ datatype
     '--path', '-p',
     help=("Path to item in the dataset. If 'regex' option is provided it will "
           "be treated as a regular-expression (in Python syntax)"))
-def add_sink(dataset_path, name, datatype, frequency, path):
-    raise NotImplementedError
+@click.option(
+    '--salience', '-s',
+    help=("The salience of the column, i.e. whether it will show up on "
+          "'arcana derive menu'"))
+def add_sink(dataset_path, name, format, frequency, path, salience):
+    dataset = Dataset.load(dataset_path)
+    dataset.add_sink(
+        name=name,
+        path=path,
+        format=format,
+        frequency=frequency,
+        salience=salience)
+    dataset.save()
 
 
 @dataset.command(

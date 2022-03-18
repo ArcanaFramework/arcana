@@ -135,7 +135,7 @@ class DataSink():
         The salience of the specified file-group, i.e. whether it would be
         typically of interest for publication outputs or whether it is just
         a temporary file in a workflow, and stages in between
-    workflow : str
+    pipeline_name : str
         The nane of the workflow applied to the dataset to generates the data
         for the sink
     """
@@ -144,7 +144,7 @@ class DataSink():
     datatype = attr.ib()
     frequency: DataSpace = attr.ib()
     salience: DataSalience = attr.ib(default=DataSalience.supplementary)
-    pipeline: str = attr.ib(default=None)
+    pipeline_name: str = attr.ib(default=None)
 
     def match(self, node):
         matches = [i for i in node.resolved(self.datatype)

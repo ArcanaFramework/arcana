@@ -85,9 +85,6 @@ class Dataset():
 
             id_inference=[(Clinical.subject,
                            r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')}
-    column_specs : list[tuple[str, DataSource or DataSink]
-        The sources and sinks to be initially added to the dataset (columns are
-        explicitly added when workflows are applied to the dataset).
     include : list[tuple[DataSpace, str or list[str]]]
         The IDs to be included in the dataset per frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
@@ -97,11 +94,17 @@ class Dataset():
         The IDs to be excluded in the dataset per frequency. E.g. can be
         used to exclude specific subjects that failed QC. If a frequency is
         omitted or its value is None, then all available will be used
+    name : str
+        The name of the dataset as saved in the store under
+    column_specs : list[tuple[str, DataSource or DataSink]
+        The sources and sinks to be initially added to the dataset (columns are
+        explicitly added when workflows are applied to the dataset).
     workflows : Dict[str, pydra.Workflow]
         Workflows that have been applied to the dataset to generate sink
     access_args: ty.Dict[str, Any]
         Repository specific args used to control the way the dataset is accessed
     """
+    DEFAULT_NAME = 'default'
 
     id: str = attr.ib(converter=str)
     store: datastore.DataStore = attr.ib()
@@ -113,18 +116,16 @@ class Dataset():
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     exclude: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
+    name: str = attr.ib(default=DEFAULT_NAME)
     column_specs: ty.Optional[ty.Dict[str, ty.Union[DataSource, DataSink]]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     workflows: ty.Dict[str, Workflow] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     _root_node: DataNode = attr.ib(default=None, init=False, repr=False,
                                    eq=False)
-
     
     EXCLUDE_METADATA = ('id', 'store', '_root_node', 'column_specs',
-                        'workflows')
-
-    DEFAULT_NAME = 'default'
+                        'workflows')  
 
     def __attrs_post_init__(self):
         # Ensure that hierarchy items are in the DataSpace enums not strings
@@ -145,7 +146,7 @@ class Dataset():
         # TODO: column_specs and workflows should be included ideally
         definition = serialise(self, skip=['store'])
         if name is None:
-            name = self.DEFAULT_NAME
+            name = self.name
         self.store.save_dataset_definition(self.id, definition, name=name)
 
     @classmethod
@@ -254,7 +255,7 @@ class Dataset():
         """Refresh the dataset nodes"""
         self._root_node = None
 
-    def add_source(self, name, datatype, path=None, frequency=None,
+    def add_source(self, name, format, path=None, frequency=None,
                    overwrite=False, **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -264,7 +265,7 @@ class Dataset():
         name : str
             The name used to reference the dataset "column" for the
             source
-        datatype : FileFormat or type
+        format : FileFormat or type
             The file-format (for file-groups) or datatype (for fields)
             that the source will be stored in within the dataset
         path : str, default `name`
@@ -279,10 +280,10 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if path is None:
             path = name
-        self._add_spec(name, DataSource(path, datatype, frequency, **kwargs),
+        self._add_spec(name, DataSource(path, format, frequency, **kwargs),
                        overwrite)
 
-    def add_sink(self, name, datatype, path=None, frequency=None,
+    def add_sink(self, name, format, path=None, frequency=None,
                  overwrite=False, **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -292,7 +293,7 @@ class Dataset():
         name : str
             The name used to reference the dataset "column" for the
             sink
-        datatype : FileFormat or type
+        format : FileFormat or type
             The file-format (for file-groups) or datatype (for fields)
             that the sink will be stored in within the dataset
         path : str, default `name`
@@ -305,7 +306,7 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if path is None:
             path = name
-        self._add_spec(name, DataSink(path, datatype, frequency, **kwargs),
+        self._add_spec(name, DataSink(path, format, frequency, **kwargs),
                        overwrite)
 
     def _add_spec(self, name, spec, overwrite):
