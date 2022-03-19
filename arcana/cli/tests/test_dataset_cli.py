@@ -57,7 +57,8 @@ def test_add_column_cli(basic_dataset, cli_runner):
     # Add source column to saved dataset
     result = cli_runner(
         add_source,
-        [dataset_path, 'a_source', 'file1', 'common:Text',
+        [dataset_path, 'a_source', 'common:Text',
+         '--path', 'file1',
          '--frequency', 'd',
          '--quality', 'questionable',
          '--no-regex'])
