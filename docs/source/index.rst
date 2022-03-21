@@ -63,8 +63,9 @@ to let us know!
    :caption: Reference
    :hidden:
 
+   CLI <cli.rst>
    API <api.rst>
-   Command line (CLI) <cli.rst>
+   
 
 |
 .. note::

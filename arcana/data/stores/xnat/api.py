@@ -157,11 +157,11 @@ class Xnat(DataStore):
         self.login.disconnect()
         self._login = None
 
-    def save(self, dataset):
-        pass
+    # def save(self, dataset):
+    #     pass
 
-    def load(self, name=None):
-        pass
+    # def load(self, name=None):
+    #     pass
 
     def find_nodes(self, dataset: Dataset, **kwargs):
         """

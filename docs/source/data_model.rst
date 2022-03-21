@@ -63,7 +63,7 @@ To configure access to a store via the CLI use the ``arcana store add`` sub-comm
     Password:
 
 
-See also ``arcana store rename`` and ``arcana store remove``.
+See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls``.
 
 .. note::
 
@@ -402,11 +402,11 @@ to a dataset using the CLI.
 
 .. code-block:: console
 
-    $ arcana column add-source 'xnat-central//MYXNATPROJECT' T1w \
+    $ arcana dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
       medicalimaging:Dicom --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
-    $ arcana column add-sink 'file///data/imaging/my-project:training' brain_template \
+    $ arcana dataset add-sink 'file///data/imaging/my-project:training' brain_template \
       medicalimaging:NiftiGz --frequency group
 
 

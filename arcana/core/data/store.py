@@ -1,6 +1,7 @@
 import logging
 from abc import abstractmethod, ABCMeta
 import inspect
+from pathlib import Path
 import attr
 import typing as ty
 import yaml
@@ -203,8 +204,7 @@ class DataStore(metaclass=ABCMeta):
         If a connection session is required to the store manage it here
         """
 
-    @classmethod
-    def save(cls, name: str, store):
+    def save(self, name: str):
         """Saves the configuration of a DataStore in 'stores.yml' 
 
         Parameters
@@ -214,10 +214,21 @@ class DataStore(metaclass=ABCMeta):
         store : DataStore
             The DataStore to save
         """
-        entries = cls._load_saved()
-        entries[name] = attr.asdict(store)
-        entries[name] = class_location(store)
-        cls._save_loaded(entries)
+        if name in self.singletons():
+            raise ArcanaNameError(
+                name, f"Name '{name}' clashes with built-in type of store")
+        entries = self.load_saved_entries()
+        entries[name] = self.asdict()
+        self.save_entries(entries)
+
+    def asdict(self):
+        dct = attr.asdict(
+            self,
+            filter=lambda a, v: a.init,
+            value_serializer=lambda _, __, v: (
+                str(v) if isinstance(v, Path) else v))
+        dct['type'] = class_location(self)
+        return dct
 
     @classmethod
     def remove(cls, name: str):
@@ -228,9 +239,9 @@ class DataStore(metaclass=ABCMeta):
         name
             Name of the configuration to remove
         """
-        entries = cls._load_saved()
+        entries = cls.load_saved_entries()
         del entries[name]
-        cls._save_loaded(entries)
+        cls.save_entries(entries)
 
     @classmethod
     def load(cls, name: str):
@@ -254,45 +265,50 @@ class DataStore(metaclass=ABCMeta):
         ArcanaNameError
             If the name is not found in the saved stores
         """
-        entries = cls._load_saved()
+        entries = cls.load_saved_entries()
         try:
             entry = entries[name]
         except KeyError:
-            # If not saved in the configuration file search for sub-classes
-            # whose alias matches `name` and can be initialised without params
-            import arcana.data.stores
             try:
-                store_cls = next(
-                    c for c in list_subclasses(arcana.data.stores, DataStore)
-                    if c.get_alias() == name)
-            except StopIteration:
+                return cls.singletons()[name]
+            except KeyError:
                 raise ArcanaNameError(
-                    name, f"Did not find saved store entry for {name}")
-            else:
-                try:
-                    store = store_cls()
-                except TypeError as e:
-                    raise ArcanaNameError(
-                        name,
-                        f"Found DataStore type {store_cls} that matches "
-                        f"'{name}' alias but it can't be initialised without "
-                        f"any parameters ({inspect.signature(store_cls)}") from e
+                    name,
+                    f"No saved data store or built-in type matches '{name}'")
         else:
             store = resolve_class(entry.pop('type'))(**entry)
         return store
 
     @classmethod
-    def _load_saved(cls):
+    def singletons(cls):
+        """Returns stores in a dictionary indexed by their aliases, for which there only needs to be a single instance"""
+        try:
+            return cls._singletons
+        except AttributeError:
+            pass
+        # If not saved in the configuration file search for sub-classes
+        # whose alias matches `name` and can be initialised without params
+        import arcana.data.stores
+        cls._singletons = {}
+        for store_cls in list_subclasses(arcana.data.stores, DataStore):
+            try:
+                cls._singletons[store_cls.get_alias()] = store_cls()
+            except TypeError:
+                pass
+        return cls._singletons
+
+    @classmethod
+    def load_saved_entries(cls):
         fpath = get_config_file_path(cls.CONFIG_NAME)
         if fpath.exists():
             with open(fpath) as f:
-                entries = yaml.load(f)
+                entries = yaml.load(f, Loader=yaml.Loader)
         else:
             entries = {}
         return entries
 
     @classmethod
-    def _save_loaded(cls, entries):
+    def save_entries(cls, entries):
         with open(get_config_file_path(cls.CONFIG_NAME), 'w') as f:
             yaml.dump(entries, f)
 

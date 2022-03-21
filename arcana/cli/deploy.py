@@ -1,13 +1,13 @@
 import logging
 import os
 from pathlib import Path
-
 import click
 import docker.errors
 import yaml
-
 from arcana.core.cli import cli
-from arcana.data.spaces.medicalimaging import ClinicalTrial
+from arcana.data.spaces.medicalimaging import Clinical
+from arcana.data.stores.xnat import XnatViaCS
+
 
 DOCKER_REGISTRY = 'docker.io'
 
@@ -19,8 +19,7 @@ def deploy():
 
 @deploy.command(help="""Build a wrapper image specified in a module
 
-module_path
-    The file system path to the module to build""")
+module_path - the file system path to the module to build""")
 @click.argument('module_path')
 def build(module_path):
     raise NotImplementedError
@@ -129,8 +128,7 @@ def test(module_path):
     raise NotImplementedError
 
 
-@deploy.command(name='test-all', help="""Test all wrapper pipelines
-in a package.
+@deploy.command(name='test-all', help="""Test all wrapper pipelines in a package.
 
 Arguments
 ---------
@@ -142,22 +140,22 @@ def test_all(package_path):
     raise NotImplementedError
 
 
-@click.command(name='inspect-docker-exec', 
+@click.command(name='inspect-docker', 
                help="""Extract the executable from a Docker image""")
 @click.argument('image_tag')
-def inspect_docker_exec(image_tag):
+def inspect_docker(image_tag):
     """Pulls a given Docker image tag and inspects the image to get its
-    entrypoint/cmd
+entrypoint/cmd
 
-    Parameters
-    ----------
-    image_tag : str
-        Docker image tag
+Parameters
+----------
+image_tag : str
+    Docker image tag
 
-    Returns
-    -------
-    str
-        The entrypoint or default command of the Docker image
+Returns
+-------
+str
+    The entrypoint or default command of the Docker image
     """
     dc = docker.from_env()
 
@@ -198,7 +196,7 @@ def load_yaml_spec(path, base_dir=None):
     frequency = data.get('frequency', None)
     if frequency:
         # TODO: Handle other frequency types, are there any?
-        data['frequency'] = ClinicalTrial[frequency.split('.')[-1]]
+        data['frequency'] = Clinical[frequency.split('.')[-1]]
 
     data['_relative_dir'] = os.path.dirname(os.path.relpath(path, base_dir)) if base_dir else ''
     data['_module_name'] = os.path.basename(path).rsplit('.', maxsplit=1)[0]

@@ -2,6 +2,7 @@
 import os
 from importlib import import_module
 import click
+from arcana.core.cli import cli
 from arcana.data.spaces.medicalimaging import Clinical
 from arcana.exceptions import ArcanaUsageError
 from arcana.data.stores.file_system import FileSystem
@@ -12,7 +13,7 @@ from arcana.data.stores.xnat.cs import XnatViaCS
 
 XNAT_CACHE_DIR = 'xnat-cache'
 
-@click.group()
+@cli.group()
 def dataset():
     pass
 
@@ -54,11 +55,7 @@ hierarchy
           "If the second arg contains '/' then it is interpreted as "
           "the path to a text file containing a list of IDs"))
 @click.option(
-    '--store', '-s', type=str,
-    help=("The nickname of the store (as added by `arcana store add ...`) the "
-          "dataset is stored in"))
-@click.option(
-    '--dimensions', type=str, default='medicalimaging.Clinical',
+    '--space', type=str, default='medicalimaging.Clinical',
     help=("The enum that specifies the data dimensions of the dataset. "
           "Defaults to `Clinical`, which "
           "consists of the typical dataset>group>subject>session "
@@ -81,49 +78,17 @@ groups corresponding to the inferred IDs
 --id_inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
 
 """)
-def define(id, hierarchy, included, excluded, store, dimensions, id_inference,
-           name):
-    raise NotImplementedError
+def define(id, hierarchy, included, excluded, space, id_inference):
 
-    dimensions = cls.parse_dimensions(args)
+
+
     hierarchy = [dimensions[l]
                     for l in args.hierarchy] if args.hierarchy else None
     
     repo_args = list(args.store)
     repo_type = repo_args.pop(0)
     nargs = len(repo_args)
-    if repo_type == 'file_system':
-        store = FileSystem()
-    elif repo_type == 'xnat':
-        if nargs < 1 or nargs > 3:
-            raise ArcanaUsageError(
-                f"Incorrect number of arguments passed to an Xnat "
-                f"store ({args}), at least 1 (SERVER) and no more "
-                f"than 3 are required (SERVER, USER, PASSWORD)")
-        optional_args = ['user', 'password']
-        store = Xnat(
-            server=repo_args[0],
-            cache_dir=work_dir / XNAT_CACHE_DIR,
-            **{k: v for k, v in zip(optional_args, repo_args[1:])})
-        hierarchy = [Clinical.subject, Clinical.session]
-    elif repo_type == 'xnat_via_cs':
-        if nargs < 1 or nargs > 7:
-            raise ArcanaUsageError(
-                f"Incorrect number of arguments passed to an Xnat "
-                f"store ({args}), at least 1 (FREQUENCY) is required "
-                "and no more than 7 are permitted (FREQUENCY, NODE_ID, "
-                "SERVER, USER, PASSWORD, INPUT_MOUNT, OUTPUT_MOUNT)")
-        optional_args = ['node_id', 'server', 'user', 'password',
-                            'input_mount', 'output_mount']
-        store = XnatViaCS(
-            cache_dir=work_dir / XNAT_CACHE_DIR,
-            frequency=Clinical[repo_args[0]],
-            **{k: v for k, v in zip(optional_args, repo_args[1:])})
-        hierarchy = [Clinical.subject, Clinical.session]
-    else:
-        raise ArcanaUsageError(
-            f"Unrecognised store type provided as first argument "
-            f"to '--store' option ({repo_type})")
+
 
     if args.id_inference:
         id_inference = {t: (s, r) for t, s, r in args.ids_inference}
@@ -251,23 +216,10 @@ def add_sink(dataset_path, name, datatype, frequency, path):
     raise NotImplementedError
 
 
-@dataset.command(name='remove-column',
-                 help="""Removes an existing source column from a dataset
-
-Arguments
----------
-name
-    The name of the source column
-""")
-def remove_column(name):
-    # TODO: Should check to see if column has been used in workflows
-    raise NotImplementedError
-
-
 @dataset.command(
-    name="missing-source",
-    help="""Finds the IDs of nodes that are missing a valid entry for the
-column.
+    name="missing-items",
+    help="""Finds the IDs of nodes that are missing a valid entry for an item in
+the column.
 
 Arguments
 ---------
@@ -279,7 +231,7 @@ name
 """)
 @click.argument('dataset_path')
 @click.argument('name')
-def missing_source(name):
+def missing_items(name):
     raise NotImplementedError
 
     

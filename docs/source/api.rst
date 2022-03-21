@@ -1,5 +1,5 @@
-Application Programming Interface (API)
-=======================================
+Application Programming Interface
+=================================
 
 The core of Arcana's framework is located under the ``arcana.core`` sub-package,
 which contains all the domain-independent logic. Domain-specific extensions

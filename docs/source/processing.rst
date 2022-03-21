@@ -101,10 +101,12 @@ To connect a workflow via the CLI
 
 .. code-block:: console
 
-    $ arcana column add-source 'myuni-xnat//myproject:training' T1w \
+    $ arcana dataset add-source 'myuni-xnat//myproject:training' T1w \
       medicalimaging:Dicom --path '.*mprage.*'
-    $ arcana column add-source 'myuni-xnat//myproject:training' T2w \
+    $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
       medicalimaging:Dicom --path '.*t2spc.*'
+    $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurver/recon-all \
+      common:ZippedDir
     $ arcana apply workflow 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
       --input T1w in_file medicalimaging:NiftiGz \
@@ -113,8 +115,8 @@ To connect a workflow via the CLI
       --parameter param1 10 \
       --parameter param2 20
 
-Adding sinks and sources in one step where they can be specified by their
-path and format alone looks like
+When sinks and sources can be specified by their path alone and their
+formats don't need converting the can be added in a single step
 
 .. code-block:: console
 
@@ -162,49 +164,6 @@ back to the dataset.
         inputs=[('in_file', 'T1w')],
         outputs=[('out_file', 'vbm_template')],
         frequency='dataset')
-
-
-
-Derivatives
------------
-
-After pipelines have been connected between data columns, derivatives can be
-generated using :meth:`.Dataset.derive` or alternatively :meth:`.Column.derive`
-for single columns. These methods check the data store to see whether the
-source data is present and executes the pipelines over all nodes of the dataset
-with available source data. If pipeline inputs are sink columns to be derived
-by prerequisite pipelines, then the prerequisite pipelines will be prepended
-onto the execution stack.
-
-To generate derivatives via the API
-
-.. code-block:: python
-
-  dataset = Dataset.load('file///data/openneuro/ds00014:test')
-
-  dataset.derive('fast/gm', work_dir='/work/temp-dir')
-
-  # Print URI of generated dataset
-  print(dataset['fast/gm']['sub11'].uri)
-
-
-To generate derivatives via the CLI
-
-.. code-block:: console
-
-  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all
-
-
-By default Pydra_ uses the "concurrent-futures" (`'cf'`) plugin, which
-splits workflows over multiple processes. You can specify which plugin, and
-thereby how the workflow is executed via the ``pydra_plugin`` option, and pass
-options to it with ``pydra_option``.
-
-
-.. code-block:: console
-
-  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all \
-    --pydra_plugin slurm --pydra_option poll_delay 5 --pydra_option max_jobs 10
 
 
 .. _analysis_classes:
@@ -345,10 +304,6 @@ the dataset to link placeholders to and any parameters.
           recorded_metadata='metadata',
           contrast=0.75))
 
-  # Derive the summary metric column. Will first run the `preprocess_pipeline`
-  # to generate `preprocessed` before running the `create_image_pipeline`
-  dataset.derive('summary_metric')
-
 To apply an analysis via the command-line
 
 .. code-block:: console
@@ -357,17 +312,56 @@ To apply an analysis via the command-line
     --link recorded_datafile datafile \ 
     --link recorded_metadata metadata \
     --parameter contrast 0.75
-  $ arcana derive column 'file///data/a-dataset' summary_metric
 
-Menus and salience
-------------------
 
-To list the derivatives that can be derived from a dataset once you have
-applied workflows or analysis classes you can use the ``menu`` command
+Generating derivatives
+----------------------
+
+After workflows and/or analysis classes have been connected to a dataset, derivatives can be
+generated using :meth:`.Dataset.derive` or alternatively :meth:`.Column.derive`
+for single columns. These methods check the data store to see whether the
+source data is present and executes the pipelines over all nodes of the dataset
+with available source data. If pipeline inputs are sink columns to be derived
+by prerequisite pipelines, then the prerequisite pipelines will be prepended
+onto the execution stack.
+
+To generate derivatives via the API
+
+.. code-block:: python
+
+  dataset = Dataset.load('file///data/openneuro/ds00014:test')
+
+  dataset.derive('fast/gm', work_dir='/work/temp-dir')
+
+  # Print URI of generated dataset
+  print(dataset['fast/gm']['sub11'].uri)
+
+
+To generate derivatives via the CLI
 
 .. code-block:: console
 
-  $ arcana menu 'file///data/a-dataset'
+  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all
+
+
+By default Pydra_ uses the "concurrent-futures" (`'cf'`) plugin, which
+splits workflows over multiple processes. You can specify which plugin, and
+thereby how the workflow is executed via the ``pydra_plugin`` option, and pass
+options to it with ``pydra_option``.
+
+
+.. code-block:: console
+
+  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all \
+    --pydra_plugin slurm --pydra_option poll_delay 5 --pydra_option max_jobs 10
+
+
+To list the derivatives that can be derived from a dataset after workflows
+have been applied you can use the ``menu`` command
+
+.. code-block:: console
+
+  $ arcana derive menu 'file///data/a-dataset'
 
   Derivatives
   -----------
@@ -394,7 +388,7 @@ salience >= 'qa' and 'recommended', respectively.
 
 .. code-block:: console
 
-  $ arcana menu 'file///data/another-dataset' --columns qa --parameters recommended
+  $ arcana derive menu 'file///data/another-dataset' --columns qa --parameters recommended
 
 The ``salience_threshold`` argument can also be used to filter out derivatives
 from the data store when applying an analysis to a dataset. This
@@ -408,8 +402,9 @@ remaining only in local cache.
   $ arcana apply analysis 'my-unis-xnat//MYPROJECT:test' example:ExampleAnalysis \
     --link recorded_datafile datafile \ 
     --link recorded_metadata metadata \
-    --parameter contrast 0.75
+    --parameter contrast 0.75 \
     --salience_threshold qa
+
 
 Provenance
 ----------
@@ -542,13 +537,13 @@ method
 
 .. code-block:: python
 
-  dataset.ignore('freesurfer_pipeline', ('freesurfer_task', 'num_iterations', 3))
+  dataset.ignore_diff('freesurfer_pipeline', ('freesurfer_task', 'num_iterations', 3))
 
 or via the CLI
 
 .. code-block:: console
 
-  $ arcana ignore 'myuni-xnat//myproject:training' freesurfer --param freesurfer_task num_iterations 3
+  $ arcana derive ignore-diff 'myuni-xnat//myproject:training' freesurfer --param freesurfer_task num_iterations 3
 
 
 
