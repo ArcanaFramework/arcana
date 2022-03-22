@@ -238,7 +238,32 @@ class FileGroup(DataItem, metaclass=ABCMeta):
                         "Attempting to set a path to a file group that hasn't "
                         f"been derived yet ({fs_path})")
 
-    @classproperty
+    def get(self, assume_exists=False):
+        if assume_exists:
+            self.exists = True
+        self._check_part_of_data_node()
+        fs_path, _ = self.data_node.get_file_group(self)
+        self._set_fs_path(fs_path)
+
+    def put(self, fs_path):
+        self._check_part_of_data_node()
+        self.data_node.put_file_group(self, path=fs_path)
+        self._set_fs_path(fs_path)
+
+    def _set_fs_path(self, fs_path):
+        self.fs_path = absolute_path(fs_path)
+        self.exists = True
+        attr.validate(self)
+
+    @property
+    def fs_paths(self):
+        """All base paths (i.e. not nested within directories) in the file group"""
+        if self.fs_path is None:
+            raise ArcanaUsageError(
+                f"Attempting to access file path of {self} before it is set")
+        return [self.fs_path]        
+
+    @classmethod
     def format_name(cls):
         return cls.__name__.lower()
 
@@ -257,7 +282,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         bool
             whether or not the name matches the format
         """
-        return name in (self.format_name,) + self.alternative_names
+        return name in (self.format_name(),) + self.alternative_names
 
     @property
     def value(self):
@@ -316,33 +341,16 @@ class FileGroup(DataItem, metaclass=ABCMeta):
 class File(FileGroup):
 
     @classmethod
-    def from_paths(cls, paths: ty.List[Path], **kwargs):
+    def from_paths(cls, *paths: ty.List[Path], **kwargs):
         return [cls(p, **kwargs)
                 for p in paths if str(p).endswith('.' + cls.ext)]
 
-    def get(self, assume_exists=False):
-        if assume_exists:
-            self.exists = True
-        self._check_part_of_data_node()
-        fs_path, _ = self.data_node.get_file_group(self)
-        self._set_fs_path(fs_path)
-
-    def put(self, fs_path):
-        self._check_part_of_data_node()
-        self.data_node.put_file_group(self, path=fs_path)
-        self._set_fs_path(fs_path)
-
-    def _set_fs_path(self, fs_path):
-        self.fs_path = absolute_path(fs_path)
-        self.exists = True
-        attr.validate(self)
-
-    @property
-    def fs_paths(self):
+    def all_file_paths(self):
+        """The paths of all nested files within the file-group"""
         if self.fs_path is None:
             raise ArcanaUsageError(
-                f"Attempting to access file path of {self} before it is set")
-        return [self.fs_path]
+                f"Attempting to access file paths of {self} before they are set")
+        return self.fs_paths
 
     def copy_to(self, path: str, symlink: bool=False):
         """Copies the file-group to the new path, with auxiliary files saved
@@ -372,7 +380,7 @@ class FileWithSideCars(File):
     def default_side_cars(self):
         if self.fs_path is None:
             return {}
-        return self.format.default_side_cars(self.fs_path)
+        return self.default_side_car_paths(self.fs_path)
 
     @side_cars.validator
     def validate_side_cars(self, _, side_cars):
@@ -398,30 +406,8 @@ class FileWithSideCars(File):
 
     @classmethod
     def from_paths(cls, paths: ty.List[Path], **kwargs):
-        def match_ext(ext):
-            return [cls(p, **kwargs) for p in paths
-                    if str(p).endswith('.' + ext)]
-        primary_files = match_ext(cls.ext)
-        # If only one file per 
-        if len(primary_files) == 1:
-            primary_file = primary_files[0]
-            side_cars = {}
-            for sc_ext in cls.side_car_exts:
-                matches = match_ext(sc_ext)
-                if len(matches) == 1:
-                    side_cars[sc_ext] = matches[0]
-                elif not matches:
-                    raise ArcanaFileFormatError(
-                        f"Found no matching side-car file for '{sc_ext}' extension "
-                        f"when attempting to resolve {cls.format_name}")
-                else:
-                    raise ArcanaFileFormatError(
-                        f"Found multiple matching files for '{sc_ext}' extension "
-                        f"when attempting to resolve side-car files for to pair "
-                        f"with primary file '{primary_file}' of {cls.format_name} "
-                        "format")
-        else
-        
+        return [cls(p, side_cars=cls.default_side_car_paths(p), **kwargs)
+                for p in paths if str(p).endswith('.' + cls.ext)]
 
     def get(self, assume_exists=False):
         if assume_exists:
@@ -443,7 +429,7 @@ class FileWithSideCars(File):
         """
         self._check_part_of_data_node()
         if not side_cars:
-            side_cars = self.format.default_side_cars(fs_path)
+            side_cars = self.default_side_car_paths(fs_path)
         elif side_cars is not None:
             side_cars = absolute_paths_dict(side_cars)
         self.data_node.put_file_group(self, fs_path=fs_path,
@@ -458,10 +444,7 @@ class FileWithSideCars(File):
 
     @property
     def fs_paths(self):
-        if self.fs_path is None:
-            raise ArcanaUsageError(
-                f"Attempting to access file paths of {self} before they are set")
-        return chain([self.fs_path], self.side_cars.values())
+        return chain(super().fs_paths, self.side_cars.values())
 
     def side_car(self, name):
         return self.side_cars[name]
@@ -481,13 +464,15 @@ class FileWithSideCars(File):
             copy_file = os.symlink
         else:
             copy_file = shutil.copyfile
-        copy_file(self.fs_path, path + self.format.ext)
-        for aux_name, aux_path in self.side_cars.items():
-            copy_file(aux_path, path + self.side_car_exts[aux_name])
-        return self.format.from_path(path)        
+        dest_path = path + self.ext
+        copy_file(self.fs_path, dest_path)
+        dest_side_cars = self.default_side_car_paths(dest_path)
+        for sc_ext, sc_path in self.side_cars.items():
+            copy_file(sc_path, dest_side_cars[sc_ext])
+        return self.from_paths(path, *dest_side_cars.values())[0]
     
     @classmethod
-    def default_side_cars(cls, primary_path):
+    def default_side_car_paths(cls, primary_path):
         """
         Get the default paths for auxiliary files relative to the path of the
         primary file, i.e. the same name as the primary path with a different
@@ -510,123 +495,25 @@ class FileWithSideCars(File):
 class Directory(FileGroup):
 
     @classmethod
-    def from_paths(cls, paths: ty.List[Path], **kwargs):
-        return [cls(p, **kwargs) for p in paths if p.is_dir()]
+    def from_paths(cls, *paths: ty.List[Path], **kwargs):
+        return [cls(p, **kwargs) for p in paths
+                if p.is_dir() and cls.contents_match(p)]
 
-
-    def get(self, assume_exists=False):
-        if assume_exists:
-            self.exists = True
-        self._check_part_of_data_node()
-        self.set_fs_paths()
-
-    def put(self, fs_path, side_cars=None):
-        self._check_part_of_data_node()
-        if side_cars is None:
-            side_cars = self.format.default_side_cars(fs_path)
-        elif side_cars is not None:
-            side_cars = absolute_paths_dict(side_cars)
-        self.data_node.put_file_group(self, fs_path=fs_path,
-                                      side_cars=side_cars)
-        if not self.exists:
-            self.set_fs_paths()
-
-    @property
-    def value(self):
-        return str(self.fs_path)
-
-    def set_fs_paths(self, fs_path=None, side_cars=None):
-        """Sets the primary file path and any side-car files from the node
-
-        Parameters
-        ----------
-        fs_path : str
-            The path to the primary 
-        side_cars : Dict[str, str] or None
-            dictionary with name of side-car files as keys (as defined in the
-            FileFormat class) and file paths as values
-        """
-        self.exists = True
-        if fs_path is None:
-            fs_path, side_cars = self.data_node.get_file_group(self)
-        self.fs_path = absolute_path(fs_path)
-        if side_cars is None:
-            side_cars = self.default_side_cars()
-        self.side_cars = absolute_paths_dict(side_cars)
-        attr.validate(self)
-
-    @property
-    def fs_paths(self):
-        if self.fs_path is None:
-            raise ArcanaUsageError(
-                f"Attempting to access file paths of {self} before they are set")
-        return chain([self.fs_path], self.side_cars.values())
+    @classmethod
+    def contents_match(cls, path: Path):
+        contents = list(path.iterdir())
+        for content_type in cls.contents:
+            if not content_type.from_paths(contents):
+                return False
+        return True
 
     def all_file_paths(self):
         "Iterates through all files in the group and returns their file paths"
         if self.fs_path is None:
             raise ArcanaUsageError(
-                f"{self} has not be retrieved from the store. Use 'get' "
-                "method first.")
-        if self.format.directory:
-            return chain(*((Path(root) / f for f in files)
-                           for root, _, files in os.walk(self.fs_path)))
-        else:
-            return self.fs_paths
-
-    def side_car(self, name):
-        return self.side_cars[name]
-
-    @property
-    def checksums(self):
-        if self._checksums is None:
-            self.get_checksums()
-        return self._checksums
-
-    def get_checksums(self, force_calculate=False):
-        self._check_exists()
-        # Load checksums from store (e.g. via API)
-        if self.data_node is not None and not force_calculate:
-            self._checksums = self.data_node.dataset.store.get_checksums(self)
-        # If the store cannot calculate the checksums do them manually
-        else:
-            self._checksums = self.calculate_checksums()
-
-    def calculate_checksums(self):
-        self._check_exists()
-        checksums = {}
-        for fpath in self.all_file_paths():
-            fhash = hashlib.md5()
-            with open(fpath, 'rb') as f:
-                # Calculate hash in chunks so we don't run out of memory for
-                # large files.
-                for chunk in iter(lambda: f.read(self.HASH_CHUNK_SIZE), b''):
-                    fhash.update(chunk)
-            try:
-                rel_path = str(fpath.relative_to(self.fs_path))
-            except ValueError:
-                rel_path = '.'.join(fpath.suffixes)
-            checksums[rel_path] = fhash.hexdigest()
-        return checksums
-
-    def contents_equal(self, other, **kwargs):
-        """
-        Test the equality of the file_group contents with another file_group.
-        If the file_group's format implements a 'contents_equal' method than
-        that is used to determine the equality, otherwise a straight comparison
-        of the checksums is used.
-
-        Parameters
-        ----------
-        other : FileGroup
-            The other file_group to compare to
-        """
-        self._check_exists()
-        if hasattr(self.format, 'contents_equal'):
-            equal = self.format.contents_equal(self, other, **kwargs)
-        else:
-            equal = (self.checksums == other.checksums)
-        return equal
+                f"Attempting to access file paths of {self} before they are set")
+        return chain(*((Path(root) / f for f in files)
+                        for root, _, files in os.walk(self.fs_path)))
 
     def copy_to(self, path: str, symlink: bool=False):
         """Copies the file-group to the new path, with auxiliary files saved
@@ -640,29 +527,8 @@ class Directory(FileGroup):
             Use symbolic links instead of copying files to new location
         """
         if symlink:
-            copy_dir = copy_file = os.symlink
+            copy_dir = os.symlink
         else:
-            copy_file = shutil.copyfile
             copy_dir = shutil.copytree
-        if self.format.directory:
-            copy_dir(self.fs_path, path)
-        else:
-            copy_file(self.fs_path, path + self.format.ext)
-            for aux_name, aux_path in self.side_cars.items():
-                copy_file(aux_path, path + self.format.side_cars[aux_name])
-        return self.format.from_path(path)
-
-# @classmethod
-# def from_files(cls, candidates):
-#     matches = cls.matches(candidates)
-#     if len(matches) == 1:
-#         return cls(cls.matches_ext(candidates))
-#     elif not matches:
-#         candidates_str = ', '.join(str(c) for c in candidates)
-#         raise ArcanaFileFormatError(
-#             f"No files match extension of {cls.__name__} ('{cls.ext}') out "
-#             f"of potential candidates of {candidates_str}")
-#     else:
-#         matching_str = ', '.join(str(m) for m in matches)
-#         msg = (f"Multiple files match extension of {cls.__name__} "
-#                 f"('{cls.ext}'): {matching_str}")
+        copy_dir(self.fs_path, path)
+        return self.from_paths(path)[0]

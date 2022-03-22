@@ -705,3 +705,4 @@ def unserialise(serialised: dict, **kwargs):
 
 # Minimum version of Arcana that this 
 MIN_SERIAL_VERSION = '0.0.0'
+
