@@ -95,7 +95,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_file_group(self, file_group, fs_path, side_cars):
+    def put_file_group(self, file_group, path, **side_cars):
         """
         Inserts or updates the file_group into the store
 
@@ -103,6 +103,10 @@ class DataStore(metaclass=ABCMeta):
         ----------
         file_group : FileGroup
             The file_group to insert into the store
+        path : Path
+            The file-system path to the primary file
+        **side_cars
+            Paths for additional files in the file group (e.g. header/side-cars)
         """
 
     @abstractmethod

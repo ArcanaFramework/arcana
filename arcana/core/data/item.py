@@ -108,6 +108,70 @@ class DataItem(metaclass=ABCMeta):
             raise ArcanaUsageError(
                 f"Cannot 'get' {self} as it is not part of a dataset")
 
+@attr.s
+class Field(DataItem):
+    """
+    A representation of a value field in the dataset.
+
+    Parameters
+    ----------
+    name_path : str
+        The name_path to the relative location of the field, i.e. excluding
+        information about which node in the data tree it belongs to
+    format : type
+        The format of the value. Can be one of (float, int, str)
+    derived : bool
+        Whether or not the value belongs in the derived session or not
+    data_node : DataNode
+        The data node that the field belongs to
+    exists : bool
+        Whether the field exists or is just a placeholder for a sink
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the field,
+        if applicable
+    """
+
+    value: int or float or str = attr.ib(converter=parse_value, default=None)
+
+    def get(self, assume_exists=False):
+        if not assume_exists:
+            self._check_exists()
+        self._check_part_of_data_node()
+        self.value = self.data_node.get_field(self)
+
+    def put(self, value):
+        self._check_part_of_data_node()
+        self.data_node.put_field(self, self.format(value))
+        self.exists = True
+
+    def __int__(self):
+        return int(self.value)
+
+    def __float__(self):
+        return float(self.value)
+
+    def __str__(self):
+        if self.format.__args__:  # Sequence type
+            val = '[' + ','.join(self._to_str(v) for v in self.value) + ']'
+        else:
+            val = self._to_str(self.value)
+        return val
+
+    def _to_str(self, val):
+        if self.format is str:
+            val = '"{}"'.format(val)
+        else:
+            val = str(val)
+        return val
+
+    def get_checksums(self):
+        """
+        For duck-typing with file_groups in checksum management. Instead of a
+        checksum, just the value of the field is used
+        """
+        return self.value
+
+
 
 def absolute_path(path):
     return Path(path).absolute()
@@ -156,6 +220,9 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     fs_path: str = attr.ib(default=None, converter=optional(absolute_path))
     _checksums: ty.Dict[str, str] = attr.ib(default=None, repr=False,
                                             init=False)
+    # Alternative names for the file format, empty by default overridden in
+    # sub-classes where necessary
+    alternative_names = ()
 
     HASH_CHUNK_SIZE = 2 ** 20  # 1MB in calc. checksums to avoid mem. issues
 
@@ -170,6 +237,282 @@ class FileGroup(DataItem, metaclass=ABCMeta):
                 raise ArcanaUsageError(
                         "Attempting to set a path to a file group that hasn't "
                         f"been derived yet ({fs_path})")
+
+    @classproperty
+    def format_name(cls):
+        return cls.__name__.lower()
+
+    def matches_name(self, name: str):
+        """Checks to see whether the provided name is a valid name for the
+        file format. Alternative names can be provided for format-specific
+        subclasses, or this method can be overridden.
+
+        Parameters
+        ----------
+        name : str
+            Name to match
+
+        Returns
+        -------
+        bool
+            whether or not the name matches the format
+        """
+        return name in (self.format_name,) + self.alternative_names
+
+    @property
+    def value(self):
+        return str(self.fs_path)
+
+    @property
+    def checksums(self):
+        if self._checksums is None:
+            self.get_checksums()
+        return self._checksums
+
+    def get_checksums(self, force_calculate=False):
+        self._check_exists()
+        # Load checksums from store (e.g. via API)
+        if self.data_node is not None and not force_calculate:
+            self._checksums = self.data_node.dataset.store.get_checksums(self)
+        # If the store cannot calculate the checksums do them manually
+        else:
+            self._checksums = self.calculate_checksums()
+
+    def calculate_checksums(self):
+        self._check_exists()
+        checksums = {}
+        for fpath in self.fs_paths:
+            fhash = hashlib.md5()
+            with open(fpath, 'rb') as f:
+                # Calculate hash in chunks so we don't run out of memory for
+                # large files.
+                for chunk in iter(lambda: f.read(self.HASH_CHUNK_SIZE), b''):
+                    fhash.update(chunk)
+            try:
+                rel_path = str(fpath.relative_to(self.fs_path))
+            except ValueError:
+                rel_path = '.'.join(fpath.suffixes)
+            checksums[rel_path] = fhash.hexdigest()
+        return checksums
+
+    def contents_equal(self, other, **kwargs):
+        """
+        Test the equality of the file_group contents with another file_group.
+        If the file_group's format implements a 'contents_equal' method than
+        that is used to determine the equality, otherwise a straight comparison
+        of the checksums is used.
+
+        Parameters
+        ----------
+        other : FileGroup
+            The other file_group to compare to
+        """
+        self._check_exists()
+        other._check_exists()
+        return self.checksums == other.checksums
+
+
+@attr.s
+class File(FileGroup):
+
+    @classmethod
+    def from_paths(cls, paths: ty.List[Path], **kwargs):
+        return [cls(p, **kwargs)
+                for p in paths if str(p).endswith('.' + cls.ext)]
+
+    def get(self, assume_exists=False):
+        if assume_exists:
+            self.exists = True
+        self._check_part_of_data_node()
+        fs_path, _ = self.data_node.get_file_group(self)
+        self._set_fs_path(fs_path)
+
+    def put(self, fs_path):
+        self._check_part_of_data_node()
+        self.data_node.put_file_group(self, path=fs_path)
+        self._set_fs_path(fs_path)
+
+    def _set_fs_path(self, fs_path):
+        self.fs_path = absolute_path(fs_path)
+        self.exists = True
+        attr.validate(self)
+
+    @property
+    def fs_paths(self):
+        if self.fs_path is None:
+            raise ArcanaUsageError(
+                f"Attempting to access file path of {self} before it is set")
+        return [self.fs_path]
+
+    def copy_to(self, path: str, symlink: bool=False):
+        """Copies the file-group to the new path, with auxiliary files saved
+        alongside the primary-file path.
+
+        Parameters
+        ----------
+        path : str
+            Path to save the file-group to excluding file extensions
+        symlink : bool
+            Use symbolic links instead of copying files to new location
+        """
+        if symlink:
+            copy_file = os.symlink
+        else:
+            copy_file = shutil.copyfile
+        copy_file(self.fs_path, path + self.format.ext)
+        return self.from_paths(path)[0]
+
+     
+@attr.s
+class FileWithSideCars(File):
+
+    side_cars: ty.Dict[str, str] = attr.ib(converter=optional(absolute_paths_dict))
+
+    @side_cars.default
+    def default_side_cars(self):
+        if self.fs_path is None:
+            return {}
+        return self.format.default_side_cars(self.fs_path)
+
+    @side_cars.validator
+    def validate_side_cars(self, _, side_cars):
+        if side_cars is not None:
+            if self.fs_path is None:
+                raise ArcanaUsageError(
+                    "Auxiliary files can only be provided to a FileGroup "
+                    f"of '{self.path}' ({side_cars}) if the local path is "
+                    "as well")
+            if set(self.format.side_cars.keys()) != set(side_cars.keys()):
+                raise ArcanaUsageError(
+                    "Keys of provided auxiliary files ('{}') don't match "
+                    "format ('{}')".format(
+                        "', '".join(side_cars.keys()),
+                        "', '".join(self.format.side_cars.keys())))
+            missing_side_cars = [f for f in side_cars.values()
+                                 if not op.exists(f)]
+            if missing_side_cars:
+                raise ArcanaUsageError(
+                    f"Attempting to set paths of auxiliary files for {self} "
+                    "that don't exist ('{}')".format(
+                        "', '".join(missing_side_cars)))
+
+    @classmethod
+    def from_paths(cls, paths: ty.List[Path], **kwargs):
+        def match_ext(ext):
+            return [cls(p, **kwargs) for p in paths
+                    if str(p).endswith('.' + ext)]
+        primary_files = match_ext(cls.ext)
+        # If only one file per 
+        if len(primary_files) == 1:
+            primary_file = primary_files[0]
+            side_cars = {}
+            for sc_ext in cls.side_car_exts:
+                matches = match_ext(sc_ext)
+                if len(matches) == 1:
+                    side_cars[sc_ext] = matches[0]
+                elif not matches:
+                    raise ArcanaFileFormatError(
+                        f"Found no matching side-car file for '{sc_ext}' extension "
+                        f"when attempting to resolve {cls.format_name}")
+                else:
+                    raise ArcanaFileFormatError(
+                        f"Found multiple matching files for '{sc_ext}' extension "
+                        f"when attempting to resolve side-car files for to pair "
+                        f"with primary file '{primary_file}' of {cls.format_name} "
+                        "format")
+        else
+        
+
+    def get(self, assume_exists=False):
+        if assume_exists:
+            self.exists = True
+        self._check_part_of_data_node()
+        fs_path, side_cars = self.data_node.get_file_group(self)
+        self._set_fs_paths(fs_path, side_cars)
+
+    def put(self, fs_path, **side_cars):
+        """Sets the primary file path and any side-car files from the node
+
+        Parameters
+        ----------
+        fs_path : str
+            The path to the primary 
+        **side_cars : Dict[str, str] or None
+            dictionary with name of side-car files as keys (as defined in the
+            FileFormat class) and file paths as values
+        """
+        self._check_part_of_data_node()
+        if not side_cars:
+            side_cars = self.format.default_side_cars(fs_path)
+        elif side_cars is not None:
+            side_cars = absolute_paths_dict(side_cars)
+        self.data_node.put_file_group(self, fs_path=fs_path,
+                                      side_cars=side_cars)
+        self._set_fs_paths(fs_path, side_cars=side_cars)
+
+    def _set_fs_paths(self, fs_path, side_cars):
+        self.fs_path = absolute_path(fs_path)
+        self.side_cars = absolute_paths_dict(side_cars)
+        self.exists = True
+        attr.validate(self)
+
+    @property
+    def fs_paths(self):
+        if self.fs_path is None:
+            raise ArcanaUsageError(
+                f"Attempting to access file paths of {self} before they are set")
+        return chain([self.fs_path], self.side_cars.values())
+
+    def side_car(self, name):
+        return self.side_cars[name]
+
+    def copy_to(self, path: str, symlink: bool=False):
+        """Copies the file-group to the new path, with auxiliary files saved
+        alongside the primary-file path.
+
+        Parameters
+        ----------
+        path : str
+            Path to save the file-group to excluding file extensions
+        symlink : bool
+            Use symbolic links instead of copying files to new location
+        """
+        if symlink:
+            copy_file = os.symlink
+        else:
+            copy_file = shutil.copyfile
+        copy_file(self.fs_path, path + self.format.ext)
+        for aux_name, aux_path in self.side_cars.items():
+            copy_file(aux_path, path + self.side_car_exts[aux_name])
+        return self.format.from_path(path)        
+    
+    @classmethod
+    def default_side_cars(cls, primary_path):
+        """
+        Get the default paths for auxiliary files relative to the path of the
+        primary file, i.e. the same name as the primary path with a different
+        extension
+
+        Parameters
+        ----------
+        primary_path : str
+            Path to the primary file in the file_group
+
+        Returns
+        -------
+        aux_paths : ty.Dict[str, str]
+            A dictionary of auxiliary file names and default paths
+        """
+        return dict((n, str(primary_path)[:-len(cls.ext)] + ext)
+                    for n, ext in cls.side_cars.items())
+
+
+class Directory(FileGroup):
+
+    @classmethod
+    def from_paths(cls, paths: ty.List[Path], **kwargs):
+        return [cls(p, **kwargs) for p in paths if p.is_dir()]
+
 
     def get(self, assume_exists=False):
         if assume_exists:
@@ -308,125 +651,6 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             for aux_name, aux_path in self.side_cars.items():
                 copy_file(aux_path, path + self.format.side_cars[aux_name])
         return self.format.from_path(path)
-
-
-@attr.s
-class Field(DataItem):
-    """
-    A representation of a value field in the dataset.
-
-    Parameters
-    ----------
-    name_path : str
-        The name_path to the relative location of the field, i.e. excluding
-        information about which node in the data tree it belongs to
-    format : type
-        The format of the value. Can be one of (float, int, str)
-    derived : bool
-        Whether or not the value belongs in the derived session or not
-    data_node : DataNode
-        The data node that the field belongs to
-    exists : bool
-        Whether the field exists or is just a placeholder for a sink
-    provenance : Provenance | None
-        The provenance for the pipeline that generated the field,
-        if applicable
-    """
-
-    value: int or float or str = attr.ib(converter=parse_value, default=None)
-
-    def get(self, assume_exists=False):
-        if not assume_exists:
-            self._check_exists()
-        self._check_part_of_data_node()
-        self.value = self.data_node.get_field(self)
-
-    def put(self, value):
-        self._check_part_of_data_node()
-        self.data_node.put_field(self, self.format(value))
-        self.exists = True
-
-    def __int__(self):
-        return int(self.value)
-
-    def __float__(self):
-        return float(self.value)
-
-    def __str__(self):
-        if self.format.__args__:  # Sequence type
-            val = '[' + ','.join(self._to_str(v) for v in self.value) + ']'
-        else:
-            val = self._to_str(self.value)
-        return val
-
-    def _to_str(self, val):
-        if self.format is str:
-            val = '"{}"'.format(val)
-        else:
-            val = str(val)
-        return val
-
-    def get_checksums(self):
-        """
-        For duck-typing with file_groups in checksum management. Instead of a
-        checksum, just the value of the field is used
-        """
-        return self.value
-
-@attr.s
-class File(FileGroup):
-
-    @classmethod
-    def from_paths(cls, paths: ty.List[Path], **kwargs):
-        return [cls(p, **kwargs)
-                for p in paths if str(p).endswith('.' + cls.ext)]
-     
-@attr.s
-class FileWithSideCars(File):
-
-    side_cars: ty.Dict[str, str] = attr.ib(converter=optional(absolute_paths_dict))
-
-    @side_cars.default
-    def default_side_cars(self):
-        if self.fs_path is None:
-            return {}
-        return self.format.default_side_cars(self.fs_path)
-
-    @side_cars.validator
-    def validate_side_cars(self, _, side_cars):
-        if side_cars is not None:
-            if self.fs_path is None:
-                raise ArcanaUsageError(
-                    "Auxiliary files can only be provided to a FileGroup "
-                    f"of '{self.path}' ({side_cars}) if the local path is "
-                    "as well")
-            if set(self.format.side_cars.keys()) != set(side_cars.keys()):
-                raise ArcanaUsageError(
-                    "Keys of provided auxiliary files ('{}') don't match "
-                    "format ('{}')".format(
-                        "', '".join(side_cars.keys()),
-                        "', '".join(self.format.side_cars.keys())))
-            missing_side_cars = [f for f in side_cars.values()
-                                 if not op.exists(f)]
-            if missing_side_cars:
-                raise ArcanaUsageError(
-                    f"Attempting to set paths of auxiliary files for {self} "
-                    "that don't exist ('{}')".format(
-                        "', '".join(missing_side_cars)))
-
-    @classmethod
-    def from_paths(cls, paths: ty.List[Path], **kwargs):
-        return [cls(p, **kwargs)
-                for p in paths if str(p).endswith('.' + cls.ext)]
-    
-
-class Directory(FileGroup):
-
-    @classmethod
-    def from_paths(cls, paths: ty.List[Path], **kwargs):
-        return [cls(p, **kwargs) for p in paths if p.is_dir()]
-
-
 
 # @classmethod
 # def from_files(cls, candidates):

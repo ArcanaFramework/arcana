@@ -46,9 +46,9 @@ If the file format doesn't have an identifiable extension it is possible to
 override the :meth:`File.from_paths` method and peak inside the contents of the
 file to determine its type, but this shouldn't be necessary in most cases.
 
-:class:`.FileWithSidecars` subclasses can set the ``ext`` and ``side_cars``
-attributes. The ``side_cars`` attribute is a tuple of the side cars extensions
-in the file-group
+:class:`.FileWithSidecars` subclasses can set the ``ext`` and ``side_car_exts``
+attributes. The ``side_car_exts`` attribute is a tuple of the side cars extensions
+that should be present alongside the "primary file",
 
 .. code-block:: python
 
@@ -56,7 +56,7 @@ in the file-group
 
     class Analyze(FileWithSidecars):
         ext = 'img'
-        side_cars = ('hdr',)
+        side_car_exts = ('hdr',)
 
 :class:`.Directory` subclasses can set ``ext`` but will typically only set
 the ``content_types`` attribute. The ``content_types`` attribute is a tuple of
@@ -76,8 +76,8 @@ identification.
         contents = (DicomFile,)
 
 It is a good idea to make use of class inheritance when defining related
-formats, for example adding a format to handle the Siemens-variant DICOM
-format which has '.IMA' extensions to capture the relationship between them.
+formats to capture the relationship between them. For example, adding a format
+to handle the Siemens-variant DICOM format which has '.IMA' extensions.
 
 .. code-block:: python
 
