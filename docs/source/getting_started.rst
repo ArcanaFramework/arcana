@@ -40,7 +40,7 @@ Two command-line tools that the the `arcana-medicalimaging` sub-package uses
 for implicit file-format conversions are
 
 * `Dcm2Niix <https://github.com/rordenlab/dcm2niix>`_
-* `Mrtrix3 <https://mrtrix3.readthedocs.io>`_
+* `Mrtrix3 <https://mrtrix.readthedocs.io/en/latest/index.html>`_
 
 Both these packages can be installed using Home/LinuxBrew (you will need to tap
 ``MRtrix3/mrtrix3``) and Anaconda_ (use the ``conda-forge`` and ``mrtrix3``
