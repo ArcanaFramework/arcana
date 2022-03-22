@@ -239,7 +239,7 @@ class Pipeline():
             try:
                 required_format = input_types[input_name]
             except KeyError:
-                input_types[input_name] = required_format = source.datatype
+                input_types[input_name] = required_format = source.format
             pipeline.inputs.append((input_name, required_format))
 
         # Add sinks for the output of the workflow
@@ -266,7 +266,7 @@ class Pipeline():
             try:
                 produced_format = output_types[output_name]
             except KeyError:
-                output_types[output_name] = produced_format = sink.datatype
+                output_types[output_name] = produced_format = sink.format
             pipeline.outputs.append((output_name, produced_format))
 
         # Generate list of nodes to process checking existing outputs
@@ -314,7 +314,7 @@ class Pipeline():
 
         # Do input format conversions if required
         for input_name, required_format in pipeline.inputs:
-            stored_format = dataset.column_specs[input_name].datatype
+            stored_format = dataset.column_specs[input_name].format
             if required_format != stored_format:
                 logger.info("Adding implicit conversion for input '%s' "
                             "from %s to %s", input_name, stored_format,
@@ -356,7 +356,7 @@ class Pipeline():
 
         # Do output format conversions if required
         for output_name, produced_format in pipeline.outputs:
-            stored_format = dataset.column_specs[output_name].datatype
+            stored_format = dataset.column_specs[output_name].format
             if produced_format != stored_format:
                 logger.info("Adding implicit conversion for output '%s' "
                     "from %s to %s", output_name, produced_format,
@@ -414,7 +414,7 @@ class Pipeline():
 
 
 # def encapsulate_paths(outputs, **kwargs):
-#     items = [v.datatype(kwargs[k]) for k, v in outputs]
+#     items = [v.format(kwargs[k]) for k, v in outputs]
 #     return items if len(items) > 1 else items[0]
 
 

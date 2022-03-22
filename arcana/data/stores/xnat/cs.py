@@ -117,7 +117,7 @@ class XnatViaCS(Xnat):
                 path = path.replace('scans', 'SCANS').replace('resources/', '')
             path = path.replace('resources', 'RESOURCES')
             resource_path = input_mount / path
-            if file_group.datatype.directory:
+            if file_group.format.directory:
                 # Link files from resource dir into temp dir to avoid catalog XML
                 primary_path = self.cache_path(file_group)
                 shutil.rmtree(primary_path, ignore_errors=True)
@@ -128,7 +128,7 @@ class XnatViaCS(Xnat):
                 side_cars = {}
             else:
                 try:
-                    primary_path, side_cars = file_group.datatype.assort_files(
+                    primary_path, side_cars = file_group.format.assort_files(
                         resource_path.iterdir())
                 except ArcanaFileFormatError as e:
                     e.msg += f" in {file_group} from {resource_path}"
@@ -142,7 +142,7 @@ class XnatViaCS(Xnat):
 
     def put_file_group(self, file_group, fs_path, side_cars):
         primary_path, side_car_paths = self.get_output_paths(file_group)
-        if file_group.datatype.directory:
+        if file_group.format.directory:
             shutil.copytree(fs_path, primary_path)
         else:
             os.makedirs(primary_path.parent, exist_ok=True)
@@ -163,15 +163,15 @@ class XnatViaCS(Xnat):
         path_parts = file_group.path.split('/')
         resource_path = self.output_mount / '/'.join(path_parts[:-1])
         side_car_paths = {}
-        if file_group.datatype.directory:
+        if file_group.format.directory:
             primary_path = resource_path / path_parts[-1]
         else:
             os.makedirs(resource_path, exist_ok=True)
             # Upload primary file and add to cache
-            fname = path_parts[-1] + file_group.datatype.extension
+            fname = path_parts[-1] + file_group.format.extension
             primary_path = resource_path / fname
             # Upload side cars and add them to cache
-            for sc_name, sc_ext in file_group.datatype.side_cars.items():
+            for sc_name, sc_ext in file_group.format.side_cars.items():
                 sc_fname = path_parts[-1] + sc_ext
                 sc_fpath = resource_path / sc_fname
                 side_car_paths[sc_name] = sc_fpath
@@ -212,13 +212,13 @@ class XnatViaCS(Xnat):
         image_tag : str
             Name + version of the Docker image to be created
         inputs : ty.List[ty.Union[InputArg, tuple]]
-            Inputs to be provided to the container (pydra_field, datatype, dialog_name, frequency).
-            'pydra_field' and 'datatype' will be passed to "inputs" arg of the Dataset.pipeline() method,
+            Inputs to be provided to the container (pydra_field, format, dialog_name, frequency).
+            'pydra_field' and 'format' will be passed to "inputs" arg of the Dataset.pipeline() method,
             'frequency' to the Dataset.add_source() method and 'dialog_name' is displayed in the XNAT
             UI
         outputs : ty.List[ty.Union[OutputArg, tuple]]
-            Outputs to extract from the container (pydra_field, datatype, output_path).
-            'pydra_field' and 'datatype' will be passed as "outputs" arg the Dataset.pipeline() method,
+            Outputs to extract from the container (pydra_field, format, output_path).
+            'pydra_field' and 'format' will be passed as "outputs" arg the Dataset.pipeline() method,
             'output_path' determines the path the output will saved in the XNAT data tree.
         description : str
             User-facing description of the pipeline
@@ -292,7 +292,7 @@ class XnatViaCS(Xnat):
                 "user-settable": True,
                 "replacement-key": replacement_key})
             input_args.append(
-                f"--input {inpt.pydra_field} {inpt.datatype} {replacement_key}")
+                f"--input {inpt.pydra_field} {inpt.format} {replacement_key}")
 
         # Add parameters as additional inputs to inputs JSON specification
         param_args = []
@@ -322,14 +322,14 @@ class XnatViaCS(Xnat):
         for output in outputs:
             xnat_path = output.xnat_path if output.xnat_path else output.pydra_field
             label = xnat_path.split('/')[0]
-            out_fname = xnat_path + (output.datatype.ext if output.datatype.ext else '')
+            out_fname = xnat_path + (output.format.ext if output.format.ext else '')
             # output_fname = xnat_path
-            # if output.datatype.extension is not None:
-            #     output_fname += output.datatype.extension
+            # if output.format.extension is not None:
+            #     output_fname += output.format.extension
             # Set the path to the 
             outputs_json.append({
                 "name": output.pydra_field,
-                "description": f"{output.pydra_field} ({output.datatype})",
+                "description": f"{output.pydra_field} ({output.format})",
                 "required": True,
                 "mount": "out",
                 "path": out_fname,
@@ -341,9 +341,9 @@ class XnatViaCS(Xnat):
                 "as-a-child-of": "SESSION",
                 "type": "Resource",
                 "label": label,
-                "format": output.datatype.name})
+                "format": output.format.name})
             output_args.append(
-                f'--output {output.pydra_field} {output.datatype} {xnat_path}')
+                f'--output {output.pydra_field} {output.format} {xnat_path}')
 
         input_args_str = ' '.join(input_args)
         output_args_str = ' '.join(output_args)
@@ -785,14 +785,14 @@ class XnatViaCS(Xnat):
     @dataclass
     class InputArg():
         pydra_field: str  # Must match the name of the Pydra task input
-        datatype: FileFormat
+        format: FileFormat
         dialog_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
         frequency: Clinical = Clinical.session
 
     @dataclass
     class OutputArg():
         pydra_field: str  # Must match the name of the Pydra task output
-        datatype: FileFormat
+        format: FileFormat
         xnat_path: str = None  # The path the output is stored at in XNAT, defaults to the pydra name
 
     @dataclass

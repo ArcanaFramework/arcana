@@ -25,9 +25,9 @@ def test_find_nodes(dataset: Dataset):
 def test_get_items(dataset: Dataset):
     source_files = {}
     for fg_name, formats in dataset.blueprint.expected_formats.items():
-        for datatype, files in formats:
-            source_name = fg_name + datatype.name
-            dataset.add_source(source_name, path=fg_name, datatype=datatype)
+        for format, files in formats:
+            source_name = fg_name + format.name
+            dataset.add_source(source_name, path=fg_name, format=format)
             source_files[source_name] = set(files)
     for node in dataset.nodes(dataset.leaf_freq):
         for source_name, files in source_files.items():
@@ -39,8 +39,8 @@ def test_get_items(dataset: Dataset):
 def test_put_items(dataset: Dataset):
     all_checksums = {}
     all_fs_paths = {}
-    for name, freq, datatype, files in dataset.blueprint.to_insert:
-        dataset.add_sink(name=name, datatype=datatype, frequency=freq)
+    for name, freq, format, files in dataset.blueprint.to_insert:
+        dataset.add_sink(name=name, format=format, frequency=freq)
         deriv_tmp_dir = Path(mkdtemp())
         # Create test files, calculate checkums and recorded expected paths
         # for inserted files
@@ -60,14 +60,14 @@ def test_put_items(dataset: Dataset):
         # Test inserting the new item into the store
         for node in dataset.nodes(freq):
             item = node[name]
-            item.put(*datatype.assort_files(fs_paths))
+            item.put(*format.assort_files(fs_paths))
     def check_inserted():
         """Check that the inserted items are present in the dataset"""
-        for name, freq, datatype, _ in dataset.blueprint.to_insert:
+        for name, freq, format, _ in dataset.blueprint.to_insert:
             for node in dataset.nodes(freq):
                 item = node[name]
                 item.get_checksums()
-                assert item.datatype == datatype
+                assert item.format == format
                 assert item.checksums == all_checksums[name]
                 item.get()
                 assert all(p.exists() for p in item.fs_paths)

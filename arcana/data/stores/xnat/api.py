@@ -227,10 +227,10 @@ class Xnat(DataStore):
         logger.info("Getting %s from %s:%s node via API access",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)        
-        if file_group.datatype is None:
+        if file_group.format is None:
             raise ArcanaUsageError(
                 "Attempting to download {}, which has not been assigned a "
-                "file format (see FileGroup.datatypeted)".format(file_group))
+                "file format (see FileGroup.formatted)".format(file_group))
         self._check_store(file_group)
         with self:  # Connect to the XNAT repository if haven't already
             xnode = self.get_xnode(file_group.data_node)
@@ -245,7 +245,7 @@ class Xnat(DataStore):
                 #     xscan = xnode.scans[file_group.name]
                 #     file_group.id = xscan.id
                 #     base_uri += '/scans/' + xscan.id
-                #     xresource = xscan.resources[file_group.datatype_name]
+                #     xresource = xscan.resources[file_group.format_name]
                 # Set URI so we can retrieve checksums if required. We ensure we
                 # use the resource name instead of its ID in the URI for
                 # consistency with other locations where it is set and to keep the
@@ -313,7 +313,7 @@ class Xnat(DataStore):
         value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
             The value of the field
         """
-        if file_group.datatype is None:
+        if file_group.format is None:
             raise ArcanaFileFormatError(
                 "Format of {} needs to be set before it is uploaded to {}"
                 .format(file_group, self))
@@ -340,14 +340,14 @@ class Xnat(DataStore):
             # Create the new resource for the file_group
             xresource = self.login.classes.ResourceCatalog(
                 parent=xnode, label=escaped_name,
-                format=file_group.datatype.name)
+                format=file_group.format.name)
             # Create cache path
             cache_path = self.cache_path(file_group)
             if cache_path.exists():
                 shutil.rmtree(cache_path)
             side_car_paths = {}
             # Upload data and add it to cache
-            if file_group.datatype.directory:
+            if file_group.format.directory:
                 for dpath, _, fnames  in os.walk(fs_path):
                     dpath = Path(dpath)
                     for fname in fnames:
@@ -358,14 +358,14 @@ class Xnat(DataStore):
                 primary_path = cache_path
             else:
                 # Upload primary file and add to cache
-                fname = escaped_name + file_group.datatype.extension
+                fname = escaped_name + file_group.format.extension
                 xresource.upload(str(fs_path), fname)
                 os.makedirs(cache_path, stat.S_IRWXU | stat.S_IRWXG)
                 primary_path = cache_path / fname
                 shutil.copyfile(fs_path, primary_path)
                 # Upload side cars and add them to cache
                 for sc_name, sc_src_path in side_cars.items():
-                    sc_fname = escaped_name + file_group.datatype.side_cars[sc_name]
+                    sc_fname = escaped_name + file_group.format.side_cars[sc_name]
                     xresource.upload(str(sc_src_path), sc_fname)
                     sc_fpath = cache_path / sc_fname
                     shutil.copyfile(sc_src_path, sc_fpath)
@@ -409,10 +409,10 @@ class Xnat(DataStore):
     def put_field(self, field, value):
         self._check_store(field)
         if field.array:
-            if field.datatype is str:
+            if field.format is str:
                 value = ['"{}"'.format(v) for v in value]
             value = '[' + ','.join(str(v) for v in value) + ']'
-        if field.datatype is str:
+        if field.format is str:
             value = '"{}"'.format(value)
         with self:
             xsession = self.get_xnode(field.data_node)
@@ -447,10 +447,10 @@ class Xnat(DataStore):
         # strip base URI to get relative paths of files within the resource
         checksums = {re.match(r'.*/resources/\w+/files/(.*)$', u).group(1): c
                      for u, c in sorted(checksums.items())}
-        if not file_group.datatype.directory:
+        if not file_group.format.directory:
             # Replace the paths of side cars with their extensions and the
             # primary file with '.'
-            primary = file_group.datatype.assort_files(checksums.keys())[0]
+            primary = file_group.format.assort_files(checksums.keys())[0]
             checksums['.'] = checksums.pop(primary)
             for path in set(checksums.keys()) - set(['.']):
                 ext = '.'.join(Path(path).suffixes)
@@ -618,8 +618,8 @@ class Xnat(DataStore):
 
     def _file_group_paths(self, file_group):
         cache_path = self.cache_path(file_group)
-        if not file_group.datatype.directory:
-            primary_path, side_cars = file_group.datatype.assort_files(
+        if not file_group.format.directory:
+            primary_path, side_cars = file_group.format.assort_files(
                 op.join(cache_path, f) for f in os.listdir(cache_path))
         else:
             primary_path = cache_path

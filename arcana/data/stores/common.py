@@ -82,7 +82,7 @@ class FileSystem(DataStore):
         # Don't need to cache file_group as it is already local as long
         # as the path is set
         primary_path = self.file_group_path(file_group)
-        side_cars = file_group.datatype.default_side_cars(primary_path)
+        side_cars = file_group.format.default_side_cars(primary_path)
         location_str = (f"{file_group.data_node} node of "
                         f"Dataset '{file_group.data_node.dataset.id}' on {self}")
         if not op.exists(primary_path):
@@ -105,9 +105,9 @@ class FileSystem(DataStore):
         if isinstance(val, dict):
             val = val[self.VALUE_KEY]
         if field.array:
-            val = [field.datatype(v) for v in val]
+            val = [field.format(v) for v in val]
         else:
-            val = field.datatype(val)
+            val = field.format(val)
         return val
 
     def put_file_group(self, file_group, fs_path, side_cars):
@@ -127,11 +127,11 @@ class FileSystem(DataStore):
             os.makedirs(dname)
         if fs_path.is_file():
             shutil.copyfile(fs_path, target_path)
-            sc_target_paths = file_group.datatype.default_side_cars(target_path)
+            sc_target_paths = file_group.format.default_side_cars(target_path)
             # Copy side car files into store
             if side_cars is not None:
                 side_cars = copy(side_cars)
-            for sc_name in file_group.datatype.side_cars:
+            for sc_name in file_group.format.side_cars:
                 try:
                     sc_path = side_cars.pop(sc_name)
                 except KeyError as e:
@@ -142,7 +142,7 @@ class FileSystem(DataStore):
             if side_cars:
                 raise ArcanaFileFormatError(
                     f"Unrecognised side cars ({side_cars}) when attempting to "
-                    f"write {file_group.datatype.name} files")
+                    f"write {file_group.format.name} files")
         elif fs_path.is_dir():
             if target_path.exists():
                 shutil.rmtree(target_path)
@@ -277,8 +277,8 @@ class FileSystem(DataStore):
     def file_group_path(self, file_group):
         fs_path = self.root_dir(file_group.data_node) / self.node_path(
             file_group.data_node).joinpath(*file_group.path.split('/'))
-        if file_group.datatype.extension:
-            fs_path = fs_path.with_suffix(file_group.datatype.extension)
+        if file_group.format.extension:
+            fs_path = fs_path.with_suffix(file_group.format.extension)
         return fs_path
 
     def fields_json_path(self, field):

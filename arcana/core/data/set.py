@@ -266,7 +266,7 @@ class Dataset():
             The name used to reference the dataset "column" for the
             source
         format : FileFormat or type
-            The file-format (for file-groups) or datatype (for fields)
+            The file-format (for file-groups) or format (for fields)
             that the source will be stored in within the dataset
         path : str, default `name`
             The location of the source within the dataset
@@ -294,7 +294,7 @@ class Dataset():
             The name used to reference the dataset "column" for the
             sink
         format : FileFormat or type
-            The file-format (for file-groups) or datatype (for fields)
+            The file-format (for file-groups) or format (for fields)
             that the sink will be stored in within the dataset
         path : str, default `name`
             The location of the sink within the dataset            

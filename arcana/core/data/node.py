@@ -217,7 +217,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     provenance: DataProvenance = attr.ib(default=None)
     _matched: ty.Dict[str, DataItem] = attr.ib(factory=dict, init=False)
 
-    def resolve(self, datatype):
+    def resolve(self, format):
         """
         Detects the format of the file-group from a list of possible
         candidates and returns a corresponding FileGroup object. If multiple
@@ -231,7 +231,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
 
         Parameters
         ----------
-        datatype : FileFormat or type
+        format : FileFormat or type
             A list of file-formats to try to match. The first matching format
             in the sequence will be used to create a file-group
 
@@ -254,16 +254,16 @@ class UnresolvedDataItem(metaclass=ABCMeta):
                 "attempting to resolve a file-groups format")
         try:
             # Attempt to access previously saved
-            item = self._matched[datatype]
+            item = self._matched[format]
         except KeyError:
-            if isinstance(datatype, FileFormat):
-                item = self._resolve(datatype)
+            if isinstance(format, FileFormat):
+                item = self._resolve(format)
             else:
-                item = self._resolve(datatype)
+                item = self._resolve(format)
         return item
 
     @abstractmethod
-    def _resolve(self, datatype):
+    def _resolve(self, format):
         raise NotImplementedError
 
     @property
@@ -318,41 +318,41 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                                             converter=normalise_paths)
     uris: ty.Dict[str] = attr.ib(default=None)
 
-    def _resolve(self, datatype):
+    def _resolve(self, format):
         # Perform matching based on resource names in multi-format
         # file-group
         if self.uris is not None:
             item = None
-            for datatype_name, uri in self.uris.items():
-                if datatype_name.lower() in datatype.all_names:
-                    item = datatype(uri=uri, **self.item_kwargs)
+            for format_name, uri in self.uris.items():
+                if format_name.lower() in format.all_names:
+                    item = format(uri=uri, **self.item_kwargs)
             if item is None:
                 raise ArcanaUnresolvableFormatException(
                     f"Could not file a matching resource in {self.path} for"
-                    f" the given datatype ({datatype.name}), found "
+                    f" the given format ({format.name}), found "
                     "('{}')".format("', '".join(self.uris)))
         # Perform matching based on file-extensions of local name_paths
         # in multi-format file-group
         else:
             file_path = None
             side_cars = None
-            if datatype.directory:
+            if format.directory:
                 if (len(self.file_paths) == 1
                     and self.file_paths[0].is_dir()
-                    and (datatype.within_dir_exts is None
-                        or (datatype.within_dir_exts == frozenset(
+                    and (format.within_dir_exts is None
+                        or (format.within_dir_exts == frozenset(
                             split_extension(f)[1]
                             for f in self.file_paths[0].iterdir()
                             if not str(f).startswith('.'))))):
                     file_path = self.file_paths[0]
             else:
                 try:
-                    file_path, side_cars = datatype.assort_files(
+                    file_path, side_cars = format.assort_files(
                         self.file_paths)
                 except ArcanaFileFormatError:
                     pass
             if file_path is not None:
-                item = datatype(
+                item = format(
                     fs_path=file_path, side_cars=side_cars,
                     **self.item_kwargs)
             else:
@@ -361,7 +361,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                     f"{self.data_node.id} ('" + "', '".join(
                         str(p) for p in self.file_paths) 
                     + "') did not match the naming conventions expected by "
-                    f"datatype '{datatype.name}'")
+                    f"format '{format.name}'")
         return item
 
 
@@ -397,22 +397,22 @@ class UnresolvedField(UnresolvedDataItem):
         float, int, str, ty.List[float], ty.List[int], ty.List[str]
     ] = attr.ib(default=None)
 
-    def _resolve(self, datatype):
+    def _resolve(self, format):
         try:
-            if datatype._name == 'Sequence':
-                if len(datatype.__args__) > 1:
+            if format._name == 'Sequence':
+                if len(format.__args__) > 1:
                     raise ArcanaUsageError(
-                        f"Sequence datatypes with more than one arg "
-                        "are not supported ({datatype})")
-                subtype = datatype.__args__[0]
+                        f"Sequence formats with more than one arg "
+                        "are not supported ({format})")
+                subtype = format.__args__[0]
                 value = [subtype(v)
                             for v in self.value[1:-1].split(',')]
             else:
-                value = datatype(self.value)
+                value = format(self.value)
         except ValueError as e:
             raise ArcanaUnresolvableFormatException(
                     f"Could not convert value of {self} ({self.value}) "
-                    f"to datatype {datatype}") from e
+                    f"to format {format}") from e
         else:
             item = DataItem(value=value, **self.item_kwargs)
         return item

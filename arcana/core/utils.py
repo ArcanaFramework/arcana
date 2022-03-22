@@ -228,7 +228,7 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     return cls
 
 
-# def resolve_datatype(name):
+# def resolve_format(name):
 #     """Resolves a in a sub-module of arcana.data.formats based on its
 #     name
 
@@ -245,11 +245,11 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
 #     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
 #         return eval(name)
 #     import arcana.data.formats
-#     import arcana.core.data.datatype
+#     import arcana.core.data.format
 #     return resolve_subclass(arcana.data.formats,
-#                         arcana.core.data.datatype.FileFormat, name)
+#                         arcana.core.data.format.FileFormat, name)
 
-def resolve_datatype(name):
+def resolve_format(name):
     """Resolves a in a sub-module of arcana.file_format based on its
     name
 
@@ -394,7 +394,7 @@ def lower(s):
     return s.lower()
 
 
-def parse_single_value(value, datatype=None):
+def parse_single_value(value, format=None):
     """
     Tries to convert to int, float and then gives up and assumes the value
     is of type string. Useful when excepting values that may be string
@@ -413,8 +413,8 @@ def parse_single_value(value, datatype=None):
     elif not isinstance(value, (int, float, bool)):
         raise ArcanaUsageError(
             "Unrecognised type for single value {}".format(value))
-    if datatype is not None:
-        value = datatype(value)
+    if format is not None:
+        value = format(value)
     return value
 
 
@@ -455,7 +455,7 @@ def find_mismatch(first, second, indent=''):
     """
     Finds where two objects differ, iterating down into nested containers
     (i.e. dicts, lists and tuples) They can be nested containers
-    any combination of primary datatypes, str, int, float, dict and lists
+    any combination of primary formats, str, int, float, dict and lists
 
     Parameters
     ----------

@@ -232,7 +232,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
                 self,
                 pipeline,
                 recorded_datafile: Directory,  # Automatic conversion from stored Zip format before pipeline is run
-                recorded_metadata):  # Format/datatype is the same as class definition so can be omitted
+                recorded_metadata):  # Format/format is the same as class definition so can be omitted
 
             # A simple task to extract the "temperature" field from a JSON
             # metadata

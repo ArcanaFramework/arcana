@@ -128,7 +128,7 @@ class FileFormat(object):
         """Temporary workaround until FileFormat is retired in place of using
         separate subclasses for each type"""
         from .item import FileGroup
-        return FileGroup(*args, datatype=self, **kwargs)
+        return FileGroup(*args, format=self, **kwargs)
 
     @property
     def all_names(self):
@@ -382,7 +382,7 @@ class FileFormat(object):
                 name_path = name_path[:-len(self.ext)]
             else:
                 file_path += self.ext       
-        return self.file_group_cls(name_path, fs_path=file_path, datatype=self,
+        return self.file_group_cls(name_path, fs_path=file_path, format=self,
                                    **kwargs)
 
 
@@ -454,7 +454,7 @@ class Image(FileFormat, metaclass=ABCMeta):
             The root-mean-square tolerance that is acceptable between the array
             data for the images to be considered equal
         """
-        if other_fileset.datatype != self:
+        if other_fileset.format != self:
             return False
         if self.headers_diff(fileset, other_fileset, **kwargs):
             return False
@@ -511,7 +511,7 @@ class Image(FileFormat, metaclass=ABCMeta):
                                                equal_nan=True):
                                 diff.append(key)
                         except TypeError:
-                            # Fallback to a straight comparison for some datatypes
+                            # Fallback to a straight comparison for some formats
                             if value != other_value:
                                 diff.append(key)
                 elif value != other_value:
@@ -603,7 +603,7 @@ def extract_paths(from_format, file_group):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
     logger.debug("Extracting paths from %s (%s format) before conversion", file_group, from_format)
-    if file_group.datatype != from_format:
+    if file_group.format != from_format:
         raise ValueError(f"Format of {file_group} doesn't match converter {from_format}")
     cpy = file_group.copy_to(Path(file_group.path).name, symlink=True)
     paths = (cpy.fs_path,) + tuple(cpy.side_cars.values())

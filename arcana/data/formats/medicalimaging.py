@@ -87,7 +87,7 @@ class BaseImage(FileGroup):
             The root-mean-square tolerance that is acceptable between the array
             data for the images to be considered equal
         """
-        if other_fileset.datatype != self:
+        if other_fileset.format != self:
             return False
         if self.headers_diff(fileset, other_fileset, **kwargs):
             return False
@@ -144,7 +144,7 @@ class BaseImage(FileGroup):
                                                equal_nan=True):
                                 diff.append(key)
                         except TypeError:
-                            # Fallback to a straight comparison for some datatypes
+                            # Fallback to a straight comparison for some formats
                             if value != other_value:
                                 diff.append(key)
                 elif value != other_value:
@@ -212,7 +212,7 @@ class DicomImage(BaseImage):
     def get_dims(self, fileset):
         hdr = self.get_header(fileset)
         return np.array((hdr.Rows, hdr.Columns, len(self.dcm_files(fileset))),
-                        datatype=int)
+                        format=int)
 
     def extract_id(self, fileset):
         return int(fileset.dicom_values([self.SERIES_NUMBER_TAG])[0])
@@ -261,10 +261,10 @@ class MrtrixImage(BaseImage):
         for key, value in list(hdr.items()):
             if ',' in value:
                 try:
-                    hdr[key] = np.array(value.split(','), datatype=int)
+                    hdr[key] = np.array(value.split(','), format=int)
                 except ValueError:
                     try:
-                        hdr[key] = np.array(value.split(','), datatype=float)
+                        hdr[key] = np.array(value.split(','), format=float)
                     except ValueError:
                         pass
             else:

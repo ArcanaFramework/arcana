@@ -345,7 +345,7 @@ class BidsFormat(FileSystem):
             if len(parts) < 2:
                 raise ArcanaUsageError(
                     f"Derivative paths should have at least 3 parts ({file_group.path}")
-            elif len(parts) == 2 and file_group.datatype != directory:
+            elif len(parts) == 2 and file_group.format != directory:
                 raise ArcanaUsageError(
                     "Derivative paths with 2 parts must be of type directory "
                     f"({file_group.path}")
@@ -360,8 +360,8 @@ class BidsFormat(FileSystem):
             fname = '_'.join(dn.ids[h]
                              for h in dn.dataset.hierarchy) + '_' + parts[-1]
             fs_path /= fname
-        if file_group.datatype.extension:
-            fs_path = fs_path.with_suffix(file_group.datatype.extension)
+        if file_group.format.extension:
+            fs_path = fs_path.with_suffix(file_group.format.extension)
         return fs_path
 
     def fields_json_path(self, field):

@@ -43,7 +43,7 @@ def test_bids_roundtrip(work_dir):
 
     dataset.save_metadata()
 
-    dataset.add_sink('t1w', datatype=niftix, path='anat/T1w')
+    dataset.add_sink('t1w', format=niftix, path='anat/T1w')
 
     dummy_nifti = work_dir / 't1w.nii'
     # dummy_nifti_gz = dummy_nifti + '.gz'
@@ -77,7 +77,7 @@ def test_bids_roundtrip(work_dir):
     assert SUCCESS_STR in result
     
     reloaded = BidsDataset.load(path)
-    reloaded.add_sink('t1w', datatype=niftix, path='anat/T1w')
+    reloaded.add_sink('t1w', format=niftix, path='anat/T1w')
 
     assert dataset == reloaded
 

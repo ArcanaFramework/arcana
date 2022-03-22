@@ -131,7 +131,7 @@ dataset_path
     applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 name
     The name the source will be referenced by
-datatype
+format
     The data type of the column. Can be a field (int|float|str|bool),
     field array (list[int|float|str|bool]) or "file-group"
     (file, file+header/side-cars or directory)
@@ -164,7 +164,7 @@ datatype
 @click.option(
     '--header', '-h', nargs=2, metavar='<key-val>',
     help=("Match on specific header value. This option is only valid for "
-          "select datatypes that the implement the 'header_val()' method "
+          "select formats that the implement the 'header_val()' method "
           "(e.g. medicalimaging:dicom)."))
 def add_source(dataset_path, name, format, frequency, path, order,
                quality, is_regex, header):
@@ -191,7 +191,7 @@ dataset_path
     applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 name
     The name the source will be referenced by
-datatype
+format
     The data type of the column. Can be a field (int|float|str|bool),
     field array (list[int|float|str|bool]) or "file-group"
     (file, file+header/side-cars or directory)

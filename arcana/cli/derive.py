@@ -16,7 +16,7 @@ from arcana.tasks.bids import construct_bids, extract_bids, bids_app
 from arcana.core.cli import cli
 from arcana.core.data.set import Dataset
 from arcana.core.utils import (
-    resolve_class, resolve_datatype, list_instances, set_loggers,
+    resolve_class, resolve_format, list_instances, set_loggers,
     parse_dimensions)
 
 
@@ -184,27 +184,27 @@ def derive_column(dataset_path, pydra_task, input_specs, output_specs, parameter
     logger.info(f'"{pydra_task}" app completed successfully')
 
 
-def _datatype_from_path(path, default, datatype_name=None):
-    datatype = None
-    if datatype_name is not None:
-        datatype = resolve_datatype(datatype_name.lower())
+def _format_from_path(path, default, format_name=None):
+    format = None
+    if format_name is not None:
+        format = resolve_format(format_name.lower())
     elif ':' in path:
-        path, datatype_name = str(path).split(':')
-        datatype = resolve_datatype(datatype_name.lower())
+        path, format_name = str(path).split(':')
+        format = resolve_format(format_name.lower())
     elif '.' in path:
         path = Path(path)
         path_ext = '.'.join(path.suffixes)
         # Strip suffix from path
         path = path.parent / path.stem
-        # FIXME: Need a more robust way of determining datatype
+        # FIXME: Need a more robust way of determining format
         # from output path extension
         for dtype in list_instances(arcana.data.formats, FileFormat):
             if dtype.extension == path_ext:
-                datatype = dtype
+                format = dtype
                 break
-    if datatype is None:
-        datatype = default
-    return path, datatype
+    if format is None:
+        format = default
+    return path, format
 
 
 def add_input_sources(dataset, inputs, default_frequency):
@@ -233,25 +233,25 @@ def add_input_sources(dataset, inputs, default_frequency):
     """
     # Create file-group matchers
     parsed_inputs = []
-    for name, input_datatype_str, criteria in inputs:
+    for name, input_format_str, criteria in inputs:
         parts = criteria.split(':')
-        (pattern, stored_datatype_str,
+        (pattern, stored_format_str,
          order, quality_threshold, metadata, frequency) = parts + [None] * (6 - len(parts))
-        input_datatype = resolve_datatype(input_datatype_str)
-        pattern, stored_datatype = _datatype_from_path(pattern, input_datatype,
-                                                       stored_datatype_str)
+        input_format = resolve_format(input_format_str)
+        pattern, stored_format = _format_from_path(pattern, input_format,
+                                                       stored_format_str)
         if frequency is None:
             frequency = default_frequency
         dataset.add_source(
             name=name,
             path=pattern,
-            datatype=stored_datatype,
+            format=stored_format,
             frequency=frequency,
             order=order,
             metadata=metadata,
             is_regex=True,
             quality_threshold=quality_threshold)
-        parsed_inputs.append((name, input_datatype))
+        parsed_inputs.append((name, input_format))
     return parsed_inputs
 
 
@@ -270,15 +270,15 @@ def add_output_sinks(dataset, outputs, frequency):
     """
     # Create outputs
     parsed_outputs = []
-    for name, output_datatype_str, storage_spec in outputs:
-        output_datatype = resolve_datatype(output_datatype_str)
-        path, stored_datatype = _datatype_from_path(storage_spec, output_datatype)
+    for name, output_format_str, storage_spec in outputs:
+        output_format = resolve_format(output_format_str)
+        path, stored_format = _format_from_path(storage_spec, output_format)
         dataset.add_sink(
             name=name,
             path=path,
-            datatype=stored_datatype,
+            format=stored_format,
             frequency=frequency)
-        parsed_outputs.append((name, output_datatype))
+        parsed_outputs.append((name, output_format))
     return parsed_outputs
 
 
@@ -358,8 +358,8 @@ def workflow_name(pydra_task):
 # class InputArg():
 #     name: str
 #     path: Path
-#     input_datatype: FileFormat
-#     stored_datatype: FileFormat
+#     input_format: FileFormat
+#     stored_format: FileFormat
 #     frequency: DataSpace
 #     order: int
 #     metadata: ty.Dict[str, str]
@@ -371,8 +371,8 @@ def workflow_name(pydra_task):
 # class OutputArg():
 #     name: str
 #     path: Path
-#     output_datatype: FileFormat
-#     stored_datatype: FileFormat
+#     output_format: FileFormat
+#     stored_format: FileFormat
     
 
 
