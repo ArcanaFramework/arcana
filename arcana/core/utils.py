@@ -634,7 +634,7 @@ def parse_dimensions(dimensions_str):
     return getattr(module, cls_name)
 
 
-def serialise(obj, skip=()):
+def serialise(obj, skip=(), ignore_instance_method=False):
     """Serialises an object of a class defined with attrs to a dictionary
 
     Parameters
@@ -645,7 +645,7 @@ def serialise(obj, skip=()):
     skip: Sequence[str]
         The names of attributes to skip"""
 
-    if hasattr(obj, 'serialise'):
+    if hasattr(obj, 'serialise') and not ignore_instance_method:
         serialised = obj.serialise()
     elif hasattr(obj, '__attrs_attrs__'):
         serialised = attr.asdict(

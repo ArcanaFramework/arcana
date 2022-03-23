@@ -340,6 +340,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
 @attr.s
 class File(FileGroup):
 
+    is_dir = False
+
     @classmethod
     def from_paths(cls, *paths: ty.List[Path], **kwargs):
         return [cls(p, **kwargs)
@@ -494,6 +496,8 @@ class FileWithSideCars(File):
 
 class Directory(FileGroup):
 
+    is_dir = True
+    
     @classmethod
     def from_paths(cls, *paths: ty.List[Path], **kwargs):
         return [cls(p, **kwargs) for p in paths

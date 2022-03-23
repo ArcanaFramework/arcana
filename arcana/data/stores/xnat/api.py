@@ -22,7 +22,7 @@ from arcana.exceptions import (
     ArcanaWrongRepositoryError)
 from arcana.core.utils import dir_modtime, get_class_info, parse_value
 from arcana.core.data.set import Dataset
-from arcana.core.utils import path2name, name2path
+from arcana.core.utils import path2name, name2path, serialise
 from arcana.data.spaces.medicalimaging import Clinical
 
 
@@ -157,12 +157,6 @@ class Xnat(DataStore):
     def disconnect(self):
         self.login.disconnect()
         self._login = None
-
-    # def save(self, dataset):
-    #     pass
-
-    # def load(self, name=None):
-    #     pass
 
     def find_nodes(self, dataset: Dataset, **kwargs):
         """
@@ -686,6 +680,13 @@ class Xnat(DataStore):
             # sessions
             # xresource = xnode.create_resource(format_name)
         xresource.upload(cache_path, fname)
+
+    def serialise(self):
+        # Call serialise utility method with 'ignore_instance_method' to avoid
+        # infinite recursion
+        serialise(self, ignore_instance_method=True)
+        # TODO: Methods to replace username/password with tokens go here
+
 
 def append_suffix(path, suffix):
     "Appends a string suffix to a Path object"
