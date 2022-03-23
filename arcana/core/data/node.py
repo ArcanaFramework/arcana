@@ -347,7 +347,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                     file_path = self.file_paths[0]
             else:
                 try:
-                    file_path, side_cars = format.assort_files(
+                    file_path, side_cars = format.from_paths(
                         self.file_paths)
                 except ArcanaFileFormatError:
                     pass
