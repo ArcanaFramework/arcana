@@ -51,7 +51,7 @@ class DataStore(metaclass=ABCMeta):
         """        
 
     @abstractmethod
-    def get_file_group(self, file_group, cache_only=False):
+    def get_file_group_paths(self, file_group, cache_only=False):
         """
         Cache the file_group locally (if required) and return the locations
         of the cached primary file and side cars
@@ -79,7 +79,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get_field(self, field):
+    def get_field_value(self, field):
         """
         Extract and return the value of the field from the store
 
@@ -95,7 +95,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_file_group(self, file_group, path, **side_cars):
+    def put_file_group_paths(self, file_group, path, **side_cars):
         """
         Inserts or updates the file_group into the store
 
@@ -110,7 +110,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_field(self, field, value):
+    def put_field_value(self, field, value):
         """
         Inserts or updates the fields into the store
 

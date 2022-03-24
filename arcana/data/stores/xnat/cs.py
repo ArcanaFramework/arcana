@@ -117,42 +117,36 @@ class XnatViaCS(Xnat):
                 path = path.replace('scans', 'SCANS').replace('resources/', '')
             path = path.replace('resources', 'RESOURCES')
             resource_path = input_mount / path
-            if file_group.format.directory:
+            if file_group.is_dir:
                 # Link files from resource dir into temp dir to avoid catalog XML
-                primary_path = self.cache_path(file_group)
-                shutil.rmtree(primary_path, ignore_errors=True)
-                os.makedirs(primary_path, exist_ok=True)
+                dir_path = self.cache_path(file_group)
+                shutil.rmtree(dir_path, ignore_errors=True)
+                os.makedirs(dir_path, exist_ok=True)
                 for item in resource_path.iterdir():
                     if not item.name.endswith('_catalog.xml'):
-                        os.symlink(item, primary_path / item.name)
-                side_cars = {}
+                        os.symlink(item, dir_path / item.name)
+                fs_paths = [dir_path]
             else:
-                try:
-                    primary_path, side_cars = file_group.format.assort_files(
-                        resource_path.iterdir())
-                except ArcanaFileFormatError as e:
-                    e.msg += f" in {file_group} from {resource_path}"
-                    raise e
+                fs_paths = list(resource_path.iterdir())
         else:
             logger.debug(
                 "No URI set for file_group %s, assuming it is a newly created "
                 "derivative on the output mount", file_group)
             primary_path, side_cars = self.get_output_paths(file_group)
-        return primary_path, side_cars
+        return fs_paths
 
     def put_file_group(self, file_group, fs_path, side_cars):
         primary_path, side_car_paths = self.get_output_paths(file_group)
-        if file_group.format.directory:
+        os.makedirs(primary_path.parent, exist_ok=True)
+        if file_group.is_dir:
             shutil.copytree(fs_path, primary_path)
         else:
-            os.makedirs(primary_path.parent, exist_ok=True)
             # Upload primary file and add to cache
             shutil.copyfile(fs_path, primary_path)
             # Upload side cars and add them to cache
             for sc_name, sc_src_path in side_cars.items():
                 shutil.copyfile(sc_src_path, side_car_paths[sc_name])
         # Update file-group with new values for local paths and XNAT URI
-        file_group.set_fs_paths(primary_path, side_car_paths)
         file_group.uri = (self._make_uri(file_group.data_node)
                           + '/RESOURCES/' + file_group.path)
         logger.info("Put %s into %s:%s node via direct access to archive directory",
@@ -160,6 +154,7 @@ class XnatViaCS(Xnat):
                     file_group.data_node.id)
 
     def get_output_paths(self, file_group):
+        """Determine the paths that derivatives will be saved at"""
         path_parts = file_group.path.split('/')
         resource_path = self.output_mount / '/'.join(path_parts[:-1])
         side_car_paths = {}

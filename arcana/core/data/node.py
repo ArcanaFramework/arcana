@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import typing as ty
-import os
+from itertools import groupby
 import attr
 from collections import defaultdict
 from abc import ABCMeta, abstractmethod
@@ -173,18 +173,18 @@ class DataNode():
         self._unresolved.append(UnresolvedField(
             path=path, data_node=self, value=value, **kwargs))
 
-    def get_file_group(self, file_group, **kwargs):
-        return self.dataset.store.get_file_group(file_group, **kwargs)
+    # def get_file_group(self, file_group, **kwargs):
+    #     return self.dataset.store.get_file_group(file_group, **kwargs)
 
-    def get_field(self, field):
-        return self.dataset.store.get_field(field)
+    # def get_field(self, field):
+    #     return self.dataset.store.get_field(field)
 
-    def put_file_group(self, file_group, fs_path, side_cars):
-        self.dataset.store.put_file_group(
-            file_group, fs_path=fs_path, side_cars=side_cars)
+    # def put_file_group(self, file_group, fs_path, side_cars):
+    #     self.dataset.store.put_file_group(
+    #         file_group, fs_path=fs_path, side_cars=side_cars)
 
-    def put_field(self, field, value):
-        self.dataset.store.put_field(field, value)
+    # def put_field(self, field, value):
+    #     self.dataset.store.put_field(field, value)
 
 
 @attr.s
@@ -261,10 +261,6 @@ class UnresolvedDataItem(metaclass=ABCMeta):
             else:
                 item = self._resolve(format)
         return item
-
-    @abstractmethod
-    def _resolve(self, format):
-        raise NotImplementedError
 
     @property
     def item_kwargs(self):
@@ -363,6 +359,12 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                     + "') did not match the naming conventions expected by "
                     f"format '{format.name}'")
         return item
+
+    @classmethod
+    def group_paths(cls, paths: ty.List[Path]):
+        def key(p: Path):
+            return str(p)[:-(len('.'.join(p.suffixes)))]
+        return [list(g) for _, g in groupby(sorted(paths, key=key), key=key)]
 
 
 @attr.s
