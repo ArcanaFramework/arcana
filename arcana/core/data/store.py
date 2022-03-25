@@ -66,10 +66,8 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        path : str
-            The file-system path to the cached file
-        side_cars : Dict[str, str] or None
-            The file-system paths to the cached side-cars if present
+        fs_paths : list[str]
+            The file-system path to the cached files
 
         Raises
         ------
@@ -95,7 +93,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_file_group_paths(self, file_group, path, **side_cars):
+    def put_file_group_paths(self, file_group, fs_paths):
         """
         Inserts or updates the file_group into the store
 
@@ -103,10 +101,13 @@ class DataStore(metaclass=ABCMeta):
         ----------
         file_group : FileGroup
             The file_group to insert into the store
-        path : Path
-            The file-system path to the primary file
-        **side_cars
-            Paths for additional files in the file group (e.g. header/side-cars)
+        fs_paths : list[Path]
+            The file-system paths to the files/directories to sync
+
+        Returns
+        -------
+        cached_paths : list[str]
+            The paths of the files where they are cached in the file system
         """
 
     @abstractmethod
@@ -156,6 +157,32 @@ class DataStore(metaclass=ABCMeta):
         definition: dict[str, Any]
             A serialised Dataset object that was saved in the data store
         """
+
+    @abstractmethod
+    def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataItem
+            The item to store the provenance data for
+        provenance: dict[str, Any]
+            The provenance data to store"""
+
+    @abstractmethod
+    def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataItem
+            The item to store the provenance data for
+
+        Returns
+        -------
+        provenance: dict[str, Any] or None
+            The provenance data stored in the repository for the data item.
+            None if no provenance data has been stored"""            
 
     def get_checksums(self, file_group):
         """

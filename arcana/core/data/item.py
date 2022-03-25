@@ -9,7 +9,6 @@ import shutil
 from abc import ABCMeta, abstractmethod
 import attr
 from attr.converters import optional
-from arcana.core.data.node import UnresolvedFileGroup
 from arcana.core.utils import parse_value
 from arcana.exceptions import (
     ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
@@ -247,44 +246,23 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         self._check_part_of_data_node()
         self.set_file_paths(
             *self.data_node.dataset.store.get_file_group_paths(self))
-        self.exists = True
-        attr.validate(self)
-
-    def put(self, fs_path, **additional_paths):
-        self._check_part_of_data_node()
-        cache_paths = self.data_node.dataset.store.put_file_group_paths(
-            self, fs_path, *additional_paths.values())
-        self.set_file_paths(*cache_paths)
-        self.exists = True
-        attr.validate(self)
-
-    def get(self, assume_exists=False):
-        if assume_exists:
-            self.exists = True
-        self._check_part_of_data_node()
-        self.set_file_paths(
-            *self.data_node.dataset.store.get_file_group_paths(self))
         self.validate_file_paths()
 
-    def put(self, fs_path, **side_cars):
-        """Sets the primary file path and any side-car files from the node
-
-        Parameters
-        ----------
-        fs_path : str
-            The path to the primary 
-        **side_cars : Dict[str, str] or None
-            dictionary with name of side-car files as keys (as defined in the
-            FileFormat class) and file paths as values
-        """
+    def put(self, *fs_paths):
         self._check_part_of_data_node()
-        if not side_cars:
-            side_cars = self.default_side_car_paths(fs_path)
-        elif side_cars is not None:
-            side_cars = absolute_paths_dict(side_cars)
-        self.data_node.dataset.store.put_file_group(self, fs_path=fs_path,
-                                                    side_cars=side_cars)
-        self._set_fs_paths(fs_path, side_cars=side_cars)        
+        dir_paths = list(p for p in fs_paths if p.is_dir())
+        if len(dir_paths) > 1:
+            dir_paths_str = "', '".join(str(p) for p in dir_paths)
+            raise ArcanaFileFormatError(
+                f"Cannot put more than one directory, {dir_paths_str}, as part "
+                f"of the same file group {self}")
+        cache_paths = self.data_node.dataset.store.put_file_group_paths(
+            self, fs_paths)
+        self.set_file_paths(*cache_paths)
+        self.validate_file_paths()
+        # Save provenance
+        if self.provenance:
+            self.data_node.dataset.store.put_provenance(self)
 
     @property
     def fs_paths(self):
@@ -338,7 +316,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     def calculate_checksums(self):
         self._check_exists()
         checksums = {}
-        for fpath in self.fs_paths:
+        for fpath in self.all_file_paths:
             fhash = hashlib.md5()
             with open(fpath, 'rb') as f:
                 # Calculate hash in chunks so we don't run out of memory for
@@ -369,7 +347,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         return self.checksums == other.checksums
 
     @classmethod
-    def resolve(cls, unresolved: UnresolvedFileGroup):
+    def resolve(cls, unresolved):
         """Resolve file group loaded from a repository to the specific format
 
         Parameters
@@ -425,7 +403,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         """
 
     @classmethod
-    def matches_ext(ext, paths):
+    def matches_ext(cls, ext, paths):
         matches = [str(p) for p in paths if str(p).endswith('.' + ext)]
         if not matches:
             paths_str = ', '.join(str(p) for p in paths)
@@ -437,6 +415,10 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             raise ArcanaFileFormatError(
                 f"Multiple files with '{ext}' extension found in : {matches_str}")
         return absolute_path(matches[0])
+
+    def validate_file_paths(self):
+        attr.validate(self)
+        self.exists = True
 
 @attr.s
 class File(FileGroup):
@@ -471,9 +453,28 @@ class File(FileGroup):
         copy_file(self.fs_path, path + self.format.ext)
         return self.from_paths(path)[0]
 
-    def validate_file_paths(self):
-        attr.validate(self)
-        self.exists = True
+    @classmethod
+    def copy_ext(cls, old_path, new_path):
+        """Copy extension from the old path to the new path, ensuring that all
+        of the extension is used (e.g. 'nii.gz' instead of 'gz')
+
+        Parameters
+        ----------
+        old_path: Path or str
+            The path from which to copy the extension from
+        new_path: Path or str
+            The path to append the extension to
+
+        Returns
+        -------
+        Path
+            The new path with the copied extension
+        """
+        if not cls.matches_ext(old_path):
+            raise ArcanaFileFormatError(
+                f"Extension of old path ('{str(old_path)}') does not match that "
+                f"of file, '{cls.ext}'")
+        return new_path.with_suffix(cls.ext)
 
      
 @attr.s
@@ -511,8 +512,11 @@ class FileWithSideCars(File):
 
     def set_file_paths(self, *paths):
         super().set_file_paths(paths)
+        to_assign = copy(paths)
+        to_assign.remove(self.fs_path)
         for sc_ext in self.side_car_exts:
-            self.side_cars[sc_ext] = self.matches_ext(sc_ext, paths)
+            matched = self.side_cars[sc_ext] = self.matches_ext(sc_ext, paths)
+            to_assign.remove(matched)
 
     @property
     def fs_paths(self):
@@ -565,6 +569,40 @@ class FileWithSideCars(File):
         return dict((n, str(primary_path)[:-len(cls.ext)] + ext)
                     for n, ext in cls.side_cars.items())
 
+    @classmethod
+    def copy_ext(cls, old_path, new_path):
+        """Copy extension from the old path to the new path, ensuring that all
+        of the extension is used (e.g. 'nii.gz' instead of 'gz'). If the old
+        path extension doesn't match the primary path, the methods loops through
+        all side-car extensions and selects the longest matching.
+
+        Parameters
+        ----------
+        old_path: Path or str
+            The path from which to copy the extension from
+        new_path: Path or str
+            The path to append the extension to
+
+        Returns
+        -------
+        Path
+            The new path with the copied extension
+        """
+        try:
+            # Check to see if the path it matches the primary path extension
+            return super().copy_ext(old_path, new_path)
+        except ArcanaFileFormatError:
+            pass
+        matches = [e for e in cls.side_car_exts
+                    if cls.matches_ext(e, old_path)]
+        if not matches:
+            sc_exts_str = "', '".join(cls.side_car_exts)
+            raise ArcanaFileFormatError(
+                f"Extension of old path ('{str(old_path)}') does not match any "
+                f" in {cls}: '{cls.ext}', {sc_exts_str}")
+        longest_match = max(matches, key=len)
+        return Path(new_path).with_suffix(longest_match)
+
 
 class Directory(FileGroup):
 
@@ -577,10 +615,20 @@ class Directory(FileGroup):
 
     @classmethod
     def contents_match(cls, path: Path):
-        contents = list(path.iterdir())
+        contents = UnresolvedFileGroup.from_paths(path.iterdir())
         for content_type in cls.contents:
-            if not content_type.from_paths(contents):
-                return False
+            resolved = False
+            for unresolved in contents:
+                try:
+                    content_type.resolve(unresolved)
+                except ArcanaFileFormatError:
+                    pass
+                else:
+                    resolved = True
+            if not resolved:
+                raise ArcanaFileFormatError(
+                    f"Did not find a match for required content type {content_type} "
+                    f"of {cls} in {path} directory")
         return True
 
     def all_file_paths(self):

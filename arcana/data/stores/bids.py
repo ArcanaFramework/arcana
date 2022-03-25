@@ -335,7 +335,7 @@ class BidsFormat(FileSystem):
                 self.find_items_in_dir(pipeline_dir / rel_session_path,
                                        data_node)        
 
-    def file_group_path(self, file_group):
+    def file_group_stem_path(self, file_group):
         dn = file_group.data_node
         fs_path = self.root_dir(dn)
         parts = file_group.path.split('/')
@@ -356,12 +356,9 @@ class BidsFormat(FileSystem):
             fs_path /= self.node_path(dn)
             for part in parts[:-1]:
                 fs_path /= part
-        
             fname = '_'.join(dn.ids[h]
                              for h in dn.dataset.hierarchy) + '_' + parts[-1]
             fs_path /= fname
-        if file_group.format.extension:
-            fs_path = fs_path.with_suffix(file_group.format.extension)
         return fs_path
 
     def fields_json_path(self, field):

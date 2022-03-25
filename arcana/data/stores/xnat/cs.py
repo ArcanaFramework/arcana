@@ -27,6 +27,7 @@ from arcana.core.utils import get_pkg_name
 from arcana.data.spaces.medicalimaging import Clinical
 from arcana.core.data.format import FileFormat
 from arcana.core.data.space import DataSpace
+from arcana.core.data.item import FileGroup
 from arcana.core.utils import resolve_class, DOCKER_HUB
 from arcana.exceptions import (
     ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException,
@@ -98,7 +99,7 @@ class XnatViaCS(Xnat):
     def password_default(self):
         return os.environ['XNAT_PASS']
 
-    def get_file_group(self, file_group):
+    def get_file_group_paths(self, file_group: FileGroup) -> ty.List[Path]:
         try:
             input_mount = self.get_input_mount(file_group)
         except ArcanaNoDirectXnatMountException:
@@ -132,45 +133,37 @@ class XnatViaCS(Xnat):
             logger.debug(
                 "No URI set for file_group %s, assuming it is a newly created "
                 "derivative on the output mount", file_group)
-            primary_path, side_cars = self.get_output_paths(file_group)
+            stem_path = self.file_group_stem_path(file_group)
+            if file_group.is_dir:
+                fs_paths = [stem_path]
+            else:
+                fs_paths = list(stem_path.iterdir())
         return fs_paths
 
-    def put_file_group(self, file_group, fs_path, side_cars):
-        primary_path, side_car_paths = self.get_output_paths(file_group)
-        os.makedirs(primary_path.parent, exist_ok=True)
-        if file_group.is_dir:
-            shutil.copytree(fs_path, primary_path)
-        else:
-            # Upload primary file and add to cache
-            shutil.copyfile(fs_path, primary_path)
-            # Upload side cars and add them to cache
-            for sc_name, sc_src_path in side_cars.items():
-                shutil.copyfile(sc_src_path, side_car_paths[sc_name])
+    def put_file_group_paths(self, file_group: FileGroup, fs_paths: ty.List[Path]) -> ty.List[Path]:
+        stem_path = self.file_group_stem_path(file_group)
+        os.makedirs(stem_path.parent, exist_ok=True)
+        cache_paths = []
+        for fs_path in fs_paths:
+            if file_group.is_dir:
+                target_path = stem_path
+                shutil.copytree(fs_path, target_path)
+            else:
+                target_path = file_group.copy_ext(fs_path, stem_path)
+                # Upload primary file and add to cache
+                shutil.copyfile(fs_path, target_path)
+            cache_paths.append(target_path)
         # Update file-group with new values for local paths and XNAT URI
         file_group.uri = (self._make_uri(file_group.data_node)
                           + '/RESOURCES/' + file_group.path)
         logger.info("Put %s into %s:%s node via direct access to archive directory",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)
+        return cache_paths
 
-    def get_output_paths(self, file_group):
+    def file_group_stem_path(self, file_group):
         """Determine the paths that derivatives will be saved at"""
-        path_parts = file_group.path.split('/')
-        resource_path = self.output_mount / '/'.join(path_parts[:-1])
-        side_car_paths = {}
-        if file_group.format.directory:
-            primary_path = resource_path / path_parts[-1]
-        else:
-            os.makedirs(resource_path, exist_ok=True)
-            # Upload primary file and add to cache
-            fname = path_parts[-1] + file_group.format.extension
-            primary_path = resource_path / fname
-            # Upload side cars and add them to cache
-            for sc_name, sc_ext in file_group.format.side_cars.items():
-                sc_fname = path_parts[-1] + sc_ext
-                sc_fpath = resource_path / sc_fname
-                side_car_paths[sc_name] = sc_fpath
-        return primary_path, side_car_paths
+        return self.output_mount.joinpath(file_group.path.split('/'))
     
     def get_input_mount(self, file_group):
         data_node = file_group.data_node

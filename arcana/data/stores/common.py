@@ -17,6 +17,7 @@ from arcana.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medicalimaging import Clinical, DataSpace
 from arcana.core.data.store import DataStore
+from arcana.core.data.item import FileGroup, Field
 
 
 logger = logging.getLogger('arcana')
@@ -75,27 +76,22 @@ class FileSystem(DataStore):
             'type': get_class_info(type(self)),
             'host': HOSTNAME}
 
-    def get_file_group(self, file_group, **kwargs):
+    def get_file_group_paths(self, file_group: FileGroup):
         """
         Set the path of the file_group from the store
         """
         # Don't need to cache file_group as it is already local as long
         # as the path is set
-        primary_path = self.file_group_path(file_group)
-        side_cars = file_group.format.default_side_cars(primary_path)
-        location_str = (f"{file_group.data_node} node of "
-                        f"Dataset '{file_group.data_node.dataset.id}' on {self}")
-        if not op.exists(primary_path):
+        stem_path = self.file_group_stem_path(file_group)
+        matches = [p for p in stem_path.parent.iterdir()
+                   if str(p).startswith(str(stem_path))]
+        if not matches:
             raise ArcanaMissingDataException(
-                f"File-group '{file_group.path}' ({primary_path}) does not exist in {location_str}")
-        for aux_name, aux_path in side_cars.items():
-            if not op.exists(aux_path):
-                raise ArcanaMissingDataException(
-                    f"File-group '{file_group.path}' is missing '{aux_name}' side car "
-                    f"({aux_path}) in {location_str}")
-        return primary_path, side_cars
+                f"No files/sub-dirs matching '{file_group.path}' path found in "
+                f"{str(self.absolute_node_path(file_group))} directory")
+        return matches
 
-    def get_field(self, field):
+    def get_field_value(self, field):
         """
         Update the value of the field from the store
         """
@@ -110,50 +106,40 @@ class FileSystem(DataStore):
             val = field.format(val)
         return val
 
-    def put_file_group(self, file_group, fs_path, side_cars):
+    def put_file_group_paths(self, file_group: FileGroup, fs_paths: list[Path]):
         """
         Inserts or updates a file_group in the store
         """
-        fs_path = Path(fs_path)
-        target_path = self.file_group_path(file_group)
-        if fs_path == target_path:
-            logger.info(
-                f"Attempted to set file path of {file_group} to its path in "
-                f"the store {target_path}")
-            return
+        stem_path = self.file_group_stem_path(file_group)
         # Create target directory if it doesn't exist already
-        dname = target_path.parent
-        if not dname.exists():
-            os.makedirs(dname)
-        if fs_path.is_file():
-            shutil.copyfile(fs_path, target_path)
-            sc_target_paths = file_group.format.default_side_cars(target_path)
-            # Copy side car files into store
-            if side_cars is not None:
-                side_cars = copy(side_cars)
-            for sc_name in file_group.format.side_cars:
-                try:
-                    sc_path = side_cars.pop(sc_name)
-                except KeyError as e:
-                    raise ArcanaFileFormatError(
-                        f"Missing side car '{sc_name}' when attempting to "
-                        f"put file_group") from e
-                shutil.copyfile(str(sc_path), str(sc_target_paths[sc_name]))
-            if side_cars:
-                raise ArcanaFileFormatError(
-                    f"Unrecognised side cars ({side_cars}) when attempting to "
-                    f"write {file_group.format.name} files")
-        elif fs_path.is_dir():
-            if target_path.exists():
-                shutil.rmtree(target_path)
-            shutil.copytree(fs_path, target_path)
-        else:
-            raise ValueError(
-                f"Source path '{fs_path}' to be set for {file_group} does not exist")
-        if file_group.provenance is not None:
-            file_group.provenance.save(self.prov_json_path(file_group))
+        stem_path.parent.mkdir(exist_ok=True, parents=True)
+        cached_paths = []
+        for fs_path in fs_paths:
+            if fs_path.is_dir():
+                target_path = stem_path
+                if target_path.exists():
+                    shutil.rmtree(target_path)
+                shutil.copytree(fs_path, target_path)
+            else:
+                target_path = file_group.copy_ext(fs_path, stem_path)
+                shutil.copyfile(str(fs_path), str(target_path))
+            cached_paths.append(target_path)
+        return cached_paths
 
-    def put_field(self, field, value):
+    def file_group_stem_path(self, file_group):
+        """The path to the stem of the paths (i.e. the path without
+        file extension) where the files are saved in the file-system.
+        NB: this method is overridden in BidsFormat store.
+
+        Parameters
+        ----------
+        file_group: FileGroup
+            the file group stored or to be stored
+        """
+        node_path = self.absolute_node_path(file_group.data_node)
+        return node_path.joinpath(*file_group.path.split('/'))
+
+    def put_field_value(self, field, value):
         """
         Inserts or updates a field in the store
         """
@@ -176,6 +162,15 @@ class FileSystem(DataStore):
                 self.PROV_KEY: field.provenance.dct}
             with open(fpath, 'w') as f:
                 json.dump(dct, f, indent=2)
+
+    def put_provenance(self, item, provenance):
+        with open(self.prov_json_path(item), 'w') as f:
+            json.dump(provenance, f)
+
+    def get_provenance(self, item):
+        with open(self.prov_json_path(item)) as f:
+            provenance = json.load(f)
+        return provenance
 
     def find_nodes(self, dataset: Dataset):
         """
@@ -266,20 +261,12 @@ class FileSystem(DataStore):
                          + '_'.join(unaccounted_id) + '__')
         return path
 
-    def root_dir(self, data_node):
+    def root_dir(self, data_node) -> Path:
         return Path(data_node.dataset.id)
 
     @classmethod
-    def absolute_node_path(cls, data_node):
-        repo = cls()
-        return repo.root_dir(data_node) / repo.node_path(data_node)
-
-    def file_group_path(self, file_group):
-        fs_path = self.root_dir(file_group.data_node) / self.node_path(
-            file_group.data_node).joinpath(*file_group.path.split('/'))
-        if file_group.format.extension:
-            fs_path = fs_path.with_suffix(file_group.format.extension)
-        return fs_path
+    def absolute_node_path(cls, data_node) -> Path:
+        return cls().root_dir(data_node) / cls().node_path(data_node)
 
     def fields_json_path(self, field):
         return (self.root_dir(field.data_node)

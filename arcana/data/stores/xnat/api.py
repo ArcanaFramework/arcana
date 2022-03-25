@@ -200,7 +200,7 @@ class Xnat(DataStore):
                     path=name2path(xresource.label),
                     uris={xresource.format: xresource.uri})               
 
-    def get_file_group(self, file_group):
+    def get_file_group_paths(self, file_group):
         """
         Caches a file_group to the local file system and returns the path to
         the cached files
@@ -208,15 +208,12 @@ class Xnat(DataStore):
         Parameters
         ----------
         file_group : FileGroup
-            The file_group to cache
+            The file_group to retrieve the files/directories for
 
         Returns
         -------
-        primary_path : str
-            The name_path of the primary file once it has been cached
-        side_cars : ty.Dict[str, str]
-            A dictionary containing a mapping of auxiliary file names to
-            name_paths
+        list[Path]
+            The paths to cached files/directories on the local file-system
         """
         logger.info("Getting %s from %s:%s node via API access",
                     file_group.path, file_group.data_node.frequency,
@@ -290,22 +287,28 @@ class Xnat(DataStore):
                     self.download_file_group(tmp_dir, xresource, file_group,
                                           cache_path)
                     shutil.rmtree(tmp_dir)
-        return self._file_group_paths(file_group)
+        if not file_group.is_dir:
+            cache_paths = [cache_path]
+        else:
+            cache_paths = list(cache_path.iterdir())
+        return cache_paths
 
 
-    def put_file_group(self, file_group, fs_path, side_cars):
+    def put_file_group_paths(self, file_group, fs_paths):
         """
-        Retrieves a fields value
+        Stores files for a file group into the XNAT repository
 
         Parameters
         ----------
-        field : Field
-            The field to retrieve
+        file_group : FileGroup
+            The file-group to put the paths for
+        fs_paths: list[Path or str  ]
+            The paths of files/directories to put into the XNAT repository
 
         Returns
         -------
-        value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
-            The value of the field
+        list[Path]
+            The locations of the locally cached paths
         """
         if file_group.format is None:
             raise ArcanaFileFormatError(
@@ -336,49 +339,43 @@ class Xnat(DataStore):
                 parent=xnode, label=escaped_name,
                 format=file_group.format.name)
             # Create cache path
-            cache_path = self.cache_path(file_group)
-            if cache_path.exists():
-                shutil.rmtree(cache_path)
-            side_car_paths = {}
+            base_cache_path = self.cache_path(file_group)
+            if base_cache_path.exists():
+                shutil.rmtree(base_cache_path)
             # Upload data and add it to cache
-            if file_group.format.directory:
-                for dpath, _, fnames  in os.walk(fs_path):
-                    dpath = Path(dpath)
-                    for fname in fnames:
-                        fpath = dpath / fname
-                        frelpath = fpath.relative_to(fs_path)
-                        xresource.upload(str(fpath), str(frelpath))
-                shutil.copytree(fs_path, cache_path)
-                primary_path = cache_path
-            else:
-                # Upload primary file and add to cache
-                fname = escaped_name + file_group.format.extension
-                xresource.upload(str(fs_path), fname)
-                os.makedirs(cache_path, stat.S_IRWXU | stat.S_IRWXG)
-                primary_path = cache_path / fname
-                shutil.copyfile(fs_path, primary_path)
-                # Upload side cars and add them to cache
-                for sc_name, sc_src_path in side_cars.items():
-                    sc_fname = escaped_name + file_group.format.side_cars[sc_name]
-                    xresource.upload(str(sc_src_path), sc_fname)
-                    sc_fpath = cache_path / sc_fname
-                    shutil.copyfile(sc_src_path, sc_fpath)
-                    side_car_paths[sc_name] = sc_fpath
+            cache_paths = []
+            for fs_path in fs_paths:
+                if fs_path.is_dir():
+                    # Upload directory to XNAT and add to cache
+                    for dpath, _, fnames  in os.walk(fs_path):
+                        dpath = Path(dpath)
+                        for fname in fnames:
+                            fpath = dpath / fname
+                            frelpath = fpath.relative_to(fs_path)
+                            xresource.upload(str(fpath), str(frelpath))
+                    shutil.copytree(fs_path, base_cache_path)
+                    cache_path = base_cache_path
+                else:
+                    # Upload file path to XNAT and add to cache
+                    fname = file_group.copy_ext(fs_path, escaped_name)
+                    xresource.upload(str(fs_path), fname)
+                    os.makedirs(base_cache_path, stat.S_IRWXU | stat.S_IRWXG)
+                    cache_path = base_cache_path / fname
+                    shutil.copyfile(fs_path, cache_path)
+                cache_paths.append(cache_path)
             # need to manually set this here in order to calculate the
             # checksums (instead of waiting until after the 'put' is finished)
-            file_group.set_fs_paths(primary_path, side_car_paths)
-            with open(append_suffix(cache_path, self.MD5_SUFFIX), 'w',
+            file_group.set_fs_paths(cache_paths)
+            with open(append_suffix(base_cache_path, self.MD5_SUFFIX), 'w',
                       **JSON_ENCODING) as f:
                 json.dump(file_group.calculate_checksums(), f,
                           indent=2)
-            # Save provenance
-            if file_group.provenance:
-                self.put_provenance(file_group)
         logger.info("Put %s into %s:%s node via API access",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)
+        return cache_paths
 
-    def get_field(self, field):
+    def get_field_value(self, field):
         """
         Retrieves a fields value
 
@@ -400,7 +397,16 @@ class Xnat(DataStore):
             val = parse_value(val)
         return val
 
-    def put_field(self, field, value):
+    def put_field_value(self, field, value):
+        """Store the value for a field in the XNAT repository
+
+        Parameters
+        ----------
+        field : Field
+            the field to store the value for
+        value : str or float or int or bool
+            the value to store
+        """
         self._check_store(field)
         if field.array:
             if field.format is str:
@@ -609,16 +615,6 @@ class Xnat(DataStore):
             raise ArcanaWrongRepositoryError(
                 "{} is from {} instead of {}".format(
                     item, item.dataset.store, self))
-
-    def _file_group_paths(self, file_group):
-        cache_path = self.cache_path(file_group)
-        if not file_group.format.directory:
-            primary_path, side_cars = file_group.format.assort_files(
-                op.join(cache_path, f) for f in os.listdir(cache_path))
-        else:
-            primary_path = cache_path
-            side_cars = None
-        return primary_path, side_cars
 
     @classmethod
     def standard_uri(cls, xnode):

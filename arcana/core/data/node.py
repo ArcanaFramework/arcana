@@ -361,10 +361,11 @@ class UnresolvedFileGroup(UnresolvedDataItem):
         return item
 
     @classmethod
-    def group_paths(cls, paths: ty.List[Path]):
+    def from_paths(cls, paths: ty.List[Path]):
         def key(p: Path):
             return str(p)[:-(len('.'.join(p.suffixes)))]
-        return [list(g) for _, g in groupby(sorted(paths, key=key), key=key)]
+        return [cls(file_paths=list(g))
+                for _, g in groupby(sorted(paths, key=key), key=key)]
 
 
 @attr.s
