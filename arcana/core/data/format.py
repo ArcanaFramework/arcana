@@ -1,152 +1,589 @@
+import os
 import os.path as op
-from copy import copy
-from abc import abstractmethod, ABCMeta
-from collections import defaultdict
 from pathlib import Path
-import numpy as np
+import typing as ty
+from itertools import chain
+from copy import copy
+import hashlib
+import shutil
+from abc import ABCMeta, abstractmethod
 import attr
-from typing import Any, Dict
-from pydra import Workflow
-from pydra.engine.core import TaskBase
-from ..utils import func_task
-import logging
+from attr.converters import optional
+from arcana.core.utils import parse_value
 from arcana.exceptions import (
-    ArcanaFileFormatError, ArcanaUsageError, ArcanaNoConverterError)
-import arcana.core.data.item
+    ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
+    ArcanaDataNotDerivedYetError, ArcanaFileFormatError, ArcanaNoConverterError)
+from ..enum import DataQuality
+from .format import FileFormat
 
 
-logger = logging.getLogger('arcana')
-
-
-class FileFormat(object):
+@attr.s
+class DataItem(metaclass=ABCMeta):
     """
-    Defines a format for a file group (e.g. DICOM, NIfTI, Matlab file)
+    A representation of a file_group within the dataset.
 
     Parameters
     ----------
-    name : str
-        A name for the data format
-    extension : str
-        The extension of the format
-    desc : str
-        A description of what the format is and ideally a link to its
-        documentation
-    directory : bool
-        Whether the format is a directory or a file
-    within_dir_exts : List[str]
-        A list of extensions that are found within the top level of
-        the directory (for directory formats). Used to identify
-        formats from paths.
-    side_cars : ty.Dict[str, str]
-        A dictionary of side cars (e.g. header or NIfTI json side cars) aside
-        from the primary file, along with their expected extension.
-        Automatically they will be assumed to be located adjancent to the
-        primary file, with the same base name and this extension. However, in
-        the initialisation of the file_group, alternate locations can be specified
-    alternate_names : List[str]
-        A list of alternate names that might be used to refer to the format
-        when saved in a store
-    file_group_cls : FileGroup
-        The class that is used when the format of a file-group is resolved
+    name_path : str
+        The name_path to the relative location of the file group, i.e. excluding
+        information about which node in the data tree it belongs to
+    type : FileFormat or type
+        The file format used to store the file_group.
+    order : int | None
+        The order in which the file-group appears in the node it belongs to
+        (starting at 0). Typically corresponds to the acquisition order for
+        scans within an imaging session. Can be used to distinguish between
+        scans with the same series description (e.g. multiple BOLD or T1w
+        scans) in the same imaging sessions.
+    quality : str
+        The quality label assigned to the file_group (e.g. as is saved on XNAT)
+    data_node : DataNode
+        The data node within a dataset that the file-group belongs to
+    exists : bool
+        Whether the file_group exists or is just a placeholder for a sink
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the file-group,
+        if applicable        
     """
 
-    def __init__(self, name, extension=None, desc='', directory=False,
-                 within_dir_exts=None, side_cars=None, alternate_names=None,
-                 file_group_cls=None):
-        if not name.islower():
+    path: str = attr.ib()
+    format: type or FileFormat = attr.ib()
+    uri: str = attr.ib(default=None)
+    order: int = attr.ib(default=None)
+    quality: DataQuality = attr.ib(default=DataQuality.usable)
+    exists: bool = attr.ib(default=True)
+    provenance: ty.Dict[str, ty.Any] = attr.ib(default=None)
+    data_node = attr.ib(default=None)    
+
+    @abstractmethod
+    def get(self, assume_exists=False):
+        """Pulls data from the store (if remote) and caches locally
+
+        Parameters
+        ----------
+        assume_exists: bool
+            If set, checks to see whether the item exists are skipped (used
+            to pull data after a successful workflow run)
+            """
+        raise NotImplementedError
+
+    @abstractmethod
+    def put(self, value):
+        """Updates the value of the item in the store to the provided value,
+        pushing remotely if necessary.
+
+        Parameters
+        ----------
+        value : ty.Any
+            The value to update
+        """
+        raise NotImplementedError
+
+    @property
+    def recorded_checksums(self):
+        if self.provenance is None:
+            return None
+        else:
+            return self.provenance.outputs[self.name_path]
+
+    @provenance.validator
+    def check_provenance(self, _, provenance):
+        "Checks that the data item path is present in the provenance "
+        if provenance is not None:
+            if self.path not in provenance.outputs:
+                raise ArcanaNameError(
+                    self.path,
+                    f"{self.path} was not found in outputs "
+                    f"{provenance.outputs.keys()} of provenance provenance "
+                    f"{provenance}")
+
+    def _check_exists(self):
+        if not self.exists:
+            raise ArcanaDataNotDerivedYetError(
+                self.path,
+                f"Cannot access {self} as it hasn't been derived yet")
+
+    def _check_part_of_data_node(self):
+        if self.data_node is None:
             raise ArcanaUsageError(
-                "All data format names must be lower case ('{}')"
-                .format(name))
-        if extension is None and not directory:
-            raise ArcanaUsageError(
-                "Extension for '{}' format can only be None if it is a "
-                "directory".format(name))
-        self.name = name.lower()
-        self.extension = extension
-        self.desc = desc
-        self.directory = directory
-        if within_dir_exts is not None:
-            if not directory:
-                raise ArcanaUsageError(
-                    "'within_dir_exts' keyword arg is only valid "
-                    "for directory data formats, not '{}'".format(name))
-            within_dir_exts = frozenset(within_dir_exts)
-        self._within_dir_exts = within_dir_exts
-        self._converters = {}
-        if alternate_names is None:
-            alternate_names = []
-        self.file_group_cls = (file_group_cls if file_group_cls is not None
-                               else arcana.core.data.item.FileGroup)
-        self.alternate_names = [n.lower() for n in alternate_names]
-        self.side_cars = side_cars if side_cars is not None else {}
-        for sc_name, sc_ext in self.side_cars.items():
-            if sc_ext == self.ext:
-                raise ArcanaUsageError(
-                    "Extension for side car '{}' cannot be the same as the "
-                    "primary file ('{}')".format(sc_name, sc_ext))
+                f"Cannot 'get' {self} as it is not part of a dataset")
 
-    def __eq__(self, other):
-        try:
-            return (
-                self.name == other.name
-                and self.extension == other.extension
-                and self.desc == other.desc
-                and self.directory == other.directory
-                and self._within_dir_exts ==
-                other._within_dir_exts
-                and self.alternate_names == other.alternate_names
-                and self.side_cars == other.side_cars)
-        except AttributeError:
-            return False
+@attr.s
+class Field(DataItem):
+    """
+    A representation of a value field in the dataset.
 
-    def __hash__(self):
-        if not self.__dict__:
-            return hash(type(self))
-        return (
-            hash(self.name)
-            ^ hash(self.extension)
-            ^ hash(self.desc)
-            ^ hash(self.directory)
-            ^ hash(self._within_dir_exts)
-            ^ hash(tuple(self.alternate_names))
-            ^ hash(tuple(sorted(self.side_cars.items()))))
+    Parameters
+    ----------
+    name_path : str
+        The name_path to the relative location of the field, i.e. excluding
+        information about which node in the data tree it belongs to
+    format : type
+        The format of the value. Can be one of (float, int, str)
+    derived : bool
+        Whether or not the value belongs in the derived session or not
+    data_node : DataNode
+        The data node that the field belongs to
+    exists : bool
+        Whether the field exists or is just a placeholder for a sink
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the field,
+        if applicable
+    """
 
-    def __ne__(self, other):
-        return not self == other
+    value: int or float or str = attr.ib(converter=parse_value, default=None)
 
-    def __repr__(self):
-        return ("FileFormat(name='{}', extension='{}', directory={}{})"
-                .format(self.name, self.extension, self.directory,
-                        (', within_dir_extension={}'.format(
-                            self.within_dir_exts)
-                         if self.directory else '')))
+    def get(self, assume_exists=False):
+        if not assume_exists:
+            self._check_exists()
+        self._check_part_of_data_node()
+        self.value = self.data_node.dataset.store.get_field(self)
+
+    def put(self, value):
+        self._check_part_of_data_node()
+        self.data_node.dataset.store.put_field(self, self.format(value))
+        self.exists = True
+
+    def __int__(self):
+        return int(self.value)
+
+    def __float__(self):
+        return float(self.value)
 
     def __str__(self):
-        return self.name
+        if self.format.__args__:  # Sequence type
+            val = '[' + ','.join(self._to_str(v) for v in self.value) + ']'
+        else:
+            val = self._to_str(self.value)
+        return val
 
-    def __call__(self, *args, **kwargs):
-        """Temporary workaround until FileFormat is retired in place of using
-        separate subclasses for each type"""
-        from .item import FileGroup
-        return FileGroup(*args, format=self, **kwargs)
+    def _to_str(self, val):
+        if self.format is str:
+            val = '"{}"'.format(val)
+        else:
+            val = str(val)
+        return val
+
+    def get_checksums(self):
+        """
+        For duck-typing with file_groups in checksum management. Instead of a
+        checksum, just the value of the field is used
+        """
+        return self.value
+
+
+
+def absolute_path(path):
+    return Path(path).absolute()
+
+
+def absolute_paths_dict(dct):
+    return {n: absolute_path(p) for n, p in dict(dct).items()}
+
+@attr.s
+class FileGroup(DataItem, metaclass=ABCMeta):
+    """
+    A representation of a file_group within the dataset.
+
+    Parameters
+    ----------
+    name_path : str
+        The name_path to the relative location of the file group, i.e. excluding
+        information about which node in the data tree it belongs to
+    format : FileFormat
+        The file format used to store the file_group.
+    order : int | None
+        The order in which the file-group appears in the node it belongs to
+        (starting at 0). Typically corresponds to the acquisition order for
+        scans within an imaging session. Can be used to distinguish between
+        scans with the same series description (e.g. multiple BOLD or T1w
+        scans) in the same imaging sessions.
+    quality : str
+        The quality label assigned to the file_group (e.g. as is saved on XNAT)
+    data_node : DataNode
+        The data node within a dataset that the file-group belongs to
+    exists : bool
+        Whether the file_group exists or is just a placeholder for a sink
+    provenance : Provenance | None
+        The provenance for the pipeline that generated the file-group,
+        if applicable
+    fs_path : str | None
+        Path to the primary file or directory on the local file system
+    side_cars : ty.Dict[str, str] | None
+        Additional files in the file_group. Keys should match corresponding
+        side_cars dictionary in format.
+    checksums : ty.Dict[str, str]
+        A checksums of all files within the file_group in a dictionary sorted
+        bys relative file name_paths
+    """
+
+    fs_path: str = attr.ib(default=None, converter=optional(absolute_path))
+    _checksums: ty.Dict[str, str] = attr.ib(default=None, repr=False,
+                                            init=False)
+    # Alternative names for the file format, empty by default overridden in
+    # sub-classes where necessary
+    alternative_names = ()
+
+    HASH_CHUNK_SIZE = 2 ** 20  # 1MB in calc. checksums to avoid mem. issues
+
+    @fs_path.validator
+    def validate_fs_path(self, _, fs_path):
+        if fs_path is not None:
+            if not fs_path.exists:
+                raise ArcanaUsageError(
+                    "Attempting to set a path that doesn't exist "
+                    f"({fs_path})")
+            if not self.exists:
+                raise ArcanaUsageError(
+                        "Attempting to set a path to a file group that hasn't "
+                        f"been derived yet ({fs_path})")
+
+    def get(self, assume_exists=False):
+        if assume_exists:
+            self.exists = True
+        self._check_part_of_data_node()
+        self.set_file_paths(
+            *self.data_node.dataset.store.get_file_group_paths(self))
+        self.validate_file_paths()
+
+    def put(self, *fs_paths):
+        self._check_part_of_data_node()
+        dir_paths = list(p for p in fs_paths if p.is_dir())
+        if len(dir_paths) > 1:
+            dir_paths_str = "', '".join(str(p) for p in dir_paths)
+            raise ArcanaFileFormatError(
+                f"Cannot put more than one directory, {dir_paths_str}, as part "
+                f"of the same file group {self}")
+        cache_paths = self.data_node.dataset.store.put_file_group_paths(
+            self, fs_paths)
+        self.set_file_paths(*cache_paths)
+        self.validate_file_paths()
+        # Save provenance
+        if self.provenance:
+            self.data_node.dataset.store.put_provenance(self)
 
     @property
-    def all_names(self):
-        return [self.name] + self.alternate_names
+    def fs_paths(self):
+        """All base paths (i.e. not nested within directories) in the file group"""
+        if self.fs_path is None:
+            raise ArcanaUsageError(
+                f"Attempting to access file path of {self} before it is set")
+        return [self.fs_path]        
+
+    @classmethod
+    def format_name(cls):
+        return cls.__name__.lower()
+
+    @classmethod
+    def matches_format_name(cls, name: str):
+        """Checks to see whether the provided name is a valid name for the
+        file format. Alternative names can be provided for format-specific
+        subclasses, or this method can be overridden.
+
+        Parameters
+        ----------
+        name : str
+            Name to match
+
+        Returns
+        -------
+        bool
+            whether or not the name matches the format
+        """
+        return name in (cls.format_name(),) + cls.alternative_names
 
     @property
-    def extensions(self):
-        return tuple([self.extension] + sorted(self.side_car_exts))
+    def value(self):
+        return str(self.fs_path)
 
     @property
-    def ext(self):
-        return self.extension
+    def checksums(self):
+        if self._checksums is None:
+            self.get_checksums()
+        return self._checksums
+
+    def get_checksums(self, force_calculate=False):
+        self._check_exists()
+        # Load checksums from store (e.g. via API)
+        if self.data_node is not None and not force_calculate:
+            self._checksums = self.data_node.dataset.store.get_checksums(self)
+        # If the store cannot calculate the checksums do them manually
+        else:
+            self._checksums = self.calculate_checksums()
+
+    def calculate_checksums(self):
+        self._check_exists()
+        checksums = {}
+        for fpath in self.all_file_paths:
+            fhash = hashlib.md5()
+            with open(fpath, 'rb') as f:
+                # Calculate hash in chunks so we don't run out of memory for
+                # large files.
+                for chunk in iter(lambda: f.read(self.HASH_CHUNK_SIZE), b''):
+                    fhash.update(chunk)
+            try:
+                rel_path = str(fpath.relative_to(self.fs_path))
+            except ValueError:
+                rel_path = '.'.join(fpath.suffixes)
+            checksums[rel_path] = fhash.hexdigest()
+        return checksums
+
+    def contents_equal(self, other, **kwargs):
+        """
+        Test the equality of the file_group contents with another file_group.
+        If the file_group's format implements a 'contents_equal' method than
+        that is used to determine the equality, otherwise a straight comparison
+        of the checksums is used.
+
+        Parameters
+        ----------
+        other : FileGroup
+            The other file_group to compare to
+        """
+        self._check_exists()
+        other._check_exists()
+        return self.checksums == other.checksums
+
+    @classmethod
+    def resolve(cls, unresolved):
+        """Resolve file group loaded from a repository to the specific format
+
+        Parameters
+        ----------
+        unresolved : UnresolvedFileGroup
+            A file group loaded from a repository that has not been resolved to
+            a specific format yet
+
+        Returns
+        -------
+        FileGroup
+            The resolved file-group object
+
+        Raises
+        ------
+        ArcanaUnresolvableFormatException
+            If there doesn't exist a unique resolution from the unresolved file
+            group to the given format, then an ArcanaFileFormatError should be
+            raised
+        """
+        # Perform matching based on resource names in multi-format
+        # file-group
+        if unresolved.uris is not None:
+            item = None
+            for format_name, uri in unresolved.uris.items():
+                if cls.matches_format_name(format_name):
+                    item = cls(uri=uri, **unresolved.item_kwargs)
+            if item is None:
+                raise ArcanaFileFormatError(
+                    f"Could not file a matching resource in {unresolved.path} for"
+                    f" the given format ({format.name}), found "
+                    "('{}')".format("', '".join(unresolved.uris)))
+        else:
+            item = cls(**unresolved.item_kwargs)
+            item.set_file_paths(unresolved.file_paths)
+        return item
+
+    @abstractmethod
+    def set_file_paths(self, paths):
+        """Set the file paths of the file group
+
+        Parameters
+        ----------
+        paths : list[Path]
+            The candidate paths from which to set the paths of the 
+            file group from. Note that not all paths need to be set if
+            they are not relevant.
+
+        Raises
+        ------
+        ArcanaFileFormatError
+            is raised if the required the paths cannot be set from the provided
+        """
+
+    @classmethod
+    def matches_ext(cls, ext, paths):
+        matches = [str(p) for p in paths if str(p).endswith('.' + ext)]
+        if not matches:
+            paths_str = ', '.join(str(p) for p in paths)
+            raise ArcanaFileFormatError(
+                f"No matching files with '{ext}' extension found in "
+                f"file group {paths_str}")
+        elif len(matches) > 1:
+            matches_str = ', '.join(matches)
+            raise ArcanaFileFormatError(
+                f"Multiple files with '{ext}' extension found in : {matches_str}")
+        return absolute_path(matches[0])
+
+    def validate_file_paths(self):
+        attr.validate(self)
+        self.exists = True
+
+    @classmethod
+    def converter(cls, from_format):
+        """Gets the converter method from the given format
+
+        Parameters
+        ----------
+        from_format : type
+            The format type to convert from
+
+        Returns
+        -------
+        function
+            The bound method that adds nodes to a given workflow
+
+        Raises
+        ------
+        ArcanaNoConverterError
+            _description_
+        """
+        converters = []
+        for attr_name in dir(cls):
+            atr = getattr(cls, attr_name)
+            try:
+                converter_from = atr.__annotations__['arcana_converter']
+            except (AttributeError, KeyError):
+                pass
+            else:
+                if issubclass(from_format, converter_from):
+                    converters.append(atr)
+        if not converters:
+            raise ArcanaNoConverterError(
+                f"No conversion defined between {from_format} and {cls}")
+        # FIXME: This should be the most specific not just the first
+        return converters[0]
+
+@attr.s
+class BaseFile(FileGroup):
+
+    is_dir = False
+
+    def set_file_paths(self, paths):
+        self.fs_path = self.matches_ext(self.ext, paths)
+
+    def all_file_paths(self):
+        """The paths of all nested files within the file-group"""
+        if self.fs_path is None:
+            raise ArcanaUsageError(
+                f"Attempting to access file paths of {self} before they are set")
+        return self.fs_paths
+
+    def copy_to(self, path: str, symlink: bool=False):
+        """Copies the file-group to the new path, with auxiliary files saved
+        alongside the primary-file path.
+
+        Parameters
+        ----------
+        path : str
+            Path to save the file-group to excluding file extensions
+        symlink : bool
+            Use symbolic links instead of copying files to new location
+        """
+        if symlink:
+            copy_file = os.symlink
+        else:
+            copy_file = shutil.copyfile
+        copy_file(self.fs_path, path + self.format.ext)
+        return self.from_paths(path)[0]
+
+    @classmethod
+    def copy_ext(cls, old_path, new_path):
+        """Copy extension from the old path to the new path, ensuring that all
+        of the extension is used (e.g. 'nii.gz' instead of 'gz')
+
+        Parameters
+        ----------
+        old_path: Path or str
+            The path from which to copy the extension from
+        new_path: Path or str
+            The path to append the extension to
+
+        Returns
+        -------
+        Path
+            The new path with the copied extension
+        """
+        if not cls.matches_ext(old_path):
+            raise ArcanaFileFormatError(
+                f"Extension of old path ('{str(old_path)}') does not match that "
+                f"of file, '{cls.ext}'")
+        return new_path.with_suffix(cls.ext)
+
+     
+@attr.s
+class BaseFileWithSideCars(BaseFile):
+
+    side_cars: ty.Dict[str, str] = attr.ib(converter=optional(absolute_paths_dict))
+
+    @side_cars.default
+    def default_side_cars(self):
+        if self.fs_path is None:
+            return {}
+        return self.default_side_car_paths(self.fs_path)
+
+    @side_cars.validator
+    def validate_side_cars(self, _, side_cars):
+        if side_cars is not None:
+            if self.fs_path is None:
+                raise ArcanaUsageError(
+                    "Auxiliary files can only be provided to a FileGroup "
+                    f"of '{self.path}' ({side_cars}) if the local path is "
+                    "as well")
+            if set(self.format.side_cars.keys()) != set(side_cars.keys()):
+                raise ArcanaUsageError(
+                    "Keys of provided auxiliary files ('{}') don't match "
+                    "format ('{}')".format(
+                        "', '".join(side_cars.keys()),
+                        "', '".join(self.format.side_cars.keys())))
+            missing_side_cars = [f for f in side_cars.values()
+                                 if not op.exists(f)]
+            if missing_side_cars:
+                raise ArcanaUsageError(
+                    f"Attempting to set paths of auxiliary files for {self} "
+                    "that don't exist ('{}')".format(
+                        "', '".join(missing_side_cars)))
+
+    def set_file_paths(self, *paths):
+        super().set_file_paths(paths)
+        to_assign = copy(paths)
+        to_assign.remove(self.fs_path)
+        for sc_ext in self.side_car_exts:
+            matched = self.side_cars[sc_ext] = self.matches_ext(sc_ext, paths)
+            to_assign.remove(matched)
 
     @property
-    def ext_str(self):
-        return self.extension if self.extension is not None else ''
+    def fs_paths(self):
+        return chain(super().fs_paths, self.side_cars.values())
 
-    def default_side_cars(self, primary_path):
+    def side_car(self, name):
+        return self.side_cars[name]
+
+    def copy_to(self, path: str, symlink: bool=False):
+        """Copies the file-group to the new path, with auxiliary files saved
+        alongside the primary-file path.
+
+        Parameters
+        ----------
+        path : str
+            Path to save the file-group to excluding file extensions
+        symlink : bool
+            Use symbolic links instead of copying files to new location
+        """
+        if symlink:
+            copy_file = os.symlink
+        else:
+            copy_file = shutil.copyfile
+        dest_path = path + self.ext
+        copy_file(self.fs_path, dest_path)
+        dest_side_cars = self.default_side_car_paths(dest_path)
+        for sc_ext, sc_path in self.side_cars.items():
+            copy_file(sc_path, dest_side_cars[sc_ext])
+        cpy = copy(self)
+        cpy.set_file_paths(path, *dest_side_cars.values())
+        return cpy
+    
+    @classmethod
+    def default_side_car_paths(cls, primary_path):
         """
         Get the default paths for auxiliary files relative to the path of the
         primary file, i.e. the same name as the primary path with a different
@@ -162,457 +599,95 @@ class FileFormat(object):
         aux_paths : ty.Dict[str, str]
             A dictionary of auxiliary file names and default paths
         """
-        return dict((n, str(primary_path)[:-len(self.ext)] + ext)
-                    for n, ext in self.side_cars.items())
-
-    @property
-    def side_car_exts(self):
-        return frozenset(self.side_cars.values())
-
-    @property
-    def within_dir_exts(self):
-        return self._within_dir_exts
+        return dict((n, str(primary_path)[:-len(cls.ext)] + ext)
+                    for n, ext in cls.side_cars.items())
 
     @classmethod
-    def aux_interface_name(self, file_group_name, aux_name):
-        """Standardised method for naming aux files in Pydra Task/Workflow
-        interfaces
+    def copy_ext(cls, old_path, new_path):
+        """Copy extension from the old path to the new path, ensuring that all
+        of the extension is used (e.g. 'nii.gz' instead of 'gz'). If the old
+        path extension doesn't match the primary path, the methods loops through
+        all side-car extensions and selects the longest matching.
 
         Parameters
         ----------
-        file_group_name : str
-            Name of the file group in the task/workflow interface
-        aux_name : str
-            The name of the aux file
+        old_path: Path or str
+            The path from which to copy the extension from
+        new_path: Path or str
+            The path to append the extension to
 
         Returns
         -------
-        str
-            The combined name for the aux file within an interface
+        Path
+            The new path with the copied extension
         """
-        return f"{file_group_name}___{aux_name}"
-
-    def converter(self, file_format):
         try:
-            return self._converters[file_format]
-        except KeyError as e:
-            raise ArcanaNoConverterError(
-                f"No converter set for conversion between {self} and "
-                f"{file_format}") from e
-
-    def input_spec_fields(self):
-        return ['in_file'] + list(self.side_cars)
-
-    def output_spec_fields(self):
-        return ['out_file'] + list(self.side_cars)
-
-    def set_converter(self, file_format, task, inputs=None,
-                      outputs=None, **default_kwargs):
-        """Creates a small workflow that takes a file group of format
-        `file_format` and converts it into a file-group of format `self`.
-        Wraps up an existing task interface (e.g. Dcm2Nixx or MRConvert)
-        and provides mapping from the auxiliary files of a file-group to
-        the input/output interface of the converter.
-
-        Parameters
-        ----------
-        file_format : FileFormater
-            The file format to convert from
-        task : pydra.TaskBase
-            The task that actually performs the conversion
-        inputs : Dict[str, str]
-            Maps the auxiliary file names in the format to convert from and
-            the 'in_file' (for primary) onto the appropriate fields in the
-            converter's input spec
-        outputs : Dict[str, str]
-            Maps the auxiliary file names and 'in_file' (for primary) onto
-            the appropriate fields in the converter's output spec
-        **default_kwargs
-            Keyword arguments passed through to the task interface on
-            initialisation
-        """
-        if inputs is None:
-            inputs = {'primary': 'in_file'}
-        if outputs is None:
-            outputs = {'primary': 'out_file'}
-        # Save the converter for when it is required
-        self._converters[file_format] = FileGroupConverter(
-            from_format=file_format,
-            to_format=self,
-            task=task,
-            inputs=inputs,
-            outputs=outputs,
-            task_kwargs=default_kwargs)
-
-    @property
-    def convertable_from(self):
-        """
-        A list of formats that the current format can be converted from
-        """
-        return (f for f, _ in self._converters.values())
-
-    def assort_files(self, candidates):
-        """
-        Assorts candidate files into primary and auxiliary (and ignored) files
-        corresponding to the format by their file extensions. Can be overridden
-        in specialised subclasses to assort files based on other
-        characteristics
-
-        Parameters
-        ----------
-        candidates : ty.List[str]
-            The list of filenames to assort
-
-        Returns
-        -------
-        primary_file : str
-            Path to the selected primary file
-        side_cars : dict[str, str]
-            A dictionary mapping the auxiliary file name to the selected path
-        """
-        by_ext = defaultdict(list)
-        candidates = list(candidates)  # protect against iterators
-        for path in candidates:
-            ext = ''.join(Path(path).suffixes).lower()
-            if not ext:
-                ext = None
-            by_ext[ext].append(path)
-        primary_file = by_ext[self.ext]
-        if not primary_file:
+            # Check to see if the path it matches the primary path extension
+            return super().copy_ext(old_path, new_path)
+        except ArcanaFileFormatError:
+            pass
+        matches = [e for e in cls.side_car_exts
+                    if cls.matches_ext(e, old_path)]
+        if not matches:
+            sc_exts_str = "', '".join(cls.side_car_exts)
             raise ArcanaFileFormatError(
-                "No files match primary file extension of {} out of "
-                "potential candidates of {}"
-                .format(self, "', '".join(str(p) for p in candidates)))
-        elif len(primary_file) > 1:
-            raise ArcanaFileFormatError(
-                "Found multiple potential files for primary file of {} ('{}')"
-                .format(self, "', '".join(str(p) for p in primary_file)))
-        else:
-            primary_file = primary_file[0]
-        side_cars = {}
-        for sc_name, sc_ext in self.side_cars.items():
-            side_car = by_ext[sc_ext]
-            if not side_car:
-                raise ArcanaFileFormatError(
-                    "No files match auxiliary file extension '{}' of {} out of"
-                    " potential candidates of {}"
-                    .format(sc_ext, self,
-                            "', '".join(str(p) for p in candidates)))
-            elif len(side_car) > 1:
-                raise ArcanaFileFormatError(
-                    ("Multiple potential files for '{}' auxiliary file ext. "
-                     + "({}) of {}".format("', '".join(side_car), self)))
-            else:
-                side_cars[sc_name] = side_car[0]
-        return primary_file, side_cars
-
-    # def matches(self, file_group):
-    #     """
-    #     Checks to see whether the format matches the given file_group
-
-    #     Parameters
-    #     ----------
-    #     file_group : FileGroup
-    #         The file_group to check
-    #     """
-    #     if file_group._format_name is not None:
-    #         return (file_group._format_name in self.alternate_names(
-    #             file_group.dataset.store.type))
-    #     elif self.directory:
-    #         if op.isdir(file_group.path):
-    #             if self.within_dir_exts is None:
-    #                 return True
-    #             else:
-    #                 # Get set of all extensions in the directory
-    #                 return self.within_dir_exts == frozenset(
-    #                     split_extension(f)[1] for f in os.listdir(file_group.path)
-    #                     if not f.startswith('.'))
-    #         else:
-    #             return False
-    #     else:
-    #         if op.isfile(file_group.path):
-    #             all_paths = [file_group.path]
-    #             if file_group._potential_side_cars is not None:
-    #                 all_paths += file_group._potential_side_cars
-    #             try:
-    #                 primary_path = self.assort_files(all_paths)[0]
-    #             except ArcanaFileFormatError:
-    #                 return False
-    #             else:
-    #                 return primary_path == file_group.path
-    #         else:
-    #             return False
-
-    # def converter_from(self, format):
-    #     if format == self:
-    #         return mark.task(lambda x: x)
-    #     else:
-    #         raise ArcanaConverterNotAvailableError(
-    #             f"Cannot convert between {self} and {format} formats")
-
-    def aux(self, aux_name):
-        """
-        Returns a FileFormatAuxFile that points directly to the auxiliary file
-        """
-        return FileFormatAuxFile(self, aux_name)
-
-    def from_path(self, file_path, **kwargs):
-        """Creates a FileGroup object from a path on the file-system
-
-        Parameters
-        ----------
-        file_path : str
-            Path to primary file or directory of the file-group
-
-        Returns
-        -------
-        FileGroup
-            The file-group constructed from the local path
-
-        Raises
-        ------
-        ArcanaUsageError
-            If path does not exists
-        ArcanaNameError
-            [description]
-        """
-        name_path = Path(file_path).name
-        if self.ext is not None:
-            if name_path.endswith(self.ext):
-                name_path = name_path[:-len(self.ext)]
-            else:
-                file_path += self.ext       
-        return self.file_group_cls(name_path, fs_path=file_path, format=self,
-                                   **kwargs)
+                f"Extension of old path ('{str(old_path)}') does not match any "
+                f" in {cls}: '{cls.ext}', {sc_exts_str}")
+        longest_match = max(matches, key=len)
+        return Path(new_path).with_suffix(longest_match)
 
 
-class FileFormatAuxFile(object):
-    """
-    A thin wrapper around a FileFormat to point to a specific auxiliary file
-    that sets the extension to be that of the auxiliary file but passes all
-    other calls to the wrapped format.
+class BaseDirectory(FileGroup):
 
-    Parameters
-    ----------
-    file_format : FileFormat
-        The file format to wrap
-    aux_name : str
-        The name of the auxiliary file to point to
-    """
-
-    def __init__(self, file_format, aux_name):
-        self._file_format = file_format
-        self._aux_name = aux_name
-
-    @property
-    def extension(self):
-        self._file_format.side_car_exts(self._aux_name)
-
-    @property
-    def aux_name(self):
-        return self._aux_name
-
-    def __repr__(self):
-        return ("FileFormatAuxFile(aux_name='{}', format={})"
-                .format(self.aux_name, self._file_format))
-
-    def __getattr__(self, attr):
-        return getattr(self._file_format, attr)
-
-
-class Image(FileFormat, metaclass=ABCMeta):
-
-    INCLUDE_HDR_KEYS = None
-    IGNORE_HDR_KEYS = None
-
-    @abstractmethod
-    def get_header(self, fileset):
-        """
-        Returns array data associated with the given path for the
-        file format
-        """
-
-    @abstractmethod
-    def get_array(self, fileset):
-        """
-        Returns header data associated with the given path for the
-        file format
-        """
-
-    def contents_equal(self, fileset, other_fileset, rms_tol=None, **kwargs):
-        """
-        Test whether the (relevant) contents of two image filesets are equal
-        given specific criteria
-
-        Parameters
-        ----------
-        fileset : Fileset
-            One of the two filesets to compare
-        other_fileset : Fileset
-            The other fileset to compare
-        rms_tol : float
-            The root-mean-square tolerance that is acceptable between the array
-            data for the images to be considered equal
-        """
-        if other_fileset.format != self:
-            return False
-        if self.headers_diff(fileset, other_fileset, **kwargs):
-            return False
-        if rms_tol:
-            rms_diff = self.rms_diff(fileset, other_fileset)
-            return (rms_diff < rms_tol)
-        else:
-            return np.array_equiv(fileset.get_array(),
-                                  other_fileset.get_array())
-
-    def headers_diff(self, fileset, other_fileset, include_keys=None,
-                     ignore_keys=None, **kwargs):
-        """
-        Check headers to see if all values
-        """
-        diff = []
-        hdr = fileset.get_header()
-        hdr_keys = set(hdr.keys())
-        other_hdr = other_fileset.get_header()
-        if include_keys is not None:
-            if ignore_keys is not None:
-                raise ArcanaUsageError(
-                    "Doesn't make sense to provide both 'include_keys' ({}) "
-                    "and ignore_keys ({}) to headers_equal method"
-                    .format(include_keys, ignore_keys))
-            include_keys &= hdr_keys
-        elif ignore_keys is not None:
-            include_keys = hdr_keys - set(ignore_keys)
-        else:
-            if self.INCLUDE_HDR_KEYS is not None:
-                if self.IGNORE_HDR_KEYS is not None:
-                    raise ArcanaUsageError(
-                        "Doesn't make sense to have both 'INCLUDE_HDR_FIELDS'"
-                        "and 'IGNORE_HDR_FIELDS' class attributes of class {}"
-                        .format(type(self).__name__))
-                include_keys = self.INCLUDE_HDR_KEYS  # noqa pylint: disable=no-member
-            elif self.IGNORE_HDR_KEYS is not None:
-                include_keys = hdr_keys - set(self.IGNORE_HDR_KEYS)
-            else:
-                include_keys = hdr_keys
-        for key in include_keys:
-            value = hdr[key]
-            try:
-                other_value = other_hdr[key]
-            except KeyError:
-                diff.append(key)
-            else:
-                if isinstance(value, np.ndarray):
-                    if not isinstance(other_value, np.ndarray):
-                        diff.append(key)
-                    else:
-                        try:
-                            if not np.allclose(value, other_value,
-                                               equal_nan=True):
-                                diff.append(key)
-                        except TypeError:
-                            # Fallback to a straight comparison for some formats
-                            if value != other_value:
-                                diff.append(key)
-                elif value != other_value:
-                    diff.append(key)
-        return diff
-
-    def rms_diff(self, fileset, other_fileset):
-        """
-        Return the RMS difference between the image arrays
-        """
-        return np.sqrt(np.sum((fileset.get_array()
-                               - other_fileset.get_array()) ** 2))
-
-
-@attr.s
-class FileGroupConverter:
-
-    from_format: FileFormat = attr.ib()
-    to_format: FileFormat = attr.ib()
-    task: TaskBase = attr.ib()
-    inputs: Dict[str, str] = attr.ib()
-    outputs: Dict[str, str] = attr.ib()
-    task_kwargs: Dict[str, Any] = attr.ib(factory=dict)
-
-    @inputs.default
-    def inputs_default(self):
-        return {'primary': 'in_file'}
-
-    @outputs.default
-    def outputs_default(self):
-        return {'primary': 'out_file'}
-
-    @inputs.validator
-    def inputs_validator(self, _, inputs):
-        if 'primary' not in inputs:
-            raise ArcanaUsageError(
-                f"'primary' path must be present in converter inputs ({inputs.keys()})")
-
-    @outputs.validator
-    def outputs_validator(self, _, outputs):
-        if 'primary' not in outputs:
-            raise ArcanaUsageError(
-                f"'primary' path must be present in converter outputs ({outputs.keys()})")
+    is_dir = True
+    content_types = ()  # By default, don't check contents for any types
     
-    def __call__(self, name, **kwargs):
+    @classmethod
+    def from_paths(cls, *paths: ty.List[Path], **kwargs):
+        return [cls(p, **kwargs) for p in paths
+                if p.is_dir() and cls.contents_match(p)]
+
+    @classmethod
+    def contents_match(cls, path: Path):
+        from arcana.core.data.node import UnresolvedFileGroup
+        contents = UnresolvedFileGroup.from_paths(path.iterdir())
+        for content_type in cls.contents:
+            resolved = False
+            for unresolved in contents:
+                try:
+                    content_type.resolve(unresolved)
+                except ArcanaFileFormatError:
+                    pass
+                else:
+                    resolved = True
+            if not resolved:
+                raise ArcanaFileFormatError(
+                    f"Did not find a match for required content type {content_type} "
+                    f"of {cls} in {path} directory")
+        return True
+
+    def all_file_paths(self):
+        "Iterates through all files in the group and returns their file paths"
+        if self.fs_path is None:
+            raise ArcanaUsageError(
+                f"Attempting to access file paths of {self} before they are set")
+        return chain(*((Path(root) / f for f in files)
+                        for root, _, files in os.walk(self.fs_path)))
+
+    def copy_to(self, path: str, symlink: bool=False):
+        """Copies the file-group to the new path, with auxiliary files saved
+        alongside the primary-file path.
+
+        Parameters
+        ----------
+        path : str
+            Path to save the file-group to excluding file extensions
+        symlink : bool
+            Use symbolic links instead of copying files to new location
         """
-        Create a Pydra workflow to convert a file group from one format to
-        another
-        """
-        from .item import FileGroup
-        wf = Workflow(name=name,
-                      input_spec=['to_convert'],
-                      **kwargs)
-
-        # Add task collect the input paths to a common directory (as we
-        # assume the converter expects)
-        wf.add(func_task(
-            extract_paths,
-            in_fields=[('from_format', type), ('file_group', FileGroup)],
-            out_fields=[(i, str) for i in self.inputs],
-            name='extract_paths',
-            from_format=self.from_format,
-            file_group=wf.lzin.to_convert))
-
-        # Add the actual converter node
-        conv_kwargs = copy(self.task_kwargs)
-        conv_kwargs.update(kwargs)
-        # Map 
-        conv_kwargs.update((self.inputs[i], getattr(wf.extract_paths.lzout, i))
-                            for i in self.inputs)
-        wf.add(self.task(name='converter', **conv_kwargs))
-
-        wf.add(func_task(
-            encapsulate_paths,
-            in_fields=[('to_format', type)] + [(o, str) for o in self.outputs],
-            out_fields=[('converted', FileGroup)],
-            name='encapsulate_paths',
-            to_format=self.to_format,
-            **{k: getattr(wf.converter.lzout, v)
-               for k, v in self.outputs.items()}))
-
-        # Set the outputs of the workflow
-        wf.set_output(('converted', wf.encapsulate_paths.lzout.converted))
-
-        return wf
-
-
-def extract_paths(from_format, file_group):
-    """Copies files into the CWD renaming so the basenames match
-    except for extensions"""
-    logger.debug("Extracting paths from %s (%s format) before conversion", file_group, from_format)
-    if file_group.format != from_format:
-        raise ValueError(f"Format of {file_group} doesn't match converter {from_format}")
-    cpy = file_group.copy_to(Path(file_group.path).name, symlink=True)
-    paths = (cpy.fs_path,) + tuple(cpy.side_cars.values())
-    return paths if len(paths) > 1 else paths[0]
-
-
-def encapsulate_paths(to_format, primary, **side_car_paths):
-    """Copies files into the CWD renaming so the basenames match
-    except for extensions"""
-    logger.debug("Encapsulating %s and %s into %s format after conversion",
-                 primary, side_car_paths, to_format)
-    return to_format.from_path(primary, side_cars=side_car_paths)
+        if symlink:
+            copy_dir = os.symlink
+        else:
+            copy_dir = shutil.copytree
+        copy_dir(self.fs_path, path)
+        return self.from_paths(path)[0]

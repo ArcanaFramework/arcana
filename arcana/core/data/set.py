@@ -13,7 +13,7 @@ from arcana.exceptions import (
     ArcanaBadlyFormattedIDError, ArcanaWrongDataSpaceError)
 from arcana.core.utils import serialise
 from .space import DataSpace
-from .spec import DataSink, DataSource
+from .column import DataSink, DataSource
 from . import store as datastore
 
 from .node import DataNode

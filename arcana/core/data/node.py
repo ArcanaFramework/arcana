@@ -11,7 +11,7 @@ from arcana.exceptions import (
     ArcanaWrongFrequencyError, ArcanaFileFormatError, ArcanaError)
 from arcana.core.utils import split_extension
 from .format import FileFormat
-from .item import DataItem
+from .format import DataItem
 from .provenance import DataProvenance
 from ..enum import DataQuality
 from .space import DataSpace

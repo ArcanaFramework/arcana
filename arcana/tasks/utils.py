@@ -2,7 +2,7 @@ from pydra.engine.task import FunctionTask
 from pydra import mark
 from pydra.engine.specs import BaseSpec, SpecInfo
 from pydra.engine.task import FunctionTask
-from arcana.core.data.item import DataItem, FileGroup
+from arcana.core.data.format import DataItem, FileGroup
 from arcana.core.data.node import DataNode
 
 def identity(**fields):

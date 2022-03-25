@@ -17,7 +17,7 @@ from arcana.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medicalimaging import Clinical, DataSpace
 from arcana.core.data.store import DataStore
-from arcana.core.data.item import FileGroup, Field
+from arcana.core.data.format import FileGroup, Field
 
 
 logger = logging.getLogger('arcana')

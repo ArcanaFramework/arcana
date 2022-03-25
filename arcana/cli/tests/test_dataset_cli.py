@@ -1,7 +1,7 @@
 import pytest
 import os.path
 from arcana.core.data.set import Dataset
-from arcana.core.data.spec import DataSource, DataSink
+from arcana.core.data.column import DataSource, DataSink
 from arcana.core.enum import DataQuality, DataSalience
 from arcana.data.stores.tests.fixtures import (
   TestDatasetBlueprint, TestDataSpace, make_dataset, get_dataset_path)

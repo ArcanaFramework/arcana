@@ -9,10 +9,11 @@ import nibabel
 from pydra.tasks.dcm2niix import Dcm2Niix
 # Hack to get module to load until pydra-mrtrix is published on PyPI
 from pydra.tasks.mrtrix3.utils import MRConvert
+from arcana.core.mark import converter
 from arcana.exceptions import ArcanaUsageError
 from arcana.tasks.utils import identity_converter
-from arcana.core.data.format import FileFormat
-from arcana.core.data.item import FileGroup
+from arcana.core.data.format import (
+    BaseFileWithSideCars, FileGroup, BaseFile, BaseDirectory)
 
 
 # class Dcm2niixConverter(Converter):
@@ -52,8 +53,7 @@ from arcana.core.data.item import FileGroup
 # Custom loader functions for different image types
 # =====================================================================
 
-
-class BaseImage(FileGroup):
+class MedicalImage(BaseFile, metaclass=ABCMeta):
 
     INCLUDE_HDR_KEYS = None
     IGNORE_HDR_KEYS = None
@@ -158,8 +158,20 @@ class BaseImage(FileGroup):
         return np.sqrt(np.sum((fileset.get_array()
                                - other_fileset.get_array()) ** 2))
 
+class NeuroImage(MedicalImage):
+    """Imaging formats developed for neuroimaging scans"""
 
-class NiftiImage(BaseImage):
+    @classmethod
+    @converter(MedicalImage)
+    def mrconvert(cls, image):
+        node = MRConvert(
+            in_file=image,
+            out_file='out.' + cls.ext)
+        return node.lzout.out_file
+
+class Nifti(NeuroImage):
+
+    ext = 'nii'
 
     def get_header(self, fileset):
         return dict(nibabel.load(fileset.path).header)
@@ -176,7 +188,14 @@ class NiftiImage(BaseImage):
         return self.get_header(fileset)['dim'][1:4]
 
 
-class NiftixImage(NiftiImage):
+class NiftiGz(Nifti):
+
+    ext = 'nii.gz'
+
+
+class NiftiX(BaseFileWithSideCars, Nifti):
+
+    side_car_exts = ('json',)
 
     def get_header(self, fileset):
         hdr = super().get_header(fileset)
@@ -184,8 +203,38 @@ class NiftixImage(NiftiImage):
             hdr.update(json.load(f))
         return hdr
 
+class NiftiXGz(NiftiX, NiftiGz):
 
-class DicomImage(BaseImage):
+    pass
+
+
+# NIfTI file format gzipped with BIDS side car
+class NiftiFslgrad(BaseFileWithSideCars, Nifti):
+
+    side_car_exts = ('bvec', 'bval')
+
+class NiftiXFslgrad(NiftiX, NiftiFslgrad):
+
+    side_car_exts = NiftiX.side_car_exts + NiftiFslgrad.side_car_exts
+
+class NiftiXFslgradGz(NiftiXFslgrad, NiftiGz):
+
+    pass
+
+
+class DicomFile(BaseFile):  # FIXME: Should extend from MedicalImage, but need to implement header and array
+
+    ext = 'dcm'
+
+
+class SiemensDicomFile(DicomFile):
+
+    ext = 'IMA'
+
+class Dicom(BaseDirectory, MedicalImage):
+
+    content_types = (DicomFile,)
+    alternate_names = ('secondary',)
 
     SERIES_NUMBER_TAG = ('0020', '0011')
 
@@ -249,8 +298,15 @@ class DicomImage(BaseImage):
             raise e
         return dct
 
+class SiemensDicom(Dicom):
 
-class MrtrixImage(BaseImage):
+    content_types = (SiemensDicomFile,)
+    alternative_names = ('dicom',)
+
+
+class MrtrixImage(NeuroImage):
+
+    ext = 'mif'
 
     def _load_header_and_array(self, fileset):
         with open(fileset.path, 'rb') as f:
@@ -300,41 +356,31 @@ class MrtrixImage(BaseImage):
 # =====================================================================
 
 
-# NeuroImaging data formats
-dicom = FileFormat(name='dicom', extension=None,
-                   directory=True, within_dir_exts=['.dcm'],
-                   alternate_names=['DICOM', 'secondary'],
-                   file_group_cls=DicomImage)
-# NIfTI file format gzipped with BIDS side car
-niftix_gz = FileFormat(name='niftix_gz', extension='.nii.gz',
-                       side_cars={'json': '.json'},
-                       alternate_names=['NIFTI_GZ_X', 'NIFTIX_GZ'],
-                       file_group_cls=NiftixImage)
-# NIfTI file format gzipped with BIDS side car
-niftix_fsldwi_gz = FileFormat(name='niftix_gz', extension='.nii.gz',
-                               side_cars={'json': '.json',
-                                          'bvec': '.bvec',
-                                          'bval': '.bval'},
-                               alternate_names=['NIFTI_GZ_X', 'NIFTIX_GZ'],
-                               file_group_cls=NiftixImage)
+class Analyze(NeuroImage):
 
-nifti = FileFormat(name='nifti', extension='.nii',
-                   alternate_names=['NIFTI', 'NiFTI'],
-                   file_group_cls=NiftiImage)
-# NIfTI file format gzipped with BIDS side car
-niftix = FileFormat(name='niftix', extension='.nii',
-                       side_cars={'json': '.json'},
-                       alternate_names=['NIFTIX'],
-                       file_group_cls=NiftixImage)
+    ext = 'img'
+    side_cars = ('hdr',)
 
-nifti_gz = FileFormat(name='nifti_gz', extension='.nii.gz',
-                      alternate_names=['NIFTI_GZ', 'NiFTI_GZ', 'NIFTI'],
-                      file_group_cls=NiftiImage)
-analyze = FileFormat(name='analyze', extension='.img',
-                     side_cars={'header': '.hdr'})
-mrtrix_image = FileFormat(name='mrtrix_image', extension='.mif',
-                          alternate_names=['MIF', 'MRTRIX'],
-                          file_group_cls=MrtrixImage)
+class MrtrixTrack(BaseFile):
+
+    ext = 'tck'
+
+
+class Dwigrad(BaseFile):
+
+    pass
+
+class MtrixGrad(Dwigrad):
+
+    ext = 'b'
+
+class Fslgrad(Dwigrad):
+
+    ext = 'bvec'
+    side_cars = ('bval',)
+
+
+
 
 # Set converters between image formats
 
@@ -374,55 +420,26 @@ mrtrix_image.set_converter(nifti_gz, MRConvert, out_file='file.mif')
 mrtrix_image.set_converter(analyze, MRConvert, out_file='file.mif')
 mrtrix_image.set_converter(niftix_gz, MRConvert, out_file='file.mif')
 
-STD_IMAGE_FORMATS = [dicom, nifti, nifti_gz, niftix_gz, analyze, mrtrix_image]
 
-# multi_nifti_gz = FileFormat(name='multi_nifti_gz', extension=None,
-#                                    directory=True, within_dir_exts=['.nii.gz'])
-# multi_nifti_gz.set_converter(zip, UnzipConverter)
-# multi_nifti_gz.set_converter(targz, UnTarGzConverter)
+# Raw formats
 
-# Tractography formats
-mrtrix_track = FileFormat(name='mrtrix_track', extension='.tck')
+class ListMode(BaseFile):
 
-# Tabular formats
-rfile = FileFormat(name='rdata', extension='.RData')
-tsv = FileFormat(name='tab_separated', extension='.tsv')
-# matlab = FileFormat(name='matlab', extension='.mat')
-csv = FileFormat(name='comma_separated', extension='.csv')
-text_matrix = FileFormat(name='text_matrix', extension='.mat')
-
-# Diffusion gradient-table data formats
-fsl_bvecs = FileFormat(name='fsl_bvecs', extension='.bvec')
-fsl_bvals = FileFormat(name='fsl_bvals', extension='.bval')
-mrtrix_grad = FileFormat(name='mrtrix_grad', extension='.b')
-
-# Tool-specific formats
-eddy_par = FileFormat(name='eddy_par',
-                             extension='.eddy_parameters')
-ica = FileFormat(name='ica', extension='.ica', directory=True)
-par = FileFormat(name='parameters', extension='.par')
-motion_mats = FileFormat(
-    name='motion_mats', directory=True, within_dir_exts=['.mat'],
-    desc=("Format used for storing motion matrices produced during "
-          "motion detection pipeline"))
+    ext = 'bf'
 
 
-# PET formats
-list_mode = FileFormat(name='pet_list_mode', extension='.bf')
+class Kspace(BaseFile):
 
-# K-space formats
+    pass
 
-twix_vb = FileFormat(
-    name='twix_vb', extension='.dat',
-    alternate_names={'xnat': ['DAT', 'KSPACE']},
-    desc=("The format that k-space data is saved in from Siemens scanners "
-          "with system version vB to (at least) vE"))
+class TwixVb(Kspace):
+    """The format that k-space data is saved in from Siemens scanners 
+    with system version vB to (at least) vE"""
 
-custom_kspace = FileFormat(
-    name='custom_kspace', extension='.ks',
-    alternate_names={'xnat': ['CUSTOM_KSPACE']},
-    side_cars={'ref': '.ref', 'json': '.json'},
-    desc=("""A custom format for saving k-space data in binary amd JSON files.
+    ext = 'dat'
+
+class CustomKspace(Kspace):
+    """A custom format for saving k-space data in binary amd JSON files.
 
     Binary files
     ------------
@@ -450,32 +467,13 @@ custom_kspace = FileFormat(
     B0_dir : 3-tuple(float)
         Direction of the B0 field
     larmor_freq : float
-        The central larmor frequency of the scanner"""))
-
-# custom_kspace.set_converter(twix_vb, TwixConverter)
-
-KSPACE_FORMATS = [twix_vb, custom_kspace]
-
-# MRS format
-rda = FileFormat(name='raw', extension='.rda')
-
-# Record list of all data formats registered by module (not really
-# used currently but could be useful in future)
-std_formats = []
-
-# Add all data formats in module to a list of "standard" biomedical formats
-for file in copy(globals()).values():
-    if isinstance(file, FileFormat):
-        std_formats.append(file.name)
+        The central larmor frequency of the scanner"""
+        
+    ext = 'ks'
+    side_cars = ('ref', 'json')
 
 
-# # Since the conversion from DICOM->NIfTI is unfortunately slightly
-# # different between MRConvert and Dcm2niix, these data formats can
-# # be used in pipeline input specs that need to use MRConvert instead
-# # of Dcm2niix (i.e. motion-detection pipeline)
-# mrconvert_nifti_format = deepcopy(nifti_format)
-# mrconvert_nifti_format.set_converter(dicom_format, MRConvert,
-#                                      out_file='file.nii')
-# mrconvert_nifti_gz_format = deepcopy(nifti_gz_format)
-# mrconvert_nifti_gz_format.set_converter(dicom_format, MRConvert,
-#                                         out_file='file.nii.gz')
+class Rda(BaseFile):
+    """MRS format"""
+
+    ext = 'rda'

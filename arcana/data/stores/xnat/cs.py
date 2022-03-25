@@ -17,7 +17,6 @@ import pkg_resources
 from dataclasses import dataclass
 import attr
 from attr import NOTHING
-# import requests
 import neurodocker as nd
 from natsort import natsorted
 import docker
@@ -27,7 +26,7 @@ from arcana.core.utils import get_pkg_name
 from arcana.data.spaces.medicalimaging import Clinical
 from arcana.core.data.format import FileFormat
 from arcana.core.data.space import DataSpace
-from arcana.core.data.item import FileGroup
+from arcana.core.data.format import FileGroup
 from arcana.core.utils import resolve_class, DOCKER_HUB
 from arcana.exceptions import (
     ArcanaUsageError, ArcanaNoDirectXnatMountException, ArcanaBuildError)

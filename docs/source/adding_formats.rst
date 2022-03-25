@@ -73,7 +73,7 @@ identification.
         ext = 'dcm'
 
     class Dicom(Directory):
-        contents = (DicomFile,)
+        content_types = (DicomFile,)
 
 It is a good idea to make use of class inheritance when defining related
 formats to capture the relationship between them. For example, adding a format
@@ -85,7 +85,7 @@ to handle the Siemens-variant DICOM format which has '.IMA' extensions.
         ext = 'IMA'
 
     class SiemensDicom(Dicom):
-        contents = (SiemensDicomFile,)
+        content_types = (SiemensDicomFile,)
 
 Defining hierarchical relationships between file formats is most useful when
 defining implicit converters between file formats. This is done by adding
@@ -108,22 +108,24 @@ and they should return a lazy field that will contain the path to the converted 
     from pydra.core import LazyField
     from pydra.tasks.dcm2niix import Dcm2niix
     from pydra.tasks.mrtrix3.utils import MRConvert
-    from arcana.core.pipeline import Pipeline
+    from pydra.engine import Workflow
     from arcana.core.mark import converter
 
     class Nifti(File):
         ext = 'nii'
 
+        @classmethod
         @converter(Dicom)
-        def from_dicom(cls, pipeline: Pipeline, node_name: str,
+        def from_dicom(cls, wf: Workflow, node_name: str,
                        dicom: LazyField):
-            node = pipeline.add(
+            node = wf.add(
                 Dcm2niix(
                     name=node_name,
                     in_file=dicom,
                     compress='n'))
             return node.lzout.out_file
 
+        @classmethod
         @converter(Analyze)
         def from_analyze(cls, pipeline: Pipeline, node_name: str,
                          analyze: LazyField, hdr: LazyField):
@@ -145,8 +147,9 @@ converter method with an arbitrary value.
 
     class NiftiX(FileWithSidecars, Nifti):
         ext = 'nii'
-        side_cars = ('json',)
+        side_car_exts = ('json',)
 
+        @classmethod
         @converter(Dicom)
         def from_dicom(cls, pipeline: Pipeline, node_name: str, dicom: LazyField):
             super().from_dicom(pipeline, node_name, dicom)
@@ -168,6 +171,7 @@ two-way conversions between formats
     class ExampleFormat1(File):
         ext = 'exm1'
 
+        @classmethod
         @converter(ExampleFormat2Base)
         def from_example1(cls, pipeline: Pipeline, node_name: str, example1: LazyField):
             node = pipeline.add(
@@ -179,6 +183,7 @@ two-way conversions between formats
     class ExampleFormat2(ExampleFormat2Base):
         ext = 'exm2'
 
+        @classmethod
         @converter(ExampleFormat1)
         def from_example1(cls, pipeline: Pipeline, node_name: str, example1: LazyField):
             node = pipeline.add(

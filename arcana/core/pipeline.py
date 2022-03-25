@@ -9,7 +9,7 @@ from pydra import Workflow, mark
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana.exceptions import ArcanaNameError, ArcanaUsageError
-from .data.item import DataItem, FileGroup
+from .data.format import DataItem, FileGroup
 from .data.set import Dataset
 from .data.format import FileFormat
 from .data.space import DataSpace
@@ -31,8 +31,8 @@ class Pipeline():
 
     wf: Workflow = attr.ib()
     frequency: DataSpace = attr.ib()
-    inputs: ty.List[ty.Tuple[str, FileFormat]] = attr.ib(factory=list)
-    outputs: ty.List[ty.Tuple[str, FileFormat]] = attr.ib(factory=list)
+    inputs: ty.List[ty.Tuple[str, type]] = attr.ib(factory=list)
+    outputs: ty.List[ty.Tuple[str, type]] = attr.ib(factory=list)
     _connected: ty.Set[str] = attr.ib(factory=set, repr=False)
 
     @property
@@ -319,17 +319,17 @@ class Pipeline():
                 logger.info("Adding implicit conversion for input '%s' "
                             "from %s to %s", input_name, stored_format,
                             required_format)
-                cname = f"{input_name}_input_converter"                
+                cname = f"{input_name}_input_converter"
                 converter_task = required_format.converter(stored_format)(
-                    name=cname,
-                    to_convert=sourced[input_name])
+                    sourced[input_name],
+                    name=cname)
                 if source_out_dct[input_name] == ty.Sequence[DataItem]:
                     # Iterate over all items in the sequence and convert them
                     converter_task.split('to_convert')
                 # Insert converter
                 wf.per_node.add(converter_task)
                 # Map converter output to input_interface
-                sourced[input_name] = getattr(wf.per_node, cname).lzout.converted
+                sourced[input_name] = converter_task.lzout.converted
 
         # Create identity node to accept connections from user-defined nodes
         # via `set_output` method
@@ -363,11 +363,11 @@ class Pipeline():
                     stored_format)
                 cname = f"{output_name}_output_converter"
                 # Insert converter
-                wf.per_node.add(stored_format.converter(produced_format)(
-                    name=cname, to_convert=to_sink[output_name]))
+                converter_task = stored_format.converter(produced_format)(
+                    to_sink[output_name], name=cname)
+                wf.per_node.add(converter_task)
                 # Map converter output to workflow output
-                to_sink[output_name] = getattr(wf.per_node,
-                                               cname).lzout.converted
+                to_sink[output_name] = converter_task.lzout.converted
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
@@ -507,3 +507,65 @@ def encapsulate_paths_and_values(outputs, **kwargs):
         else:
             items.append(out_type(kwargs[out_name]))
     return tuple(items) if len(items) > 1 else items[0]
+
+
+# Provenance mismatch detection methods salvaged from data.provenance
+
+# def mismatches(self, other, include=None, exclude=None):
+#     """
+#     Compares information stored within provenance objects with the
+#     exception of version information to see if they match. Matches are
+#     constrained to the name_paths passed to the 'include' kwarg, with the
+#     exception of sub-name_paths passed to the 'exclude' kwarg
+
+#     Parameters
+#     ----------
+#     other : Provenance
+#         The provenance object to compare against
+#     include : ty.List[ty.List[str]] | None
+#         Paths in the provenance to include in the match. If None all are
+#         incluced
+#     exclude : ty.List[ty.List[str]] | None
+#         Paths in the provenance to exclude from the match. In None all are
+#         excluded
+#     """
+#     if include is not None:
+#         include_res = [self._gen_prov_path_regex(p) for p in include]
+#     if exclude is not None:
+#         exclude_res = [self._gen_prov_path_regex(p) for p in exclude]
+#     diff = DeepDiff(self._prov, other._prov, ignore_order=True)
+#     # Create regular expresssions for the include and exclude name_paths in
+#     # the format that deepdiff uses for nested dictionary/lists
+
+#     def include_change(change):
+#         if include is None:
+#             included = True
+#         else:
+#             included = any(rx.match(change) for rx in include_res)
+#         if included and exclude is not None:
+#             included = not any(rx.match(change) for rx in exclude_res)
+#         return included
+
+#     filtered_diff = {}
+#     for change_type, changes in diff.items():
+#         if isinstance(changes, dict):
+#             filtered = dict((k, v) for k, v in changes.items()
+#                             if include_change(k))
+#         else:
+#             filtered = [c for c in changes if include_change(c)]
+#         if filtered:
+#             filtered_diff[change_type] = filtered
+#     return filtered_diff
+
+# @classmethod
+# def _gen_prov_path_regex(self, file_path):
+#     if isinstance(file_path, str):
+#         if file_path.startswith('/'):
+#             file_path = file_path[1:]
+#         regex = re.compile(r"root\['{}'\].*"
+#                             .format(r"'\]\['".join(file_path.split('/'))))
+#     elif not isinstance(file_path, re.Pattern):
+#         raise ArcanaUsageError(
+#             "Provenance in/exclude name_paths can either be name_path "
+#             "strings or regexes, not '{}'".format(file_path))
+#     return regex

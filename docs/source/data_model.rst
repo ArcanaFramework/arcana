@@ -290,8 +290,8 @@ string separated by ':', e.g.
 
 .. _data_formats:
 
-Items and formats
------------------
+Formats
+-------
 
 Data items within dataset nodes can be one of three types:
 
