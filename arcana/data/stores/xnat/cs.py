@@ -24,7 +24,6 @@ from arcana import __version__
 from arcana.__about__ import install_requires, PACKAGE_NAME, python_versions
 from arcana.core.utils import get_pkg_name
 from arcana.data.spaces.medicalimaging import Clinical
-from arcana.core.data.format import FileFormat
 from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileGroup
 from arcana.core.utils import resolve_class, DOCKER_HUB
@@ -771,14 +770,14 @@ class XnatViaCS(Xnat):
     @dataclass
     class InputArg():
         pydra_field: str  # Must match the name of the Pydra task input
-        format: FileFormat
+        format: type
         dialog_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
         frequency: Clinical = Clinical.session
 
     @dataclass
     class OutputArg():
         pydra_field: str  # Must match the name of the Pydra task output
-        format: FileFormat
+        format: type
         xnat_path: str = None  # The path the output is stored at in XNAT, defaults to the pydra name
 
     @dataclass

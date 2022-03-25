@@ -265,7 +265,7 @@ class Dataset():
         name : str
             The name used to reference the dataset "column" for the
             source
-        format : FileFormat or type
+        format : type
             The file-format (for file-groups) or format (for fields)
             that the source will be stored in within the dataset
         path : str, default `name`
@@ -293,7 +293,7 @@ class Dataset():
         name : str
             The name used to reference the dataset "column" for the
             sink
-        format : FileFormat or type
+        format : type
             The file-format (for file-groups) or format (for fields)
             that the sink will be stored in within the dataset
         path : str, default `name`
@@ -618,12 +618,12 @@ class Dataset():
             A name for the workflow (must be globally unique)
         workflow : pydra.Workflow
             The Pydra workflow to add to the store
-        inputs : Sequence[str or tuple[str, FileFormat]]
+        inputs : Sequence[str or tuple[str, type]]
             List of column names (i.e. either data sources or sinks) to be
             connected to the inputs of the pipeline. If the pipelines requires
             the input to be in a format to the source, then it can be specified
             in a tuple (NAME, FORMAT)
-        outputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
+        outputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
             List of sink names to be connected to the outputs of the pipeline
             If teh the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)

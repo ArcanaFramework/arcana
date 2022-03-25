@@ -10,11 +10,11 @@ import pytest
 from arcana.data.stores.common import FileSystem
 from arcana.core.data.space import DataSpace
 from arcana.core.utils import set_cwd
-from arcana.core.data.format import FileFormat
-from arcana.data.formats.common import text, directory, json
+from arcana.core.data.format import BaseFileWithSideCars
+from arcana.data.formats.common import Text, Directory, Json
 from arcana.data.spaces.medicalimaging import Clinical
 from arcana.data.formats.medicalimaging import (
-    nifti_gz, niftix_gz, niftix, nifti, analyze, mrtrix_image)
+    NiftiGz, NiftiXGz, NiftiX, Nifti, Analyze, MrtrixImage)
 
 
 class TestDataSpace(DataSpace):
@@ -49,8 +49,10 @@ class TestDataSpace(DataSpace):
 
 td = TestDataSpace
 
-dummy_format = FileFormat(name='xyz', extension='.x',
-                          side_cars={'y': '.y', 'z': '.z'})
+class Xyz(BaseFileWithSideCars):
+
+    ext = 'x'
+    side_car_exts = ('y', 'z')
 
 
 # -----------------------
@@ -64,8 +66,8 @@ class TestDatasetBlueprint():
     dim_lengths: ty.List[int]  # size of layers a-d respectively
     files: ty.List[str]  # files present at bottom layer
     id_inference: ty.Dict[DataSpace, str]  # id_inference dict
-    expected_formats: ty.Dict[str, ty.Tuple[FileFormat, ty.List[str]]]  # expected formats
-    to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataSpace, FileFormat, ty.List[str]]]]  # files to insert as derivatives
+    expected_formats: ty.Dict[str, ty.Tuple[type, ty.List[str]]]  # expected formats
+    to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataSpace, type, ty.List[str]]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {
@@ -75,14 +77,14 @@ TEST_DATASET_BLUEPRINTS = {
         ['file1.txt', 'file2.nii.gz', 'dir1'],
         [],
         {'file1': [
-            (text, ['file1.txt'])],
+            (Text, ['file1.txt'])],
          'file2': [
-            (nifti_gz, ['file2.nii.gz'])],
+            (NiftiGz, ['file2.nii.gz'])],
          'dir1': [
-            (directory, ['dir1'])]},
-        [('deriv1', td.abcd, text, ['file1.txt']),  # Derivatives to insert
-         ('deriv2', td.c, directory, ['dir']),
-         ('deriv3', td.bd, text, ['file1.txt'])]
+            (Directory, ['dir1'])]},
+        [('deriv1', td.abcd, Text, ['file1.txt']),  # Derivatives to insert
+         ('deriv2', td.c, Directory, ['dir']),
+         ('deriv3', td.bd, Text, ['file1.txt'])]
     ),
     'one_layer': TestDatasetBlueprint(
         [td.abcd],
@@ -90,16 +92,16 @@ TEST_DATASET_BLUEPRINTS = {
         ['file1.nii.gz', 'file1.json', 'file2.nii', 'file2.json'],
         [],
         {'file1': [
-            (niftix_gz, ['file1.nii.gz', 'file1.json']),
-            (nifti_gz, ['file1.nii.gz']),
-            (json, ['file1.json'])],
+            (NiftiXGz, ['file1.nii.gz', 'file1.json']),
+            (NiftiGz, ['file1.nii.gz']),
+            (Json, ['file1.json'])],
          'file2': [
-            (niftix, ['file2.nii', 'file2.json']),
-            (nifti, ['file2.nii']),
-            (json, ['file2.json'])]},
-        [('deriv1', td.abcd, json, ['file1.json']),
-         ('deriv2', td.bc, dummy_format, ['file1.x', 'file1.y', 'file1.z']),
-         ('deriv3', td._, mrtrix_image, ['file1.mif'])]
+            (NiftiX, ['file2.nii', 'file2.json']),
+            (Nifti, ['file2.nii']),
+            (Json, ['file2.json'])]},
+        [('deriv1', td.abcd, Json, ['file1.json']),
+         ('deriv2', td.bc, Xyz, ['file1.x', 'file1.y', 'file1.z']),
+         ('deriv3', td._, MrtrixImage, ['file1.mif'])]
     ),
     'skip_single': TestDatasetBlueprint(
         [td.a, td.bc, td.d],
@@ -107,9 +109,9 @@ TEST_DATASET_BLUEPRINTS = {
         ['doubledir1', 'doubledir2'],
         [],
         {'doubledir1': [
-            (directory, ['doubledir1'])],
+            (Directory, ['doubledir1'])],
          'doubledir2': [
-            (directory, ['doubledir2'])]},
+            (Directory, ['doubledir2'])]},
         [('deriv1', td.ad, json, ['file1.json'])]
     ),
     'skip_with_inference': TestDatasetBlueprint(
@@ -119,9 +121,9 @@ TEST_DATASET_BLUEPRINTS = {
         [(td.bc, r'b(?P<b>\d+)c(?P<c>\d+)'),
          (td.ad, r'a(?P<a>\d+)d(?P<d>\d+)')],
         {'file1': [
-            (analyze, ['file1.hdr', 'file1.img'])],
+            (Analyze, ['file1.hdr', 'file1.img'])],
          'file2': [
-            (mrtrix_image, ['file2.mif'])]},
+            (MrtrixImage, ['file2.mif'])]},
         []
     ),
     'redundant': TestDatasetBlueprint(
@@ -131,10 +133,10 @@ TEST_DATASET_BLUEPRINTS = {
         [(td.abc, r'a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)'),
          (td.abcd, r'a\d+b\d+c\d+d(?P<d>\d+)')],
         {'doubledir': [
-            (directory, ['doubledir'])],
+            (Directory, ['doubledir'])],
          'file1': [
-            (dummy_format, ['file1.x', 'file1.y', 'file1.z'])]},
-        [('deriv1', td.d, json, ['file1.json'])]
+            (Xyz, ['file1.x', 'file1.y', 'file1.z'])]},
+        [('deriv1', td.d, Json, ['file1.json'])]
     ),
     'concatenate_test': TestDatasetBlueprint(
         [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint

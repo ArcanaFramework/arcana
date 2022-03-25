@@ -10,9 +10,7 @@ from arcana.exceptions import (
     ArcanaNameError, ArcanaUsageError, ArcanaUnresolvableFormatException,
     ArcanaWrongFrequencyError, ArcanaFileFormatError, ArcanaError)
 from arcana.core.utils import split_extension
-from .format import FileFormat
 from .format import DataItem
-from .provenance import DataProvenance
 from ..enum import DataQuality
 from .space import DataSpace
 
@@ -146,7 +144,7 @@ class DataNode():
 
         Parameters
         ----------
-        format : FileFormat or type
+        format : type
             The file format or type to reolve the item to
         """
         matches = []
@@ -214,53 +212,8 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     data_node: DataNode = attr.ib()
     order: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=DataQuality.usable)
-    provenance: DataProvenance = attr.ib(default=None)
+    provenance: ty.Dict[str, ty.Any] = attr.ib(default=None)
     _matched: ty.Dict[str, DataItem] = attr.ib(factory=dict, init=False)
-
-    def resolve(self, format):
-        """
-        Detects the format of the file-group from a list of possible
-        candidates and returns a corresponding FileGroup object. If multiple
-        candidates match the potential files, e.g. NiFTI-X (see dcm2niix) and
-        NiFTI, then the first matching candidate is selected.
-
-        If 'uris' were specified when the multi-format file-group was
-        created then that is used to select between the candidates. Otherwise
-        the file extensions of the local name_paths, and extensions of the files
-        within the directory will be used instead.
-
-        Parameters
-        ----------
-        format : FileFormat or type
-            A list of file-formats to try to match. The first matching format
-            in the sequence will be used to create a file-group
-
-        Returns
-        -------
-        DataItem
-            The data item resolved into the requested format
-
-        Raises
-        ------
-        ArcanaUnresolvableFormatException
-            If 
-        """
-        # If multiple formats are specified via resource names
-        
-        if not (self.uris or self.file_paths):
-            raise ArcanaError(
-                "Either uris or local name_paths must be provided "
-                f"to UnresolvedFileGroup('{self.name_path}') in before "
-                "attempting to resolve a file-groups format")
-        try:
-            # Attempt to access previously saved
-            item = self._matched[format]
-        except KeyError:
-            if isinstance(format, FileFormat):
-                item = self._resolve(format)
-            else:
-                item = self._resolve(format)
-        return item
 
     @property
     def item_kwargs(self):
@@ -314,51 +267,51 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                                             converter=normalise_paths)
     uris: ty.Dict[str] = attr.ib(default=None)
 
-    def _resolve(self, format):
-        # Perform matching based on resource names in multi-format
-        # file-group
-        if self.uris is not None:
-            item = None
-            for format_name, uri in self.uris.items():
-                if format_name.lower() in format.all_names:
-                    item = format(uri=uri, **self.item_kwargs)
-            if item is None:
-                raise ArcanaUnresolvableFormatException(
-                    f"Could not file a matching resource in {self.path} for"
-                    f" the given format ({format.name}), found "
-                    "('{}')".format("', '".join(self.uris)))
-        # Perform matching based on file-extensions of local name_paths
-        # in multi-format file-group
-        else:
-            file_path = None
-            side_cars = None
-            if format.directory:
-                if (len(self.file_paths) == 1
-                    and self.file_paths[0].is_dir()
-                    and (format.within_dir_exts is None
-                        or (format.within_dir_exts == frozenset(
-                            split_extension(f)[1]
-                            for f in self.file_paths[0].iterdir()
-                            if not str(f).startswith('.'))))):
-                    file_path = self.file_paths[0]
-            else:
-                try:
-                    file_path, side_cars = format.from_paths(
-                        self.file_paths)
-                except ArcanaFileFormatError:
-                    pass
-            if file_path is not None:
-                item = format(
-                    fs_path=file_path, side_cars=side_cars,
-                    **self.item_kwargs)
-            else:
-                raise ArcanaUnresolvableFormatException(
-                    f"Paths in {self.path} in node {self.data_node.frequency}:"
-                    f"{self.data_node.id} ('" + "', '".join(
-                        str(p) for p in self.file_paths) 
-                    + "') did not match the naming conventions expected by "
-                    f"format '{format.name}'")
-        return item
+    # def _resolve(self, format):
+    #     # Perform matching based on resource names in multi-format
+    #     # file-group
+    #     if self.uris is not None:
+    #         item = None
+    #         for format_name, uri in self.uris.items():
+    #             if format_name.lower() in format.all_names:
+    #                 item = format(uri=uri, **self.item_kwargs)
+    #         if item is None:
+    #             raise ArcanaUnresolvableFormatException(
+    #                 f"Could not file a matching resource in {self.path} for"
+    #                 f" the given format ({format.name}), found "
+    #                 "('{}')".format("', '".join(self.uris)))
+    #     # Perform matching based on file-extensions of local name_paths
+    #     # in multi-format file-group
+    #     else:
+    #         file_path = None
+    #         side_cars = None
+    #         if format.directory:
+    #             if (len(self.file_paths) == 1
+    #                 and self.file_paths[0].is_dir()
+    #                 and (format.within_dir_exts is None
+    #                     or (format.within_dir_exts == frozenset(
+    #                         split_extension(f)[1]
+    #                         for f in self.file_paths[0].iterdir()
+    #                         if not str(f).startswith('.'))))):
+    #                 file_path = self.file_paths[0]
+    #         else:
+    #             try:
+    #                 file_path, side_cars = format.from_paths(
+    #                     self.file_paths)
+    #             except ArcanaFileFormatError:
+    #                 pass
+    #         if file_path is not None:
+    #             item = format(
+    #                 fs_path=file_path, side_cars=side_cars,
+    #                 **self.item_kwargs)
+    #         else:
+    #             raise ArcanaUnresolvableFormatException(
+    #                 f"Paths in {self.path} in node {self.data_node.frequency}:"
+    #                 f"{self.data_node.id} ('" + "', '".join(
+    #                     str(p) for p in self.file_paths) 
+    #                 + "') did not match the naming conventions expected by "
+    #                 f"format '{format.name}'")
+    #     return item
 
     @classmethod
     def from_paths(cls, paths: ty.List[Path]):
@@ -400,22 +353,22 @@ class UnresolvedField(UnresolvedDataItem):
         float, int, str, ty.List[float], ty.List[int], ty.List[str]
     ] = attr.ib(default=None)
 
-    def _resolve(self, format):
-        try:
-            if format._name == 'Sequence':
-                if len(format.__args__) > 1:
-                    raise ArcanaUsageError(
-                        f"Sequence formats with more than one arg "
-                        "are not supported ({format})")
-                subtype = format.__args__[0]
-                value = [subtype(v)
-                            for v in self.value[1:-1].split(',')]
-            else:
-                value = format(self.value)
-        except ValueError as e:
-            raise ArcanaUnresolvableFormatException(
-                    f"Could not convert value of {self} ({self.value}) "
-                    f"to format {format}") from e
-        else:
-            item = DataItem(value=value, **self.item_kwargs)
-        return item
+    # def _resolve(self, format):
+    #     try:
+    #         if format._name == 'Sequence':
+    #             if len(format.__args__) > 1:
+    #                 raise ArcanaUsageError(
+    #                     f"Sequence formats with more than one arg "
+    #                     "are not supported ({format})")
+    #             subtype = format.__args__[0]
+    #             value = [subtype(v)
+    #                         for v in self.value[1:-1].split(',')]
+    #         else:
+    #             value = format(self.value)
+    #     except ValueError as e:
+    #         raise ArcanaUnresolvableFormatException(
+    #                 f"Could not convert value of {self} ({self.value}) "
+    #                 f"to format {format}") from e
+    #     else:
+    #         item = DataItem(value=value, **self.item_kwargs)
+    #     return item

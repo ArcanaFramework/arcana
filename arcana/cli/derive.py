@@ -8,7 +8,6 @@ import click
 from typing import Sequence, Dict
 import arcana.data.formats
 from arcana.exceptions import ArcanaUsageError
-from arcana.core.data.format import FileFormat
 from arcana.core.data.space import DataSpace
 from arcana.core.enum import DataQuality
 from arcana import __version__
@@ -184,27 +183,27 @@ def derive_column(dataset_path, pydra_task, input_specs, output_specs, parameter
     logger.info(f'"{pydra_task}" app completed successfully')
 
 
-def _format_from_path(path, default, format_name=None):
-    format = None
-    if format_name is not None:
-        format = resolve_format(format_name.lower())
-    elif ':' in path:
-        path, format_name = str(path).split(':')
-        format = resolve_format(format_name.lower())
-    elif '.' in path:
-        path = Path(path)
-        path_ext = '.'.join(path.suffixes)
-        # Strip suffix from path
-        path = path.parent / path.stem
-        # FIXME: Need a more robust way of determining format
-        # from output path extension
-        for dtype in list_instances(arcana.data.formats, FileFormat):
-            if dtype.extension == path_ext:
-                format = dtype
-                break
-    if format is None:
-        format = default
-    return path, format
+# def _format_from_path(path, default, format_name=None):
+#     format = None
+#     if format_name is not None:
+#         format = resolve_format(format_name.lower())
+#     elif ':' in path:
+#         path, format_name = str(path).split(':')
+#         format = resolve_format(format_name.lower())
+#     elif '.' in path:
+#         path = Path(path)
+#         path_ext = '.'.join(path.suffixes)
+#         # Strip suffix from path
+#         path = path.parent / path.stem
+#         # FIXME: Need a more robust way of determining format
+#         # from output path extension
+#         for dtype in list_instances(arcana.data.formats, FileFormat):
+#             if dtype.extension == path_ext:
+#                 format = dtype
+#                 break
+#     if format is None:
+#         format = default
+#     return path, format
 
 
 def add_input_sources(dataset, inputs, default_frequency):
@@ -217,7 +216,7 @@ def add_input_sources(dataset, inputs, default_frequency):
 
     Returns
     -------
-    ty.List[ty.Tuple[str, FileFormat]]
+    ty.List[ty.Tuple[str, type]]
         A sequence of input names and their required formats
 
     Raises
@@ -265,7 +264,7 @@ def add_output_sinks(dataset, outputs, frequency):
 
     Returns
     -------
-    ty.List[ty.Tuple[str, FileFormat]]
+    ty.List[ty.Tuple[str, type]]
         A sequence of input names and the formats they are produced in
     """
     # Create outputs

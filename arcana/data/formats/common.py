@@ -31,20 +31,18 @@ class Zip(BaseFile):
 
     @classmethod
     @converter(FileGroup)
-    def archive(cls, wf, file_group, **kwargs):
+    def archive(cls, fs_path):
         node = create_zip(
-            in_file=file_group,
-            compression='gz',
-            **kwargs)
-        wf.add(node)
-        return node.lzout.out_file
+            in_file=fs_path,
+            compression='gz')
+        return node, node.lzout.out_file
 
 class Gzip(BaseFile):
     ext = 'gz'
 
     @classmethod
     @converter(FileGroup)
-    def archive(cls, wf, file_group):
+    def archive(cls, fs_path):
         raise NotImplementedError
 
 class Tar(BaseFile):
@@ -52,56 +50,46 @@ class Tar(BaseFile):
 
     @classmethod
     @converter(FileGroup)
-    def archive(cls, wf, file_group, **kwargs):
+    def archive(cls, fs_path):
         node = create_tar(
-            in_file=file_group,
-            compression='gz',
-            **kwargs)
-        wf.add(node)
-        return node.lzout.out_file    
+            in_file=fs_path,
+            compression='gz')
+        return node, node.lzout.out_file    
 
 class TarGz(Tar, Gzip):
     ext = 'tar.gz'
 
     @classmethod
     @converter(FileGroup)
-    def archive(cls, wf, file_group, **kwargs):
+    def archive(cls, fs_path):
         node = create_tar(
-            in_file=file_group,
-            compression='gz',
-            **kwargs)
-        wf.add(node)
-        return node.lzout.out_file
+            in_file=fs_path,
+            compression='gz')
+        return node, node.lzout.out_file
 
 
 class Directory(BaseDirectory):
 
     @classmethod
     @converter(Zip)
-    def unzip(cls, wf, zip_file, **kwargs):
+    def unzip(cls, fs_path):
         node = extract_zip(
-            in_file=zip_file,
-            **kwargs)
-        wf.add(node)
-        return node.lzout.out_file
+            in_file=fs_path)
+        return node, node.lzout.out_file
 
     @classmethod
     @converter(Tar)
-    def untar(cls, wf, tar_file, **kwargs):
+    def untar(cls, fs_path):
         node = extract_tar(
-            in_file=tar_file,
-            **kwargs)
-        wf.add(node)
-        return node.lzout.out_file
+            in_file=fs_path)
+        return node, node.lzout.out_file
 
     @classmethod
     @converter(TarGz)
-    def untargz(cls, wf, tar_file, **kwargs):
+    def untargz(cls, fs_path):
         node = extract_tar(
-            in_file=tar_file,
-            **kwargs)
-        wf.add(node)
-        return node.lzout.out_file
+            in_file=fs_path)
+        return node, node.lzout.out_file
 
 
 # Hierarchical text files

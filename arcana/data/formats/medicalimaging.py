@@ -247,12 +247,11 @@ class NeuroImage(MedicalImage):
 
     @classmethod
     @converter(MedicalImage)
-    def mrconvert(cls, wf, image):
+    def mrconvert(cls, fs_path):
         node = MRConvert(
-            in_file=image,
+            in_file=fs_path,
             out_file='out.' + cls.ext)
-        wf.add(node)
-        return node.lzout.out_file
+        return node, node.lzout.out_file
 
 
 class Nifti(NeuroImage):
@@ -275,11 +274,11 @@ class Nifti(NeuroImage):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, wf, dicom):
+    def dcm2niix(cls, fs_path):
         node = Dcm2Niix(
-            )
-        wf.add(node)
-        return node.lzout.out_file
+            in_dir=fs_path,
+            out_dir='.')
+        return node, node.lzout.out_file
     
 
 class NiftiGz(Nifti):
@@ -296,6 +295,7 @@ class NiftiX(BaseFileWithSideCars, Nifti):
         with open(fileset.aux_file('json')) as f:
             hdr.update(json.load(f))
         return hdr
+
 
 class NiftiXGz(NiftiX, NiftiGz):
 
@@ -394,44 +394,43 @@ class Fslgrad(Dwigrad):
 
 
 
+# # Set converters between image formats
 
-# Set converters between image formats
+# niftix_gz.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
+#                         inputs={'primary': 'in_dir'},
+#                         outputs={'primary': 'out_file',
+#                                  'json': 'out_json'})
 
-niftix_gz.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
-                        inputs={'primary': 'in_dir'},
-                        outputs={'primary': 'out_file',
-                                 'json': 'out_json'})
+# niftix.set_converter(dicom, Dcm2Niix, compress='n', out_dir='.',
+#                      inputs={'primary': 'in_dir'},
+#                      outputs={'primary': 'out_file',
+#                               'json': 'out_json'})
 
-niftix.set_converter(dicom, Dcm2Niix, compress='n', out_dir='.',
-                     inputs={'primary': 'in_dir'},
-                     outputs={'primary': 'out_file',
-                              'json': 'out_json'})
+# nifti.set_converter(dicom, Dcm2Niix, out_dir='.',
+#                     inputs={'primary': 'in_dir'})
+# nifti.set_converter(analyze, MRConvert, out_file='file.nii')
+# nifti.set_converter(nifti_gz, MRConvert, out_file='file.nii')
+# nifti.set_converter(mrtrix_image, MRConvert, out_file='file.nii')
+# nifti.set_converter(niftix_gz, MRConvert, out_file='file.nii')
 
-nifti.set_converter(dicom, Dcm2Niix, out_dir='.',
-                    inputs={'primary': 'in_dir'})
-nifti.set_converter(analyze, MRConvert, out_file='file.nii')
-nifti.set_converter(nifti_gz, MRConvert, out_file='file.nii')
-nifti.set_converter(mrtrix_image, MRConvert, out_file='file.nii')
-nifti.set_converter(niftix_gz, MRConvert, out_file='file.nii')
+# nifti_gz.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
+#                        inputs={'primary': 'in_dir'})
+# nifti_gz.set_converter(nifti, MRConvert, out_file="file.nii.gz")
+# nifti_gz.set_converter(analyze, MRConvert, out_file="file.nii.gz")
+# nifti_gz.set_converter(mrtrix_image, MRConvert, out_file="file.nii.gz")
+# nifti_gz.set_converter(niftix_gz, identity_converter)
 
-nifti_gz.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
-                       inputs={'primary': 'in_dir'})
-nifti_gz.set_converter(nifti, MRConvert, out_file="file.nii.gz")
-nifti_gz.set_converter(analyze, MRConvert, out_file="file.nii.gz")
-nifti_gz.set_converter(mrtrix_image, MRConvert, out_file="file.nii.gz")
-nifti_gz.set_converter(niftix_gz, identity_converter)
+# analyze.set_converter(dicom, MRConvert, out_file="file.hdr")
+# analyze.set_converter(nifti, MRConvert, out_file="file.hdr")
+# analyze.set_converter(nifti_gz, MRConvert, out_file="file.hdr")
+# analyze.set_converter(mrtrix_image, MRConvert, out_file="file.hdr")
+# analyze.set_converter(niftix_gz, MRConvert, out_file="file.hdr")
 
-analyze.set_converter(dicom, MRConvert, out_file="file.hdr")
-analyze.set_converter(nifti, MRConvert, out_file="file.hdr")
-analyze.set_converter(nifti_gz, MRConvert, out_file="file.hdr")
-analyze.set_converter(mrtrix_image, MRConvert, out_file="file.hdr")
-analyze.set_converter(niftix_gz, MRConvert, out_file="file.hdr")
-
-mrtrix_image.set_converter(dicom, MRConvert, out_file='file.mif')
-mrtrix_image.set_converter(nifti, MRConvert, out_file='file.mif')
-mrtrix_image.set_converter(nifti_gz, MRConvert, out_file='file.mif')
-mrtrix_image.set_converter(analyze, MRConvert, out_file='file.mif')
-mrtrix_image.set_converter(niftix_gz, MRConvert, out_file='file.mif')
+# mrtrix_image.set_converter(dicom, MRConvert, out_file='file.mif')
+# mrtrix_image.set_converter(nifti, MRConvert, out_file='file.mif')
+# mrtrix_image.set_converter(nifti_gz, MRConvert, out_file='file.mif')
+# mrtrix_image.set_converter(analyze, MRConvert, out_file='file.mif')
+# mrtrix_image.set_converter(niftix_gz, MRConvert, out_file='file.mif')
 
 
 # Raw formats

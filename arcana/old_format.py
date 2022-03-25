@@ -8,7 +8,7 @@ import attr
 from typing import Any, Dict
 from pydra import Workflow
 from pydra.engine.core import TaskBase
-from ..utils import func_task
+from arcana.core.utils import func_task
 import logging
 from arcana.exceptions import (
     ArcanaFileFormatError, ArcanaUsageError, ArcanaNoConverterError)

@@ -11,7 +11,6 @@ from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.format import DataItem, FileGroup
 from .data.set import Dataset
-from .data.format import FileFormat
 from .data.space import DataSpace
 from .utils import func_task
 
@@ -168,12 +167,12 @@ class Pipeline():
             Name of the pipeline
         dataset : Dataset
             The dataset to connect the pipeline to
-        inputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
+        inputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
             List of column names (i.e. either data sources or sinks) to be
             connected to the inputs of the pipeline. If the pipelines requires
             the input to be in a format to the source, then it can be specified
             in a tuple (NAME, FORMAT)
-        outputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
+        outputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
             List of sink names to be connected to the outputs of the pipeline
             If the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)
@@ -401,6 +400,25 @@ class Pipeline():
 
 
     PROVENANCE_VERSION = '1.0'
+
+def extract_paths(from_format, file_group):
+    """Copies files into the CWD renaming so the basenames match
+    except for extensions"""
+    logger.debug("Extracting paths from %s (%s format) before conversion", file_group, from_format)
+    if file_group.format != from_format:
+        raise ValueError(f"Format of {file_group} doesn't match converter {from_format}")
+    cpy = file_group.copy_to(Path(file_group.path).name, symlink=True)
+    paths = (cpy.fs_path,) + tuple(cpy.side_cars.values())
+    return paths if len(paths) > 1 else paths[0]
+
+
+def encapsulate_paths(to_format, primary, **side_car_paths):
+    """Copies files into the CWD renaming so the basenames match
+    except for extensions"""
+    logger.debug("Encapsulating %s and %s into %s format after conversion",
+                 primary, side_car_paths, to_format)
+    return to_format.from_path(primary, side_cars=side_car_paths)
+
 
 
 # def identity(**kwargs):

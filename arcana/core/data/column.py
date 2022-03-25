@@ -22,7 +22,7 @@ class DataSource():
         A regex name_path to match the file_group names with. Must match
         one and only one file_group per <frequency>. If None, the name
         is used instead.
-    format : FileFormat or type
+    format : type
         File format that data will be 
     frequency : DataSpace
         The frequency of the file-group within the dataset tree, e.g. per
@@ -125,7 +125,7 @@ class DataSink():
     path : str
         The path to the relative location the corresponding data items will be
         stored within the nodes of the data tree.
-    format : FileFormat or type
+    format : type
         The file format or data type used to store the corresponding items
         in the store dataset.
     frequency : DataSpace

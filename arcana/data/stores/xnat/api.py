@@ -428,10 +428,8 @@ class Xnat(DataStore):
 
         Parameters
         ----------
-        resource : xnat.ResourceCatalog
-            The xnat resource
-        file_format : FileFormat
-            The format of the file_group to get the checksums for. Used to
+        file_group: FileGroup
+            the file_group to get the checksums for. Used to
             determine the primary file within the resource and change the
             corresponding key in the checksums dictionary to '.' to match
             the way it is generated locally by Arcana.

@@ -12,9 +12,8 @@ from arcana.data.stores import Xnat
 from arcana.data.stores.xnat.cs import XnatViaCS
 from arcana.data.spaces.medicalimaging import Clinical
 from arcana.core.data.space import DataSpace
-from arcana.core.data.format import FileFormat
-from arcana.data.formats.common import text, directory
-from arcana.data.formats.medicalimaging import niftix_gz, nifti_gz, dicom
+from arcana.data.formats.common import Text, Directory
+from arcana.data.formats.medicalimaging import NiftiXGz, NiftiGz, Dicom
 from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.tests.fixtures import create_test_file
 
@@ -27,9 +26,9 @@ from arcana.data.stores.tests.fixtures import create_test_file
 class TestDatasetBlueprint():
 
     dim_lengths: ty.List[int]
-    scans: ty.List[ty.Tuple[str, ty.List[ty.Tuple[str, FileFormat, ty.List[str]]]]]
+    scans: ty.List[ty.Tuple[str, ty.List[ty.Tuple[str, type, ty.List[str]]]]]
     id_inference: ty.Dict[DataSpace, str]
-    to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataSpace, FileFormat, ty.List[str]]]]  # files to insert as derivatives
+    to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataSpace, type, ty.List[str]]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {
@@ -37,52 +36,52 @@ TEST_DATASET_BLUEPRINTS = {
         [1, 1, 3],  # number of timepoints, groups and members respectively
         [('scan1',  # scan type (ID is index)
           [('text', # resource name
-            text,  # Data format
+            Text,  # Data format
             ['file.txt'])]),  # name files to place within resource
          ('scan2',
           [('niftix_gz',
-            niftix_gz,
+            NiftiXGz,
             ['file.nii.gz', 'file.json'])]),
          ('scan3',
           [('directory',
-            directory,
+            Directory,
             ['doubledir', 'dir', 'file.dat'])]),
          ('scan4',
-          [('DICOM', dicom, ['file1.dcm', 'file2.dcm', 'file3.dcm']),
-           ('NIFTI', nifti_gz, ['file1.nii.gz']),
+          [('DICOM', Dicom, ['file1.dcm', 'file2.dcm', 'file3.dcm']),
+           ('NIFTI', NiftiGz, ['file1.nii.gz']),
            ('BIDS', None, ['file1.json']),
            ('SNAPSHOT', None, ['file1.png'])])],
         [],
-        [('deriv1', Clinical.timepoint, text, ['file.txt']),
-         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
-         ('deriv3', Clinical.batch, directory, ['dir']),
-         ('deriv4', Clinical.dataset, text, ['file.txt']),
+        [('deriv1', Clinical.timepoint, Text, ['file.txt']),
+         ('deriv2', Clinical.subject, NiftiXGz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.batch, Directory, ['dir']),
+         ('deriv4', Clinical.dataset, Text, ['file.txt']),
          ]),  # id_inference dict
     'multi': TestDatasetBlueprint(  # dataset name
         [2, 2, 2],  # number of timepoints, groups and members respectively
         [
             ('scan1',
              [('TEXT',  # resource name
-               text, 
+               Text, 
                ['file.txt'])])],
         [('subject', r'group(?P<group>\d+)member(?P<member>\d+)'),
          ('session', r'timepoint(?P<timepoint>\d+).*')],  # id_inference dict
         [
-         ('deriv1', Clinical.session, text, ['file.txt']),
-         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
-         ('deriv3', Clinical.timepoint, directory, ['doubledir']),
-         ('deriv4', Clinical.member, text, ['file.txt']),
-         ('deriv5', Clinical.dataset, text, ['file.txt']),
-         ('deriv6', Clinical.batch, text, ['file.txt']),
-         ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
-         ('deriv8', Clinical.group, text, ['file.txt']),
+         ('deriv1', Clinical.session, Text, ['file.txt']),
+         ('deriv2', Clinical.subject, NiftiXGz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.timepoint, Directory, ['doubledir']),
+         ('deriv4', Clinical.member, Text, ['file.txt']),
+         ('deriv5', Clinical.dataset, Text, ['file.txt']),
+         ('deriv6', Clinical.batch, Text, ['file.txt']),
+         ('deriv7', Clinical.matchedpoint, Text, ['file.txt']),
+         ('deriv8', Clinical.group, Text, ['file.txt']),
          ]),
     'concatenate_test': TestDatasetBlueprint(
         [1, 1, 2],
         [('scan1',
-          [('text', text, ['file1.txt'])]),
+          [('text', Text, ['file1.txt'])]),
          ('scan2',
-          [('text', text, ['file2.txt'])])],
+          [('text', Text, ['file2.txt'])])],
         {}, [])}
 
 GOOD_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']

@@ -5,17 +5,19 @@ import typing as ty
 from itertools import chain
 from copy import copy
 import hashlib
+import logging
 import shutil
 from abc import ABCMeta, abstractmethod
 import attr
 from attr.converters import optional
-from arcana.core.utils import parse_value
+from arcana.core.utils import parse_value, func_task
 from arcana.exceptions import (
-    ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
+    ArcanaUnresolvableFormatException, ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
     ArcanaDataNotDerivedYetError, ArcanaFileFormatError, ArcanaNoConverterError)
 from ..enum import DataQuality
-from .format import FileFormat
 
+
+logger = logging.getLogger('arcana')
 
 @attr.s
 class DataItem(metaclass=ABCMeta):
@@ -27,8 +29,6 @@ class DataItem(metaclass=ABCMeta):
     name_path : str
         The name_path to the relative location of the file group, i.e. excluding
         information about which node in the data tree it belongs to
-    type : FileFormat or type
-        The file format used to store the file_group.
     order : int | None
         The order in which the file-group appears in the node it belongs to
         (starting at 0). Typically corresponds to the acquisition order for
@@ -47,7 +47,6 @@ class DataItem(metaclass=ABCMeta):
     """
 
     path: str = attr.ib()
-    format: type or FileFormat = attr.ib()
     uri: str = attr.ib(default=None)
     order: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=DataQuality.usable)
@@ -190,8 +189,6 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     name_path : str
         The name_path to the relative location of the file group, i.e. excluding
         information about which node in the data tree it belongs to
-    format : FileFormat
-        The file format used to store the file_group.
     order : int | None
         The order in which the file-group appears in the node it belongs to
         (starting at 0). Typically corresponds to the acquisition order for
@@ -273,6 +270,10 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     @classmethod
     def format_name(cls):
         return cls.__name__.lower()
+
+    @classmethod
+    def lf_file_names(cls):
+        return ('fs_path',)
 
     @classmethod
     def matches_format_name(cls, name: str):
@@ -419,7 +420,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         self.exists = True
 
     @classmethod
-    def converter(cls, from_format):
+    def get_converter(cls, from_format):
         """Gets the converter method from the given format
 
         Parameters
@@ -437,21 +438,100 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         ArcanaNoConverterError
             _description_
         """
-        converters = []
+        converter = None
         for attr_name in dir(cls):
-            atr = getattr(cls, attr_name)
+            meth = getattr(cls, attr_name)
             try:
-                converter_from = atr.__annotations__['arcana_converter']
+                converts_from = meth.__annotations__['arcana_converter']
             except (AttributeError, KeyError):
                 pass
             else:
-                if issubclass(from_format, converter_from):
-                    converters.append(atr)
-        if not converters:
+                if issubclass(from_format, converts_from):
+                    if converter:
+                        prev_converts_from = converter.__annotations__['arcana_converter']
+                        if issubclass(converts_from, prev_converts_from):
+                            converter = meth
+                        elif not issubclass(prev_converts_from, converts_from):
+                            raise ArcanaNoConverterError(
+                                f"Ambiguous converters between {from_format} "
+                                f"and {cls}: {converter} and {meth}. Please "
+                                "define a specific converter directly between "
+                                f"the subclasses (i.e. instead of {prev_converts_from} "
+                                f"and {converts_from} respectively)")
+        if not converter:
             raise ArcanaNoConverterError(
                 f"No conversion defined between {from_format} and {cls}")
-        # FIXME: This should be the most specific not just the first
-        return converters[0]
+        return converter
+
+    
+    @classmethod
+    def add_converter(cls, wf, from_format, file_group_lf, node_name):
+        """Adds a converter node to a workflow
+
+        Parameters
+        ----------
+        wf : Workflow
+            the pydra workflow to add the node to
+        from_format : type
+            the file-group class to convert from
+        file_group_lf : LazyField
+            Lazy field pointing to a FileGroup that is to be converted
+        node_name : str
+            the name to give the added converter node
+        """
+        converter_spec = cls.get_converter(from_format)
+        converter = converter_spec[0]  # Converter task
+        output_lfs = converter_spec[1:]  # Output lazy-fields to pass to encapsulater
+        
+        wf.add(func_task(
+            extract_paths,
+            in_fields=[('from_format', type), ('file_group', FileGroup)],
+            out_fields=[(i, str) for i in inputs],
+            name=node_name + '_extract_paths',
+            from_format=from_format,
+            file_group=wf.lzin.to_convert))
+        
+        converter_task = stored_format.converter(produced_format)(
+                    wf,
+                    to_sink[output_name],
+                    name=cname)
+        # Add the actual converter node
+        conv_kwargs = copy(task_kwargs)
+        conv_kwargs.update(kwargs)
+        # Map 
+        conv_kwargs.update((inputs[i], getattr(wf.extract_paths.lzout, i))
+                            for i in self.inputs)
+        wf.add(self.task(name='converter', **conv_kwargs))
+
+        wf.add(func_task(
+            encapsulate_paths,
+            in_fields=[('to_format', type)] + [(o, str) for o in self.outputs],
+            out_fields=[('converted', FileGroup)],
+            name='encapsulate_paths',
+            to_format=self.to_format,
+            **{k: getattr(wf.converter.lzout, v)
+               for k, v in self.outputs.items()}))
+
+
+def extract_paths(from_format, file_group):
+    """Copies files into the CWD renaming so the basenames match
+    except for extensions"""
+    logger.debug("Extracting paths from %s (%s format) before conversion", file_group, from_format)
+    if file_group.format != from_format:
+        raise ValueError(f"Format of {file_group} doesn't match converter {from_format}")
+    cpy = file_group.copy_to(Path(file_group.path).name, symlink=True)
+    return cpy.fs_paths if len(cpy.fs_paths) > 1 else cpy.fs_path
+
+
+def encapsulate_paths(to_format: type, orig_file_group: FileGroup, *fs_paths: ty.List[Path]):
+    """Copies files into the CWD renaming so the basenames match
+    except for extensions"""
+    logger.debug("Encapsulating %s into %s format after conversion",
+                 fs_paths, to_format)
+    file_group = to_format(orig_file_group.path + '_' + to_format.format_name())
+    file_group.set_file_paths(fs_paths)
+    return file_group
+
 
 @attr.s
 class BaseFile(FileGroup):
@@ -512,6 +592,9 @@ class BaseFile(FileGroup):
      
 @attr.s
 class BaseFileWithSideCars(BaseFile):
+    """Base class for file-groups with a primary file and several header or
+    side car files
+    """
 
     side_cars: ty.Dict[str, str] = attr.ib(converter=optional(absolute_paths_dict))
 
@@ -542,6 +625,10 @@ class BaseFileWithSideCars(BaseFile):
                     f"Attempting to set paths of auxiliary files for {self} "
                     "that don't exist ('{}')".format(
                         "', '".join(missing_side_cars)))
+
+    @classmethod
+    def lf_file_names(cls):
+        return super().lf_file_names() + cls.side_car_exts           
 
     def set_file_paths(self, *paths):
         super().set_file_paths(paths)

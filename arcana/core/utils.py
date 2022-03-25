@@ -239,7 +239,7 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
 
 #     Returns
 #     -------
-#     FileFormat or type
+#     type
 #         The resolved file format or type
 #     """
 #     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
@@ -260,7 +260,7 @@ def resolve_format(name):
 
     Returns
     -------
-    FileFormat or type
+    type
         The resolved file format or type
     """
     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
