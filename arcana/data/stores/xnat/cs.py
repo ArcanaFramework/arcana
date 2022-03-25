@@ -30,8 +30,7 @@ from arcana.core.data.space import DataSpace
 from arcana.core.data.item import FileGroup
 from arcana.core.utils import resolve_class, DOCKER_HUB
 from arcana.exceptions import (
-    ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException,
-    ArcanaBuildError)
+    ArcanaUsageError, ArcanaNoDirectXnatMountException, ArcanaBuildError)
 from .api import Xnat
 
 logger = logging.getLogger('arcana')

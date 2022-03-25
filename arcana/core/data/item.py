@@ -12,8 +12,7 @@ from attr.converters import optional
 from arcana.core.utils import parse_value
 from arcana.exceptions import (
     ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
-    ArcanaDataNotDerivedYetError, ArcanaFileFormatError,
-    ArcanaUnresolvableFormatException)
+    ArcanaDataNotDerivedYetError, ArcanaFileFormatError)
 from ..enum import DataQuality
 from .format import FileFormat
 from .provenance import DataProvenance
