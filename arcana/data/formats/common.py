@@ -31,19 +31,20 @@ class Zip(BaseFile):
 
     @classmethod
     @converter(FileGroup)
-    def archive(cls, file_group, **kwargs):
+    def archive(cls, wf, file_group, **kwargs):
         node = create_zip(
             in_file=file_group,
             compression='gz',
             **kwargs)
-        return node, node.lzout.out_file
+        wf.add(node)
+        return node.lzout.out_file
 
 class Gzip(BaseFile):
     ext = 'gz'
 
     @classmethod
     @converter(FileGroup)
-    def archive(cls, file_group):
+    def archive(cls, wf, file_group):
         raise NotImplementedError
 
 class Tar(BaseFile):
@@ -51,11 +52,12 @@ class Tar(BaseFile):
 
     @classmethod
     @converter(FileGroup)
-    def archive(cls, file_group, **kwargs):
+    def archive(cls, wf, file_group, **kwargs):
         node = create_tar(
             in_file=file_group,
             compression='gz',
             **kwargs)
+        wf.add(node)
         return node.lzout.out_file    
 
 class TarGz(Tar, Gzip):
@@ -63,11 +65,12 @@ class TarGz(Tar, Gzip):
 
     @classmethod
     @converter(FileGroup)
-    def archive(cls, file_group, **kwargs):
+    def archive(cls, wf, file_group, **kwargs):
         node = create_tar(
             in_file=file_group,
             compression='gz',
             **kwargs)
+        wf.add(node)
         return node.lzout.out_file
 
 
@@ -75,26 +78,29 @@ class Directory(BaseDirectory):
 
     @classmethod
     @converter(Zip)
-    def unzip(cls, zip_file, **kwargs):
+    def unzip(cls, wf, zip_file, **kwargs):
         node = extract_zip(
             in_file=zip_file,
             **kwargs)
+        wf.add(node)
         return node.lzout.out_file
 
     @classmethod
     @converter(Tar)
-    def untar(cls, tar_file, **kwargs):
+    def untar(cls, wf, tar_file, **kwargs):
         node = extract_tar(
             in_file=tar_file,
             **kwargs)
+        wf.add(node)
         return node.lzout.out_file
 
     @classmethod
     @converter(TarGz)
-    def untargz(cls, tar_file, **kwargs):
+    def untargz(cls, wf, tar_file, **kwargs):
         node = extract_tar(
             in_file=tar_file,
             **kwargs)
+        wf.add(node)
         return node.lzout.out_file
 
 
@@ -124,7 +130,6 @@ class Png(ImageFile):
 
 class Jpeg(ImageFile):
     ext = 'jpg'
-
 
 # Document formats
 class Document(BaseFile, metaclass=ABCMeta):

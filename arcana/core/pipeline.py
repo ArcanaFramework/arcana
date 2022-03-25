@@ -321,6 +321,7 @@ class Pipeline():
                             required_format)
                 cname = f"{input_name}_input_converter"
                 converter_task = required_format.converter(stored_format)(
+                    wf,
                     sourced[input_name],
                     name=cname)
                 if source_out_dct[input_name] == ty.Sequence[DataItem]:
@@ -364,7 +365,9 @@ class Pipeline():
                 cname = f"{output_name}_output_converter"
                 # Insert converter
                 converter_task = stored_format.converter(produced_format)(
-                    to_sink[output_name], name=cname)
+                    wf,
+                    to_sink[output_name],
+                    name=cname)
                 wf.per_node.add(converter_task)
                 # Map converter output to workflow output
                 to_sink[output_name] = converter_task.lzout.converted

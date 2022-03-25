@@ -158,69 +158,6 @@ class MedicalImage(BaseFile, metaclass=ABCMeta):
         return np.sqrt(np.sum((fileset.get_array()
                                - other_fileset.get_array()) ** 2))
 
-class NeuroImage(MedicalImage):
-    """Imaging formats developed for neuroimaging scans"""
-
-    @classmethod
-    @converter(MedicalImage)
-    def mrconvert(cls, image):
-        node = MRConvert(
-            in_file=image,
-            out_file='out.' + cls.ext)
-        return node.lzout.out_file
-
-class Nifti(NeuroImage):
-
-    ext = 'nii'
-
-    def get_header(self, fileset):
-        return dict(nibabel.load(fileset.path).header)
-
-    def get_array(self, fileset):
-        return nibabel.load(fileset.path).get_data()
-
-    def get_vox_sizes(self, fileset):
-        # FIXME: This won't work for 4-D files
-        return self.get_header(fileset)['pixdim'][1:4]
-
-    def get_dims(self, fileset):
-        # FIXME: This won't work for 4-D files
-        return self.get_header(fileset)['dim'][1:4]
-
-
-class NiftiGz(Nifti):
-
-    ext = 'nii.gz'
-
-
-class NiftiX(BaseFileWithSideCars, Nifti):
-
-    side_car_exts = ('json',)
-
-    def get_header(self, fileset):
-        hdr = super().get_header(fileset)
-        with open(fileset.aux_file('json')) as f:
-            hdr.update(json.load(f))
-        return hdr
-
-class NiftiXGz(NiftiX, NiftiGz):
-
-    pass
-
-
-# NIfTI file format gzipped with BIDS side car
-class NiftiFslgrad(BaseFileWithSideCars, Nifti):
-
-    side_car_exts = ('bvec', 'bval')
-
-class NiftiXFslgrad(NiftiX, NiftiFslgrad):
-
-    side_car_exts = NiftiX.side_car_exts + NiftiFslgrad.side_car_exts
-
-class NiftiXFslgradGz(NiftiXFslgrad, NiftiGz):
-
-    pass
-
 
 class DicomFile(BaseFile):  # FIXME: Should extend from MedicalImage, but need to implement header and array
 
@@ -230,6 +167,7 @@ class DicomFile(BaseFile):  # FIXME: Should extend from MedicalImage, but need t
 class SiemensDicomFile(DicomFile):
 
     ext = 'IMA'
+
 
 class Dicom(BaseDirectory, MedicalImage):
 
@@ -302,6 +240,81 @@ class SiemensDicom(Dicom):
 
     content_types = (SiemensDicomFile,)
     alternative_names = ('dicom',)
+
+
+class NeuroImage(MedicalImage):
+    """Imaging formats developed for neuroimaging scans"""
+
+    @classmethod
+    @converter(MedicalImage)
+    def mrconvert(cls, wf, image):
+        node = MRConvert(
+            in_file=image,
+            out_file='out.' + cls.ext)
+        wf.add(node)
+        return node.lzout.out_file
+
+
+class Nifti(NeuroImage):
+
+    ext = 'nii'
+
+    def get_header(self, fileset):
+        return dict(nibabel.load(fileset.path).header)
+
+    def get_array(self, fileset):
+        return nibabel.load(fileset.path).get_data()
+
+    def get_vox_sizes(self, fileset):
+        # FIXME: This won't work for 4-D files
+        return self.get_header(fileset)['pixdim'][1:4]
+
+    def get_dims(self, fileset):
+        # FIXME: This won't work for 4-D files
+        return self.get_header(fileset)['dim'][1:4]
+
+    @classmethod
+    @converter(Dicom)
+    def dcm2niix(cls, wf, dicom):
+        node = Dcm2Niix(
+            )
+        wf.add(node)
+        return node.lzout.out_file
+    
+
+class NiftiGz(Nifti):
+
+    ext = 'nii.gz'
+
+
+class NiftiX(BaseFileWithSideCars, Nifti):
+
+    side_car_exts = ('json',)
+
+    def get_header(self, fileset):
+        hdr = super().get_header(fileset)
+        with open(fileset.aux_file('json')) as f:
+            hdr.update(json.load(f))
+        return hdr
+
+class NiftiXGz(NiftiX, NiftiGz):
+
+    pass
+
+
+# NIfTI file format gzipped with BIDS side car
+class NiftiFslgrad(BaseFileWithSideCars, Nifti):
+
+    side_car_exts = ('bvec', 'bval')
+
+class NiftiXFslgrad(NiftiX, NiftiFslgrad):
+
+    side_car_exts = NiftiX.side_car_exts + NiftiFslgrad.side_car_exts
+
+class NiftiXFslgradGz(NiftiXFslgrad, NiftiGz):
+
+    pass
+
 
 
 class MrtrixImage(NeuroImage):
