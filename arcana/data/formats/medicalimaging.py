@@ -277,13 +277,21 @@ class Nifti(NeuroImage):
     def dcm2niix(cls, fs_path):
         node = Dcm2Niix(
             in_dir=fs_path,
-            out_dir='.')
+            out_dir='.',
+            compress='n')
         return node, node.lzout.out_file
     
 
 class NiftiGz(Nifti):
 
     ext = 'nii.gz'
+
+    @classmethod
+    @converter(Dicom)
+    def dcm2niix(cls, fs_path):
+        spec = super().dcm2niix(fs_path)
+        spec[0].inputs.compress = 'y'
+        return spec
 
 
 class NiftiX(BaseFileWithSideCars, Nifti):
@@ -296,6 +304,14 @@ class NiftiX(BaseFileWithSideCars, Nifti):
             hdr.update(json.load(f))
         return hdr
 
+    @classmethod
+    @converter(Dicom)
+    def dcm2niix(cls, fs_path):
+        node, out_file = super().dcm2niix(fs_path)
+        return node, (out_file, node.lzout.out_json)
+
+    mrconvert = None  # Only dcm2niix produces the required JSON side car
+
 
 class NiftiXGz(NiftiX, NiftiGz):
 
@@ -307,13 +323,40 @@ class NiftiFslgrad(BaseFileWithSideCars, Nifti):
 
     side_car_exts = ('bvec', 'bval')
 
+    @classmethod
+    @converter(Dicom)
+    def dcm2niix(cls, fs_path):
+        node, out_file = super().dcm2niix(fs_path)
+        return node, (out_file, node.lzout.out_bvec, node.lzout.out_bval)
+
+    mrconvert = None  # Technically mrconvert can export fsl grads but dcm2niix will be sufficient 99% of the time
+
+class NiftiFslgradGz(NiftiFslgrad, NiftiGz):
+
+    pass
+
+
 class NiftiXFslgrad(NiftiX, NiftiFslgrad):
 
     side_car_exts = NiftiX.side_car_exts + NiftiFslgrad.side_car_exts
 
+    @classmethod
+    @converter(Dicom)
+    def dcm2niix(cls, fs_path):
+        node, out_file = super().dcm2niix(fs_path)
+        return node, (out_file,
+                      node.lzout.out_json,
+                      node.lzout.out_bvec,
+                      node.lzout.out_bval)
+
 class NiftiXFslgradGz(NiftiXFslgrad, NiftiGz):
 
-    pass
+    @classmethod
+    @converter(Dicom)
+    def dcm2niix(cls, fs_path):
+        spec = super().dcm2niix(fs_path)
+        spec[0].inputs.compress = 'y'
+        return spec
 
 
 

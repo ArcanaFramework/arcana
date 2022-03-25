@@ -318,18 +318,17 @@ class Pipeline():
                 logger.info("Adding implicit conversion for input '%s' "
                             "from %s to %s", input_name, stored_format,
                             required_format)
-                cname = f"{input_name}_input_converter"
-                converter_task = required_format.converter(stored_format)(
-                    wf,
-                    sourced[input_name],
-                    name=cname)
-                if source_out_dct[input_name] == ty.Sequence[DataItem]:
+                converter = required_format.converter(stored_format)
+                converter.name = f"{input_name}_input_converter"
+                converter.inputs.to_convert = sourced.pop(input_name)
+                if issubclass(source_out_dct[input_name], ty.Sequence):
                     # Iterate over all items in the sequence and convert them
-                    converter_task.split('to_convert')
+                    # separately
+                    converter.split('to_convert')
                 # Insert converter
-                wf.per_node.add(converter_task)
+                wf.per_node.add(converter)
                 # Map converter output to input_interface
-                sourced[input_name] = converter_task.lzout.converted
+                sourced[input_name] = converter.lzout.converted
 
         # Create identity node to accept connections from user-defined nodes
         # via `set_output` method
@@ -361,15 +360,12 @@ class Pipeline():
                 logger.info("Adding implicit conversion for output '%s' "
                     "from %s to %s", output_name, produced_format,
                     stored_format)
-                cname = f"{output_name}_output_converter"
                 # Insert converter
-                converter_task = stored_format.converter(produced_format)(
-                    wf,
-                    to_sink[output_name],
-                    name=cname)
-                wf.per_node.add(converter_task)
+                converter = stored_format.converter(produced_format)
+                converter.name = f"{output_name}_output_converter"
+                converter.inputs.to_convert = to_sink.pop(output_name)
                 # Map converter output to workflow output
-                to_sink[output_name] = converter_task.lzout.converted
+                to_sink[output_name] = converter.lzout.converted
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
@@ -400,24 +396,6 @@ class Pipeline():
 
 
     PROVENANCE_VERSION = '1.0'
-
-def extract_paths(from_format, file_group):
-    """Copies files into the CWD renaming so the basenames match
-    except for extensions"""
-    logger.debug("Extracting paths from %s (%s format) before conversion", file_group, from_format)
-    if file_group.format != from_format:
-        raise ValueError(f"Format of {file_group} doesn't match converter {from_format}")
-    cpy = file_group.copy_to(Path(file_group.path).name, symlink=True)
-    paths = (cpy.fs_path,) + tuple(cpy.side_cars.values())
-    return paths if len(paths) > 1 else paths[0]
-
-
-def encapsulate_paths(to_format, primary, **side_car_paths):
-    """Copies files into the CWD renaming so the basenames match
-    except for extensions"""
-    logger.debug("Encapsulating %s and %s into %s format after conversion",
-                 primary, side_car_paths, to_format)
-    return to_format.from_path(primary, side_cars=side_car_paths)
 
 
 

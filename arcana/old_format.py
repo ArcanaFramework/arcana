@@ -11,7 +11,7 @@ from pydra.engine.core import TaskBase
 from arcana.core.utils import func_task
 import logging
 from arcana.exceptions import (
-    ArcanaFileFormatError, ArcanaUsageError, ArcanaNoConverterError)
+    ArcanaFileFormatError, ArcanaUsageError, ArcanaFormatConversionError)
 import arcana.core.data.format
 
 
@@ -196,7 +196,7 @@ class FileFormat(object):
         try:
             return self._converters[file_format]
         except KeyError as e:
-            raise ArcanaNoConverterError(
+            raise ArcanaFormatConversionError(
                 f"No converter set for conversion between {self} and "
                 f"{file_format}") from e
 

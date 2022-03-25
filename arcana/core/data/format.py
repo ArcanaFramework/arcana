@@ -10,10 +10,11 @@ import shutil
 from abc import ABCMeta, abstractmethod
 import attr
 from attr.converters import optional
+from pydra.engine.core import LazyField, Workflow
 from arcana.core.utils import parse_value, func_task
 from arcana.exceptions import (
     ArcanaUnresolvableFormatException, ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
-    ArcanaDataNotDerivedYetError, ArcanaFileFormatError, ArcanaNoConverterError)
+    ArcanaDataNotDerivedYetError, ArcanaFileFormatError, ArcanaFormatConversionError)
 from ..enum import DataQuality
 
 
@@ -418,10 +419,64 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     def validate_file_paths(self):
         attr.validate(self)
         self.exists = True
+    
+    @classmethod
+    def converter(cls, from_format):
+        """Adds a converter node to a workflow
+
+        Parameters
+        ----------
+        from_format : type
+            the file-group class to convert from
+
+        Returns
+        -------
+        Workflow
+            Pydra workflow to perform the conversion with an input called
+            'to_convert' and an output called 'converted', which take and
+            produce file-groups in `from_format` and `cls` types respectively.
+        """
+
+        wf = Workflow(input_spec=['to_convert'])
+
+        # Get node to extract paths from file-group lazy field
+        wf.add(func_task(
+            extract_paths,
+            in_fields=[('from_format', type), ('file_group', from_format)],
+            out_fields=[(i, str) for i in from_format.lf_file_names()],
+            name='extract',
+            from_format=from_format,
+            file_group=wf.lzin.to_convert))
+
+        # Create converter node
+        converter, output_lfs = cls.select_converter_method(from_format)(**{
+            n: getattr(wf.extract.lzout, n) for n in cls.lf_file_names()})
+        converter.name = 'converter'
+        wf.add(converter)
+
+        # If there is only one output lazy field, place it in a tuple so it can
+        # be zipped with cls.lf_file_names()
+        if isinstance(output_lfs, LazyField):
+            output_lfs = (output_lfs,)
+
+        # Encapsulate output paths from converter back into a file group object
+        wf.add(func_task(
+            encapsulate_paths,
+            in_fields=[('to_format', type), ('to_convert', from_format)] + [
+                (o, str) for o in cls.lf_file_names()],
+            out_fields=[('converted', cls)],
+            name='encapsulate',
+            to_format=cls,
+            **dict(zip(cls.lf_file_names(), output_lfs))))
+
+        wf.set_output(('converted', wf.encapsulate.lzout.converted))
+
+        return wf
 
     @classmethod
-    def get_converter(cls, from_format):
-        """Gets the converter method from the given format
+    def select_converter_method(cls, from_format):
+        """Selects the converter method from the given format. Will select the
+        most specific conversion.
 
         Parameters
         ----------
@@ -435,7 +490,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
 
         Raises
         ------
-        ArcanaNoConverterError
+        ArcanaFormatConversionError
             _description_
         """
         converter = None
@@ -452,65 +507,16 @@ class FileGroup(DataItem, metaclass=ABCMeta):
                         if issubclass(converts_from, prev_converts_from):
                             converter = meth
                         elif not issubclass(prev_converts_from, converts_from):
-                            raise ArcanaNoConverterError(
+                            raise ArcanaFormatConversionError(
                                 f"Ambiguous converters between {from_format} "
                                 f"and {cls}: {converter} and {meth}. Please "
-                                "define a specific converter directly between "
-                                f"the subclasses (i.e. instead of {prev_converts_from} "
+                                f"define a specific converter from {from_format} "
+                                f"(i.e. instead of from {prev_converts_from} "
                                 f"and {converts_from} respectively)")
         if not converter:
-            raise ArcanaNoConverterError(
-                f"No conversion defined between {from_format} and {cls}")
-        return converter
-
-    
-    @classmethod
-    def add_converter(cls, wf, from_format, file_group_lf, node_name):
-        """Adds a converter node to a workflow
-
-        Parameters
-        ----------
-        wf : Workflow
-            the pydra workflow to add the node to
-        from_format : type
-            the file-group class to convert from
-        file_group_lf : LazyField
-            Lazy field pointing to a FileGroup that is to be converted
-        node_name : str
-            the name to give the added converter node
-        """
-        converter_spec = cls.get_converter(from_format)
-        converter = converter_spec[0]  # Converter task
-        output_lfs = converter_spec[1:]  # Output lazy-fields to pass to encapsulater
-        
-        wf.add(func_task(
-            extract_paths,
-            in_fields=[('from_format', type), ('file_group', FileGroup)],
-            out_fields=[(i, str) for i in inputs],
-            name=node_name + '_extract_paths',
-            from_format=from_format,
-            file_group=wf.lzin.to_convert))
-        
-        converter_task = stored_format.converter(produced_format)(
-                    wf,
-                    to_sink[output_name],
-                    name=cname)
-        # Add the actual converter node
-        conv_kwargs = copy(task_kwargs)
-        conv_kwargs.update(kwargs)
-        # Map 
-        conv_kwargs.update((inputs[i], getattr(wf.extract_paths.lzout, i))
-                            for i in self.inputs)
-        wf.add(self.task(name='converter', **conv_kwargs))
-
-        wf.add(func_task(
-            encapsulate_paths,
-            in_fields=[('to_format', type)] + [(o, str) for o in self.outputs],
-            out_fields=[('converted', FileGroup)],
-            name='encapsulate_paths',
-            to_format=self.to_format,
-            **{k: getattr(wf.converter.lzout, v)
-               for k, v in self.outputs.items()}))
+            raise ArcanaFormatConversionError(
+                f"No converters defined between {from_format} and {cls}")
+        return converter    
 
 
 def extract_paths(from_format, file_group):
@@ -523,13 +529,13 @@ def extract_paths(from_format, file_group):
     return cpy.fs_paths if len(cpy.fs_paths) > 1 else cpy.fs_path
 
 
-def encapsulate_paths(to_format: type, orig_file_group: FileGroup, *fs_paths: ty.List[Path]):
+def encapsulate_paths(to_format: type, to_convert: FileGroup, **fs_paths: ty.List[Path]):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
     logger.debug("Encapsulating %s into %s format after conversion",
                  fs_paths, to_format)
-    file_group = to_format(orig_file_group.path + '_' + to_format.format_name())
-    file_group.set_file_paths(fs_paths)
+    file_group = to_format(to_convert.path + '_' + to_format.format_name())
+    file_group.set_file_paths(fs_paths.values())
     return file_group
 
 

@@ -160,7 +160,7 @@ class ArcanaFileFormatClashError(ArcanaError):
     """
 
 
-class ArcanaNoConverterError(ArcanaError):
+class ArcanaFormatConversionError(ArcanaError):
     "No converters exist between formats"
 
 
