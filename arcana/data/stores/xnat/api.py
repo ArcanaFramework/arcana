@@ -351,14 +351,16 @@ class Xnat(DataStore):
                 else:
                     # Upload file path to XNAT and add to cache
                     fname = file_group.copy_ext(fs_path, escaped_name)
-                    xresource.upload(str(fs_path), fname)
-                    os.makedirs(base_cache_path, stat.S_IRWXU | stat.S_IRWXG)
+                    xresource.upload(str(fs_path), str(fname))
+                    base_cache_path.mkdir(exist_ok=True, parents=True,
+                                          mode=stat.S_IRWXU | stat.S_IRWXG)
                     cache_path = base_cache_path / fname
                     shutil.copyfile(fs_path, cache_path)
                 cache_paths.append(cache_path)
             # need to manually set this here in order to calculate the
             # checksums (instead of waiting until after the 'put' is finished)
             file_group.set_fs_paths(cache_paths)
+            file_group.exists = True
             with open(append_suffix(base_cache_path, self.MD5_SUFFIX), 'w',
                       **JSON_ENCODING) as f:
                 json.dump(file_group.calculate_checksums(), f,
@@ -449,6 +451,9 @@ class Xnat(DataStore):
         #                 "{ext} in checksums")
         #         else:
         #             checksums[ext] = checksums.pop(path)
+        if not file_group.is_dir:
+            checksums = file_group.generalise_checksum_keys(
+                checksums, base_path=file_group.matches_ext(*checksums.keys()))
         return checksums
 
     def dicom_header(self, file_group):

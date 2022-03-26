@@ -84,16 +84,16 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
             with open(deriv_tmp_dir / test_file, 'rb') as f:
                 fhash.update(f.read())
             try:
-                rel_path = str(test_file.relative_to(files[0]))
+                rel_path = str(test_file.relative_to(Path(files[0])))
             except ValueError:
-                rel_path = '.'.join(test_file.suffixes)                
+                rel_path = '.'.join(test_file.suffixes)[1:]
             checksums[rel_path] = fhash.hexdigest()
             fs_paths.append(deriv_tmp_dir / test_file.parts[0])
         # Insert into first node of that frequency in xnat_dataset
         node = next(iter(mutable_xnat_dataset.nodes(freq)))
         item = node[name]
         with caplog.at_level(logging.INFO, logger='arcana'):
-            item.put(*format.assort_files(fs_paths))
+            item.put(*fs_paths)
         assert f'{mutable_xnat_dataset.access_method} access' in caplog.text.lower()
     def check_inserted():
         for name, freq, format, _ in mutable_xnat_dataset.blueprint.to_insert:

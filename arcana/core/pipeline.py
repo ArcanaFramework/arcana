@@ -250,7 +250,7 @@ class Pipeline():
                 raise ArcanaNameError(
                     output_name,
                     f"{output_name} is not the name of a sink in {dataset}") from e
-            if sink.pipeline is not None:
+            if sink.pipeline_name is not None:
                 if overwrite:
                     logger.info(
                         f"Overwriting pipeline of sink '{output_name}' "
@@ -260,7 +260,7 @@ class Pipeline():
                         f"Attempting to overwrite pipeline of '{output_name}' "
                         f"sink ({sink.pipeline}). Use 'overwrite' option if "
                         "this is desired")
-            sink.pipeline = pipeline
+            sink.pipeline_name = name
             sinks[output_name] = sink
             try:
                 produced_format = output_types[output_name]
@@ -318,8 +318,8 @@ class Pipeline():
                 logger.info("Adding implicit conversion for input '%s' "
                             "from %s to %s", input_name, stored_format,
                             required_format)
-                converter = required_format.converter(stored_format)
-                converter.name = f"{input_name}_input_converter"
+                converter = required_format.converter_task(
+                    stored_format, name=f"{input_name}_input_converter")
                 converter.inputs.to_convert = sourced.pop(input_name)
                 if issubclass(source_out_dct[input_name], ty.Sequence):
                     # Iterate over all items in the sequence and convert them
@@ -361,8 +361,9 @@ class Pipeline():
                     "from %s to %s", output_name, produced_format,
                     stored_format)
                 # Insert converter
-                converter = stored_format.converter(produced_format)
-                converter.name = f"{output_name}_output_converter"
+                converter = stored_format.converter_task(
+                    produced_format,
+                    name=f"{output_name}_output_converter")
                 converter.inputs.to_convert = to_sink.pop(output_name)
                 # Map converter output to workflow output
                 to_sink[output_name] = converter.lzout.converted
@@ -396,25 +397,6 @@ class Pipeline():
 
 
     PROVENANCE_VERSION = '1.0'
-
-
-
-# def identity(**kwargs):
-#     "Returns the keyword arguments as a tuple"
-#     to_return = tuple(kwargs.values())
-#     if len(to_return) == 1:
-#         to_return = to_return[0]
-#     return to_return
-
-
-# def extract_paths(**data_items):
-#     paths = tuple(i.value for i in kwargs.values())
-#     return paths if len(paths) > 1 else paths[0]
-
-
-# def encapsulate_paths(outputs, **kwargs):
-#     items = [v.format(kwargs[k]) for k, v in outputs]
-#     return items if len(items) > 1 else items[0]
 
 
 def append_side_car_suffix(name, suffix):

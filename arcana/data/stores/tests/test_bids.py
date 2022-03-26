@@ -66,7 +66,7 @@ def test_bids_roundtrip(work_dir):
 
     for node in dataset.nodes(frequency='session'):
         item = node['t1w']
-        item.put(dummy_nifti, side_cars={'json': dummy_json})
+        item.put(dummy_nifti, dummy_json)
 
     # Full dataset validation using dockerized validator
     dc = docker.from_env()

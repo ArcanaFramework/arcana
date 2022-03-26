@@ -160,7 +160,7 @@ class XnatViaCS(Xnat):
 
     def file_group_stem_path(self, file_group):
         """Determine the paths that derivatives will be saved at"""
-        return self.output_mount.joinpath(file_group.path.split('/'))
+        return self.output_mount.joinpath(*file_group.path.split('/'))
     
     def get_input_mount(self, file_group):
         data_node = file_group.data_node

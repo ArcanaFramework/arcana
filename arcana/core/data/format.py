@@ -1,3 +1,4 @@
+from enum import unique
 import os
 import os.path as op
 from pathlib import Path
@@ -273,7 +274,14 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         return cls.__name__.lower()
 
     @classmethod
-    def lf_file_names(cls):
+    def fs_names(cls):
+        """Return names for each top-level file-system path in the file group,
+        used when generating Pydra task interfaces.
+
+        Returns
+        -------
+        tuple[str]
+            sequence of names for top-level file-system paths in the file group"""
         return ('fs_path',)
 
     @classmethod
@@ -325,12 +333,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
                 # large files.
                 for chunk in iter(lambda: f.read(self.HASH_CHUNK_SIZE), b''):
                     fhash.update(chunk)
-            if self.is_dir:
-                base_path = self.fs_path
-            else:
-                base_path = self.fs_path.parent
-            rel_path = str(fpath.relative_to(base_path))
-            checksums[rel_path] = fhash.hexdigest()
+            checksums[fpath] = fhash.hexdigest()
+        checksums = self.generalise_checksum_keys(checksums)
         return checksums
 
     def contents_equal(self, other, **kwargs):
@@ -347,7 +351,6 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         """
         self._check_exists()
         other._check_exists()
-        raise NotImplementedError("This method no longer works as checksum keys will be different, need to come up with a way to compare like with like")
         return self.checksums[self.fs_path.name] == other.checksums[other.fs_path.name]
 
     @classmethod
@@ -439,20 +442,22 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             matches_str = ', '.join(matches)
             raise ArcanaFileFormatError(
                 f"Multiple files with '{ext}' extension found in : {matches_str}")
-        return absolute_path(matches[0])
+        return matches[0]
 
     def validate_file_paths(self):
         attr.validate(self)
         self.exists = True
     
     @classmethod
-    def converter(cls, from_format):
+    def converter_task(cls, from_format, name):
         """Adds a converter node to a workflow
 
         Parameters
         ----------
         from_format : type
             the file-group class to convert from
+        taks_name: str
+            the name for the converter task
 
         Returns
         -------
@@ -462,25 +467,25 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             produce file-groups in `from_format` and `cls` types respectively.
         """
 
-        wf = Workflow(input_spec=['to_convert'])
+        wf = Workflow(name=name, input_spec=['to_convert'])
 
         # Get node to extract paths from file-group lazy field
         wf.add(func_task(
             extract_paths,
             in_fields=[('from_format', type), ('file_group', from_format)],
-            out_fields=[(i, str) for i in from_format.lf_file_names()],
-            name='extract',
+            out_fields=[(i, str) for i in from_format.fs_names()],
+            task_name='extract',
             from_format=from_format,
             file_group=wf.lzin.to_convert))
 
         # Create converter node
         converter, output_lfs = cls.select_converter_method(from_format)(**{
-            n: getattr(wf.extract.lzout, n) for n in cls.lf_file_names()})
+            n: getattr(wf.extract.lzout, n) for n in cls.fs_names()})
         converter.name = 'converter'
         wf.add(converter)
 
         # If there is only one output lazy field, place it in a tuple so it can
-        # be zipped with cls.lf_file_names()
+        # be zipped with cls.fs_names()
         if isinstance(output_lfs, LazyField):
             output_lfs = (output_lfs,)
 
@@ -488,11 +493,11 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         wf.add(func_task(
             encapsulate_paths,
             in_fields=[('to_format', type), ('to_convert', from_format)] + [
-                (o, str) for o in cls.lf_file_names()],
+                (o, str) for o in cls.fs_names()],
             out_fields=[('converted', cls)],
             name='encapsulate',
             to_format=cls,
-            **dict(zip(cls.lf_file_names(), output_lfs))))
+            **dict(zip(cls.fs_names(), output_lfs))))
 
         wf.set_output(('converted', wf.encapsulate.lzout.converted))
 
@@ -541,7 +546,33 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         if not converter:
             raise ArcanaFormatConversionError(
                 f"No converters defined between {from_format} and {cls}")
-        return converter    
+        return converter
+
+    def generalise_checksum_keys(self, checksums: ty.Dict[str, str],
+                                 base_path: Path=None):
+        """Generalises the paths used for the file paths in a checksum dictionary
+        so that they are the same irrespective of that the top-level file-system
+        paths are
+
+        Parameters
+        ----------
+        checkums: dict[str, str]
+            The checksum dict mapping relative file paths to checksums
+
+        Returns
+        -------
+        dict[str, str]
+            The checksum dict with file paths generalised"""
+        if base_path is None:
+            base_path = self.fs_path
+        return {str(Path(k).relative_to(base_path)): v
+                for k, v in checksums.items()}
+
+    @classmethod
+    def access_contents_task(cls, file_group_lf: LazyField):
+        """Access the fs paths of the file group"""
+        
+        
 
 
 def extract_paths(from_format, file_group):
@@ -568,7 +599,7 @@ class BaseFile(FileGroup):
     is_dir = False
 
     def set_fs_paths(self, paths):
-        self.fs_path = self.matches_ext(*paths)
+        self.fs_path = absolute_path(self.matches_ext(*paths))
 
     def all_file_paths(self):
         """The paths of all nested files within the file-group"""
@@ -577,7 +608,7 @@ class BaseFile(FileGroup):
                 f"Attempting to access file paths of {self} before they are set")
         return self.fs_paths
 
-    def copy_to(self, path: str, symlink: bool=False):
+    def copy_to(self, fs_path: str, symlink: bool=False):
         """Copies the file-group to the new path, with auxiliary files saved
         alongside the primary-file path.
 
@@ -592,8 +623,11 @@ class BaseFile(FileGroup):
             copy_file = os.symlink
         else:
             copy_file = shutil.copyfile
-        copy_file(self.fs_path, path + self.ext)
-        return self.from_paths(path)[0]
+        dest_path = fs_path + '.' + self.ext
+        copy_file(self.fs_path, dest_path)
+        cpy = copy(self)
+        cpy.set_fs_paths([dest_path])
+        return cpy
 
     @classmethod
     def copy_ext(cls, old_path, new_path):
@@ -616,7 +650,7 @@ class BaseFile(FileGroup):
             raise ArcanaFileFormatError(
                 f"Extension of old path ('{str(old_path)}') does not match that "
                 f"of file, '{cls.ext}'")
-        return new_path.with_suffix('.' + cls.ext)
+        return Path(new_path).with_suffix('.' + cls.ext)
 
      
 @attr.s
@@ -656,15 +690,22 @@ class BaseFileWithSideCars(BaseFile):
                         "', '".join(missing_side_cars)))
 
     @classmethod
-    def lf_file_names(cls):
-        return super().lf_file_names() + cls.side_car_exts           
+    def fs_names(cls):
+        """Return names for each top-level file-system path in the file group,
+        used when generating Pydra task interfaces.
 
-    def set_fs_paths(self, paths):
+        Returns
+        -------
+        tuple[str]
+            sequence of names for top-level file-system paths in the file group"""
+        return super().fs_names() + cls.side_car_exts           
+
+    def set_fs_paths(self, paths: ty.List[Path]):
         super().set_fs_paths(paths)
         to_assign = copy(paths)
         to_assign.remove(self.fs_path)
         for sc_ext in self.side_car_exts:
-            matched = self.side_cars[sc_ext] = self.matches_ext(*paths, ext=sc_ext)
+            matched = self.side_cars[sc_ext] = absolute_path(self.matches_ext(*paths, ext=sc_ext))
             to_assign.remove(matched)
 
     @property
@@ -674,7 +715,7 @@ class BaseFileWithSideCars(BaseFile):
     def side_car(self, name):
         return self.side_cars[name]
 
-    def copy_to(self, path: str, symlink: bool=False):
+    def copy_to(self, fs_path: str, symlink: bool=False):
         """Copies the file-group to the new path, with auxiliary files saved
         alongside the primary-file path.
 
@@ -689,13 +730,13 @@ class BaseFileWithSideCars(BaseFile):
             copy_file = os.symlink
         else:
             copy_file = shutil.copyfile
-        dest_path = path + self.ext
+        dest_path = fs_path + '.' + self.ext
         copy_file(self.fs_path, dest_path)
         dest_side_cars = self.default_side_car_paths(dest_path)
         for sc_ext, sc_path in self.side_cars.items():
             copy_file(sc_path, dest_side_cars[sc_ext])
         cpy = copy(self)
-        cpy.set_fs_paths(path, *dest_side_cars.values())
+        cpy.set_fs_paths([dest_path] + list(dest_side_cars.values()))
         return cpy
     
     @classmethod
@@ -756,7 +797,45 @@ class BaseFileWithSideCars(BaseFile):
                 f"Extension of old path ('{str(old_path)}') does not match any "
                 f" in {cls}: '{cls.ext}', {sc_exts_str}")
         longest_match = max(matches, key=len)
-        return Path(new_path).with_suffix('.' + longest_match)
+        return Path(new_path).with_suffix('.' + longest_match)    
+
+    def generalise_checksum_keys(self, checksums: ty.Dict[str, str],
+                                 base_path: Path=None):
+        """Generalises the paths used for the file paths in a checksum dictionary
+        so that they are the same irrespective of that the top-level file-system
+        paths are
+
+        Parameters
+        ----------
+        checkums: dict[str, str]
+            The checksum dict mapping relative file paths to checksums
+
+        Returns
+        -------
+        dict[str, str]
+            The checksum dict with file paths generalised"""
+        if base_path is None:
+            base_path = self.fs_path
+        generalised = {}
+        fs_name_dict = {self.matches_ext(*checksums.keys(), ext=e): e
+                        for e in self.side_car_exts}
+        mapped_exts = list(fs_name_dict.values())
+        duplicates = set([e for e in mapped_exts if mapped_exts.count(e) > 1])
+        if duplicates:
+            raise ArcanaUsageError(
+                f"Multiple files with same extensions found in {self}: "
+                + ', '.join(str(k) for k in checksums.keys()))
+        for key, chksum in checksums.items():
+            try:
+                rel_key = fs_name_dict[key]
+            except KeyError:
+                try:
+                    rel_key = Path(key).relative_to(base_path)
+                except ValueError:
+                    continue  # skip these files
+            generalised[str(rel_key)] = chksum
+        return generalised
+        
 
 
 class BaseDirectory(FileGroup):
@@ -805,13 +884,13 @@ class BaseDirectory(FileGroup):
         return chain(*((Path(root) / f for f in files)
                         for root, _, files in os.walk(self.fs_path)))
 
-    def copy_to(self, path: str, symlink: bool=False):
+    def copy_to(self, fs_path: str, symlink: bool=False):
         """Copies the file-group to the new path, with auxiliary files saved
         alongside the primary-file path.
 
         Parameters
         ----------
-        path : str
+        fs_path : str
             Path to save the file-group to excluding file extensions
         symlink : bool
             Use symbolic links instead of copying files to new location
@@ -820,5 +899,7 @@ class BaseDirectory(FileGroup):
             copy_dir = os.symlink
         else:
             copy_dir = shutil.copytree
-        copy_dir(self.fs_path, path)
-        return self.from_paths(path)[0]
+        copy_dir(self.fs_path, fs_path)
+        cpy = copy(self)
+        cpy.set_fs_paths([fs_path])
+        return cpy
