@@ -14,7 +14,6 @@ from pydra.engine.task import (
 from pydra.engine.specs import (
     LazyField, ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
 from arcana.core.data.set import Dataset
-from arcana.data.formats.common import directory
 from arcana.data.spaces.medicalimaging import Clinical
 from . import FileSystem
 from arcana.exceptions import ArcanaError, ArcanaUsageError, ArcanaEmptyDatasetError
@@ -345,7 +344,7 @@ class BidsFormat(FileSystem):
             if len(parts) < 2:
                 raise ArcanaUsageError(
                     f"Derivative paths should have at least 3 parts ({file_group.path}")
-            elif len(parts) == 2 and file_group.format != directory:
+            elif len(parts) == 2 and not file_group.is_dir:
                 raise ArcanaUsageError(
                     "Derivative paths with 2 parts must be of type directory "
                     f"({file_group.path}")

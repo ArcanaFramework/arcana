@@ -35,15 +35,15 @@ TEST_DATASET_BLUEPRINTS = {
     'basic': TestDatasetBlueprint(  # dataset name
         [1, 1, 3],  # number of timepoints, groups and members respectively
         [('scan1',  # scan type (ID is index)
-          [('text', # resource name
+          [('Text', # resource name
             Text,  # Data format
             ['file.txt'])]),  # name files to place within resource
          ('scan2',
-          [('niftix_gz',
+          [('NiftiXGz',
             NiftiXGz,
             ['file.nii.gz', 'file.json'])]),
          ('scan3',
-          [('directory',
+          [('Directory',
             Directory,
             ['doubledir', 'dir', 'file.dat'])]),
          ('scan4',
@@ -61,7 +61,7 @@ TEST_DATASET_BLUEPRINTS = {
         [2, 2, 2],  # number of timepoints, groups and members respectively
         [
             ('scan1',
-             [('TEXT',  # resource name
+             [('Text',  # resource name
                Text, 
                ['file.txt'])])],
         [('subject', r'group(?P<group>\d+)member(?P<member>\d+)'),
@@ -79,9 +79,9 @@ TEST_DATASET_BLUEPRINTS = {
     'concatenate_test': TestDatasetBlueprint(
         [1, 1, 2],
         [('scan1',
-          [('text', Text, ['file1.txt'])]),
+          [('Text', Text, ['file1.txt'])]),
          ('scan2',
-          [('text', Text, ['file2.txt'])])],
+          [('Text', Text, ['file2.txt'])])],
         {}, [])}
 
 GOOD_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']

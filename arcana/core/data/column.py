@@ -61,10 +61,13 @@ class DataSource():
         # Get all items that match the data format of the source
         matches = node.resolved(self.format)
         if not matches:
-            raise ArcanaInputMissingMatchError(
-                f"Did not find any items matching data format "
-                f"{self.format} in {node}, found unresolved items:\n"
-                + '\n'.join(str(i.path) for i in node.unresolved))
+            msg = (f"Did not find any items matching data format "
+                   f"{self.format} in {node}, found unresolved items:\n")
+            for item in node.unresolved:
+                msg += f'\n{item.path}: paths=' + ','.join(
+                    p.name for p in item.file_paths) + ', uris=' + ','.join(
+                        item.uris.keys())
+            raise ArcanaInputMissingMatchError(msg)
         # Apply all filters to find items that match criteria
         for func, arg in criteria:
             if arg is not None:

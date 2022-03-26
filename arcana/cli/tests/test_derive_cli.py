@@ -6,7 +6,7 @@ from arcana.data.stores.tests.fixtures import TEST_DATASET_BLUEPRINTS, make_data
 from arcana.data.stores.xnat.tests.fixtures import (
     make_mutable_dataset as make_xnat_dataset,
     TEST_DATASET_BLUEPRINTS as TEST_XNAT_DATASET_BLUEPRINTS)
-from arcana.data.formats import text
+from arcana.data.formats import Text
 
 
 @pytest.mark.skip("needs to be updated to match refactoring")
@@ -20,9 +20,9 @@ def test_run_app(work_dir, test_dataspace_location):
         'arcana.tasks.tests.fixtures:concatenate',
         str(dataset.id),
         '--store', 'common',
-        '--input', 'in_file1', 'text', 'file1', 
-        '--input', 'in_file2', 'text','file2',
-        '--output', 'out_file', 'text', 'deriv',
+        '--input', 'in_file1', 'common:Text', 'file1', 
+        '--input', 'in_file2', 'common:Text','file2',
+        '--output', 'out_file', 'common:Text', 'deriv',
         '--dataspace', test_dataspace_location,
         '--hierarchy', 'abcd',
         '--frequency', 'abcd',
@@ -30,7 +30,7 @@ def test_run_app(work_dir, test_dataspace_location):
         '--pydra_plugin', 'serial'])
     RunCmd().run(args)
 
-    dataset.add_sink('deriv', text)
+    dataset.add_sink('deriv', Text)
 
     for item in dataset['deriv']:
         with open(str(item.fs_path)) as f:
@@ -48,9 +48,9 @@ def test_run_app_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
     args = parser.parse_args([
         'arcana.tasks.tests.fixtures:concatenate',
         dataset.id,
-        '--input', 'in_file1', 'text', 'scan1:text',
-        '--input', 'in_file2', 'text', 'scan2:text',
-        '--output', 'out_file', 'text', 'deriv:text',
+        '--input', 'in_file1', 'Text', 'scan1:Text',
+        '--input', 'in_file2', 'Text', 'scan2:Text',
+        '--output', 'out_file', 'Text', 'deriv:Text',
         '--parameter', 'duplicates', '2',
         '--work', str(work_dir),
         '--store', 'xnat', xnat_repository.server, xnat_repository.user, xnat_repository.password,
@@ -58,7 +58,7 @@ def test_run_app_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
         '--pydra_plugin', 'serial'])
     RunCmd().run(args)
 
-    dataset.add_sink('deriv', text)
+    dataset.add_sink('deriv', Text)
 
     for item in dataset['deriv']:
         item.get()
@@ -81,9 +81,9 @@ def test_run_app_via_xnat_cs(xnat_repository, xnat_archive_dir, work_dir):
     args = parser.parse_args([
         'arcana.tasks.tests.fixtures:concatenate',
         dataset.id,
-        '--input', 'in_file1', 'text', 'scan1:text',
-        '--input', 'in_file2', 'text', 'scan2:text',
-        '--output', 'out_file', 'text', 'deriv:text',
+        '--input', 'in_file1', 'Text', 'scan1:Text',
+        '--input', 'in_file2', 'Text', 'scan2:Text',
+        '--output', 'out_file', 'Text', 'deriv:Text',
         '--parameter', 'duplicates', '2',
         '--work', str(work_dir),
         '--store', 'xnat_via_cs', 'session', session_label,

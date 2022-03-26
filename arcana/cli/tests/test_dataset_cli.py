@@ -6,7 +6,7 @@ from arcana.core.enum import DataQuality, DataSalience
 from arcana.data.stores.tests.fixtures import (
   TestDatasetBlueprint, TestDataSpace, make_dataset, get_dataset_path)
 from arcana.cli.dataset import define, add_source, add_sink, missing_items
-from arcana.data.formats.common import text
+from arcana.data.formats.common import Text
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
 ARBITRARY_INTS_B = [353726, 29202, 32867, 129872, 12281, 776524, 908763]
@@ -48,7 +48,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
     basic_dataset.add_source(
         name='a_source',
         path='file1',
-        format=text,
+        format=Text,
         frequency=TestDataSpace.d,
         quality_threshold=DataQuality.questionable,
         order=1,
@@ -67,7 +67,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
     basic_dataset.add_sink(
         name='a_sink',
         path='deriv',
-        format=text,
+        format=Text,
         frequency=TestDataSpace.d,
         salience=DataSalience.qa,
         pipeline_name='a_pipeline')

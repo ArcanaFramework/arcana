@@ -309,8 +309,8 @@ class XnatViaCS(Xnat):
             label = xnat_path.split('/')[0]
             out_fname = xnat_path + (output.format.ext if output.format.ext else '')
             # output_fname = xnat_path
-            # if output.format.extension is not None:
-            #     output_fname += output.format.extension
+            # if output.format.ext is not None:
+            #     output_fname += output.format.ext
             # Set the path to the 
             outputs_json.append({
                 "name": output.pydra_field,

@@ -150,8 +150,8 @@ class DataNode():
         matches = []
         for potential in self.unresolved:
             try:
-                matches.append(potential.resolve(format))
-            except ArcanaUnresolvableFormatException:
+                matches.append(format.resolve(potential))
+            except ArcanaFileFormatError:
                 pass
         return matches
 
@@ -208,8 +208,8 @@ class UnresolvedDataItem(metaclass=ABCMeta):
         if applicable
     """
 
-    path: str = attr.ib()
-    data_node: DataNode = attr.ib()
+    path: str = attr.ib(default=None)
+    data_node: DataNode = attr.ib(default=None)
     order: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=DataQuality.usable)
     provenance: ty.Dict[str, ty.Any] = attr.ib(default=None)
@@ -314,10 +314,10 @@ class UnresolvedFileGroup(UnresolvedDataItem):
     #     return item
 
     @classmethod
-    def from_paths(cls, paths: ty.List[Path]):
+    def from_paths(cls, paths: ty.List[Path], **kwargs):
         def key(p: Path):
             return str(p)[:-(len('.'.join(p.suffixes)))]
-        return [cls(file_paths=list(g))
+        return [cls(file_paths=list(g), **kwargs)
                 for _, g in groupby(sorted(paths, key=key), key=key)]
 
 

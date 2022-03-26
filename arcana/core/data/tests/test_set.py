@@ -2,10 +2,6 @@ from pathlib import Path
 import cloudpickle as cp
 from pydra import mark, Workflow
 from arcana.core.data.set import Dataset
-from arcana.core.data.column import DataSource, DataSink
-from arcana.data.stores.common import FileSystem
-from arcana.data.spaces.medicalimaging import Clinical as cl
-from arcana.data.formats.medicalimaging import dicom, niftix_gz
 
 
 def test_dataset_pickle(dataset: Dataset, tmp_dir: Path):

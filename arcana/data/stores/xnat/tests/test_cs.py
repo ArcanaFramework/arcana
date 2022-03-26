@@ -6,7 +6,7 @@ import pytest
 import docker.errors
 from arcana.data.stores.xnat.tests.fixtures import make_mutable_dataset
 from arcana.data.spaces.medicalimaging import Clinical
-from arcana.data.formats import text
+from arcana.data.formats import Text
 from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.xnat.cs import XnatViaCS
 
@@ -29,10 +29,10 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
         pydra_task=pydra_task,
         image_tag=image_tag,
         inputs=[
-            ('in_file1', text, 'to_concat1', Clinical.session),
-            ('in_file2', text, 'to_concat2', Clinical.session)],
+            ('in_file1', Text, 'to_concat1', Clinical.session),
+            ('in_file2', Text, 'to_concat2', Clinical.session)],
         outputs=[
-            ('out_file', text, 'concatenated')],
+            ('out_file', Text, 'concatenated')],
         parameters=['duplicates'],
         description="A pipeline to test Arcana's wrap4xnat function",
         version='0.1',
@@ -90,10 +90,10 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
         pydra_task='arcana.tasks.tests.fixtures:concatenate',
         image_tag=concatenate_container,
         inputs=[
-            ('in_file1', text, 'to_concat1', Clinical.session),
-            ('in_file2', text, 'to_concat2', Clinical.session)],
+            ('in_file1', Text, 'to_concat1', Clinical.session),
+            ('in_file2', Text, 'to_concat2', Clinical.session)],
         outputs=[
-            ('out_file', text, 'concatenated')],
+            ('out_file', Text, 'concatenated')],
         parameters=['duplicates'],
         description="A pipeline to test Arcana's wrap4xnat function",
         version='0.1',
@@ -118,8 +118,8 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
         launch_result = xlogin.post(
             f"/xapi/projects/{dataset.id}/wrappers/{cmd_id}/root/SESSION/launch",
             json={'SESSION': f'/archive/experiments/{test_xsession.id}',
-                  'to_concat1': 'scan1:text',
-                  'to_concat2': 'scan2:text',
+                  'to_concat1': 'scan1:Text',
+                  'to_concat2': 'scan2:Text',
                   'duplicates': '2'}).json()
 
         assert launch_result['status'] == 'success'

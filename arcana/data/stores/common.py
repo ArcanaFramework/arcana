@@ -11,7 +11,6 @@ import logging
 import json
 import attr
 from fasteners import InterProcessLock
-from arcana.core.data.provenance import DataProvenance
 from arcana.exceptions import ArcanaFileFormatError, ArcanaMissingDataException, ArcanaUsageError
 from arcana.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana.core.data.set import Dataset
@@ -216,12 +215,16 @@ class FileSystem(DataStore):
             matching[basename].add(fname)
         # Add file groups
         for bname, fnames in matching.items():
+            prov_path = dpath / (bname + self.PROV_SUFFIX)
+            if prov_path.exists():
+                with open(prov_path) as f:
+                    provenance = json.load(f)
+            else:
+                provenance = {}
             data_node.add_file_group(
                 path=bname,
                 file_paths=[op.join(dpath, f) for f in fnames],
-                provenance=DataProvenance.load(
-                    op.join(dpath, bname + self.PROV_SUFFIX),
-                    ignore_missing=True))
+                provenance=provenance)
         # Add fields
         try:
             with open(op.join(dpath, self.FIELDS_FNAME), 'r') as f:
@@ -285,10 +288,15 @@ class FileSystem(DataStore):
 
     def _get_file_group_provenance(self, file_group):
         if file_group.fs_path is not None:
-            prov = DataProvenance.load(self.prov_json_path(file_group))
+            prov_path = self.prov_json_path(file_group)
+            if prov_path.exists():
+                with open(prov_path) as f:
+                    provenance = json.load(f)
+            else:
+                provenance = {}
         else:
-            prov = None
-        return prov
+            provenance = None
+        return provenance
 
     def _get_field_provenance(self, field):
         """

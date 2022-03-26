@@ -240,8 +240,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         if assume_exists:
             self.exists = True
         self._check_part_of_data_node()
-        self.set_file_paths(
-            *self.data_node.dataset.store.get_file_group_paths(self))
+        self.set_fs_paths(
+            self.data_node.dataset.store.get_file_group_paths(self))
         self.validate_file_paths()
 
     def put(self, *fs_paths):
@@ -254,7 +254,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
                 f"of the same file group {self}")
         cache_paths = self.data_node.dataset.store.put_file_group_paths(
             self, fs_paths)
-        self.set_file_paths(*cache_paths)
+        self.set_fs_paths(cache_paths)
         self.validate_file_paths()
         # Save provenance
         if self.provenance:
@@ -280,7 +280,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     def matches_format_name(cls, name: str):
         """Checks to see whether the provided name is a valid name for the
         file format. Alternative names can be provided for format-specific
-        subclasses, or this method can be overridden.
+        subclasses, or this method can be overridden. Matches are case
+        insensitve.
 
         Parameters
         ----------
@@ -292,7 +293,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         bool
             whether or not the name matches the format
         """
-        return name in (cls.format_name(),) + cls.alternative_names
+        return name.lower() in [
+            n.lower() for n in (cls.format_name(),) + cls.alternative_names]
 
     @property
     def value(self):
@@ -316,17 +318,18 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     def calculate_checksums(self):
         self._check_exists()
         checksums = {}
-        for fpath in self.all_file_paths:
+        for fpath in self.all_file_paths():
             fhash = hashlib.md5()
             with open(fpath, 'rb') as f:
                 # Calculate hash in chunks so we don't run out of memory for
                 # large files.
                 for chunk in iter(lambda: f.read(self.HASH_CHUNK_SIZE), b''):
                     fhash.update(chunk)
-            try:
-                rel_path = str(fpath.relative_to(self.fs_path))
-            except ValueError:
-                rel_path = '.'.join(fpath.suffixes)
+            if self.is_dir:
+                base_path = self.fs_path
+            else:
+                base_path = self.fs_path.parent
+            rel_path = str(fpath.relative_to(base_path))
             checksums[rel_path] = fhash.hexdigest()
         return checksums
 
@@ -344,7 +347,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         """
         self._check_exists()
         other._check_exists()
-        return self.checksums == other.checksums
+        raise NotImplementedError("This method no longer works as checksum keys will be different, need to come up with a way to compare like with like")
+        return self.checksums[self.fs_path.name] == other.checksums[other.fs_path.name]
 
     @classmethod
     def resolve(cls, unresolved):
@@ -378,15 +382,15 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             if item is None:
                 raise ArcanaFileFormatError(
                     f"Could not file a matching resource in {unresolved.path} for"
-                    f" the given format ({format.name}), found "
+                    f" the given format ({cls.format_name()}), found "
                     "('{}')".format("', '".join(unresolved.uris)))
         else:
             item = cls(**unresolved.item_kwargs)
-            item.set_file_paths(unresolved.file_paths)
+            item.set_fs_paths(unresolved.file_paths)
         return item
 
     @abstractmethod
-    def set_file_paths(self, paths):
+    def set_fs_paths(self, paths):
         """Set the file paths of the file group
 
         Parameters
@@ -403,7 +407,28 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         """
 
     @classmethod
-    def matches_ext(cls, ext, paths):
+    def matches_ext(cls, *paths, ext=None):
+        """Returns the path out of the candidates provided that matches the
+        given extension (by default the extension of the class)
+
+        Parameters
+        ----------
+        *paths: list[Path]
+            The paths to select from
+        ext: str or None
+            the extension to match (defaults to 'ext' attribute of class)
+
+        Returns
+        -------
+        Path
+            the matching path
+
+        Raises
+        ------
+        ArcanaFileFormatError
+            When no paths match or more than one path matches the given extension"""
+        if ext is None:
+            ext = cls.ext
         matches = [str(p) for p in paths if str(p).endswith('.' + ext)]
         if not matches:
             paths_str = ', '.join(str(p) for p in paths)
@@ -523,8 +548,6 @@ def extract_paths(from_format, file_group):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
     logger.debug("Extracting paths from %s (%s format) before conversion", file_group, from_format)
-    if file_group.format != from_format:
-        raise ValueError(f"Format of {file_group} doesn't match converter {from_format}")
     cpy = file_group.copy_to(Path(file_group.path).name, symlink=True)
     return cpy.fs_paths if len(cpy.fs_paths) > 1 else cpy.fs_path
 
@@ -535,7 +558,7 @@ def encapsulate_paths(to_format: type, to_convert: FileGroup, **fs_paths: ty.Lis
     logger.debug("Encapsulating %s into %s format after conversion",
                  fs_paths, to_format)
     file_group = to_format(to_convert.path + '_' + to_format.format_name())
-    file_group.set_file_paths(fs_paths.values())
+    file_group.set_fs_paths(fs_paths.values())
     return file_group
 
 
@@ -544,8 +567,8 @@ class BaseFile(FileGroup):
 
     is_dir = False
 
-    def set_file_paths(self, paths):
-        self.fs_path = self.matches_ext(self.ext, paths)
+    def set_fs_paths(self, paths):
+        self.fs_path = self.matches_ext(*paths)
 
     def all_file_paths(self):
         """The paths of all nested files within the file-group"""
@@ -569,7 +592,7 @@ class BaseFile(FileGroup):
             copy_file = os.symlink
         else:
             copy_file = shutil.copyfile
-        copy_file(self.fs_path, path + self.format.ext)
+        copy_file(self.fs_path, path + self.ext)
         return self.from_paths(path)[0]
 
     @classmethod
@@ -593,7 +616,7 @@ class BaseFile(FileGroup):
             raise ArcanaFileFormatError(
                 f"Extension of old path ('{str(old_path)}') does not match that "
                 f"of file, '{cls.ext}'")
-        return new_path.with_suffix(cls.ext)
+        return new_path.with_suffix('.' + cls.ext)
 
      
 @attr.s
@@ -618,12 +641,12 @@ class BaseFileWithSideCars(BaseFile):
                     "Auxiliary files can only be provided to a FileGroup "
                     f"of '{self.path}' ({side_cars}) if the local path is "
                     "as well")
-            if set(self.format.side_cars.keys()) != set(side_cars.keys()):
+            if set(self.side_car_exts) != set(side_cars.keys()):
                 raise ArcanaUsageError(
                     "Keys of provided auxiliary files ('{}') don't match "
                     "format ('{}')".format(
                         "', '".join(side_cars.keys()),
-                        "', '".join(self.format.side_cars.keys())))
+                        "', '".join(self.side_car_exts)))
             missing_side_cars = [f for f in side_cars.values()
                                  if not op.exists(f)]
             if missing_side_cars:
@@ -636,12 +659,12 @@ class BaseFileWithSideCars(BaseFile):
     def lf_file_names(cls):
         return super().lf_file_names() + cls.side_car_exts           
 
-    def set_file_paths(self, *paths):
-        super().set_file_paths(paths)
+    def set_fs_paths(self, paths):
+        super().set_fs_paths(paths)
         to_assign = copy(paths)
         to_assign.remove(self.fs_path)
         for sc_ext in self.side_car_exts:
-            matched = self.side_cars[sc_ext] = self.matches_ext(sc_ext, paths)
+            matched = self.side_cars[sc_ext] = self.matches_ext(*paths, ext=sc_ext)
             to_assign.remove(matched)
 
     @property
@@ -672,7 +695,7 @@ class BaseFileWithSideCars(BaseFile):
         for sc_ext, sc_path in self.side_cars.items():
             copy_file(sc_path, dest_side_cars[sc_ext])
         cpy = copy(self)
-        cpy.set_file_paths(path, *dest_side_cars.values())
+        cpy.set_fs_paths(path, *dest_side_cars.values())
         return cpy
     
     @classmethod
@@ -719,15 +742,21 @@ class BaseFileWithSideCars(BaseFile):
             return super().copy_ext(old_path, new_path)
         except ArcanaFileFormatError:
             pass
-        matches = [e for e in cls.side_car_exts
-                    if cls.matches_ext(e, old_path)]
+        matches = []
+        for ext in cls.side_car_exts:
+            try:
+                cls.matches_ext(old_path, ext=ext)
+            except ArcanaFileFormatError:
+                pass
+            else:
+                matches.append(ext)
         if not matches:
             sc_exts_str = "', '".join(cls.side_car_exts)
             raise ArcanaFileFormatError(
                 f"Extension of old path ('{str(old_path)}') does not match any "
                 f" in {cls}: '{cls.ext}', {sc_exts_str}")
         longest_match = max(matches, key=len)
-        return Path(new_path).with_suffix(longest_match)
+        return Path(new_path).with_suffix('.' + longest_match)
 
 
 class BaseDirectory(FileGroup):
@@ -735,16 +764,24 @@ class BaseDirectory(FileGroup):
     is_dir = True
     content_types = ()  # By default, don't check contents for any types
     
-    @classmethod
-    def from_paths(cls, *paths: ty.List[Path], **kwargs):
-        return [cls(p, **kwargs) for p in paths
-                if p.is_dir() and cls.contents_match(p)]
+    def set_fs_paths(self, paths: ty.List[Path]):
+        matches = [p for p in paths if p.is_dir() and self.contents_match(p)]
+        types_str = ', '.join(t.__name__ for t in self.content_types)
+        if not matches:
+            raise ArcanaFileFormatError(
+                f"No matching directories with contents matching {types_str}")
+        elif len(matches) > 1:
+            matches_str = ', '.join(matches)
+            raise ArcanaFileFormatError(
+                f"Multiple directories with contents matching {types_str}: "
+                f"{matches_str}")
+        self.fs_path = absolute_path(matches[0])
 
     @classmethod
     def contents_match(cls, path: Path):
         from arcana.core.data.node import UnresolvedFileGroup
         contents = UnresolvedFileGroup.from_paths(path.iterdir())
-        for content_type in cls.contents:
+        for content_type in cls.content_types:
             resolved = False
             for unresolved in contents:
                 try:
@@ -753,6 +790,7 @@ class BaseDirectory(FileGroup):
                     pass
                 else:
                     resolved = True
+                    break
             if not resolved:
                 raise ArcanaFileFormatError(
                     f"Did not find a match for required content type {content_type} "

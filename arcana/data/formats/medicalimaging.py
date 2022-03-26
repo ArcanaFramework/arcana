@@ -59,54 +59,52 @@ class MedicalImage(BaseFile, metaclass=ABCMeta):
     IGNORE_HDR_KEYS = None
 
     @abstractmethod
-    def get_header(self, fileset):
+    def get_header(self):
         """
         Returns array data associated with the given path for the
         file format
         """
 
     @abstractmethod
-    def get_array(self, fileset):
+    def get_array(self):
         """
         Returns header data associated with the given path for the
         file format
         """
 
-    def contents_equal(self, fileset, other_fileset, rms_tol=None, **kwargs):
+    def contents_equal(self, other_image, rms_tol=None, **kwargs):
         """
-        Test whether the (relevant) contents of two image filesets are equal
+        Test whether the (relevant) contents of two image selfs are equal
         given specific criteria
 
         Parameters
         ----------
-        fileset : Fileset
-            One of the two filesets to compare
-        other_fileset : Fileset
-            The other fileset to compare
+        other_image : Fileset
+            The other self to compare
         rms_tol : float
             The root-mean-square tolerance that is acceptable between the array
             data for the images to be considered equal
         """
-        if other_fileset.format != self:
+        if type(other_image) != type(self):
             return False
-        if self.headers_diff(fileset, other_fileset, **kwargs):
+        if self.headers_diff(self, other_image, **kwargs):
             return False
         if rms_tol:
-            rms_diff = self.rms_diff(fileset, other_fileset)
+            rms_diff = self.rms_diff(self, other_image)
             return (rms_diff < rms_tol)
         else:
-            return np.array_equiv(fileset.get_array(),
-                                  other_fileset.get_array())
+            return np.array_equiv(self.get_array(),
+                                  other_image.get_array())
 
-    def headers_diff(self, fileset, other_fileset, include_keys=None,
+    def headers_diff(self, other_image, include_keys=None,
                      ignore_keys=None, **kwargs):
         """
         Check headers to see if all values
         """
         diff = []
-        hdr = fileset.get_header()
+        hdr = self.get_header()
         hdr_keys = set(hdr.keys())
-        other_hdr = other_fileset.get_header()
+        other_hdr = other_image.get_header()
         if include_keys is not None:
             if ignore_keys is not None:
                 raise ArcanaUsageError(
@@ -151,12 +149,12 @@ class MedicalImage(BaseFile, metaclass=ABCMeta):
                     diff.append(key)
         return diff
 
-    def rms_diff(self, fileset, other_fileset):
+    def rms_diff(self, other_image):
         """
         Return the RMS difference between the image arrays
         """
-        return np.sqrt(np.sum((fileset.get_array()
-                               - other_fileset.get_array()) ** 2))
+        return np.sqrt(np.sum((self.get_array()
+                               - other_image.get_array()) ** 2))
 
 
 class DicomFile(BaseFile):  # FIXME: Should extend from MedicalImage, but need to implement header and array
@@ -176,35 +174,35 @@ class Dicom(BaseDirectory, MedicalImage):
 
     SERIES_NUMBER_TAG = ('0020', '0011')
 
-    def dcm_files(self, fileset):
-        return [f for f in os.listdir(fileset.path) if f.endswith('.dcm')]
+    def dcm_files(self):
+        return [f for f in os.listdir(self.path) if f.endswith('.dcm')]
 
-    def get_array(self, fileset):
+    def get_array(self):
         image_stack = []
-        for fname in self.dcm_files(fileset):
+        for fname in self.dcm_files(self):
             image_stack.append(
-                pydicom.dcmread(op.join(fileset.path, fname)).pixel_array)
+                pydicom.dcmread(op.join(self.path, fname)).pixel_array)
         return np.asarray(image_stack)
 
-    def get_header(self, fileset, index=0):
-        dcm_files = [f for f in os.listdir(fileset.path) if f.endswith('.dcm')]
+    def get_header(self, index=0):
+        dcm_files = [f for f in os.listdir(self.path) if f.endswith('.dcm')]
         # TODO: Probably should collate fields that vary across the set of
         #       files in the set into lists
-        return pydicom.dcmread(op.join(fileset.path, dcm_files[index]))
+        return pydicom.dcmread(op.join(self.path, dcm_files[index]))
 
-    def get_vox_sizes(self, fileset):
-        hdr = self.get_header(fileset)
+    def get_vox_sizes(self):
+        hdr = self.get_header(self)
         return np.array(hdr.PixelSpacing + [hdr.SliceThickness])
 
-    def get_dims(self, fileset):
-        hdr = self.get_header(fileset)
-        return np.array((hdr.Rows, hdr.Columns, len(self.dcm_files(fileset))),
+    def get_dims(self):
+        hdr = self.get_header(self)
+        return np.array((hdr.Rows, hdr.Columns, len(self.dcm_files(self))),
                         format=int)
 
-    def extract_id(self, fileset):
-        return int(fileset.dicom_values([self.SERIES_NUMBER_TAG])[0])
+    def extract_id(self):
+        return int(self.dicom_values([self.SERIES_NUMBER_TAG])[0])
 
-    def dicom_values(self, file_group, tags):
+    def dicom_values(self, tags):
         """
         Returns a dictionary with the DICOM header fields corresponding
         to the given tag names
@@ -221,15 +219,22 @@ class Dicom(BaseDirectory, MedicalImage):
         -------
         dct : Dict[Tuple[str, str], str|int|float]
         """
+        def read_header():
+            dcm = self.get_header(0)
+            return [dcm[t].value for t in tags]
         try:
-            if (file_group._path is None and file_group._dataset is not None
-                    and hasattr(file_group.dataset.store, 'dicom_header')):
-                hdr = file_group.dataset.store.dicom_header(self)
-                dct = [hdr[t] for t in tags]
+            if self.fs_path:
+                # Get the DICOM object for the first file in the self
+                dct = read_header()
             else:
-                # Get the DICOM object for the first file in the fileset
-                dcm = file_group.get_header(0)
-                dct = [dcm[t].value for t in tags]
+                try:
+                    # Try to access dicom header details remotely
+                    hdr = self.data_node.dataset.store.dicom_header(self)
+                except AttributeError:
+                    self.get()  # Fallback to downloading data to read header
+                    dct = read_header()
+                else:
+                    dct = [hdr[t] for t in tags]
         except KeyError as e:
             e.msg = ("{} does not have dicom tag {}".format(
                      self, str(e)))
@@ -257,20 +262,21 @@ class NeuroImage(MedicalImage):
 class Nifti(NeuroImage):
 
     ext = 'nii'
+    alternative_names = ('NIFTI',)
 
-    def get_header(self, fileset):
-        return dict(nibabel.load(fileset.path).header)
+    def get_header(self):
+        return dict(nibabel.load(self.path).header)
 
-    def get_array(self, fileset):
-        return nibabel.load(fileset.path).get_data()
+    def get_array(self):
+        return nibabel.load(self.path).get_data()
 
-    def get_vox_sizes(self, fileset):
+    def get_vox_sizes(self):
         # FIXME: This won't work for 4-D files
-        return self.get_header(fileset)['pixdim'][1:4]
+        return self.get_header(self)['pixdim'][1:4]
 
-    def get_dims(self, fileset):
+    def get_dims(self):
         # FIXME: This won't work for 4-D files
-        return self.get_header(fileset)['dim'][1:4]
+        return self.get_header(self)['dim'][1:4]
 
     @classmethod
     @converter(Dicom)
@@ -298,9 +304,9 @@ class NiftiX(BaseFileWithSideCars, Nifti):
 
     side_car_exts = ('json',)
 
-    def get_header(self, fileset):
-        hdr = super().get_header(fileset)
-        with open(fileset.aux_file('json')) as f:
+    def get_header(self):
+        hdr = super().get_header(self)
+        with open(self.aux_file('json')) as f:
             hdr.update(json.load(f))
         return hdr
 
@@ -364,8 +370,8 @@ class MrtrixImage(NeuroImage):
 
     ext = 'mif'
 
-    def _load_header_and_array(self, fileset):
-        with open(fileset.path, 'rb') as f:
+    def _load_header_and_array(self):
+        with open(self.path, 'rb') as f:
             contents = f.read()
         hdr_end = contents.find(b'\nEND\n')
         hdr_contents = contents[:hdr_end].decode('utf-8')
@@ -394,17 +400,17 @@ class MrtrixImage(NeuroImage):
         array = array.reshape(dim)
         return hdr, array
 
-    def get_header(self, fileset):
-        return self._load_header_and_array(fileset)[0]
+    def get_header(self):
+        return self._load_header_and_array(self)[0]
 
-    def get_array(self, fileset):
-        return self._load_header_and_array(fileset)[1]
+    def get_array(self):
+        return self._load_header_and_array(self)[1]
 
-    def get_vox_sizes(self, fileset):
-        return self.get_header(fileset)['vox']
+    def get_vox_sizes(self):
+        return self.get_header(self)['vox']
 
-    def get_dims(self, fileset):
-        return self.get_header(fileset)['dim']
+    def get_dims(self):
+        return self.get_header(self)['dim']
 
 
 # =====================================================================
@@ -412,10 +418,16 @@ class MrtrixImage(NeuroImage):
 # =====================================================================
 
 
-class Analyze(NeuroImage):
+class Analyze(BaseFileWithSideCars, NeuroImage):
 
     ext = 'img'
-    side_cars = ('hdr',)
+    side_car_exts = ('hdr',)
+
+    def get_array(self):
+        raise NotImplementedError
+
+    def get_header(self):
+        raise NotImplementedError
 
 class MrtrixTrack(BaseFile):
 
@@ -439,7 +451,7 @@ class Fslgrad(Dwigrad):
 
 # # Set converters between image formats
 
-# niftix_gz.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
+# NiftiXGz.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
 #                         inputs={'primary': 'in_dir'},
 #                         outputs={'primary': 'out_file',
 #                                  'json': 'out_json'})
@@ -454,26 +466,26 @@ class Fslgrad(Dwigrad):
 # nifti.set_converter(analyze, MRConvert, out_file='file.nii')
 # nifti.set_converter(nifti_gz, MRConvert, out_file='file.nii')
 # nifti.set_converter(mrtrix_image, MRConvert, out_file='file.nii')
-# nifti.set_converter(niftix_gz, MRConvert, out_file='file.nii')
+# nifti.set_converter(NiftiXGz, MRConvert, out_file='file.nii')
 
 # nifti_gz.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
 #                        inputs={'primary': 'in_dir'})
 # nifti_gz.set_converter(nifti, MRConvert, out_file="file.nii.gz")
 # nifti_gz.set_converter(analyze, MRConvert, out_file="file.nii.gz")
 # nifti_gz.set_converter(mrtrix_image, MRConvert, out_file="file.nii.gz")
-# nifti_gz.set_converter(niftix_gz, identity_converter)
+# nifti_gz.set_converter(NiftiXGz, identity_converter)
 
 # analyze.set_converter(dicom, MRConvert, out_file="file.hdr")
 # analyze.set_converter(nifti, MRConvert, out_file="file.hdr")
 # analyze.set_converter(nifti_gz, MRConvert, out_file="file.hdr")
 # analyze.set_converter(mrtrix_image, MRConvert, out_file="file.hdr")
-# analyze.set_converter(niftix_gz, MRConvert, out_file="file.hdr")
+# analyze.set_converter(NiftiXGz, MRConvert, out_file="file.hdr")
 
 # mrtrix_image.set_converter(dicom, MRConvert, out_file='file.mif')
 # mrtrix_image.set_converter(nifti, MRConvert, out_file='file.mif')
 # mrtrix_image.set_converter(nifti_gz, MRConvert, out_file='file.mif')
 # mrtrix_image.set_converter(analyze, MRConvert, out_file='file.mif')
-# mrtrix_image.set_converter(niftix_gz, MRConvert, out_file='file.mif')
+# mrtrix_image.set_converter(NiftiXGz, MRConvert, out_file='file.mif')
 
 
 # Raw formats

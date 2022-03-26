@@ -112,7 +112,7 @@ TEST_DATASET_BLUEPRINTS = {
             (Directory, ['doubledir1'])],
          'doubledir2': [
             (Directory, ['doubledir2'])]},
-        [('deriv1', td.ad, json, ['file1.json'])]
+        [('deriv1', td.ad, Json, ['file1.json'])]
     ),
     'skip_with_inference': TestDatasetBlueprint(
         [td.bc, td.ad],

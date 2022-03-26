@@ -59,7 +59,7 @@ def test_get_items(xnat_dataset, caplog):
                     archive_perms = get_perms(archive_dir)
                     msg = f"Error accessing {item} as '{current_user}' when '{archive_dir}' has {archive_perms} permissions"
                     raise PermissionError(msg)
-                if item.format.directory:
+                if item.is_dir:
                     item_files = set(os.listdir(item.fs_path))
                 else:
                     item_files = set(p.name for p in item.fs_paths)
@@ -101,7 +101,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
             item = node[name]
             item.get_checksums(force_calculate=(
                 mutable_xnat_dataset.access_method == 'direct'))
-            assert item.format == format
+            assert isinstance(item, format)
             assert item.checksums == all_checksums[name]
             item.get()
             assert all(p.exists() for p in item.fs_paths)

@@ -8,11 +8,11 @@ import numpy.random
 import shutil
 import docker
 from arcana import __version__
-from arcana.data.formats import niftix
+from arcana.data.formats import NiftiX
 from arcana.data.stores.bids import BidsDataset
 from arcana.data.stores.bids import BidsApp
-from arcana.data.formats.common import text, directory
-from arcana.data.formats.medicalimaging import niftix_gz, niftix_fsldwi_gz
+from arcana.data.formats.common import Text, Directory
+from arcana.data.formats.medicalimaging import NiftiXGz, NiftiXFslgradGz
 from arcana.core.utils import resolve_class
 
 
@@ -43,7 +43,7 @@ def test_bids_roundtrip(work_dir):
 
     dataset.save_metadata()
 
-    dataset.add_sink('t1w', format=niftix, path='anat/T1w')
+    dataset.add_sink('t1w', format=NiftiX, path='anat/T1w')
 
     dummy_nifti = work_dir / 't1w.nii'
     # dummy_nifti_gz = dummy_nifti + '.gz'
@@ -77,7 +77,7 @@ def test_bids_roundtrip(work_dir):
     assert SUCCESS_STR in result
     
     reloaded = BidsDataset.load(path)
-    reloaded.add_sink('t1w', format=niftix, path='anat/T1w')
+    reloaded.add_sink('t1w', format=NiftiX, path='anat/T1w')
 
     assert dataset == reloaded
 
@@ -85,14 +85,14 @@ def test_bids_roundtrip(work_dir):
 def test_run_bids_app_docker(nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = [('T1w', niftix_gz, 'anat/T1w'),
-              ('T2w', niftix_gz, 'anat/T2w'),
-              ('dwi', niftix_fsldwi_gz, 'dwi/dwi'),
-            #   ('bold', niftix_gz, 'func/task-REST_bold')
+    INPUTS = [('T1w', NiftiXGz, 'anat/T1w'),
+              ('T2w', NiftiXGz, 'anat/T2w'),
+              ('dwi', NiftiXFslgradGz, 'dwi/dwi'),
+            #   ('bold', NiftiXGz, 'func/task-REST_bold')
               ]
-    OUTPUTS = [('whole_dir', directory, None),
-               ('out1', text, f'file1'),
-               ('out2', text, f'file2')]
+    OUTPUTS = [('whole_dir', Directory, None),
+               ('out1', Text, f'file1'),
+               ('out2', Text, f'file2')]
 
     dc = docker.from_env()
 
@@ -116,7 +116,7 @@ if [[ "$output" != *"{SUCCESS_STR}"* ]]; then
     echo $output
     exit 1;
 fi
-# Write mock output files to 'derivatives' directory
+# Write mock output files to 'derivatives' Directory
 mkdir -p $OUTPUTS_DIR
 echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
 echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
@@ -155,14 +155,14 @@ ENTRYPOINT ["/launch.sh"]""")
 def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = [('T1w', niftix_gz, 'anat/T1w'),
-              ('T2w', niftix_gz, 'anat/T2w'),
-              ('dwi', niftix_fsldwi_gz, 'dwi/dwi'),
-            #   ('bold', niftix_gz, 'func/task-REST_bold')
+    INPUTS = [('T1w', NiftiXGz, 'anat/T1w'),
+              ('T2w', NiftiXGz, 'anat/T2w'),
+              ('dwi', NiftiXFslgradGz, 'dwi/dwi'),
+            #   ('bold', NiftiXGz, 'func/task-REST_bold')
               ]
-    OUTPUTS = [('whole_dir', directory, None),
-               ('out1', text, f'file1'),
-               ('out2', text, f'file2')]
+    OUTPUTS = [('whole_dir', Directory, None),
+               ('out1', Text, f'file1'),
+               ('out2', Text, f'file2')]
 
     dc = docker.from_env()
 
@@ -192,7 +192,7 @@ BIDS_DATASET=$1
 OUTPUTS_DIR=$2
 SUBJ_ID=$5
 {file_tests}
-# Write mock output files to 'derivatives' directory
+# Write mock output files to 'derivatives' Directory
 mkdir -p $OUTPUTS_DIR
 echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
 echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt

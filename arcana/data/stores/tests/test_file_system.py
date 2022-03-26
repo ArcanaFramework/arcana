@@ -26,7 +26,7 @@ def test_get_items(dataset: Dataset):
     source_files = {}
     for fg_name, formats in dataset.blueprint.expected_formats.items():
         for format, files in formats:
-            source_name = fg_name + format.name
+            source_name = fg_name + format.format_name()
             dataset.add_source(source_name, path=fg_name, format=format)
             source_files[source_name] = set(files)
     for node in dataset.nodes(dataset.leaf_freq):
@@ -60,14 +60,14 @@ def test_put_items(dataset: Dataset):
         # Test inserting the new item into the store
         for node in dataset.nodes(freq):
             item = node[name]
-            item.put(*format.assort_files(fs_paths))
+            item.put(*fs_paths)
     def check_inserted():
         """Check that the inserted items are present in the dataset"""
         for name, freq, format, _ in dataset.blueprint.to_insert:
             for node in dataset.nodes(freq):
                 item = node[name]
                 item.get_checksums()
-                assert item.format == format
+                assert isinstance(item, format)
                 assert item.checksums == all_checksums[name]
                 item.get()
                 assert all(p.exists() for p in item.fs_paths)

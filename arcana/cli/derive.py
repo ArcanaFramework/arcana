@@ -59,7 +59,7 @@ pydra_task
     REQUIRED_FORMAT is the format that the app requires the input in.
     If different from the FORMAT, an implicit conversions will
                     be attempted when required. The default is
-                    'niftix_gz', which is the g-zipped NIfTI image file
+                    'niftixgz', which is the g-zipped NIfTI image file
                     + JSON side-car required for BIDS 
 
     The 3rd argument to the input contains the criteria used to match the

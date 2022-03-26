@@ -10,6 +10,7 @@ import logging
 import errno
 import json
 import re
+import hashlib
 from zipfile import ZipFile, BadZipfile
 import shutil
 import attr
@@ -218,10 +219,6 @@ class Xnat(DataStore):
         logger.info("Getting %s from %s:%s node via API access",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)        
-        if file_group.format is None:
-            raise ArcanaUsageError(
-                "Attempting to download {}, which has not been assigned a "
-                "file format (see FileGroup.formatted)".format(file_group))
         self._check_store(file_group)
         with self:  # Connect to the XNAT repository if haven't already
             xnode = self.get_xnode(file_group.data_node)
@@ -287,7 +284,7 @@ class Xnat(DataStore):
                     self.download_file_group(tmp_dir, xresource, file_group,
                                           cache_path)
                     shutil.rmtree(tmp_dir)
-        if not file_group.is_dir:
+        if file_group.is_dir:
             cache_paths = [cache_path]
         else:
             cache_paths = list(cache_path.iterdir())
@@ -310,10 +307,6 @@ class Xnat(DataStore):
         list[Path]
             The locations of the locally cached paths
         """
-        if file_group.format is None:
-            raise ArcanaFileFormatError(
-                "Format of {} needs to be set before it is uploaded to {}"
-                .format(file_group, self))
         self._check_store(file_group)
         # Open XNAT session
         with self:
@@ -337,7 +330,7 @@ class Xnat(DataStore):
             # Create the new resource for the file_group
             xresource = self.login.classes.ResourceCatalog(
                 parent=xnode, label=escaped_name,
-                format=file_group.format.name)
+                format=file_group.format_name())
             # Create cache path
             base_cache_path = self.cache_path(file_group)
             if base_cache_path.exists():
@@ -417,8 +410,6 @@ class Xnat(DataStore):
         with self:
             xsession = self.get_xnode(field.data_node)
             xsession.fields[path2name(field)] = value
-        if field.provenance:
-            self.put_provenance(field)
 
     def get_checksums(self, file_group):
         """
@@ -445,21 +436,19 @@ class Xnat(DataStore):
         # strip base URI to get relative paths of files within the resource
         checksums = {re.match(r'.*/resources/\w+/files/(.*)$', u).group(1): c
                      for u, c in sorted(checksums.items())}
-        if not file_group.format.directory:
-            # Replace the paths of side cars with their extensions and the
-            # primary file with '.'
-            primary = file_group.format.assort_files(checksums.keys())[0]
-            checksums['.'] = checksums.pop(primary)
-            for path in set(checksums.keys()) - set(['.']):
-                ext = '.'.join(Path(path).suffixes)
-                if ext in checksums:
-                    logger.warning(
-                        f"Multiple side-cars found in {file_group} XNAT "
-                        f"resource with the same extension (this isn't "
-                        f"allowed) and therefore cannot convert {path} to "
-                        "{ext} in checksums")
-                else:
-                    checksums[ext] = checksums.pop(path)
+        # if not self.is_dir:
+        #     # Replace the paths of the primary file with primary file with '.'
+        #     checksums['.'] = checksums.pop(primary)
+        #     for path in set(checksums.keys()) - set(['.']):
+        #         ext = '.'.join(Path(path).suffixes)
+        #         if ext in checksums:
+        #             logger.warning(
+        #                 f"Multiple side-cars found in {file_group} XNAT "
+        #                 f"resource with the same extension (this isn't "
+        #                 f"allowed) and therefore cannot convert {path} to "
+        #                 "{ext} in checksums")
+        #         else:
+        #             checksums[ext] = checksums.pop(path)
         return checksums
 
     def dicom_header(self, file_group):
@@ -650,36 +639,49 @@ class Xnat(DataStore):
             uri = re.sub(r'(?<=/subjects/)[^/]+', subject_id, uri)
         return uri
 
-    def put_provenance(self, item):
+    def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
+        xresource, _, cache_path  = self._provenance_location(
+            item, create_resource=True)
+        with open(cache_path, 'w') as f:
+            json.dump(provenance, f, indent='  ')
+        xresource.upload(cache_path, cache_path.name)
+
+    def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
+        try:
+            xresource, uri, cache_path = self._provenance_location(item)
+        except KeyError:
+            return {}  # Provenance doesn't exist on server
+        with open(cache_path, 'w') as f:
+            xresource.xnat_session.download_stream(uri, f)
+            provenance = json.load(f)
+        return provenance
+
+    def _provenance_location(self, item, create_resource=False):
         xnode = self.get_xnode(item.data_node)
-        uri = '{}/resources/{}'.format(self.standard_uri(xnode),
-                                       self.PROV_RESOURCE)
-        cache_dir = self.cache_path(uri)
-        os.makedirs(cache_dir, exist_ok=True)
-        fname = path2name(item) + '.json'
         if item.is_field:
             fname = self.FIELD_PROV_PREFIX + fname
-        cache_path = op.join(cache_dir, fname)
-        item.provenance.save(cache_path)
-        # TODO: Should also save digest of prov.json to check to see if it
-        #       has been altered remotely. This could be put in a field
-        #       to save having to download a file
+        else:
+            fname = path2name(item) + '.json'
+        uri = f'{self.standard_uri(xnode)}/resources/{self.PROV_RESOURCE}/files/{fname}'
+        cache_path = self.cache_path(uri)
+        cache_path.parent.mkdir(parent=True, exist_ok=True)
         try:
             xresource = xnode.resources[self.PROV_RESOURCE]
         except KeyError:
-            xresource = self.login.classes.ResourceCatalog(
-                parent=xnode, label=self.PROV_RESOURCE,
-                format='PROVENANCE')
-            # Until XnatPy adds a create_resource to projects, subjects &
-            # sessions
-            # xresource = xnode.create_resource(format_name)
-        xresource.upload(cache_path, fname)
+            if create_resource:
+                xresource = self.login.classes.ResourceCatalog(
+                    parent=xnode, label=self.PROV_RESOURCE,
+                    format='PROVENANCE')
+            else:
+                raise
+        return xresource, uri, cache_path
 
     def serialise(self):
         # Call serialise utility method with 'ignore_instance_method' to avoid
         # infinite recursion
-        serialise(self, ignore_instance_method=True)
+        serialised = serialise(self, ignore_instance_method=True)
         # TODO: Methods to replace username/password with tokens go here
+        return serialised
 
 
 def append_suffix(path, suffix):
