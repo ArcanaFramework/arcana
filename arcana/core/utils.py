@@ -647,22 +647,24 @@ def serialise(obj, skip=(), ignore_instance_method=False):
 
     if hasattr(obj, 'serialise') and not ignore_instance_method:
         serialised = obj.serialise()
+    elif isclass(obj):
+        serialised = '<' + class_location(obj) + '>'
+    elif isinstance(obj, Enum):
+        serialised = str(obj)
+    elif isinstance(obj, Path):
+        serialised = str(obj)
     elif hasattr(obj, '__attrs_attrs__'):
         serialised = attr.asdict(
             obj,
             recurse=False,
             filter=lambda a, v: a.init and a.name not in skip,
             value_serializer=lambda _, __, v: serialise(v))
-        serialised['type'] = class_location(obj)
+        serialised['type'] = '<' + class_location(obj) + '>'
         serialised['arcana_version'] = __version__
-    elif isinstance(obj, Path):
-        serialised = str(obj)
-    elif isinstance(obj, Enum):
-        serialised = str(obj)
-    elif isclass(obj):
-        serialised = '<' + class_location(obj) + '>'
     elif not isinstance(obj, str) and isinstance(obj, Sequence):
         serialised = [serialise(x) for x in obj]
+    elif isinstance(obj, dict):
+        serialised = {k: serialise(v) for k, v in obj.items()}
     else:
         serialised = obj
 
@@ -682,7 +684,7 @@ def unserialise(serialised: dict, **kwargs):
         Additional initialisation arguments for the object when it is reinitialised.
         Overrides those stored"""
     if isinstance(serialised, dict) and 'type' in serialised:
-        serialised_cls = resolve_class(serialised.pop('type'))
+        serialised_cls = resolve_class(serialised.pop('type')[1:-1])
         serialised_version = serialised.pop('arcana_version')
         if packaging.version.parse(serialised_version) < packaging.version.parse(MIN_SERIAL_VERSION):
             raise ArcanaVersionError(
@@ -696,6 +698,8 @@ def unserialise(serialised: dict, **kwargs):
         unserialised = serialised_cls(**init_args)
     elif isinstance(serialised, list):
         unserialised = [unserialise(x) for x in serialised]
+    elif isinstance(serialised, dict):
+        unserialised = {k: unserialise(v) for k, v in serialised.items()}
     elif isinstance(serialised, str) and re.match(r'<.*>', serialised):
         unserialised = resolve_class(serialised[1:-1])
     else:
