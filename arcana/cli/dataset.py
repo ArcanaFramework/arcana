@@ -218,7 +218,7 @@ def add_sink(dataset_path, name, format, frequency, path, salience):
     dataset.add_sink(
         name=name,
         path=path,
-        format=format,
+        format=resolve_class(format, prefixes=['arcana.data.formats']),
         frequency=frequency,
         salience=salience)
     dataset.save()

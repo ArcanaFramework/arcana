@@ -146,7 +146,8 @@ class DataSink():
     path: str = attr.ib()
     format = attr.ib()
     frequency: DataSpace = attr.ib()
-    salience: DataSalience = attr.ib(default=DataSalience.supplementary)
+    salience: DataSalience = attr.ib(default=DataSalience.supplementary,
+                                     converter=lambda s: DataSalience[str(s)])
     pipeline_name: str = attr.ib(default=None)
 
     def match(self, node):

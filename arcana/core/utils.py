@@ -650,7 +650,7 @@ def serialise(obj, skip=(), ignore_instance_method=False):
     elif isclass(obj):
         serialised = '<' + class_location(obj) + '>'
     elif isinstance(obj, Enum):
-        serialised = str(obj)
+        serialised = '|' + class_location(type(obj)) + '|' + str(obj)
     elif isinstance(obj, Path):
         serialised = str(obj)
     elif hasattr(obj, '__attrs_attrs__'):
@@ -700,8 +700,13 @@ def unserialise(serialised: dict, **kwargs):
         unserialised = [unserialise(x) for x in serialised]
     elif isinstance(serialised, dict):
         unserialised = {k: unserialise(v) for k, v in serialised.items()}
-    elif isinstance(serialised, str) and re.match(r'<.*>', serialised):
-        unserialised = resolve_class(serialised[1:-1])
+    elif isinstance(serialised, str):
+        if match:= re.match(r'<(.*)>', serialised): # Class location
+            unserialised = resolve_class(match.group(1))
+        elif match:= re.match(r'\|([^\|]+)\|(.*)', serialised):  # Enum
+            unserialised = resolve_class(match.group(1))[match.group(2)]
+        else:
+            unserialised = serialised    
     else:
         unserialised = serialised
 

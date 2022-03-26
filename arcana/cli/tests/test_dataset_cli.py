@@ -61,6 +61,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
          '--path', 'file1',
          '--frequency', 'd',
          '--quality', 'questionable',
+         '--order', '1',
          '--no-regex'])
     assert result.exit_code == 0
     # Add source to loaded dataset
@@ -69,8 +70,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
         path='deriv',
         format=Text,
         frequency=TestDataSpace.d,
-        salience=DataSalience.qa,
-        pipeline_name='a_pipeline')
+        salience=DataSalience.qa)
     result = cli_runner(add_sink, [
         dataset_path, 'a_sink', 'common:Text',
         '--path', 'deriv',

@@ -10,6 +10,7 @@ import shutil
 import logging
 import json
 import attr
+import yaml
 from fasteners import InterProcessLock
 from arcana.exceptions import ArcanaFileFormatError, ArcanaMissingDataException, ArcanaUsageError
 from arcana.core.utils import get_class_info, HOSTNAME, split_extension
@@ -55,19 +56,19 @@ class FileSystem(DataStore):
         definition_path = self.definition_save_path(dataset_id, name)
         definition_path.parent.mkdir(exist_ok=True)
         with open(definition_path, 'w') as f:
-            json.dump(definition, f)
+            yaml.dump(definition, f)
 
     def load_dataset_definition(self, dataset_id, name):
         fpath = self.definition_save_path(dataset_id, name)
         if fpath.exists():
             with open(fpath) as f:
-                definition = json.load(f)
+                definition = yaml.load(f, Loader=yaml.Loader)
         else:
             definition = None
         return definition
 
     def definition_save_path(self, dataset_id, name):
-        return Path(dataset_id) / self.METADATA_DIR / (name + '.json')
+        return Path(dataset_id) / self.METADATA_DIR / (name + '.yml')
 
     @property
     def provenance(self):
