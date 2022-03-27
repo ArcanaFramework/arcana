@@ -45,7 +45,7 @@ Stores
 
 .. autoclass:: arcana.data.stores.common.FileSystem
 
-.. autoclass:: arcana.data.stores.bids.BidsFormat
+.. autoclass:: arcana.data.stores.bids.Bids
 
 .. autoclass:: arcana.data.stores.medimage.Xnat
 

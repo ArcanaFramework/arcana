@@ -1,2 +1,2 @@
-from .structure import BidsFormat
+from .structure import Bids
 from .dataset import BidsDataset

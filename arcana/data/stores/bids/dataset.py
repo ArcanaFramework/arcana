@@ -8,7 +8,7 @@ from arcana.__about__ import PACKAGE_NAME, CODE_URL
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical
 from arcana.exceptions import ArcanaError, ArcanaEmptyDatasetError
-from .structure import BidsFormat
+from .structure import Bids
 
 @dataclass
 class ContainerMetadata():
@@ -128,7 +128,7 @@ class BidsDataset(Dataset):
             hierarchy = [Clinical.subject, Clinical.timepoint]
         else:
             hierarchy = [Clinical.session]    
-        dataset = BidsDataset(path, store=BidsFormat(),
+        dataset = BidsDataset(path, store=Bids(),
                               hierarchy=hierarchy)
         dataset.load_metadata()
         return dataset
@@ -156,7 +156,7 @@ class BidsDataset(Dataset):
                        'Mock B. Author']
         dataset = BidsDataset(
             path,
-            store=BidsFormat(),
+            store=Bids(),
             hierarchy=hierarchy,
             name=name,
             generated_by=generated_by,
@@ -173,10 +173,10 @@ class BidsDataset(Dataset):
                     if not session_id.startswith('sub-'):
                         session_id = f'ses-{session_id}'
                     node = dataset.add_leaf_node([subject_id, session_id])
-                    BidsFormat.absolute_node_path(node).mkdir(parents=True)
+                    Bids.absolute_node_path(node).mkdir(parents=True)
             else:
                 node = dataset.add_leaf_node([subject_id])
-                BidsFormat.absolute_node_path(node).mkdir(parents=True)
+                Bids.absolute_node_path(node).mkdir(parents=True)
         dataset.save_metadata()
         return dataset
 

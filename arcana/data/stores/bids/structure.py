@@ -4,7 +4,7 @@ from ..common import FileSystem
 from arcana.exceptions import ArcanaUsageError, ArcanaEmptyDatasetError
 
 
-class BidsFormat(FileSystem):
+class Bids(FileSystem):
     """Repository for working with data stored on the file-system in BIDS format 
     """
 

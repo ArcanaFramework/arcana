@@ -128,7 +128,7 @@ class FileSystem(DataStore):
     def file_group_stem_path(self, file_group):
         """The path to the stem of the paths (i.e. the path without
         file extension) where the files are saved in the file-system.
-        NB: this method is overridden in BidsFormat store.
+        NB: this method is overridden in Bids store.
 
         Parameters
         ----------

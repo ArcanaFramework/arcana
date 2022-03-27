@@ -25,7 +25,7 @@ There are four :class:`.DataStore` classes currently implemented (for
 instructions on how to add support for new systems see :ref:`alternative_stores`):
 
 * :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system
-* :class:`.BidsFormat` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific)
+* :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific)
 * :class:`.Xnat` - access data stored in XNAT_ repositories by its REST API
 * :class:`.XnatViaCS` - access data stored in XNAT_ repositories as exposed to integrated pipelines run in `XNAT's container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_ using a combination of direct access to the archive disk and the REST API
 
@@ -68,7 +68,7 @@ See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls`
 .. note::
 
     Data stores that don't require any parameters such as :class:`.FileSystem` and
-    :class:`.BidsFormat` don't need to be configured and can be accessed via their aliases,
+    :class:`.Bids` don't need to be configured and can be accessed via their aliases,
     ``file`` and ``bids`` when defining a dataset.
 
 .. _data_spaces:
@@ -411,17 +411,17 @@ to a dataset using the CLI.
 
 
 One of the main benefits of using datasets in BIDS_ format is that the names
-and file formats of the data are strictly defined. This allows the :class:`.BidsFormat`
+and file formats of the data are strictly defined. This allows the :class:`.Bids`
 data store object to automatically add sources to the dataset when it is
 initialised.
 
 .. code-block:: python
 
-    from arcana.data.stores.bids import BidsFormat
+    from arcana.data.stores.bids import Bids
     from arcana.data.stores.common import FileSystem
     from arcana.data.spaces.medimage import Clinical
 
-    bids_dataset = BidsFormat().dataset(
+    bids_dataset = Bids().dataset(
         id='/data/openneuro/ds00014')
 
     # Print dimensions of T1-weighted MRI image for Subject 'sub01'
