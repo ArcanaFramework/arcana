@@ -5,26 +5,6 @@ from arcana.tasks.archive import (
     create_tar, extract_tar, create_zip, extract_zip)
 
 
-# General formats
-class Text(BaseFile):
-    ext = 'txt'
-
-class Csv(BaseFile):
-    ext = 'csv'
-
-class Tsv(BaseFile):
-    ext = 'tsv'
-
-class TextMatrix(BaseFile):
-    ext = 'mat'
-
-class RFile(BaseFile):
-    ext = 'rData'
-
-class MatlabMatrix(BaseFile):
-    ext = 'mat'
-
-
 # Compressed formats
 class Zip(BaseFile):
     ext = 'zip'
@@ -67,6 +47,32 @@ class TarGz(Tar, Gzip):
             compression='gz')
         return node, node.lzout.out_file
 
+# Basic formats
+
+
+class File(BaseFile):
+
+    @classmethod
+    @converter(Zip)
+    def unzip(cls, fs_path):
+        node = extract_zip(
+            in_file=fs_path)
+        return node, node.lzout.out_file
+
+    @classmethod
+    @converter(Tar)
+    def untar(cls, fs_path):
+        node = extract_tar(
+            in_file=fs_path)
+        return node, node.lzout.out_file
+
+    @classmethod
+    @converter(TarGz)
+    def untargz(cls, fs_path):
+        node = extract_tar(
+            in_file=fs_path)
+        return node, node.lzout.out_file
+
 
 class Directory(BaseDirectory):
 
@@ -92,9 +98,30 @@ class Directory(BaseDirectory):
         return node, node.lzout.out_file
 
 
+# General formats
+class Text(File):
+    ext = 'txt'
+
+class Csv(File):
+    ext = 'csv'
+
+class Tsv(File):
+    ext = 'tsv'
+
+class TextMatrix(File):
+    ext = 'mat'
+
+class RFile(File):
+    ext = 'rData'
+
+class MatlabMatrix(File):
+    ext = 'mat'
+
+
+
 # Hierarchical text files
 
-class HierarchicalText(BaseFile):
+class HierarchicalText(File):
     pass
 
 class Json(HierarchicalText):
@@ -107,7 +134,7 @@ class Yaml(HierarchicalText):
 standard_formats = [Text, Directory, Zip, Tar, TarGz]
 
 # General image formats
-class ImageFile(BaseFile, metaclass=ABCMeta):
+class ImageFile(File, metaclass=ABCMeta):
     pass
 
 class Gif(ImageFile):
@@ -120,7 +147,7 @@ class Jpeg(ImageFile):
     ext = 'jpg'
 
 # Document formats
-class Document(BaseFile, metaclass=ABCMeta):
+class Document(File, metaclass=ABCMeta):
     pass
 
 class Pdf(Document):
