@@ -704,9 +704,15 @@ class BaseFileWithSideCars(BaseFile):
         super().set_fs_paths(paths)
         to_assign = copy(paths)
         to_assign.remove(self.fs_path)
+        # Begin with default side_car paths and override if provided
+        self.side_cars = self.default_side_car_paths(self.fs_path)
         for sc_ext in self.side_car_exts:
-            matched = self.side_cars[sc_ext] = absolute_path(self.matches_ext(*paths, ext=sc_ext))
-            to_assign.remove(matched)
+            try:
+                matched = self.side_cars[sc_ext] = absolute_path(self.matches_ext(*paths, ext=sc_ext))
+            except ArcanaFileFormatError:
+                pass  # fallback to default
+            else:
+                to_assign.remove(matched)
 
     @property
     def fs_paths(self):
@@ -756,8 +762,9 @@ class BaseFileWithSideCars(BaseFile):
         aux_paths : ty.Dict[str, str]
             A dictionary of auxiliary file names and default paths
         """
-        return dict((n, str(primary_path)[:-len(cls.ext)] + ext)
-                    for n, ext in cls.side_cars.items())
+               
+        return {e: (str(primary_path)[:-len(cls.ext)] + '.' + e)
+                for e in cls.side_car_exts}
 
     @classmethod
     def copy_ext(cls, old_path, new_path):
@@ -827,7 +834,7 @@ class BaseFileWithSideCars(BaseFile):
                 + ', '.join(str(k) for k in checksums.keys()))
         for key, chksum in checksums.items():
             try:
-                rel_key = fs_name_dict[key]
+                rel_key = fs_name_dict[str(key)]
             except KeyError:
                 try:
                     rel_key = Path(key).relative_to(base_path)

@@ -54,7 +54,7 @@ def test_put_items(dataset: Dataset):
             try:
                 rel_path = str(test_file.relative_to(files[0]))
             except ValueError:
-                rel_path = '.'.join(test_file.suffixes)
+                rel_path = '.'.join(test_file.suffixes)[1:]
             checksums[rel_path] = fhash.hexdigest()
             fs_paths.append(deriv_tmp_dir / test_file.parts[0])
         # Test inserting the new item into the store

@@ -139,7 +139,7 @@ ENTRYPOINT ["/launch.sh"]""")
 
     for inpt, dtype, _ in INPUTS:
         esc_inpt = inpt
-        kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + dtype.ext)
+        kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + '.' + dtype.ext)
 
     bids_dir = work_dir / 'bids'
 
@@ -180,7 +180,7 @@ def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
     for _, dtype, path in INPUTS:
         subdir, suffix = path.split('/')
         file_tests += f"""
-        if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}{dtype.ext_str}" ]; then
+        if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}{dtype.ext}" ]; then
             echo "Did not find {suffix} file"
             exit 1;
         fi
@@ -209,7 +209,7 @@ echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
 
     for inpt, dtype, _ in INPUTS:
         esc_inpt = inpt
-        kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + dtype.ext)
+        kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + '.' + dtype.ext)
 
     bids_dir = work_dir / 'bids'
 
