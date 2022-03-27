@@ -180,8 +180,8 @@ def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
     for _, dtype, path in INPUTS:
         subdir, suffix = path.split('/')
         file_tests += f"""
-        if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}{dtype.ext}" ]; then
-            echo "Did not find {suffix} file"
+        if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{dtype.ext}" ]; then
+            echo "Did not find {suffix} file at $BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{dtype.ext}"
             exit 1;
         fi
         """
