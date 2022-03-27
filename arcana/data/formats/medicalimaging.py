@@ -12,8 +12,8 @@ from pydra.tasks.mrtrix3.utils import MRConvert
 from arcana.core.mark import converter
 from arcana.exceptions import ArcanaUsageError
 from arcana.tasks.utils import identity_converter
-from arcana.core.data.format import (
-    BaseFileWithSideCars, FileGroup, BaseFile, BaseDirectory)
+from arcana.core.data.format import BaseFileWithSideCars
+from arcana.data.formats.common import File, Directory
 
 
 # class Dcm2niixConverter(Converter):
@@ -53,7 +53,7 @@ from arcana.core.data.format import (
 # Custom loader functions for different image types
 # =====================================================================
 
-class MedicalImage(BaseFile, metaclass=ABCMeta):
+class MedicalImage(File, metaclass=ABCMeta):
 
     INCLUDE_HDR_KEYS = None
     IGNORE_HDR_KEYS = None
@@ -157,7 +157,7 @@ class MedicalImage(BaseFile, metaclass=ABCMeta):
                                - other_image.get_array()) ** 2))
 
 
-class DicomFile(BaseFile):  # FIXME: Should extend from MedicalImage, but need to implement header and array
+class DicomFile(File):  # FIXME: Should extend from MedicalImage, but need to implement header and array
 
     ext = 'dcm'
 
@@ -167,7 +167,7 @@ class SiemensDicomFile(DicomFile):
     ext = 'IMA'
 
 
-class Dicom(BaseDirectory, MedicalImage):
+class Dicom(Directory, MedicalImage):
 
     content_types = (DicomFile,)
     alternate_names = ('secondary',)
@@ -429,12 +429,12 @@ class Analyze(BaseFileWithSideCars, NeuroImage):
     def get_header(self):
         raise NotImplementedError
 
-class MrtrixTrack(BaseFile):
+class MrtrixTrack(File):
 
     ext = 'tck'
 
 
-class Dwigrad(BaseFile):
+class Dwigrad(File):
 
     pass
 
@@ -490,12 +490,12 @@ class Fslgrad(Dwigrad):
 
 # Raw formats
 
-class ListMode(BaseFile):
+class ListMode(File):
 
     ext = 'bf'
 
 
-class Kspace(BaseFile):
+class Kspace(File):
 
     pass
 
@@ -540,7 +540,7 @@ class CustomKspace(Kspace):
     side_cars = ('ref', 'json')
 
 
-class Rda(BaseFile):
+class Rda(File):
     """MRS format"""
 
     ext = 'rda'
