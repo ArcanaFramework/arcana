@@ -1,6 +1,3 @@
-import attr
-import re
-import json
 from arcana import __version__
 from arcana.data.spaces.medimage import Clinical
 from ..common import FileSystem
