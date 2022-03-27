@@ -1,4 +1,4 @@
-from arcana.data.spaces.medicalimaging import Clinical
+from arcana.data.spaces.medimg import Clinical
 
 def test_is_parent():
     assert not Clinical.session.is_parent(Clinical.session)

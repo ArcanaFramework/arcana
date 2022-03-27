@@ -10,7 +10,7 @@ from arcana.data.formats.common import Text, Zip
 # # Import arcana module
 # from pydra.tasks.fsl.preprocess.bet import BET
 from arcana.core.data.set import Dataset
-# from arcana.data.formats.medicalimaging import Dicom, NiftiGz
+# from arcana.data.formats.medimg import Dicom, NiftiGz
 
 
 def test_pipeline(work_dir):

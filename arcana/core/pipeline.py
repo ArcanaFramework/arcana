@@ -314,7 +314,8 @@ class Pipeline():
         # Do input format conversions if required
         for input_name, required_format in pipeline.inputs:
             stored_format = dataset.column_specs[input_name].format
-            if required_format != stored_format:
+            if not (required_format is stored_format
+                    or issubclass(stored_format, required_format)):
                 logger.info("Adding implicit conversion for input '%s' "
                             "from %s to %s", input_name, stored_format,
                             required_format)
@@ -333,7 +334,7 @@ class Pipeline():
         # Create identity node to accept connections from user-defined nodes
         # via `set_output` method
         wf.per_node.add(func_task(
-            extract_paths_and_values,
+            access_paths_and_values,
             in_fields=[(i, DataItem) for i in input_names],
             out_fields=[(i, ty.Any) for i in input_names],
             name='input_interface',
@@ -356,7 +357,8 @@ class Pipeline():
         # Do output format conversions if required
         for output_name, produced_format in pipeline.outputs:
             stored_format = dataset.column_specs[output_name].format
-            if produced_format != stored_format:
+            if not (produced_format is stored_format
+                    or issubclass(produced_format, stored_format)):
                 logger.info("Adding implicit conversion for output '%s' "
                     "from %s to %s", output_name, produced_format,
                     stored_format)
@@ -365,6 +367,7 @@ class Pipeline():
                     produced_format,
                     name=f"{output_name}_output_converter")
                 converter.inputs.to_convert = to_sink.pop(output_name)
+                wf.per_node.add(converter)
                 # Map converter output to workflow output
                 to_sink[output_name] = converter.lzout.converted
 
@@ -463,7 +466,7 @@ def sink_items(dataset, frequency, id, provenance, **to_sink):
     return id
 
 
-def extract_paths_and_values(**data_items):
+def access_paths_and_values(**data_items):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
     logger.debug("Extracting paths/values from %s", data_items)
@@ -483,10 +486,12 @@ def encapsulate_paths_and_values(outputs, **kwargs):
     logger.debug("Encapsulating %s into %s", kwargs, outputs)
     items = []
     for out_name, out_type in outputs.items():
-        if isinstance(out_type, FileFormat):
-            items.append(out_type.from_path(kwargs[out_name]))
+        val = kwargs[out_name]
+        if issubclass(out_type, FileGroup):
+            obj = out_type.from_fs_path(val)
         else:
-            items.append(out_type(kwargs[out_name]))
+            obj = out_type(val)
+        items.append(obj)
     return tuple(items) if len(items) > 1 else items[0]
 
 

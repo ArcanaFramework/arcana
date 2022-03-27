@@ -36,7 +36,7 @@ on some high-performance computing clusters) you will obviously need to have
 installed these dependencies on the system and ensure they are on the `system
 path <https://learn.sparkfun.com/tutorials/configuring-the-path-system-variable/all>`_.
 
-Two command-line tools that the the `arcana-medicalimaging` sub-package uses
+Two command-line tools that the the `arcana-medimg` sub-package uses
 for implicit file-format conversions are
 
 * `Dcm2Niix <https://github.com/rordenlab/dcm2niix>`_
@@ -81,8 +81,8 @@ over all sessions with the API
     # Import arcana module
     from pydra.tasks.fsl.preprocess.bet import BET
     from arcana.core.data import Dataset
-    from arcana.data.spaces.medicalimaging import Clinical
-    from arcana.data.formats.medicalimaging import Dicom, NiftiGz
+    from arcana.data.spaces.medimg import Clinical
+    from arcana.data.formats.medimg import Dicom, NiftiGz
 
     # Load dataset
     my_dataset = Dataset.load('file///data/my-dataset', space=Clinical,
@@ -114,11 +114,11 @@ Alternatively, the same steps can be performed using the command line interface
 .. code-block:: console
 
     $ arcana dataset define 'file///data/my-project' subject session
-    $ arcana column add-source 'file///data/my-dataset' T1w '.*mprage.*' medicalimaging:Dicom --regex
-    $ arcana column add-sink 'file///data/my-dataset' brain_mask medicalimaging:NiftiGz
+    $ arcana column add-source 'file///data/my-dataset' T1w '.*mprage.*' medimg:Dicom --regex
+    $ arcana column add-sink 'file///data/my-dataset' brain_mask medimg:NiftiGz
     $ arcana apply workflow 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
       --arg name brain_extraction \
-      --input T1w in_file medicalimaging:NiftiGz \
+      --input T1w in_file medimg:NiftiGz \
       --output brain_mask out_file .
     $ arcana derive column 'file///data/my-dataset' brain_mask
 
@@ -126,8 +126,8 @@ Alternatively, the same steps can be performed using the command line interface
 
     When referencing objects within the ``arcana`` package from the CLI such
     as file-format classes or data spaces (see :ref:`data_spaces`), the
-    standard ``arcana.*.`` prefix can be dropped, e.g. ``medicalimaging:Dicom``
-    instead of the full path ``arcana.data.formats.medicalimaging:Dicom``.
+    standard ``arcana.*.`` prefix can be dropped, e.g. ``medimg:Dicom``
+    instead of the full path ``arcana.data.formats.medimg:Dicom``.
     Classes installed outside of the Arcana package, should be referred to
     with their full import path.
 

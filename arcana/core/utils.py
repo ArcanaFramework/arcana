@@ -623,7 +623,7 @@ def parse_dimensions(dimensions_str):
         raise ArcanaUsageError(
             f"Value provided to '--dimensions' arg ({dimensions_str}) "
             "needs to include module, either relative to "
-            "'arcana.dimensionss' (e.g. medicalimaging.Clinical) or an "
+            "'arcana.dimensionss' (e.g. medimg.Clinical) or an "
             "absolute path")
     module_path = '.'.join(parts[:-1])
     cls_name = parts[-1]

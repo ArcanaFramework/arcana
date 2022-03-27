@@ -5,7 +5,7 @@ import click
 import docker.errors
 import yaml
 from arcana.core.cli import cli
-from arcana.data.spaces.medicalimaging import Clinical
+from arcana.data.spaces.medimg import Clinical
 from arcana.data.stores.xnat import XnatViaCS
 
 

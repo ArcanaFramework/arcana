@@ -15,7 +15,7 @@ from fasteners import InterProcessLock
 from arcana.exceptions import ArcanaFileFormatError, ArcanaMissingDataException, ArcanaUsageError
 from arcana.core.utils import get_class_info, HOSTNAME, split_extension
 from arcana.core.data.set import Dataset
-from arcana.data.spaces.medicalimaging import Clinical, DataSpace
+from arcana.data.spaces.medimg import Clinical, DataSpace
 from arcana.core.data.store import DataStore
 from arcana.core.data.format import FileGroup, Field
 

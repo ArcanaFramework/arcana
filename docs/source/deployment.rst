@@ -58,8 +58,8 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 .. code-block:: python
 
     from arcana.data.stores.xnat import XnatViaCS
-    from arcana.data.spaces.medicalimaging import Clinical
-    from arcana.data.formats.medicalimaging import NiftiGz
+    from arcana.data.spaces.medimg import Clinical
+    from arcana.data.formats.medimg import NiftiGz
 
 
     xnat_command = XnatViaCS.generate_xnat_command(
@@ -108,13 +108,13 @@ For example, the preceding example would be:
     version: 1
     info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
     inputs:
-        - [in_files, medicalimaging:NiftiGz, File to segment, session]
+        - [in_files, medimg:NiftiGz, File to segment, session]
     outputs:
-        - [tissue_class_files, medicalimaging:NiftiGz, fast/tissue-classes]
-        - [partial_volume_map, medicalimaging:NiftiGz, fast/partial-volumes]
-        - [partial_volume_files, medicalimaging:NiftiGz, fast/partial-volume-files]
-        - [bias_field, medicalimaging:NiftiGz, fast/bias-field]
-        - [probability_maps, medicalimaging:NiftiGz, fast/probability-map]
+        - [tissue_class_files, medimg:NiftiGz, fast/tissue-classes]
+        - [partial_volume_map, medimg:NiftiGz, fast/partial-volumes]
+        - [partial_volume_files, medimg:NiftiGz, fast/partial-volume-files]
+        - [bias_field, medimg:NiftiGz, fast/bias-field]
+        - [probability_maps, medimg:NiftiGz, fast/probability-map]
     parameters:
         - [use_priors, Use priors]
         - [number_of_classes, Number of classes]
@@ -174,13 +174,13 @@ the full configuration required to build an XNAT docker image looks like
         version: 1
         info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
         inputs:
-            - [in_files, medicalimaging:NiftiGz, File to segment, session]
+            - [in_files, medimg:NiftiGz, File to segment, session]
         outputs:
-            - [tissue_class_files, medicalimaging:NiftiGz, fast/tissue-classes]
-            - [partial_volume_map, medicalimaging:NiftiGz, fast/partial-volumes]
-            - [partial_volume_files, medicalimaging:NiftiGz, fast/partial-volume-files]
-            - [bias_field, medicalimaging:NiftiGz, fast/bias-field]
-            - [probability_maps, medicalimaging:NiftiGz, fast/probability-map]
+            - [tissue_class_files, medimg:NiftiGz, fast/tissue-classes]
+            - [partial_volume_map, medimg:NiftiGz, fast/partial-volumes]
+            - [partial_volume_files, medimg:NiftiGz, fast/partial-volume-files]
+            - [bias_field, medimg:NiftiGz, fast/bias-field]
+            - [probability_maps, medimg:NiftiGz, fast/probability-map]
         parameters:
             - [use_priors, Use priors]
             - [number_of_classes, Number of classes]

@@ -247,6 +247,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
 
     def put(self, *fs_paths):
         self._check_part_of_data_node()
+        fs_paths = [Path(p) for p in fs_paths]
         dir_paths = list(p for p in fs_paths if p.is_dir())
         if len(dir_paths) > 1:
             dir_paths_str = "', '".join(str(p) for p in dir_paths)
@@ -476,23 +477,24 @@ class FileGroup(DataItem, metaclass=ABCMeta):
 
         # Get node to extract paths from file-group lazy field
         wf.add(func_task(
-            extract_paths,
+            access_paths,
             in_fields=[('from_format', type), ('file_group', from_format)],
             out_fields=[(i, str) for i in from_format.fs_names()],
-            task_name='extract',
+            # name='extract',
             from_format=from_format,
             file_group=wf.lzin.to_convert))
 
         # Create converter node
         converter, output_lfs = cls.select_converter_method(from_format)(**{
-            n: getattr(wf.extract.lzout, n) for n in cls.fs_names()})
-        converter.name = 'converter'
-        wf.add(converter)
-
+            n: getattr(wf.access_paths.lzout, n) for n in cls.fs_names()})
         # If there is only one output lazy field, place it in a tuple so it can
         # be zipped with cls.fs_names()
         if isinstance(output_lfs, LazyField):
             output_lfs = (output_lfs,)
+        # converter.name = 'converter'
+        # for lf in output_lfs:
+        #     lf.name = 'converter'
+        wf.add(converter)
 
         # Encapsulate output paths from converter back into a file group object
         wf.add(func_task(
@@ -500,11 +502,12 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             in_fields=[('to_format', type), ('to_convert', from_format)] + [
                 (o, str) for o in cls.fs_names()],
             out_fields=[('converted', cls)],
-            name='encapsulate',
+            # name='encapsulate',
             to_format=cls,
+            to_convert=wf.lzin.to_convert,
             **dict(zip(cls.fs_names(), output_lfs))))
 
-        wf.set_output(('converted', wf.encapsulate.lzout.converted))
+        wf.set_output(('converted', wf.encapsulate_paths.lzout.converted))
 
         return wf
 
@@ -536,7 +539,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             except (AttributeError, KeyError):
                 pass
             else:
-                if issubclass(from_format, converts_from):
+                if from_format is converts_from or issubclass(from_format, converts_from):
                     if converter:
                         prev_converts_from = converter.__annotations__['arcana_converter']
                         if issubclass(converts_from, prev_converts_from):
@@ -548,6 +551,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
                                 f"define a specific converter from {from_format} "
                                 f"(i.e. instead of from {prev_converts_from} "
                                 f"and {converts_from} respectively)")
+                    else:
+                        converter = meth
         if not converter:
             raise ArcanaFormatConversionError(
                 f"No converters defined between {from_format} and {cls}")
@@ -576,11 +581,15 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     @classmethod
     def access_contents_task(cls, file_group_lf: LazyField):
         """Access the fs paths of the file group"""
-        
-        
+
+    @classmethod
+    def from_fs_path(cls, fs_path):
+        file_group = cls(path=Path(fs_path).stem)
+        file_group.set_fs_paths([fs_path])
+        return file_group       
 
 
-def extract_paths(from_format, file_group):
+def access_paths(from_format, file_group):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
     logger.debug("Extracting paths from %s (%s format) before conversion", file_group, from_format)

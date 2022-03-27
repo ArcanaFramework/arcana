@@ -23,7 +23,7 @@ import docker
 from arcana import __version__
 from arcana.__about__ import install_requires, PACKAGE_NAME, python_versions
 from arcana.core.utils import get_pkg_name
-from arcana.data.spaces.medicalimaging import Clinical
+from arcana.data.spaces.medimg import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileGroup
 from arcana.core.utils import resolve_class, DOCKER_HUB
