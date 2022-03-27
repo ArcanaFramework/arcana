@@ -9,11 +9,11 @@ import pytest
 import docker
 import xnat4tests
 from arcana.data.stores import Xnat
-from arcana.data.stores.xnat.cs import XnatViaCS
-from arcana.data.spaces.medimg import Clinical
+from arcana.data.stores.medimage.xnat.cs import XnatViaCS
+from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.data.formats.common import Text, Directory
-from arcana.data.formats.medimg import NiftiXGz, NiftiGz, Dicom
+from arcana.data.formats.medimage import NiftiXGz, NiftiGz, Dicom
 from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.tests.fixtures import create_test_file
 

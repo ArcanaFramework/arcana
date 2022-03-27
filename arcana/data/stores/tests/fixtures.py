@@ -12,8 +12,8 @@ from arcana.core.data.space import DataSpace
 from arcana.core.utils import set_cwd
 from arcana.core.data.format import BaseFileWithSideCars
 from arcana.data.formats.common import Text, Directory, Json
-from arcana.data.spaces.medimg import Clinical
-from arcana.data.formats.medimg import (
+from arcana.data.spaces.medimage import Clinical
+from arcana.data.formats.medimage import (
     NiftiGz, NiftiXGz, NiftiX, Nifti, Analyze, MrtrixImage)
 
 

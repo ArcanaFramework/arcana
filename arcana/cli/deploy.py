@@ -5,8 +5,8 @@ import click
 import docker.errors
 import yaml
 from arcana.core.cli import cli
-from arcana.data.spaces.medimg import Clinical
-from arcana.data.stores.xnat import XnatViaCS
+from arcana.data.spaces.medimage import Clinical
+from arcana.data.stores.medimage import XnatViaCS
 
 
 DOCKER_REGISTRY = 'docker.io'

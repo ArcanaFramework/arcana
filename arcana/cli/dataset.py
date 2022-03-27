@@ -57,11 +57,11 @@ hierarchy
           "If the second arg contains '/' then it is interpreted as "
           "the path to a text file containing a list of IDs"))
 @click.option(
-    '--space', default='medimg:Clinical',
+    '--space', default='medimage:Clinical',
     help=("The enum that specifies the data dimensions of the dataset. "
           "Defaults to `Clinical`, which "
           "consists of the typical dataset>group>subject>session "
-          "data tree used in medimg trials/studies"))
+          "data tree used in medimage trials/studies"))
 @click.option(
     '--id_inference', nargs=2, metavar='<source-regex>',
     multiple=True,
@@ -143,7 +143,7 @@ format
     '--frequency', '-f', metavar='<dimension>',
     help=("The frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
-          "medimg:Clinical data dimensions"),
+          "medimage:Clinical data dimensions"),
     show_default="highest")
 @click.option(
     '--path', '-p',
@@ -165,7 +165,7 @@ format
     '--header', '-h', nargs=2, metavar='<key-val>',
     help=("Match on specific header value. This option is only valid for "
           "select formats that the implement the 'header_val()' method "
-          "(e.g. medimg:dicom)."))
+          "(e.g. medimage:dicom)."))
 def add_source(dataset_path, name, format, frequency, path, order,
                quality, is_regex, header):
     dataset = Dataset.load(dataset_path)
@@ -203,7 +203,7 @@ format
     '--frequency', '-f', metavar='<dimension>',
     help=("The frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
-          "medimg:Clinical data dimensions"),
+          "medimage:Clinical data dimensions"),
     show_default="highest")
 @click.option(
     '--path', '-p',

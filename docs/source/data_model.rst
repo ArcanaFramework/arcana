@@ -36,7 +36,7 @@ it to the YAML configuration file stored at `~/.arcana/stores.yml`.
 .. code-block:: python
 
     import os
-    from arcana.data.stores.xnat import Xnat
+    from arcana.data.stores.medimage import Xnat
 
     # Initialise the data store object
     xnat_store = Xnat(
@@ -186,7 +186,7 @@ layers of the directory tree in descending order.
 .. code-block:: python
 
     from arcana.data.stores.common import FileSystem
-    from arcana.data.spaces.medimg import Clinical
+    from arcana.data.spaces.medimage import Clinical
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
@@ -284,7 +284,7 @@ string separated by ':', e.g.
 .. code-block:: console
 
     $ arcana dataset define 'file///data/imaging/my-project:training' \
-      medimg:Clinical group subject \
+      medimage:Clinical group subject \
       --include subject 10:20
 
 
@@ -308,7 +308,7 @@ in the group. There are a number common file formats implemented in
 :mod:`arcana.data.formats.common`, including :class:`.Text`,
 :class:`.Zip`, :class:`.Json` and :class:`.Directory`. :class:`.FileGroup` subclasses
 may contain methods for conveniently accessing the file data and header metadata (e.g.
-:class:`.medimg.Dicom` and :class:`.medimg.NiftiXGz`) but this
+:class:`.medimage.Dicom` and :class:`.medimage.NiftiXGz`) but this
 is not a requirement for usage in workflows.
 
 Arcana will implicily handle conversions between file formats where a
@@ -361,8 +361,8 @@ sources and sinks via the API.
 
 .. code-block:: python
 
-    from arcana.data.spaces.medimg import Clinical
-    from arcana.data.formats.medimg import Dicom, NiftiGz
+    from arcana.data.spaces.medimage import Clinical
+    from arcana.data.formats.medimage import Dicom, NiftiGz
 
     xnat_dataset.add_source(
         name='T1w',
@@ -403,11 +403,11 @@ to a dataset using the CLI.
 .. code-block:: console
 
     $ arcana dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
-      medimg:Dicom --path '.*t1_mprage.*' \
+      medimage:Dicom --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
     $ arcana dataset add-sink 'file///data/imaging/my-project:training' brain_template \
-      medimg:NiftiGz --frequency group
+      medimage:NiftiGz --frequency group
 
 
 One of the main benefits of using datasets in BIDS_ format is that the names
@@ -419,7 +419,7 @@ initialised.
 
     from arcana.data.stores.bids import BidsFormat
     from arcana.data.stores.common import FileSystem
-    from arcana.data.spaces.medimg import Clinical
+    from arcana.data.spaces.medimage import Clinical
 
     bids_dataset = BidsFormat().dataset(
         id='/data/openneuro/ds00014')

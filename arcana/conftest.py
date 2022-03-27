@@ -42,7 +42,7 @@ from .data.stores.tests.fixtures import (
     test_dicom_dataset_dir, dicom_dataset)
 from .tasks.tests.fixtures import (
     pydra_task_details, pydra_task)
-from .data.stores.xnat.tests.fixtures import (
+from .data.stores.medimage.xnat.tests.fixtures import (
     xnat_dataset, mutable_xnat_dataset, xnat_archive_dir, xnat_repository,
     xnat_container_registry, run_prefix, concatenate_container, xnat_root_dir)
 

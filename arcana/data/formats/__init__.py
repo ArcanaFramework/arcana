@@ -1,2 +1,2 @@
 from .common import *
-from .medimg import *
+from .medimage import *

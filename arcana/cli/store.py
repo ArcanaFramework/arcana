@@ -21,7 +21,7 @@ nickname
     The name given to the store for reference in other commands
 type
     The storage class and the module it is defined in, e.g.
-    `arcana.data.store.xnat:Xnat`
+    `arcana.data.store.medimage:Xnat`
 location
     The location of the store, e.g. server address
 *varargs
