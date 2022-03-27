@@ -1,23 +1,22 @@
-from genericpath import exists
 import os
 import os.path as op
 from pathlib import Path
 import re
-from copy import copy
 import errno
 from collections import defaultdict
 import shutil
+import typing as ty
 import logging
 import json
 import attr
 import yaml
 from fasteners import InterProcessLock
-from arcana.exceptions import ArcanaFileFormatError, ArcanaMissingDataException, ArcanaUsageError
-from arcana.core.utils import get_class_info, HOSTNAME, split_extension
+from arcana.exceptions import ArcanaMissingDataException, ArcanaUsageError
+from arcana.core.utils import get_class_info, HOSTNAME
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical, DataSpace
 from arcana.core.data.store import DataStore
-from arcana.core.data.format import FileGroup, Field
+from arcana.core.data.format import FileGroup
 
 
 logger = logging.getLogger('arcana')

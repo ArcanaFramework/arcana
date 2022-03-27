@@ -5,7 +5,8 @@ from pathlib import Path
 from tempfile import mkdtemp
 import pytest
 from click.testing import CliRunner
-
+import pkgutil
+import importlib
 
 # Set DEBUG logging for unittests
 
@@ -36,15 +37,19 @@ def nifti_sample_dir():
     return Path(__file__).parent.parent / 'test-data'/ 'nifti'
 
 
-# Import all test fixtures from `test_fixtures` sub-package
-from .data.stores.tests.fixtures import (
-    test_dataspace, test_dataspace_location, dataset, tmp_dir,
-    test_dicom_dataset_dir, dicom_dataset)
-from .tasks.tests.fixtures import (
-    pydra_task_details, pydra_task)
-from .data.stores.medimage.xnat.tests.fixtures import (
-    xnat_dataset, mutable_xnat_dataset, xnat_archive_dir, xnat_repository,
-    xnat_container_registry, run_prefix, concatenate_container, xnat_root_dir)
+# Import all test fixtures from `arcana.tests.fixtures` sub-packages
+FIXTURES_PATH = Path(__file__).parent / 'tests'/ 'fixtures'
+for mod_info in pkgutil.iter_modules([str(FIXTURES_PATH)],
+                                     prefix='arcana.tests.fixtures.'):
+    importlib.import_module(mod_info.name)
+# from .data.stores.tests.fixtures import (
+#     test_dataspace, test_dataspace_location, dataset, tmp_dir,
+#     test_dicom_dataset_dir, dicom_dataset)
+# from .tasks.tests.fixtures import (
+#     pydra_task_details, pydra_task)
+# from .data.stores.medimage.xnat.tests.fixtures import (
+#     xnat_dataset, mutable_xnat_dataset, xnat_archive_dir, xnat_repository,
+#     xnat_container_registry, run_prefix, concatenate_container, xnat_root_dir)
 
 
 # For debugging in IDE's don't catch raised exceptions and let the IDE

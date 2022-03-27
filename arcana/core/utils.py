@@ -285,10 +285,9 @@ def resolve_format(name):
 
 
 def submodules(module):
-    module_names = [i.name for i in pkgutil.iter_modules(
-        [str(Path(module.__file__).parent)])]
-    for module_name in module_names:
-        yield import_module(module.__package__ + '.' + module_name)
+    for mod_info in pkgutil.iter_modules([str(Path(module.__file__).parent)],
+                                         prefix=module.__package__ + '.'):
+        yield import_module(mod_info.name)
 
 
 def list_subclasses(package, base_class):

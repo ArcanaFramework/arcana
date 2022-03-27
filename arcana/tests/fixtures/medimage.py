@@ -14,8 +14,7 @@ from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiXGz, NiftiGz, Dicom
-from arcana.tasks.tests.fixtures import concatenate
-from arcana.data.stores.tests.fixtures import create_test_file
+from arcana.tests.fixtures.common import create_test_file
 
 
 # -----------------------

@@ -13,7 +13,6 @@ from arcana.data.stores.bids import BidsDataset
 from arcana.data.stores.bids import BidsApp
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiXGz, NiftiXFslgradGz
-from arcana.core.utils import resolve_class
 
 
 BIDS_VALIDATOR_DOCKER = 'bids/validator'

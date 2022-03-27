@@ -3,13 +3,11 @@ import pytest
 import zipfile
 import tempfile
 from pathlib import Path
-from arcana.data.stores.tests.fixtures import (
-    make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
-from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.formats.common import Text, Zip
-# # Import arcana module
-# from pydra.tasks.fsl.preprocess.bet import BET
 from arcana.core.data.set import Dataset
+from arcana.tests.fixtures.common import (
+    concatenate, make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
+# from pydra.tasks.fsl.preprocess.bet import BET
 # from arcana.data.formats.medimage import Dicom, NiftiGz
 
 

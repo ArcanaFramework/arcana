@@ -4,11 +4,10 @@ import time
 import tempfile
 import pytest
 import docker.errors
-from arcana.data.stores.medimage.xnat.tests.fixtures import make_mutable_dataset
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats import Text
-from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.medimage.xnat.cs import XnatViaCS
+from arcana.tests.fixtures.medimage import make_mutable_dataset
 
 
 PIPELINE_NAME = 'test-concatenate'

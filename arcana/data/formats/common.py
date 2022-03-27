@@ -2,7 +2,7 @@ from abc import ABCMeta
 import zipfile
 from arcana.core.data.format import FileGroup, BaseFile, BaseDirectory
 from arcana.core.mark import converter
-from arcana.tasks.archive import (
+from arcana.tasks.common.archive import (
     create_tar, extract_tar, create_zip, extract_zip)
 
 
