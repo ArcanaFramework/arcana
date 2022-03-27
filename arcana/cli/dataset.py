@@ -1,8 +1,6 @@
 
-from collections import defaultdict
 import click
 from arcana.core.cli import cli
-from arcana.exceptions import ArcanaUsageError
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.utils import resolve_class

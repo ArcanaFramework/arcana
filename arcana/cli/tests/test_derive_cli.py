@@ -2,8 +2,8 @@ import tempfile
 from pathlib import Path
 from argparse import ArgumentParser
 import pytest
-from arcana.data.stores.tests.fixtures import TEST_DATASET_BLUEPRINTS, make_dataset
-from arcana.data.stores.medimage.xnat.tests.fixtures import (
+from arcana.tests.fixtures.common import TEST_DATASET_BLUEPRINTS, make_dataset
+from arcana.tests.fixtures.medimage import (
     make_mutable_dataset as make_xnat_dataset,
     TEST_DATASET_BLUEPRINTS as TEST_XNAT_DATASET_BLUEPRINTS)
 from arcana.data.formats import Text

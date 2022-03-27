@@ -11,7 +11,7 @@ from arcana.exceptions import ArcanaUsageError
 from arcana.core.data.space import DataSpace
 from arcana.core.enum import DataQuality
 from arcana import __version__
-from arcana.tasks.bids import construct_bids, extract_bids, bids_app
+# from arcana.tasks.bids import construct_bids, extract_bids, bids_app
 from arcana.core.cli import cli
 from arcana.core.data.set import Dataset
 from arcana.core.utils import (

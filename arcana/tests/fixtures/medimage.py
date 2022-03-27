@@ -17,6 +17,11 @@ from arcana.data.formats.medimage import NiftiXGz, NiftiGz, Dicom
 from arcana.tests.fixtures.common import create_test_file
 
 
+@pytest.fixture
+def nifti_sample_dir():
+    return Path(__file__).parent.parent.parent.parent / 'test-data'/ 'nifti'
+
+
 # -----------------------
 # Test dataset structures
 # -----------------------

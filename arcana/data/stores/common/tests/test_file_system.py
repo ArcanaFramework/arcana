@@ -3,11 +3,10 @@ import os.path
 from tempfile import mkdtemp
 import hashlib
 from pathlib import Path
-from dataclasses import dataclass
 import operator as op
 from functools import reduce
 from arcana.core.data.set import Dataset
-from arcana.data.stores.tests.fixtures import create_test_file
+from arcana.tests.fixtures.common import create_test_file
 
 
 

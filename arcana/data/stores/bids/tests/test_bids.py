@@ -10,7 +10,7 @@ import docker
 from arcana import __version__
 from arcana.data.formats import NiftiX
 from arcana.data.stores.bids import BidsDataset
-from arcana.data.stores.bids import BidsApp
+from arcana.tasks.bids import BidsApp
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiXGz, NiftiXFslgradGz
 

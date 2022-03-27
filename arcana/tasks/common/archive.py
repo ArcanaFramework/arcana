@@ -87,8 +87,8 @@ def extract_tar(in_file: File, extract_dir: Directory, bufsize: int=10240,
     'allowZip64': bool,
     'return': {
         'out_file': File}})
-def create_zip(in_file, out_file, base_dir, compression='', allowZip64=True,
-               compresslevel=None, strict_timestamps=True):
+def create_zip(in_file, out_file, base_dir, compression=zipfile.ZIP_DEFLATED,
+               allowZip64=True, compresslevel=None, strict_timestamps=True):
 
     if out_file == attr.NOTHING:
         out_file = Path(in_file[0]).name + '.zip'

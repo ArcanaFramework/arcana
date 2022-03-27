@@ -1,9 +1,8 @@
 import pytest
 import os.path
 from arcana.core.data.set import Dataset
-from arcana.core.data.column import DataSource, DataSink
 from arcana.core.enum import DataQuality, DataSalience
-from arcana.data.stores.tests.fixtures import (
+from arcana.tests.fixtures.common import (
   TestDatasetBlueprint, TestDataSpace, make_dataset, get_dataset_path)
 from arcana.cli.dataset import define, add_source, add_sink, missing_items
 from arcana.data.formats.common import Text
@@ -39,7 +38,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
     args = [str(h) for h in basic_dataset.blueprint.hierarchy]
     # Generate "arbitrary" values for included and excluded from dim length
     # and index
-    args.extend(['--space', 'arcana.data.stores.tests.fixtures:TestDataSpace'])
+    args.extend(['--space', 'arcana.tests.fixtures.common:TestDataSpace'])
     # Run the command line
     result = cli_runner(define, [dataset_path, *args])
     # Check tool completed successfully
@@ -110,7 +109,7 @@ def test_define_cli(dataset, cli_runner):
         args.extend(['--include', str(axis), slce])
     for axis, slce in excluded:
         args.extend(['--exclude', str(axis), slce])
-    args.extend(['--space', 'arcana.data.stores.tests.fixtures:TestDataSpace'])
+    args.extend(['--space', 'arcana.tests.fixtures.common:TestDataSpace'])
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully

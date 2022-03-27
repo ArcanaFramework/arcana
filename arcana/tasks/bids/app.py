@@ -12,6 +12,7 @@ from pydra.engine.specs import (
     LazyField, ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical
+from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.exceptions import ArcanaUsageError
 from arcana.core.utils import func_task
 
