@@ -106,7 +106,7 @@ class FileSystem(DataStore):
             val = field.format(val)
         return val
 
-    def put_file_group_paths(self, file_group: FileGroup, fs_paths: list[Path]):
+    def put_file_group_paths(self, file_group: FileGroup, fs_paths: ty.List[Path]):
         """
         Inserts or updates a file_group in the store
         """
