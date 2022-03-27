@@ -1,4 +1,5 @@
 from abc import ABCMeta
+import zipfile
 from arcana.core.data.format import FileGroup, BaseFile, BaseDirectory
 from arcana.core.mark import converter
 from arcana.tasks.archive import (
@@ -14,7 +15,7 @@ class Zip(BaseFile):
     def archive(cls, fs_path):
         node = create_zip(
             in_file=fs_path,
-            compression='gz')
+            compression=zipfile.ZIP_DEFLATED)
         return node, node.lzout.out_file
 
 class Gzip(BaseFile):
@@ -33,7 +34,7 @@ class Tar(BaseFile):
     def archive(cls, fs_path):
         node = create_tar(
             in_file=fs_path,
-            compression='gz')
+            compression='')
         return node, node.lzout.out_file    
 
 class TarGz(Tar, Gzip):

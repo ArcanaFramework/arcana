@@ -12,12 +12,7 @@ from arcana.core.utils import set_cwd
 from arcana.exceptions import ArcanaUsageError
 
 
-TAR_COMPRESSION_TYPES = ['gz', 'bz2', 'xz']
-ZIP_COMPRESSION_TYPES = {
-    '': zipfile.ZIP_STORED,
-    'zlib': zipfile.ZIP_DEFLATED,
-    'bz2': zipfile.ZIP_BZIP2,
-    'xz': zipfile.ZIP_LZMA}
+TAR_COMPRESSION_TYPES = ['', 'gz', 'bz2', 'xz']
 
 @mark.task
 @mark.annotate({
@@ -82,11 +77,13 @@ def extract_tar(in_file: File, extract_dir: Directory, bufsize: int=10240,
 @mark.annotate({
     'in_file': MultiInputObj,
     'out_file': str,
-    'compression': (str, 
+    'compression': (int, 
                     {'help_string': (
                          f"The type of compression applied to zip file, "
-                         "', '".join(ZIP_COMPRESSION_TYPES)),
-                     'allowed_values': list(ZIP_COMPRESSION_TYPES)}),
+                         "see https://docs.python.org/3/library/zipfile.html#zipfile.ZIP_DEFLATED "
+                         "for valid compression types"),
+                     'allowed_values': [zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED,
+                                        zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA]}),
     'allowZip64': bool,
     'return': {
         'out_file': File}})
@@ -110,7 +107,7 @@ def create_zip(in_file, out_file, base_dir, compression='', allowZip64=True,
         zip_kwargs['strict_timestamps'] = strict_timestamps
 
     with zipfile.ZipFile(
-            out_file, mode='w', compression=ZIP_COMPRESSION_TYPES[compression],
+            out_file, mode='w', compression=compression,
             allowZip64=allowZip64, compresslevel=compresslevel,
             **zip_kwargs) as zfile, set_cwd(base_dir):
         for path in in_file:
