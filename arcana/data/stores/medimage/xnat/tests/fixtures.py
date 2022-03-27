@@ -8,7 +8,7 @@ import typing as ty
 import pytest
 import docker
 import xnat4tests
-from arcana.data.stores import Xnat
+from arcana.data.stores.medimage.xnat.api import Xnat
 from arcana.data.stores.medimage.xnat.cs import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
