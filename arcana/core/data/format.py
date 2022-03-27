@@ -253,8 +253,13 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             raise ArcanaFileFormatError(
                 f"Cannot put more than one directory, {dir_paths_str}, as part "
                 f"of the same file group {self}")
+        # Make a local copy of the file-group to validate the paths and create
+        # any defaults before they are pushed to the store
+        cpy = copy(self)
+        cpy.set_fs_paths(fs_paths)
         cache_paths = self.data_node.dataset.store.put_file_group_paths(
-            self, fs_paths)
+            self, cpy.fs_paths)
+        # Set the paths to the cached files
         self.set_fs_paths(cache_paths)
         self.validate_file_paths()
         # Save provenance
@@ -702,7 +707,7 @@ class BaseFileWithSideCars(BaseFile):
 
     def set_fs_paths(self, paths: ty.List[Path]):
         super().set_fs_paths(paths)
-        to_assign = copy(paths)
+        to_assign = set(paths)
         to_assign.remove(self.fs_path)
         # Begin with default side_car paths and override if provided
         self.side_cars = self.default_side_car_paths(self.fs_path)
@@ -763,7 +768,7 @@ class BaseFileWithSideCars(BaseFile):
             A dictionary of auxiliary file names and default paths
         """
                
-        return {e: (str(primary_path)[:-len(cls.ext)] + '.' + e)
+        return {e: Path(str(primary_path)[:-len(cls.ext)] + e)
                 for e in cls.side_car_exts}
 
     @classmethod
