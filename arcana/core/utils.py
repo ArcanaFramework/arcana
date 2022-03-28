@@ -2,8 +2,10 @@ from typing import Sequence
 import subprocess as sp
 import importlib_metadata
 import pkgutil
+from enum import Enum
 import re
 from pathlib import Path
+import packaging
 from importlib import import_module
 from inspect import isclass
 from itertools import zip_longest
@@ -13,9 +15,11 @@ import os.path
 from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
+import attr
+from arcana._version import __version__
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
-from arcana.exceptions import ArcanaUsageError, ArcanaNameError
+from arcana.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaVersionError
 
 
 PATH_SUFFIX = '_path'
@@ -224,7 +228,7 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     return cls
 
 
-# def resolve_datatype(name):
+# def resolve_format(name):
 #     """Resolves a in a sub-module of arcana.data.formats based on its
 #     name
 
@@ -235,17 +239,17 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
 
 #     Returns
 #     -------
-#     FileFormat or type
+#     type
 #         The resolved file format or type
 #     """
 #     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
 #         return eval(name)
 #     import arcana.data.formats
-#     import arcana.core.data.datatype
+#     import arcana.core.data.format
 #     return resolve_subclass(arcana.data.formats,
-#                         arcana.core.data.datatype.FileFormat, name)
+#                         arcana.core.data.format.FileFormat, name)
 
-def resolve_datatype(name):
+def resolve_format(name):
     """Resolves a in a sub-module of arcana.file_format based on its
     name
 
@@ -256,7 +260,7 @@ def resolve_datatype(name):
 
     Returns
     -------
-    FileFormat or type
+    type
         The resolved file format or type
     """
     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
@@ -281,10 +285,9 @@ def resolve_datatype(name):
 
 
 def submodules(module):
-    module_names = [i.name for i in pkgutil.iter_modules(
-        [str(Path(module.__file__).parent)])]
-    for module_name in module_names:
-        yield import_module(module.__package__ + '.' + module_name)
+    for mod_info in pkgutil.iter_modules([str(Path(module.__file__).parent)],
+                                         prefix=module.__package__ + '.'):
+        yield import_module(mod_info.name)
 
 
 def list_subclasses(package, base_class):
@@ -390,7 +393,7 @@ def lower(s):
     return s.lower()
 
 
-def parse_single_value(value, datatype=None):
+def parse_single_value(value, format=None):
     """
     Tries to convert to int, float and then gives up and assumes the value
     is of type string. Useful when excepting values that may be string
@@ -409,8 +412,8 @@ def parse_single_value(value, datatype=None):
     elif not isinstance(value, (int, float, bool)):
         raise ArcanaUsageError(
             "Unrecognised type for single value {}".format(value))
-    if datatype is not None:
-        value = datatype(value)
+    if format is not None:
+        value = format(value)
     return value
 
 
@@ -451,7 +454,7 @@ def find_mismatch(first, second, indent=''):
     """
     Finds where two objects differ, iterating down into nested containers
     (i.e. dicts, lists and tuples) They can be nested containers
-    any combination of primary datatypes, str, int, float, dict and lists
+    any combination of primary formats, str, int, float, dict and lists
 
     Parameters
     ----------
@@ -619,7 +622,7 @@ def parse_dimensions(dimensions_str):
         raise ArcanaUsageError(
             f"Value provided to '--dimensions' arg ({dimensions_str}) "
             "needs to include module, either relative to "
-            "'arcana.dimensionss' (e.g. medicalimaging.Clinical) or an "
+            "'arcana.dimensionss' (e.g. medimage.Clinical) or an "
             "absolute path")
     module_path = '.'.join(parts[:-1])
     cls_name = parts[-1]
@@ -628,3 +631,86 @@ def parse_dimensions(dimensions_str):
     except ImportError:
         module = import_module(module_path)
     return getattr(module, cls_name)
+
+
+def serialise(obj, skip=(), ignore_instance_method=False):
+    """Serialises an object of a class defined with attrs to a dictionary
+
+    Parameters
+    ----------
+    obj
+        The Arcana object to serialised. Must be defined using the attrs
+        decorator
+    skip: Sequence[str]
+        The names of attributes to skip"""
+
+    if hasattr(obj, 'serialise') and not ignore_instance_method:
+        serialised = obj.serialise()
+    elif isclass(obj):
+        serialised = '<' + class_location(obj) + '>'
+    elif isinstance(obj, Enum):
+        serialised = '|' + class_location(type(obj)) + '|' + str(obj)
+    elif isinstance(obj, Path):
+        serialised = str(obj)
+    elif hasattr(obj, '__attrs_attrs__'):
+        serialised = attr.asdict(
+            obj,
+            recurse=False,
+            filter=lambda a, v: a.init and a.name not in skip,
+            value_serializer=lambda _, __, v: serialise(v))
+        serialised['type'] = '<' + class_location(obj) + '>'
+        serialised['arcana_version'] = __version__
+    elif not isinstance(obj, str) and isinstance(obj, Sequence):
+        serialised = [serialise(x) for x in obj]
+    elif isinstance(obj, dict):
+        serialised = {k: serialise(v) for k, v in obj.items()}
+    else:
+        serialised = obj
+
+    return serialised
+
+
+def unserialise(serialised: dict, **kwargs):
+    """Unserialises an object serialised by the `serialise` method from a
+    dictionary
+
+    Parameters
+    ----------
+    serialised : dict
+        A dictionary containing a serialsed Arcana object such as a data store
+        or dataset definition
+    **kwargs : dict[str, Any]
+        Additional initialisation arguments for the object when it is reinitialised.
+        Overrides those stored"""
+    if isinstance(serialised, dict) and 'type' in serialised:
+        serialised_cls = resolve_class(serialised.pop('type')[1:-1])
+        serialised_version = serialised.pop('arcana_version')
+        if packaging.version.parse(serialised_version) < packaging.version.parse(MIN_SERIAL_VERSION):
+            raise ArcanaVersionError(
+                f"Serialised version ('{serialised_version}' is too old to be "
+                f"read by this version of arcana ('{__version__}'), the minimum "
+                f"version is {MIN_SERIAL_VERSION}")
+        init_args = {}
+        for k, v in serialised.items():
+            init_args[k] = unserialise(v)
+        init_args.update(kwargs)
+        unserialised = serialised_cls(**init_args)
+    elif isinstance(serialised, list):
+        unserialised = [unserialise(x) for x in serialised]
+    elif isinstance(serialised, dict):
+        unserialised = {k: unserialise(v) for k, v in serialised.items()}
+    elif isinstance(serialised, str):
+        if match:= re.match(r'<(.*)>', serialised): # Class location
+            unserialised = resolve_class(match.group(1))
+        elif match:= re.match(r'\|([^\|]+)\|(.*)', serialised):  # Enum
+            unserialised = resolve_class(match.group(1))[match.group(2)]
+        else:
+            unserialised = serialised    
+    else:
+        unserialised = serialised
+
+    return unserialised
+
+# Minimum version of Arcana that this 
+MIN_SERIAL_VERSION = '0.0.0'
+

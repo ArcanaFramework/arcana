@@ -9,9 +9,8 @@ from pydra import Workflow, mark
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana.exceptions import ArcanaNameError, ArcanaUsageError
-from .data.item import DataItem, FileGroup
+from .data.format import DataItem, FileGroup
 from .data.set import Dataset
-from .data.format import FileFormat
 from .data.space import DataSpace
 from .utils import func_task
 
@@ -31,8 +30,8 @@ class Pipeline():
 
     wf: Workflow = attr.ib()
     frequency: DataSpace = attr.ib()
-    inputs: ty.List[ty.Tuple[str, FileFormat]] = attr.ib(factory=list)
-    outputs: ty.List[ty.Tuple[str, FileFormat]] = attr.ib(factory=list)
+    inputs: ty.List[ty.Tuple[str, type]] = attr.ib(factory=list)
+    outputs: ty.List[ty.Tuple[str, type]] = attr.ib(factory=list)
     _connected: ty.Set[str] = attr.ib(factory=set, repr=False)
 
     @property
@@ -168,12 +167,12 @@ class Pipeline():
             Name of the pipeline
         dataset : Dataset
             The dataset to connect the pipeline to
-        inputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
+        inputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
             List of column names (i.e. either data sources or sinks) to be
             connected to the inputs of the pipeline. If the pipelines requires
             the input to be in a format to the source, then it can be specified
             in a tuple (NAME, FORMAT)
-        outputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
+        outputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
             List of sink names to be connected to the outputs of the pipeline
             If the input to be in a specific format, then it can be provided in
             a tuple (NAME, FORMAT)
@@ -239,7 +238,7 @@ class Pipeline():
             try:
                 required_format = input_types[input_name]
             except KeyError:
-                input_types[input_name] = required_format = source.datatype
+                input_types[input_name] = required_format = source.format
             pipeline.inputs.append((input_name, required_format))
 
         # Add sinks for the output of the workflow
@@ -251,7 +250,7 @@ class Pipeline():
                 raise ArcanaNameError(
                     output_name,
                     f"{output_name} is not the name of a sink in {dataset}") from e
-            if sink.pipeline is not None:
+            if sink.pipeline_name is not None:
                 if overwrite:
                     logger.info(
                         f"Overwriting pipeline of sink '{output_name}' "
@@ -261,12 +260,12 @@ class Pipeline():
                         f"Attempting to overwrite pipeline of '{output_name}' "
                         f"sink ({sink.pipeline}). Use 'overwrite' option if "
                         "this is desired")
-            sink.pipeline = pipeline
+            sink.pipeline_name = name
             sinks[output_name] = sink
             try:
                 produced_format = output_types[output_name]
             except KeyError:
-                output_types[output_name] = produced_format = sink.datatype
+                output_types[output_name] = produced_format = sink.format
             pipeline.outputs.append((output_name, produced_format))
 
         # Generate list of nodes to process checking existing outputs
@@ -314,27 +313,28 @@ class Pipeline():
 
         # Do input format conversions if required
         for input_name, required_format in pipeline.inputs:
-            stored_format = dataset.column_specs[input_name].datatype
-            if required_format != stored_format:
+            stored_format = dataset.column_specs[input_name].format
+            if not (required_format is stored_format
+                    or issubclass(stored_format, required_format)):
                 logger.info("Adding implicit conversion for input '%s' "
                             "from %s to %s", input_name, stored_format,
                             required_format)
-                cname = f"{input_name}_input_converter"                
-                converter_task = required_format.converter(stored_format)(
-                    name=cname,
-                    to_convert=sourced[input_name])
-                if source_out_dct[input_name] == ty.Sequence[DataItem]:
+                converter = required_format.converter_task(
+                    stored_format, name=f"{input_name}_input_converter")
+                converter.inputs.to_convert = sourced.pop(input_name)
+                if issubclass(source_out_dct[input_name], ty.Sequence):
                     # Iterate over all items in the sequence and convert them
-                    converter_task.split('to_convert')
+                    # separately
+                    converter.split('to_convert')
                 # Insert converter
-                wf.per_node.add(converter_task)
+                wf.per_node.add(converter)
                 # Map converter output to input_interface
-                sourced[input_name] = getattr(wf.per_node, cname).lzout.converted
+                sourced[input_name] = converter.lzout.converted
 
         # Create identity node to accept connections from user-defined nodes
         # via `set_output` method
         wf.per_node.add(func_task(
-            extract_paths_and_values,
+            access_paths_and_values,
             in_fields=[(i, DataItem) for i in input_names],
             out_fields=[(i, ty.Any) for i in input_names],
             name='input_interface',
@@ -356,18 +356,20 @@ class Pipeline():
 
         # Do output format conversions if required
         for output_name, produced_format in pipeline.outputs:
-            stored_format = dataset.column_specs[output_name].datatype
-            if produced_format != stored_format:
+            stored_format = dataset.column_specs[output_name].format
+            if not (produced_format is stored_format
+                    or issubclass(produced_format, stored_format)):
                 logger.info("Adding implicit conversion for output '%s' "
                     "from %s to %s", output_name, produced_format,
                     stored_format)
-                cname = f"{output_name}_output_converter"
                 # Insert converter
-                wf.per_node.add(stored_format.converter(produced_format)(
-                    name=cname, to_convert=to_sink[output_name]))
+                converter = stored_format.converter_task(
+                    produced_format,
+                    name=f"{output_name}_output_converter")
+                converter.inputs.to_convert = to_sink.pop(output_name)
+                wf.per_node.add(converter)
                 # Map converter output to workflow output
-                to_sink[output_name] = getattr(wf.per_node,
-                                               cname).lzout.converted
+                to_sink[output_name] = converter.lzout.converted
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
@@ -398,24 +400,6 @@ class Pipeline():
 
 
     PROVENANCE_VERSION = '1.0'
-
-
-# def identity(**kwargs):
-#     "Returns the keyword arguments as a tuple"
-#     to_return = tuple(kwargs.values())
-#     if len(to_return) == 1:
-#         to_return = to_return[0]
-#     return to_return
-
-
-# def extract_paths(**data_items):
-#     paths = tuple(i.value for i in kwargs.values())
-#     return paths if len(paths) > 1 else paths[0]
-
-
-# def encapsulate_paths(outputs, **kwargs):
-#     items = [v.datatype(kwargs[k]) for k, v in outputs]
-#     return items if len(items) > 1 else items[0]
 
 
 def append_side_car_suffix(name, suffix):
@@ -482,7 +466,7 @@ def sink_items(dataset, frequency, id, provenance, **to_sink):
     return id
 
 
-def extract_paths_and_values(**data_items):
+def access_paths_and_values(**data_items):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
     logger.debug("Extracting paths/values from %s", data_items)
@@ -502,8 +486,72 @@ def encapsulate_paths_and_values(outputs, **kwargs):
     logger.debug("Encapsulating %s into %s", kwargs, outputs)
     items = []
     for out_name, out_type in outputs.items():
-        if isinstance(out_type, FileFormat):
-            items.append(out_type.from_path(kwargs[out_name]))
+        val = kwargs[out_name]
+        if issubclass(out_type, FileGroup):
+            obj = out_type.from_fs_path(val)
         else:
-            items.append(out_type(kwargs[out_name]))
+            obj = out_type(val)
+        items.append(obj)
     return tuple(items) if len(items) > 1 else items[0]
+
+
+# Provenance mismatch detection methods salvaged from data.provenance
+
+# def mismatches(self, other, include=None, exclude=None):
+#     """
+#     Compares information stored within provenance objects with the
+#     exception of version information to see if they match. Matches are
+#     constrained to the name_paths passed to the 'include' kwarg, with the
+#     exception of sub-name_paths passed to the 'exclude' kwarg
+
+#     Parameters
+#     ----------
+#     other : Provenance
+#         The provenance object to compare against
+#     include : ty.List[ty.List[str]] | None
+#         Paths in the provenance to include in the match. If None all are
+#         incluced
+#     exclude : ty.List[ty.List[str]] | None
+#         Paths in the provenance to exclude from the match. In None all are
+#         excluded
+#     """
+#     if include is not None:
+#         include_res = [self._gen_prov_path_regex(p) for p in include]
+#     if exclude is not None:
+#         exclude_res = [self._gen_prov_path_regex(p) for p in exclude]
+#     diff = DeepDiff(self._prov, other._prov, ignore_order=True)
+#     # Create regular expresssions for the include and exclude name_paths in
+#     # the format that deepdiff uses for nested dictionary/lists
+
+#     def include_change(change):
+#         if include is None:
+#             included = True
+#         else:
+#             included = any(rx.match(change) for rx in include_res)
+#         if included and exclude is not None:
+#             included = not any(rx.match(change) for rx in exclude_res)
+#         return included
+
+#     filtered_diff = {}
+#     for change_type, changes in diff.items():
+#         if isinstance(changes, dict):
+#             filtered = dict((k, v) for k, v in changes.items()
+#                             if include_change(k))
+#         else:
+#             filtered = [c for c in changes if include_change(c)]
+#         if filtered:
+#             filtered_diff[change_type] = filtered
+#     return filtered_diff
+
+# @classmethod
+# def _gen_prov_path_regex(self, file_path):
+#     if isinstance(file_path, str):
+#         if file_path.startswith('/'):
+#             file_path = file_path[1:]
+#         regex = re.compile(r"root\['{}'\].*"
+#                             .format(r"'\]\['".join(file_path.split('/'))))
+#     elif not isinstance(file_path, re.Pattern):
+#         raise ArcanaUsageError(
+#             "Provenance in/exclude name_paths can either be name_path "
+#             "strings or regexes, not '{}'".format(file_path))
+#     return regex

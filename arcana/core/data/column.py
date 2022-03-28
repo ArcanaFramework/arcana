@@ -22,7 +22,7 @@ class DataSource():
         A regex name_path to match the file_group names with. Must match
         one and only one file_group per <frequency>. If None, the name
         is used instead.
-    datatype : FileFormat or type
+    format : type
         File format that data will be 
     frequency : DataSpace
         The frequency of the file-group within the dataset tree, e.g. per
@@ -44,7 +44,7 @@ class DataSource():
         Flags whether the name_path is a regular expression or not
     """
     path: str = attr.ib()
-    datatype = attr.ib()
+    format = attr.ib()
     frequency: DataSpace = attr.ib()
     quality_threshold: DataQuality = attr.ib(
         default=None, converter=optional(lambda q: DataQuality[str(q)]))
@@ -59,12 +59,15 @@ class DataSource():
             (match_quality, self.quality_threshold),
             (match_header_vals, self.header_vals)]
         # Get all items that match the data format of the source
-        matches = node.resolved(self.datatype)
+        matches = node.resolved(self.format)
         if not matches:
-            raise ArcanaInputMissingMatchError(
-                f"Did not find any items matching data format "
-                f"{self.datatype} in {node}, found unresolved items:\n"
-                + '\n'.join(str(i.path) for i in node.unresolved))
+            msg = (f"Did not find any items matching data format "
+                   f"{self.format} in {node}, found unresolved items:\n")
+            for item in node.unresolved:
+                msg += f'\n{item.path}: paths=' + ','.join(
+                    p.name for p in item.file_paths) + ', uris=' + ','.join(
+                        item.uris.keys())
+            raise ArcanaInputMissingMatchError(msg)
         # Apply all filters to find items that match criteria
         for func, arg in criteria:
             if arg is not None:
@@ -125,7 +128,7 @@ class DataSink():
     path : str
         The path to the relative location the corresponding data items will be
         stored within the nodes of the data tree.
-    format : FileFormat or type
+    format : type
         The file format or data type used to store the corresponding items
         in the store dataset.
     frequency : DataSpace
@@ -135,23 +138,24 @@ class DataSink():
         The salience of the specified file-group, i.e. whether it would be
         typically of interest for publication outputs or whether it is just
         a temporary file in a workflow, and stages in between
-    workflow : str
+    pipeline_name : str
         The nane of the workflow applied to the dataset to generates the data
         for the sink
     """
 
     path: str = attr.ib()
-    datatype = attr.ib()
+    format = attr.ib()
     frequency: DataSpace = attr.ib()
-    salience: DataSalience = attr.ib(default=DataSalience.supplementary)
-    pipeline: str = attr.ib(default=None)
+    salience: DataSalience = attr.ib(default=DataSalience.supplementary,
+                                     converter=lambda s: DataSalience[str(s)])
+    pipeline_name: str = attr.ib(default=None)
 
     def match(self, node):
-        matches = [i for i in node.resolved(self.datatype)
+        matches = [i for i in node.resolved(self.format)
                    if i.path == self.path]
         if not matches:
             # Return a placeholder data item that can be set
-            return self.datatype(path=self.path, data_node=node,
+            return self.format(path=self.path, data_node=node,
                                     exists=False)
         elif len(matches) > 1:
             raise ArcanaMultipleMatchesInputError(

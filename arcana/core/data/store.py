@@ -6,7 +6,8 @@ import attr
 import typing as ty
 import yaml
 from arcana.core.utils import (
-    get_config_file_path, list_subclasses, resolve_class, class_location)
+    get_config_file_path, list_subclasses, resolve_class, class_location,
+    serialise, unserialise)
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
 
@@ -24,46 +25,6 @@ class DataStore(metaclass=ABCMeta):
                                 eq=False)
 
     CONFIG_NAME = 'stores'
-
-    def dataset(self, id, hierarchy=None, **kwargs):
-        """
-        Returns a dataset from the XNAT repository
-
-        Parameters
-        ----------
-        id : str
-            The ID (or file-system path) of the project (or directory) within
-            the store
-        sources : Dict[Str, DataSource]
-            A dictionary that maps "name-paths" of input "columns" in the
-            dataset to criteria in a Selector object that select the
-            corresponding items in the dataset
-        sinks : Dict[str, Spec]
-            A dictionary that maps "name-paths" of sinks analysis
-            workflows to be stored in the dataset
-        dimensions : EnumMeta
-            The DataSpace enum that defines the frequencies (e.g.
-            per-session, per-subject,...) present in the dataset.                       
-        **kwargs:
-            Keyword args passed on to the Dataset init method
-        """
-        if not hierarchy:
-            try:
-                hierarchy = self.DEFAULT_HIERARCHY
-            except AttributeError as e:
-                raise ArcanaUsageError(
-                    "'hierarchy' kwarg must be specified for datasets in "
-                    f"{type(self)} stores") from e
-        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
-        dataset = Dataset(id, store=self, hierarchy=hierarchy, **kwargs)           
-        return dataset
-
-    def load_dataset(self, id, name=None):
-        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
-        if name is None:
-            name = Dataset.DEFAULT_NAME
-        metadata = self.load_dataset_metadata(id, name)
-        return Dataset.load(id, self, name, metadata)
 
     @abstractmethod
     def find_nodes(self, dataset):
@@ -90,7 +51,7 @@ class DataStore(metaclass=ABCMeta):
         """        
 
     @abstractmethod
-    def get_file_group(self, file_group, cache_only=False):
+    def get_file_group_paths(self, file_group, cache_only=False):
         """
         Cache the file_group locally (if required) and return the locations
         of the cached primary file and side cars
@@ -105,10 +66,8 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        path : str
-            The file-system path to the cached file
-        side_cars : Dict[str, str] or None
-            The file-system paths to the cached side-cars if present
+        fs_paths : list[str]
+            The file-system path to the cached files
 
         Raises
         ------
@@ -118,7 +77,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get_field(self, field):
+    def get_field_value(self, field):
         """
         Extract and return the value of the field from the store
 
@@ -134,7 +93,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_file_group(self, file_group, fs_path, side_cars):
+    def put_file_group_paths(self, file_group, fs_paths):
         """
         Inserts or updates the file_group into the store
 
@@ -142,10 +101,17 @@ class DataStore(metaclass=ABCMeta):
         ----------
         file_group : FileGroup
             The file_group to insert into the store
+        fs_paths : list[Path]
+            The file-system paths to the files/directories to sync
+
+        Returns
+        -------
+        cached_paths : list[str]
+            The paths of the files where they are cached in the file system
         """
 
     @abstractmethod
-    def put_field(self, field, value):
+    def put_field_value(self, field, value):
         """
         Inserts or updates the fields into the store
 
@@ -156,21 +122,67 @@ class DataStore(metaclass=ABCMeta):
         """
         
     @abstractmethod
-    def save_dataset_metadata(self, dataset_id: str,
-                              metadata: ty.Dict[str, ty.Any], name: str):
-        """Save metadata associated with the dataset in the store
+    def save_dataset_definition(self,
+                                dataset_id: str,
+                                definition: ty.Dict[str, ty.Any],
+                                name: str):
+        """Save definition of dataset within the store
 
         Parameters
         ----------
-        dataset_id
+        dataset_id: str
             The ID/path of the dataset within the store
-        metadata
-            A dictionary 
-            """
+        definition: dict[str, Any]
+            A dictionary containing the serialised Dataset to be saved. The
+            dictionary is in a format ready to be dumped to file as JSON or
+            YAML.
+        name: str
+            Name for the dataset definition to distinguish it from other
+            definitions for the same directory/project"""
 
     @abstractmethod
-    def load_dataset_metadata(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
-        """Load metadata associated with the dataset in the store"""        
+    def load_dataset_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
+        """Load definition of a dataset saved within the store
+
+        Parameters
+        ----------
+        dataset_id: str
+            The ID (e.g. file-system path, XNAT project ID) of the project
+        name: str
+            Name for the dataset definition to distinguish it from other
+            definitions for the same directory/project
+
+        Returns
+        -------
+        definition: dict[str, Any]
+            A serialised Dataset object that was saved in the data store
+        """
+
+    @abstractmethod
+    def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataItem
+            The item to store the provenance data for
+        provenance: dict[str, Any]
+            The provenance data to store"""
+
+    @abstractmethod
+    def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataItem
+            The item to store the provenance data for
+
+        Returns
+        -------
+        provenance: dict[str, Any] or None
+            The provenance data stored in the repository for the data item.
+            None if no provenance data has been stored"""            
 
     def get_checksums(self, file_group):
         """
@@ -218,17 +230,11 @@ class DataStore(metaclass=ABCMeta):
             raise ArcanaNameError(
                 name, f"Name '{name}' clashes with built-in type of store")
         entries = self.load_saved_entries()
-        entries[name] = self.asdict()
+        # connect to store in case it is needed in the serialise method and to
+        # test the connection in general before it is saved
+        with self:  
+            entries[name] = serialise(self)
         self.save_entries(entries)
-
-    def asdict(self):
-        dct = attr.asdict(
-            self,
-            filter=lambda a, v: a.init,
-            value_serializer=lambda _, __, v: (
-                str(v) if isinstance(v, Path) else v))
-        dct['type'] = class_location(self)
-        return dct
 
     @classmethod
     def remove(cls, name: str):
@@ -278,6 +284,53 @@ class DataStore(metaclass=ABCMeta):
         else:
             store = resolve_class(entry.pop('type'))(**entry)
         return store
+
+
+    def new_dataset(self, id, hierarchy=None, space=None, **kwargs):
+        """
+        Returns a dataset from the XNAT repository
+
+        Parameters
+        ----------
+        id : str
+            The ID (or file-system path) of the project (or directory) within
+            the store
+        space: DataSpace
+            The data space of the dataset
+        hierarchy: list[DataSpace or str]
+            The hierarchy of the dataset
+        space : EnumMeta
+            The DataSpace enum that defines the frequencies (e.g.
+            per-session, per-subject,...) present in the dataset.                       
+        **kwargs:
+            Keyword args passed on to the Dataset init method
+        """
+        if not hierarchy:
+            try:
+                hierarchy = self.DEFAULT_HIERARCHY
+            except AttributeError as e:
+                raise ArcanaUsageError(
+                    "'hierarchy' kwarg must be specified for datasets in "
+                    f"{type(self)} stores") from e
+        if not space:
+            try:
+                space = self.DEFAULT_SPACE
+            except AttributeError as e:
+                raise ArcanaUsageError(
+                    "'space' kwarg must be specified for datasets in "
+                    f"{type(self)} stores") from e                
+        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
+        dataset = Dataset(id, store=self, space=space, hierarchy=hierarchy,
+                          **kwargs)           
+        return dataset
+
+    def load_dataset(self, id, name=None):
+        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
+        if name is None:
+            name = Dataset.DEFAULT_NAME
+        serialised = self.load_dataset_definition(id, name)
+        return unserialise(serialised, store=self)
+
 
     @classmethod
     def singletons(cls):

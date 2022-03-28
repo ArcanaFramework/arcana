@@ -43,17 +43,14 @@ Core
 Stores
 ~~~~~~
 
-.. autoclass:: arcana.data.stores.file_system.FileSystem
+.. autoclass:: arcana.data.stores.common.FileSystem
 
-.. autoclass:: arcana.data.stores.bids.BidsFormat
+.. autoclass:: arcana.data.stores.bids.Bids
 
-.. autoclass:: arcana.data.stores.xnat.Xnat
+.. autoclass:: arcana.data.stores.medimage.Xnat
 
-.. autoclass:: arcana.data.stores.xnat.XnatViaCS
+.. autoclass:: arcana.data.stores.medimage.XnatViaCS
     :members: generate_xnat_command, generate_dockerfile, create_wrapper_image
-
-
-
 
 
 Processing

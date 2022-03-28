@@ -50,13 +50,13 @@ and ``out_file`` in the example below) to appropriate columns in the dataset
 .. code-block:: python
 
     from pydra.tasks.freesurfer import Freesurfer
-    from arcana.data.formats import common, medicalimaging
+    from arcana.data.formats import common, medimage
 
     dataset = Dataset.load('myuni-xnat//myproject:training')
 
-    dataset.add_source('T1w', format=medicalimaging.Dicom, path='.*mprage.*',
+    dataset.add_source('T1w', format=medimage.Dicom, path='.*mprage.*',
                        is_regex=True)
-    dataset.add_source('T2w', format=medicalimaging.Dicom, path='.*t2spc.*',
+    dataset.add_source('T2w', format=medimage.Dicom, path='.*t2spc.*',
                        is_regex=True)
 
     dataset.add_sink('freesurfer/recon-all', common.Directory)
@@ -66,8 +66,8 @@ and ``out_file`` in the example below) to appropriate columns in the dataset
             name='freesurfer,
             param1=10.0,
             param2=20.0),
-        inputs=[('T1w', 'in_file', medicalimaging.NiftiGz),
-                ('T2w', 'peel', medicalimaging.NiftiGz)],
+        inputs=[('T1w', 'in_file', medimage.NiftiGz),
+                ('T2w', 'peel', medimage.NiftiGz)],
         outputs=[('freesurfer/recon-all', 'out_file', common.Directory)])
 
 If there is a mismatch in the data format (see :ref:`data_formats`) between the
@@ -82,7 +82,7 @@ can all add the sources and sinks in one step
 .. code-block:: python
 
     from pydra.tasks.fsl.preprocess.fast import FAST
-    from arcana.data.formats import common, medicalimaging
+    from arcana.data.formats import common, medimage
 
     dataset = Dataset.load('file///data/openneuro/ds00014:test')
 
@@ -90,8 +90,8 @@ can all add the sources and sinks in one step
         workflow=FAST(
             name='segmentation',
             method='a-method'),
-        sources=[('T1w', 'in_file', medicalimaging.NiftiGz)],
-        sinks=[('fast/gm', 'gm', medicalimaging.NiftiGz)])
+        sources=[('T1w', 'in_file', medimage.NiftiGz)],
+        sinks=[('fast/gm', 'gm', medimage.NiftiGz)])
 
     # Save pipeline to dataset metadata for subsequent reuse.
     dataset.save()
@@ -102,15 +102,15 @@ To connect a workflow via the CLI
 .. code-block:: console
 
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T1w \
-      medicalimaging:Dicom --path '.*mprage.*'
+      medimage:Dicom --path '.*mprage.*'
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
-      medicalimaging:Dicom --path '.*t2spc.*'
+      medimage:Dicom --path '.*t2spc.*'
     $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurver/recon-all \
       common:ZippedDir
     $ arcana apply workflow 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
-      --input T1w in_file medicalimaging:NiftiGz \
-      --input T2w peel medicalimaging:NiftiGz \
+      --input T1w in_file medimage:NiftiGz \
+      --input T2w peel medimage:NiftiGz \
       --output freesurfer/recon-all out_file common:Directory \
       --parameter param1 10 \
       --parameter param2 20
@@ -122,8 +122,8 @@ formats don't need converting the can be added in a single step
 
     $ arcana apply workflow 'file///data/openneuro/ds00014:test' segmentation \
       pydra.tasks.fsl.preprocess.fast:FAST \
-      --source T1w in_file medicalimaging:NiftiGz \
-      --sink fast/gm gm medicalimaging:NiftiGz \
+      --source T1w in_file medimage:NiftiGz \
+      --sink fast/gm gm medimage:NiftiGz \
       --parameter method a-method
 
 
@@ -145,15 +145,15 @@ back to the dataset.
 .. code-block:: python
 
     from myworkflows import vbm_template
-    from arcana.data.formats import common, medicalimaging
-    from arcana.data.spaces.medicalimaging import Clinical
+    from arcana.data.formats import common, medimage
+    from arcana.data.spaces.medimage import Clinical
 
     dataset = Dataset.load('bids///data/openneuro/ds00014')
 
     # Add sink column with "dataset" row frequency
     dataset.add_sink(
         name='vbm_template',
-        format=medicalimaging.NiftiGz
+        format=medimage.NiftiGz
         frequency='dataset')
 
     # Connect pipeline to a "dataset" row-frequency sink column. Needs to be
@@ -232,7 +232,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
                 self,
                 pipeline,
                 recorded_datafile: Directory,  # Automatic conversion from stored Zip format before pipeline is run
-                recorded_metadata):  # Format/datatype is the same as class definition so can be omitted
+                recorded_metadata):  # Format/format is the same as class definition so can be omitted
 
             # A simple task to extract the "temperature" field from a JSON
             # metadata

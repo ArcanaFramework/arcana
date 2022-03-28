@@ -5,9 +5,9 @@ import logging
 import docker
 import xnat
 from arcana.tasks.tests.fixtures import concatenate
-from arcana.data.stores.xnat.cs import XnatViaCS
-from arcana.data.stores.xnat.tests.fixtures import DOCKER_REGISTRY_URI
-from arcana.data.spaces.medicalimaging import Clinical
+from arcana.data.stores.medimage.xnat.cs import XnatViaCS
+from arcana.data.stores.medimage.xnat.tests.fixtures import DOCKER_REGISTRY_URI
+from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats.common import text
 
 parser = ArgumentParser()

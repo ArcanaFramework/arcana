@@ -8,7 +8,7 @@ analysing datasets "in-place", i.e. pulling data from a data store to a
 (typically neighbouring) computing resource, performing computations on the
 data, and then uploading the processed data back to the store alongside the
 original data. Arcana has been designed to address many of the challenges typically
-faced when analysing large medical imaging projects, but should make your
+faced when analysing large medical-imaging projects, but should make your
 life easier no matter the size of your dataset or field of study!
 
 Data store interactions are abstracted by modular handlers, making

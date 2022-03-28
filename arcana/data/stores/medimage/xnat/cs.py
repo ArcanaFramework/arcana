@@ -17,20 +17,18 @@ import pkg_resources
 from dataclasses import dataclass
 import attr
 from attr import NOTHING
-# import requests
 import neurodocker as nd
 from natsort import natsorted
 import docker
 from arcana import __version__
 from arcana.__about__ import install_requires, PACKAGE_NAME, python_versions
 from arcana.core.utils import get_pkg_name
-from arcana.data.spaces.medicalimaging import Clinical
-from arcana.core.data.format import FileFormat
+from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
+from arcana.core.data.format import FileGroup
 from arcana.core.utils import resolve_class, DOCKER_HUB
 from arcana.exceptions import (
-    ArcanaFileFormatError, ArcanaUsageError, ArcanaNoDirectXnatMountException,
-    ArcanaBuildError)
+    ArcanaUsageError, ArcanaNoDirectXnatMountException, ArcanaBuildError)
 from .api import Xnat
 
 logger = logging.getLogger('arcana')
@@ -98,7 +96,7 @@ class XnatViaCS(Xnat):
     def password_default(self):
         return os.environ['XNAT_PASS']
 
-    def get_file_group(self, file_group):
+    def get_file_group_paths(self, file_group: FileGroup) -> ty.List[Path]:
         try:
             input_mount = self.get_input_mount(file_group)
         except ArcanaNoDirectXnatMountException:
@@ -117,65 +115,52 @@ class XnatViaCS(Xnat):
                 path = path.replace('scans', 'SCANS').replace('resources/', '')
             path = path.replace('resources', 'RESOURCES')
             resource_path = input_mount / path
-            if file_group.datatype.directory:
+            if file_group.is_dir:
                 # Link files from resource dir into temp dir to avoid catalog XML
-                primary_path = self.cache_path(file_group)
-                shutil.rmtree(primary_path, ignore_errors=True)
-                os.makedirs(primary_path, exist_ok=True)
+                dir_path = self.cache_path(file_group)
+                shutil.rmtree(dir_path, ignore_errors=True)
+                os.makedirs(dir_path, exist_ok=True)
                 for item in resource_path.iterdir():
                     if not item.name.endswith('_catalog.xml'):
-                        os.symlink(item, primary_path / item.name)
-                side_cars = {}
+                        os.symlink(item, dir_path / item.name)
+                fs_paths = [dir_path]
             else:
-                try:
-                    primary_path, side_cars = file_group.datatype.assort_files(
-                        resource_path.iterdir())
-                except ArcanaFileFormatError as e:
-                    e.msg += f" in {file_group} from {resource_path}"
-                    raise e
+                fs_paths = list(resource_path.iterdir())
         else:
             logger.debug(
                 "No URI set for file_group %s, assuming it is a newly created "
                 "derivative on the output mount", file_group)
-            primary_path, side_cars = self.get_output_paths(file_group)
-        return primary_path, side_cars
+            stem_path = self.file_group_stem_path(file_group)
+            if file_group.is_dir:
+                fs_paths = [stem_path]
+            else:
+                fs_paths = list(stem_path.iterdir())
+        return fs_paths
 
-    def put_file_group(self, file_group, fs_path, side_cars):
-        primary_path, side_car_paths = self.get_output_paths(file_group)
-        if file_group.datatype.directory:
-            shutil.copytree(fs_path, primary_path)
-        else:
-            os.makedirs(primary_path.parent, exist_ok=True)
-            # Upload primary file and add to cache
-            shutil.copyfile(fs_path, primary_path)
-            # Upload side cars and add them to cache
-            for sc_name, sc_src_path in side_cars.items():
-                shutil.copyfile(sc_src_path, side_car_paths[sc_name])
+    def put_file_group_paths(self, file_group: FileGroup, fs_paths: ty.List[Path]) -> ty.List[Path]:
+        stem_path = self.file_group_stem_path(file_group)
+        os.makedirs(stem_path.parent, exist_ok=True)
+        cache_paths = []
+        for fs_path in fs_paths:
+            if file_group.is_dir:
+                target_path = stem_path
+                shutil.copytree(fs_path, target_path)
+            else:
+                target_path = file_group.copy_ext(fs_path, stem_path)
+                # Upload primary file and add to cache
+                shutil.copyfile(fs_path, target_path)
+            cache_paths.append(target_path)
         # Update file-group with new values for local paths and XNAT URI
-        file_group.set_fs_paths(primary_path, side_car_paths)
         file_group.uri = (self._make_uri(file_group.data_node)
                           + '/RESOURCES/' + file_group.path)
         logger.info("Put %s into %s:%s node via direct access to archive directory",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)
+        return cache_paths
 
-    def get_output_paths(self, file_group):
-        path_parts = file_group.path.split('/')
-        resource_path = self.output_mount / '/'.join(path_parts[:-1])
-        side_car_paths = {}
-        if file_group.datatype.directory:
-            primary_path = resource_path / path_parts[-1]
-        else:
-            os.makedirs(resource_path, exist_ok=True)
-            # Upload primary file and add to cache
-            fname = path_parts[-1] + file_group.datatype.extension
-            primary_path = resource_path / fname
-            # Upload side cars and add them to cache
-            for sc_name, sc_ext in file_group.datatype.side_cars.items():
-                sc_fname = path_parts[-1] + sc_ext
-                sc_fpath = resource_path / sc_fname
-                side_car_paths[sc_name] = sc_fpath
-        return primary_path, side_car_paths
+    def file_group_stem_path(self, file_group):
+        """Determine the paths that derivatives will be saved at"""
+        return self.output_mount.joinpath(*file_group.path.split('/'))
     
     def get_input_mount(self, file_group):
         data_node = file_group.data_node
@@ -212,13 +197,13 @@ class XnatViaCS(Xnat):
         image_tag : str
             Name + version of the Docker image to be created
         inputs : ty.List[ty.Union[InputArg, tuple]]
-            Inputs to be provided to the container (pydra_field, datatype, dialog_name, frequency).
-            'pydra_field' and 'datatype' will be passed to "inputs" arg of the Dataset.pipeline() method,
+            Inputs to be provided to the container (pydra_field, format, dialog_name, frequency).
+            'pydra_field' and 'format' will be passed to "inputs" arg of the Dataset.pipeline() method,
             'frequency' to the Dataset.add_source() method and 'dialog_name' is displayed in the XNAT
             UI
         outputs : ty.List[ty.Union[OutputArg, tuple]]
-            Outputs to extract from the container (pydra_field, datatype, output_path).
-            'pydra_field' and 'datatype' will be passed as "outputs" arg the Dataset.pipeline() method,
+            Outputs to extract from the container (pydra_field, format, output_path).
+            'pydra_field' and 'format' will be passed as "outputs" arg the Dataset.pipeline() method,
             'output_path' determines the path the output will saved in the XNAT data tree.
         description : str
             User-facing description of the pipeline
@@ -292,7 +277,7 @@ class XnatViaCS(Xnat):
                 "user-settable": True,
                 "replacement-key": replacement_key})
             input_args.append(
-                f"--input {inpt.pydra_field} {inpt.datatype} {replacement_key}")
+                f"--input {inpt.pydra_field} {inpt.format} {replacement_key}")
 
         # Add parameters as additional inputs to inputs JSON specification
         param_args = []
@@ -322,14 +307,14 @@ class XnatViaCS(Xnat):
         for output in outputs:
             xnat_path = output.xnat_path if output.xnat_path else output.pydra_field
             label = xnat_path.split('/')[0]
-            out_fname = xnat_path + (output.datatype.ext if output.datatype.ext else '')
+            out_fname = xnat_path + (output.format.ext if output.format.ext else '')
             # output_fname = xnat_path
-            # if output.datatype.extension is not None:
-            #     output_fname += output.datatype.extension
+            # if output.format.ext is not None:
+            #     output_fname += output.format.ext
             # Set the path to the 
             outputs_json.append({
                 "name": output.pydra_field,
-                "description": f"{output.pydra_field} ({output.datatype})",
+                "description": f"{output.pydra_field} ({output.format})",
                 "required": True,
                 "mount": "out",
                 "path": out_fname,
@@ -341,9 +326,9 @@ class XnatViaCS(Xnat):
                 "as-a-child-of": "SESSION",
                 "type": "Resource",
                 "label": label,
-                "format": output.datatype.name})
+                "format": output.format.name})
             output_args.append(
-                f'--output {output.pydra_field} {output.datatype} {xnat_path}')
+                f'--output {output.pydra_field} {output.format} {xnat_path}')
 
         input_args_str = ' '.join(input_args)
         output_args_str = ' '.join(output_args)
@@ -785,14 +770,14 @@ class XnatViaCS(Xnat):
     @dataclass
     class InputArg():
         pydra_field: str  # Must match the name of the Pydra task input
-        datatype: FileFormat
+        format: type
         dialog_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
         frequency: Clinical = Clinical.session
 
     @dataclass
     class OutputArg():
         pydra_field: str  # Must match the name of the Pydra task output
-        datatype: FileFormat
+        format: type
         xnat_path: str = None  # The path the output is stored at in XNAT, defaults to the pydra name
 
     @dataclass

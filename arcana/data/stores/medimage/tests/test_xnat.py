@@ -10,10 +10,9 @@ from pathlib import Path
 import hashlib
 from tempfile import mkdtemp
 from functools import reduce
-from arcana.data.spaces.medicalimaging import Clinical
+from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.set import Dataset
-from arcana.data.stores.xnat.tests.fixtures import create_test_file
-from arcana.data.stores.tests.fixtures import create_test_file
+from arcana.tests.fixtures.common import create_test_file
 
 # logger = logging.getLogger('arcana')
 # logger.setLevel(logging.INFO)
@@ -35,11 +34,11 @@ def test_find_nodes(xnat_dataset):
 def test_get_items(xnat_dataset, caplog):
     expected_files = {}
     for scan_name, resources in xnat_dataset.blueprint.scans:
-        for resource_name, datatype, files in resources:
-            if datatype is not None:
+        for resource_name, format, files in resources:
+            if format is not None:
                 source_name = scan_name + resource_name
                 xnat_dataset.add_source(source_name, path=scan_name,
-                                        datatype=datatype)
+                                        format=format)
                 expected_files[source_name] = set(files)
     with caplog.at_level(logging.INFO, logger='arcana'):
         for node in xnat_dataset.nodes(Clinical.session):
@@ -59,7 +58,7 @@ def test_get_items(xnat_dataset, caplog):
                     archive_perms = get_perms(archive_dir)
                     msg = f"Error accessing {item} as '{current_user}' when '{archive_dir}' has {archive_perms} permissions"
                     raise PermissionError(msg)
-                if item.datatype.directory:
+                if item.is_dir:
                     item_files = set(os.listdir(item.fs_path))
                 else:
                     item_files = set(p.name for p in item.fs_paths)
@@ -70,8 +69,8 @@ def test_get_items(xnat_dataset, caplog):
 def test_put_items(mutable_xnat_dataset: Dataset, caplog):
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
-    for name, freq, datatype, files in mutable_xnat_dataset.blueprint.to_insert:
-        mutable_xnat_dataset.add_sink(name=name, datatype=datatype,
+    for name, freq, format, files in mutable_xnat_dataset.blueprint.to_insert:
+        mutable_xnat_dataset.add_sink(name=name, format=format,
                                         frequency=freq)
         deriv_tmp_dir = tmp_dir / name
         # Create test files, calculate checkums and recorded expected paths
@@ -84,24 +83,24 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
             with open(deriv_tmp_dir / test_file, 'rb') as f:
                 fhash.update(f.read())
             try:
-                rel_path = str(test_file.relative_to(files[0]))
+                rel_path = str(test_file.relative_to(Path(files[0])))
             except ValueError:
-                rel_path = '.'.join(test_file.suffixes)                
+                rel_path = '.'.join(test_file.suffixes)[1:]
             checksums[rel_path] = fhash.hexdigest()
             fs_paths.append(deriv_tmp_dir / test_file.parts[0])
         # Insert into first node of that frequency in xnat_dataset
         node = next(iter(mutable_xnat_dataset.nodes(freq)))
         item = node[name]
         with caplog.at_level(logging.INFO, logger='arcana'):
-            item.put(*datatype.assort_files(fs_paths))
+            item.put(*fs_paths)
         assert f'{mutable_xnat_dataset.access_method} access' in caplog.text.lower()
     def check_inserted():
-        for name, freq, datatype, _ in mutable_xnat_dataset.blueprint.to_insert:
+        for name, freq, format, _ in mutable_xnat_dataset.blueprint.to_insert:
             node = next(iter(mutable_xnat_dataset.nodes(freq)))
             item = node[name]
             item.get_checksums(force_calculate=(
                 mutable_xnat_dataset.access_method == 'direct'))
-            assert item.datatype == datatype
+            assert isinstance(item, format)
             assert item.checksums == all_checksums[name]
             item.get()
             assert all(p.exists() for p in item.fs_paths)

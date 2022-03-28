@@ -1,9 +1,9 @@
 import pytest
 from operator import mul
 from functools import reduce
-from arcana.core.data.item import FileGroup
+from arcana.core.data.format import FileGroup
 
-@pytest.mark.skip("needs to be updated to match refactoring")
+@pytest.mark.skip("needs to wait until further refactoring")
 def test_column_api_access(dataset):
 
     bp = dataset.blueprint

@@ -8,15 +8,18 @@ import typing as ty
 import pytest
 import docker
 import xnat4tests
-from arcana.data.stores import Xnat
-from arcana.data.stores.xnat.cs import XnatViaCS
-from arcana.data.spaces.medicalimaging import Clinical
+from arcana.data.stores.medimage.xnat.api import Xnat
+from arcana.data.stores.medimage.xnat.cs import XnatViaCS
+from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
-from arcana.core.data.format import FileFormat
-from arcana.data.formats.common import text, directory
-from arcana.data.formats.medicalimaging import niftix_gz, nifti_gz, dicom
-from arcana.tasks.tests.fixtures import concatenate
-from arcana.data.stores.tests.fixtures import create_test_file
+from arcana.data.formats.common import Text, Directory
+from arcana.data.formats.medimage import NiftiXGz, NiftiGz, Dicom
+from arcana.tests.fixtures.common import create_test_file
+
+
+@pytest.fixture
+def nifti_sample_dir():
+    return Path(__file__).parent.parent.parent.parent / 'test-data'/ 'nifti'
 
 
 # -----------------------
@@ -27,62 +30,62 @@ from arcana.data.stores.tests.fixtures import create_test_file
 class TestDatasetBlueprint():
 
     dim_lengths: ty.List[int]
-    scans: ty.List[ty.Tuple[str, ty.List[ty.Tuple[str, FileFormat, ty.List[str]]]]]
+    scans: ty.List[ty.Tuple[str, ty.List[ty.Tuple[str, type, ty.List[str]]]]]
     id_inference: ty.Dict[DataSpace, str]
-    to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataSpace, FileFormat, ty.List[str]]]]  # files to insert as derivatives
+    to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataSpace, type, ty.List[str]]]]  # files to insert as derivatives
 
 
 TEST_DATASET_BLUEPRINTS = {
     'basic': TestDatasetBlueprint(  # dataset name
         [1, 1, 3],  # number of timepoints, groups and members respectively
         [('scan1',  # scan type (ID is index)
-          [('text', # resource name
-            text,  # Data format
+          [('Text', # resource name
+            Text,  # Data format
             ['file.txt'])]),  # name files to place within resource
          ('scan2',
-          [('niftix_gz',
-            niftix_gz,
+          [('NiftiXGz',
+            NiftiXGz,
             ['file.nii.gz', 'file.json'])]),
          ('scan3',
-          [('directory',
-            directory,
+          [('Directory',
+            Directory,
             ['doubledir', 'dir', 'file.dat'])]),
          ('scan4',
-          [('DICOM', dicom, ['file1.dcm', 'file2.dcm', 'file3.dcm']),
-           ('NIFTI', nifti_gz, ['file1.nii.gz']),
+          [('DICOM', Dicom, ['file1.dcm', 'file2.dcm', 'file3.dcm']),
+           ('NIFTI', NiftiGz, ['file1.nii.gz']),
            ('BIDS', None, ['file1.json']),
            ('SNAPSHOT', None, ['file1.png'])])],
-        {},
-        [('deriv1', Clinical.timepoint, text, ['file.txt']),
-         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
-         ('deriv3', Clinical.batch, directory, ['dir']),
-         ('deriv4', Clinical.dataset, text, ['file.txt']),
+        [],
+        [('deriv1', Clinical.timepoint, Text, ['file.txt']),
+         ('deriv2', Clinical.subject, NiftiXGz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.batch, Directory, ['dir']),
+         ('deriv4', Clinical.dataset, Text, ['file.txt']),
          ]),  # id_inference dict
     'multi': TestDatasetBlueprint(  # dataset name
         [2, 2, 2],  # number of timepoints, groups and members respectively
         [
             ('scan1',
-             [('TEXT',  # resource name
-               text, 
+             [('Text',  # resource name
+               Text, 
                ['file.txt'])])],
-        {Clinical.subject: r'group(?P<group>\d+)member(?P<member>\d+)',
-         Clinical.session: r'timepoint(?P<timepoint>\d+).*'},  # id_inference dict
+        [('subject', r'group(?P<group>\d+)member(?P<member>\d+)'),
+         ('session', r'timepoint(?P<timepoint>\d+).*')],  # id_inference dict
         [
-         ('deriv1', Clinical.session, text, ['file.txt']),
-         ('deriv2', Clinical.subject, niftix_gz, ['file.nii.gz', 'file.json']),
-         ('deriv3', Clinical.timepoint, directory, ['doubledir']),
-         ('deriv4', Clinical.member, text, ['file.txt']),
-         ('deriv5', Clinical.dataset, text, ['file.txt']),
-         ('deriv6', Clinical.batch, text, ['file.txt']),
-         ('deriv7', Clinical.matchedpoint, text, ['file.txt']),
-         ('deriv8', Clinical.group, text, ['file.txt']),
+         ('deriv1', Clinical.session, Text, ['file.txt']),
+         ('deriv2', Clinical.subject, NiftiXGz, ['file.nii.gz', 'file.json']),
+         ('deriv3', Clinical.timepoint, Directory, ['doubledir']),
+         ('deriv4', Clinical.member, Text, ['file.txt']),
+         ('deriv5', Clinical.dataset, Text, ['file.txt']),
+         ('deriv6', Clinical.batch, Text, ['file.txt']),
+         ('deriv7', Clinical.matchedpoint, Text, ['file.txt']),
+         ('deriv8', Clinical.group, Text, ['file.txt']),
          ]),
     'concatenate_test': TestDatasetBlueprint(
         [1, 1, 2],
         [('scan1',
-          [('text', text, ['file1.txt'])]),
+          [('Text', Text, ['file1.txt'])]),
          ('scan2',
-          [('text', text, ['file2.txt'])])],
+          [('Text', Text, ['file2.txt'])])],
         {}, [])}
 
 GOOD_DATASETS = ['basic.api', 'multi.api', 'basic.direct', 'multi.direct']
@@ -99,7 +102,7 @@ def xnat_dataset(xnat_repository, xnat_archive_dir, request):
     with xnat4tests.connect() as login:
         if project_name(dataset_name,
                         xnat_repository.run_prefix) not in login.projects:
-            create_dataset_in_repo(dataset_name, xnat_repository.run_prefix)    
+            create_dataset_data_in_repo(dataset_name, xnat_repository.run_prefix)    
     return access_dataset(xnat_repository, dataset_name, access_method,
                           xnat_archive_dir)    
 
@@ -180,7 +183,7 @@ def make_mutable_dataset(xnat_repository, xnat_archive_dir, test_name):
     test_suffix = 'mutable' + access_method + str(hex(random.getrandbits(16)))[2:]
     # Need to create a new dataset per function so it can be safely modified
     # by the test without messing up other tests.
-    create_dataset_in_repo(dataset_name, xnat_repository.run_prefix,
+    create_dataset_data_in_repo(dataset_name, xnat_repository.run_prefix,
                            test_suffix=test_suffix)
     return access_dataset(xnat_repository, dataset_name, access_method,
                           xnat_archive_dir, test_suffix)
@@ -209,8 +212,8 @@ def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
     elif access_method != 'api':
         assert False
     
-    dataset = repository.dataset(proj_name,
-                                 id_inference=blueprint.id_inference)
+    dataset = repository.new_dataset(proj_name,
+                                     id_inference=blueprint.id_inference)
     # Stash the args used to create the dataset in attributes so they can be
     # used by tests
     dataset.blueprint = blueprint
@@ -218,7 +221,7 @@ def access_dataset(repository, dataset_name, access_method, xnat_archive_dir,
     return dataset
 
 
-def create_dataset_in_repo(dataset_name, run_prefix='', test_suffix=''):
+def create_dataset_data_in_repo(dataset_name, run_prefix='', test_suffix=''):
     """
     Creates dataset for each entry in dataset_structures
     """
@@ -233,15 +236,15 @@ def create_dataset_in_repo(dataset_name, run_prefix='', test_suffix=''):
         xclasses = login.classes
         for id_tple in product(*(list(range(d))
                                  for d in blueprint.dim_lengths)):
-            ids = dict(zip(Clinical.basis(), id_tple))
+            ids = dict(zip(Clinical.axes(), id_tple))
             # Create subject
             subject_label = ''.join(
-                f'{b}{ids[b]}' for b in Clinical.subject.nonzero_basis())
+                f'{b}{ids[b]}' for b in Clinical.subject.span())
             xsubject = xclasses.SubjectData(label=subject_label,
                                             parent=xproject)
             # Create session
             session_label = ''.join(
-                f'{b}{ids[b]}' for b in Clinical.session.nonzero_basis())
+                f'{b}{ids[b]}' for b in Clinical.session.span())
             xsession = xclasses.MrSessionData(label=session_label,
                                               parent=xsubject)
             

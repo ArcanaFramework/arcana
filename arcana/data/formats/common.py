@@ -1,34 +1,155 @@
-from arcana.core.data.format import FileFormat
-from arcana.tasks.archive import (
+from abc import ABCMeta
+import zipfile
+from arcana.core.data.format import FileGroup, BaseFile, BaseDirectory
+from arcana.core.mark import converter
+from arcana.tasks.common.archive import (
     create_tar, extract_tar, create_zip, extract_zip)
 
 
-# General formats
-directory = FileFormat(name='directory', extension=None, directory=True)
-text = FileFormat(name='text', extension='.txt')
-json = FileFormat(name='json', extension='.json')
-
 # Compressed formats
-zip = FileFormat(name='zip', extension='.zip')
-tar = FileFormat(name='targz', extension='.tar')
-targz = FileFormat(name='targz', extension='.tar.gz')
+class Zip(BaseFile):
+    ext = 'zip'
 
-standard_formats = [text, json, directory, zip, targz]
+    @classmethod
+    @converter(FileGroup)
+    def archive(cls, fs_path):
+        node = create_zip(
+            in_file=fs_path,
+            compression=zipfile.ZIP_DEFLATED)
+        return node, node.lzout.out_file
+
+class Gzip(BaseFile):
+    ext = 'gz'
+
+    @classmethod
+    @converter(FileGroup)
+    def archive(cls, fs_path):
+        raise NotImplementedError
+
+class Tar(BaseFile):
+    ext = 'tar'
+
+    @classmethod
+    @converter(FileGroup)
+    def archive(cls, fs_path):
+        node = create_tar(
+            in_file=fs_path,
+            compression='')
+        return node, node.lzout.out_file    
+
+class TarGz(Tar, Gzip):
+    ext = 'tar.gz'
+
+    @classmethod
+    @converter(FileGroup)
+    def archive(cls, fs_path):
+        node = create_tar(
+            in_file=fs_path,
+            compression='gz')
+        return node, node.lzout.out_file
+
+# Basic formats
+
+
+class File(BaseFile):
+
+    @classmethod
+    @converter(Zip)
+    def unzip(cls, fs_path):
+        node = extract_zip(
+            in_file=fs_path)
+        return node, node.lzout.out_file
+
+    @classmethod
+    @converter(Tar)
+    def untar(cls, fs_path):
+        node = extract_tar(
+            in_file=fs_path)
+        return node, node.lzout.out_file
+
+    @classmethod
+    @converter(TarGz)
+    def untargz(cls, fs_path):
+        node = extract_tar(
+            in_file=fs_path)
+        return node, node.lzout.out_file
+
+
+class Directory(BaseDirectory):
+
+    @classmethod
+    @converter(Zip)
+    def unzip(cls, fs_path):
+        node = extract_zip(
+            in_file=fs_path)
+        return node, node.lzout.out_file
+
+    @classmethod
+    @converter(Tar)
+    def untar(cls, fs_path):
+        node = extract_tar(
+            in_file=fs_path)
+        return node, node.lzout.out_file
+
+    @classmethod
+    @converter(TarGz)
+    def untargz(cls, fs_path):
+        node = extract_tar(
+            in_file=fs_path)
+        return node, node.lzout.out_file
+
+
+# General formats
+class Text(File):
+    ext = 'txt'
+
+class Csv(File):
+    ext = 'csv'
+
+class Tsv(File):
+    ext = 'tsv'
+
+class TextMatrix(File):
+    ext = 'mat'
+
+class RFile(File):
+    ext = 'rData'
+
+class MatlabMatrix(File):
+    ext = 'mat'
+
+
+
+# Hierarchical text files
+
+class HierarchicalText(File):
+    pass
+
+class Json(HierarchicalText):
+    ext = 'json'
+
+class Yaml(HierarchicalText):
+    ext = 'yml'    
+
+
+standard_formats = [Text, Directory, Zip, Tar, TarGz]
 
 # General image formats
-gif = FileFormat(name='gif', extension='.gif')
-png = FileFormat(name='png', extension='.png')
-jpg = FileFormat(name='jpg', extension='.jpg')
+class ImageFile(File, metaclass=ABCMeta):
+    pass
+
+class Gif(ImageFile):
+    ext = 'gif'
+
+class Png(ImageFile):
+    ext = 'png'
+
+class Jpeg(ImageFile):
+    ext = 'jpg'
 
 # Document formats
-pdf_format = FileFormat(name='pdf', extension='.pdf')
+class Document(File, metaclass=ABCMeta):
+    pass
 
-# Set Converters
-directory.set_converter(zip, extract_zip)
-directory.set_converter(targz, extract_tar)
-directory.set_converter(tar, extract_tar)
-tar.set_converter(directory, create_tar)
-targz.set_converter(directory, create_tar, compression='gz')
-zip.set_converter(directory, create_zip)
-text.set_converter(zip, extract_zip)
-zip.set_converter(text, create_zip)
+class Pdf(Document):
+    ext = 'pdf'

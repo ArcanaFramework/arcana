@@ -160,7 +160,7 @@ class ArcanaFileFormatClashError(ArcanaError):
     """
 
 
-class ArcanaNoConverterError(ArcanaError):
+class ArcanaFormatConversionError(ArcanaError):
     "No converters exist between formats"
 
 
@@ -201,7 +201,7 @@ class ArcanaDataTreeConstructionError(ArcanaError):
 class ArcanaBadlyFormattedIDError(ArcanaDataTreeConstructionError):
     "Error attempting to extract an ID from a tree path using a user provided regex"
 
-class ArcanaWrongDataSpacesError(ArcanaError):
+class ArcanaWrongDataSpaceError(ArcanaError):
     "Provided frequency is not a valid member of the dataset's dimensions"
 
 

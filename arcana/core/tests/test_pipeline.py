@@ -3,22 +3,20 @@ import pytest
 import zipfile
 import tempfile
 from pathlib import Path
-from arcana.data.stores.tests.fixtures import (
-    make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
-from arcana.tasks.tests.fixtures import concatenate
-from arcana.data.formats.common import text, zip
-# # Import arcana module
-# from pydra.tasks.fsl.preprocess.bet import BET
+from arcana.data.formats.common import Text, Zip
 from arcana.core.data.set import Dataset
-# from arcana.data.formats.medicalimaging import Dicom, NiftiGz
+from arcana.tests.fixtures.common import (
+    concatenate, make_dataset, TEST_DATASET_BLUEPRINTS, TestDataSpace)
+# from pydra.tasks.fsl.preprocess.bet import BET
+# from arcana.data.formats.medimage import Dicom, NiftiGz
 
 
 def test_pipeline(work_dir):
     dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'], work_dir)
 
-    dataset.add_source('file1', text)
-    dataset.add_source('file2', text)
-    dataset.add_sink('deriv', text)
+    dataset.add_source('file1', Text)
+    dataset.add_source('file2', Text)
+    dataset.add_sink('deriv', Text)
 
     pipeline = dataset.new_pipeline(
         name='test_pipeline',
@@ -44,19 +42,19 @@ def test_pipeline(work_dir):
 
 
 def test_pipeline_with_implicit_conversion(work_dir):
-    """Input files are converted from zip to text, concatenated and then
+    """Input files are converted from zip to Text, concatenated and then
     written back as zip files into the data store"""
     dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_zip_test'],
                            work_dir)
 
-    dataset.add_source('file1', zip)
-    dataset.add_source('file2', zip)
-    dataset.add_sink('deriv', zip)
+    dataset.add_source('file1', Zip)
+    dataset.add_source('file2', Zip)
+    dataset.add_sink('deriv', Zip)
 
     pipeline = dataset.new_pipeline(
         name='test_pipeline',
-        inputs=[('file1', text), ('file2', text)],
-        outputs=[('deriv', text)],
+        inputs=[('file1', Text), ('file2', Text)],
+        outputs=[('deriv', Text)],
         frequency=TestDataSpace.abcd)
 
     pipeline.add(concatenate(in_file1=pipeline.lzin.file1,
@@ -83,7 +81,8 @@ def test_pipeline_with_implicit_conversion(work_dir):
 def test_apply_workflow(work_dir):
 
     # Load dataset
-    my_dataset = Dataset('file///data/my-dataset', ['subject', 'session'])
+    my_dataset = Dataset.load('file///data/my-dataset',
+                              hierarchy=['subject', 'session'])
 
     # Add source column to select T1-weighted images in each sub-directory
     my_dataset.add_source('T1w', '.*mprage.*', format=Dicom, is_regex=True)

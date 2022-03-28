@@ -45,6 +45,9 @@ class ParamSalience(Enum):
     of an Analysis class in a menu.
     """
     
+    def __str__(self):
+        return self.name
+    
     debug = (0, "typically only needed to be altered for debugging")
     recommended = (20, "recommended to keep defaults")
     dependent = (40, "best value can be dependent on the context of the analysis, but the default should work for most cases")
@@ -63,6 +66,9 @@ class DataQuality(Enum):
     questionable = 50
     artefactual = 25
     unusable = 0
+    
+    def __str__(self):
+        return self.name
 
     def __eq__(self, other):
         return self.value == other.value

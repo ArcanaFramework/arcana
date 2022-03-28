@@ -1,14 +1,9 @@
 
-import os
-from importlib import import_module
 import click
 from arcana.core.cli import cli
-from arcana.data.spaces.medicalimaging import Clinical
-from arcana.exceptions import ArcanaUsageError
-from arcana.data.stores.file_system import FileSystem
-from arcana.data.stores.xnat import Xnat
-from arcana.data.stores.xnat.cs import XnatViaCS
-
+from arcana.core.data.set import Dataset
+from arcana.core.data.store import DataStore
+from arcana.core.utils import resolve_class
 
 
 XNAT_CACHE_DIR = 'xnat-cache'
@@ -18,7 +13,8 @@ def dataset():
     pass
 
 
-@dataset.command(help=("""Define the tree structure and IDs to include in a
+@dataset.command(name='define',
+                 help=("""Define the tree structure and IDs to include in a
 dataset. Where possible, the definition file is saved inside the dataset for
 use by multiple users, if not possible it is stored in the ~/.arcana directory.
 
@@ -39,7 +35,11 @@ hierarchy
 @click.argument('id')
 @click.argument('hierarchy', nargs=-1)
 @click.option(
-    '--included', nargs=2, default=[], metavar='<freq-id>',
+    '--space', type=str, default=None,
+    help=("The \"space\" of the dataset, defines the dimensions along the ids "
+          "of node can vary"))
+@click.option(
+    '--include', nargs=2, default=[], metavar='<freq-id>',
     multiple=True,
     help=("The nodes to include in the dataset. First value is the "
            "frequency of the ID (e.g. 'group', 'subject', 'session') "
@@ -47,7 +47,7 @@ hierarchy
            "If the second arg contains '/' then it is interpreted as "
            "the path to a text file containing a list of IDs"))
 @click.option(
-    '--excluded', nargs=2, default=[], metavar='<freq-id>',
+    '--exclude', nargs=2, default=[], metavar='<freq-id>',
     multiple=True,
     help=("The nodes to exclude from the dataset. First value is the "
           "frequency of the ID (e.g. 'group', 'subject', 'session') "
@@ -55,11 +55,11 @@ hierarchy
           "If the second arg contains '/' then it is interpreted as "
           "the path to a text file containing a list of IDs"))
 @click.option(
-    '--space', type=str, default='medicalimaging.Clinical',
+    '--space', default='medimage:Clinical',
     help=("The enum that specifies the data dimensions of the dataset. "
           "Defaults to `Clinical`, which "
           "consists of the typical dataset>group>subject>session "
-          "data tree used in medicalimaging trials/studies"))
+          "data tree used in medimage trials/studies"))
 @click.option(
     '--id_inference', nargs=2, metavar='<source-regex>',
     multiple=True,
@@ -78,55 +78,40 @@ groups corresponding to the inferred IDs
 --id_inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
 
 """)
-def define(id, hierarchy, included, excluded, space, id_inference):
+def define(id, hierarchy, include, exclude, space, id_inference):
 
+    store_name, id, name = Dataset.parse_id_str(id)
 
+    if not hierarchy:
+        hierarchy = None
 
-    hierarchy = [dimensions[l]
-                    for l in args.hierarchy] if args.hierarchy else None
+    store = DataStore.load(store_name)
+
+    if space:
+        space = resolve_class(space, ['arcana.data.spaces'])
     
-    repo_args = list(args.store)
-    repo_type = repo_args.pop(0)
-    nargs = len(repo_args)
+    dataset = store.new_dataset(
+        id,
+        hierarchy=hierarchy,
+        space=space,
+        id_inference=id_inference,
+        include=include,
+        exclude=exclude)
 
-
-    if args.id_inference:
-        id_inference = {t: (s, r) for t, s, r in args.ids_inference}
-    else:
-        id_inference = None
-
-    if hierarchy is None:
-        hierarchy = [max(dimensions)]
-
-    def parse_ids(ids_args):
-        parsed_ids = {}
-        for iargs in ids_args:
-            freq = dimensions[iargs.pop(0)]
-            if len(iargs) == 1 and '/' in iargs[0]:
-                with open(args.ids[0]) as f:
-                    ids = f.read().split()
-            else:
-                ids = args.ids
-            parsed_ids[freq] = ids
-        return parsed_ids
-    
-    return store.dataset(args.dataset_name,
-                                hierarchy=hierarchy,
-                                id_inference=id_inference,
-                                included=parse_ids(args.included),
-                                excluded=parse_ids(args.excluded))
+    dataset.save(name)
 
 @dataset.command(help="""
 Renames a data store saved in the stores.yml to a new name
 
-old_name
+dataset_path
     The current name of the store
 new_name
     The new name for the store""")
-@click.argument('old_name')
+@click.argument('dataset_path')
 @click.argument('new_name')
-def rename(old_name, new_name):
-    raise NotImplementedError
+def copy(dataset_path, new_name):
+    dataset = Dataset.load(dataset_path)
+    dataset.save(new_name)
 
 
 def optional_args(names, args):
@@ -144,19 +129,19 @@ dataset_path
     applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 name
     The name the source will be referenced by
-datatype
+format
     The data type of the column. Can be a field (int|float|str|bool),
     field array (list[int|float|str|bool]) or "file-group"
     (file, file+header/side-cars or directory)
 """)
 @click.argument('dataset_path')
-@click.argument('column_name')
-@click.argument('datatype')
+@click.argument('name')
+@click.argument('format')
 @click.option(
     '--frequency', '-f', metavar='<dimension>',
     help=("The frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
-          "medicalimaging:Clinical data dimensions"),
+          "medimage:Clinical data dimensions"),
     show_default="highest")
 @click.option(
     '--path', '-p',
@@ -177,11 +162,21 @@ datatype
 @click.option(
     '--header', '-h', nargs=2, metavar='<key-val>',
     help=("Match on specific header value. This option is only valid for "
-          "select datatypes that the implement the 'header_val()' method "
-          "(e.g. medicalimaging:dicom)."))
-def add_source(dataset_path, column_name, datatype, frequency, path, order,
+          "select formats that the implement the 'header_val()' method "
+          "(e.g. medimage:dicom)."))
+def add_source(dataset_path, name, format, frequency, path, order,
                quality, is_regex, header):
-    raise NotImplementedError
+    dataset = Dataset.load(dataset_path)
+    dataset.add_source(
+        name=name,
+        path=path,
+        format=resolve_class(format, prefixes=['arcana.data.formats']),
+        frequency=frequency,
+        quality_threshold=quality,
+        order=order,
+        header_vals=dict(header),
+        is_regex=is_regex)
+    dataset.save()
 
 
 @dataset.command(name='add-sink', help="""Adds a sink column to a dataset. A sink column
@@ -194,26 +189,37 @@ dataset_path
     applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 name
     The name the source will be referenced by
-datatype
+format
     The data type of the column. Can be a field (int|float|str|bool),
     field array (list[int|float|str|bool]) or "file-group"
     (file, file+header/side-cars or directory)
 """)
 @click.argument('dataset_path')
 @click.argument('name')
-@click.argument('datatype')
+@click.argument('format')
 @click.option(
     '--frequency', '-f', metavar='<dimension>',
     help=("The frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
-          "medicalimaging:Clinical data dimensions"),
+          "medimage:Clinical data dimensions"),
     show_default="highest")
 @click.option(
     '--path', '-p',
     help=("Path to item in the dataset. If 'regex' option is provided it will "
           "be treated as a regular-expression (in Python syntax)"))
-def add_sink(dataset_path, name, datatype, frequency, path):
-    raise NotImplementedError
+@click.option(
+    '--salience', '-s',
+    help=("The salience of the column, i.e. whether it will show up on "
+          "'arcana derive menu'"))
+def add_sink(dataset_path, name, format, frequency, path, salience):
+    dataset = Dataset.load(dataset_path)
+    dataset.add_sink(
+        name=name,
+        path=path,
+        format=resolve_class(format, prefixes=['arcana.data.formats']),
+        frequency=frequency,
+        salience=salience)
+    dataset.save()
 
 
 @dataset.command(

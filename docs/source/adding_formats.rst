@@ -20,17 +20,17 @@ File formats are defined by subclasses of the :class:`.FileGroup` base class.
 "File group" is a catch-all term that encompasses three sub-types, each with
 their own :class:`.FileGroup` subclass:
 
-* :class:`.File` - single files
-* :class:`.FileWithSidecars` - files with side car files (e.g. separate headers)
-* :class:`.Directory` - directories with specific contents
+* :class:`.BaseFile` - single files
+* :class:`.BaseFileWithSidecars` - files with side car files (e.g. separate headers)
+* :class:`.BaseDirectory` - directories with specific contents
 
 New format classes should extend one of these classes or an existing file
 format class (or both) as they include methods to interact with the data
-store. Note that :class:`.File` is a base class of :class:`.FileWithSidecars`
+store. Note that :class:`.BaseFile` is a base class of :class:`.BaseFileWithSidecars`
 so multiple inheritance is possible where a format with side cars inherits from
 the same format without side-cars (e.g. Nifti -> NiftiX), but in this case
-ensure that :class:`.FileWithSidecars` appears before the other class to be
-extended in the bases list, e.g. ``NiftiX(FileWithSidecars, Nifti)``.
+ensure that :class:`.BaseFileWithSidecars` appears before the other class to be
+extended in the bases list, e.g. ``NiftiX(BaseFileWithSidecars, Nifti)``.
 
 :class:`.File` subclasses typically only need to set an ``ext`` attribute
 to the extension string used to identify the type of file, e.g.
@@ -39,26 +39,26 @@ to the extension string used to identify the type of file, e.g.
 
     from arcana.core.data.format import File
 
-    class Json(File):
+    class Json(BaseFile):
         ext = 'json'
 
 If the file format doesn't have an identifiable extension it is possible to
 override the :meth:`File.from_paths` method and peak inside the contents of the
 file to determine its type, but this shouldn't be necessary in most cases.
 
-:class:`.FileWithSidecars` subclasses can set the ``ext`` and ``side_cars``
-attributes. The ``side_cars`` attribute is a tuple of the side cars extensions
-in the file-group
+:class:`.BaseFileWithSidecars` subclasses can set the ``ext`` and ``side_car_exts``
+attributes. The ``side_car_exts`` attribute is a tuple of the side cars extensions
+that should be present alongside the "primary file",
 
 .. code-block:: python
 
     from arcana.core.data.format import FileWithSidecars
 
-    class Analyze(FileWithSidecars):
+    class Analyze(BaseFileWithSidecars):
         ext = 'img'
-        side_cars = ('hdr',)
+        side_car_exts = ('hdr',)
 
-:class:`.Directory` subclasses can set ``ext`` but will typically only set
+:class:`.BaseDirectory` subclasses can set ``ext`` but will typically only set
 the ``content_types`` attribute. The ``content_types`` attribute is a tuple of
 the file formats that are expected within the directory. The list is not
 exclusive, so stray files inside the directory will not effect its
@@ -67,17 +67,17 @@ identification.
 
 .. code-block:: python
 
-    from arcana.core.data.format import Directory, File
+    from arcana.core.data.format import BaseDirectory, BaseFile
     
-    class DicomFile(File):
+    class DicomFile(BaseFile):
         ext = 'dcm'
 
-    class Dicom(Directory):
-        contents = (DicomFile,)
+    class Dicom(BaseDirectory):
+        content_types = (DicomFile,)
 
 It is a good idea to make use of class inheritance when defining related
-formats, for example adding a format to handle the Siemens-variant DICOM
-format which has '.IMA' extensions to capture the relationship between them.
+formats to capture the relationship between them. For example, adding a format
+to handle the Siemens-variant DICOM format which has '.IMA' extensions.
 
 .. code-block:: python
 
@@ -85,7 +85,7 @@ format which has '.IMA' extensions to capture the relationship between them.
         ext = 'IMA'
 
     class SiemensDicom(Dicom):
-        contents = (SiemensDicomFile,)
+        content_types = (SiemensDicomFile,)
 
 Defining hierarchical relationships between file formats is most useful when
 defining implicit converters between file formats. This is done by adding
@@ -94,47 +94,43 @@ The decorator specifies the format the converter method can specify the
 the conversion *from* into the current class. The converter method adds Pydra_
 nodes to a pipeline argument to perform
 
-The arguments list for converter methods should be
-
-* pipeline object - the pipeline to add the converter node to
-* node name - the name of the node to add (passed in from calling code to avoid name clashes)
-* Pydra_ ``LazyField`` containing the path to main file/directory to be converted
-* keyword args of lazy field objects for each side-car, named after their extension, is applicable
-
-and they should return a lazy field that will contain the path to the converted file/directory.
+The first argument for converter methods should be the fs_path followed by
+any side cars as keyword arguments. Converter methods should return the Pydra_
+that performs the conversion followed by a lazy field that points to the
+``fs_path`` of the converted file-group. If the format to convert to has side
+cars, then the method should return the task followed by a tuple consisting of
+lazy fields that point to the ``fs_path`` and then side-car files in the
+converted file group in the order they appear in ``side_car_exts``.
 
 .. code-block:: python
 
-    from pydra.core import LazyField
+    from pydra.engine.core import Workflow, LazyField
     from pydra.tasks.dcm2niix import Dcm2niix
     from pydra.tasks.mrtrix3.utils import MRConvert
-    from arcana.core.pipeline import Pipeline
     from arcana.core.mark import converter
 
-    class Nifti(File):
+    class Nifti(BaseFile):
         ext = 'nii'
 
+        @classmethod
         @converter(Dicom)
-        def from_dicom(cls, pipeline: Pipeline, node_name: str,
-                       dicom: LazyField):
-            node = pipeline.add(
-                Dcm2niix(
-                    name=node_name,
-                    in_file=dicom,
-                    compress='n'))
-            return node.lzout.out_file
+        def dcm2niix(cls, fs_path: LazyField):
+            node = Dcm2niix(
+                name=node_name,
+                in_file=dicom,
+                compress='n')
+            return node, node.lzout.out_file
 
+        @classmethod
         @converter(Analyze)
-        def from_analyze(cls, pipeline: Pipeline, node_name: str,
-                         analyze: LazyField, hdr: LazyField):
-            node = pipeline.add(
-                MRConvert(
-                    name=node_name,
-                    in_file=analyze,
-                    out_file='out.' + cls.ext))
-            return node.lzout.out_file
+        def mrconvert(cls, fs_path: LazyField, hdr: LazyField):
+            node = MRConvert(
+                name=node_name,
+                in_file=analyze,
+                out_file='out.' + cls.ext)
+            return node, node.lzout.out_file
 
-If the class to convert to is a :class:`.FileWithSidecars` subclass then the return value
+If the class to convert to is a :class:`.BaseFileWithSidecars` subclass then the return value
 should be a tuple consisting the primary path followed by side-car paths in the
 same order they are defined in the class. To remove a converter in a specialised
 subclass (which the converter isn't able to convert to) simply override the
@@ -143,17 +139,17 @@ converter method with an arbitrary value.
 
 .. code-block:: python
 
-    class NiftiX(FileWithSidecars, Nifti):
+    class NiftiX(BaseFileWithSidecars, Nifti):
         ext = 'nii'
-        side_cars = ('json',)
+        side_car_exts = ('json',)
 
+        @classmethod
         @converter(Dicom)
-        def from_dicom(cls, pipeline: Pipeline, node_name: str, dicom: LazyField):
-            super().from_dicom(pipeline, node_name, dicom)
-            node = getattr(pipeline, node_name)
-            return node.lzout.out_file, node.lzout.out_json
+        def dcm2niix(cls, fs_path: LazyField):
+            node, out_file = super().dcm2niix(fs_path)
+            return node, (out_file, node.lzout.out_json)
 
-        from_analyze = None  # Only dcm2niix produces the required JSON files for NiftiX
+        mrconvert = None  # Only dcm2niix produces the required JSON files for NiftiX
 
 
 Use dummy base classes in order to avoid circular reference issues when defining
@@ -162,30 +158,28 @@ two-way conversions between formats
 
 .. code-block:: python
 
-    class ExampleFormat2Base(File):
+    class ExampleFormat2Base(BaseFile):
         pass
 
-    class ExampleFormat1(File):
+    class ExampleFormat1(BaseFile):
         ext = 'exm1'
 
+        @classmethod
         @converter(ExampleFormat2Base)
-        def from_example1(cls, pipeline: Pipeline, node_name: str, example1: LazyField):
-            node = pipeline.add(
-                Converter2to1(
-                    name=node_name,
-                    in_file=example1))
-            return node.lzout.out_file
+        def from_example1(cls, fs_path: LazyField):
+            node = Converter2to1(
+                in_file=example1)
+            return node, node.lzout.out_file
 
     class ExampleFormat2(ExampleFormat2Base):
         ext = 'exm2'
 
+        @classmethod
         @converter(ExampleFormat1)
         def from_example1(cls, pipeline: Pipeline, node_name: str, example1: LazyField):
-            node = pipeline.add(
-                Converter1to2(
-                    name=node_name,
-                    in_file=example1))
-            return node.lzout.out_file
+            node = Converter1to2(
+                in_file=example1)
+            return node, node.lzout.out_file
 
 While not necessary, it can be convenient to add methods for accessing
 file-group data within Python. This makes it possible to write generic methods

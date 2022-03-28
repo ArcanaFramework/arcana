@@ -2,20 +2,21 @@ import os
 import os.path as op
 from pathlib import Path
 import re
-from copy import copy
 import errno
 from collections import defaultdict
 import shutil
+import typing as ty
 import logging
 import json
 import attr
+import yaml
 from fasteners import InterProcessLock
-from arcana.core.data.provenance import DataProvenance
-from arcana.exceptions import ArcanaFileFormatError, ArcanaMissingDataException, ArcanaUsageError
-from arcana.core.utils import get_class_info, HOSTNAME, split_extension
+from arcana.exceptions import ArcanaMissingDataException, ArcanaUsageError
+from arcana.core.utils import get_class_info, HOSTNAME
 from arcana.core.data.set import Dataset
-from arcana.data.spaces.medicalimaging import Clinical, DataSpace
+from arcana.data.spaces.medimage import Clinical, DataSpace
 from arcana.core.data.store import DataStore
+from arcana.core.data.format import FileGroup
 
 
 logger = logging.getLogger('arcana')
@@ -44,28 +45,29 @@ class FileSystem(DataStore):
     VALUE_KEY = '__value__'
     METADATA_DIR = '.arcana'
     
-    def dataset(self, id, *args, **kwargs):
-        path = Path(id)
-        if not path.exists():
+    def new_dataset(self, id, *args, **kwargs):
+        if not Path(id).exists():
             raise ArcanaUsageError(
-                f"Path to dataset root '{str(path)}'' does not exist")
-        return super().dataset(path, *args, **kwargs)
+                f"Path to dataset root '{id}'' does not exist")
+        return super().new_dataset(id, *args, **kwargs)
 
-    def save_dataset_metadata(self, dataset_id, metadata, name):
-        with open(self._metadata_fpath(dataset_id, name), 'w') as f:
-            json.dump(metadata, f)
+    def save_dataset_definition(self, dataset_id, definition, name):
+        definition_path = self.definition_save_path(dataset_id, name)
+        definition_path.parent.mkdir(exist_ok=True)
+        with open(definition_path, 'w') as f:
+            yaml.dump(definition, f)
 
-    def load_dataset_metadata(self, dataset_id, name):
-        fpath = self._metadata_fpath(dataset_id, name)
+    def load_dataset_definition(self, dataset_id, name):
+        fpath = self.definition_save_path(dataset_id, name)
         if fpath.exists():
             with open(fpath) as f:
-                metadata = json.load(f)
+                definition = yaml.load(f, Loader=yaml.Loader)
         else:
-            metadata = None
-        return metadata
+            definition = None
+        return definition
 
-    def _metadata_fpath(self, dataset_id, name):
-        return Path(dataset_id) / self.METADATA_DIR / name + '.json'
+    def definition_save_path(self, dataset_id, name):
+        return Path(dataset_id) / self.METADATA_DIR / (name + '.yml')
 
     @property
     def provenance(self):
@@ -73,27 +75,22 @@ class FileSystem(DataStore):
             'type': get_class_info(type(self)),
             'host': HOSTNAME}
 
-    def get_file_group(self, file_group, **kwargs):
+    def get_file_group_paths(self, file_group: FileGroup):
         """
         Set the path of the file_group from the store
         """
         # Don't need to cache file_group as it is already local as long
         # as the path is set
-        primary_path = self.file_group_path(file_group)
-        side_cars = file_group.datatype.default_side_cars(primary_path)
-        location_str = (f"{file_group.data_node} node of "
-                        f"Dataset '{file_group.data_node.dataset.id}' on {self}")
-        if not op.exists(primary_path):
+        stem_path = self.file_group_stem_path(file_group)
+        matches = [p for p in stem_path.parent.iterdir()
+                   if str(p).startswith(str(stem_path))]
+        if not matches:
             raise ArcanaMissingDataException(
-                f"File-group '{file_group.path}' ({primary_path}) does not exist in {location_str}")
-        for aux_name, aux_path in side_cars.items():
-            if not op.exists(aux_path):
-                raise ArcanaMissingDataException(
-                    f"File-group '{file_group.path}' is missing '{aux_name}' side car "
-                    f"({aux_path}) in {location_str}")
-        return primary_path, side_cars
+                f"No files/sub-dirs matching '{file_group.path}' path found in "
+                f"{str(self.absolute_node_path(file_group))} directory")
+        return matches
 
-    def get_field(self, field):
+    def get_field_value(self, field):
         """
         Update the value of the field from the store
         """
@@ -103,55 +100,45 @@ class FileSystem(DataStore):
         if isinstance(val, dict):
             val = val[self.VALUE_KEY]
         if field.array:
-            val = [field.datatype(v) for v in val]
+            val = [field.format(v) for v in val]
         else:
-            val = field.datatype(val)
+            val = field.format(val)
         return val
 
-    def put_file_group(self, file_group, fs_path, side_cars):
+    def put_file_group_paths(self, file_group: FileGroup, fs_paths: ty.List[Path]):
         """
         Inserts or updates a file_group in the store
         """
-        fs_path = Path(fs_path)
-        target_path = self.file_group_path(file_group)
-        if fs_path == target_path:
-            logger.info(
-                f"Attempted to set file path of {file_group} to its path in "
-                f"the store {target_path}")
-            return
+        stem_path = self.file_group_stem_path(file_group)
         # Create target directory if it doesn't exist already
-        dname = target_path.parent
-        if not dname.exists():
-            os.makedirs(dname)
-        if fs_path.is_file():
-            shutil.copyfile(fs_path, target_path)
-            sc_target_paths = file_group.datatype.default_side_cars(target_path)
-            # Copy side car files into store
-            if side_cars is not None:
-                side_cars = copy(side_cars)
-            for sc_name in file_group.datatype.side_cars:
-                try:
-                    sc_path = side_cars.pop(sc_name)
-                except KeyError as e:
-                    raise ArcanaFileFormatError(
-                        f"Missing side car '{sc_name}' when attempting to "
-                        f"put file_group") from e
-                shutil.copyfile(str(sc_path), str(sc_target_paths[sc_name]))
-            if side_cars:
-                raise ArcanaFileFormatError(
-                    f"Unrecognised side cars ({side_cars}) when attempting to "
-                    f"write {file_group.datatype.name} files")
-        elif fs_path.is_dir():
-            if target_path.exists():
-                shutil.rmtree(target_path)
-            shutil.copytree(fs_path, target_path)
-        else:
-            raise ValueError(
-                f"Source path '{fs_path}' to be set for {file_group} does not exist")
-        if file_group.provenance is not None:
-            file_group.provenance.save(self.prov_json_path(file_group))
+        stem_path.parent.mkdir(exist_ok=True, parents=True)
+        cached_paths = []
+        for fs_path in fs_paths:
+            if fs_path.is_dir():
+                target_path = stem_path
+                if target_path.exists():
+                    shutil.rmtree(target_path)
+                shutil.copytree(fs_path, target_path)
+            else:
+                target_path = file_group.copy_ext(fs_path, stem_path)
+                shutil.copyfile(str(fs_path), str(target_path))
+            cached_paths.append(target_path)
+        return cached_paths
 
-    def put_field(self, field, value):
+    def file_group_stem_path(self, file_group):
+        """The path to the stem of the paths (i.e. the path without
+        file extension) where the files are saved in the file-system.
+        NB: this method is overridden in Bids store.
+
+        Parameters
+        ----------
+        file_group: FileGroup
+            the file group stored or to be stored
+        """
+        node_path = self.absolute_node_path(file_group.data_node)
+        return node_path.joinpath(*file_group.path.split('/'))
+
+    def put_field_value(self, field, value):
         """
         Inserts or updates a field in the store
         """
@@ -174,6 +161,15 @@ class FileSystem(DataStore):
                 self.PROV_KEY: field.provenance.dct}
             with open(fpath, 'w') as f:
                 json.dump(dct, f, indent=2)
+
+    def put_provenance(self, item, provenance):
+        with open(self.prov_json_path(item), 'w') as f:
+            json.dump(provenance, f)
+
+    def get_provenance(self, item):
+        with open(self.prov_json_path(item)) as f:
+            provenance = json.load(f)
+        return provenance
 
     def find_nodes(self, dataset: Dataset):
         """
@@ -219,12 +215,16 @@ class FileSystem(DataStore):
             matching[basename].add(fname)
         # Add file groups
         for bname, fnames in matching.items():
+            prov_path = dpath / (bname + self.PROV_SUFFIX)
+            if prov_path.exists():
+                with open(prov_path) as f:
+                    provenance = json.load(f)
+            else:
+                provenance = {}
             data_node.add_file_group(
                 path=bname,
                 file_paths=[op.join(dpath, f) for f in fnames],
-                provenance=DataProvenance.load(
-                    op.join(dpath, bname + self.PROV_SUFFIX),
-                    ignore_missing=True))
+                provenance=provenance)
         # Add fields
         try:
             with open(op.join(dpath, self.FIELDS_FNAME), 'r') as f:
@@ -264,20 +264,12 @@ class FileSystem(DataStore):
                          + '_'.join(unaccounted_id) + '__')
         return path
 
-    def root_dir(self, data_node):
+    def root_dir(self, data_node) -> Path:
         return Path(data_node.dataset.id)
 
     @classmethod
-    def absolute_node_path(cls, data_node):
-        repo = cls()
-        return repo.root_dir(data_node) / repo.node_path(data_node)
-
-    def file_group_path(self, file_group):
-        fs_path = self.root_dir(file_group.data_node) / self.node_path(
-            file_group.data_node).joinpath(*file_group.path.split('/'))
-        if file_group.datatype.extension:
-            fs_path = fs_path.with_suffix(file_group.datatype.extension)
-        return fs_path
+    def absolute_node_path(cls, data_node) -> Path:
+        return cls().root_dir(data_node) / cls().node_path(data_node)
 
     def fields_json_path(self, field):
         return (self.root_dir(field.data_node)
@@ -296,10 +288,15 @@ class FileSystem(DataStore):
 
     def _get_file_group_provenance(self, file_group):
         if file_group.fs_path is not None:
-            prov = DataProvenance.load(self.prov_json_path(file_group))
+            prov_path = self.prov_json_path(file_group)
+            if prov_path.exists():
+                with open(prov_path) as f:
+                    provenance = json.load(f)
+            else:
+                provenance = {}
         else:
-            prov = None
-        return prov
+            provenance = None
+        return provenance
 
     def _get_field_provenance(self, field):
         """

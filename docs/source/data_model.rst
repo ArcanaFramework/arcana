@@ -25,7 +25,7 @@ There are four :class:`.DataStore` classes currently implemented (for
 instructions on how to add support for new systems see :ref:`alternative_stores`):
 
 * :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system
-* :class:`.BidsFormat` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific)
+* :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific)
 * :class:`.Xnat` - access data stored in XNAT_ repositories by its REST API
 * :class:`.XnatViaCS` - access data stored in XNAT_ repositories as exposed to integrated pipelines run in `XNAT's container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_ using a combination of direct access to the archive disk and the REST API
 
@@ -36,7 +36,7 @@ it to the YAML configuration file stored at `~/.arcana/stores.yml`.
 .. code-block:: python
 
     import os
-    from arcana.data.stores.xnat import Xnat
+    from arcana.data.stores.medimage import Xnat
 
     # Initialise the data store object
     xnat_store = Xnat(
@@ -68,7 +68,7 @@ See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls`
 .. note::
 
     Data stores that don't require any parameters such as :class:`.FileSystem` and
-    :class:`.BidsFormat` don't need to be configured and can be accessed via their aliases,
+    :class:`.Bids` don't need to be configured and can be accessed via their aliases,
     ``file`` and ``bids`` when defining a dataset.
 
 .. _data_spaces:
@@ -185,8 +185,8 @@ layers of the directory tree in descending order.
 
 .. code-block:: python
 
-    from arcana.data.stores.file_system import FileSystem
-    from arcana.data.spaces.medicalimaging import Clinical
+    from arcana.data.stores.common import FileSystem
+    from arcana.data.spaces.medimage import Clinical
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
@@ -228,29 +228,29 @@ IDs.
 
 Often there are nodes that need to be omitted from a given analysis due to
 missing or corrupted data. Such nodes can be excluded with the
-``excluded`` argument, which takes a dictionary mapping the data
+``exclude`` argument, which takes a dictionary mapping the data
 dimension to the list of IDs to exclude.
 
-You can exclude nodes at different levels of data tree by provided ``excluded``,
+You can exclude nodes at different levels of data tree by provided ``exclude``,
 even within in the same dataset.
 
 .. code-block:: python
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
-        excluded={'subject': ['09', '11']})
+        exclude={'subject': ['09', '11']})
 
 
-The ``included`` argument is the inverse of exclude and can be more convenient when
-you only want to select a small sample. ``included`` can be used in conjunction
-with ``excluded`` but not for the same frequencies.
+The ``include`` argument is the inverse of exclude and can be more convenient when
+you only want to select a small sample. ``include`` can be used in conjunction
+with ``exclude`` but not for the same frequencies.
 
 .. code-block:: python
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
-        excluded={'subject': ['09', '11']},
-        included={'timepoint': ['T1']})
+        exclude={'subject': ['09', '11']},
+        include={'timepoint': ['T1']})
 
 
 You may want multiple dataset definitions for a given project/directory,
@@ -275,7 +275,7 @@ separated by '//', e.g.
 .. code-block:: console
 
     $ arcana dataset define 'xnat-central//MYXNATPROJECT' \
-      --excluded subject sub09,sub11 --included timepoint T1 \
+      --exclude subject sub09,sub11 --include timepoint T1 \
       --id_inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)'
 
 To give the dataset definition a name, append the name to the dataset's ID
@@ -284,14 +284,14 @@ string separated by ':', e.g.
 .. code-block:: console
 
     $ arcana dataset define 'file///data/imaging/my-project:training' \
-      medicalimaging:Clinical group subject \
+      medimage:Clinical group subject \
       --include subject 10:20
 
 
 .. _data_formats:
 
-Items and formats
------------------
+Formats
+-------
 
 Data items within dataset nodes can be one of three types:
 
@@ -308,7 +308,7 @@ in the group. There are a number common file formats implemented in
 :mod:`arcana.data.formats.common`, including :class:`.Text`,
 :class:`.Zip`, :class:`.Json` and :class:`.Directory`. :class:`.FileGroup` subclasses
 may contain methods for conveniently accessing the file data and header metadata (e.g.
-:class:`.medicalimaging.Dicom` and :class:`.medicalimaging.NiftiXGz`) but this
+:class:`.medimage.Dicom` and :class:`.medimage.NiftiXGz`) but this
 is not a requirement for usage in workflows.
 
 Arcana will implicily handle conversions between file formats where a
@@ -361,8 +361,8 @@ sources and sinks via the API.
 
 .. code-block:: python
 
-    from arcana.data.spaces.medicalimaging import Clinical
-    from arcana.data.formats.medicalimaging import Dicom, NiftiGz
+    from arcana.data.spaces.medimage import Clinical
+    from arcana.data.formats.medimage import Dicom, NiftiGz
 
     xnat_dataset.add_source(
         name='T1w',
@@ -403,25 +403,25 @@ to a dataset using the CLI.
 .. code-block:: console
 
     $ arcana dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
-      medicalimaging:Dicom --path '.*t1_mprage.*' \
+      medimage:Dicom --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
     $ arcana dataset add-sink 'file///data/imaging/my-project:training' brain_template \
-      medicalimaging:NiftiGz --frequency group
+      medimage:NiftiGz --frequency group
 
 
 One of the main benefits of using datasets in BIDS_ format is that the names
-and file formats of the data are strictly defined. This allows the :class:`.BidsFormat`
+and file formats of the data are strictly defined. This allows the :class:`.Bids`
 data store object to automatically add sources to the dataset when it is
 initialised.
 
 .. code-block:: python
 
-    from arcana.data.stores.bids import BidsFormat
-    from arcana.data.stores.file_system import FileSystem
-    from arcana.data.spaces.medicalimaging import Clinical
+    from arcana.data.stores.bids import Bids
+    from arcana.data.stores.common import FileSystem
+    from arcana.data.spaces.medimage import Clinical
 
-    bids_dataset = BidsFormat().dataset(
+    bids_dataset = Bids().dataset(
         id='/data/openneuro/ds00014')
 
     # Print dimensions of T1-weighted MRI image for Subject 'sub01'
