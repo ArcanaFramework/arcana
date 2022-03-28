@@ -106,7 +106,7 @@ To connect a workflow via the CLI
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
       medimage:Dicom --path '.*t2spc.*'
     $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurver/recon-all \
-      common:ZippedDir
+      common:Zip
     $ arcana apply workflow 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
       --input T1w in_file medimage:NiftiGz \
@@ -204,7 +204,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
     from pydra.tasks.example import Preprocess, ExtractFromJson, MakeImage
     from arcana.core.mark import analysis, pipeline, parameter
     from arcana.data.spaces.example import ExampleDataSpace
-    from arcana.data.formats.common import ZippedDir, Directory, Json, Png, Gif
+    from arcana.data.formats.common import Zip, Directory, Json, Png, Gif
 
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
@@ -213,9 +213,9 @@ methods, and takes the columns the pipeline outputs are connected to as argument
         # The `column` decorator can be used to specify additional options but
         # is not required by default. The data formats specify the format
         # that the column data will be stored in
-        recorded_datafile: ZippedDir  # Not derived by a pipeline, should be linked to existing dataset column
+        recorded_datafile: Zip  # Not derived by a pipeline, should be linked to existing dataset column
         recorded_metadata: Json  # "     "     "     "
-        preprocessed: ZippedDir  # Derived by 'preprocess_pipeline' pipeline
+        preprocessed: Zip  # Derived by 'preprocess_pipeline' pipeline
         derived_image: Png  # Derived by 'create_image_pipeline' pipeline
         summary_metric: float  # Derived by 'create_image_pipeline' pipeline
 
@@ -230,24 +230,24 @@ methods, and takes the columns the pipeline outputs are connected to as argument
         @pipeline(preprocessed)
         def preprocess_pipeline(
                 self,
-                pipeline,
+                wf,
                 recorded_datafile: Directory,  # Automatic conversion from stored Zip format before pipeline is run
                 recorded_metadata):  # Format/format is the same as class definition so can be omitted
 
             # A simple task to extract the "temperature" field from a JSON
             # metadata
-            extract_metadata = pipeline.add(
+            wf.add(
                 ExtractFromJson(
                     name='extract_metadata',
                     in_file=recorded_metadata,
                     field='temperature'))
 
             # Add tasks to the pipeline using Pydra workflow syntax
-            preprocess = pipeline.add(
+            wf.add(
                 Task1(
                     name='preprocess',
                     in_file=recorded_datafile,
-                    temperature=extract_metadata.lzout.out_field))
+                    temperature=wf.extract_metadata.lzout.out_field))
 
             # Map the output of the pipeline to the "preprocessed" column specified
             # in the @pipeline decorator
@@ -259,13 +259,13 @@ methods, and takes the columns the pipeline outputs are connected to as argument
                   summary_metric)
         def create_image_pipeline(
                 self,
-                pipeline,
+                wf,
                 preprocessed: Directory,  # Automatic conversion from stored Zip format before pipeline is run
                 contrast: float):  # Parameters are also automagically mapped to method args
 
             # Add a task that creates an image from the preprocessed data, using
             # the 'contrast' parameter
-            create_image = pipeline.add(
+            wf.add(
                 MakeImage(
                     name="create_image",
                     in_file=preprocessed,
@@ -274,7 +274,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
             # Since the output format of derived image created by the pipeline ('Gif')
             # differs from that specified for the column ('Png'), an automatic conversion
             # setp will be added by Arcana before the image is stored.
-            return (create_image.lzout.out_file, Gif), create_image.lzout.summary
+            return (create_image.lzout.out_file, Gif), wf.create_image.lzout.summary
 
 Analyses are applied to datasets using the :meth:`.Dataset.apply` method, which
 takes an :class:`.Analysis` object, instantiated with the names of columns in
@@ -291,7 +291,7 @@ the dataset to link placeholders to and any parameters.
   dataset.add_source(
       name='datafile',
       path='a-long-arbitrary-name',
-      format=ZippedDir)
+      format=Zip)
 
   dataset.add_source(
       name='metadata',

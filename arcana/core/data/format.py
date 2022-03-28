@@ -858,7 +858,7 @@ class BaseFileWithSideCars(BaseFile):
         return generalised
         
 
-
+@attr.s
 class BaseDirectory(FileGroup):
 
     is_dir = True

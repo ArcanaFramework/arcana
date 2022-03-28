@@ -142,17 +142,17 @@ files can be accessed as attributes of the primary ``LazyField``, e.g.
     @pipeline(repetition_time)
     def preprocess_pipeline(
             self,
-            pipeline,
+            wf,
             primary_image: NiftiGzX):
 
-        extract_tr = pipeline.add(
+        wf.add(
             ExtractFromJson(
                 name='extract_tr',
                 # JSON side car is accessed by an attribute of the primary image
                 in_file=primary_image.json,  
                 field='tr'))
 
-        return extract_tr.lzout.out_file
+        return wf.extract_tr.lzout.out_file
 
 The "frequency" (see :ref:`data_spaces` and :ref:`data_columns`) of a pipeline,
 (whether it is run per-session, per-subject, per-timepoint, etc... for example)
@@ -208,35 +208,35 @@ station, could look like
         @pipeline(avg_rainfall)  
         def average_rainfall_pipeline(
                 self,
-                pipeline,
+                wf,
                 # 'rain' arg is a lazy-field to a list[float] over all dates since the
                 # frequency of the 'rain' column ('recording') is higher than
                 # the pipeline's frequency ('station')
                 rain: list[float]):  
 
-            average_rain = pipeline.add(
+            wf.add(
                 average(
                     name='average_rain',
                     measurements=rainfall))
             
-            return average_rain.lzout.out
+            return wf.average_rain.lzout.out
 
         # Pipeline is of 'per-recording' frequency due to delta_rainfall
         # output column
         @pipeline(delta_rain)
         def delta_pipeline(
                 self,
-                pipeline,
+                wf,
                 rain: float,  # 
                 avg_rainfall: float):
 
-            delta_rain = pipeline.add(
+            pipeline.add(
                 delta(
                     name="delta_rain",
                     measurements=rain,
                     average=avg_rainfall))
 
-            return delta_rain.lzout.out
+            return wf.delta_rain.lzout.out
 
 
 .. _analysis_outputs:

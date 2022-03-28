@@ -28,11 +28,10 @@ class Pipeline():
         The pydra workflow
     """
 
-    wf: Workflow = attr.ib()
+    workflow: Workflow = attr.ib()
     frequency: DataSpace = attr.ib()
-    inputs: ty.List[ty.Tuple[str, type]] = attr.ib(factory=list)
-    outputs: ty.List[ty.Tuple[str, type]] = attr.ib(factory=list)
-    _connected: ty.Set[str] = attr.ib(factory=set, repr=False)
+    inputs: ty.List[ty.Tuple[str, str, type]] = attr.ib(factory=list)
+    outputs: ty.List[ty.Tuple[str, str, type]] = attr.ib(factory=list)
 
     @property
     def lzin(self):
