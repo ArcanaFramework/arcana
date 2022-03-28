@@ -16,10 +16,14 @@ from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
 import attr
-from arcana._version import __version__
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaVersionError
+
+# Avoid arcana.__version__ causing a circular import
+from arcana._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
 
 
 PATH_SUFFIX = '_path'
