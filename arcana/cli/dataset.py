@@ -160,7 +160,7 @@ format
     help=("Whether the 'path' option should be treated as a regular expression "
           "or not"))
 @click.option(
-    '--header', '-h', nargs=2, metavar='<key-val>',
+    '--header', '-h', nargs=2, metavar='<key-val>', multiple=True,
     help=("Match on specific header value. This option is only valid for "
           "select formats that the implement the 'header_val()' method "
           "(e.g. medimage:dicom)."))
