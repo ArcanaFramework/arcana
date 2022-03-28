@@ -42,7 +42,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
     # Run the command line
     result = cli_runner(define, [dataset_path, *args])
     # Check tool completed successfully
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     # Add source to loaded dataset
     basic_dataset.add_source(
         name='a_source',
@@ -62,7 +62,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
          '--quality', 'questionable',
          '--order', '1',
          '--no-regex'])
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     # Add source to loaded dataset
     basic_dataset.add_sink(
         name='a_sink',
@@ -75,7 +75,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
         '--path', 'deriv',
         '--frequency', 'd',
         '--salience', 'qa'])
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
     loaded_dataset = Dataset.load(dataset_path)
@@ -85,7 +85,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
 @pytest.mark.skip("Not implemented")
 def test_add_missing_items_cli(dataset, cli_runner):
   result = cli_runner(missing_items, [])
-  assert result.exit_code == 0
+  assert result.exit_code == 0, result.stdout
 
 
 def test_define_cli(dataset, cli_runner):
@@ -113,7 +113,7 @@ def test_define_cli(dataset, cli_runner):
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
     loaded_dataset = Dataset.load(path)
