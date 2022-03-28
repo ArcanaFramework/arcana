@@ -6,6 +6,8 @@ from arcana.tests.fixtures.common import (
   TestDatasetBlueprint, TestDataSpace, make_dataset, get_dataset_path)
 from arcana.cli.dataset import define, add_source, add_sink, missing_items
 from arcana.data.formats.common import Text
+from arcana.tests.utils import show_cli_trace
+
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
 ARBITRARY_INTS_B = [353726, 29202, 32867, 129872, 12281, 776524, 908763]
@@ -42,7 +44,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
     # Run the command line
     result = cli_runner(define, [dataset_path, *args])
     # Check tool completed successfully
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, show_cli_trace(result)
     # Add source to loaded dataset
     basic_dataset.add_source(
         name='a_source',
@@ -62,7 +64,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
          '--quality', 'questionable',
          '--order', '1',
          '--no-regex'])
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, show_cli_trace(result)
     # Add source to loaded dataset
     basic_dataset.add_sink(
         name='a_sink',
@@ -75,7 +77,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
         '--path', 'deriv',
         '--frequency', 'd',
         '--salience', 'qa'])
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
     loaded_dataset = Dataset.load(dataset_path)
@@ -85,7 +87,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
 @pytest.mark.skip("Not implemented")
 def test_add_missing_items_cli(dataset, cli_runner):
   result = cli_runner(missing_items, [])
-  assert result.exit_code == 0, result.stdout
+  assert result.exit_code == 0, show_cli_trace(result)
 
 
 def test_define_cli(dataset, cli_runner):
@@ -113,7 +115,7 @@ def test_define_cli(dataset, cli_runner):
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
     loaded_dataset = Dataset.load(path)

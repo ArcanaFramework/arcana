@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 from click.testing import CliRunner
 from arcana.cli.deploy import build_all
+from arcana.tests.utils import show_cli_trace
 
 @pytest.mark.skip("needs to be updated to match refactoring")
 def test_deploy_build():
@@ -23,7 +24,7 @@ def test_deploy_build():
     result = runner.invoke(build_all,
                            [str(pkg_dir), '--build_dir', str(build_dir),
                             '--docs', str(docs_dir)])
-    assert result.exit_code == 0, result.stdout
+    assert result.exit_code == 0, show_cli_trace(result)
     assert result.output == 'docker.io/arcanatest/wrapper.concatenate:1.0-1\n'
 
 concatenate_module_contents = """from arcana.data.formats.common import text
