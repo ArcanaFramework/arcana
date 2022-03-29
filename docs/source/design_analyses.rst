@@ -47,12 +47,12 @@ in the ``desc`` keyword arg.
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
 
-        recorded_datafile: ZippedDir  = column(
+        recorded_datafile: Zip  = column(
             desc=("Datafile acquired from an example scanner. Contains key "
                   "data to analyse"))
         recorded_metadata: Json = column(
             desc="Metadata accompanying the recorded data")
-        preprocessed: ZippedDir = column(
+        preprocessed: Zip = column(
             desc="Preprocessed data file, corrected for distortions")
         derived_image: Png = column(
             desc="Map of the processed data")
@@ -140,10 +140,7 @@ files can be accessed as attributes of the primary ``LazyField``, e.g.
     repetition_time: float = column("The repetition time of the MR sequence used")
 
     @pipeline(repetition_time)
-    def preprocess_pipeline(
-            self,
-            wf,
-            primary_image: NiftiGzX):
+    def preprocess_pipeline(self, wf, primary_image: NiftiXGz):
 
         wf.add(
             ExtractFromJson(
@@ -206,13 +203,10 @@ station, could look like
         # Pipeline is of 'per-station' frequency due to frequency of output column
         # 'avg_rainfall'
         @pipeline(avg_rainfall)  
-        def average_rainfall_pipeline(
-                self,
-                wf,
-                # 'rain' arg is a lazy-field to a list[float] over all dates since the
-                # frequency of the 'rain' column ('recording') is higher than
-                # the pipeline's frequency ('station')
-                rain: list[float]):  
+        # 'rain' arg is a lazy-field to a list[float] over all dates since the
+        # frequency of the 'rain' column ('recording') is higher than
+        # the pipeline's frequency ('station')
+        def average_rainfall_pipeline(self, wf, rain: list[float]):
 
             wf.add(
                 average(
@@ -224,11 +218,7 @@ station, could look like
         # Pipeline is of 'per-recording' frequency due to delta_rainfall
         # output column
         @pipeline(delta_rain)
-        def delta_pipeline(
-                self,
-                wf,
-                rain: float,  # 
-                avg_rainfall: float):
+        def delta_pipeline(self, wf, rain: float,  avg_rainfall: float):
 
             pipeline.add(
                 delta(

@@ -28,6 +28,8 @@ parameterisations and overriding selected methods in subclasses (see :ref:`desig
   you will need to create your own Pydra_ wrappers for other tools used in other
   domains.
 
+.. _applying_workflows:
+
 Pydra workflows
 ---------------
 
@@ -102,12 +104,12 @@ To connect a workflow via the CLI
 .. code-block:: console
 
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T1w \
-      medimage:Dicom --path '.*mprage.*'
+      medimage:Dicom --path '.*mprage.*' --regex
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
-      medimage:Dicom --path '.*t2spc.*'
+      medimage:Dicom --path '.*t2spc.*' --regex
     $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurver/recon-all \
       common:Zip
-    $ arcana apply workflow 'myuni-xnat//myproject:training' freesurfer \
+    $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
       --input T1w in_file medimage:NiftiGz \
       --input T2w peel medimage:NiftiGz \
@@ -273,7 +275,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 
             # Since the output format of derived image created by the pipeline ('Gif')
             # differs from that specified for the column ('Png'), an automatic conversion
-            # setp will be added by Arcana before the image is stored.
+            # step will be added by Arcana before the image is stored.
             return (create_image.lzout.out_file, Gif), wf.create_image.lzout.summary
 
 Analyses are applied to datasets using the :meth:`.Dataset.apply` method, which
@@ -313,6 +315,7 @@ To apply an analysis via the command-line
     --link recorded_metadata metadata \
     --parameter contrast 0.75
 
+.. _derivatives:
 
 Generating derivatives
 ----------------------

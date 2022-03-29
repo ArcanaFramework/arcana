@@ -101,7 +101,7 @@ class XnatViaCS(Xnat):
             input_mount = self.get_input_mount(file_group)
         except ArcanaNoDirectXnatMountException:
             # Fallback to API access
-            return super().get_file_group(file_group)
+            return super().get_file_group_paths(file_group)
         logger.info("Getting %s from %s:%s node via direct access to archive directory",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)

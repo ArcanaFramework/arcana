@@ -12,7 +12,7 @@ from pydra.tasks.mrtrix3.utils import MRConvert
 from arcana.core.mark import converter
 from arcana.exceptions import ArcanaUsageError
 from arcana.tasks.common.utils import identity_converter
-from arcana.core.data.format import BaseFileWithSideCars
+from arcana.core.data.format import WithSideCars
 from arcana.data.formats.common import File, Directory
 
 
@@ -300,7 +300,7 @@ class NiftiGz(Nifti):
         return spec
 
 
-class NiftiX(BaseFileWithSideCars, Nifti):
+class NiftiX(WithSideCars, Nifti):
 
     side_car_exts = ('json',)
 
@@ -325,7 +325,7 @@ class NiftiXGz(NiftiX, NiftiGz):
 
 
 # NIfTI file format gzipped with BIDS side car
-class NiftiFslgrad(BaseFileWithSideCars, Nifti):
+class NiftiFslgrad(WithSideCars, Nifti):
 
     side_car_exts = ('bvec', 'bval')
 
@@ -418,7 +418,7 @@ class MrtrixImage(NeuroImage):
 # =====================================================================
 
 
-class Analyze(BaseFileWithSideCars, NeuroImage):
+class Analyze(WithSideCars, NeuroImage):
 
     ext = 'img'
     side_car_exts = ('hdr',)

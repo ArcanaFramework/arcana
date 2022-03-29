@@ -28,16 +28,22 @@ Core
 
 .. autoclass:: arcana.core.data.node.DataNode
 
-.. autoclass:: arcana.core.data.spec.DataSource
+.. autoclass:: arcana.core.data.column.DataSource
 
-.. autoclass:: arcana.core.data.spec.DataSink
+.. autoclass:: arcana.core.data.column.DataSink
 
-.. autoclass:: arcana.core.data.item.DataItem
+.. autoclass:: arcana.core.data.format.DataItem
     :members: get, put
 
-.. autoclass:: arcana.core.data.item.FileGroup
+.. autoclass:: arcana.core.data.format.FileGroup
 
-.. autoclass:: arcana.core.data.item.Field
+.. autoclass:: arcana.core.data.format.Field
+
+.. autoclass:: arcana.core.data.format.BaseFile
+
+.. autoclass:: arcana.core.data.format.BaseDirectory
+
+.. autoclass:: arcana.core.data.format.WithSideCars
 
 
 Stores

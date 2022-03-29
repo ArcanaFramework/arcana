@@ -138,11 +138,11 @@ class Field(DataItem):
         if not assume_exists:
             self._check_exists()
         self._check_part_of_data_node()
-        self.value = self.data_node.dataset.store.get_field(self)
+        self.value = self.data_node.dataset.store.get_field_value(self)
 
     def put(self, value):
         self._check_part_of_data_node()
-        self.data_node.dataset.store.put_field(self, self.format(value))
+        self.data_node.dataset.store.put_field_value(self, self.format(value))
         self.exists = True
 
     def __int__(self):
@@ -266,6 +266,22 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         # Save provenance
         if self.provenance:
             self.data_node.dataset.store.put_provenance(self)
+
+    @abstractmethod
+    def set_fs_paths(self, fs_paths: ty.List[Path]):
+        """Takes a list of file-system paths, sorts them (i.e. into primary 
+        and side-cars) and sets the relevant fields in the file-group object.
+
+        Parameters
+        ----------
+        fs_paths : list[Path]
+            _description_
+
+        Rasises
+        -------
+        ArcanaFileFormatError
+            _description_
+        """
 
     @property
     def fs_paths(self):
@@ -668,7 +684,7 @@ class BaseFile(FileGroup):
 
      
 @attr.s
-class BaseFileWithSideCars(BaseFile):
+class WithSideCars(BaseFile):
     """Base class for file-groups with a primary file and several header or
     side car files
     """

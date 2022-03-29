@@ -10,7 +10,7 @@ import pytest
 from arcana.data.stores.common import FileSystem
 from arcana.core.data.space import DataSpace
 from arcana.core.utils import set_cwd
-from arcana.core.data.format import BaseFileWithSideCars
+from arcana.core.data.format import WithSideCars
 from arcana.data.formats.common import Text, Directory, Json
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats.medimage import (
@@ -176,7 +176,7 @@ class TestDataSpace(DataSpace):
 
 td = TestDataSpace
 
-class Xyz(BaseFileWithSideCars):
+class Xyz(WithSideCars):
 
     ext = 'x'
     side_car_exts = ('y', 'z')

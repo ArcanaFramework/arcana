@@ -171,19 +171,6 @@ class DataNode():
         self._unresolved.append(UnresolvedField(
             path=path, data_node=self, value=value, **kwargs))
 
-    # def get_file_group(self, file_group, **kwargs):
-    #     return self.dataset.store.get_file_group(file_group, **kwargs)
-
-    # def get_field(self, field):
-    #     return self.dataset.store.get_field(field)
-
-    # def put_file_group(self, file_group, fs_path, side_cars):
-    #     self.dataset.store.put_file_group(
-    #         file_group, fs_path=fs_path, side_cars=side_cars)
-
-    # def put_field(self, field, value):
-    #     self.dataset.store.put_field(field, value)
-
 
 @attr.s
 class UnresolvedDataItem(metaclass=ABCMeta):

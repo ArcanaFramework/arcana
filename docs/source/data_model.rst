@@ -8,7 +8,7 @@ from the user, it is important to be familiar with the core concepts:
 * :ref:`Stores` - abstraction of different storage systems and formats
 * :ref:`Spaces` - define the structure for a class of datasets
 * :ref:`Datasets` - sets of comparable data to be analysed (e.g. XNAT project or BIDS dataset)
-* :ref:`Items and formats` - the atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the file formats they are stored in
+* :ref:`Formats` - the atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the file formats they are stored in
 * :ref:`Columns` - the set of comparable elements across a dataset (e.g. T1-weighted MRI scans across every session, ages across all subjects)
 
 Stores

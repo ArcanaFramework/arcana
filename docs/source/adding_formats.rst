@@ -20,59 +20,69 @@ File formats are defined by subclasses of the :class:`.FileGroup` base class.
 "File group" is a catch-all term that encompasses three sub-types, each with
 their own :class:`.FileGroup` subclass:
 
-* :class:`.BaseFile` - single files
-* :class:`.BaseFileWithSidecars` - files with side car files (e.g. separate headers)
-* :class:`.BaseDirectory` - directories with specific contents
+* :class:`.File` - single files
+* :class:`.WithSideCars` - files + side car files (e.g. separate headers/JSON files)
+* :class:`.Directory` - single directories containing specific 
 
 New format classes should extend one of these classes or an existing file
 format class (or both) as they include methods to interact with the data
-store. Note that :class:`.BaseFile` is a base class of :class:`.BaseFileWithSidecars`
+store. Note that :class:`.File` is a base class of :class:`.WithSideCars`
 so multiple inheritance is possible where a format with side cars inherits from
 the same format without side-cars (e.g. Nifti -> NiftiX), but in this case
-ensure that :class:`.BaseFileWithSidecars` appears before the other class to be
-extended in the bases list, e.g. ``NiftiX(BaseFileWithSidecars, Nifti)``.
+ensure that :class:`.WithSideCars` appears before the other class to be
+extended in the bases list, e.g. ``NiftiX(WithSideCars, Nifti)``.
 
 :class:`.File` subclasses typically only need to set an ``ext`` attribute
 to the extension string used to identify the type of file, e.g.
 
 .. code-block:: python
 
-    from arcana.core.data.format import File
+    from arcana.data.formats.common import File
 
-    class Json(BaseFile):
+    class Json(File):
         ext = 'json'
 
-If the file format doesn't have an identifiable extension it is possible to
-override the :meth:`File.from_paths` method and peak inside the contents of the
-file to determine its type, but this shouldn't be necessary in most cases.
+.. note::
+    If the file format doesn't have an identifiable extension it is possible to
+    override :meth:`File.set_fs_paths` to peak inside the contents of the
+    file to determine its type, but this shouldn't be necessary in most cases.
 
-:class:`.BaseFileWithSidecars` subclasses can set the ``ext`` and ``side_car_exts``
-attributes. The ``side_car_exts`` attribute is a tuple of the side cars extensions
-that should be present alongside the "primary file",
+:class:`.WithSideCars` subclasses can set the ``ext`` and ``side_car_types``
+attributes. The ``side_car_types`` attribute is a tuple of the side cars
+formats that are expected alongside the "primary file"
 
 .. code-block:: python
 
-    from arcana.core.data.format import FileWithSidecars
+    from arcana.core.data.format import WithSideCars
 
-    class Analyze(BaseFileWithSidecars):
+    class AnalyzeHeader(File):
+        ext = 'hdr'
+
+    class Analyze(WithSideCars):
         ext = 'img'
-        side_car_exts = ('hdr',)
+        side_car_types = (AnalyzeHeader,)
 
-:class:`.BaseDirectory` subclasses can set ``ext`` but will typically only set
-the ``content_types`` attribute. The ``content_types`` attribute is a tuple of
-the file formats that are expected within the directory. The list is not
-exclusive, so stray files inside the directory will not effect its
+.. note::
+    When using a file + side-cars format in a workflow, the side car files can
+    be assumed to have the same name-stem, just different extensions
+    (e.g. ``/path/to/data/myfile.nii.gz`` and ``/path/to/data/myfile.json``).
+    Also when setting paths, if side-car paths are not explicitly provided they
+    will be assumed to have the same name-stem.
+
+:class:`.Directory` subclasses can define the ``content_types`` attribute,
+a tuple of the file formats, that are expected within the directory. The list is not
+exclusive, so additional files inside the directory will not effect its
 identification.
 
 
 .. code-block:: python
 
-    from arcana.core.data.format import BaseDirectory, BaseFile
+    from arcana.data.formats.common import Directory, File
     
-    class DicomFile(BaseFile):
+    class DicomFile(File):
         ext = 'dcm'
 
-    class Dicom(BaseDirectory):
+    class Dicom(Directory):
         content_types = (DicomFile,)
 
 It is a good idea to make use of class inheritance when defining related
@@ -108,8 +118,9 @@ converted file group in the order they appear in ``side_car_exts``.
     from pydra.tasks.dcm2niix import Dcm2niix
     from pydra.tasks.mrtrix3.utils import MRConvert
     from arcana.core.mark import converter
+    from arcana.data.formats.common import File
 
-    class Nifti(BaseFile):
+    class Nifti(File):
         ext = 'nii'
 
         @classmethod
@@ -130,7 +141,7 @@ converted file group in the order they appear in ``side_car_exts``.
                 out_file='out.' + cls.ext)
             return node, node.lzout.out_file
 
-If the class to convert to is a :class:`.BaseFileWithSidecars` subclass then the return value
+If the class to convert to is a :class:`.WithSideCars` subclass then the return value
 should be a tuple consisting the primary path followed by side-car paths in the
 same order they are defined in the class. To remove a converter in a specialised
 subclass (which the converter isn't able to convert to) simply override the
@@ -139,9 +150,9 @@ converter method with an arbitrary value.
 
 .. code-block:: python
 
-    class NiftiX(BaseFileWithSidecars, Nifti):
+    class NiftiX(WithSideCars, Nifti):
         ext = 'nii'
-        side_car_exts = ('json',)
+        side_car_types = (Json,)
 
         @classmethod
         @converter(Dicom)
@@ -158,10 +169,10 @@ two-way conversions between formats
 
 .. code-block:: python
 
-    class ExampleFormat2Base(BaseFile):
+    class ExampleFormat2Base(File):
         pass
 
-    class ExampleFormat1(BaseFile):
+    class ExampleFormat1(File):
         ext = 'exm1'
 
         @classmethod
