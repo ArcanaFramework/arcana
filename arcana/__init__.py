@@ -24,5 +24,8 @@ from .core.data.set import Dataset
 # Should be set explicitly in all FSL interfaces, but this squashes the warning
 # os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'
 
-from ._version import __version__
 from .__about__ import __authors__
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
