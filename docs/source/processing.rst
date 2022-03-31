@@ -44,7 +44,7 @@ are created to wrap the workflow and prepend and append additional tasks to
 * write provenance metadata
 * check saved provenance metadata to ensure prerequisite derivatives were generated with equivalent parameterisations and software versions (and potentially reprocess them if not)
 
-To add a workflow to a dataset via the API use the :meth:`Dataset.apply_pipeline` method
+To add a workflow to a dataset via the API use the :meth:`Dataset.apply_workflow` method
 mapping the inputs and outputs of the Pydra_ workflow/task (``in_file``, ``peel``
 and ``out_file`` in the example below) to appropriate columns in the dataset
 (``T1w``, ``T2w`` and ``freesurfer/recon-all`` respectively)
@@ -63,7 +63,7 @@ and ``out_file`` in the example below) to appropriate columns in the dataset
 
     dataset.add_sink('freesurfer/recon-all', common.Directory)
 
-    dataset.apply_pipeline(
+    dataset.apply_workflow(
         workflow=Freesurfer(
             name='freesurfer,
             param1=10.0,
@@ -72,32 +72,12 @@ and ``out_file`` in the example below) to appropriate columns in the dataset
                 ('T2w', 'peel', medimage.NiftiGz)],
         outputs=[('freesurfer/recon-all', 'out_file', common.Directory)])
 
+    dataset.save()
+
 If there is a mismatch in the data format (see :ref:`data_formats`) between the
 workflow inputs/outputs and the columns they are connected to, a format conversion
 task will be inserted into the pipeline if converter method between the two
 formats exists (see :ref:`file_formats`).
-
-If the source can be referenced by its path alone and the formats of the source
-and sink columns match those expected and produced by the workflow, then you
-can all add the sources and sinks in one step
-
-.. code-block:: python
-
-    from pydra.tasks.fsl.preprocess.fast import FAST
-    from arcana.data.formats import common, medimage
-
-    dataset = Dataset.load('file///data/openneuro/ds00014:test')
-
-    dataset.apply_pipeline(
-        workflow=FAST(
-            name='segmentation',
-            method='a-method'),
-        sources=[('T1w', 'in_file', medimage.NiftiGz)],
-        sinks=[('fast/gm', 'gm', medimage.NiftiGz)])
-
-    # Save pipeline to dataset metadata for subsequent reuse.
-    dataset.save()
-
 
 To connect a workflow via the CLI
 
@@ -109,7 +89,7 @@ To connect a workflow via the CLI
       medimage:Dicom --path '.*t2spc.*' --regex
     $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurver/recon-all \
       common:Zip
-    $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
+    $ arcana apply workflow 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
       --input T1w in_file medimage:NiftiGz \
       --input T2w peel medimage:NiftiGz \
@@ -117,12 +97,13 @@ To connect a workflow via the CLI
       --parameter param1 10 \
       --parameter param2 20
 
-When sinks and sources can be specified by their path alone and their
-formats don't need converting the can be added in a single step
+If the source can be referenced by its path alone and the formats of the source
+and sink columns match those expected and produced by the workflow, then you
+can all add the sources and sinks in one step
 
 .. code-block:: console
 
-    $ arcana apply workflow 'file///data/openneuro/ds00014:test' segmentation \
+    $ arcana apply workflow 'file///data/enigma/alzheimers:test' segmentation \
       pydra.tasks.fsl.preprocess.fast:FAST \
       --source T1w in_file medimage:NiftiGz \
       --sink fast/gm gm medimage:NiftiGz \
@@ -158,9 +139,12 @@ back to the dataset.
         format=medimage.NiftiGz
         frequency='dataset')
 
+    # NB: we don't need to add the T1w source as it is automatically detected
+    #     when using BIDS
+
     # Connect pipeline to a "dataset" row-frequency sink column. Needs to be
     # of `dataset` frequency itself or Arcana will raise an error
-    dataset.apply_pipeline(
+    dataset.apply_workflow(
         name='vbm_template',
         workflow=vbm_template(),
         inputs=[('in_file', 'T1w')],

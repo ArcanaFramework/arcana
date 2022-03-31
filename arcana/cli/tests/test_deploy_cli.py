@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 from click.testing import CliRunner
 from arcana.cli.deploy import build_all
-from arcana.tests.utils import show_cli_trace
+from arcana.test.utils import show_cli_trace
 
 @pytest.mark.skip("needs to be updated to match refactoring")
 def test_deploy_build():
@@ -31,7 +31,7 @@ concatenate_module_contents = """from arcana.data.formats.common import text
 
 spec = {
     'commands': [
-        {'pydra_task': 'arcana.tasks.tests.fixtures:concatenate',
+        {'pydra_task': 'arcana.test.tasks:concatenate',
          'inputs': [('in_file1', text), ('in_file2', text)],
          'outputs': [('out_file', text)],
          'parameters': ['duplicates'],

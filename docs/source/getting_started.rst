@@ -95,7 +95,7 @@ over all sessions with the API
     my_dataset.add_sink('brain_mask', 'derivs/brain_mask', format=NiftiGz)
 
     # Apply BET Pydra task, connecting it between the source and sink
-    my_dataset.apply_pipeline(
+    my_dataset.apply_workflow(
         BET(name='brain_extraction'),
         inputs=[('T1w', 'in_file', NiftiGz)],  # Specify required input format
         outputs=[('brain_mask', 'out_file')])  # Output format matches stored so can be omitted
@@ -116,7 +116,7 @@ Alternatively, the same steps can be performed using the command line interface
     $ arcana dataset define 'file///data/my-project' subject session
     $ arcana column add-source 'file///data/my-dataset' T1w '.*mprage.*' medimage:Dicom --regex
     $ arcana column add-sink 'file///data/my-dataset' brain_mask medimage:NiftiGz
-    $ arcana apply pipeline 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
+    $ arcana apply workflow 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
       --arg name brain_extraction \
       --input T1w in_file medimage:NiftiGz \
       --output brain_mask out_file .

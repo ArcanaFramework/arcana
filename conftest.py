@@ -16,8 +16,8 @@ sch.setFormatter(formatter)
 logger.addHandler(sch)
 
 
-# Load all test fixtures under `arcana.tests.fixtures` package
+# Load all test fixtures under `arcana.test.fixtures` package
 pytest_plugins = [
     m.name for m in pkgutil.iter_modules(
-        [str(Path(__file__).parent / 'arcana'/ 'tests'/ 'fixtures')],
-        prefix='arcana.tests.fixtures.')]
+        [str(Path(__file__).parent / 'arcana'/ 'test'/ 'fixtures')],
+        prefix='arcana.test.fixtures.')]

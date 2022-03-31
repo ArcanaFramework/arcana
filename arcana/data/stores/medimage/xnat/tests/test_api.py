@@ -12,7 +12,7 @@ from tempfile import mkdtemp
 from functools import reduce
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.set import Dataset
-from arcana.tests.fixtures.common import create_test_file
+from arcana.test.datasets import create_test_file
 
 # logger = logging.getLogger('arcana')
 # logger.setLevel(logging.INFO)

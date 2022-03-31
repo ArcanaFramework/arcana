@@ -2,7 +2,7 @@ from inspect import Arguments
 import click
 from arcana.core.data.set import Dataset
 from arcana.core.cli import cli
-from arcana.core.utils import get_home_dir, resolve_class, parse_value
+from arcana.core.utils import resolve_class, parse_value
 
 
 @cli.group()
@@ -10,7 +10,8 @@ def apply():
     pass
 
 
-@apply.command(help="""Apply a Pydra workflow to a dataset
+@apply.command(name='workflow', help="""Apply a Pydra workflow to a dataset as a pipeline between
+two columns
 
 ID_STR string containing the nick-name of the store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
@@ -55,8 +56,8 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
     '--overwrite/no-overwrite', default=False,
     help=("whether to overwrite previous connections to existing sink columns "
           "or not"))
-def pipeline(id_str, name, workflow_location, input, output, parameter, source,
-             sink, frequency, overwrite):
+def apply_workflow(id_str, name, workflow_location, input, output, parameter,
+                   source, sink, frequency, overwrite):
 
     dataset = Dataset.load(id_str)
     workflow = resolve_class(workflow_location)(
@@ -78,13 +79,13 @@ def pipeline(id_str, name, workflow_location, input, output, parameter, source,
         dataset.add_sink(col_name, format)
         outputs.append((col_name, pydra_field, format))
     
-    dataset.apply_pipeline(
+    dataset.apply_workflow(
         name, workflow, inputs, outputs, frequency=frequency,
         overwrite=overwrite)
 
     dataset.save()
 
 
-@apply.command(help="""Applies an analysis class to a dataset""")
-def analysis():
-    raise NotImplementedError
+# @apply.command(name='analysis', help="""Applies an analysis class to a dataset""")
+# def apply_analysis():
+#     raise NotImplementedError

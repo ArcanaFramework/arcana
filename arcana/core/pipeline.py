@@ -4,11 +4,8 @@ import typing as ty
 from dataclasses import dataclass
 import logging
 from copy import copy, deepcopy
-from operator import itemgetter
 import attr
 from pydra import Workflow, mark
-from pydra.engine.task import FunctionTask
-from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.format import DataItem, FileGroup
 import arcana.core.data.set

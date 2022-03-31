@@ -14,7 +14,7 @@ setup(
     version=versioneer.get_version(),
     author='Thomas G. Close',
     author_email='tom.g.close@gmail.com',
-    packages=find_packages(exclude=['tests']),
+    packages=find_packages(exclude=['tests', 'test']),
     url=CODE_URL,
     license='Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License',
     description=(

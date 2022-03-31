@@ -7,7 +7,7 @@ import docker.errors
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats import Text
 from arcana.data.stores.medimage.xnat.cs import XnatViaCS
-from arcana.tests.fixtures.medimage import make_mutable_dataset
+from arcana.test.fixtures.medimage import make_mutable_dataset
 
 
 PIPELINE_NAME = 'test-concatenate'
@@ -21,7 +21,7 @@ def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
     image_tag = f'arcana-concatenate{run_prefix}:latest'
 
     pipeline_name = 'detected_' + PIPELINE_NAME + run_prefix
-    pydra_task = 'arcana.tasks.tests.fixtures:concatenate'
+    pydra_task = 'arcana.test.tasks:concatenate'
 
     xnat_command = XnatViaCS.generate_xnat_command(
         pipeline_name=pipeline_name,
@@ -86,7 +86,7 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
 
     xnat_command = XnatViaCS.generate_xnat_command(
         pipeline_name=pipeline_name,
-        pydra_task='arcana.tasks.tests.fixtures:concatenate',
+        pydra_task='arcana.test.tasks:concatenate',
         image_tag=concatenate_container,
         inputs=[
             ('in_file1', Text, 'to_concat1', Clinical.session),

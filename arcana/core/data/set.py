@@ -607,7 +607,7 @@ class Dataset():
                 children_dict[diff_id] = node
         return node
 
-    def apply_pipeline(self, name, workflow, inputs, outputs, frequency=None,
+    def apply_workflow(self, name, workflow, inputs, outputs, frequency=None,
                        overwrite=False):
         """Connect a Pydra workflow as a pipeline of the dataset
 
@@ -627,6 +627,11 @@ class Dataset():
             by default the highest frequency nodes (e.g. per-session)
         overwrite : bool, optional
             overwrite connections to previously connected sinks, by default False
+
+        Returns
+        -------
+        Pipeline
+            the pipeline added to the dataset
 
         Raises
         ------
@@ -650,6 +655,8 @@ class Dataset():
                         f"sink ({sink.pipeline_name}) with {name}. Use "
                         f"'overwrite' option if this is desired")
         self.pipelines[name] = pipeline
+
+        return pipeline
 
     def derive(self, *names, ids=None):
         """Generate derivatives from the workflows
