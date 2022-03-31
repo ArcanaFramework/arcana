@@ -44,7 +44,7 @@ are created to wrap the workflow and prepend and append additional tasks to
 * write provenance metadata
 * check saved provenance metadata to ensure prerequisite derivatives were generated with equivalent parameterisations and software versions (and potentially reprocess them if not)
 
-To add a workflow to a dataset via the API use the :meth:`Dataset.apply_workflow` method
+To add a workflow to a dataset via the API use the :meth:`Dataset.apply_pipeline` method
 mapping the inputs and outputs of the Pydra_ workflow/task (``in_file``, ``peel``
 and ``out_file`` in the example below) to appropriate columns in the dataset
 (``T1w``, ``T2w`` and ``freesurfer/recon-all`` respectively)
@@ -63,7 +63,7 @@ and ``out_file`` in the example below) to appropriate columns in the dataset
 
     dataset.add_sink('freesurfer/recon-all', common.Directory)
 
-    dataset.apply_workflow(
+    dataset.apply_pipeline(
         workflow=Freesurfer(
             name='freesurfer,
             param1=10.0,
@@ -88,7 +88,7 @@ can all add the sources and sinks in one step
 
     dataset = Dataset.load('file///data/openneuro/ds00014:test')
 
-    dataset.apply_workflow(
+    dataset.apply_pipeline(
         workflow=FAST(
             name='segmentation',
             method='a-method'),
@@ -160,7 +160,7 @@ back to the dataset.
 
     # Connect pipeline to a "dataset" row-frequency sink column. Needs to be
     # of `dataset` frequency itself or Arcana will raise an error
-    dataset.apply_workflow(
+    dataset.apply_pipeline(
         name='vbm_template',
         workflow=vbm_template(),
         inputs=[('in_file', 'T1w')],

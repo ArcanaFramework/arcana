@@ -7,7 +7,6 @@ import re
 import attr
 import attr.filters
 from attr.converters import default_if_none
-from pydra import Workflow
 from arcana.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
     ArcanaBadlyFormattedIDError, ArcanaWrongDataSpaceError)
@@ -119,7 +118,7 @@ class Dataset():
     name: str = attr.ib(default=DEFAULT_NAME)
     column_specs: ty.Optional[ty.Dict[str, ty.Union[DataSource, DataSink]]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    workflows: ty.Dict[str, Workflow] = attr.ib(
+    pipelines: ty.Dict[str, ty.Any] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     _root_node: DataNode = attr.ib(default=None, init=False, repr=False,
                                    eq=False)
@@ -608,51 +607,49 @@ class Dataset():
                 children_dict[diff_id] = node
         return node
 
-    def apply_pipeline(self, name, workflow, inputs, outputs,
-                       frequency=None):
-        for output in outputs:
-            if sink.pipeline_name is not None:
-                if overwrite:
-                    logger.info(
-                        f"Overwriting pipeline of sink '{output_name}' "
-                        f"{sink.pipeline} with {pipeline}")
-                else:
-                    raise ArcanaUsageError(
-                        f"Attempting to overwrite pipeline of '{output_name}' "
-                        f"sink ({sink.pipeline}). Use 'overwrite' option if "
-                        "this is desired")
-
-    def new_pipeline(self, name, inputs, outputs, frequency=None, **kwargs):
-        """Generate a Pydra task that sources the specified inputs from the
-        dataset
+    def apply_pipeline(self, name, workflow, inputs, outputs, frequency=None,
+                       overwrite=False):
+        """Connect a Pydra workflow as a pipeline of the dataset
 
         Parameters
         ----------
         name : str
-            A name for the workflow (must be globally unique)
+            name of the pipeline
         workflow : pydra.Workflow
-            The Pydra workflow to add to the store
-        inputs : Sequence[str or tuple[str, type]]
-            List of column names (i.e. either data sources or sinks) to be
-            connected to the inputs of the pipeline. If the pipelines requires
-            the input to be in a format to the source, then it can be specified
-            in a tuple (NAME, FORMAT)
-        outputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
-            List of sink names to be connected to the outputs of the pipeline
-            If teh the input to be in a specific format, then it can be provided in
-            a tuple (NAME, FORMAT)
-        frequency : DataSpace, optional
-            The frequency of the pipeline, i.e. the frequency of the
-            derivatvies within the dataset, e.g. per-session, per-subject, etc,
-            by default None
-        **kwargs : Dict[str, Any]
-            Keyword arguments passed to Pipeline.factory()
+            pydra workflow to connect to the dataset as a pipeline
+        inputs : list[arcana.core.pipeline.Input or tuple[str, str, type]]
+            List of inputs to the pipeline (see `arcana.core.pipeline.Pipeline.Input`)
+        outputs : list[arcana.core.pipeline.Output or tuple[str, str, type]]
+            List of outputs of the pipeline (see `arcana.core.pipeline.Pipeline.Output`)
+        frequency : str, optional
+            the frequency of the nodes the pipeline will be executed over, i.e.
+            will it be run once per-session, per-subject or per whole dataset,
+            by default the highest frequency nodes (e.g. per-session)
+        overwrite : bool, optional
+            overwrite connections to previously connected sinks, by default False
+
+        Raises
+        ------
+        ArcanaUsageError
+            if overwrite is false and 
         """
         from arcana.core.pipeline import Pipeline
         frequency = self._parse_freq(frequency)
-        return Pipeline.factory(
-            name=name, inputs=inputs, outputs=outputs, frequency=frequency,
-            dataset=self, **kwargs)
+        pipeline = Pipeline(
+            name, self, frequency, workflow, inputs, outputs)
+        for outpt in pipeline.outputs:
+            sink = self[outpt.col_name]
+            if sink.pipeline_name is not None:
+                if overwrite:
+                    logger.info(
+                        f"Overwriting pipeline of sink '{outpt.col_name}' "
+                        f"{sink.pipeline_name} with {name}")
+                else:
+                    raise ArcanaUsageError(
+                        f"Attempting to overwrite pipeline of '{outpt.col_name}' "
+                        f"sink ({sink.pipeline_name}) with {name}. Use "
+                        f"'overwrite' option if this is desired")
+        self.pipelines[name] = pipeline
 
     def derive(self, *names, ids=None):
         """Generate derivatives from the workflows
@@ -670,7 +667,7 @@ class Dataset():
             The derived columns
         """
         # TODO: Should construct full stack of required workflows
-        for workflow in set(self.column_spec[n].workflow for n in names):
+        for workflow in set(self.column_spec[n].pipeline_names for n in names):
             workflow(ids=ids)
         return self.columns(*names)
 

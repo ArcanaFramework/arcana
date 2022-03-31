@@ -78,7 +78,7 @@ def test_pipeline_with_implicit_conversion(work_dir):
 
 
 @pytest.mark.skip("Not implemented yet")
-def test_apply_workflow(work_dir):
+def test_apply_pipeline(work_dir):
 
     # Load dataset
     my_dataset = Dataset.load('file///data/my-dataset',
@@ -91,7 +91,7 @@ def test_apply_workflow(work_dir):
     my_dataset.add_sink('brain_mask', 'derivs/brain_mask', format=NiftiGz)
 
     # Apply BET Pydra task, connecting it betwee between the source and sink
-    my_dataset.apply_workflow(
+    my_dataset.apply_pipeline(
         'brain_extraction',
         BET(),
         inputs=[('T1w', 'in_file', NiftiGz)],

@@ -11,28 +11,26 @@ from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.format import DataItem, FileGroup
-from .data.set import Dataset
+import arcana.core.data.set
 from .data.space import DataSpace
 from .utils import func_task
 
 logger = logging.getLogger('arcana')
 
 
-@dataclass
-def Input():
 
+@dataclass
+class Input():
     col_name: str
     pydra_field: str
     required_format: type
 
 
 @dataclass
-def Output():
-
+class Output():
     col_name: str
     pydra_field: str
     produced_format: type
-
 
 @attr.s
 class Pipeline():
@@ -59,7 +57,7 @@ class Pipeline():
     """
 
     name: str = attr.ib()
-    dataset: Dataset = attr.ib()
+    dataset: arcana.core.data.set.Dataset = attr.ib()
     frequency: DataSpace = attr.ib()
     template: Workflow = attr.ib()
     inputs: ty.List[Input] = attr.ib(
@@ -101,29 +99,40 @@ class Pipeline():
     # self.wf.to_process.inputs.parameterisation = parameterisation
     # self.wf.per_node.source.inputs.parameterisation = parameterisation
 
-    def internal_workflow(self, **kwargs):
+    def inner_workflow(self, **kwargs):
+        """Create a copy of the "inner" workflow template that actually performs
+        the data processing.
+
+        Returns
+        -------
+        pydra.Workflow
+            copy of the inner workflow with a standard name and all inputs
+            connected
+        **kwargs : dict[str, pydra.LazyField]
+            lazy field inputs to connect to the inner workflow
+        """
         cpy = deepcopy(self.template)
-        cpy.name = 'internal'
+        cpy.name = 'inner'
         for name, lf in kwargs.items():
             setattr(cpy.inputs, name, lf)
         return cpy
 
     def __call__(self, **kwargs):
-        """        
+        """
+        Create an "outer" workflow that interacts with the dataset to pull input
+        data, process it and then push the derivatives back to the store.
+        
         Parameters
         ----------
-        name : str
-            Name of the pipeline
-        dataset : Dataset
-            The dataset to connect the pipeline to
         **kwargs
             Passed to Pydra.Workflow init
 
         Returns
         -------
-        Workflow
-            The newly created pipeline ready for analysis nodes to be added to
-            it
+        pydra.Workflow
+            a Pydra workflow that iterates through the dataset, pulls data to the
+            processing node, executes the analysis workflow on each data node,
+            then uploads the outputs back to the data store
 
         Raises
         ------
@@ -198,7 +207,7 @@ class Pipeline():
             id=wf.to_process.lzout.ids).split('id'))
 
         source_in = [
-            ('dataset', Dataset),
+            ('dataset', arcana.core.data.set.Dataset),
             ('frequency', DataSpace),
             ('id', str),
             ('inputs', ty.Sequence[str]),
@@ -256,7 +265,7 @@ class Pipeline():
             **sourced))
 
         wf.per_node.add(
-            self.internal_workflow(
+            self.inner_workflow(
                 **{i.pydra_field: getattr(wf.per_node.input_interface, i.col_name)
                    for i in self.inputs}))
 
@@ -269,7 +278,7 @@ class Pipeline():
             out_fields=[(o, DataItem) for o in self.output_col_names],
             name='output_interface',
             outputs=self.outputs,
-            **{o.col_name: getattr(wf.per_node.internal, o.pydra_field)
+            **{o.col_name: getattr(wf.per_node.inner, o.pydra_field)
                for o in self.outputs}))
 
         # Set format converters where required
@@ -298,7 +307,7 @@ class Pipeline():
         wf.per_node.add(func_task(
             sink_items,
             in_fields=(
-                [('dataset', Dataset),
+                [('dataset', arcana.core.data.set.Dataset),
                  ('frequency', DataSpace),
                  ('id', str),
                  ('provenance', ty.Dict[str, ty.Any])]
@@ -335,7 +344,7 @@ def split_side_car_suffix(name):
 
 @mark.task
 @mark.annotate({
-    'dataset': Dataset,
+    'dataset': arcana.core.data.set.Dataset,
     'frequency': DataSpace,
     'outputs': ty.Sequence[str],
     'requested_ids': ty.Sequence[str] or None,

@@ -100,7 +100,7 @@ For example, the preceding example would be:
 
     pipeline_name: fast
     pydra_task: pydra.tasks.fsl.preprocess.fast:FAST
-    description: -
+    description:
         FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of 
         the brain into different tissue types (Grey Matter, White Matter, 
         CSF, etc.), whilst also correcting for spatial intensity variations 

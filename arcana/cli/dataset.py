@@ -18,28 +18,22 @@ def dataset():
 dataset. Where possible, the definition file is saved inside the dataset for
 use by multiple users, if not possible it is stored in the ~/.arcana directory.
 
-store
-    The name data store the dataset is located in (see 'arcana store' command).
-    For basic file system directories use 'file', and bids-formatted directories
-    use 'bids'.
-id
-    ID of the dataset in the data store. For XNAT repositories this is the
-    project ID, for file-system directories this is the path to the rdirectory
-hierarchy
-    The data frequencies that are present in the data tree. "
-    For some store types this is fixed (e.g. XNAT-> subject > session) but "
-    for more flexible (e.g. FileSystem), which dimension each layer of
-    sub-directories corresponds to can be arbitrarily specified. dimensions
-    "
-"""))
-@click.argument('id')
+ID_STR string containing the nick-name of the store, the ID of the dataset
+(e.g. XNAT project ID or file-system directory) and the dataset's name in the
+format <NICKNAME>//DATASET_ID:DATASET_NAME
+
+HIERARCHY the data frequencies that are present in the data tree. For some
+store types this is fixed (e.g. XNAT-> subject > session) but for more flexible
+(e.g. FileSystem), which dimension each layer of sub-directories corresponds to
+can be arbitrarily specified. dimensions"""))
+@click.argument('id_str')
 @click.argument('hierarchy', nargs=-1)
 @click.option(
     '--space', type=str, default=None,
     help=("The \"space\" of the dataset, defines the dimensions along the ids "
           "of node can vary"))
 @click.option(
-    '--include', nargs=2, default=[], metavar='<freq-id>',
+    '--include', nargs=2, default=(), metavar='<freq-id>',
     multiple=True,
     help=("The nodes to include in the dataset. First value is the "
            "frequency of the ID (e.g. 'group', 'subject', 'session') "
@@ -47,7 +41,7 @@ hierarchy
            "If the second arg contains '/' then it is interpreted as "
            "the path to a text file containing a list of IDs"))
 @click.option(
-    '--exclude', nargs=2, default=[], metavar='<freq-id>',
+    '--exclude', nargs=2, default=(), metavar='<freq-id>',
     multiple=True,
     help=("The nodes to exclude from the dataset. First value is the "
           "frequency of the ID (e.g. 'group', 'subject', 'session') "
@@ -78,9 +72,9 @@ groups corresponding to the inferred IDs
 --id_inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
 
 """)
-def define(id, hierarchy, include, exclude, space, id_inference):
+def define(id_str, hierarchy, include, exclude, space, id_inference):
 
-    store_name, id, name = Dataset.parse_id_str(id)
+    store_name, id, name = Dataset.parse_id_str(id_str)
 
     if not hierarchy:
         hierarchy = None
