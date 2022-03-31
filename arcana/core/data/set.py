@@ -617,9 +617,9 @@ class Dataset():
             name of the pipeline
         workflow : pydra.Workflow
             pydra workflow to connect to the dataset as a pipeline
-        inputs : list[arcana.core.pipeline.Input or tuple[str, str, type]]
+        inputs : list[arcana.core.pipeline.Input or tuple[str, str, type] or tuple[str, str]]
             List of inputs to the pipeline (see `arcana.core.pipeline.Pipeline.Input`)
-        outputs : list[arcana.core.pipeline.Output or tuple[str, str, type]]
+        outputs : list[arcana.core.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
             List of outputs of the pipeline (see `arcana.core.pipeline.Pipeline.Output`)
         frequency : str, optional
             the frequency of the nodes the pipeline will be executed over, i.e.
@@ -638,10 +638,24 @@ class Dataset():
         ArcanaUsageError
             if overwrite is false and 
         """
-        from arcana.core.pipeline import Pipeline
+        from arcana.core.pipeline import Pipeline, Input, Output
         frequency = self._parse_freq(frequency)
+        def parsed_conns(lst, conn_type):
+            parsed = []
+            for spec in lst:
+                if isinstance(lst, conn_type):
+                    parsed.append(spec)
+                elif len(spec) == 3:
+                    parsed.append(conn_type(*spec))
+                else:
+                    col_name, pydra_field = spec
+                    parsed.append(conn_type(col_name, pydra_field,
+                                            self[col_name].format))
+            return parsed
         pipeline = Pipeline(
-            name, self, frequency, workflow, inputs, outputs)
+            name, self, frequency, workflow,
+            inputs=parsed_conns(inputs, Input),
+            outputs=parsed_conns(outputs, Output))
         for outpt in pipeline.outputs:
             sink = self[outpt.col_name]
             if sink.pipeline_name is not None:

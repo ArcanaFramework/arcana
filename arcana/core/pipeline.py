@@ -57,10 +57,8 @@ class Pipeline():
     dataset: arcana.core.data.set.Dataset = attr.ib()
     frequency: DataSpace = attr.ib()
     template: Workflow = attr.ib()
-    inputs: ty.List[Input] = attr.ib(
-        converter=lambda lst: [Input(i) for i in lst])
-    outputs: ty.List[Output] = attr.ib(
-        converter=lambda lst: [Output(o) for o in lst])
+    inputs: ty.List[Input] = attr.ib()
+    outputs: ty.List[Output] = attr.ib()
 
     @inputs.validator
     def inputs_validator(self, _, inpt):
