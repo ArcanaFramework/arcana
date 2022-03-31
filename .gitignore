@@ -21,3 +21,4 @@ test.log
 *.egg-info
 /test-data/dicom-dataset/
 /docker-tests
+~*

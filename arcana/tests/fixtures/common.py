@@ -303,7 +303,7 @@ def test_dicom_dataset_dir(test_ref_data_dir):
 def dicom_dataset(test_dicom_dataset_dir):
     return FileSystem().dataset(
         test_dicom_dataset_dir,
-        hierarchy=[Clinical.session])
+        hierarchy=['session'])
 
 
 @pytest.fixture(params=GOOD_DATASETS)

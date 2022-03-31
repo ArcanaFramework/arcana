@@ -181,7 +181,7 @@ class XnatViaCS(Xnat):
                               description,
                               version,
                               parameters=None,
-                              frequency=Clinical.session,
+                              frequency='session',
                               registry=DOCKER_HUB,
                               info_url=None):
         """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
@@ -211,7 +211,7 @@ class XnatViaCS(Xnat):
             Version string for the wrapped pipeline
         parameters : ty.List[str]
             Parameters to be exposed in the CS command    
-        frequency : Clinical
+        frequency : str
             Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
         registry : str
             URI of the Docker registry to upload the image to

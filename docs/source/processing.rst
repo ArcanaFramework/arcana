@@ -255,9 +255,11 @@ methods, and takes the columns the pipeline outputs are connected to as argument
             # in the @pipeline decorator
             return preprocess.lzout.out_file
 
-        # The 'create_image' pipeline derives two columns 'derived_image' and
-        # 'summary_metric'
-        @pipeline(derived_image,
+        # The 'create_image' pipeline derives two columns 'derived_image' (in GIF format) and
+        # 'summary_metric'. Since the output format of derived image created by the pipeline ('Gif')
+        # differs from that specified for the column ('Png'), an automatic conversion
+        # step will be added by Arcana before the image is stored.
+        @pipeline((derived_image, Gif),
                   summary_metric)
         def create_image_pipeline(
                 self,
@@ -273,10 +275,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
                     in_file=preprocessed,
                     contrast=contrast))
 
-            # Since the output format of derived image created by the pipeline ('Gif')
-            # differs from that specified for the column ('Png'), an automatic conversion
-            # step will be added by Arcana before the image is stored.
-            return (create_image.lzout.out_file, Gif), wf.create_image.lzout.summary
+            return create_image.lzout.out_file, wf.create_image.lzout.summary
 
 Analyses are applied to datasets using the :meth:`.Dataset.apply` method, which
 takes an :class:`.Analysis` object, instantiated with the names of columns in

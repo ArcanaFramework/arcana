@@ -501,7 +501,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             file_group=wf.lzin.to_convert))
 
         # Create converter node
-        converter, output_lfs = cls.select_converter_method(from_format)(**{
+        converter, output_lfs = cls.find_converter(from_format)(**{
             n: getattr(wf.access_paths.lzout, n) for n in cls.fs_names()})
         # If there is only one output lazy field, place it in a tuple so it can
         # be zipped with cls.fs_names()
@@ -528,7 +528,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         return wf
 
     @classmethod
-    def select_converter_method(cls, from_format):
+    def find_converter(cls, from_format):
         """Selects the converter method from the given format. Will select the
         most specific conversion.
 

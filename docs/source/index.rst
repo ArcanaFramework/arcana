@@ -27,8 +27,8 @@ when analysing large datasets:
 The Arcana framework can be broken down into four conceptual layers:
 
 * **Core layer** - abstract base classes and core pipeline logic
-* **Infrastructure layer** - Domain-specific repository systems, file formats and data structures
-* **Processing layer** - Preprocessing pipelines and methods to derive common markers
+* **Infrastructure layer** - Repository system connectors, file formats and data structures
+* **Processing layer** - Preprocessing pipelines and methods to derive standard markers
 * **Analysis layer** - Statistical analysis methods and study-specific customisations
 
 |
@@ -41,7 +41,7 @@ The Arcana framework can be broken down into four conceptual layers:
 |
 
 The core and infrastructure layers are largely developed by the main Arcana developer team
-(see `contribution guide  <https://github.com/australian-imaging-service/arcana/main/AUTHORS>`_).
+(see `Authors  <https://github.com/Australian-Imaging-Service/arcana/blob/main/AUTHORS>`_).
 Processing layers for neuro-MRI and molecular imaging are being developed as part of the
 Australian Imaging Service in the `core pipelines repository <https://github.com/Australian-Imaging-Service/pipelines-core>`_.
 Since the analysis layer is typically study-specific, it is often left to the

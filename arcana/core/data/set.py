@@ -36,20 +36,20 @@ class Dataset():
     store : Repository
         The store the dataset is stored into. Can be the local file
         system by providing a FileSystem repo.
-    hierarchy : Sequence[DataSpace or str]
+    hierarchy : Sequence[str]
         The data frequencies that are explicitly present in the data tree.
         For example, if a FileSystem dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
 
-            [Clinical.subject, Clinical.timepoint]
+            ['subject', 'timepoint']
 
         Alternatively, in some stores (e.g. XNAT) the second layer in the
         hierarchy may be named with session ID that is unique across the project,
         in which case the layer dimensions would instead be
 
-            [Clinical.subject, Clinical.session]
+            ['subject', 'session']
         
         In such cases, if there are multiple timepoints, the timepoint ID of the
         session will need to be extracted using the `id_inference` argument.
@@ -59,12 +59,12 @@ class Dataset():
         labelled by member ID, with the final layer containing sessions of
         matched members labelled by their groups (e.g. test & control):
 
-            [Clinical.timepoint, Clinical.member, Clinical.group]
+            ['timepoint', 'member', 'group']
 
         Note that the combination of layers in the hierarchy must span the
         space defined in the DataSpace enum, i.e. the "bitwise or" of the
         layer values of the hierarchy must be 1 across all bits
-        (e.g. Clinical.session: 0b111).
+        (e.g. 'session': 0b111).
     space: DataSpace
         The space of the dataset. See https://arcana.readthedocs.io/en/latest/data_model.html#spaces)
         for a description
@@ -83,7 +83,7 @@ class Dataset():
         containing ID to source the inferred IDs from coupled with a regular
         expression with named groups
 
-            id_inference=[(Clinical.subject,
+            id_inference=[('subject',
                            r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')}
     include : list[tuple[DataSpace, str or list[str]]]
         The IDs to be included in the dataset per frequency. E.g. can be
@@ -498,7 +498,7 @@ class Dataset():
                 # with the least significant bit (the order of the bits in the
                 # DataSpace class should be arranged to account for this)
                 # can be considered be considered to be equivalent to the label.
-                # E.g. Given a hierarchy of [Clinical.subject, Clinical.session]
+                # E.g. Given a hierarchy of ['subject', 'session']
                 # no groups are assumed to be present by default (although this
                 # can be overridden by the `id_inference` attr) and the `member`
                 # ID is assumed to be equivalent to the `subject` ID. Conversely,
@@ -513,7 +513,7 @@ class Dataset():
                 # extracted with the
                 #
                 #       id_inference={
-                #           Clinical.session: r'.*(?P<timepoint>0-9+)$'}
+                #           'session': r'.*(?P<timepoint>0-9+)$'}
                 if not (layer & frequency):
                     ids[layer.span()[-1]] = label
             else:
@@ -607,6 +607,20 @@ class Dataset():
                         "the timepoint ID from a session label)")
                 children_dict[diff_id] = node
         return node
+
+    def apply_pipeline(self, name, workflow, inputs, outputs,
+                       frequency=None):
+        for output in outputs:
+            if sink.pipeline_name is not None:
+                if overwrite:
+                    logger.info(
+                        f"Overwriting pipeline of sink '{output_name}' "
+                        f"{sink.pipeline} with {pipeline}")
+                else:
+                    raise ArcanaUsageError(
+                        f"Attempting to overwrite pipeline of '{output_name}' "
+                        f"sink ({sink.pipeline}). Use 'overwrite' option if "
+                        "this is desired")
 
     def new_pipeline(self, name, inputs, outputs, frequency=None, **kwargs):
         """Generate a Pydra task that sources the specified inputs from the

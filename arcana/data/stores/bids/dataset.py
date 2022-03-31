@@ -125,9 +125,9 @@ class BidsDataset(Dataset):
     @classmethod
     def load(cls, path):
         if list(Path(path).glob('**/sub-*/ses-*')):
-            hierarchy = [Clinical.subject, Clinical.timepoint]
+            hierarchy = ['subject', 'timepoint']
         else:
-            hierarchy = [Clinical.session]    
+            hierarchy = ['session']    
         dataset = BidsDataset(path, store=Bids(),
                               hierarchy=hierarchy)
         dataset.load_metadata()
@@ -139,9 +139,9 @@ class BidsDataset(Dataset):
         path = Path(path)
         path.mkdir()
         if session_ids is not None:
-            hierarchy = [Clinical.subject, Clinical.timepoint]
+            hierarchy = ['subject', 'timepoint']
         else:
-            hierarchy = [Clinical.session]
+            hierarchy = ['session']
         if generated_by is None:
             generated_by = [
                 GeneratorMetadata(
