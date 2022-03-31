@@ -608,8 +608,7 @@ def get_pkg_name(module_path: str):
                 continue
             path = path.with_suffix('')
             if path.name == '__init__':
-                path = path.parent
-            
+                path = path.parent   
             if module_path in ([path] + list(path.parents)):
                 return pkg.key
     raise ArcanaUsageError(f'{module_path} is not an installed module')
@@ -656,7 +655,7 @@ def serialise(obj, skip=(), ignore_instance_method=False):
         serialised = attr.asdict(
             obj,
             recurse=False,
-            filter=lambda a, v: a.init and a.name not in skip,
+            filter=lambda a, _: a.init and a.name not in skip and a.metadata.get('serialise', False),
             value_serializer=lambda _, __, v: serialise(v))
         serialised['type'] = '<' + class_location(obj) + '>'
         serialised['arcana_version'] = __version__
@@ -670,7 +669,7 @@ def serialise(obj, skip=(), ignore_instance_method=False):
     return serialised
 
 
-def unserialise(serialised: dict, **kwargs):
+def unserialise(serialised: dict, ignore_class_method=False, **kwargs):
     """Unserialises an object serialised by the `serialise` method from a
     dictionary
 
@@ -679,6 +678,8 @@ def unserialise(serialised: dict, **kwargs):
     serialised : dict
         A dictionary containing a serialsed Arcana object such as a data store
         or dataset definition
+    ignore_class_method: bool
+        Ignore definition of `unserialised` classmethod in the unserialised class
     **kwargs : dict[str, Any]
         Additional initialisation arguments for the object when it is reinitialised.
         Overrides those stored"""
@@ -690,11 +691,14 @@ def unserialise(serialised: dict, **kwargs):
                 f"Serialised version ('{serialised_version}' is too old to be "
                 f"read by this version of arcana ('{__version__}'), the minimum "
                 f"version is {MIN_SERIAL_VERSION}")
-        init_args = {}
-        for k, v in serialised.items():
-            init_args[k] = unserialise(v)
-        init_args.update(kwargs)
-        unserialised = serialised_cls(**init_args)
+        if hasattr(serialised_cls, 'unserialise') and not ignore_class_method:
+            unserialised = serialised_cls.unserialise(serialised)
+        else:
+            init_args = {}
+            for k, v in serialised.items():
+                init_args[k] = unserialise(v)
+            init_args.update(kwargs)
+            unserialised = serialised_cls(**init_args)
     elif isinstance(serialised, list):
         unserialised = [unserialise(x) for x in serialised]
     elif isinstance(serialised, dict):
@@ -708,7 +712,6 @@ def unserialise(serialised: dict, **kwargs):
             unserialised = serialised    
     else:
         unserialised = serialised
-
     return unserialised
 
 # Minimum version of Arcana that this 

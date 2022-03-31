@@ -187,7 +187,8 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 ..  code-block:: python
     :linenos:
 
-    from pydra.tasks.example import Preprocess, ExtractFromJson, MakeImage
+    import pydra
+    from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
     from arcana.core.mark import analysis, pipeline, parameter
     from arcana.data.spaces.example import ExampleDataSpace
     from arcana.data.formats.common import Zip, Directory, Json, Png, Gif
@@ -216,7 +217,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
         @pipeline(preprocessed)
         def preprocess_pipeline(
                 self,
-                wf,
+                wf: pydra.Workflow,
                 recorded_datafile: Directory,  # Automatic conversion from stored Zip format before pipeline is run
                 recorded_metadata):  # Format/format is the same as class definition so can be omitted
 

@@ -206,7 +206,7 @@ station, could look like
         # 'rain' arg is a lazy-field to a list[float] over all dates since the
         # frequency of the 'rain' column ('recording') is higher than
         # the pipeline's frequency ('station')
-        def average_rainfall_pipeline(self, wf, rain: list[float]):
+        def average_rainfall_pipeline(self, wf: pydra.Workflow, rain: list[float]):
 
             wf.add(
                 average(
@@ -218,7 +218,7 @@ station, could look like
         # Pipeline is of 'per-recording' frequency due to delta_rainfall
         # output column
         @pipeline(delta_rain)
-        def delta_pipeline(self, wf, rain: float,  avg_rainfall: float):
+        def delta_pipeline(self, wf: pydra.Workflow, rain: float,  avg_rainfall: float):
 
             pipeline.add(
                 delta(

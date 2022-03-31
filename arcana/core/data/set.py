@@ -12,7 +12,7 @@ from arcana.exceptions import (
     ArcanaBadlyFormattedIDError, ArcanaWrongDataSpaceError)
 from arcana.core.utils import serialise
 from .space import DataSpace
-from .column import DataSink, DataSource
+from .column import Column, DataSink, DataSource
 from . import store as datastore
 
 from .node import DataNode
@@ -116,7 +116,7 @@ class Dataset():
     exclude: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     name: str = attr.ib(default=DEFAULT_NAME)
-    column_specs: ty.Optional[ty.Dict[str, ty.Union[DataSource, DataSink]]] = attr.ib(
+    columns: ty.Optional[ty.Dict[str, Column]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     pipelines: ty.Dict[str, ty.Any] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
@@ -157,11 +157,10 @@ class Dataset():
         if name is None:
             name = parsed_name
         return store.load_dataset(id, name=name)
-                
 
-    @column_specs.validator
-    def column_specs_validator(self, _, column_specs):
-        wrong_freq = [m for m in column_specs.values()
+    @columns.validator
+    def columns_validator(self, _, columns):
+        wrong_freq = [m for m in columns.values()
                     if not isinstance(m.frequency, self.space)]
         if wrong_freq:
             raise ArcanaUsageError(
@@ -441,7 +440,7 @@ class Dataset():
             All data items in the column
         """
         spec = self.column_specs[name]
-        return (n[name] for n in self.nodes(spec.frequency))
+        
 
     def columns(self, *names):
         """Iterate over all columns in the dataset
