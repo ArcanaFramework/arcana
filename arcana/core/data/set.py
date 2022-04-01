@@ -129,7 +129,12 @@ class Dataset():
         if self.space is not None:
             self.hierarchy = [self.space[str(h)] for h in self.hierarchy]
         else:
-            self.space = type(self.hierarchy[0])
+            first_layer = self.hierarchy[0]
+            if not isinstance(first_layer, DataSpace):
+                raise ArcanaUsageError(
+                    "Data space needs to be specified explicitly as an "
+                    "argument or implicitly via hierarchy types")
+            self.space = type()
 
         # Ensure the keys of the include, exclude and id_inference attrs are
         # in the space of the dataset

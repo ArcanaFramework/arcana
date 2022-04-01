@@ -26,34 +26,38 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
 @click.argument('workflow_location')
 @click.option(
     '--input', '-i', nargs=3, default=(), metavar='<col-name> <pydra-field> <required-format>',
+    multiple=True, type=str,
     help=("the link between a column and an input of the workflow. "
           "The required format is the location (<module-path>:<class>) of the format "
           "expected by the workflow"))
 @click.option(
     '--output', '-o', nargs=3, default=(), metavar='<col-name> <pydra-field> <produced-format>',
+    multiple=True, type=str,
     help=("the link between an output of the workflow and a sink column. "
           "The produced format is the location (<module-path>:<class>) of the format "
           "produced by the workflow"))
 @click.option(
-    '--parameter', '-p', nargs=2, default=(), metavar='<name> <value>',
+    '--parameter', '-p', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
     help=("a fixed parameter of the workflow to set when applying it"))
 @click.option(
     '--source', '-s', nargs=3, default=(), metavar='<col-name> <pydra-field> <required-format>',
+    multiple=True, type=str,
     help=("add a source to the dataset and link it to an input of the workflow "
           "in a single step. The source column must be able to be specified by its "
           "path alone and be already in the format required by the workflow"))
 @click.option(
     '--sink', '-k', nargs=3, default=(), metavar='<col-name> <pydra-field> <produced-format>',
+    multiple=True, type=str,
     help=("add a sink to the dataset and link it to an output of the workflow "
           "in a single step. The sink column be in the same format as produced "
           "by the workflow"))
 @click.option(
-    '--frequency', '-f', default=None,
+    '--frequency', '-f', default=None, type=str,
     help=("the frequency of the nodes the pipeline will be executed over, i.e. "
           "will it be run once per-session, per-subject or per whole dataset, "
           "by default the highest frequency nodes (e.g. per-session)"))
 @click.option(
-    '--overwrite/no-overwrite', default=False,
+    '--overwrite/--no-overwrite', default=False,
     help=("whether to overwrite previous connections to existing sink columns "
           "or not"))
 def apply_workflow(id_str, name, workflow_location, input, output, parameter,
@@ -65,7 +69,8 @@ def apply_workflow(id_str, name, workflow_location, input, output, parameter,
         **{n: parse_value(v) for n, v in parameter})
 
     def parse_col_option(option):
-        return [(c, p, resolve_class(f)) for c, p, f in option]
+        return [(c, p, resolve_class(f, prefixes=['arcana.data.formats']))
+                for c, p, f in option]
     inputs = parse_col_option(input)
     outputs = parse_col_option(output)
     sources = parse_col_option(source)

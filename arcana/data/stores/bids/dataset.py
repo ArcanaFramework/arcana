@@ -129,6 +129,7 @@ class BidsDataset(Dataset):
         else:
             hierarchy = ['session']    
         dataset = BidsDataset(path, store=Bids(),
+                              space=Clinical,
                               hierarchy=hierarchy)
         dataset.load_metadata()
         return dataset
@@ -157,6 +158,7 @@ class BidsDataset(Dataset):
         dataset = BidsDataset(
             path,
             store=Bids(),
+            space=Clinical,
             hierarchy=hierarchy,
             name=name,
             generated_by=generated_by,

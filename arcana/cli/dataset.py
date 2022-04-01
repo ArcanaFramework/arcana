@@ -33,16 +33,14 @@ can be arbitrarily specified. dimensions"""))
     help=("The \"space\" of the dataset, defines the dimensions along the ids "
           "of node can vary"))
 @click.option(
-    '--include', nargs=2, default=(), metavar='<freq-id>',
-    multiple=True,
+    '--include', nargs=2, default=(), metavar='<freq-id>', multiple=True,
     help=("The nodes to include in the dataset. First value is the "
            "frequency of the ID (e.g. 'group', 'subject', 'session') "
            "followed by the IDs to be included in the dataset. "
            "If the second arg contains '/' then it is interpreted as "
            "the path to a text file containing a list of IDs"))
 @click.option(
-    '--exclude', nargs=2, default=(), metavar='<freq-id>',
-    multiple=True,
+    '--exclude', nargs=2, default=(), metavar='<freq-id>', multiple=True,
     help=("The nodes to exclude from the dataset. First value is the "
           "frequency of the ID (e.g. 'group', 'subject', 'session') "
           "followed by the IDs to be included in the dataset. "
@@ -55,8 +53,7 @@ can be arbitrarily specified. dimensions"""))
           "consists of the typical dataset>group>subject>session "
           "data tree used in medimage trials/studies"))
 @click.option(
-    '--id_inference', nargs=2, metavar='<source-regex>',
-    multiple=True,
+    '--id_inference', nargs=2, metavar='<source-regex>', multiple=True,
     help="""Specifies how IDs of node frequencies that not explicitly
 provided are inferred from the IDs that are. For example, given a set
 of subject IDs that are a combination of the ID of the group that they belong

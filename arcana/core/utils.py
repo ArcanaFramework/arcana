@@ -204,7 +204,7 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     cls = None
     for prefix in [None] + list(prefixes):
         if prefix is not None:
-            mod_name = prefix + '.' + module_path
+            mod_name = prefix + ('.' if prefix[-1] != '.' else '') + module_path
         else:
             mod_name = module_path
         if not mod_name:
@@ -642,7 +642,6 @@ def serialise(obj, skip=(), ignore_instance_method=False):
         decorator
     skip: Sequence[str]
         The names of attributes to skip"""
-
     if hasattr(obj, 'serialise') and not ignore_instance_method:
         serialised = obj.serialise()
     elif isclass(obj):
@@ -652,10 +651,13 @@ def serialise(obj, skip=(), ignore_instance_method=False):
     elif isinstance(obj, Path):
         serialised = str(obj)
     elif hasattr(obj, '__attrs_attrs__'):
+        def filter(a, _):
+            return a.init and a.name not in skip and a.metadata.get('serialise',
+                                                                    True)
         serialised = attr.asdict(
             obj,
             recurse=False,
-            filter=lambda a, _: a.init and a.name not in skip and a.metadata.get('serialise', False),
+            filter=filter,
             value_serializer=lambda _, __, v: serialise(v))
         serialised['type'] = '<' + class_location(obj) + '>'
         serialised['arcana_version'] = __version__
