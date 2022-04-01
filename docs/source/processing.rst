@@ -419,85 +419,89 @@ would look like
       "id": "MYPROJECT",
       "name": "training"
     },
-    "checksums": {
-      "inputs": {
-        // MD5 Checksums for all files in the file group. "." refers to the
-        // "primary file" in the file group.
-        "T1w_reg_dwi": {
-          ".": "4838470888DBBEADEAD91089DD4DFC55",
-          "json": "7500099D8BE29EF9057D6DE5D515DFFE"
+    "pipelines": [
+      "anatomically_constrained_tractography": {
+        "inputs": {
+          // MD5 Checksums for all files in the file group. "." refers to the
+          // "primary file" in the file group.
+          "T1w_reg_dwi": {
+            "format": "<arcana.data.formats.medimage:NiftiGzX>",
+            "checksums": {
+              ".": "4838470888DBBEADEAD91089DD4DFC55",
+              "json": "7500099D8BE29EF9057D6DE5D515DFFE"
+            }
+          },
+          "T2w_reg_dwi": {
+            "format": "<arcana.data.formats.medimage:NiftiGzX>",
+            "checksums": {
+              ".": "4838470888DBBEADEAD91089DD4DFC55",
+              "json": "5625E881E32AE6415E7E9AF9AEC59FD6"
+            }
+          },
+          "dwi_fod": {
+            "format": "<arcana.data.formats.medimage:MrtrixImage>",
+            "checksums": {
+              ".": "92EF19B942DD019BF8D32A2CE2A3652F"
+            }
+          }
         },
-        "T2w_reg_dwi": {
-          ".": "4838470888DBBEADEAD91089DD4DFC55",
-          "json": "5625E881E32AE6415E7E9AF9AEC59FD6"
-        },
-        "dwi_fod": {
-          ".": "92EF19B942DD019BF8D32A2CE2A3652F"
+        "outputs": {
+          "wm_tracks": {
+            "task": "tckgen",
+            "field": "out_file",
+            "format": "<arcana.data.formats.medimage:MrtrixTrack>",
+            "checksums": {
+              ".": "D30073044A7B1239EFF753C85BC1C5B3"
+            }
+          }
         }
+        "nodes": [
+          {
+            "name": "5ttgen",
+            "task": {
+              "type": "<pydra.tasks.mrtrix3.preprocess:FiveTissueTypes>",
+              "package": "pydra-mrtrix",
+              "version": "0.1.1"
+            }
+            "inputs": {
+              "in_file": {
+                "field": "T1w_reg_dwi"
+              }
+              "t2": {
+                "field": "T1w_reg_dwi"
+              }
+              "sgm_amyg_hipp": true
+            },
+            "container_image": {
+              "type": "docker",
+              "tag": "mrtrix3/mrtrix3"
+            }
+          },
+          {
+            "name": "tckgen",
+            "task": {
+              "type": "<pydra.tasks.mrtrix3.tractography:TrackGen>",
+              "package": "pydra-mrtrix",
+              "version": "0.1.1"
+            }
+            "inputs": {
+              "in_file": {
+                "field": "dwi_fod"
+              },
+              "act": {
+                "task": "5ttgen",
+                "field": "out_file"
+              },
+              "select": 100000000,
+            },
+            "container_image": {
+              "type": "docker",
+              "tag": "mrtrix3/mrtrix3"
+            }
+          },
+        ],
       },
-      "outputs": {
-        "wm_tracks": {
-          ".": "D30073044A7B1239EFF753C85BC1C5B3"
-        }
-      }
-    },
-    "pipeline": {
-      "name": "anatomically_constrained_tractography",
-      // List all tasks in the pipeline and the inputs to them. 
-      "tasks": [
-        {
-          "name": "5ttgen",
-          "task": {
-            "module": "pydra.tasks.mrtrix3.preprocess",
-            "name": "FiveTissueTypes",
-            "package": "pydra-mrtrix",
-            "version": "0.1.1"
-          }
-          "inputs": {
-            "in_file": {
-              "field": "T1w_reg_dwi"
-            }
-            "t2": {
-              "field": "T1w_reg_dwi"
-            }
-            "sgm_amyg_hipp": true
-          },
-          "image": {
-            "type": "docker",
-            "tag": "mrtrix3/mrtrix3"
-          }
-        },
-        {
-          "name": "tckgen",
-          "task": {
-            "module": "pydra.tasks.mrtrix3.tractography",
-            "name": "TrackGen",
-            "package": "pydra-mrtrix",
-            "version": "0.1.1"
-          }
-          "inputs": {
-            "in_file": {
-              "field": "dwi_fod"
-            },
-            "act": {
-              "task": "5ttgen",
-              "field": "out_file"
-            },
-            "select": 100000000,
-          },
-          "image": {
-            "type": "docker",
-            "tag": "mrtrix3/mrtrix3"
-          }
-        }
-      ],
-      "outputs": {
-        "wm_tracks": {
-          "task": "tckgen",
-          "field": "out_file"
-        }
-      }
-    }
+    ],
   }
 
 
@@ -505,8 +509,9 @@ Before derivatives are generated, provenance metadata of prerequisite
 derivatives (i.e. inputs of the pipeline and prerequisite pipelines, etc...)
 are checked to see if there have been any alterations to the configuration of
 the pipelines that generated them. If so, any affected nodes will not be
-processed, and a warning will be generated. Previously generated derivatives
-can be reprocessed by setting the ``reprocess`` when calling :meth:`.Dataset.derive`
+processed, and a warning will be generated by default. To override this behaviour
+and reprocesse the derivatives, set the ``reprocess`` flag when calling
+:meth:`.Dataset.derive`
 
 .. code-block:: python
 

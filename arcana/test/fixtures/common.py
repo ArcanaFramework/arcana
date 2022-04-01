@@ -6,7 +6,7 @@ import pytest
 from arcana.data.stores.common import FileSystem
 from arcana.data.formats.common import Text, Directory, Json
 from arcana.data.formats.medimage import (
-    NiftiGz, NiftiXGz, NiftiX, Nifti, Analyze, MrtrixImage)
+    NiftiGz, NiftiGzX, NiftiX, Nifti, Analyze, MrtrixImage)
 from pathlib import Path
 import pytest
 from click.testing import CliRunner
@@ -81,7 +81,7 @@ TEST_DATASET_BLUEPRINTS = {
         ['file1.nii.gz', 'file1.json', 'file2.nii', 'file2.json'],
         [],
         {'file1': [
-            (NiftiXGz, ['file1.nii.gz', 'file1.json']),
+            (NiftiGzX, ['file1.nii.gz', 'file1.json']),
             (NiftiGz, ['file1.nii.gz']),
             (Json, ['file1.json'])],
          'file2': [

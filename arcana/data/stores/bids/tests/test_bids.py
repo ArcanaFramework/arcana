@@ -12,7 +12,7 @@ from arcana.data.formats import NiftiX
 from arcana.data.stores.bids import BidsDataset
 from arcana.tasks.bids import BidsApp
 from arcana.data.formats.common import Text, Directory
-from arcana.data.formats.medimage import NiftiXGz, NiftiXFslgradGz
+from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 
 
 BIDS_VALIDATOR_DOCKER = 'bids/validator'
@@ -84,10 +84,10 @@ def test_bids_roundtrip(work_dir):
 def test_run_bids_app_docker(nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = [('T1w', NiftiXGz, 'anat/T1w'),
-              ('T2w', NiftiXGz, 'anat/T2w'),
-              ('dwi', NiftiXFslgradGz, 'dwi/dwi'),
-            #   ('bold', NiftiXGz, 'func/task-REST_bold')
+    INPUTS = [('T1w', NiftiGzX, 'anat/T1w'),
+              ('T2w', NiftiGzX, 'anat/T2w'),
+              ('dwi', NiftiGzXFslgrad, 'dwi/dwi'),
+            #   ('bold', NiftiGzX, 'func/task-REST_bold')
               ]
     OUTPUTS = [('whole_dir', Directory, None),
                ('out1', Text, f'file1'),
@@ -154,10 +154,10 @@ ENTRYPOINT ["/launch.sh"]""")
 def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = [('T1w', NiftiXGz, 'anat/T1w'),
-              ('T2w', NiftiXGz, 'anat/T2w'),
-              ('dwi', NiftiXFslgradGz, 'dwi/dwi'),
-            #   ('bold', NiftiXGz, 'func/task-REST_bold')
+    INPUTS = [('T1w', NiftiGzX, 'anat/T1w'),
+              ('T2w', NiftiGzX, 'anat/T2w'),
+              ('dwi', NiftiGzXFslgrad, 'dwi/dwi'),
+            #   ('bold', NiftiGzX, 'func/task-REST_bold')
               ]
     OUTPUTS = [('whole_dir', Directory, None),
                ('out1', Text, f'file1'),

@@ -140,7 +140,7 @@ files can be accessed as attributes of the primary ``LazyField``, e.g.
     repetition_time: float = column("The repetition time of the MR sequence used")
 
     @pipeline(repetition_time)
-    def preprocess_pipeline(self, wf, primary_image: NiftiXGz):
+    def preprocess_pipeline(self, wf, primary_image: NiftiGzX):
 
         wf.add(
             ExtractFromJson(

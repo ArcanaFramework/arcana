@@ -637,6 +637,10 @@ def serialise(obj, omit=(), include_pkg_versions=True):
 
 
 def serialise_pydra(workflow, required_modules=None):
+    if isinstance(workflow, Workflow):
+        pass
+    else:
+        pass
     raise NotImplementedError
 
 
@@ -669,14 +673,14 @@ def unserialise(dct: dict, **kwargs):
                 f"read by this version of arcana ('{__version__}'), the minimum "
                 f"version is {MIN_SERIAL_VERSION}")
 
-    def unserialise_value(value):
+    def fromdict(value):
         if isinstance(value, dict):
             type_loc = value.pop('type', None)
             if type_loc:
                 serialised_cls = resolve_class(type_loc[1:-1])
                 if hasattr(serialised_cls, 'unserialise'):
                     return serialised_cls.unserialise(value)
-            value = {k: unserialise_value(v) for k, v in value.items()}
+            value = {k: fromdict(v) for k, v in value.items()}
             if type_loc:
                 value = serialised_cls(**value)
         elif isinstance(value, str):
@@ -687,12 +691,12 @@ def unserialise(dct: dict, **kwargs):
             elif match:= re.match(r'file://(.*)', value):
                 value = Path(match.group(1))
         elif isinstance(value, Sequence):
-            value = [unserialise_value(x) for x in value]
+            value = [fromdict(x) for x in value]
         return value
 
     cls = resolve_class(dct.pop('type')[1:-1])
 
-    init_kwargs = {k: unserialise_value(v) for k, v in dct.items()}
+    init_kwargs = {k: fromdict(v) for k, v in dct.items()}
     init_kwargs.update(kwargs)
 
     return cls(**init_kwargs)

@@ -308,7 +308,7 @@ in the group. There are a number common file formats implemented in
 :mod:`arcana.data.formats.common`, including :class:`.Text`,
 :class:`.Zip`, :class:`.Json` and :class:`.Directory`. :class:`.FileGroup` subclasses
 may contain methods for conveniently accessing the file data and header metadata (e.g.
-:class:`.medimage.Dicom` and :class:`.medimage.NiftiXGz`) but this
+:class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`) but this
 is not a requirement for usage in workflows.
 
 Arcana will implicily handle conversions between file formats where a
