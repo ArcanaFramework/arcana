@@ -7,9 +7,7 @@ from collections import defaultdict
 from abc import ABCMeta, abstractmethod
 import arcana.core.data.set
 from arcana.exceptions import (
-    ArcanaNameError, ArcanaUsageError, ArcanaUnresolvableFormatException,
-    ArcanaWrongFrequencyError, ArcanaFileFormatError, ArcanaError)
-from arcana.core.utils import split_extension
+    ArcanaNameError, ArcanaWrongFrequencyError, ArcanaFileFormatError)
 from .format import DataItem
 from ..enum import DataQuality
 from .space import DataSpace

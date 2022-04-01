@@ -34,6 +34,7 @@ can be arbitrarily specified. dimensions"""))
           "of node can vary"))
 @click.option(
     '--include', nargs=2, default=(), metavar='<freq-id>', multiple=True,
+    type=str,
     help=("The nodes to include in the dataset. First value is the "
            "frequency of the ID (e.g. 'group', 'subject', 'session') "
            "followed by the IDs to be included in the dataset. "
@@ -41,6 +42,7 @@ can be arbitrarily specified. dimensions"""))
            "the path to a text file containing a list of IDs"))
 @click.option(
     '--exclude', nargs=2, default=(), metavar='<freq-id>', multiple=True,
+    type=str,
     help=("The nodes to exclude from the dataset. First value is the "
           "frequency of the ID (e.g. 'group', 'subject', 'session') "
           "followed by the IDs to be included in the dataset. "

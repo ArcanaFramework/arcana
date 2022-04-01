@@ -15,8 +15,7 @@ from arcana import __version__
 from arcana.core.cli import cli
 from arcana.core.data.set import Dataset
 from arcana.core.utils import (
-    resolve_class, resolve_format, list_instances, set_loggers,
-    parse_dimensions)
+    resolve_class, list_instances, set_loggers, parse_dimensions)
 
 
 logger = logging.getLogger('arcana')

@@ -3,6 +3,7 @@ import subprocess as sp
 import importlib_metadata
 import pkgutil
 from enum import Enum
+from copy import deepcopy
 import re
 from pathlib import Path
 import packaging
@@ -17,7 +18,8 @@ from collections.abc import Iterable
 import logging
 import attr
 from arcana._version import __version__
-from pydra.engine.task import FunctionTask
+from pydra import Workflow
+from pydra.engine.task import FunctionTask, TaskBase
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaVersionError
 
@@ -249,41 +251,6 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
 #     return resolve_subclass(arcana.data.formats,
 #                         arcana.core.data.format.FileFormat, name)
 
-def resolve_format(name):
-    """Resolves a in a sub-module of arcana.file_format based on its
-    name
-
-    Parameters
-    ----------
-    name : str
-        The name of the format
-
-    Returns
-    -------
-    type
-        The resolved file format or type
-    """
-    if re.match(r'int|float|str|list\[(int|float|str)\]', name):
-        return eval(name)
-    import arcana.data.formats
-    data_format = None
-    module_names = [
-        i.name for i in pkgutil.iter_modules(
-            [os.path.dirname(arcana.data.formats.__file__)])]
-    for module_name in module_names:
-        module = import_module('arcana.data.formats.' + module_name)
-        try:
-            data_format = getattr(module, name)
-        except AttributeError:
-            pass
-    if data_format is None:
-        raise ArcanaNameError(
-            name,
-            f"Could not find format {name} in installed modules:\n"
-            + "\n    ".join(module_names))
-    return data_format
-
-
 def submodules(module):
     for mod_info in pkgutil.iter_modules([str(Path(module.__file__).parent)],
                                          prefix=module.__package__ + '.'):
@@ -354,38 +321,6 @@ def dir_modtime(dpath):
     """
     return max(os.path.getmtime(d) for d, _, _ in os.walk(dpath))
 
-
-double_exts = ('.tar.gz', '.nii.gz')
-
-
-def split_extension(path):
-    """
-    A extension splitter that checks for compound extensions such as
-    'file.nii.gz'
-
-    Parameters
-    ----------
-    filename : str
-        A filename to split into base and extension
-
-    Returns
-    -------
-    base : str
-        The base part of the string, i.e. 'file' of 'file.nii.gz'
-    ext : str
-        The extension part of the string, i.e. 'nii.gz' of 'file.nii.gz'
-    """
-    for double_ext in double_exts:
-        if path.name.endswith(double_ext):
-            return str(path)[:-len(double_ext)], double_ext
-    parts = path.name.split('.')
-    if len(parts) == 1:
-        base = path.name
-        ext = None
-    else:
-        ext = '.' + parts[-1]
-        base = '.'.join(parts[:-1])
-    return path.parent / base, ext
 
 def lower(s):
     if s is None:
@@ -587,16 +522,19 @@ class classproperty(object):
         return self.f(owner)
 
 
-def get_pkg_name(module_path: str):
-    """Gets the name of the package that provides the given module
+def resolve_pkg_of_module(module_path: str):
+    """Resolves the installed package (e.g. from PyPI) that provides the given
+    module.
 
     Parameters
     ----------
-    module_path
+    module_path: str or module
         The path to the module to retrieve the package for
     """
-    if not isinstance(module_path, str):
-        module_path = module_path.__module__
+    try:
+        module_path = module_path.__name__
+    except AttributeError:
+        pass
     module_path = importlib_metadata.PackagePath(module_path.replace('.', '/'))
     for pkg in pkg_resources.working_set:
         try:
@@ -610,7 +548,7 @@ def get_pkg_name(module_path: str):
             if path.name == '__init__':
                 path = path.parent   
             if module_path in ([path] + list(path.parents)):
-                return pkg.key
+                return pkg
     raise ArcanaUsageError(f'{module_path} is not an installed module')
 
 
@@ -632,7 +570,7 @@ def parse_dimensions(dimensions_str):
     return getattr(module, cls_name)
 
 
-def serialise(obj, skip=(), ignore_instance_method=False):
+def serialise(obj, omit=(), include_pkg_versions=True):
     """Serialises an object of a class defined with attrs to a dictionary
 
     Parameters
@@ -640,38 +578,70 @@ def serialise(obj, skip=(), ignore_instance_method=False):
     obj
         The Arcana object to serialised. Must be defined using the attrs
         decorator
-    skip: Sequence[str]
-        The names of attributes to skip"""
-    if hasattr(obj, 'serialise') and not ignore_instance_method:
-        serialised = obj.serialise()
-    elif isclass(obj):
-        serialised = '<' + class_location(obj) + '>'
-    elif isinstance(obj, Enum):
-        serialised = '|' + class_location(type(obj)) + '|' + str(obj)
-    elif isinstance(obj, Path):
-        serialised = str(obj)
-    elif hasattr(obj, '__attrs_attrs__'):
-        def filter(a, _):
-            return a.init and a.name not in skip and a.metadata.get('serialise',
-                                                                    True)
-        serialised = attr.asdict(
-            obj,
-            recurse=False,
-            filter=filter,
-            value_serializer=lambda _, __, v: serialise(v))
-        serialised['type'] = '<' + class_location(obj) + '>'
-        serialised['arcana_version'] = __version__
-    elif not isinstance(obj, str) and isinstance(obj, Sequence):
-        serialised = [serialise(x) for x in obj]
-    elif isinstance(obj, dict):
-        serialised = {k: serialise(v) for k, v in obj.items()}
-    else:
-        serialised = obj
+    omit: Sequence[str]
+        the names of attributes to omit from the dictionary
+    include_pkg_versions: bool
+        include versions of packages used"""
+
+    def filter(atr, value):
+        return (atr.init and atr.metadata.get('serialise', True))
+
+    required_modules = set()
+
+    def serialise_class(klass):
+        required_modules.add(klass.__module__)
+        return '<' + class_location(klass) + '>'
+    
+    def value_asdict(value):
+        if isclass(value):
+            value = serialise_class(value)
+        elif hasattr(value, 'serialise'):
+            value = value.serialise()
+        elif attr.has(value):  # is class with attrs
+            value_type = serialise_class(type(value))
+            value = attr.asdict(
+                value,
+                recurse=False,
+                filter=filter,
+                value_serializer=lambda i, f, v: value_asdict(v))
+            value['type'] = value_type
+        elif isinstance(value, Enum):
+            value = serialise_class(type(value)) + '|' + str(value)
+        elif isinstance(value, Path):
+            value = 'file://' + str(value.resolve())
+        elif isinstance(value, TaskBase):
+            value = serialise_pydra(
+                value, required_modules=required_modules)
+        elif isinstance(value, (tuple, list, set, frozenset)):
+            value = [value_asdict(x) for x in value]    
+        elif isinstance(value, dict):
+            value = {value_asdict(k): value_asdict(v) for k, v in value.items()}
+        return value
+
+    serialised = attr.asdict(
+        obj,
+        recurse=False,
+        filter=lambda a, v: filter(a, v) and a.name not in omit,
+        value_serializer=lambda i, f, v: value_asdict(v))
+
+    serialised['type'] = serialise_class(type(obj))
+    if include_pkg_versions:
+        pkg_versions = {}
+        pkg_versions['arcana'] = __version__
+        for module in required_modules:
+            pkg = resolve_pkg_of_module(module)
+            pkg_versions[pkg.key] = pkg.version
+        serialised['pkg_versions'] = pkg_versions
 
     return serialised
 
 
-def unserialise(serialised: dict, ignore_class_method=False, **kwargs):
+def serialise_pydra(workflow, required_modules=None):
+    raise NotImplementedError
+
+
+
+def unserialise(dct: dict, **kwargs):
     """Unserialises an object serialised by the `serialise` method from a
     dictionary
 
@@ -681,41 +651,52 @@ def unserialise(serialised: dict, ignore_class_method=False, **kwargs):
         A dictionary containing a serialsed Arcana object such as a data store
         or dataset definition
     ignore_class_method: bool
-        Ignore definition of `unserialised` classmethod in the unserialised class
+        Ignore definition of `unserialised` classmethod in the unserialised class.
+        Typically used when 
     **kwargs : dict[str, Any]
         Additional initialisation arguments for the object when it is reinitialised.
         Overrides those stored"""
-    if isinstance(serialised, dict) and 'type' in serialised:
-        serialised_cls = resolve_class(serialised.pop('type')[1:-1])
-        serialised_version = serialised.pop('arcana_version')
-        if packaging.version.parse(serialised_version) < packaging.version.parse(MIN_SERIAL_VERSION):
+    dct = deepcopy(dct)
+    pkg_versions = dct.pop('pkg_versions', {})
+    try:
+        arcana_version = pkg_versions['arcana']
+    except KeyError:
+        pass
+    else:
+        if packaging.version.parse(arcana_version) < packaging.version.parse(MIN_SERIAL_VERSION):
             raise ArcanaVersionError(
-                f"Serialised version ('{serialised_version}' is too old to be "
+                f"Serialised version ('{arcana_version}' is too old to be "
                 f"read by this version of arcana ('{__version__}'), the minimum "
                 f"version is {MIN_SERIAL_VERSION}")
-        if hasattr(serialised_cls, 'unserialise') and not ignore_class_method:
-            unserialised = serialised_cls.unserialise(serialised)
-        else:
-            init_args = {}
-            for k, v in serialised.items():
-                init_args[k] = unserialise(v)
-            init_args.update(kwargs)
-            unserialised = serialised_cls(**init_args)
-    elif isinstance(serialised, list):
-        unserialised = [unserialise(x) for x in serialised]
-    elif isinstance(serialised, dict):
-        unserialised = {k: unserialise(v) for k, v in serialised.items()}
-    elif isinstance(serialised, str):
-        if match:= re.match(r'<(.*)>', serialised): # Class location
-            unserialised = resolve_class(match.group(1))
-        elif match:= re.match(r'\|([^\|]+)\|(.*)', serialised):  # Enum
-            unserialised = resolve_class(match.group(1))[match.group(2)]
-        else:
-            unserialised = serialised    
-    else:
-        unserialised = serialised
-    return unserialised
 
-# Minimum version of Arcana that this 
+    def unserialise_value(value):
+        if isinstance(value, dict):
+            type_loc = value.pop('type', None)
+            if type_loc:
+                serialised_cls = resolve_class(type_loc[1:-1])
+                if hasattr(serialised_cls, 'unserialise'):
+                    return serialised_cls.unserialise(value)
+            value = {k: unserialise_value(v) for k, v in value.items()}
+            if type_loc:
+                value = serialised_cls(**value)
+        elif isinstance(value, str):
+            if match:= re.match(r'<(.*)>$', value): # Class location
+                value = resolve_class(match.group(1))
+            elif match:= re.match(r'<(.*)>\|(.*)$', value):  # Enum
+                value = resolve_class(match.group(1))[match.group(2)]
+            elif match:= re.match(r'file://(.*)', value):
+                value = Path(match.group(1))
+        elif isinstance(value, Sequence):
+            value = [unserialise_value(x) for x in value]
+        return value
+
+    cls = resolve_class(dct.pop('type')[1:-1])
+
+    init_kwargs = {k: unserialise_value(v) for k, v in dct.items()}
+    init_kwargs.update(kwargs)
+
+    return cls(**init_kwargs)
+    
+
+# Minimum version of Arcana that this version can read the serialisation from
 MIN_SERIAL_VERSION = '0.0.0'
-

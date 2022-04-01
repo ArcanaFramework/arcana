@@ -22,7 +22,7 @@ from natsort import natsorted
 import docker
 from arcana import __version__
 from arcana.__about__ import install_requires, PACKAGE_NAME, python_versions
-from arcana.core.utils import get_pkg_name
+from arcana.core.utils import resolve_pkg_of_module
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileGroup
@@ -742,9 +742,9 @@ class XnatViaCS(Xnat):
                 registry=docker_registry,
                 **cmd_spec)
 
-            python_package = get_pkg_name(cmd_spec['pydra_task'].split(':')[0])
-            if python_package not in [p.split('[')[0] for p in python_packages]:
-                python_packages.append(python_package)
+            cmd_pkg = resolve_pkg_of_module(cmd_spec['pydra_task'].split(':')[0])
+            if cmd_pkg.key not in [p.split('[')[0] for p in python_packages]:
+                python_packages.append(cmd_pkg.key)
 
             xnat_commands.append(xnat_cmd)
 

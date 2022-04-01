@@ -40,7 +40,7 @@ class Pipeline():
         The frequency of the pipeline, i.e. the frequency of the
         derivatvies within the dataset, e.g. per-session, per-subject, etc,
         by default None
-    template : Workflow
+    workflow : Workflow
         The pydra workflow that performs the actual analysis      
     inputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
         List of column names (i.e. either data sources or sinks) to be
@@ -54,20 +54,21 @@ class Pipeline():
     """
 
     name: str = attr.ib()
-    dataset: arcana.core.data.set.Dataset = attr.ib()
     frequency: DataSpace = attr.ib()
-    template: Workflow = attr.ib()
+    workflow: Workflow = attr.ib()
     inputs: ty.List[Input] = attr.ib()
     outputs: ty.List[Output] = attr.ib()
+    dataset: arcana.core.data.set.Dataset = attr.ib(
+        metadata={'serialise': False}, default=None, eq=False, hash=False)
 
     @inputs.validator
     def inputs_validator(self, _, inpt):
         column = self.dataset.column[inpt.col_name]
         inpt.required_format.find_converter(column.format)
-        if inpt.pydra_field not in self.template.input_names:
+        if inpt.pydra_field not in self.workflow.input_names:
             raise ArcanaNameError(
                 f"{inpt.pydra_field} is not in the input spec of '{self.name}' "
-                f"pipeline: " + "', '".join(self.template.input_names))
+                f"pipeline: " + "', '".join(self.workflow.input_names))
 
     @outputs.validator
     def outputs_validator(self, _, outpt):
@@ -77,10 +78,10 @@ class Pipeline():
                 f"Pipeline frequency ('{str(self.frequency)}') doesn't match "
                 f"that of '{outpt.col_name}' output ('{str(self.frequency)}')")
         column.format.find_converter(outpt.produced_format)
-        if outpt.pydra_field not in self.template.output_names:
+        if outpt.pydra_field not in self.workflow.output_names:
             raise ArcanaNameError(
                 f"{outpt.pydra_field} is not in the output spec of '{self.name}' "
-                f"pipeline: " + "', '".join(self.template.output_names))            
+                f"pipeline: " + "', '".join(self.workflow.output_names))            
 
     @property
     def input_col_names(self):
@@ -95,7 +96,7 @@ class Pipeline():
     # self.wf.per_node.source.inputs.parameterisation = parameterisation
 
     def inner_workflow(self, **kwargs):
-        """Create a copy of the "inner" workflow template that actually performs
+        """Create a copy of the "inner" workflow workflow that actually performs
         the data processing.
 
         Returns
@@ -106,7 +107,7 @@ class Pipeline():
         **kwargs : dict[str, pydra.LazyField]
             lazy field inputs to connect to the inner workflow
         """
-        cpy = deepcopy(self.template)
+        cpy = deepcopy(self.workflow)
         cpy.name = 'inner'
         for name, lf in kwargs.items():
             setattr(cpy.inputs, name, lf)

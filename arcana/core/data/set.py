@@ -141,10 +141,15 @@ class Dataset():
         self.include = [(self.space[str(k)], v) for k, v in self.include]
         self.exclude = [(self.space[str(k)], v) for k, v in self.exclude]
         self.id_inference = [(self.space[str(k)], v) for k, v in self.id_inference]
+        # Set reference to pipeline in columns and pipelines
+        for column in self.columns.values():
+            column.dataset = self
+        for pipeline in self.pipelines.values():
+            pipeline.dataset = self
 
     def save(self, name=None):
         """Save metadata in project definition file for future reference"""
-        definition = serialise(self, skip=['store'])
+        definition = serialise(self, omit=['store'])
         if name is None:
             name = self.name
         self.store.save_dataset_definition(self.id, definition, name=name)
@@ -650,7 +655,10 @@ class Dataset():
                                             self[col_name].format))
             return parsed
         pipeline = Pipeline(
-            name, self, frequency, workflow,
+            name=name,
+            dataset=self,
+            frequency=frequency,
+            workflow=workflow,
             inputs=parsed_conns(inputs, Input),
             outputs=parsed_conns(outputs, Output))
         for outpt in pipeline.outputs:
