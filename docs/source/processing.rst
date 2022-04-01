@@ -474,7 +474,7 @@ would look like
             },
             "container_image": {
               "type": "docker",
-              "tag": "mrtrix3/mrtrix3"
+              "tag": "mrtrix3/mrtrix3:3.0.3"
             }
           },
           {
@@ -496,7 +496,7 @@ would look like
             },
             "container_image": {
               "type": "docker",
-              "tag": "mrtrix3/mrtrix3"
+              "tag": "mrtrix3/mrtrix3:3.0.3"
             }
           },
         ],
