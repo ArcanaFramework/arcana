@@ -305,7 +305,7 @@ Generating derivatives
 ----------------------
 
 After workflows and/or analysis classes have been connected to a dataset, derivatives can be
-generated using :meth:`.Dataset.derive` or alternatively :meth:`.Column.derive`
+generated using :meth:`.Dataset.derive` or alternatively :meth:`.DataColumn.derive`
 for single columns. These methods check the data store to see whether the
 source data is present and executes the pipelines over all nodes of the dataset
 with available source data. If pipeline inputs are sink columns to be derived

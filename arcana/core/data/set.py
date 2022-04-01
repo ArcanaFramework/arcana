@@ -12,7 +12,7 @@ from arcana.exceptions import (
     ArcanaBadlyFormattedIDError, ArcanaWrongDataSpaceError)
 from arcana.core.utils import serialise
 from .space import DataSpace
-from .column import Column, DataSink, DataSource
+from .column import DataColumn, DataSink, DataSource
 from . import store as datastore
 
 from .node import DataNode
@@ -116,7 +116,7 @@ class Dataset():
     exclude: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     name: str = attr.ib(default=DEFAULT_NAME)
-    columns: ty.Optional[ty.Dict[str, Column]] = attr.ib(
+    columns: ty.Optional[ty.Dict[str, DataColumn]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     pipelines: ty.Dict[str, ty.Any] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
@@ -432,7 +432,7 @@ class Dataset():
 
         Returns
         -------
-        Column
+        DataColumn
             the column object
         """
         return self.columns[name]
@@ -442,7 +442,7 @@ class Dataset():
 
         Returns
         -------
-        Sequence[Column]
+        Sequence[DataColumn]
             All columns in the dataset
         """
         return self.columns.values()

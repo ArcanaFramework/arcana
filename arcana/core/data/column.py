@@ -10,7 +10,7 @@ from .space import DataSpace
 
 
 @attr.s
-class Column(metaclass=ABCMeta):
+class DataColumn(metaclass=ABCMeta):
 
     name: str = attr.ib()
     path: str = attr.ib()
@@ -49,7 +49,7 @@ class Column(metaclass=ABCMeta):
 
 
 @attr.s
-class DataSource(Column):
+class DataSource(DataColumn):
     """
     Specifies the criteria by which an item is selected from a data node to
     be a data source.
@@ -154,7 +154,7 @@ def match_header_vals(item, header_vals):
 
 
 @attr.s
-class DataSink(Column):
+class DataSink(DataColumn):
     """
     A specification for a file group within a analysis to be derived from a
     processing pipeline.

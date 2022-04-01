@@ -33,7 +33,7 @@ analyses (e.g. plotting figures) all in the one place.
 
 .. _column_param_specs:
 
-Column and parameter specification
+DataColumn and parameter specification
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 While columns in an :class:`.Analysis` class can be specified using the

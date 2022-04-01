@@ -196,7 +196,7 @@ class Dicom(Directory, MedicalImage):
 
     def get_dims(self):
         hdr = self.get_header(self)
-        return np.array((hdr.Rows, hdr.Columns, len(self.dcm_files(self))),
+        return np.array((hdr.Rows, hdr.DataColumns, len(self.dcm_files(self))),
                         format=int)
 
     def extract_id(self):
