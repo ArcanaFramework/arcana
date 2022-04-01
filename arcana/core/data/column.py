@@ -12,6 +12,7 @@ from .space import DataSpace
 @attr.s
 class Column(metaclass=ABCMeta):
 
+    name: str = attr.ib()
     path: str = attr.ib()
     format = attr.ib()
     frequency: DataSpace = attr.ib()

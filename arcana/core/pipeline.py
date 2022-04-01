@@ -156,7 +156,7 @@ class Pipeline():
         # sources = {}
         # for input_name in input_names:
         #     try:
-        #         source = dataset.column_specs[input_name]
+        #         source = dataset[input_name]
         #     except KeyError as e:
         #         raise ArcanaNameError(
         #             input_name,
@@ -172,7 +172,7 @@ class Pipeline():
         # sinks = {}
         # for output_name in output_names:
         #     try:
-        #         sink = dataset.column_specs[output_name]
+        #         sink = dataset[output_name]
         #     except KeyError as e:
         #         raise ArcanaNameError(
         #             output_name,
@@ -210,8 +210,8 @@ class Pipeline():
 
         source_out_dct = {
             s: (DataItem
-                if self.dataset.column_specs[s].frequency.is_parent(
-                    self.frequency, if_match=True)
+                if self.dataset[s].frequency.is_parent(self.frequency,
+                                                       if_match=True)
                 else ty.Sequence[DataItem])
             for s in self.input_col_names}
         source_out_dct['provenance_'] = ty.Dict[str, ty.Any]
@@ -232,7 +232,7 @@ class Pipeline():
 
         # Do input format conversions if required
         for inpt in self.inputs:
-            stored_format = self.dataset.column_specs[inpt.col_name].format
+            stored_format = self.dataset[inpt.col_name].format
             if not (inpt.required_format is stored_format
                     or issubclass(stored_format, inpt.required_format)):
                 logger.info("Adding implicit conversion for input '%s' "
@@ -282,7 +282,7 @@ class Pipeline():
 
         # Do output format conversions if required
         for outpt in self.outputs:
-            stored_format = self.dataset.column_specs[outpt.col_name].format
+            stored_format = self.dataset[outpt.col_name].format
             if not (outpt.produced_format is stored_format
                     or issubclass(outpt.produced_format, stored_format)):
                 logger.info("Adding implicit conversion for output '%s' "

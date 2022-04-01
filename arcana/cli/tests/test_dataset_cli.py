@@ -59,7 +59,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
     loaded_dataset = Dataset.load(dataset_id_str)
-    assert saved_dataset.column_specs == loaded_dataset.column_specs
+    assert saved_dataset.columns == loaded_dataset.columns
 
 
 @pytest.mark.skip("Not implemented")

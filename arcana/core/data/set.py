@@ -95,7 +95,7 @@ class Dataset():
         omitted or its value is None, then all available will be used
     name : str
         The name of the dataset as saved in the store under
-    column_specs : list[tuple[str, DataSource or DataSink]
+    columns : list[tuple[str, DataSource or DataSink]
         The sources and sinks to be initially added to the dataset (columns are
         explicitly added when workflows are applied to the dataset).
     workflows : Dict[str, pydra.Workflow]
@@ -122,9 +122,6 @@ class Dataset():
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     _root_node: DataNode = attr.ib(default=None, init=False, repr=False,
                                    eq=False)
-    
-    EXCLUDE_METADATA = ('id', 'store', '_root_node', 'column_specs',
-                        'workflows')  
 
     def __attrs_post_init__(self):
         # Ensure that hierarchy items are in the DataSpace enums not strings
@@ -142,7 +139,6 @@ class Dataset():
 
     def save(self, name=None):
         """Save metadata in project definition file for future reference"""
-        # TODO: column_specs and workflows should be included ideally
         definition = serialise(self, skip=['store'])
         if name is None:
             name = self.name
@@ -278,8 +274,8 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if path is None:
             path = name
-        self._add_spec(name, DataSource(path, format, frequency, **kwargs),
-                       overwrite)
+        self._add_spec(name, DataSource(
+            name, path, format, frequency, dataset=self, **kwargs), overwrite)
 
     def add_sink(self, name, format, path=None, frequency=None,
                  overwrite=False, **kwargs):
@@ -304,22 +300,22 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if path is None:
             path = name
-        self._add_spec(name, DataSink(path, format, frequency, **kwargs),
-                       overwrite)
+        self._add_spec(name, DataSink(
+            name, path, format, frequency, dataset=self, **kwargs), overwrite)
 
     def _add_spec(self, name, spec, overwrite):
-        if name in self.column_specs:
+        if name in self.columns:
             if overwrite:
                 logger.info(
-                    f"Overwriting {self.column_specs[name]} with {spec} in "
+                    f"Overwriting {self.columns[name]} with {spec} in "
                     f"{self}")
             else:
                 raise ArcanaNameError(
                     name,
                     f"Name clash attempting to add {spec} to {self} "
-                    f"with {self.column_specs[name]}. Use 'overwrite' option "
+                    f"with {self.columns[name]}. Use 'overwrite' option "
                     "if this is desired")
-        self.column_specs[name] = spec
+        self.columns[name] = spec
 
     def node(self, frequency=None, id=None, **id_kwargs):
         """Returns the node associated with the given frequency and ids dict
@@ -432,27 +428,24 @@ class Dataset():
         Parameters
         ----------
         name : str
-            Name of the source/sink to select
+            Name of the column to return
 
         Returns
         -------
-        Sequence[DataItem]
-            All data items in the column
+        Column
+            the column object
         """
-        spec = self.column_specs[name]
-        
+        return self.columns[name]
 
-    def columns(self, *names):
+    def __iter__(self):
         """Iterate over all columns in the dataset
 
         Returns
         -------
-        Sequence[List[DataItem]]
+        Sequence[Column]
             All columns in the dataset
         """
-        if not names:
-            names = self.column_specs
-        return (list(self.column(n)) for n in names)
+        return self.columns.values()
 
     def add_leaf_node(self, tree_path, explicit_ids=None):
         """Creates a new node at a the path down the tree of the dataset as

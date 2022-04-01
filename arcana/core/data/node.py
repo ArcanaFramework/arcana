@@ -57,13 +57,13 @@ class DataNode():
             return self._items[column_name]
         else:
             try:
-                spec = self.dataset.column_specs[column_name]
+                spec = self.dataset[column_name]
             except KeyError as e:
                 raise ArcanaNameError(
                     column_name,
                     f"{column_name} is not the name of a column in "
                     f"{self.dataset.id} dataset ('" + "', '".join(
-                        self.dataset.column_specs) + "')") from e
+                        self.dataset.columns) + "')") from e
             if spec.frequency != self.frequency:
                 return ArcanaWrongFrequencyError(
                     column_name,
@@ -99,8 +99,8 @@ class DataNode():
         return (i for _, i in self.items())
 
     def items(self):
-        return ((n, self[n]) for n, s in self.dataset.column_specs.items()
-                if s.frequency == self.frequency)
+        return ((c, self[c.name]) for c in self.dataset.columns
+                if c.frequency == self.frequency)
 
     def column_items(self, column_name):
         """Get's the item for the current node if item's frequency matches
@@ -125,7 +125,7 @@ class DataNode():
             # If frequency is not a ancestor node then return the
             # items in the children of the node (if they are child
             # nodes) or the whole dataset
-            spec = self.dataset.column_specs[column_name]
+            spec = self.dataset.columns[column_name]
             try:
                 return self.children[spec.frequency].values()
             except KeyError:
