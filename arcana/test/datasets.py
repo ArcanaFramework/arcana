@@ -91,10 +91,6 @@ def access_dataset(blueprint, dataset_path):
     return dataset
 
 
-def get_dataset_path(name, base_dir):
-    return base_dir / name
-
-
 def create_test_file(fname, dpath):
     dpath = Path(dpath)
     os.makedirs(dpath, exist_ok=True)

@@ -19,7 +19,7 @@ class Column(metaclass=ABCMeta):
     dataset = attr.ib(default=None, metadata={'serialise': False})
 
     def __iter__(self):
-        return (n[self.col_name] for n in self.dataset.nodes(self.frequency))
+        return (n[self.name] for n in self.dataset.nodes(self.frequency))
 
     def __getitem__(self, id):
         return self.dataset.node(id=id, frequency=self.frequency)[self.col_name]
@@ -101,8 +101,8 @@ class DataSource(Column):
                    f"{self.format} in {node}, found unresolved items:\n")
             for item in node.unresolved:
                 msg += f'\n{item.path}: paths=' + ','.join(
-                    p.name for p in item.file_paths) + ', uris=' + ','.join(
-                        item.uris.keys())
+                    p.name for p in item.file_paths) + (
+                        (', uris=' + ','.join(item.uris.keys())) if item.uris else '')
             raise ArcanaDataMatchError(msg)
         # Apply all filters to find items that match criteria
         for func, arg in criteria:

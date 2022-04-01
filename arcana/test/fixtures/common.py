@@ -12,8 +12,7 @@ import pytest
 from click.testing import CliRunner
 from arcana.test.tasks import add, path_manip, attrs_func, A, B, C
 from arcana.test.datasets import (
-    TestDatasetBlueprint, TestDataSpace as TDS, Xyz, make_dataset,
-    get_dataset_path)
+    TestDatasetBlueprint, TestDataSpace as TDS, Xyz, make_dataset)
 
 
 @pytest.fixture
@@ -173,7 +172,7 @@ def dicom_dataset(test_dicom_dataset_dir):
 def dataset(work_dir, request):
     dataset_name = request.param
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
-    dataset_path = get_dataset_path(dataset_name, work_dir)
+    dataset_path = work_dir / dataset_name
     dataset = make_dataset(blueprint, dataset_path)
     yield dataset
     #shutil.rmtree(dataset.id)
@@ -188,7 +187,7 @@ def saved_dataset(work_dir):
         ['file1.txt', 'file2.txt'],
         {}, {}, [])
 
-    dataset_path = get_dataset_path('saved_dataset', work_dir)
+    dataset_path = work_dir / 'saved_dataset'
     dataset = make_dataset(blueprint, dataset_path)
     dataset.save()
     return dataset

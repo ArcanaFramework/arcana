@@ -84,11 +84,11 @@ class Pipeline():
 
     @property
     def input_col_names(self):
-        return (i.col_name for i in self.inputs)
+        return list(i.col_name for i in self.inputs)
 
     @property
-    def output_names(self):
-        return (o.col_name for o in self.outputs)
+    def output_col_names(self):
+        return list(o.col_name for o in self.outputs)
 
     # parameterisation = self.get_parameterisation(kwargs)
     # self.wf.to_process.inputs.parameterisation = parameterisation
@@ -137,7 +137,7 @@ class Pipeline():
         """
         # # Set derivatives as existing
         # for node in self.dataset.nodes(self.frequency):
-        #     for output in self.output_names:
+        #     for output in self.output_col_names:
         #         node[output].get(assume_exists=True)
 
         # # Separate required formats and input names
@@ -261,7 +261,7 @@ class Pipeline():
 
         wf.per_node.add(
             self.inner_workflow(
-                **{i.pydra_field: getattr(wf.per_node.input_interface, i.col_name)
+                **{i.pydra_field: getattr(wf.per_node.input_interface.lzout, i.col_name)
                    for i in self.inputs}))
 
         # Creates a node to accept values from user-defined nodes and
@@ -273,7 +273,7 @@ class Pipeline():
             out_fields=[(o, DataItem) for o in self.output_col_names],
             name='output_interface',
             outputs=self.outputs,
-            **{o.col_name: getattr(wf.per_node.inner, o.pydra_field)
+            **{o.col_name: getattr(wf.per_node.inner.lzout, o.pydra_field)
                for o in self.outputs}))
 
         # Set format converters where required
@@ -354,7 +354,7 @@ def to_process(dataset, frequency, outputs, requested_ids, parameterisation):
     cant_process = []
     for data_node in dataset.nodes(frequency, ids=requested_ids):
         # TODO: Should check provenance of existing nodes to see if it matches
-        not_exist = [not data_node[o[0]].exists for o in outputs]
+        not_exist = [not data_node[o.col_name].exists for o in outputs]
         if all(not_exist):
             ids.append(data_node.id)
         elif any(not_exist):

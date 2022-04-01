@@ -13,7 +13,8 @@ from arcana.data.formats import Text
 @pytest.mark.skip("needs to be updated to match refactoring")
 def test_derive_cli(work_dir, test_dataspace_location):
 
-    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'], work_dir)
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'],
+                           work_dir / 'dataset')
     
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)

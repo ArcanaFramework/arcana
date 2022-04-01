@@ -14,7 +14,8 @@ from arcana.test.tasks import concatenate
 
 
 def test_pipeline(work_dir):
-    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'], work_dir)
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'],
+                           work_dir / 'dataset')
 
     dataset.add_source('file1', Text)
     dataset.add_source('file2', Text)
@@ -31,7 +32,10 @@ def test_pipeline(work_dir):
 
     IDS = ['a0b0c0d0', 'a0b0c0d1']
 
-    pipeline(cache_dir=work_dir / 'pipeline-cache')(ids=IDS, plugin='serial')
+    workflow = pipeline(cache_dir=work_dir / 'pipeline-cache')
+    workflow(ids=IDS, plugin='serial')
+
+    dataset.refresh()  # Reset cached values
 
     for item in dataset['deriv']:
         with open(item.fs_path) as f:
@@ -43,7 +47,7 @@ def test_pipeline_with_implicit_conversion(work_dir):
     """Input files are converted from zip to Text, concatenated and then
     written back as zip files into the data store"""
     dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_zip_test'],
-                           work_dir)
+                           work_dir / 'dataset')
 
     dataset.add_source('file1', Zip)
     dataset.add_source('file2', Zip)
@@ -59,7 +63,10 @@ def test_pipeline_with_implicit_conversion(work_dir):
 
     IDS = ['a0b0c0d0', 'a0b0c0d1']
 
-    pipeline(cache_dir=work_dir / 'pipeline-cache')(ids=IDS, plugin='serial')
+    workflow = pipeline(cache_dir=work_dir / 'pipeline-cache')
+    workflow(ids=IDS, plugin='serial')
+
+    dataset.refresh()
 
     for item in dataset['deriv']:
         tmp_dir = Path(tempfile.mkdtemp())
