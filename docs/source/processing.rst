@@ -412,12 +412,20 @@ would look like
 
   {
     "store": {
-      "type": "xnat",
-      "location": "https://central.xnat.org"
+      "class": "<arcana.data.stores.medimage.xnat.api:Xnat>",
+      "server": "https://central.xnat.org"
     },
     "dataset": {
       "id": "MYPROJECT",
-      "name": "training"
+      "name": "training",
+      "exlude": ['015', '101']
+      "id_inference": [
+        ["subject", "(?P<group>TEST|CONT)(?P<member>\d+3)"]
+      ]
+    },
+    "execution": {
+      "machine": "hpc.myuni.edu",
+      "processor": "intel9999"
     },
     "pipelines": [
       "anatomically_constrained_tractography": {
@@ -480,7 +488,7 @@ would look like
           {
             "name": "tckgen",
             "task": {
-              "type": "<pydra.tasks.mrtrix3.tractography:TrackGen>",
+              "class": "<pydra.tasks.mrtrix3.tractography:TrackGen>",
               "package": "pydra-mrtrix",
               "version": "0.1.1"
             }
