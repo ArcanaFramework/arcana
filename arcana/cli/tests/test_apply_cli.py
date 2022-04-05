@@ -30,4 +30,4 @@ def test_apply_workflow_cli(saved_dataset, cli_runner):
          '--sink', 'concatenated', 'out_file', 'common:Text'])
     assert result.exit_code == 0, show_cli_trace(result)
     loaded_dataset = Dataset.load(dataset_id_str)
-    assert saved_dataset == loaded_dataset
+    assert saved_dataset.pipelines == loaded_dataset.pipelines

@@ -2,17 +2,17 @@ from pathlib import Path
 import cloudpickle as cp
 from pydra import mark, Workflow
 from arcana.core.data.set import Dataset
-from arcana.core.utils import serialise, unserialise
+from arcana.core.utils import as_dict, from_dict
 
 
-def test_dataset_serialise_roundtrip(dataset):
+def test_dataset_as_dict_roundtrip(dataset):
 
-    dct = serialise(dataset, omit=['store'])
-    unserialised = unserialise(dct, store=dataset.store)
+    dct = as_dict(dataset, omit=['store'])
+    undct = from_dict(dct, store=dataset.store)
     assert isinstance(dct, dict)
     assert 'store' not in dct
     del dataset.blueprint
-    assert dataset == unserialised
+    assert dataset == undct
 
 
 def test_dataset_pickle(dataset: Dataset, tmp_dir: Path):

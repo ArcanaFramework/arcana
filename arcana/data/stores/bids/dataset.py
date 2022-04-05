@@ -17,7 +17,7 @@ class ContainerMetadata():
     tag: str = None
     uri: str = None
 
-    def to_dict(self):
+    def to_dict(self, **kwargs):
         dct = {}
         if self.type:
             dct['Type'] = self.type
@@ -45,7 +45,7 @@ class GeneratorMetadata():
     code_url: str = None
     container: ContainerMetadata = None
 
-    def to_dict(self):
+    def to_dict(self, **kwargs):
         dct = {
             'Name': self.name}
         if self.version:
@@ -75,7 +75,7 @@ class SourceDatasetMetadata():
     doi: str = None
     version: str = None
 
-    def to_dict(self):
+    def to_dict(self, **kwargs):
         dct = {}
         if self.url:
             dct['URL'] = self.url

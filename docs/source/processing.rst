@@ -352,9 +352,9 @@ have been applied you can use the ``menu`` command
 
   Derivatives
   -----------
-  recorded_datafile (zippeddir)
+  recorded_datafile (zip)
   recorded_metadata (json)
-  preprocessed (zippeddir)
+  preprocessed (zip)
   derived_image (png)
   summary_metric (float)
 
@@ -463,14 +463,11 @@ would look like
             }
           }
         }
-        "nodes": [
-          {
-            "name": "5ttgen",
-            "task": {
-              "type": "<pydra.tasks.mrtrix3.preprocess:FiveTissueTypes>",
-              "package": "pydra-mrtrix",
-              "version": "0.1.1"
-            }
+        "nodes": {
+          "5ttgen": {
+            "class": "<pydra.tasks.mrtrix3.preprocess:FiveTissueTypes>",
+            "package": "pydra-mrtrix",
+            "version": "0.1.1",
             "inputs": {
               "in_file": {
                 "field": "T1w_reg_dwi"
@@ -480,18 +477,15 @@ would look like
               }
               "sgm_amyg_hipp": true
             },
-            "container_image": {
+            "container": {
               "type": "docker",
-              "tag": "mrtrix3/mrtrix3:3.0.3"
+              "image": "mrtrix3/mrtrix3:3.0.3"
             }
           },
-          {
-            "name": "tckgen",
-            "task": {
-              "class": "<pydra.tasks.mrtrix3.tractography:TrackGen>",
-              "package": "pydra-mrtrix",
-              "version": "0.1.1"
-            }
+          "tckgen": {
+            "class": "<pydra.tasks.mrtrix3.tractography:TrackGen>",
+            "package": "pydra-mrtrix",
+            "version": "0.1.1",
             "inputs": {
               "in_file": {
                 "field": "dwi_fod"
@@ -502,12 +496,12 @@ would look like
               },
               "select": 100000000,
             },
-            "container_image": {
+            "container": {
               "type": "docker",
-              "tag": "mrtrix3/mrtrix3:3.0.3"
+              "image": "mrtrix3/mrtrix3:3.0.3"
             }
           },
-        ],
+        },
       },
     ],
   }

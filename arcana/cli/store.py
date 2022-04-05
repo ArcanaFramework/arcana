@@ -99,7 +99,7 @@ def ls():
         click.echo(f'{name} - {class_location(store)}')
     click.echo("\nSaved stores\n-------------")
     for name, entry in DataStore.load_saved_entries().items():
-        store_type = entry.pop('type')
-        click.echo(f"{name} - {store_type[1:-1]}")
+        store_class = entry.pop('class')
+        click.echo(f"{name} - {store_class[1:-1]}")
         for key, val in sorted(entry.items(), key=itemgetter(0)):
             click.echo(f"    {key}: {val}")

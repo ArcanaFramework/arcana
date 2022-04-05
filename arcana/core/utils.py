@@ -1,9 +1,10 @@
+from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import subprocess as sp
 import importlib_metadata
 import pkgutil
 from enum import Enum
-from copy import deepcopy
+from copy import copy
 import re
 from pathlib import Path
 import packaging
@@ -158,20 +159,20 @@ def set_loggers(loglevel, pydra_level='warning', depend_level='warning'):
     logging.basicConfig(level=parse(depend_level))
 
 
-def to_list(arg):
-    if arg is None:
-        arg = []
-    else:
-        arg = list(arg)
-    return arg
+# def to_list(arg):
+#     if arg is None:
+#         arg = []
+#     else:
+#         arg = list(arg)
+#     return arg
 
 
-def to_dict(arg):
-    if arg is None:
-        arg = {}
-    else:
-        arg = dict(arg)
-    return arg
+# def to_dict(arg):
+#     if arg is None:
+#         arg = {}
+#     else:
+#         arg = dict(arg)
+#     return arg
 
 
 
@@ -202,6 +203,8 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     type:
         The resolved class
     """
+    if class_str.startswith('<') and class_str.endswith('>'):
+        class_str = class_str[1:-1]
     module_path, class_name = class_str.split(':')
     cls = None
     for prefix in [None] + list(prefixes):
@@ -228,28 +231,6 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
             "Did not find class at '{}' or any sub paths of '{}'".format(
                 class_str, "', '".join(prefixes)))
     return cls
-
-
-# def resolve_format(name):
-#     """Resolves a in a sub-module of arcana.data.formats based on its
-#     name
-
-#     Parameters
-#     ----------
-#     name : str
-#         The name of the format
-
-#     Returns
-#     -------
-#     type
-#         The resolved file format or type
-#     """
-#     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
-#         return eval(name)
-#     import arcana.data.formats
-#     import arcana.core.data.format
-#     return resolve_subclass(arcana.data.formats,
-#                         arcana.core.data.format.FileFormat, name)
 
 def submodules(module):
     for mod_info in pkgutil.iter_modules([str(Path(module.__file__).parent)],
@@ -522,34 +503,70 @@ class classproperty(object):
         return self.f(owner)
 
 
-def resolve_pkg_of_module(module_path: str):
+def pkg_from_module(module: Sequence[str]):
     """Resolves the installed package (e.g. from PyPI) that provides the given
     module.
 
     Parameters
     ----------
-    module_path: str or module
-        The path to the module to retrieve the package for
+    module: str or module or Sequence[str or module]
+        a module or its import path string to retrieve the package for. Can be
+        provided as a list of modules/strings, in which case a list of packages
+        are returned
+
+    Returns
+    -------
+    PackageInfo or list[PackageInfo]
+        the package info object corresponding to the module. If `module`
+        parameter is a list of modules/strings then a set of packages are
+        returned
     """
-    try:
-        module_path = module_path.__name__
-    except AttributeError:
-        pass
-    module_path = importlib_metadata.PackagePath(module_path.replace('.', '/'))
+    module_paths = set()
+    if isinstance(module, Iterable) and not isinstance(module, str):
+        modules = module
+        as_tuple = True
+    else:
+        modules = [module]
+        as_tuple = False
+    for module in modules:
+        try:
+            module_path = module.__name__
+        except AttributeError:
+            module_path = module
+        module_paths.add(
+            importlib_metadata.PackagePath(module_path.replace('.', '/')))
+    packages = set()
     for pkg in pkg_resources.working_set:
         try:
             paths = importlib_metadata.files(pkg.key)
         except importlib_metadata.PackageNotFoundError:
             continue
+        match = False
         for path in paths:
             if path.suffix != '.py':
                 continue
             path = path.with_suffix('')
             if path.name == '__init__':
-                path = path.parent   
-            if module_path in ([path] + list(path.parents)):
-                return pkg
-    raise ArcanaUsageError(f'{module_path} is not an installed module')
+                path = path.parent
+            
+            for module_path in copy(module_paths):
+                if module_path in ([path] + list(path.parents)):
+                    match = True
+                    module_paths.remove(module_path)
+        if match:
+            packages.add(pkg)
+            if not module_paths:  # If there are no more modules to find pkgs for
+                break
+    if module_paths:
+        paths_str = "', '".join(module_paths)
+        raise ArcanaUsageError(f'Did not find package for {paths_str}')
+    return tuple(packages) if as_tuple else next(iter(packages))
+
+
+def pkg_versions(modules):
+    versions = {p.key: p.version for p in pkg_from_module(modules)}
+    versions['arcana'] = __version__
+    return versions
 
 
 def parse_dimensions(dimensions_str):
@@ -570,100 +587,84 @@ def parse_dimensions(dimensions_str):
     return getattr(module, cls_name)
 
 
-def serialise(obj, omit=(), include_pkg_versions=True):
+def as_dict(obj, omit: Sequence[str]=(), required_modules: set=None):
     """Serialises an object of a class defined with attrs to a dictionary
 
     Parameters
     ----------
     obj
-        The Arcana object to serialised. Must be defined using the attrs
+        The Arcana object to as_dict. Must be defined using the attrs
         decorator
     omit: Sequence[str]
         the names of attributes to omit from the dictionary
-    include_pkg_versions: bool
-        include versions of packages used"""
+    required_modules: set
+        modules required to reload the serialised object into memory"""
 
     def filter(atr, value):
         return (atr.init and atr.metadata.get('serialise', True))
 
-    required_modules = set()
+    if required_modules is None:
+        required_modules = set()
+        include_versions = True  # Assume top-level dictionary so need to include
+    else:
+        include_versions = False
 
     def serialise_class(klass):
         required_modules.add(klass.__module__)
         return '<' + class_location(klass) + '>'
     
-    def value_asdict(value):
+    def value_as_dict(value):
         if isclass(value):
             value = serialise_class(value)
-        elif hasattr(value, 'serialise'):
-            value = value.serialise()
+        elif hasattr(value, 'as_dict'):
+            value = value.as_dict(required_modules=required_modules)
         elif attr.has(value):  # is class with attrs
-            value_type = serialise_class(type(value))
+            value_class = serialise_class(type(value))
             value = attr.asdict(
                 value,
                 recurse=False,
                 filter=filter,
-                value_serializer=lambda i, f, v: value_asdict(v))
-            value['type'] = value_type
+                value_serializer=lambda i, f, v: value_as_dict(v))
+            value['class'] = value_class
         elif isinstance(value, Enum):
-            value = serialise_class(type(value)) + '|' + str(value)
+            value = serialise_class(type(value)) + '[' + str(value) + ']'
         elif isinstance(value, Path):
             value = 'file://' + str(value.resolve())
-        elif isinstance(value, TaskBase):
-            value = serialise_pydra(
-                value, required_modules=required_modules)
         elif isinstance(value, (tuple, list, set, frozenset)):
-            value = [value_asdict(x) for x in value]    
+            value = [value_as_dict(x) for x in value]    
         elif isinstance(value, dict):
-            value = {value_asdict(k): value_asdict(v) for k, v in value.items()}
+            value = {value_as_dict(k): value_as_dict(v) for k, v in value.items()}
+        elif is_dataclass(value):
+            value = [value_as_dict(getattr(value, f.name))
+                     for f in dataclass_fields(value)]
         return value
 
-    serialised = attr.asdict(
+    dct = attr.asdict(
         obj,
         recurse=False,
         filter=lambda a, v: filter(a, v) and a.name not in omit,
-        value_serializer=lambda i, f, v: value_asdict(v))
+        value_serializer=lambda i, f, v: value_as_dict(v))
 
-    serialised['type'] = serialise_class(type(obj))
-    if include_pkg_versions:
-        pkg_versions = {}
-        pkg_versions['arcana'] = __version__
-        for module in required_modules:
-            pkg = resolve_pkg_of_module(module)
-            pkg_versions[pkg.key] = pkg.version
-        serialised['pkg_versions'] = pkg_versions
+    dct['class'] = serialise_class(type(obj))
+    if include_versions:
+        dct['pkg_versions'] = pkg_versions(required_modules)
 
-    return serialised
+    return dct
 
 
-def serialise_pydra(workflow, required_modules=None):
-    if isinstance(workflow, Workflow):
-        pass
-    else:
-        pass
-    raise NotImplementedError
-
-
-
-def unserialise(dct: dict, **kwargs):
-    """Unserialises an object serialised by the `serialise` method from a
-    dictionary
+def from_dict(dct: dict, **kwargs):
+    """Unserialise an object from a dict created by the `as_dict` method
 
     Parameters
     ----------
-    serialised : dict
+    dct : dict
         A dictionary containing a serialsed Arcana object such as a data store
         or dataset definition
-    ignore_class_method: bool
-        Ignore definition of `unserialised` classmethod in the unserialised class.
-        Typically used when 
     **kwargs : dict[str, Any]
         Additional initialisation arguments for the object when it is reinitialised.
         Overrides those stored"""
-    dct = deepcopy(dct)
-    pkg_versions = dct.pop('pkg_versions', {})
     try:
-        arcana_version = pkg_versions['arcana']
+        arcana_version = dct['pkg_versions']['arcana']
     except KeyError:
         pass
     else:
@@ -673,33 +674,40 @@ def unserialise(dct: dict, **kwargs):
                 f"read by this version of arcana ('{__version__}'), the minimum "
                 f"version is {MIN_SERIAL_VERSION}")
 
-    def fromdict(value):
+    def field_filter(klass, field_name):
+        if attr.has(klass):
+            return field_name in (f.name for f in attr.fields(klass))
+        else:
+            return field_name != 'class'
+
+    def from_dict(value):
         if isinstance(value, dict):
-            type_loc = value.pop('type', None)
-            if type_loc:
-                serialised_cls = resolve_class(type_loc[1:-1])
-                if hasattr(serialised_cls, 'unserialise'):
-                    return serialised_cls.unserialise(value)
-            value = {k: fromdict(v) for k, v in value.items()}
-            if type_loc:
-                value = serialised_cls(**value)
+            if 'class' in value:
+                klass = resolve_class(value['class'])
+                if hasattr(klass, 'from_dict'):
+                    return klass.from_dict(value)
+            value = {from_dict(k): from_dict(v) for k, v in value.items()}
+            if 'class' in value:
+                value = klass(**{k: v for k, v in value.items()
+                                 if field_filter(klass, k)})
         elif isinstance(value, str):
             if match:= re.match(r'<(.*)>$', value): # Class location
                 value = resolve_class(match.group(1))
-            elif match:= re.match(r'<(.*)>\|(.*)$', value):  # Enum
+            elif match:= re.match(r'<(.*)>\[(.*)\]$', value):  # Enum
                 value = resolve_class(match.group(1))[match.group(2)]
             elif match:= re.match(r'file://(.*)', value):
                 value = Path(match.group(1))
         elif isinstance(value, Sequence):
-            value = [fromdict(x) for x in value]
+            value = [from_dict(x) for x in value]
         return value
 
-    cls = resolve_class(dct.pop('type')[1:-1])
+    klass = resolve_class(dct['class'])
 
-    init_kwargs = {k: fromdict(v) for k, v in dct.items()}
+    init_kwargs = {k: from_dict(v) for k, v in dct.items()
+                   if field_filter(klass, k)}
     init_kwargs.update(kwargs)
 
-    return cls(**init_kwargs)
+    return klass(**init_kwargs)
     
 
 # Minimum version of Arcana that this version can read the serialisation from

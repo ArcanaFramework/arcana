@@ -65,7 +65,7 @@ def apply_workflow(id_str, name, workflow_location, input, output, parameter,
 
     dataset = Dataset.load(id_str)
     workflow = resolve_class(workflow_location)(
-        name='inner',
+        name='workflow',
         **{n: parse_value(v) for n, v in parameter})
 
     def parse_col_option(option):
