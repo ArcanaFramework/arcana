@@ -3,26 +3,20 @@ import attr
 import typing as ty
 from dataclasses import dataclass
 import logging
-import inspect
 from copy import copy, deepcopy
 import re
+from collections.abc import Iterable
 import attr
-import cloudpickle as cp
 import pydra.mark
-from pydra.engine.core import Workflow, LazyField
-from pydra.engine.task import FunctionTask
+from pydra.engine.core import Workflow
 from arcana.exceptions import ArcanaNameError, ArcanaUsageError
 from .data.format import DataItem, FileGroup
 import arcana.core.data.set
 from .data.space import DataSpace
 from .utils import (
-    class_location, resolve_class, func_task, as_dict, from_dict, pkg_from_module)
+    func_task, as_dict, from_dict, pydra_as_dict, pydra_from_dict, pydra_eq)
 
 logger = logging.getLogger('arcana')
-
-
-extract_import_re = re.compile(r'\s*(?:from|import)\s+([\w\.]+)')
-
 
 @dataclass
 class Input():
@@ -35,6 +29,7 @@ class Output():
     col_name: str
     pydra_field: str
     produced_format: type
+
 
 @attr.s
 class Pipeline():
@@ -62,9 +57,13 @@ class Pipeline():
 
     name: str = attr.ib()
     frequency: DataSpace = attr.ib()
-    workflow: Workflow = attr.ib()
-    inputs: ty.List[Input] = attr.ib()
-    outputs: ty.List[Output] = attr.ib()
+    workflow: Workflow = attr.ib(eq=attr.cmp_using(pydra_eq))
+    inputs: ty.List[Input] = attr.ib(
+        converter=lambda lst: [Input(*i) if isinstance(i, Iterable) else i
+                               for i in lst])
+    outputs: ty.List[Output] = attr.ib(
+        converter=lambda lst: [Output(*o) if isinstance(o, Iterable) else o
+                               for o in lst])
     dataset: arcana.core.data.set.Dataset = attr.ib(
         metadata={'serialise': False}, default=None, eq=False, hash=False)
 
@@ -115,7 +114,7 @@ class Pipeline():
             lazy field inputs to connect to the inner workflow
         """
         cpy = deepcopy(self.workflow)
-        cpy.name = 'workflow'
+        cpy.name = self.INNER_WORKFLOW_NAME
         for name, lf in kwargs.items():
             setattr(cpy.inputs, name, lf)
         return cpy
@@ -281,7 +280,7 @@ class Pipeline():
             out_fields=[(o, DataItem) for o in self.output_col_names],
             name='output_interface',
             outputs=self.outputs,
-            **{o.col_name: getattr(wf.per_node.workflow.lzout, o.pydra_field)
+            **{o.col_name: getattr(getattr(wf.per_node, self.INNER_WORKFLOW_NAME).lzout, o.pydra_field)
                for o in self.outputs}))
 
         # Set format converters where required
@@ -333,6 +332,7 @@ class Pipeline():
         return wf
 
     PROVENANCE_VERSION = '1.0'
+    INNER_WORKFLOW_NAME = 'workflow'
 
     def as_dict(self, required_modules=None):
         dct = as_dict(self, omit=['workflow'],
@@ -343,73 +343,11 @@ class Pipeline():
 
     @classmethod
     def from_dict(cls, dct, **kwargs):
-        return from_dict(dct, workflow=pydra_from_dict(dct['workflow']),
-                         **kwargs)
-
-
-def pydra_as_dict(obj, required_modules):
-    dct = {'name': obj.name,
-           'class': '<' + class_location(obj) + '>'}
-    if isinstance(obj, Workflow):
-        dct['nodes'] = [pydra_as_dict(n) for n in obj.nodes]
-        dct['outputs'] = outputs = {}
-        for outpt_name in obj.output_names:
-            lf = getattr(obj, outpt_name)
-            outputs[outpt_name] = {"task": lf.name, "field": lf.field}
-    else:
-        if isinstance(obj, FunctionTask):
-            func = cp.loads(obj.inputs._func)
-            module = inspect.getmodule(func)
-            dct['function'] = '<' + module.__name__ + ':' + func.__name__ + '>'
-            required_modules.add(module.__name__)
-            # inspect source for any import lines (should be present in function
-            # not module)
-            for line in inspect.getsourcelines(func)[0]:
-                if match:= extract_import_re.match(line):
-                    required_modules.add(match.group(1))
-            # TODO: check source for references to external modules that aren't
-            #       imported within function
-        elif type(obj).__module__ != 'pydra.engine.task':
-            pkg = pkg_from_module(type(obj).__module__)
-            dct['package'] = pkg.key
-            dct['version'] = pkg.version
-        if hasattr(obj, 'container'):
-            dct['container'] = {"type": obj.container,
-                                "image": obj.image}
-    dct['inputs'] = inputs = {} 
-    for inpt_name in obj.input_names:
-        if not inpt_name.startswith('_'):
-            inpt_value = getattr(obj.inputs, inpt_name)
-            if isinstance(inpt_value, LazyField):
-                inputs[inpt_name] = {'task': inpt_value.name,
-                                     'field': inpt_value.field}
-            elif inpt_value != attr.NOTHING:
-                inputs[inpt_name] = inpt_value
-    return dct
-
-
-def pydra_from_dict(dct, name, workflow=None, **kwargs):
-    klass = resolve_class(dct['class'])
-    # Resolve lazy-field references to workflow fields
-    inputs = {}
-    for inpt_name, inpt_val in dct['inputs']:
-        if isinstance(inpt_val, dict) and sorted(inpt_val.keys()) == ['field',
-                                                                      'task']:
-            inpt_task = getattr(workflow, inpt_val['task'])
-            inpt_val = getattr(inpt_task.inputs, inpt_val)
-        inputs[inpt_name] = inpt_val
-    if klass is Workflow:
-        obj = Workflow(name=name, input_spec=list(dct['inputs']), **inputs)
-        for node_name, node_dict in dct['nodes'].items():
-            obj.add(pydra_from_dict(node_dict, name=node_name, workflow=obj))
-        obj.set_output(dct['outputs'].items())
-    else:
-        try:
-            inputs['func'] = resolve_class(dct['function'])
-        except KeyError:
-            pass
-        obj = klass(**inputs)
-    return obj
+        return from_dict(
+            dct,
+            workflow=pydra_from_dict(dct['workflow'],
+                                          name=cls.INNER_WORKFLOW_NAME),
+            **kwargs)
 
 
 def append_side_car_suffix(name, suffix):

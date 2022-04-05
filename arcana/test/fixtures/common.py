@@ -10,7 +10,8 @@ from arcana.data.formats.medimage import (
 from pathlib import Path
 import pytest
 from click.testing import CliRunner
-from arcana.test.tasks import add, path_manip, attrs_func, A, B, C
+from arcana.test.tasks import (
+    add, path_manip, attrs_func, A, B, C, concatenate, concatenate_reverse)
 from arcana.test.datasets import (
     TestDatasetBlueprint, TestDataSpace as TDS, Xyz, make_dataset)
 
@@ -199,6 +200,14 @@ def tmp_dir():
     yield tmp_dir
     shutil.rmtree(tmp_dir)
 
+
+@pytest.fixture(params=['forward', 'reverse'])
+def concatenate_task(request):
+    if request.param == 'forward':
+        task = concatenate
+    else:
+        task = concatenate_reverse
+    return task
 
 
 # For debugging in IDE's don't catch raised exceptions and let the IDE

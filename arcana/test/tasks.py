@@ -1,6 +1,6 @@
 from pathlib import Path
 import attr
-from pydra import mark
+from pydra import mark, Workflow
 
 
 
@@ -80,3 +80,69 @@ def concatenate(in_file1: Path, in_file2: Path, out_file: Path=None,
         f.write('\n'.join(contents))
     return out_file
 
+
+@mark.task
+@mark.annotate({
+    'return': {'out_file': Path}})
+def reverse(in_file: Path, out_file: Path=None) -> Path:
+    """Reverses the contents of a file and outputs it to another file
+
+    Parameters
+    ----------
+    in_file : Path
+        A text file
+    out_file : Path
+       The path to write the output file to 
+
+    Returns
+    -------
+    Path
+        A text file with reversed contents to the original
+    """
+    if out_file is None:
+        out_file = Path('out_file.txt').absolute()
+    with open(in_file) as f:
+        contents = f.read()
+    with open(out_file, 'w') as f:
+        f.write(contents[::-1])
+    return out_file
+
+
+def concatenate_reverse(name='concatenate_reverse', **kwargs):
+    """A simple workflow that has the same signature as concatenate, but
+    concatenates reversed contents of the input files instead
+
+    Parameters
+    ----------
+    name : str
+        name of the workflow to be created
+    **kwargs
+        keyword arguments passed through to the workflow init, can be any of
+        the workflow's input spec, i.e. ['in_file1', 'in_file2', 'duplicates']
+
+    Returns
+    -------
+    Workflow
+        the workflow that 
+    """
+    wf = Workflow(name=name, input_spec=['in_file1', 'in_file2', 'duplicates'],
+                  **kwargs)
+
+    wf.add(reverse(
+        name='reverse1',
+        in_file=wf.lzin.in_file1))
+
+    wf.add(reverse(
+        name='reverse2',
+        in_file=wf.lzin.in_file2))
+
+    wf.add(concatenate(
+        name='concatenate',
+        in_file1=wf.reverse1.lzout.out_file,
+        in_file2=wf.reverse2.lzout.out_file,
+        duplicates=wf.lzin.duplicates))
+
+    wf.set_output([('out_file', wf.concatenate.lzout.out_file)])
+
+    return wf
+    

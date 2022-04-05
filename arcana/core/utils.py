@@ -2,10 +2,16 @@ from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import subprocess as sp
 import importlib_metadata
+from itertools import chain
 import pkgutil
+import typing as ty
 from enum import Enum
 from copy import copy
 import re
+import inspect
+import cloudpickle as cp
+from pydra.engine.core import Workflow, LazyField, TaskBase
+from pydra.engine.task import FunctionTask
 from pathlib import Path
 import packaging
 from importlib import import_module
@@ -333,7 +339,7 @@ def parse_single_value(value, format=None):
     return value
 
 
-def parse_value(value, datatype=None):
+def parse_value(value, format=None):
     # Split strings with commas into lists
     if isinstance(value, str):
         if value.startswith('[') and value.endswith(']'):
@@ -345,7 +351,7 @@ def parse_value(value, datatype=None):
         except TypeError:
             pass
     if isinstance(value, list):
-        value = [parse_single_value(v, datatype=datatype) for v in value]
+        value = [parse_single_value(v, format=format) for v in value]
         # Check to see if datatypes are consistent
         datatypes = set(type(v) for v in value)
         if len(datatypes) > 1:
@@ -353,7 +359,7 @@ def parse_value(value, datatype=None):
                 "Inconsistent datatypes in values array ({})"
                 .format(value))
     else:
-        value = parse_single_value(value, datatype=datatype)
+        value = parse_single_value(value, format=format)
     return value
 
 
@@ -587,7 +593,7 @@ def parse_dimensions(dimensions_str):
     return getattr(module, cls_name)
 
 
-def as_dict(obj, omit: Sequence[str]=(), required_modules: set=None):
+def as_dict(obj, omit: Iterable[str]=(), required_modules: set=None):
     """Serialises an object of a class defined with attrs to a dictionary
 
     Parameters
@@ -595,7 +601,7 @@ def as_dict(obj, omit: Sequence[str]=(), required_modules: set=None):
     obj
         The Arcana object to as_dict. Must be defined using the attrs
         decorator
-    omit: Sequence[str]
+    omit: Iterable[str]
         the names of attributes to omit from the dictionary
     required_modules: set
         modules required to reload the serialised object into memory"""
@@ -660,6 +666,8 @@ def from_dict(dct: dict, **kwargs):
     dct : dict
         A dictionary containing a serialsed Arcana object such as a data store
         or dataset definition
+    omit: Iterable[str]
+        key names to ignore when unserialising
     **kwargs : dict[str, Any]
         Additional initialisation arguments for the object when it is reinitialised.
         Overrides those stored"""
@@ -703,12 +711,149 @@ def from_dict(dct: dict, **kwargs):
 
     klass = resolve_class(dct['class'])
 
-    init_kwargs = {k: from_dict(v) for k, v in dct.items()
-                   if field_filter(klass, k)}
-    init_kwargs.update(kwargs)
+    kwargs.update({k: from_dict(v) for k, v in dct.items()
+                   if field_filter(klass, k) and k not in kwargs})
 
-    return klass(**init_kwargs)
-    
+    return klass(**kwargs)
+
+
+extract_import_re = re.compile(r'\s*(?:from|import)\s+([\w\.]+)')
+
+
+def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str]):
+    """Converts a Pydra Task/Workflow into a dictionary that can be serialised
+
+    Parameters
+    ----------
+    obj : pydra.engine.core.TaskBase
+        the Pydra object to convert to a dictionary
+    required_modules : set[str]
+        a set of modules that are required to load the pydra object back
+        out from disk and run it
+
+    Returns
+    -------
+    dict
+        the dictionary containing the contents of the Pydra object
+    """
+    dct = {'name': obj.name,
+           'class': '<' + class_location(obj) + '>'}
+    if isinstance(obj, Workflow):
+        dct['nodes'] = [pydra_as_dict(n, required_modules=required_modules)
+                        for n in obj.nodes]
+        dct['outputs'] = outputs = {}
+        for outpt_name in obj.output_names:
+            lf = getattr(obj, outpt_name)
+            outputs[outpt_name] = {"task": lf.name, "field": lf.field}
+    else:
+        if isinstance(obj, FunctionTask):
+            func = cp.loads(obj.inputs._func)
+            module = inspect.getmodule(func)
+            dct['class'] = '<' + module.__name__ + ':' + func.__name__ + '>'
+            required_modules.add(module.__name__)
+            # inspect source for any import lines (should be present in function
+            # not module)
+            for line in inspect.getsourcelines(func)[0]:
+                if match:= extract_import_re.match(line):
+                    required_modules.add(match.group(1))
+            # TODO: check source for references to external modules that aren't
+            #       imported within function
+        elif type(obj).__module__ != 'pydra.engine.task':
+            pkg = pkg_from_module(type(obj).__module__)
+            dct['package'] = pkg.key
+            dct['version'] = pkg.version
+        if hasattr(obj, 'container'):
+            dct['container'] = {"type": obj.container,
+                                "image": obj.image}
+    dct['inputs'] = inputs = {} 
+    for inpt_name in obj.input_names:
+        if not inpt_name.startswith('_'):
+            inpt_value = getattr(obj.inputs, inpt_name)
+            if isinstance(inpt_value, LazyField):
+                inputs[inpt_name] = {'task': inpt_value.name,
+                                     'field': inpt_value.field}
+            elif inpt_value != attr.NOTHING:
+                inputs[inpt_name] = inpt_value
+    return dct
+
+
+def pydra_from_dict(dct: dict, name: str, workflow: Workflow=None, **kwargs):
+    """Recreates a Pydra Task/Workflow from a dictionary object created by
+    `pydra_as_dict`
+
+    Parameters
+    ----------
+    dct : dict
+        dictionary representations of the object to recreate
+    name : str
+        name to give the object
+    workflow : pydra.Workflow, optional
+        the containing workflow that the object to recreate is connected to
+
+    Returns
+    -------
+    pydra.engine.core.TaskBase
+        the recreated Pydra object
+    """
+    klass = resolve_class(dct['class'])
+    # Resolve lazy-field references to workflow fields
+    inputs = {}
+    for inpt_name, inpt_val in dct['inputs'].items():
+        if isinstance(inpt_val, dict) and sorted(inpt_val.keys()) == ['field',
+                                                                      'task']:
+            inpt_task = getattr(workflow, inpt_val['task'])
+            inpt_val = getattr(inpt_task.inputs, inpt_val)
+        inputs[inpt_name] = inpt_val
+    if klass is Workflow:
+        obj = Workflow(name=name, input_spec=list(dct['inputs']), **inputs)
+        for node_name, node_dict in dct['nodes'].items():
+            obj.add(pydra_from_dict(node_dict, name=node_name, workflow=obj))
+        obj.set_output(dct['outputs'].items())
+    else:
+        obj = klass(**inputs)
+    return obj
+
+
+def pydra_eq(a: TaskBase, b: TaskBase):
+    """Compares two Pydra Task/Workflows for equality
+
+    Parameters
+    ----------
+    a : pydra.engine.core.TaskBase
+        first object to compare
+    b : pydra.engine.core.TaskBase
+        second object to compare
+
+    Returns
+    -------
+    bool
+        whether the two objects are equal
+    """
+    if type(a) != type(b):
+        return False
+    if a.name != b.name:
+        return False
+    if a.input_names != b.input_names:
+        return False
+    if a.output_spec != b.output_spec:
+        return False
+    for inpt_name in a.input_names:
+        if getattr(a.inputs, inpt_name) != getattr(b.inputs, inpt_name):
+            return False
+    if isinstance(a, Workflow):
+        a_node_names = [n.name for n in a.nodes]
+        b_node_names = [n.name for n in b.nodes]
+        if a_node_names != b_node_names:
+            return False
+        for node_name in a_node_names:
+            if not pydra_eq(getattr(a, node_name), getattr(b, node_name)):
+                return False
+    else:
+        if isinstance(a, FunctionTask):
+            if a.inputs._func != b.inputs._func:
+                return False
+    return True
+
 
 # Minimum version of Arcana that this version can read the serialisation from
 MIN_SERIAL_VERSION = '0.0.0'
