@@ -96,6 +96,8 @@ class DataSource(DataColumn):
     header_vals: ty.Dict[str, ty.Any] = attr.ib(default=None)
     is_regex: bool = attr.ib(default=False)
 
+    is_sink = False
+
     def match(self, node):
         criteria = [
             (match_path, self.path if not self.is_regex else None),
@@ -190,6 +192,8 @@ class DataSink(DataColumn):
                                      converter=lambda s: DataSalience[str(s)])
     pipeline_name: str = attr.ib(default=None)
 
+    is_sink = True
+
     def match(self, node):
         matches = [i for i in node.resolved(self.format)
                    if i.path == self.path]
@@ -201,3 +205,6 @@ class DataSink(DataColumn):
             raise ArcanaDataMatchError(
                 "Found multiple matches " + self._error_msg(node, matches))
         return matches[0]
+
+    def derive(self, ids=None):
+        self.dataset.derive(self.name, ids=ids)

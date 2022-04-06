@@ -84,8 +84,6 @@ class ArcanaIndexError(ArcanaError):
         self.index = index
 
 
-class ArcanaMissingDataException(ArcanaUsageError):
-    pass
 
 
 class ArcanaDataNotDerivedYetError(NamedArcanaError, ArcanaDesignError):
@@ -96,7 +94,13 @@ class ArcanaDataMatchError(ArcanaUsageError):
     pass
 
 
-class ArcanaOutputNotProducedException(ArcanaException):
+class ArcanaPipelinesStackError(ArcanaError):
+    pass
+
+class ArcanaMissingDataException(ArcanaPipelinesStackError):
+    pass
+
+class ArcanaOutputNotProducedException(ArcanaPipelinesStackError):
     """
     Raised when a given spec is not produced due to switches and inputs
     provided to the analysis

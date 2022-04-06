@@ -318,7 +318,7 @@ To generate derivatives via the API
 
   dataset = Dataset.load('file///data/openneuro/ds00014:test')
 
-  dataset.derive('fast/gm', work_dir='/work/temp-dir')
+  dataset.derive('fast/gm', cache_dir='/work/temp-dir')
 
   # Print URI of generated dataset
   print(dataset['fast/gm']['sub11'].uri)

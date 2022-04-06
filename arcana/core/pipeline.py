@@ -1,6 +1,7 @@
 from __future__ import annotations
 import attr
 import typing as ty
+from collections import OrderedDict
 from dataclasses import dataclass
 import logging
 from copy import copy, deepcopy
@@ -9,7 +10,9 @@ from collections.abc import Iterable
 import attr
 import pydra.mark
 from pydra.engine.core import Workflow
-from arcana.exceptions import ArcanaNameError, ArcanaUsageError
+from arcana.exceptions import (
+    ArcanaNameError, ArcanaUsageError, ArcanaDesignError,
+    ArcanaPipelinesStackError, ArcanaOutputNotProducedException)
 from .data.format import DataItem, FileGroup
 import arcana.core.data.set
 from .data.space import DataSpace
@@ -290,6 +293,92 @@ class Pipeline():
             dct,
             workflow=pydra_fromdict(dct['workflow']),
             **kwargs)
+
+    @classmethod
+    def stack(cls, *sinks):
+        """Determines the pipelines stack, in order of execution,
+        required to generate the specified sink columns.
+    
+        Parameters
+        ----------
+        sinks : Iterable[DataSink or str]
+            the sink columns, or their names, that are to be generated
+
+        Returns
+        -------
+        list[tuple[Pipeline, list[DataSink]]]
+            stack of pipelines required to produce the specified data sinks,
+            along with the sinks each stage needs to produce.
+
+        Raises
+        ------
+        ArcanaDesignError
+            when there are circular references in the pipelines stack
+        """
+                
+        # Stack of pipelines to process in reverse order of required execution
+        stack = OrderedDict()
+
+        def push_pipeline_on_stack(sink, downstream: ty.Tuple[Pipeline]=None):
+            """
+            Push a pipeline onto the stack of pipelines to be processed,
+            detecting common upstream pipelines and resolving them to a single
+            pipeline
+
+            Parameters
+            ----------
+            sink: DataSink
+                the sink to push its deriving pipeline for
+            downstream : tuple[Pipeline]
+                The pipelines directly downstream of the pipeline to be added.
+                Used to detect circular dependencies
+            """
+            if downstream is None:
+                downstream = []
+            pipeline = sink.dataset.pipelines[sink.pipeline_name]
+            if sink.name not in pipeline.output_col_names:
+                raise ArcanaOutputNotProducedException(
+                    f"{pipeline.name} does not produce {sink.name}")
+            # Check downstream piplines for circular dependencies
+            downstream_pipelines = [p for p, _ in downstream]
+            if pipeline in downstream_pipelines:
+                recur_index = downstream_pipelines.index(pipeline)
+                raise ArcanaDesignError(
+                    f"{pipeline} cannot be a dependency of itself. Call-stack:\n"
+                    + '\n'.join('{} ({})'.format(p, ', '.join(ro))
+                                for p, ro in ([[pipeline, sink.name]]
+                                              + downstream[:(recur_index + 1)])))
+            if pipeline.name in stack:
+                # Pop pipeline from stack in order to add it to the end of the
+                # stack and ensure it is run before all downstream pipelines
+                prev_pipeline, to_produce = stack.pop(pipeline.name)
+                assert pipeline is prev_pipeline
+                # Combined required output to produce
+                to_produce.append(sink)
+            else:
+                to_produce = []
+            # Add the pipeline to the stack
+            stack[pipeline.name] = pipeline, to_produce
+            # Recursively add all the pipeline's prerequisite pipelines to the stack
+            for inpt in pipeline.inputs:
+                inpt_column = sink.dataset.column[inpt.col_name]
+                if inpt_column.is_sink:
+                    try:
+                        push_pipeline_on_stack(
+                            inpt_column,
+                            downstream=[(pipeline, to_produce)] + downstream)
+                    except ArcanaPipelinesStackError as e:
+                        e.msg += ("\nwhich are required as inputs to the '{}' "
+                                  "pipeline to produce '{}'".format(
+                                      pipeline.name,
+                                      "', '".join(s.name for s in to_produce)))
+                        raise e
+
+        # Add all pipelines
+        for sink in sinks:
+            push_pipeline_on_stack(sink)
+
+        return reversed(stack.values())
 
 def append_side_car_suffix(name, suffix):
     """Creates a new combined field name out of a basename and a side car"""

@@ -34,100 +34,18 @@ def sanitize_path(path):
     return sanitize_path_re.sub(path, '_')
 
 
-@derive.command(name='column', help="""Run a Pydra task/workflow on a dataset.
+@derive.command(name='column', help="""Derive 
 
-dataset
-    The path to the dataset to run the workflow on.
-pydra_task
-    The import path to a Pydra task or workflow to run on the dataset, starting
-    with the module path + ':' + task-name, e.g.
-        pydra.tasks.fsl.preprocess.fast:FAST
-    For convenience the 'pydra.tasks' prefix can be omitted,
-    e.g. fsl.preprocess.fast:FAST)
-""")
-@click.argument('dataset')
-@click.argument('pydra_task')
-@click.option(
-    '--input', '-i', 'input_specs', multiple=True, nargs=3,  metavar='<criteria>',
-    help="""A file-group input to provide to the task that is matched by the 
-    provided criteria.
+DATASET_ID_STR string containing the nick-name of the store, the ID of the dataset
+(e.g. XNAT project ID or file-system directory) and the dataset's name in the
+format <NICKNAME>//DATASET_ID:DATASET_NAME
 
-    The INTERFACE_FIELD is the name of the field in the Pydra interface to
-    connect the source to.
+NAME of the pipeline
 
-    REQUIRED_FORMAT is the format that the app requires the input in.
-    If different from the FORMAT, an implicit conversions will
-                    be attempted when required. The default is
-                    'niftixgz', which is the g-zipped NIfTI image file
-                    + JSON side-car required for BIDS 
-
-    The 3rd argument to the input contains the criteria used to match the
-    input and can contain any combination of PATH, FORMAT, ORDER, QUALITY,
-    METADATA and FREQUENCY separated by ':'. Criteria that are not needed can
-    be omitted, e.g. to select the fist scan of the session with usable quality
-    the following value,
-
-        ::1:usable
-
-    PATH the name regular expression (in Python syntax) of file-group or
-    field name.
-
-    FORMAT is the name or extension of the file-format the
-    input is stored in in the dataset.
-    
-    ORDER is the order of the scan in the session to select if more than
-    one match the other criteria. E.g. an order of '2' with a pattern of
-    '.*bold.*' could match the second T1-weighted scan in the session
-    
-    QUALITY is the the minimum usuable quality to be considered for a match.
-    Can be one of 'usable', 'questionable' or 'unusable'
-
-    METADATA semicolon-separated list of header_vals values
-                    in NAME=VALUE form. For DICOM headers
-                    NAME is the numeric values of the DICOM tag, e.g
-                    (0008,0008) -> 00080008
-    FREQUENCY The frequency of the file-group within the dataset.
-    Can be either 'dataset', 'group', 'subject',
-    'timepoint', 'session', 'unique_subject', 'group_visit'
-    or 'subject_timepoint'. Typically only required for
-    derivatives
-
-    Trailing args can be dropped if default, 
-
-        e.g. --input in_file 't1_mprage.*'
-        
-    Preceding args that aren't required can be replaced by '*', 
-
-        --input in_file.nii.gz 't1_mprage.*' * * questionable""")
-@click.option(
-    '--output', '-o', 'output_specs', multiple=True, nargs=3, 
-    metavar='<spec>',
-    help="""The outputs produced by the task to be stored.
-
-    The INTERFACE_FIELD is the name of the output field in the Pydra
-    interface to connect to the sink to.
-
-    PRODUCED_FORMAT is the name of the file-format that the file be produced
-    by the workflow in
-
-    The STORE_AT arg specifies where the output should be stored within
-    the data node of the dataset in the store.
-
-    FORMAT is the name of
-    the file-format the file will be stored at in the dataset.""")
-@click.option(
-    '--parameter', '-p', 'parameters', metavar='<name-val>', 
-    multiple=True, nargs=2,
-    help=("Parameter to pass to the app"))
-@click.option(
-    '--id', 'ids', multiple=True, default=None, 
-    help=("IDs of the nodes to process (i.e. for the frequency that "
-          "the app runs at)."))
-@click.option(
-    '--frequency', '-f', default='session',
-    help=("The level at which the analysis is performed. One of (per) "
-          "dataset, group, subject, timepoint, group_timepoint or "
-          "session"))
+WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
+<MODULE>:<WORKFLOW>""")
+@click.argument('dataset_id_str')
+@click.argument('columns', nargs=-1)
 @click.option(
     '--container', nargs=2, default=None,
     metavar='<engine-tag>',
@@ -154,7 +72,8 @@ pydra_task
 def derive_column(dataset_path, pydra_task, input_specs, output_specs, parameters, ids, frequency,
         container, work_dir, pydra_plugin, virtualisation, dry_run, loglevel,
         ignore_blank_inputs):
-    raise NotImplementedError
+    
+    dataset = Dataset.load(id_str)
 
     set_loggers(loglevel)
 
