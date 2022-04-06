@@ -611,7 +611,7 @@ def asdict(obj, omit: ty.Iterable[str]=(), required_modules: set=None):
         modules required to reload the serialised object into memory"""
 
     def filter(atr, value):
-        return (atr.init and atr.metadata.get('serialise', True))
+        return (atr.init and atr.metadata.get('asdict', True))
 
     if required_modules is None:
         required_modules = set()

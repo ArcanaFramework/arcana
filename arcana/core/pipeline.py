@@ -65,7 +65,7 @@ class Pipeline():
         converter=lambda lst: [Output(*o) if isinstance(o, Iterable) else o
                                for o in lst])
     dataset: arcana.core.data.set.Dataset = attr.ib(
-        metadata={'serialise': False}, default=None, eq=False, hash=False)
+        metadata={'asdict': False}, default=None, eq=False, hash=False)
 
     @inputs.validator
     def inputs_validator(self, _, inpt):
@@ -109,7 +109,8 @@ class Pipeline():
         Parameters
         ----------
         **kwargs
-            Passed to Pydra.Workflow init
+            passed directly to the Pydra.Workflow init. The `ids` arg can be
+            used to filter the data nodes over which the pipeline is run.
 
         Returns
         -------
@@ -124,56 +125,10 @@ class Pipeline():
             If the new pipeline will overwrite an existing pipeline connection
             with overwrite == False.
         """
-        # # Set derivatives as existing
-        # for node in self.dataset.nodes(self.frequency):
-        #     for output in self.output_col_names:
-        #         node[output].get(assume_exists=True)
-
-        # # Separate required formats and input names
-        # input_types = dict(i for i in self.inputs if not isinstance(i, str))
-        # input_names = [i if isinstance(i, str) else i[0] for i in self.inputs]
-
-        # # Separate produced formats and output names
-        # output_types = dict(o for o in self.outputs if not isinstance(o, str))
-        # output_names = [o if isinstance(o, str) else o[0] for o in self.outputs]
 
         # Create the outer workflow to link the analysis workflow with the
         # data node iteration and store connection nodes
         wf = Workflow(name=self.name, input_spec=['ids'], **kwargs)
-
-        # # Add sinks for the output of the workflow
-        # sources = {}
-        # for input_name in input_names:
-        #     try:
-        #         source = dataset[input_name]
-        #     except KeyError as e:
-        #         raise ArcanaNameError(
-        #             input_name,
-        #             f"{input_name} is not the name of a source in {dataset}") from e
-        #     sources[input_name] = source
-        #     try:
-        #         required_format = input_types[input_name]
-        #     except KeyError:
-        #         input_types[input_name] = required_format = source.format
-        #     self.inputs.append((input_name, required_format))
-
-        # # Add sinks for the output of the workflow
-        # sinks = {}
-        # for output_name in output_names:
-        #     try:
-        #         sink = dataset[output_name]
-        #     except KeyError as e:
-        #         raise ArcanaNameError(
-        #             output_name,
-        #             f"{output_name} is not the name of a sink in {dataset}") from e
-
-        #     sink.pipeline_name = name
-        #     sinks[output_name] = sink
-        #     try:
-        #         produced_format = output_types[output_name]
-        #     except KeyError:
-        #         output_types[output_name] = produced_format = sink.format
-        #     pipeline.outputs.append((output_name, produced_format))
 
         # Generate list of nodes to process checking existing outputs
         wf.add(to_process(

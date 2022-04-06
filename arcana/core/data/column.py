@@ -16,7 +16,7 @@ class DataColumn(metaclass=ABCMeta):
     path: str = attr.ib()
     format = attr.ib()
     frequency: DataSpace = attr.ib()
-    dataset = attr.ib(default=None, metadata={'serialise': False},
+    dataset = attr.ib(default=None, metadata={'asdict': False},
                       eq=False, hash=False)
 
     def __iter__(self):

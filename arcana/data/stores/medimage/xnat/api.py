@@ -69,8 +69,8 @@ class Xnat(DataStore):
 
     server: str = attr.ib()
     cache_dir: str = attr.ib(converter=Path)
-    user: str = attr.ib(default=None, metadata={'serialise': False})
-    password: str = attr.ib(default=None, metadata={'serialise': False})
+    user: str = attr.ib(default=None, metadata={'asdict': False})
+    password: str = attr.ib(default=None, metadata={'asdict': False})
     check_md5: bool = attr.ib(default=True)
     race_condition_delay: int = attr.ib(default=30)
     _cached_datasets: ty.Dict[str, Dataset]= attr.ib(factory=dict, init=False)
