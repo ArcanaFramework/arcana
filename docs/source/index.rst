@@ -22,14 +22,31 @@ when analysing large datasets:
 
 * Derivatives are kept in central location, avoiding duplication of processing
 * Incremental processing facilitates manual-QC of intermediate products at key milestones in the workflow (e.g. brain masks)
-* Abstraction of site-specific implementation details encourages the development of shared workflow libraries. Such libraries can be refined by multiple collaborators over time to capture the domain-specific **"arcana of data analysis"**, the obscure knowledge required to apply a combination of tools and parameters to appropriately analyse complex datasets.
+* Abstraction of implementation details promotes development of shared workflow libraries, which can be refined over time to capture the domain-specific **arcana of data analysis** *(the obscure knowledge required to apply an appropriate combination of tools and parameters to analyse complex datasets)*.
 
-Arcana also includes tools for deploying pipelines in Docker images that
-can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_.
-.. or as `BIDS apps <https://bids-apps.neuroimaging.io/>`_.
-These tools can be used
-to maintain continuous integration and deployment of pipeline suites (see
-`Australian Imaging Service Pipelines <https://github.com/australian-imaging-service/pipelines-core>`_).
+The Arcana framework can be broken down into four conceptual layers:
+
+* **Core layer** - abstract base classes and core pipeline logic
+* **Infrastructure layer** - Repository system connectors, file formats and data structures
+* **Processing layer** - Preprocessing pipelines and methods to derive standard markers
+* **Analysis layer** - Statistical analysis methods and study-specific customisations
+
+|
+
+.. image:: _static/images/layers.png
+   :width: 600
+   :alt: Arcana layer structure
+   :align: center
+
+|
+
+The core and infrastructure layers are largely developed by the main Arcana developer team
+(see `Authors  <https://github.com/Australian-Imaging-Service/arcana/blob/main/AUTHORS>`_).
+Processing layers for neuro-MRI and molecular imaging are being developed as part of the
+Australian Imaging Service in the `core pipelines repository <https://github.com/Australian-Imaging-Service/pipelines-core>`_.
+Since the analysis layer is typically study-specific, it is often left to the
+end user to implement (noting that outputs from the processing layer
+can be used directly if desired)
 
 Although designed to efficiently handle the requirements typical of medical imaging
 workflows (i.e. manipulation of file-based images by various third-party
@@ -37,7 +54,13 @@ tools), at its core, Arcana is a general framework, which could be
 used to design analyses in any field. If you do end up using Arcana in a
 different domain please post an issue about it in the
 `issue tracker <https://github.com/Australian-Imaging-Service/arcana/issues>`_
-to let us know!
+to let us know!   
+
+Arcana also includes tools for deploying pipelines in Docker images that
+can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_
+or as `BIDS apps <https://bids-apps.neuroimaging.io/>`_. These tools can be used
+to maintain continuous integration and deployment of pipeline suites (see
+`Australian Imaging Service Pipelines <https://github.com/australian-imaging-service/pipelines-core>`_).
 
 .. toctree::
    :maxdepth: 2
@@ -68,8 +91,8 @@ to let us know!
    
 
 |
-.. note::
 
+.. note::
    For the legacy version of Arcana as described in
    *Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `10.1007/s12021-019-09430-1 <https://doi.org/10.1007/s12021-019-09430-1>`_
    please see `<https://github.com/MonashBI/arcana-legacy>`_.

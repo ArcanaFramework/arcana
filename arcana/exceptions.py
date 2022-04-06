@@ -92,15 +92,7 @@ class ArcanaDataNotDerivedYetError(NamedArcanaError, ArcanaDesignError):
     pass
 
 
-class ArcanaSelectionError(ArcanaUsageError):
-    pass
-
-
-class ArcanaInputMissingMatchError(ArcanaSelectionError):
-    pass
-
-
-class ArcanaMultipleMatchesInputError(ArcanaSelectionError):
+class ArcanaDataMatchError(ArcanaUsageError):
     pass
 
 

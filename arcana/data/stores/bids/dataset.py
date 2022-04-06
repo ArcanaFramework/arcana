@@ -17,7 +17,7 @@ class ContainerMetadata():
     tag: str = None
     uri: str = None
 
-    def to_dict(self):
+    def to_dict(self, **kwargs):
         dct = {}
         if self.type:
             dct['Type'] = self.type
@@ -28,7 +28,7 @@ class ContainerMetadata():
         return dct
 
     @classmethod
-    def from_dict(cls, dct):
+    def fromdict(cls, dct):
         if dct is None:
             return None
         return ContainerMetadata(
@@ -45,7 +45,7 @@ class GeneratorMetadata():
     code_url: str = None
     container: ContainerMetadata = None
 
-    def to_dict(self):
+    def to_dict(self, **kwargs):
         dct = {
             'Name': self.name}
         if self.version:
@@ -59,13 +59,13 @@ class GeneratorMetadata():
         return dct
 
     @classmethod
-    def from_dict(cls, dct):
+    def fromdict(cls, dct):
         return GeneratorMetadata(
             name=dct['Name'],
             version=dct.get('Version'),
             description=dct.get('Description'),
             code_url=dct.get('CodeURL'),
-            container=ContainerMetadata.from_dict(dct.get('Container')))
+            container=ContainerMetadata.fromdict(dct.get('Container')))
 
 
 @dataclass
@@ -75,7 +75,7 @@ class SourceDatasetMetadata():
     doi: str = None
     version: str = None
 
-    def to_dict(self):
+    def to_dict(self, **kwargs):
         dct = {}
         if self.url:
             dct['URL'] = self.url
@@ -86,7 +86,7 @@ class SourceDatasetMetadata():
         return dct
 
     @classmethod
-    def from_dict(cls, dct):
+    def fromdict(cls, dct):
         if dct is None:
             return None
         return SourceDatasetMetadata(
@@ -125,10 +125,11 @@ class BidsDataset(Dataset):
     @classmethod
     def load(cls, path):
         if list(Path(path).glob('**/sub-*/ses-*')):
-            hierarchy = [Clinical.subject, Clinical.timepoint]
+            hierarchy = ['subject', 'timepoint']
         else:
-            hierarchy = [Clinical.session]    
+            hierarchy = ['session']    
         dataset = BidsDataset(path, store=Bids(),
+                              space=Clinical,
                               hierarchy=hierarchy)
         dataset.load_metadata()
         return dataset
@@ -139,9 +140,9 @@ class BidsDataset(Dataset):
         path = Path(path)
         path.mkdir()
         if session_ids is not None:
-            hierarchy = [Clinical.subject, Clinical.timepoint]
+            hierarchy = ['subject', 'timepoint']
         else:
-            hierarchy = [Clinical.session]
+            hierarchy = ['session']
         if generated_by is None:
             generated_by = [
                 GeneratorMetadata(
@@ -157,6 +158,7 @@ class BidsDataset(Dataset):
         dataset = BidsDataset(
             path,
             store=Bids(),
+            space=Clinical,
             hierarchy=hierarchy,
             name=name,
             generated_by=generated_by,
@@ -250,10 +252,10 @@ class BidsDataset(Dataset):
             if 'GeneratedBy' not in dct:
                 raise ArcanaError(
                     "'GeneratedBy' field required for 'derivative' type datasets")
-            self.generated_by = [GeneratorMetadata.from_dict(d)
+            self.generated_by = [GeneratorMetadata.fromdict(d)
                                  for d in dct['GeneratedBy']]
         if 'sourceDatasets' in dct:
-            self.sources = [SourceDatasetMetadata.from_dict(d)
+            self.sources = [SourceDatasetMetadata.fromdict(d)
                             for d in dct['sourceDatasets']]
 
         self.participants = {}

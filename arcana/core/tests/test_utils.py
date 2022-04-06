@@ -1,11 +1,6 @@
-from arcana.core.utils import serialise, unserialise
+from arcana.core.utils import pkg_from_module
 
-
-def test_dataset_serialise_roundtrip(dataset):
-
-    dct = serialise(dataset, skip=['store'])
-    unserialised = unserialise(dct, store=dataset.store)
-    assert isinstance(dct, dict)
-    assert 'store' not in dct
-    del dataset.blueprint
-    assert dataset == unserialised
+def test_pkg_from_module():
+    assert pkg_from_module('arcana.data.stores').key == 'arcana'
+    assert pkg_from_module('pydra.tasks.dcm2niix').key == 'pydra-dcm2niix'
+    assert pkg_from_module('pydra.engine').key == 'pydra'

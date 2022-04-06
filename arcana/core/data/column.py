@@ -1,17 +1,63 @@
+from abc import abstractmethod, ABCMeta
 import re
 import typing as ty
 import attr
 from attr.converters import optional
 # from arcana.core.data.node import DataNode
-from arcana.exceptions import (
-    ArcanaMultipleMatchesInputError, ArcanaFileFormatError,
-    ArcanaInputMissingMatchError)
+from arcana.exceptions import ArcanaDataMatchError
 from ..enum import DataQuality, DataSalience
 from .space import DataSpace
 
 
 @attr.s
-class DataSource():
+class DataColumn(metaclass=ABCMeta):
+
+    name: str = attr.ib()
+    path: str = attr.ib()
+    format = attr.ib()
+    frequency: DataSpace = attr.ib()
+    dataset = attr.ib(default=None, metadata={'asdict': False},
+                      eq=False, hash=False)
+
+    def __iter__(self):
+        return (n[self.name] for n in self.dataset.nodes(self.frequency))
+
+    def __getitem__(self, id):
+        return self.dataset.node(id=id, frequency=self.frequency)[self.name]
+
+    def __len__(self):
+        return len(list(self.dataset.nodes(self.frequency)))
+
+    @property
+    def ids(self):
+        return [n.id for n in self.dataset.nodes(self.frequency)]
+
+    @abstractmethod
+    def match(self, node):
+        """Selects a single item from a data node that matches the
+        criteria/path of the column.
+
+        Parameters
+        ----------
+        node: DataNode
+            the node to match the item from
+
+        Returns
+        -------
+        DataItem
+            the data item that matches the criteria/path
+
+        Rasies
+        ------
+        ArcanaDataMatchError
+            if none or multiple items match the criteria/path of the column
+            within the node
+        ArcanaFileFormatError
+            if there are no files matching the format of the column in the node"""
+
+
+@attr.s
+class DataSource(DataColumn):
     """
     Specifies the criteria by which an item is selected from a data node to
     be a data source.
@@ -43,9 +89,7 @@ class DataSource():
     is_regex : bool
         Flags whether the name_path is a regular expression or not
     """
-    path: str = attr.ib()
-    format = attr.ib()
-    frequency: DataSpace = attr.ib()
+
     quality_threshold: DataQuality = attr.ib(
         default=None, converter=optional(lambda q: DataQuality[str(q)]))
     order: int = attr.ib(default=None)
@@ -65,15 +109,15 @@ class DataSource():
                    f"{self.format} in {node}, found unresolved items:\n")
             for item in node.unresolved:
                 msg += f'\n{item.path}: paths=' + ','.join(
-                    p.name for p in item.file_paths) + ', uris=' + ','.join(
-                        item.uris.keys())
-            raise ArcanaInputMissingMatchError(msg)
+                    p.name for p in item.file_paths) + (
+                        (', uris=' + ','.join(item.uris.keys())) if item.uris else '')
+            raise ArcanaDataMatchError(msg)
         # Apply all filters to find items that match criteria
         for func, arg in criteria:
             if arg is not None:
                 filtered = [m for m in matches if func(m, arg)]
                 if not filtered:
-                    raise ArcanaInputMissingMatchError(
+                    raise ArcanaDataMatchError(
                         "Did not find any items " + func.__doc__.format(arg)
                         + self._error_msg(node, matches))
                 matches = filtered
@@ -82,12 +126,12 @@ class DataSource():
             try:
                 match = matches[self.order]
             except IndexError as e:
-                raise ArcanaInputMissingMatchError(
+                raise ArcanaDataMatchError(
                     "Not enough matching items to select one at index "
                     f"{self.order}, found "
                     + ", ".join(str(m) for m in matches)) from e
         elif len(matches) > 1:
-            raise ArcanaMultipleMatchesInputError(
+            raise ArcanaDataMatchError(
                 "Found multiple matches " + self._error_msg(node, matches))
         else:
             match = matches[0]
@@ -118,7 +162,7 @@ def match_header_vals(item, header_vals):
 
 
 @attr.s
-class DataSink():
+class DataSink(DataColumn):
     """
     A specification for a file group within a analysis to be derived from a
     processing pipeline.
@@ -142,10 +186,6 @@ class DataSink():
         The nane of the workflow applied to the dataset to generates the data
         for the sink
     """
-
-    path: str = attr.ib()
-    format = attr.ib()
-    frequency: DataSpace = attr.ib()
     salience: DataSalience = attr.ib(default=DataSalience.supplementary,
                                      converter=lambda s: DataSalience[str(s)])
     pipeline_name: str = attr.ib(default=None)
@@ -158,6 +198,6 @@ class DataSink():
             return self.format(path=self.path, data_node=node,
                                     exists=False)
         elif len(matches) > 1:
-            raise ArcanaMultipleMatchesInputError(
+            raise ArcanaDataMatchError(
                 "Found multiple matches " + self._error_msg(node, matches))
         return matches[0]

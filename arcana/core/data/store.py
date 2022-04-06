@@ -7,7 +7,7 @@ import typing as ty
 import yaml
 from arcana.core.utils import (
     get_config_file_path, list_subclasses, resolve_class, class_location,
-    serialise, unserialise)
+    asdict, fromdict)
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
 
@@ -133,7 +133,7 @@ class DataStore(metaclass=ABCMeta):
         dataset_id: str
             The ID/path of the dataset within the store
         definition: dict[str, Any]
-            A dictionary containing the serialised Dataset to be saved. The
+            A dictionary containing the dct Dataset to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
         name: str
@@ -155,7 +155,7 @@ class DataStore(metaclass=ABCMeta):
         Returns
         -------
         definition: dict[str, Any]
-            A serialised Dataset object that was saved in the data store
+            A dct Dataset object that was saved in the data store
         """
 
     @abstractmethod
@@ -230,10 +230,10 @@ class DataStore(metaclass=ABCMeta):
             raise ArcanaNameError(
                 name, f"Name '{name}' clashes with built-in type of store")
         entries = self.load_saved_entries()
-        # connect to store in case it is needed in the serialise method and to
+        # connect to store in case it is needed in the asdict method and to
         # test the connection in general before it is saved
         with self:  
-            entries[name] = serialise(self)
+            entries[name] = asdict(self)
         self.save_entries(entries)
 
     @classmethod
@@ -328,8 +328,8 @@ class DataStore(metaclass=ABCMeta):
         from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
         if name is None:
             name = Dataset.DEFAULT_NAME
-        serialised = self.load_dataset_definition(id, name)
-        return unserialise(serialised, store=self)
+        dct = self.load_dataset_definition(id, name)
+        return fromdict(dct, store=self)
 
 
     @classmethod

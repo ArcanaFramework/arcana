@@ -7,9 +7,7 @@ from collections import defaultdict
 from abc import ABCMeta, abstractmethod
 import arcana.core.data.set
 from arcana.exceptions import (
-    ArcanaNameError, ArcanaUsageError, ArcanaUnresolvableFormatException,
-    ArcanaWrongFrequencyError, ArcanaFileFormatError, ArcanaError)
-from arcana.core.utils import split_extension
+    ArcanaNameError, ArcanaWrongFrequencyError, ArcanaFileFormatError)
 from .format import DataItem
 from ..enum import DataQuality
 from .space import DataSpace
@@ -57,13 +55,13 @@ class DataNode():
             return self._items[column_name]
         else:
             try:
-                spec = self.dataset.column_specs[column_name]
+                spec = self.dataset[column_name]
             except KeyError as e:
                 raise ArcanaNameError(
                     column_name,
                     f"{column_name} is not the name of a column in "
                     f"{self.dataset.id} dataset ('" + "', '".join(
-                        self.dataset.column_specs) + "')") from e
+                        self.dataset.columns) + "')") from e
             if spec.frequency != self.frequency:
                 return ArcanaWrongFrequencyError(
                     column_name,
@@ -99,8 +97,8 @@ class DataNode():
         return (i for _, i in self.items())
 
     def items(self):
-        return ((n, self[n]) for n, s in self.dataset.column_specs.items()
-                if s.frequency == self.frequency)
+        return ((c, self[c.name]) for c in self.dataset.columns
+                if c.frequency == self.frequency)
 
     def column_items(self, column_name):
         """Get's the item for the current node if item's frequency matches
@@ -125,7 +123,7 @@ class DataNode():
             # If frequency is not a ancestor node then return the
             # items in the children of the node (if they are child
             # nodes) or the whole dataset
-            spec = self.dataset.column_specs[column_name]
+            spec = self.dataset.columns[column_name]
             try:
                 return self.children[spec.frequency].values()
             except KeyError:
@@ -170,19 +168,6 @@ class DataNode():
             self._unresolved = []
         self._unresolved.append(UnresolvedField(
             path=path, data_node=self, value=value, **kwargs))
-
-    # def get_file_group(self, file_group, **kwargs):
-    #     return self.dataset.store.get_file_group(file_group, **kwargs)
-
-    # def get_field(self, field):
-    #     return self.dataset.store.get_field(field)
-
-    # def put_file_group(self, file_group, fs_path, side_cars):
-    #     self.dataset.store.put_file_group(
-    #         file_group, fs_path=fs_path, side_cars=side_cars)
-
-    # def put_field(self, field, value):
-    #     self.dataset.store.put_field(field, value)
 
 
 @attr.s

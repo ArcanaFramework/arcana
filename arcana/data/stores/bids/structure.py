@@ -1,5 +1,4 @@
 from arcana import __version__
-from arcana.data.spaces.medimage import Clinical
 from ..common import FileSystem
 from arcana.exceptions import ArcanaUsageError, ArcanaEmptyDatasetError
 
@@ -28,7 +27,7 @@ class Bids(FileSystem):
 
         for subject_id, participant in dataset.participants.items():
             try:
-                explicit_ids = {Clinical.group: participant['group']}
+                explicit_ids = {'group': participant['group']}
             except KeyError:
                 explicit_ids = {}
             if dataset.is_multi_session():
@@ -89,7 +88,7 @@ class Bids(FileSystem):
         data_node = field.data_node
         dataset = data_node.dataset
         if field.name in dataset.participant_attrs:
-            val = dataset.participants[data_node.ids[Clinical.subject]]
+            val = dataset.participants[data_node.ids['subject']]
         else:
             val = super().get_field_val(field)
         return val

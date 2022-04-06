@@ -13,8 +13,8 @@ from arcana.data.stores.medimage.xnat.cs import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.data.formats.common import Text, Directory
-from arcana.data.formats.medimage import NiftiXGz, NiftiGz, Dicom
-from arcana.tests.fixtures.common import create_test_file
+from arcana.data.formats.medimage import NiftiGzX, NiftiGz, Dicom
+from arcana.test.datasets import create_test_file
 
 
 @pytest.fixture
@@ -43,8 +43,8 @@ TEST_DATASET_BLUEPRINTS = {
             Text,  # Data format
             ['file.txt'])]),  # name files to place within resource
          ('scan2',
-          [('NiftiXGz',
-            NiftiXGz,
+          [('NiftiGzX',
+            NiftiGzX,
             ['file.nii.gz', 'file.json'])]),
          ('scan3',
           [('Directory',
@@ -57,7 +57,7 @@ TEST_DATASET_BLUEPRINTS = {
            ('SNAPSHOT', None, ['file1.png'])])],
         [],
         [('deriv1', Clinical.timepoint, Text, ['file.txt']),
-         ('deriv2', Clinical.subject, NiftiXGz, ['file.nii.gz', 'file.json']),
+         ('deriv2', Clinical.subject, NiftiGzX, ['file.nii.gz', 'file.json']),
          ('deriv3', Clinical.batch, Directory, ['dir']),
          ('deriv4', Clinical.dataset, Text, ['file.txt']),
          ]),  # id_inference dict
@@ -72,7 +72,7 @@ TEST_DATASET_BLUEPRINTS = {
          ('session', r'timepoint(?P<timepoint>\d+).*')],  # id_inference dict
         [
          ('deriv1', Clinical.session, Text, ['file.txt']),
-         ('deriv2', Clinical.subject, NiftiXGz, ['file.nii.gz', 'file.json']),
+         ('deriv2', Clinical.subject, NiftiGzX, ['file.nii.gz', 'file.json']),
          ('deriv3', Clinical.timepoint, Directory, ['doubledir']),
          ('deriv4', Clinical.member, Text, ['file.txt']),
          ('deriv5', Clinical.dataset, Text, ['file.txt']),

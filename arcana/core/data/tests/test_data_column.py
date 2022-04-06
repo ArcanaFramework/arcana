@@ -1,14 +1,17 @@
-import pytest
+from pathlib import Path
 from operator import mul
 from functools import reduce
 from arcana.core.data.format import FileGroup
 
-@pytest.mark.skip("needs to wait until further refactoring")
+
 def test_column_api_access(dataset):
 
     bp = dataset.blueprint
 
-    for col_name, (data_format, files) in bp.expected_formats.items():
+    for col_name, formats in bp.expected_formats.items():
+        data_format, files = formats[0]
+
+        dataset.add_source(col_name, data_format)
 
         col = dataset[col_name]
 
@@ -20,11 +23,4 @@ def test_column_api_access(dataset):
             item = col[id_]
             assert isinstance(item, data_format)
             if issubclass(data_format, FileGroup):
-                assert item.paths == files
-
-        # Access file-groups via basis IDs
-        for id_tuple in col.id_tuples:
-            item = col[id_tuple]
-            assert isinstance(item, data_format)
-            if issubclass(data_format, FileGroup):
-                assert item.paths == files
+                assert sorted(p.name for p in item.fs_paths) == sorted(files)

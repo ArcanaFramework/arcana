@@ -43,7 +43,7 @@ source columns to the dataset (see :ref:`data_columns`). They are specified by
 * description of input that will be exposed to the XNAT UI
 * the row frequency of the column (see :ref:`data_spaces` and :ref:`data_columns`)
 
-Parameters are passed directly through the pipeline add method (see :ref:`Pipelines`) that
+Parameters are passed directly through the pipeline add method (see :ref:`applying_workflows`) that
 is run in the container, and consist of a 2-tuple with
 
 * name of field in the pydra task input interface
@@ -100,7 +100,7 @@ For example, the preceding example would be:
 
     pipeline_name: fast
     pydra_task: pydra.tasks.fsl.preprocess.fast:FAST
-    description: -
+    description:
         FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of 
         the brain into different tissue types (Grey Matter, White Matter, 
         CSF, etc.), whilst also correcting for spatial intensity variations 

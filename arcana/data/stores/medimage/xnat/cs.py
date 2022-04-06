@@ -22,11 +22,10 @@ from natsort import natsorted
 import docker
 from arcana import __version__
 from arcana.__about__ import install_requires, PACKAGE_NAME, python_versions
-from arcana.core.utils import get_pkg_name
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileGroup
-from arcana.core.utils import resolve_class, DOCKER_HUB
+from arcana.core.utils import resolve_class, DOCKER_HUB, pkg_from_module
 from arcana.exceptions import (
     ArcanaUsageError, ArcanaNoDirectXnatMountException, ArcanaBuildError)
 from .api import Xnat
@@ -101,7 +100,7 @@ class XnatViaCS(Xnat):
             input_mount = self.get_input_mount(file_group)
         except ArcanaNoDirectXnatMountException:
             # Fallback to API access
-            return super().get_file_group(file_group)
+            return super().get_file_group_paths(file_group)
         logger.info("Getting %s from %s:%s node via direct access to archive directory",
                     file_group.path, file_group.data_node.frequency,
                     file_group.data_node.id)
@@ -181,7 +180,7 @@ class XnatViaCS(Xnat):
                               description,
                               version,
                               parameters=None,
-                              frequency=Clinical.session,
+                              frequency='session',
                               registry=DOCKER_HUB,
                               info_url=None):
         """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
@@ -211,7 +210,7 @@ class XnatViaCS(Xnat):
             Version string for the wrapped pipeline
         parameters : ty.List[str]
             Parameters to be exposed in the CS command    
-        frequency : Clinical
+        frequency : str
             Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
         registry : str
             URI of the Docker registry to upload the image to
@@ -742,9 +741,9 @@ class XnatViaCS(Xnat):
                 registry=docker_registry,
                 **cmd_spec)
 
-            python_package = get_pkg_name(cmd_spec['pydra_task'].split(':')[0])
-            if python_package not in [p.split('[')[0] for p in python_packages]:
-                python_packages.append(python_package)
+            cmd_pkg = pkg_from_module([cmd_spec['pydra_task'].split(':')[0]])
+            if cmd_pkg.key not in [p.split('[')[0] for p in python_packages]:
+                python_packages.append(cmd_pkg.key)
 
             xnat_commands.append(xnat_cmd)
 

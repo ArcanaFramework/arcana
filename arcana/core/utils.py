@@ -1,9 +1,17 @@
+from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import subprocess as sp
 import importlib_metadata
+from itertools import chain
 import pkgutil
+import typing as ty
 from enum import Enum
+from copy import copy
 import re
+import inspect
+import cloudpickle as cp
+from pydra.engine.core import Workflow, LazyField, TaskBase
+from pydra.engine.task import FunctionTask
 from pathlib import Path
 import packaging
 from importlib import import_module
@@ -16,7 +24,8 @@ from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
 import attr
-from pydra.engine.task import FunctionTask
+from pydra import Workflow
+from pydra.engine.task import FunctionTask, TaskBase
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaVersionError
 
@@ -160,20 +169,20 @@ def set_loggers(loglevel, pydra_level='warning', depend_level='warning'):
     logging.basicConfig(level=parse(depend_level))
 
 
-def to_list(arg):
-    if arg is None:
-        arg = []
-    else:
-        arg = list(arg)
-    return arg
+# def to_list(arg):
+#     if arg is None:
+#         arg = []
+#     else:
+#         arg = list(arg)
+#     return arg
 
 
-def to_dict(arg):
-    if arg is None:
-        arg = {}
-    else:
-        arg = dict(arg)
-    return arg
+# def to_dict(arg):
+#     if arg is None:
+#         arg = {}
+#     else:
+#         arg = dict(arg)
+#     return arg
 
 
 
@@ -204,11 +213,13 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     type:
         The resolved class
     """
+    if class_str.startswith('<') and class_str.endswith('>'):
+        class_str = class_str[1:-1]
     module_path, class_name = class_str.split(':')
     cls = None
     for prefix in [None] + list(prefixes):
         if prefix is not None:
-            mod_name = prefix + '.' + module_path
+            mod_name = prefix + ('.' if prefix[-1] != '.' else '') + module_path
         else:
             mod_name = module_path
         if not mod_name:
@@ -230,63 +241,6 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
             "Did not find class at '{}' or any sub paths of '{}'".format(
                 class_str, "', '".join(prefixes)))
     return cls
-
-
-# def resolve_format(name):
-#     """Resolves a in a sub-module of arcana.data.formats based on its
-#     name
-
-#     Parameters
-#     ----------
-#     name : str
-#         The name of the format
-
-#     Returns
-#     -------
-#     type
-#         The resolved file format or type
-#     """
-#     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
-#         return eval(name)
-#     import arcana.data.formats
-#     import arcana.core.data.format
-#     return resolve_subclass(arcana.data.formats,
-#                         arcana.core.data.format.FileFormat, name)
-
-def resolve_format(name):
-    """Resolves a in a sub-module of arcana.file_format based on its
-    name
-
-    Parameters
-    ----------
-    name : str
-        The name of the format
-
-    Returns
-    -------
-    type
-        The resolved file format or type
-    """
-    if re.match(r'int|float|str|list\[(int|float|str)\]', name):
-        return eval(name)
-    import arcana.data.formats
-    data_format = None
-    module_names = [
-        i.name for i in pkgutil.iter_modules(
-            [os.path.dirname(arcana.data.formats.__file__)])]
-    for module_name in module_names:
-        module = import_module('arcana.data.formats.' + module_name)
-        try:
-            data_format = getattr(module, name)
-        except AttributeError:
-            pass
-    if data_format is None:
-        raise ArcanaNameError(
-            name,
-            f"Could not find format {name} in installed modules:\n"
-            + "\n    ".join(module_names))
-    return data_format
-
 
 def submodules(module):
     for mod_info in pkgutil.iter_modules([str(Path(module.__file__).parent)],
@@ -359,38 +313,6 @@ def dir_modtime(dpath):
     return max(os.path.getmtime(d) for d, _, _ in os.walk(dpath))
 
 
-double_exts = ('.tar.gz', '.nii.gz')
-
-
-def split_extension(path):
-    """
-    A extension splitter that checks for compound extensions such as
-    'file.nii.gz'
-
-    Parameters
-    ----------
-    filename : str
-        A filename to split into base and extension
-
-    Returns
-    -------
-    base : str
-        The base part of the string, i.e. 'file' of 'file.nii.gz'
-    ext : str
-        The extension part of the string, i.e. 'nii.gz' of 'file.nii.gz'
-    """
-    for double_ext in double_exts:
-        if path.name.endswith(double_ext):
-            return str(path)[:-len(double_ext)], double_ext
-    parts = path.name.split('.')
-    if len(parts) == 1:
-        base = path.name
-        ext = None
-    else:
-        ext = '.' + parts[-1]
-        base = '.'.join(parts[:-1])
-    return path.parent / base, ext
-
 def lower(s):
     if s is None:
         return None
@@ -421,7 +343,7 @@ def parse_single_value(value, format=None):
     return value
 
 
-def parse_value(value, datatype=None):
+def parse_value(value, format=None):
     # Split strings with commas into lists
     if isinstance(value, str):
         if value.startswith('[') and value.endswith(']'):
@@ -433,7 +355,7 @@ def parse_value(value, datatype=None):
         except TypeError:
             pass
     if isinstance(value, list):
-        value = [parse_single_value(v, datatype=datatype) for v in value]
+        value = [parse_single_value(v, format=format) for v in value]
         # Check to see if datatypes are consistent
         datatypes = set(type(v) for v in value)
         if len(datatypes) > 1:
@@ -441,7 +363,7 @@ def parse_value(value, datatype=None):
                 "Inconsistent datatypes in values array ({})"
                 .format(value))
     else:
-        value = parse_single_value(value, datatype=datatype)
+        value = parse_single_value(value, format=format)
     return value
 
 
@@ -591,22 +513,45 @@ class classproperty(object):
         return self.f(owner)
 
 
-def get_pkg_name(module_path: str):
-    """Gets the name of the package that provides the given module
+def pkg_from_module(module: Sequence[str]):
+    """Resolves the installed package (e.g. from PyPI) that provides the given
+    module.
 
     Parameters
     ----------
-    module_path
-        The path to the module to retrieve the package for
+    module: str or module or Sequence[str or module]
+        a module or its import path string to retrieve the package for. Can be
+        provided as a list of modules/strings, in which case a list of packages
+        are returned
+
+    Returns
+    -------
+    PackageInfo or list[PackageInfo]
+        the package info object corresponding to the module. If `module`
+        parameter is a list of modules/strings then a set of packages are
+        returned
     """
-    if not isinstance(module_path, str):
-        module_path = module_path.__module__
-    module_path = importlib_metadata.PackagePath(module_path.replace('.', '/'))
+    module_paths = set()
+    if isinstance(module, Iterable) and not isinstance(module, str):
+        modules = module
+        as_tuple = True
+    else:
+        modules = [module]
+        as_tuple = False
+    for module in modules:
+        try:
+            module_path = module.__name__
+        except AttributeError:
+            module_path = module
+        module_paths.add(
+            importlib_metadata.PackagePath(module_path.replace('.', '/')))
+    packages = set()
     for pkg in pkg_resources.working_set:
         try:
             paths = importlib_metadata.files(pkg.key)
         except importlib_metadata.PackageNotFoundError:
             continue
+        match = False
         for path in paths:
             if path.suffix != '.py':
                 continue
@@ -614,9 +559,24 @@ def get_pkg_name(module_path: str):
             if path.name == '__init__':
                 path = path.parent
             
-            if module_path in ([path] + list(path.parents)):
-                return pkg.key
-    raise ArcanaUsageError(f'{module_path} is not an installed module')
+            for module_path in copy(module_paths):
+                if module_path in ([path] + list(path.parents)):
+                    match = True
+                    module_paths.remove(module_path)
+        if match:
+            packages.add(pkg)
+            if not module_paths:  # If there are no more modules to find pkgs for
+                break
+    if module_paths:
+        paths_str = "', '".join(module_paths)
+        raise ArcanaUsageError(f'Did not find package for {paths_str}')
+    return tuple(packages) if as_tuple else next(iter(packages))
+
+
+def pkg_versions(modules):
+    versions = {p.key: p.version for p in pkg_from_module(modules)}
+    versions['arcana'] = __version__
+    return versions
 
 
 def parse_dimensions(dimensions_str):
@@ -637,84 +597,301 @@ def parse_dimensions(dimensions_str):
     return getattr(module, cls_name)
 
 
-def serialise(obj, skip=(), ignore_instance_method=False):
+def asdict(obj, omit: ty.Iterable[str]=(), required_modules: set=None):
     """Serialises an object of a class defined with attrs to a dictionary
 
     Parameters
     ----------
     obj
-        The Arcana object to serialised. Must be defined using the attrs
+        The Arcana object to asdict. Must be defined using the attrs
         decorator
-    skip: Sequence[str]
-        The names of attributes to skip"""
+    omit: Iterable[str]
+        the names of attributes to omit from the dictionary
+    required_modules: set
+        modules required to reload the serialised object into memory"""
 
-    if hasattr(obj, 'serialise') and not ignore_instance_method:
-        serialised = obj.serialise()
-    elif isclass(obj):
-        serialised = '<' + class_location(obj) + '>'
-    elif isinstance(obj, Enum):
-        serialised = '|' + class_location(type(obj)) + '|' + str(obj)
-    elif isinstance(obj, Path):
-        serialised = str(obj)
-    elif hasattr(obj, '__attrs_attrs__'):
-        serialised = attr.asdict(
-            obj,
-            recurse=False,
-            filter=lambda a, v: a.init and a.name not in skip,
-            value_serializer=lambda _, __, v: serialise(v))
-        serialised['type'] = '<' + class_location(obj) + '>'
-        serialised['arcana_version'] = __version__
-    elif not isinstance(obj, str) and isinstance(obj, Sequence):
-        serialised = [serialise(x) for x in obj]
-    elif isinstance(obj, dict):
-        serialised = {k: serialise(v) for k, v in obj.items()}
+    def filter(atr, value):
+        return (atr.init and atr.metadata.get('asdict', True))
+
+    if required_modules is None:
+        required_modules = set()
+        include_versions = True  # Assume top-level dictionary so need to include
     else:
-        serialised = obj
+        include_versions = False
 
-    return serialised
+    def serialise_class(klass):
+        required_modules.add(klass.__module__)
+        return '<' + class_location(klass) + '>'
+    
+    def value_asdict(value):
+        if isclass(value):
+            value = serialise_class(value)
+        elif hasattr(value, 'asdict'):
+            value = value.asdict(required_modules=required_modules)
+        elif attr.has(value):  # is class with attrs
+            value_class = serialise_class(type(value))
+            value = attr.asdict(
+                value,
+                recurse=False,
+                filter=filter,
+                value_serializer=lambda i, f, v: value_asdict(v))
+            value['class'] = value_class
+        elif isinstance(value, Enum):
+            value = serialise_class(type(value)) + '[' + str(value) + ']'
+        elif isinstance(value, Path):
+            value = 'file://' + str(value.resolve())
+        elif isinstance(value, (tuple, list, set, frozenset)):
+            value = [value_asdict(x) for x in value]    
+        elif isinstance(value, dict):
+            value = {value_asdict(k): value_asdict(v) for k, v in value.items()}
+        elif is_dataclass(value):
+            value = [value_asdict(getattr(value, f.name))
+                     for f in dataclass_fields(value)]
+        return value
+
+    dct = attr.asdict(
+        obj,
+        recurse=False,
+        filter=lambda a, v: filter(a, v) and a.name not in omit,
+        value_serializer=lambda i, f, v: value_asdict(v))
+
+    dct['class'] = serialise_class(type(obj))
+    if include_versions:
+        dct['pkg_versions'] = pkg_versions(required_modules)
+
+    return dct
 
 
-def unserialise(serialised: dict, **kwargs):
-    """Unserialises an object serialised by the `serialise` method from a
-    dictionary
+def fromdict(dct: dict, **kwargs):
+    """Unserialise an object from a dict created by the `asdict` method
 
     Parameters
     ----------
-    serialised : dict
+    dct : dict
         A dictionary containing a serialsed Arcana object such as a data store
         or dataset definition
+    omit: Iterable[str]
+        key names to ignore when unserialising
     **kwargs : dict[str, Any]
         Additional initialisation arguments for the object when it is reinitialised.
         Overrides those stored"""
-    if isinstance(serialised, dict) and 'type' in serialised:
-        serialised_cls = resolve_class(serialised.pop('type')[1:-1])
-        serialised_version = serialised.pop('arcana_version')
-        if packaging.version.parse(serialised_version) < packaging.version.parse(MIN_SERIAL_VERSION):
+    try:
+        arcana_version = dct['pkg_versions']['arcana']
+    except KeyError:
+        pass
+    else:
+        if packaging.version.parse(arcana_version) < packaging.version.parse(MIN_SERIAL_VERSION):
             raise ArcanaVersionError(
-                f"Serialised version ('{serialised_version}' is too old to be "
+                f"Serialised version ('{arcana_version}' is too old to be "
                 f"read by this version of arcana ('{__version__}'), the minimum "
                 f"version is {MIN_SERIAL_VERSION}")
-        init_args = {}
-        for k, v in serialised.items():
-            init_args[k] = unserialise(v)
-        init_args.update(kwargs)
-        unserialised = serialised_cls(**init_args)
-    elif isinstance(serialised, list):
-        unserialised = [unserialise(x) for x in serialised]
-    elif isinstance(serialised, dict):
-        unserialised = {k: unserialise(v) for k, v in serialised.items()}
-    elif isinstance(serialised, str):
-        if match:= re.match(r'<(.*)>', serialised): # Class location
-            unserialised = resolve_class(match.group(1))
-        elif match:= re.match(r'\|([^\|]+)\|(.*)', serialised):  # Enum
-            unserialised = resolve_class(match.group(1))[match.group(2)]
+
+    def field_filter(klass, field_name):
+        if attr.has(klass):
+            return field_name in (f.name for f in attr.fields(klass))
         else:
-            unserialised = serialised    
+            return field_name != 'class'
+
+    def fromdict(value):
+        if isinstance(value, dict):
+            if 'class' in value:
+                klass = resolve_class(value['class'])
+                if hasattr(klass, 'fromdict'):
+                    return klass.fromdict(value)
+            value = {fromdict(k): fromdict(v) for k, v in value.items()}
+            if 'class' in value:
+                value = klass(**{k: v for k, v in value.items()
+                                 if field_filter(klass, k)})
+        elif isinstance(value, str):
+            if match:= re.match(r'<(.*)>$', value): # Class location
+                value = resolve_class(match.group(1))
+            elif match:= re.match(r'<(.*)>\[(.*)\]$', value):  # Enum
+                value = resolve_class(match.group(1))[match.group(2)]
+            elif match:= re.match(r'file://(.*)', value):
+                value = Path(match.group(1))
+        elif isinstance(value, Sequence):
+            value = [fromdict(x) for x in value]
+        return value
+
+    klass = resolve_class(dct['class'])
+
+    kwargs.update({k: fromdict(v) for k, v in dct.items()
+                   if field_filter(klass, k) and k not in kwargs})
+
+    return klass(**kwargs)
+
+
+extract_import_re = re.compile(r'\s*(?:from|import)\s+([\w\.]+)')
+
+NOTHING_STR = '__PIPELINE_INPUT__'
+
+def pydra_asdict(obj: TaskBase, required_modules: ty.Set[str],
+                  workflow: Workflow=None) -> dict:
+    """Converts a Pydra Task/Workflow into a dictionary that can be serialised
+
+    Parameters
+    ----------
+    obj : pydra.engine.core.TaskBase
+        the Pydra object to convert to a dictionary
+    required_modules : set[str]
+        a set of modules that are required to load the pydra object back
+        out from disk and run it
+    workflow : pydra.Workflow, optional
+        the containing workflow that the object to serialised is part of
+
+    Returns
+    -------
+    dict
+        the dictionary containing the contents of the Pydra object
+    """
+    dct = {'name': obj.name,
+           'class': '<' + class_location(obj) + '>'}
+    if isinstance(obj, Workflow):
+        dct['nodes'] = [pydra_asdict(n, required_modules=required_modules,
+                                      workflow=obj)
+                        for n in obj.nodes]
+        dct['outputs'] = outputs = {}
+        for outpt_name, lf in obj._connections:
+            outputs[outpt_name] = {"pydra_task": lf.name, "pydra_field": lf.field}
     else:
-        unserialised = serialised
+        if isinstance(obj, FunctionTask):
+            func = cp.loads(obj.inputs._func)
+            module = inspect.getmodule(func)
+            dct['class'] = '<' + module.__name__ + ':' + func.__name__ + '>'
+            required_modules.add(module.__name__)
+            # inspect source for any import lines (should be present in function
+            # not module)
+            for line in inspect.getsourcelines(func)[0]:
+                if match:= extract_import_re.match(line):
+                    required_modules.add(match.group(1))
+            # TODO: check source for references to external modules that aren't
+            #       imported within function
+        elif type(obj).__module__ != 'pydra.engine.task':
+            pkg = pkg_from_module(type(obj).__module__)
+            dct['package'] = pkg.key
+            dct['version'] = pkg.version
+        if hasattr(obj, 'container'):
+            dct['container'] = {"type": obj.container,
+                                "image": obj.image}
+    dct['inputs'] = inputs = {} 
+    for inpt_name in obj.input_names:
+        if not inpt_name.startswith('_'):
+            inpt_value = getattr(obj.inputs, inpt_name)
+            if isinstance(inpt_value, LazyField):
+                inputs[inpt_name] = {'pydra_field': inpt_value.field}
+                # If the lazy field comes from the workflow lazy in, we omit
+                # the "pydra_task" item
+                if workflow is None or inpt_value.name != workflow.name:
+                    inputs[inpt_name]["pydra_task"] = inpt_value.name
+            elif inpt_value == attr.NOTHING:
+                inputs[inpt_name] = NOTHING_STR
+            else:
+                inputs[inpt_name] = inpt_value
+    return dct
 
-    return unserialised
 
-# Minimum version of Arcana that this 
+def lazy_field_fromdict(dct: dict, workflow: Workflow):
+    """Unserialises a LazyField object from a dictionary"""
+    if "pydra_task" in dct:
+        inpt_task = getattr(workflow, dct['pydra_task'])
+        lf = getattr(inpt_task.lzout, dct['pydra_field'])
+    else:
+        lf = getattr(workflow.lzin, dct['pydra_field'])
+    return lf
+
+
+def pydra_fromdict(dct: dict, workflow: Workflow=None,
+                    **kwargs) -> TaskBase:
+    """Recreates a Pydra Task/Workflow from a dictionary object created by
+    `pydra_asdict`
+
+    Parameters
+    ----------
+    dct : dict
+        dictionary representations of the object to recreate
+    name : str
+        name to give the object
+    workflow : pydra.Workflow, optional
+        the containing workflow that the object to recreate is connected to
+    **kwargs
+        additional keyword arguments passed to the pydra Object init method
+
+    Returns
+    -------
+    pydra.engine.core.TaskBase
+        the recreated Pydra object
+    """
+    klass = resolve_class(dct['class'])
+    # Resolve lazy-field references to workflow fields
+    inputs = {}
+    for inpt_name, inpt_val in dct['inputs'].items():
+        if inpt_val == NOTHING_STR:
+            continue
+        # Check for 'pydra_field' key in a dictionary val and convert to a
+        # LazyField object
+        if isinstance(inpt_val, dict) and 'pydra_field' in inpt_val:
+            inpt_val = lazy_field_fromdict(inpt_val, workflow=workflow)
+        inputs[inpt_name] = inpt_val
+    kwargs.update((k, v) for k, v in inputs.items() if k not in kwargs)
+    if klass is Workflow:
+        obj = Workflow(
+            name=dct['name'],
+            input_spec=list(dct['inputs']),
+            **kwargs)
+        for node_dict in dct['nodes']:
+            obj.add(pydra_fromdict(node_dict, workflow=obj))
+        obj.set_output([(n, lazy_field_fromdict(f, workflow=obj))
+                        for n, f in dct['outputs'].items()])
+    else:
+        obj = klass(name=dct['name'], **kwargs)
+    return obj
+
+
+def pydra_eq(a: TaskBase, b: TaskBase):
+    """Compares two Pydra Task/Workflows for equality
+
+    Parameters
+    ----------
+    a : pydra.engine.core.TaskBase
+        first object to compare
+    b : pydra.engine.core.TaskBase
+        second object to compare
+
+    Returns
+    -------
+    bool
+        whether the two objects are equal
+    """
+    if type(a) != type(b):
+        return False
+    if a.name != b.name:
+        return False
+    if sorted(a.input_names) != sorted(b.input_names):
+        return False
+    if a.output_spec.fields != b.output_spec.fields:
+        return False
+    for inpt_name in a.input_names:
+        a_input = getattr(a.inputs, inpt_name)
+        b_input = getattr(b.inputs, inpt_name)
+        if isinstance(a_input, LazyField):
+            if a_input.field != b_input.field or a_input.name != b_input.name:
+                return False
+        elif a_input != b_input:
+            return False
+    if isinstance(a, Workflow):
+        a_node_names = [n.name for n in a.nodes]
+        b_node_names = [n.name for n in b.nodes]
+        if a_node_names != b_node_names:
+            return False
+        for node_name in a_node_names:
+            if not pydra_eq(getattr(a, node_name), getattr(b, node_name)):
+                return False
+    else:
+        if isinstance(a, FunctionTask):
+            if a.inputs._func != b.inputs._func:
+                return False
+    return True
+
+
+# Minimum version of Arcana that this version can read the serialisation from
 MIN_SERIAL_VERSION = '0.0.0'
-

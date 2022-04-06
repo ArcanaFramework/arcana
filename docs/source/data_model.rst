@@ -8,8 +8,8 @@ from the user, it is important to be familiar with the core concepts:
 * :ref:`Stores` - abstraction of different storage systems and formats
 * :ref:`Spaces` - define the structure for a class of datasets
 * :ref:`Datasets` - sets of comparable data to be analysed (e.g. XNAT project or BIDS dataset)
-* :ref:`Items and formats` - the atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the file formats they are stored in
-* :ref:`Columns` - the set of comparable elements across a dataset (e.g. T1-weighted MRI scans across every session, ages across all subjects)
+* :ref:`Formats` - the atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the file formats they are stored in
+* :ref:`DataColumns` - the set of comparable elements across a dataset (e.g. T1-weighted MRI scans across every session, ages across all subjects)
 
 Stores
 ------
@@ -308,7 +308,7 @@ in the group. There are a number common file formats implemented in
 :mod:`arcana.data.formats.common`, including :class:`.Text`,
 :class:`.Zip`, :class:`.Json` and :class:`.Directory`. :class:`.FileGroup` subclasses
 may contain methods for conveniently accessing the file data and header metadata (e.g.
-:class:`.medimage.Dicom` and :class:`.medimage.NiftiXGz`) but this
+:class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`) but this
 is not a requirement for usage in workflows.
 
 Arcana will implicily handle conversions between file formats where a
@@ -322,7 +322,7 @@ e.g. ``arcana.data.formats.common:Text``, although if the format is in a submodu
 
 .. _data_columns:
 
-Columns
+DataColumns
 -------
 
 Before any data can be accessed or appended to a dataset, columns need to be
@@ -351,7 +351,7 @@ using a range of criteria:
 
 Sink columns define how derived data will be written to the dataset.
 
-Columns are given a name, which is used to map to the inputs/outputs of pipelines.
+DataColumns are given a name, which is used to map to the inputs/outputs of pipelines.
 By default, this name is used by sinks to name the output fields/files stored
 in the dataset. However, if a specific output path is desired it can be
 specified by the ``path`` argument.

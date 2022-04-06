@@ -2,11 +2,10 @@ import pytest
 import os.path
 from arcana.core.data.set import Dataset
 from arcana.core.enum import DataQuality, DataSalience
-from arcana.tests.fixtures.common import (
-  TestDatasetBlueprint, TestDataSpace, make_dataset, get_dataset_path)
+from arcana.test.datasets import TestDataSpace
 from arcana.cli.dataset import define, add_source, add_sink, missing_items
 from arcana.data.formats.common import Text
-from arcana.tests.utils import show_cli_trace
+from arcana.test.utils import make_dataset_id_str, show_cli_trace
 
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
@@ -20,33 +19,12 @@ def get_arbitrary_slice(i, dim_length):
     upper = max(a, b) + 1
     return lower, upper
 
-@pytest.fixture
-def basic_dataset(work_dir):
 
-    blueprint = TestDatasetBlueprint(
-        [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [1, 1, 1, 1],
-        ['file1.txt'],
-        {}, {}, [])
-
-    dataset_path = get_dataset_path('most_basic', work_dir)
-    return make_dataset(blueprint, dataset_path)
-
-
-def test_add_column_cli(basic_dataset, cli_runner):
+def test_add_column_cli(saved_dataset, cli_runner):
+    dataset_id_str = make_dataset_id_str(saved_dataset)
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    dataset_path = 'file//' + os.path.abspath(basic_dataset.id)
-    # Start generating the arguments for the CLI
-    args = [str(h) for h in basic_dataset.blueprint.hierarchy]
-    # Generate "arbitrary" values for included and excluded from dim length
-    # and index
-    args.extend(['--space', 'arcana.tests.fixtures.common:TestDataSpace'])
-    # Run the command line
-    result = cli_runner(define, [dataset_path, *args])
-    # Check tool completed successfully
-    assert result.exit_code == 0, show_cli_trace(result)
     # Add source to loaded dataset
-    basic_dataset.add_source(
+    saved_dataset.add_source(
         name='a_source',
         path='file1',
         format=Text,
@@ -58,7 +36,7 @@ def test_add_column_cli(basic_dataset, cli_runner):
     # Add source column to saved dataset
     result = cli_runner(
         add_source,
-        [dataset_path, 'a_source', 'common:Text',
+        [dataset_id_str, 'a_source', 'common:Text',
          '--path', 'file1',
          '--frequency', 'd',
          '--quality', 'questionable',
@@ -66,22 +44,22 @@ def test_add_column_cli(basic_dataset, cli_runner):
          '--no-regex'])
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source to loaded dataset
-    basic_dataset.add_sink(
+    saved_dataset.add_sink(
         name='a_sink',
         path='deriv',
         format=Text,
         frequency=TestDataSpace.d,
         salience=DataSalience.qa)
     result = cli_runner(add_sink, [
-        dataset_path, 'a_sink', 'common:Text',
+        dataset_id_str, 'a_sink', 'common:Text',
         '--path', 'deriv',
         '--frequency', 'd',
         '--salience', 'qa'])
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
-    loaded_dataset = Dataset.load(dataset_path)
-    assert basic_dataset.column_specs == loaded_dataset.column_specs
+    loaded_dataset = Dataset.load(dataset_id_str)
+    assert saved_dataset.columns == loaded_dataset.columns
 
 
 @pytest.mark.skip("Not implemented")
@@ -111,7 +89,7 @@ def test_define_cli(dataset, cli_runner):
         args.extend(['--include', str(axis), slce])
     for axis, slce in excluded:
         args.extend(['--exclude', str(axis), slce])
-    args.extend(['--space', 'arcana.tests.fixtures.common:TestDataSpace'])
+    args.extend(['--space', 'arcana.test.datasets:TestDataSpace'])
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully

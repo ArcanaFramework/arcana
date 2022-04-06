@@ -2,22 +2,24 @@ import tempfile
 from pathlib import Path
 from argparse import ArgumentParser
 import pytest
-from arcana.tests.fixtures.common import TEST_DATASET_BLUEPRINTS, make_dataset
-from arcana.tests.fixtures.medimage import (
+from arcana.test.datasets import make_dataset
+from arcana.test.fixtures.common import TEST_DATASET_BLUEPRINTS
+from arcana.test.fixtures.medimage import (
     make_mutable_dataset as make_xnat_dataset,
     TEST_DATASET_BLUEPRINTS as TEST_XNAT_DATASET_BLUEPRINTS)
 from arcana.data.formats import Text
 
 
 @pytest.mark.skip("needs to be updated to match refactoring")
-def test_run_app(work_dir, test_dataspace_location):
+def test_derive_cli(work_dir, test_dataspace_location):
 
-    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'], work_dir)
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'],
+                           work_dir / 'dataset')
     
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
-        'arcana.tasks.tests.fixtures:concatenate',
+        'arcana.test.tasks:concatenate',
         str(dataset.id),
         '--store', 'common',
         '--input', 'in_file1', 'common:Text', 'file1', 
@@ -38,7 +40,7 @@ def test_run_app(work_dir, test_dataspace_location):
         assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)
 
 @pytest.mark.skip("needs to be updated to match refactoring")
-def test_run_app_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
+def test_derive_cli_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
 
     dataset = make_xnat_dataset(xnat_repository, xnat_archive_dir,
                                 test_name='concatenate_test.api')
@@ -46,7 +48,7 @@ def test_run_app_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
-        'arcana.tasks.tests.fixtures:concatenate',
+        'arcana.test.tasks:concatenate',
         dataset.id,
         '--input', 'in_file1', 'Text', 'scan1:Text',
         '--input', 'in_file2', 'Text', 'scan2:Text',
@@ -67,7 +69,7 @@ def test_run_app_via_xnat_api(xnat_repository, xnat_archive_dir, work_dir):
         assert contents == '\n'.join(['file1.txt', 'file2.txt'] * 2)
 
 @pytest.mark.skip("needs to be updated to match refactoring")
-def test_run_app_via_xnat_cs(xnat_repository, xnat_archive_dir, work_dir):
+def test_derive_cli_via_xnat_cs(xnat_repository, xnat_archive_dir, work_dir):
 
     dataset = make_xnat_dataset(xnat_repository, xnat_archive_dir,
                                 test_name='concatenate_test.direct')
@@ -79,7 +81,7 @@ def test_run_app_via_xnat_cs(xnat_repository, xnat_archive_dir, work_dir):
     parser = ArgumentParser()
     RunCmd.construct_parser(parser)
     args = parser.parse_args([
-        'arcana.tasks.tests.fixtures:concatenate',
+        'arcana.test.tasks:concatenate',
         dataset.id,
         '--input', 'in_file1', 'Text', 'scan1:Text',
         '--input', 'in_file2', 'Text', 'scan2:Text',

@@ -2,7 +2,7 @@ Contributing
 ============
 
 Contributions to the project are more welcome in various forms. Please see the
-`contribution guide  <https://github.com/australian-imaging-service/arcana/master/CONTRIBUTING.md>`_
+`contribution guide  <https://github.com/Australian-Imaging-Service/arcana/blob/main/CONTRIBUTING.md>`_
 for details.
 
 
@@ -25,4 +25,4 @@ Authorship
 ----------
 
 If you contribute code, documentation or bug reports to the repository please
-add your name and affiliation to the `Zenodo file <https://github.com/australian-imaging-service/arcana/master/.zenodo.json>`_
+add your name and affiliation to the `Zenodo file <https://github.com/Australian-Imaging-Service/arcana/blob/main/.zenodo.json>`_

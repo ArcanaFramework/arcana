@@ -28,6 +28,8 @@ parameterisations and overriding selected methods in subclasses (see :ref:`desig
   you will need to create your own Pydra_ wrappers for other tools used in other
   domains.
 
+.. _applying_workflows:
+
 Pydra workflows
 ---------------
 
@@ -42,7 +44,7 @@ are created to wrap the workflow and prepend and append additional tasks to
 * write provenance metadata
 * check saved provenance metadata to ensure prerequisite derivatives were generated with equivalent parameterisations and software versions (and potentially reprocess them if not)
 
-To add a workflow to a dataset via the API use the :meth:`Dataset.apply_workflow` method
+To add a workflow to a dataset via the API use the :meth:`Dataset.apply_pipeline` method
 mapping the inputs and outputs of the Pydra_ workflow/task (``in_file``, ``peel``
 and ``out_file`` in the example below) to appropriate columns in the dataset
 (``T1w``, ``T2w`` and ``freesurfer/recon-all`` respectively)
@@ -61,7 +63,7 @@ and ``out_file`` in the example below) to appropriate columns in the dataset
 
     dataset.add_sink('freesurfer/recon-all', common.Directory)
 
-    dataset.apply_workflow(
+    dataset.apply_pipeline(
         workflow=Freesurfer(
             name='freesurfer,
             param1=10.0,
@@ -70,44 +72,24 @@ and ``out_file`` in the example below) to appropriate columns in the dataset
                 ('T2w', 'peel', medimage.NiftiGz)],
         outputs=[('freesurfer/recon-all', 'out_file', common.Directory)])
 
+    dataset.save()
+
 If there is a mismatch in the data format (see :ref:`data_formats`) between the
 workflow inputs/outputs and the columns they are connected to, a format conversion
 task will be inserted into the pipeline if converter method between the two
 formats exists (see :ref:`file_formats`).
-
-If the source can be referenced by its path alone and the formats of the source
-and sink columns match those expected and produced by the workflow, then you
-can all add the sources and sinks in one step
-
-.. code-block:: python
-
-    from pydra.tasks.fsl.preprocess.fast import FAST
-    from arcana.data.formats import common, medimage
-
-    dataset = Dataset.load('file///data/openneuro/ds00014:test')
-
-    dataset.apply_workflow(
-        workflow=FAST(
-            name='segmentation',
-            method='a-method'),
-        sources=[('T1w', 'in_file', medimage.NiftiGz)],
-        sinks=[('fast/gm', 'gm', medimage.NiftiGz)])
-
-    # Save pipeline to dataset metadata for subsequent reuse.
-    dataset.save()
-
 
 To connect a workflow via the CLI
 
 .. code-block:: console
 
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T1w \
-      medimage:Dicom --path '.*mprage.*'
+      medimage:Dicom --path '.*mprage.*' --regex
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
-      medimage:Dicom --path '.*t2spc.*'
+      medimage:Dicom --path '.*t2spc.*' --regex
     $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurver/recon-all \
-      common:ZippedDir
-    $ arcana apply workflow 'myuni-xnat//myproject:training' freesurfer \
+      common:Zip
+    $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
       --input T1w in_file medimage:NiftiGz \
       --input T2w peel medimage:NiftiGz \
@@ -115,12 +97,13 @@ To connect a workflow via the CLI
       --parameter param1 10 \
       --parameter param2 20
 
-When sinks and sources can be specified by their path alone and their
-formats don't need converting the can be added in a single step
+If the source can be referenced by its path alone and the formats of the source
+and sink columns match those expected and produced by the workflow, then you
+can all add the sources and sinks in one step
 
 .. code-block:: console
 
-    $ arcana apply workflow 'file///data/openneuro/ds00014:test' segmentation \
+    $ arcana apply pipeline 'file///data/enigma/alzheimers:test' segmentation \
       pydra.tasks.fsl.preprocess.fast:FAST \
       --source T1w in_file medimage:NiftiGz \
       --sink fast/gm gm medimage:NiftiGz \
@@ -156,9 +139,12 @@ back to the dataset.
         format=medimage.NiftiGz
         frequency='dataset')
 
+    # NB: we don't need to add the T1w source as it is automatically detected
+    #     when using BIDS
+
     # Connect pipeline to a "dataset" row-frequency sink column. Needs to be
     # of `dataset` frequency itself or Arcana will raise an error
-    dataset.apply_workflow(
+    dataset.apply_pipeline(
         name='vbm_template',
         workflow=vbm_template(),
         inputs=[('in_file', 'T1w')],
@@ -201,10 +187,11 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 ..  code-block:: python
     :linenos:
 
-    from pydra.tasks.example import Preprocess, ExtractFromJson, MakeImage
+    import pydra
+    from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
     from arcana.core.mark import analysis, pipeline, parameter
     from arcana.data.spaces.example import ExampleDataSpace
-    from arcana.data.formats.common import ZippedDir, Directory, Json, Png, Gif
+    from arcana.data.formats.common import Zip, Directory, Json, Png, Gif
 
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
@@ -213,9 +200,9 @@ methods, and takes the columns the pipeline outputs are connected to as argument
         # The `column` decorator can be used to specify additional options but
         # is not required by default. The data formats specify the format
         # that the column data will be stored in
-        recorded_datafile: ZippedDir  # Not derived by a pipeline, should be linked to existing dataset column
+        recorded_datafile: Zip  # Not derived by a pipeline, should be linked to existing dataset column
         recorded_metadata: Json  # "     "     "     "
-        preprocessed: ZippedDir  # Derived by 'preprocess_pipeline' pipeline
+        preprocessed: Zip  # Derived by 'preprocess_pipeline' pipeline
         derived_image: Png  # Derived by 'create_image_pipeline' pipeline
         summary_metric: float  # Derived by 'create_image_pipeline' pipeline
 
@@ -230,51 +217,50 @@ methods, and takes the columns the pipeline outputs are connected to as argument
         @pipeline(preprocessed)
         def preprocess_pipeline(
                 self,
-                pipeline,
+                wf: pydra.Workflow,
                 recorded_datafile: Directory,  # Automatic conversion from stored Zip format before pipeline is run
                 recorded_metadata):  # Format/format is the same as class definition so can be omitted
 
             # A simple task to extract the "temperature" field from a JSON
             # metadata
-            extract_metadata = pipeline.add(
+            wf.add(
                 ExtractFromJson(
                     name='extract_metadata',
                     in_file=recorded_metadata,
                     field='temperature'))
 
             # Add tasks to the pipeline using Pydra workflow syntax
-            preprocess = pipeline.add(
+            wf.add(
                 Task1(
                     name='preprocess',
                     in_file=recorded_datafile,
-                    temperature=extract_metadata.lzout.out_field))
+                    temperature=wf.extract_metadata.lzout.out_field))
 
             # Map the output of the pipeline to the "preprocessed" column specified
             # in the @pipeline decorator
             return preprocess.lzout.out_file
 
-        # The 'create_image' pipeline derives two columns 'derived_image' and
-        # 'summary_metric'
-        @pipeline(derived_image,
+        # The 'create_image' pipeline derives two columns 'derived_image' (in GIF format) and
+        # 'summary_metric'. Since the output format of derived image created by the pipeline ('Gif')
+        # differs from that specified for the column ('Png'), an automatic conversion
+        # step will be added by Arcana before the image is stored.
+        @pipeline((derived_image, Gif),
                   summary_metric)
         def create_image_pipeline(
                 self,
-                pipeline,
+                wf,
                 preprocessed: Directory,  # Automatic conversion from stored Zip format before pipeline is run
                 contrast: float):  # Parameters are also automagically mapped to method args
 
             # Add a task that creates an image from the preprocessed data, using
             # the 'contrast' parameter
-            create_image = pipeline.add(
+            wf.add(
                 MakeImage(
                     name="create_image",
                     in_file=preprocessed,
                     contrast=contrast))
 
-            # Since the output format of derived image created by the pipeline ('Gif')
-            # differs from that specified for the column ('Png'), an automatic conversion
-            # setp will be added by Arcana before the image is stored.
-            return (create_image.lzout.out_file, Gif), create_image.lzout.summary
+            return create_image.lzout.out_file, wf.create_image.lzout.summary
 
 Analyses are applied to datasets using the :meth:`.Dataset.apply` method, which
 takes an :class:`.Analysis` object, instantiated with the names of columns in
@@ -291,7 +277,7 @@ the dataset to link placeholders to and any parameters.
   dataset.add_source(
       name='datafile',
       path='a-long-arbitrary-name',
-      format=ZippedDir)
+      format=Zip)
 
   dataset.add_source(
       name='metadata',
@@ -313,12 +299,13 @@ To apply an analysis via the command-line
     --link recorded_metadata metadata \
     --parameter contrast 0.75
 
+.. _derivatives:
 
 Generating derivatives
 ----------------------
 
 After workflows and/or analysis classes have been connected to a dataset, derivatives can be
-generated using :meth:`.Dataset.derive` or alternatively :meth:`.Column.derive`
+generated using :meth:`.Dataset.derive` or alternatively :meth:`.DataColumn.derive`
 for single columns. These methods check the data store to see whether the
 source data is present and executes the pipelines over all nodes of the dataset
 with available source data. If pipeline inputs are sink columns to be derived
@@ -365,9 +352,9 @@ have been applied you can use the ``menu`` command
 
   Derivatives
   -----------
-  recorded_datafile (zippeddir)
+  recorded_datafile (zip)
   recorded_metadata (json)
-  preprocessed (zippeddir)
+  preprocessed (zip)
   derived_image (png)
   summary_metric (float)
 
@@ -425,92 +412,107 @@ would look like
 
   {
     "store": {
-      "type": "xnat",
-      "location": "https://central.xnat.org"
+      "class": "<arcana.data.stores.medimage.xnat.api:Xnat>",
+      "server": "https://central.xnat.org"
     },
     "dataset": {
       "id": "MYPROJECT",
-      "name": "training"
+      "name": "passed-dwi-qc",
+      "exclude": ['015', '101']
+      "id_inference": [
+        ["subject", "(?P<group>TEST|CONT)(?P<member>\d+3)"]
+      ]
     },
-    "checksums": {
-      "inputs": {
-        // MD5 Checksums for all files in the file group. "." refers to the
-        // "primary file" in the file group.
-        "T1w_reg_dwi": {
-          ".": "4838470888DBBEADEAD91089DD4DFC55",
-          "json": "7500099D8BE29EF9057D6DE5D515DFFE"
+    "pipelines": [
+      {
+        "name": "anatomically_constrained_tractography",
+        "inputs": {
+          // MD5 Checksums for all files in the file group. "." refers to the
+          // "primary file" in the file group.
+          "T1w_reg_dwi": {
+            "format": "<arcana.data.formats.medimage:NiftiGzX>",
+            "checksums": {
+              ".": "4838470888DBBEADEAD91089DD4DFC55",
+              "json": "7500099D8BE29EF9057D6DE5D515DFFE"
+            }
+          },
+          "T2w_reg_dwi": {
+            "format": "<arcana.data.formats.medimage:NiftiGzX>",
+            "checksums": {
+              ".": "4838470888DBBEADEAD91089DD4DFC55",
+              "json": "5625E881E32AE6415E7E9AF9AEC59FD6"
+            }
+          },
+          "dwi_fod": {
+            "format": "<arcana.data.formats.medimage:MrtrixImage>",
+            "checksums": {
+              ".": "92EF19B942DD019BF8D32A2CE2A3652F"
+            }
+          }
         },
-        "T2w_reg_dwi": {
-          ".": "4838470888DBBEADEAD91089DD4DFC55",
-          "json": "5625E881E32AE6415E7E9AF9AEC59FD6"
-        },
-        "dwi_fod": {
-          ".": "92EF19B942DD019BF8D32A2CE2A3652F"
+        "outputs": {
+          "wm_tracks": {
+            "pydra_task": "tckgen",
+            "pydra_field": "out_file",
+            "format": "<arcana.data.formats.medimage:MrtrixTrack>",
+            "checksums": {
+              ".": "D30073044A7B1239EFF753C85BC1C5B3"
+            }
+          }
         }
+        "workflow": {
+          "name": "workflow",
+          "class": "<pydra.engine.core:Workflow>",
+          "tasks": {
+            "5ttgen": {
+              "class": "<pydra.tasks.mrtrix3.preprocess:FiveTissueTypes>",
+              "package": "pydra-mrtrix",
+              "version": "0.1.1",
+              "inputs": {
+                "in_file": {
+                  "pydra_field": "T1w_reg_dwi"
+                }
+                "t2": {
+                  "pydra_field": "T1w_reg_dwi"
+                }
+                "sgm_amyg_hipp": true
+              },
+              "container": {
+                "type": "docker",
+                "image": "mrtrix3/mrtrix3:3.0.3"
+              }
+            },
+            "tckgen": {
+              "class": "<pydra.tasks.mrtrix3.tractography:TrackGen>",
+              "package": "pydra-mrtrix",
+              "version": "0.1.1",
+              "inputs": {
+                "in_file": {
+                  "pydra_field": "dwi_fod"
+                },
+                "act": {
+                  "pydra_task": "5ttgen",
+                  "pydra_field": "out_file"
+                },
+                "select": 100000000,
+              },
+              "container": {
+                "type": "docker",
+                "image": "mrtrix3/mrtrix3:3.0.3"
+              }
+            },
+          },
+        },
+        "execution": {
+          "machine": "hpc.myuni.edu",
+          "processor": "intel9999",
+          "python-packages": {
+            "pydra-mrtrix3": "0.1.0",
+            "arcana-medimage": "0.1.0" 
+          }
+        },
       },
-      "outputs": {
-        "wm_tracks": {
-          ".": "D30073044A7B1239EFF753C85BC1C5B3"
-        }
-      }
-    },
-    "pipeline": {
-      "name": "anatomically_constrained_tractography",
-      // List all tasks in the pipeline and the inputs to them. 
-      "tasks": [
-        {
-          "name": "5ttgen",
-          "task": {
-            "module": "pydra.tasks.mrtrix3.preprocess",
-            "name": "FiveTissueTypes",
-            "package": "pydra-mrtrix",
-            "version": "0.1.1"
-          }
-          "inputs": {
-            "in_file": {
-              "field": "T1w_reg_dwi"
-            }
-            "t2": {
-              "field": "T1w_reg_dwi"
-            }
-            "sgm_amyg_hipp": true
-          },
-          "image": {
-            "type": "docker",
-            "tag": "mrtrix3/mrtrix3"
-          }
-        },
-        {
-          "name": "tckgen",
-          "task": {
-            "module": "pydra.tasks.mrtrix3.tractography",
-            "name": "TrackGen",
-            "package": "pydra-mrtrix",
-            "version": "0.1.1"
-          }
-          "inputs": {
-            "in_file": {
-              "field": "dwi_fod"
-            },
-            "act": {
-              "task": "5ttgen",
-              "field": "out_file"
-            },
-            "select": 100000000,
-          },
-          "image": {
-            "type": "docker",
-            "tag": "mrtrix3/mrtrix3"
-          }
-        }
-      ],
-      "outputs": {
-        "wm_tracks": {
-          "task": "tckgen",
-          "field": "out_file"
-        }
-      }
-    }
+    ],
   }
 
 
@@ -518,8 +520,9 @@ Before derivatives are generated, provenance metadata of prerequisite
 derivatives (i.e. inputs of the pipeline and prerequisite pipelines, etc...)
 are checked to see if there have been any alterations to the configuration of
 the pipelines that generated them. If so, any affected nodes will not be
-processed, and a warning will be generated. Previously generated derivatives
-can be reprocessed by setting the ``reprocess`` when calling :meth:`.Dataset.derive`
+processed, and a warning will be generated by default. To override this behaviour
+and reprocesse the derivatives, set the ``reprocess`` flag when calling
+:meth:`.Dataset.derive`
 
 .. code-block:: python
 

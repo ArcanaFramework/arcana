@@ -1,7 +1,7 @@
 import os
 from unittest.mock import patch
 from arcana.cli.store import add, ls
-from arcana.tests.utils import show_cli_trace
+from arcana.test.utils import show_cli_trace
 
 
 def test_store_cli(xnat_repository, cli_runner, work_dir):

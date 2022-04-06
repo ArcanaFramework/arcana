@@ -23,7 +23,7 @@ from arcana.exceptions import (
     ArcanaWrongRepositoryError)
 from arcana.core.utils import dir_modtime, get_class_info, parse_value
 from arcana.core.data.set import Dataset
-from arcana.core.utils import path2name, name2path, serialise
+from arcana.core.utils import path2name, name2path, asdict
 from arcana.data.spaces.medimage import Clinical
 
 
@@ -69,8 +69,8 @@ class Xnat(DataStore):
 
     server: str = attr.ib()
     cache_dir: str = attr.ib(converter=Path)
-    user: str = attr.ib(default=None)
-    password: str = attr.ib(default=None)
+    user: str = attr.ib(default=None, metadata={'asdict': False})
+    password: str = attr.ib(default=None, metadata={'asdict': False})
     check_md5: bool = attr.ib(default=True)
     race_condition_delay: int = attr.ib(default=30)
     _cached_datasets: ty.Dict[str, Dataset]= attr.ib(factory=dict, init=False)
@@ -681,12 +681,12 @@ class Xnat(DataStore):
                 raise
         return xresource, uri, cache_path
 
-    def serialise(self):
-        # Call serialise utility method with 'ignore_instance_method' to avoid
+    def asdict(self):
+        # Call asdict utility method with 'ignore_instance_method' to avoid
         # infinite recursion
-        serialised = serialise(self, ignore_instance_method=True)
+        dct = asdict(self)
         # TODO: Methods to replace username/password with tokens go here
-        return serialised
+        return dct
 
 
 def append_suffix(path, suffix):

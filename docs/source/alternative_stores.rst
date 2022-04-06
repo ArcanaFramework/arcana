@@ -17,7 +17,7 @@ a reference implementation please see :class:`arcana.data.stores.common.FileSyst
 
 .. autoclass:: arcana.core.data.store.DataStore
     :noindex:
-    :members: find_nodes, find_items, get_file_group, get_field, put_file_group, put_field, save_dataset_definition, load_dataset_definition
+    :members: find_nodes, find_items, get_file_group_paths, get_field_value, put_file_group_paths, put_field_value, save_dataset_definition, load_dataset_definition
 
 Optional methods
 ----------------

@@ -57,8 +57,12 @@ class DataSpace(Enum):
         return self.name
 
     @classmethod
+    def leaf(cls):
+        return max(cls)
+
+    @classmethod
     def axes(cls):
-        return max(cls).span()
+        return cls.leaf().span()
 
     def span(self):
         """Returns the basis dimensions in the data tree that the given
