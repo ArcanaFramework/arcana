@@ -417,18 +417,15 @@ would look like
     },
     "dataset": {
       "id": "MYPROJECT",
-      "name": "training",
-      "exlude": ['015', '101']
+      "name": "passed-dwi-qc",
+      "exclude": ['015', '101']
       "id_inference": [
         ["subject", "(?P<group>TEST|CONT)(?P<member>\d+3)"]
       ]
     },
-    "execution": {
-      "machine": "hpc.myuni.edu",
-      "processor": "intel9999"
-    },
     "pipelines": [
-      "anatomically_constrained_tractography": {
+      {
+        "name": "anatomically_constrained_tractography",
         "inputs": {
           // MD5 Checksums for all files in the file group. "." refers to the
           // "primary file" in the file group.
@@ -455,52 +452,64 @@ would look like
         },
         "outputs": {
           "wm_tracks": {
-            "task": "tckgen",
-            "field": "out_file",
+            "pydra_task": "tckgen",
+            "pydra_field": "out_file",
             "format": "<arcana.data.formats.medimage:MrtrixTrack>",
             "checksums": {
               ".": "D30073044A7B1239EFF753C85BC1C5B3"
             }
           }
         }
-        "nodes": {
-          "5ttgen": {
-            "class": "<pydra.tasks.mrtrix3.preprocess:FiveTissueTypes>",
-            "package": "pydra-mrtrix",
-            "version": "0.1.1",
-            "inputs": {
-              "in_file": {
-                "field": "T1w_reg_dwi"
-              }
-              "t2": {
-                "field": "T1w_reg_dwi"
-              }
-              "sgm_amyg_hipp": true
-            },
-            "container": {
-              "type": "docker",
-              "image": "mrtrix3/mrtrix3:3.0.3"
-            }
-          },
-          "tckgen": {
-            "class": "<pydra.tasks.mrtrix3.tractography:TrackGen>",
-            "package": "pydra-mrtrix",
-            "version": "0.1.1",
-            "inputs": {
-              "in_file": {
-                "field": "dwi_fod"
+        "workflow": {
+          "name": "workflow",
+          "class": "<pydra.engine.core:Workflow>",
+          "tasks": {
+            "5ttgen": {
+              "class": "<pydra.tasks.mrtrix3.preprocess:FiveTissueTypes>",
+              "package": "pydra-mrtrix",
+              "version": "0.1.1",
+              "inputs": {
+                "in_file": {
+                  "pydra_field": "T1w_reg_dwi"
+                }
+                "t2": {
+                  "pydra_field": "T1w_reg_dwi"
+                }
+                "sgm_amyg_hipp": true
               },
-              "act": {
-                "task": "5ttgen",
-                "field": "out_file"
-              },
-              "select": 100000000,
+              "container": {
+                "type": "docker",
+                "image": "mrtrix3/mrtrix3:3.0.3"
+              }
             },
-            "container": {
-              "type": "docker",
-              "image": "mrtrix3/mrtrix3:3.0.3"
-            }
+            "tckgen": {
+              "class": "<pydra.tasks.mrtrix3.tractography:TrackGen>",
+              "package": "pydra-mrtrix",
+              "version": "0.1.1",
+              "inputs": {
+                "in_file": {
+                  "pydra_field": "dwi_fod"
+                },
+                "act": {
+                  "pydra_task": "5ttgen",
+                  "pydra_field": "out_file"
+                },
+                "select": 100000000,
+              },
+              "container": {
+                "type": "docker",
+                "image": "mrtrix3/mrtrix3:3.0.3"
+              }
+            },
           },
+        },
+        "execution": {
+          "machine": "hpc.myuni.edu",
+          "processor": "intel9999",
+          "python-packages": {
+            "pydra-mrtrix3": "0.1.0",
+            "arcana-medimage": "0.1.0" 
+          }
         },
       },
     ],

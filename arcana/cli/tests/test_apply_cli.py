@@ -30,11 +30,11 @@ def test_apply_workflow_cli(saved_dataset, concatenate_task, cli_runner):
          '--sink', 'concatenated', 'out_file', 'common:Text',
          '--parameter', 'duplicates', str(duplicates)])
     assert result.exit_code == 0, show_cli_trace(result)
-    loaded_dataset = Dataset.load(dataset_id_str)
-    s = saved_dataset.pipelines['a_pipeline']
-    l = loaded_dataset.pipelines['a_pipeline']
     with open(Path(saved_dataset.id) / '.arcana' / 'default.yml') as f:
         contents = f.read()
     print(contents)
-    assert s.workflow == l.workflow
+    loaded_dataset = Dataset.load(dataset_id_str)
+    s = saved_dataset.pipelines['a_pipeline']
+    l = loaded_dataset.pipelines['a_pipeline']
+    
     assert saved_dataset.pipelines == loaded_dataset.pipelines

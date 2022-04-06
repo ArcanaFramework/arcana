@@ -31,6 +31,11 @@ class Output():
     produced_format: type
 
 
+def std_workflow_name(workflow):
+    cpy = copy(workflow)
+    cpy.name = Pipeline.WORKFLOW_NAME
+    return cpy
+
 @attr.s
 class Pipeline():
     """A thin wrapper around a Pydra workflow to link it to sources and sinks
@@ -57,7 +62,8 @@ class Pipeline():
 
     name: str = attr.ib()
     frequency: DataSpace = attr.ib()
-    workflow: Workflow = attr.ib(eq=attr.cmp_using(pydra_eq))
+    workflow: Workflow = attr.ib(
+        eq=attr.cmp_using(pydra_eq), converter=std_workflow_name)
     inputs: ty.List[Input] = attr.ib(
         converter=lambda lst: [Input(*i) if isinstance(i, Iterable) else i
                                for i in lst])
@@ -100,24 +106,6 @@ class Pipeline():
     # parameterisation = self.get_parameterisation(kwargs)
     # self.wf.to_process.inputs.parameterisation = parameterisation
     # self.wf.per_node.source.inputs.parameterisation = parameterisation
-
-    def inner_workflow(self, **kwargs):
-        """Create a copy of the "inner" workflow workflow that actually performs
-        the data processing.
-
-        Returns
-        -------
-        pydra.Workflow
-            copy of the inner workflow with a standard name and all inputs
-            connected
-        **kwargs : dict[str, pydra.LazyField]
-            lazy field inputs to connect to the inner workflow
-        """
-        cpy = deepcopy(self.workflow)
-        cpy.name = self.INNER_WORKFLOW_NAME
-        for name, lf in kwargs.items():
-            setattr(cpy.inputs, name, lf)
-        return cpy
 
     def __call__(self, **kwargs):
         """
@@ -266,10 +254,14 @@ class Pipeline():
             name='input_interface',
             **sourced))
 
-        wf.per_node.add(
-            self.inner_workflow(
-                **{i.pydra_field: getattr(wf.per_node.input_interface.lzout, i.col_name)
-                   for i in self.inputs}))
+        # Add the "inner" workflow of the pipeline that actually performs the
+        # processing
+        wf.per_node.add(self.workflow)
+        # Make connections to "inner" workflow
+        for inpt in self.inputs:
+            setattr(getattr(wf, self.WORKFLOW_NAME).inputs,
+                    inpt.pydra_field,
+                    getattr(wf.per_node.input_interface.lzout, inpt.col_name))
 
         # Creates a node to accept values from user-defined nodes and
         # encapsulate them into DataItems
@@ -280,7 +272,7 @@ class Pipeline():
             out_fields=[(o, DataItem) for o in self.output_col_names],
             name='output_interface',
             outputs=self.outputs,
-            **{o.col_name: getattr(getattr(wf.per_node, self.INNER_WORKFLOW_NAME).lzout, o.pydra_field)
+            **{o.col_name: getattr(getattr(wf.per_node, self.WORKFLOW_NAME).lzout, o.pydra_field)
                for o in self.outputs}))
 
         # Set format converters where required
@@ -332,7 +324,7 @@ class Pipeline():
         return wf
 
     PROVENANCE_VERSION = '1.0'
-    INNER_WORKFLOW_NAME = 'workflow'
+    WORKFLOW_NAME = 'processing'
 
     def as_dict(self, required_modules=None):
         dct = as_dict(self, omit=['workflow'],
@@ -346,8 +338,7 @@ class Pipeline():
     def from_dict(cls, dct, **kwargs):
         return from_dict(
             dct,
-            workflow=pydra_from_dict(dct['workflow'],
-                                     name=cls.INNER_WORKFLOW_NAME),
+            workflow=pydra_from_dict(dct['workflow']),
             **kwargs)
 
 def append_side_car_suffix(name, suffix):

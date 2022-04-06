@@ -719,6 +719,7 @@ def from_dict(dct: dict, **kwargs):
 
 extract_import_re = re.compile(r'\s*(?:from|import)\s+([\w\.]+)')
 
+NOTHING_STR = '__PIPELINE_INPUT__'
 
 def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str],
                   workflow: Workflow=None) -> dict:
@@ -747,7 +748,7 @@ def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str],
                         for n in obj.nodes]
         dct['outputs'] = outputs = {}
         for outpt_name, lf in obj._connections:
-            outputs[outpt_name] = {"task": lf.name, "field": lf.field}
+            outputs[outpt_name] = {"pydra_task": lf.name, "pydra_field": lf.field}
     else:
         if isinstance(obj, FunctionTask):
             func = cp.loads(obj.inputs._func)
@@ -775,19 +776,27 @@ def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str],
             if isinstance(inpt_value, LazyField):
                 inputs[inpt_name] = {'pydra_field': inpt_value.field}
                 # If the lazy field comes from the workflow lazy in, we omit
-                # the 'task' item
+                # the "pydra_task" item
                 if workflow is None or inpt_value.name != workflow.name:
-                    inputs[inpt_name]['task'] = inpt_value.name
-                                     
+                    inputs[inpt_name]["pydra_task"] = inpt_value.name
             elif inpt_value == attr.NOTHING:
-                inputs[inpt_name] = '__NOTHING__'
+                inputs[inpt_name] = NOTHING_STR
             else:
                 inputs[inpt_name] = inpt_value
     return dct
 
 
-def pydra_from_dict(dct: dict, name: str=None, workflow: Workflow=None,
-                    inputs_from_upstream: ty.List[str]=None,
+def lazy_field_from_dict(dct: dict, workflow: Workflow):
+    """Unserialises a LazyField object from a dictionary"""
+    if "pydra_task" in dct:
+        inpt_task = getattr(workflow, dct['pydra_task'])
+        lf = getattr(inpt_task.lzout, dct['pydra_field'])
+    else:
+        lf = getattr(workflow.lzin, dct['pydra_field'])
+    return lf
+
+
+def pydra_from_dict(dct: dict, workflow: Workflow=None,
                     **kwargs) -> TaskBase:
     """Recreates a Pydra Task/Workflow from a dictionary object created by
     `pydra_as_dict`
@@ -800,42 +809,37 @@ def pydra_from_dict(dct: dict, name: str=None, workflow: Workflow=None,
         name to give the object
     workflow : pydra.Workflow, optional
         the containing workflow that the object to recreate is connected to
-    inputs_from_upstream: list[str]
-        additional inputs to set in the input_spec of the Pydra object, which
-        were dropped from the dictionary because they hadn't been connected
-        yet
+    **kwargs
+        additional keyword arguments passed to the pydra Object init method
 
     Returns
     -------
     pydra.engine.core.TaskBase
         the recreated Pydra object
     """
-    from arcana.core.pipeline import Pipeline
-    if name is None:
-        name = dct['name']
     klass = resolve_class(dct['class'])
     # Resolve lazy-field references to workflow fields
     inputs = {}
     for inpt_name, inpt_val in dct['inputs'].items():
+        if inpt_val == NOTHING_STR:
+            continue
         # Check for 'pydra_field' key in a dictionary val and convert to a
         # LazyField object
         if isinstance(inpt_val, dict) and 'pydra_field' in inpt_val:
-            if 'task' in inpt_val:
-                inpt_task = getattr(workflow, inpt_val['task'])
-                inpt_val = getattr(inpt_task.inputs, inpt_val['pydra_field'])
-            else:
-                inpt_val = getattr(workflow.lzin, inpt_val['pydra_field'])
+            inpt_val = lazy_field_from_dict(inpt_val, workflow=workflow)
         inputs[inpt_name] = inpt_val
+    kwargs.update((k, v) for k, v in inputs.items() if k not in kwargs)
     if klass is Workflow:
         obj = Workflow(
-            name=name,
-            input_spec=list(dct['inputs']) + inputs_from_upstream,
-            **inputs)
+            name=dct['name'],
+            input_spec=list(dct['inputs']),
+            **kwargs)
         for node_dict in dct['nodes']:
             obj.add(pydra_from_dict(node_dict, workflow=obj))
-        obj.set_output(dct['outputs'].items())
+        obj.set_output([(n, lazy_field_from_dict(f, workflow=obj))
+                        for n, f in dct['outputs'].items()])
     else:
-        obj = klass(name=name, **inputs)
+        obj = klass(name=dct['name'], **kwargs)
     return obj
 
 
