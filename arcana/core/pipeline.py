@@ -253,7 +253,7 @@ class Pipeline():
         wf.per_node.add(deepcopy(self.workflow))
         # Make connections to "inner" workflow
         for inpt in self.inputs:
-            setattr(getattr(wf, self.workflow.name).inputs,
+            setattr(getattr(wf.per_node, self.workflow.name).inputs,
                     inpt.pydra_field,
                     getattr(wf.per_node.input_interface.lzout, inpt.col_name))
 
@@ -266,7 +266,8 @@ class Pipeline():
             out_fields=[(o, DataItem) for o in self.output_col_names],
             name='output_interface',
             outputs=self.outputs,
-            **{o.col_name: getattr(getattr(wf.per_node, self.WORKFLOW_NAME).lzout, o.pydra_field)
+            **{o.col_name: getattr(
+                getattr(wf.per_node, self.workflow.name).lzout, o.pydra_field)
                for o in self.outputs}))
 
         # Set format converters where required
