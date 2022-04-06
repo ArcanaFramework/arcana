@@ -677,25 +677,34 @@ class Dataset():
 
         return pipeline
 
-    def derive(self, *names, ids=None):
+    def derive(self, *sink_names, ids=None, cache_dir=None, **kwargs):
         """Generate derivatives from the workflows
 
         Parameters
         ----------
-        *names : Sequence[str]
+        *sink_names : Iterable[str]
             Names of the columns corresponding to the items to derive
-        ids : Sequence[str]
+        ids : Iterable[str]
             The IDs of the data nodes in each column to derive
+        cache_dir
 
         Returns
         -------
         Sequence[List[DataItem]]
             The derived columns
         """
-        # TODO: Should construct full stack of required workflows
-        for workflow in set(self.column_spec[n].pipeline_names for n in names):
-            workflow(ids=ids)
-        return self.columns(*names)
+        from arcana.core.pipeline import Pipeline
+        sinks = [self.column(s) for s in set(sink_names)]
+        for pipeline, _ in Pipeline.stack(self, *sinks):
+            # Excecute pipelines in stack
+            # FIXME: Should combine the pipelines into a single workflow and
+            # dialate the IDs that need to be run when summarising over different
+            # data axes
+            pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
+        # Update local cache of sink paths
+        for sink in sinks:
+            for item in sink:
+                item.get(assume_exists=True)
 
     def _parse_freq(self, freq):
         """Parses the data frequency, converting from string if necessary and
