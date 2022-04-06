@@ -597,7 +597,7 @@ def parse_dimensions(dimensions_str):
     return getattr(module, cls_name)
 
 
-def asdict(obj, omit: Iterable[str]=(), required_modules: set=None):
+def asdict(obj, omit: ty.Iterable[str]=(), required_modules: set=None):
     """Serialises an object of a class defined with attrs to a dictionary
 
     Parameters
