@@ -24,7 +24,6 @@ from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
 import attr
-from arcana._version import __version__
 from pydra import Workflow
 from pydra.engine.task import FunctionTask, TaskBase
 from pydra.engine.specs import BaseSpec, SpecInfo
