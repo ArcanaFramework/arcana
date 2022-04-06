@@ -91,6 +91,21 @@ def apply_pipeline(id_str, name, workflow_location, input, output, parameter,
     dataset.save()
 
 
-# @apply.command(name='analysis', help="""Applies an analysis class to a dataset""")
-# def apply_analysis():
-#     raise NotImplementedError
+@apply.command(name='analysis', help="""Applies an analysis class to a dataset""")
+def apply_analysis():
+    raise NotImplementedError
+
+
+@apply.command(name='bids-app', help="Apply a BIDS app to a dataset as a pipleine")
+@click.option(
+    '--container', nargs=2, default=None,
+    metavar='<engine-tag>',
+    help=("The container engine ('docker'|'singularity') and the image"
+            " to run the app in"))
+@click.option(
+    '--virtualisation', default='none',
+    type=click.Choice(['docker', 'singularity', 'none'], case_sensitive=False),
+    help=("The virtualisation method to run with the task with (only "
+          "applicable to BIDS app tasks)"))
+def apply_bids_app():
+    raise NotImplementedError
