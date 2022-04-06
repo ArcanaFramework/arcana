@@ -91,11 +91,11 @@ class Pipeline():
 
     @property
     def input_col_names(self):
-        return list(i.col_name for i in self.inputs)
+        return [i.col_name for i in self.inputs]
 
     @property
     def output_col_names(self):
-        return list(o.col_name for o in self.outputs)
+        return [o.col_name for o in self.outputs]
 
     # parameterisation = self.get_parameterisation(kwargs)
     # self.wf.to_process.inputs.parameterisation = parameterisation
@@ -337,8 +337,9 @@ class Pipeline():
     def as_dict(self, required_modules=None):
         dct = as_dict(self, omit=['workflow'],
                       required_modules=required_modules)
-        dct['workflow'] = pydra_as_dict(self.workflow,
-                                        required_modules=required_modules)
+        dct['workflow'] = pydra_as_dict(
+            self.workflow,
+            required_modules=required_modules)
         return dct
 
     @classmethod
@@ -346,9 +347,8 @@ class Pipeline():
         return from_dict(
             dct,
             workflow=pydra_from_dict(dct['workflow'],
-                                          name=cls.INNER_WORKFLOW_NAME),
+                                     name=cls.INNER_WORKFLOW_NAME),
             **kwargs)
-
 
 def append_side_car_suffix(name, suffix):
     """Creates a new combined field name out of a basename and a side car"""

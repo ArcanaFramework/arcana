@@ -3,7 +3,6 @@ from arcana.core.data.set import Dataset
 from arcana.data.formats.common import Text
 from arcana.cli.apply import apply_workflow
 from arcana.test.utils import show_cli_trace, make_dataset_id_str
-from arcana.test.tasks import concatenate
 
 
 def test_apply_workflow_cli(saved_dataset, concatenate_task, cli_runner):

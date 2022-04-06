@@ -720,7 +720,8 @@ def from_dict(dct: dict, **kwargs):
 extract_import_re = re.compile(r'\s*(?:from|import)\s+([\w\.]+)')
 
 
-def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str]):
+def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str],
+                  workflow: Workflow=None) -> dict:
     """Converts a Pydra Task/Workflow into a dictionary that can be serialised
 
     Parameters
@@ -730,6 +731,8 @@ def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str]):
     required_modules : set[str]
         a set of modules that are required to load the pydra object back
         out from disk and run it
+    workflow : pydra.Workflow, optional
+        the containing workflow that the object to serialised is part of
 
     Returns
     -------
@@ -739,11 +742,11 @@ def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str]):
     dct = {'name': obj.name,
            'class': '<' + class_location(obj) + '>'}
     if isinstance(obj, Workflow):
-        dct['nodes'] = [pydra_as_dict(n, required_modules=required_modules)
+        dct['nodes'] = [pydra_as_dict(n, required_modules=required_modules,
+                                      workflow=obj)
                         for n in obj.nodes]
         dct['outputs'] = outputs = {}
-        for outpt_name in obj.output_names:
-            lf = getattr(obj, outpt_name)
+        for outpt_name, lf in obj._connections:
             outputs[outpt_name] = {"task": lf.name, "field": lf.field}
     else:
         if isinstance(obj, FunctionTask):
@@ -770,14 +773,22 @@ def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str]):
         if not inpt_name.startswith('_'):
             inpt_value = getattr(obj.inputs, inpt_name)
             if isinstance(inpt_value, LazyField):
-                inputs[inpt_name] = {'task': inpt_value.name,
-                                     'field': inpt_value.field}
-            elif inpt_value != attr.NOTHING:
+                inputs[inpt_name] = {'pydra_field': inpt_value.field}
+                # If the lazy field comes from the workflow lazy in, we omit
+                # the 'task' item
+                if workflow is None or inpt_value.name != workflow.name:
+                    inputs[inpt_name]['task'] = inpt_value.name
+                                     
+            elif inpt_value == attr.NOTHING:
+                inputs[inpt_name] = '__NOTHING__'
+            else:
                 inputs[inpt_name] = inpt_value
     return dct
 
 
-def pydra_from_dict(dct: dict, name: str, workflow: Workflow=None, **kwargs):
+def pydra_from_dict(dct: dict, name: str=None, workflow: Workflow=None,
+                    inputs_from_upstream: ty.List[str]=None,
+                    **kwargs) -> TaskBase:
     """Recreates a Pydra Task/Workflow from a dictionary object created by
     `pydra_as_dict`
 
@@ -789,28 +800,42 @@ def pydra_from_dict(dct: dict, name: str, workflow: Workflow=None, **kwargs):
         name to give the object
     workflow : pydra.Workflow, optional
         the containing workflow that the object to recreate is connected to
+    inputs_from_upstream: list[str]
+        additional inputs to set in the input_spec of the Pydra object, which
+        were dropped from the dictionary because they hadn't been connected
+        yet
 
     Returns
     -------
     pydra.engine.core.TaskBase
         the recreated Pydra object
     """
+    from arcana.core.pipeline import Pipeline
+    if name is None:
+        name = dct['name']
     klass = resolve_class(dct['class'])
     # Resolve lazy-field references to workflow fields
     inputs = {}
     for inpt_name, inpt_val in dct['inputs'].items():
-        if isinstance(inpt_val, dict) and sorted(inpt_val.keys()) == ['field',
-                                                                      'task']:
-            inpt_task = getattr(workflow, inpt_val['task'])
-            inpt_val = getattr(inpt_task.inputs, inpt_val)
+        # Check for 'pydra_field' key in a dictionary val and convert to a
+        # LazyField object
+        if isinstance(inpt_val, dict) and 'pydra_field' in inpt_val:
+            if 'task' in inpt_val:
+                inpt_task = getattr(workflow, inpt_val['task'])
+                inpt_val = getattr(inpt_task.inputs, inpt_val['pydra_field'])
+            else:
+                inpt_val = getattr(workflow.lzin, inpt_val['pydra_field'])
         inputs[inpt_name] = inpt_val
     if klass is Workflow:
-        obj = Workflow(name=name, input_spec=list(dct['inputs']), **inputs)
-        for node_name, node_dict in dct['nodes'].items():
-            obj.add(pydra_from_dict(node_dict, name=node_name, workflow=obj))
+        obj = Workflow(
+            name=name,
+            input_spec=list(dct['inputs']) + inputs_from_upstream,
+            **inputs)
+        for node_dict in dct['nodes']:
+            obj.add(pydra_from_dict(node_dict, workflow=obj))
         obj.set_output(dct['outputs'].items())
     else:
-        obj = klass(**inputs)
+        obj = klass(name=name, **inputs)
     return obj
 
 
