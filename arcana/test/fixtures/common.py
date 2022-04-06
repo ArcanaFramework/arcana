@@ -205,6 +205,7 @@ def tmp_dir():
 def concatenate_task(request):
     if request.param == 'forward':
         task = concatenate
+        task.__name__ = 'concatenate'  # FIXME: Can be removed after https://github.com/nipype/pydra/pull/533 is merged
     else:
         task = concatenate_reverse
     return task

@@ -10,7 +10,7 @@ def apply():
     pass
 
 
-@apply.command(name='workflow', help="""Apply a Pydra workflow to a dataset as a pipeline between
+@apply.command(name='pipeline', help="""Apply a Pydra workflow to a dataset as a pipeline between
 two columns
 
 ID_STR string containing the nick-name of the store, the ID of the dataset
@@ -60,7 +60,7 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
     '--overwrite/--no-overwrite', default=False,
     help=("whether to overwrite previous connections to existing sink columns "
           "or not"))
-def apply_workflow(id_str, name, workflow_location, input, output, parameter,
+def apply_pipeline(id_str, name, workflow_location, input, output, parameter,
                    source, sink, frequency, overwrite):
 
     dataset = Dataset.load(id_str)
@@ -84,7 +84,7 @@ def apply_workflow(id_str, name, workflow_location, input, output, parameter,
         dataset.add_sink(col_name, format)
         outputs.append((col_name, pydra_field, format))
     
-    dataset.apply_workflow(
+    dataset.apply_pipeline(
         name, workflow, inputs, outputs, frequency=frequency,
         overwrite=overwrite)
 

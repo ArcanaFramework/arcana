@@ -2,13 +2,13 @@ from pathlib import Path
 import cloudpickle as cp
 from pydra import mark, Workflow
 from arcana.core.data.set import Dataset
-from arcana.core.utils import as_dict, from_dict
+from arcana.core.utils import asdict, fromdict
 
 
-def test_dataset_as_dict_roundtrip(dataset):
+def test_dataset_asdict_roundtrip(dataset):
 
-    dct = as_dict(dataset, omit=['store'])
-    undct = from_dict(dct, store=dataset.store)
+    dct = asdict(dataset, omit=['store'])
+    undct = fromdict(dct, store=dataset.store)
     assert isinstance(dct, dict)
     assert 'store' not in dct
     del dataset.blueprint

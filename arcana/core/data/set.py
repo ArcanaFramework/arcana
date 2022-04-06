@@ -10,7 +10,7 @@ from attr.converters import default_if_none
 from arcana.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
     ArcanaBadlyFormattedIDError, ArcanaWrongDataSpaceError)
-from arcana.core.utils import as_dict
+from arcana.core.utils import asdict
 from .space import DataSpace
 from .column import DataColumn, DataSink, DataSource
 from . import store as datastore
@@ -149,7 +149,7 @@ class Dataset():
 
     def save(self, name=None):
         """Save metadata in project definition file for future reference"""
-        definition = as_dict(self, omit=['store'])
+        definition = asdict(self, omit=['store'])
         if name is None:
             name = self.name
         self.store.save_dataset_definition(self.id, definition, name=name)
@@ -609,7 +609,7 @@ class Dataset():
                 children_dict[diff_id] = node
         return node
 
-    def apply_workflow(self, name, workflow, inputs, outputs, frequency=None,
+    def apply_pipeline(self, name, workflow, inputs, outputs, frequency=None,
                        overwrite=False):
         """Connect a Pydra workflow as a pipeline of the dataset
 

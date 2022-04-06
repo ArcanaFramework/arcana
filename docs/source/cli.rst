@@ -51,8 +51,8 @@ Apply
 
 Commands for applying workflows and analyses to datasets
 
-.. click:: arcana.cli.apply:apply_workflow
-   :prog: arcana apply workflow
+.. click:: arcana.cli.apply:apply_pipeline
+   :prog: arcana apply pipeline
 
 
 .. click:: arcana.cli.apply:apply_analysis

@@ -14,7 +14,7 @@ from .data.format import DataItem, FileGroup
 import arcana.core.data.set
 from .data.space import DataSpace
 from .utils import (
-    func_task, as_dict, from_dict, pydra_as_dict, pydra_from_dict, pydra_eq)
+    func_task, asdict, fromdict, pydra_asdict, pydra_fromdict, pydra_eq)
 
 logger = logging.getLogger('arcana')
 
@@ -320,19 +320,19 @@ class Pipeline():
     PROVENANCE_VERSION = '1.0'
     WORKFLOW_NAME = 'processing'
 
-    def as_dict(self, required_modules=None):
-        dct = as_dict(self, omit=['workflow'],
+    def asdict(self, required_modules=None):
+        dct = asdict(self, omit=['workflow'],
                       required_modules=required_modules)
-        dct['workflow'] = pydra_as_dict(
+        dct['workflow'] = pydra_asdict(
             self.workflow,
             required_modules=required_modules)
         return dct
 
     @classmethod
-    def from_dict(cls, dct, **kwargs):
-        return from_dict(
+    def fromdict(cls, dct, **kwargs):
+        return fromdict(
             dct,
-            workflow=pydra_from_dict(dct['workflow']),
+            workflow=pydra_fromdict(dct['workflow']),
             **kwargs)
 
 def append_side_car_suffix(name, suffix):

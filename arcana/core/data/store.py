@@ -7,7 +7,7 @@ import typing as ty
 import yaml
 from arcana.core.utils import (
     get_config_file_path, list_subclasses, resolve_class, class_location,
-    as_dict, from_dict)
+    asdict, fromdict)
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
 
@@ -230,10 +230,10 @@ class DataStore(metaclass=ABCMeta):
             raise ArcanaNameError(
                 name, f"Name '{name}' clashes with built-in type of store")
         entries = self.load_saved_entries()
-        # connect to store in case it is needed in the as_dict method and to
+        # connect to store in case it is needed in the asdict method and to
         # test the connection in general before it is saved
         with self:  
-            entries[name] = as_dict(self)
+            entries[name] = asdict(self)
         self.save_entries(entries)
 
     @classmethod
@@ -329,7 +329,7 @@ class DataStore(metaclass=ABCMeta):
         if name is None:
             name = Dataset.DEFAULT_NAME
         dct = self.load_dataset_definition(id, name)
-        return from_dict(dct, store=self)
+        return fromdict(dct, store=self)
 
 
     @classmethod

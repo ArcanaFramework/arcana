@@ -23,7 +23,7 @@ from arcana.exceptions import (
     ArcanaWrongRepositoryError)
 from arcana.core.utils import dir_modtime, get_class_info, parse_value
 from arcana.core.data.set import Dataset
-from arcana.core.utils import path2name, name2path, as_dict
+from arcana.core.utils import path2name, name2path, asdict
 from arcana.data.spaces.medimage import Clinical
 
 
@@ -681,10 +681,10 @@ class Xnat(DataStore):
                 raise
         return xresource, uri, cache_path
 
-    def as_dict(self):
-        # Call as_dict utility method with 'ignore_instance_method' to avoid
+    def asdict(self):
+        # Call asdict utility method with 'ignore_instance_method' to avoid
         # infinite recursion
-        dct = as_dict(self)
+        dct = asdict(self)
         # TODO: Methods to replace username/password with tokens go here
         return dct
 

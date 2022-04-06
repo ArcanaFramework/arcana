@@ -21,7 +21,7 @@ def test_pipeline(work_dir):
     dataset.add_source('file2', Text)
     dataset.add_sink('deriv', Text)
 
-    pipeline = dataset.apply_workflow(
+    pipeline = dataset.apply_pipeline(
         name='test_pipeline',
         workflow=concatenate(duplicates=2,
                              name='concatenate'),
@@ -53,7 +53,7 @@ def test_pipeline_with_implicit_conversion(work_dir):
     dataset.add_source('file2', Zip)
     dataset.add_sink('deriv', Zip)
 
-    pipeline = dataset.apply_workflow(
+    pipeline = dataset.apply_pipeline(
         name='test_pipeline',
         workflow=concatenate(duplicates=2,
                              name='concatenate'),

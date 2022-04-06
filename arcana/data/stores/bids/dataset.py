@@ -28,7 +28,7 @@ class ContainerMetadata():
         return dct
 
     @classmethod
-    def from_dict(cls, dct):
+    def fromdict(cls, dct):
         if dct is None:
             return None
         return ContainerMetadata(
@@ -59,13 +59,13 @@ class GeneratorMetadata():
         return dct
 
     @classmethod
-    def from_dict(cls, dct):
+    def fromdict(cls, dct):
         return GeneratorMetadata(
             name=dct['Name'],
             version=dct.get('Version'),
             description=dct.get('Description'),
             code_url=dct.get('CodeURL'),
-            container=ContainerMetadata.from_dict(dct.get('Container')))
+            container=ContainerMetadata.fromdict(dct.get('Container')))
 
 
 @dataclass
@@ -86,7 +86,7 @@ class SourceDatasetMetadata():
         return dct
 
     @classmethod
-    def from_dict(cls, dct):
+    def fromdict(cls, dct):
         if dct is None:
             return None
         return SourceDatasetMetadata(
@@ -252,10 +252,10 @@ class BidsDataset(Dataset):
             if 'GeneratedBy' not in dct:
                 raise ArcanaError(
                     "'GeneratedBy' field required for 'derivative' type datasets")
-            self.generated_by = [GeneratorMetadata.from_dict(d)
+            self.generated_by = [GeneratorMetadata.fromdict(d)
                                  for d in dct['GeneratedBy']]
         if 'sourceDatasets' in dct:
-            self.sources = [SourceDatasetMetadata.from_dict(d)
+            self.sources = [SourceDatasetMetadata.fromdict(d)
                             for d in dct['sourceDatasets']]
 
         self.participants = {}

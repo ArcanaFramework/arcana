@@ -593,13 +593,13 @@ def parse_dimensions(dimensions_str):
     return getattr(module, cls_name)
 
 
-def as_dict(obj, omit: Iterable[str]=(), required_modules: set=None):
+def asdict(obj, omit: Iterable[str]=(), required_modules: set=None):
     """Serialises an object of a class defined with attrs to a dictionary
 
     Parameters
     ----------
     obj
-        The Arcana object to as_dict. Must be defined using the attrs
+        The Arcana object to asdict. Must be defined using the attrs
         decorator
     omit: Iterable[str]
         the names of attributes to omit from the dictionary
@@ -619,29 +619,29 @@ def as_dict(obj, omit: Iterable[str]=(), required_modules: set=None):
         required_modules.add(klass.__module__)
         return '<' + class_location(klass) + '>'
     
-    def value_as_dict(value):
+    def value_asdict(value):
         if isclass(value):
             value = serialise_class(value)
-        elif hasattr(value, 'as_dict'):
-            value = value.as_dict(required_modules=required_modules)
+        elif hasattr(value, 'asdict'):
+            value = value.asdict(required_modules=required_modules)
         elif attr.has(value):  # is class with attrs
             value_class = serialise_class(type(value))
             value = attr.asdict(
                 value,
                 recurse=False,
                 filter=filter,
-                value_serializer=lambda i, f, v: value_as_dict(v))
+                value_serializer=lambda i, f, v: value_asdict(v))
             value['class'] = value_class
         elif isinstance(value, Enum):
             value = serialise_class(type(value)) + '[' + str(value) + ']'
         elif isinstance(value, Path):
             value = 'file://' + str(value.resolve())
         elif isinstance(value, (tuple, list, set, frozenset)):
-            value = [value_as_dict(x) for x in value]    
+            value = [value_asdict(x) for x in value]    
         elif isinstance(value, dict):
-            value = {value_as_dict(k): value_as_dict(v) for k, v in value.items()}
+            value = {value_asdict(k): value_asdict(v) for k, v in value.items()}
         elif is_dataclass(value):
-            value = [value_as_dict(getattr(value, f.name))
+            value = [value_asdict(getattr(value, f.name))
                      for f in dataclass_fields(value)]
         return value
 
@@ -649,7 +649,7 @@ def as_dict(obj, omit: Iterable[str]=(), required_modules: set=None):
         obj,
         recurse=False,
         filter=lambda a, v: filter(a, v) and a.name not in omit,
-        value_serializer=lambda i, f, v: value_as_dict(v))
+        value_serializer=lambda i, f, v: value_asdict(v))
 
     dct['class'] = serialise_class(type(obj))
     if include_versions:
@@ -658,8 +658,8 @@ def as_dict(obj, omit: Iterable[str]=(), required_modules: set=None):
     return dct
 
 
-def from_dict(dct: dict, **kwargs):
-    """Unserialise an object from a dict created by the `as_dict` method
+def fromdict(dct: dict, **kwargs):
+    """Unserialise an object from a dict created by the `asdict` method
 
     Parameters
     ----------
@@ -688,13 +688,13 @@ def from_dict(dct: dict, **kwargs):
         else:
             return field_name != 'class'
 
-    def from_dict(value):
+    def fromdict(value):
         if isinstance(value, dict):
             if 'class' in value:
                 klass = resolve_class(value['class'])
-                if hasattr(klass, 'from_dict'):
-                    return klass.from_dict(value)
-            value = {from_dict(k): from_dict(v) for k, v in value.items()}
+                if hasattr(klass, 'fromdict'):
+                    return klass.fromdict(value)
+            value = {fromdict(k): fromdict(v) for k, v in value.items()}
             if 'class' in value:
                 value = klass(**{k: v for k, v in value.items()
                                  if field_filter(klass, k)})
@@ -706,12 +706,12 @@ def from_dict(dct: dict, **kwargs):
             elif match:= re.match(r'file://(.*)', value):
                 value = Path(match.group(1))
         elif isinstance(value, Sequence):
-            value = [from_dict(x) for x in value]
+            value = [fromdict(x) for x in value]
         return value
 
     klass = resolve_class(dct['class'])
 
-    kwargs.update({k: from_dict(v) for k, v in dct.items()
+    kwargs.update({k: fromdict(v) for k, v in dct.items()
                    if field_filter(klass, k) and k not in kwargs})
 
     return klass(**kwargs)
@@ -721,7 +721,7 @@ extract_import_re = re.compile(r'\s*(?:from|import)\s+([\w\.]+)')
 
 NOTHING_STR = '__PIPELINE_INPUT__'
 
-def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str],
+def pydra_asdict(obj: TaskBase, required_modules: ty.Set[str],
                   workflow: Workflow=None) -> dict:
     """Converts a Pydra Task/Workflow into a dictionary that can be serialised
 
@@ -743,7 +743,7 @@ def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str],
     dct = {'name': obj.name,
            'class': '<' + class_location(obj) + '>'}
     if isinstance(obj, Workflow):
-        dct['nodes'] = [pydra_as_dict(n, required_modules=required_modules,
+        dct['nodes'] = [pydra_asdict(n, required_modules=required_modules,
                                       workflow=obj)
                         for n in obj.nodes]
         dct['outputs'] = outputs = {}
@@ -786,7 +786,7 @@ def pydra_as_dict(obj: TaskBase, required_modules: ty.Set[str],
     return dct
 
 
-def lazy_field_from_dict(dct: dict, workflow: Workflow):
+def lazy_field_fromdict(dct: dict, workflow: Workflow):
     """Unserialises a LazyField object from a dictionary"""
     if "pydra_task" in dct:
         inpt_task = getattr(workflow, dct['pydra_task'])
@@ -796,10 +796,10 @@ def lazy_field_from_dict(dct: dict, workflow: Workflow):
     return lf
 
 
-def pydra_from_dict(dct: dict, workflow: Workflow=None,
+def pydra_fromdict(dct: dict, workflow: Workflow=None,
                     **kwargs) -> TaskBase:
     """Recreates a Pydra Task/Workflow from a dictionary object created by
-    `pydra_as_dict`
+    `pydra_asdict`
 
     Parameters
     ----------
@@ -826,7 +826,7 @@ def pydra_from_dict(dct: dict, workflow: Workflow=None,
         # Check for 'pydra_field' key in a dictionary val and convert to a
         # LazyField object
         if isinstance(inpt_val, dict) and 'pydra_field' in inpt_val:
-            inpt_val = lazy_field_from_dict(inpt_val, workflow=workflow)
+            inpt_val = lazy_field_fromdict(inpt_val, workflow=workflow)
         inputs[inpt_name] = inpt_val
     kwargs.update((k, v) for k, v in inputs.items() if k not in kwargs)
     if klass is Workflow:
@@ -835,8 +835,8 @@ def pydra_from_dict(dct: dict, workflow: Workflow=None,
             input_spec=list(dct['inputs']),
             **kwargs)
         for node_dict in dct['nodes']:
-            obj.add(pydra_from_dict(node_dict, workflow=obj))
-        obj.set_output([(n, lazy_field_from_dict(f, workflow=obj))
+            obj.add(pydra_fromdict(node_dict, workflow=obj))
+        obj.set_output([(n, lazy_field_fromdict(f, workflow=obj))
                         for n, f in dct['outputs'].items()])
     else:
         obj = klass(name=dct['name'], **kwargs)
