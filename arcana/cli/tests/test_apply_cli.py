@@ -17,6 +17,7 @@ def test_apply_workflow_cli(saved_dataset, concatenate_task, cli_runner):
     saved_dataset.apply_workflow(
         name='a_pipeline',
         workflow=concatenate_task(
+            name='workflow',
             duplicates=duplicates),
         inputs=[('file1', 'in_file1'),
                 ('file2', 'in_file2')],
@@ -36,5 +37,5 @@ def test_apply_workflow_cli(saved_dataset, concatenate_task, cli_runner):
     loaded_dataset = Dataset.load(dataset_id_str)
     s = saved_dataset.pipelines['a_pipeline']
     l = loaded_dataset.pipelines['a_pipeline']
-    
+    assert s == l
     assert saved_dataset.pipelines == loaded_dataset.pipelines

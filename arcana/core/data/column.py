@@ -23,7 +23,14 @@ class DataColumn(metaclass=ABCMeta):
         return (n[self.name] for n in self.dataset.nodes(self.frequency))
 
     def __getitem__(self, id):
-        return self.dataset.node(id=id, frequency=self.frequency)[self.col_name]
+        return self.dataset.node(id=id, frequency=self.frequency)[self.name]
+
+    def __len__(self):
+        return len(list(self.dataset.nodes(self.frequency)))
+
+    @property
+    def ids(self):
+        return [n.id for n in self.dataset.nodes(self.frequency)]
 
     @abstractmethod
     def match(self, node):

@@ -30,12 +30,6 @@ class Output():
     pydra_field: str
     produced_format: type
 
-
-def std_workflow_name(workflow):
-    cpy = copy(workflow)
-    cpy.name = Pipeline.WORKFLOW_NAME
-    return cpy
-
 @attr.s
 class Pipeline():
     """A thin wrapper around a Pydra workflow to link it to sources and sinks
@@ -63,7 +57,7 @@ class Pipeline():
     name: str = attr.ib()
     frequency: DataSpace = attr.ib()
     workflow: Workflow = attr.ib(
-        eq=attr.cmp_using(pydra_eq), converter=std_workflow_name)
+        eq=attr.cmp_using(pydra_eq))
     inputs: ty.List[Input] = attr.ib(
         converter=lambda lst: [Input(*i) if isinstance(i, Iterable) else i
                                for i in lst])
@@ -256,10 +250,10 @@ class Pipeline():
 
         # Add the "inner" workflow of the pipeline that actually performs the
         # processing
-        wf.per_node.add(self.workflow)
+        wf.per_node.add(deepcopy(self.workflow))
         # Make connections to "inner" workflow
         for inpt in self.inputs:
-            setattr(getattr(wf, self.WORKFLOW_NAME).inputs,
+            setattr(getattr(wf, self.workflow.name).inputs,
                     inpt.pydra_field,
                     getattr(wf.per_node.input_interface.lzout, inpt.col_name))
 

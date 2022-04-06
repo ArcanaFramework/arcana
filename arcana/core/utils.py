@@ -862,12 +862,17 @@ def pydra_eq(a: TaskBase, b: TaskBase):
         return False
     if a.name != b.name:
         return False
-    if a.input_names != b.input_names:
+    if sorted(a.input_names) != sorted(b.input_names):
         return False
-    if a.output_spec != b.output_spec:
+    if a.output_spec.fields != b.output_spec.fields:
         return False
     for inpt_name in a.input_names:
-        if getattr(a.inputs, inpt_name) != getattr(b.inputs, inpt_name):
+        a_input = getattr(a.inputs, inpt_name)
+        b_input = getattr(b.inputs, inpt_name)
+        if isinstance(a_input, LazyField):
+            if a_input.field != b_input.field or a_input.name != b_input.name:
+                return False
+        elif a_input != b_input:
             return False
     if isinstance(a, Workflow):
         a_node_names = [n.name for n in a.nodes]
