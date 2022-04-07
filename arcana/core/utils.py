@@ -639,7 +639,7 @@ def serialise(obj, skip=(), ignore_instance_method=False):
     Parameters
     ----------
     obj
-        The Arcana object to serialised. Must be defined using the attrs
+        The Arcana object to be serialised. Must be defined using the attrs
         decorator
     skip: Sequence[str]
         The names of attributes to skip"""
