@@ -13,16 +13,16 @@ def apply():
 @apply.command(name='pipeline', help="""Apply a Pydra workflow to a dataset as a pipeline between
 two columns
 
-ID_STR string containing the nick-name of the store, the ID of the dataset
+ID_STR string containing the nickname of the data store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
-format <NICKNAME>//DATASET_ID:DATASET_NAME
+format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 
-NAME of the pipeline
+PIPELINE_NAME of the pipeline
 
 WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
 <MODULE>:<WORKFLOW>""")
 @click.argument('id_str')
-@click.argument('name')
+@click.argument('pipeline_name')
 @click.argument('workflow_location')
 @click.option(
     '--input', '-i', nargs=3, default=(), metavar='<col-name> <pydra-field> <required-format>',
@@ -60,8 +60,8 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
     '--overwrite/--no-overwrite', default=False,
     help=("whether to overwrite previous connections to existing sink columns "
           "or not"))
-def apply_pipeline(id_str, name, workflow_location, input, output, parameter,
-                   source, sink, frequency, overwrite):
+def apply_pipeline(id_str, pipeline_name, workflow_location, input, output,
+                   parameter, source, sink, frequency, overwrite):
 
     dataset = Dataset.load(id_str)
     workflow = resolve_class(workflow_location)(
@@ -85,12 +85,27 @@ def apply_pipeline(id_str, name, workflow_location, input, output, parameter,
         outputs.append((col_name, pydra_field, format))
     
     dataset.apply_pipeline(
-        name, workflow, inputs, outputs, frequency=frequency,
+        pipeline_name, workflow, inputs, outputs, frequency=frequency,
         overwrite=overwrite)
 
     dataset.save()
 
 
-# @apply.command(name='analysis', help="""Applies an analysis class to a dataset""")
-# def apply_analysis():
-#     raise NotImplementedError
+@apply.command(name='analysis', help="""Applies an analysis class to a dataset""")
+def apply_analysis():
+    raise NotImplementedError
+
+
+@apply.command(name='bids-app', help="Apply a BIDS app to a dataset as a pipleine")
+@click.option(
+    '--container', nargs=2, default=None,
+    metavar='<engine-tag>',
+    help=("The container engine ('docker'|'singularity') and the image"
+            " to run the app in"))
+@click.option(
+    '--virtualisation', default='none',
+    type=click.Choice(['docker', 'singularity', 'none'], case_sensitive=False),
+    help=("The virtualisation method to run with the task with (only "
+          "applicable to BIDS app tasks)"))
+def apply_bids_app():
+    raise NotImplementedError

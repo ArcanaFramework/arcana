@@ -22,6 +22,11 @@ from arcana.core.data.format import FileGroup
 logger = logging.getLogger('arcana')
 
 
+# Matches directory names used for summary nodes with dunder beginning and
+# end (e.g. '__visit_01__') and hidden directories (i.e. starting with '.' or
+# '~')
+special_dir_re = re.compile(r'(__.*__$|\..*|~.*)')
+
 @attr.s
 class FileSystem(DataStore):
     """
@@ -188,9 +193,11 @@ class FileSystem(DataStore):
 
         for dpath, _, _ in os.walk(dataset.id):
             tree_path = Path(dpath).relative_to(dataset.id).parts
-            if (len(tree_path) == len(dataset.hierarchy)
-                    and not re.match(r'__.*__$', tree_path[-1])):
-                dataset.add_leaf_node(tree_path)
+            if len(tree_path) != len(dataset.hierarchy):
+                continue
+            if special_dir_re.match(tree_path[-1]):
+                continue
+            dataset.add_leaf_node(tree_path)
 
     def find_items(self, data_node):
         # First ID can be omitted
