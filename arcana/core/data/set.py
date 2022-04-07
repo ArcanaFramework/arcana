@@ -155,11 +155,33 @@ class Dataset():
         self.store.save_dataset_definition(self.id, definition, name=name)
 
     @classmethod
-    def load(cls, id, store=None, name=None):
-        """Loads a dataset from an store/ID/name string, as used in the CLI"""
-        store_name, id, parsed_name = cls.parse_id_str(id)
+    def load(cls, id: str, store: datastore.DataStore=None, name: str=None,
+             **kwargs):
+        """Loads a dataset from an store/ID/name string, as used in the CLI
+
+        Parameters
+        ----------
+        id: str
+            either the ID of a dataset if `store` keyword arg is provied or a
+            "dataset ID string" in the format
+            <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
+        store: DataStore, optional
+            the store to load the dataset. If not provided the provided ID
+            is interpreted as an ID string
+        name: str, optional
+            the name of the dataset within the project/directory
+            (e.g. 'test', 'training'). Used to specify a subset of data nodes
+            to work with, within a greater project
+        **kwargs
+            keyword arguments parsed to the data store load
+
+        Returns
+        -------
+        Dataset
+            the loaded dataset"""
         if store is None:
-            store = datastore.DataStore.load(store_name)
+            store_name, id, parsed_name = cls.parse_id_str(id)
+            store = datastore.DataStore.load(store_name, **kwargs)
         if name is None:
             name = parsed_name
         return store.load_dataset(id, name=name)
@@ -284,8 +306,9 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if path is None:
             path = name
-        self._add_spec(name, DataSource(
-            name, path, format, frequency, dataset=self, **kwargs), overwrite)
+        source = DataSource(name, path, format, frequency, dataset=self, **kwargs)
+        self._add_spec(name, source, overwrite)
+        return source
 
     def add_sink(self, name, format, path=None, frequency=None,
                  overwrite=False, **kwargs):
@@ -310,8 +333,9 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if path is None:
             path = name
-        self._add_spec(name, DataSink(
-            name, path, format, frequency, dataset=self, **kwargs), overwrite)
+        sink = DataSink(name, path, format, frequency, dataset=self, **kwargs)
+        self._add_spec(name, sink, overwrite)
+        return sink
 
     def _add_spec(self, name, spec, overwrite):
         if name in self.columns:
@@ -673,6 +697,7 @@ class Dataset():
                         f"Attempting to overwrite pipeline of '{outpt.col_name}' "
                         f"sink ({sink.pipeline_name}) with {name}. Use "
                         f"'overwrite' option if this is desired")
+            sink.pipeline_name = pipeline.name
         self.pipelines[name] = pipeline
 
         return pipeline
@@ -694,8 +719,8 @@ class Dataset():
             The derived columns
         """
         from arcana.core.pipeline import Pipeline
-        sinks = [self.column(s) for s in set(sink_names)]
-        for pipeline, _ in Pipeline.stack(self, *sinks):
+        sinks = [self[s] for s in set(sink_names)]
+        for pipeline, _ in Pipeline.stack(*sinks):
             # Excecute pipelines in stack
             # FIXME: Should combine the pipelines into a single workflow and
             # dialate the IDs that need to be run when summarising over different
@@ -703,8 +728,7 @@ class Dataset():
             pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
         # Update local cache of sink paths
         for sink in sinks:
-            for item in sink:
-                item.get(assume_exists=True)
+            sink.assume_exists()
 
     def _parse_freq(self, freq):
         """Parses the data frequency, converting from string if necessary and

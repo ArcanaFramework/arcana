@@ -335,6 +335,9 @@ class Pipeline():
             """
             if downstream is None:
                 downstream = []
+            if sink.pipeline_name is None:
+                raise ArcanaDesignError(
+                    f"{sink} hasn't been connected to a pipeline yet")
             pipeline = sink.dataset.pipelines[sink.pipeline_name]
             if sink.name not in pipeline.output_col_names:
                 raise ArcanaOutputNotProducedException(
@@ -361,7 +364,7 @@ class Pipeline():
             stack[pipeline.name] = pipeline, to_produce
             # Recursively add all the pipeline's prerequisite pipelines to the stack
             for inpt in pipeline.inputs:
-                inpt_column = sink.dataset.column[inpt.col_name]
+                inpt_column = sink.dataset[inpt.col_name]
                 if inpt_column.is_sink:
                     try:
                         push_pipeline_on_stack(

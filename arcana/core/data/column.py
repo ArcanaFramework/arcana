@@ -55,6 +55,11 @@ class DataColumn(metaclass=ABCMeta):
         ArcanaFileFormatError
             if there are no files matching the format of the column in the node"""
 
+    def assume_exists(self):
+        # Update local cache of sink paths
+        for item in self:
+            item.get(assume_exists=True)
+
 
 @attr.s
 class DataSource(DataColumn):

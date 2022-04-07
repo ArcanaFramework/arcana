@@ -1,4 +1,4 @@
-import re
+from pathlib import Path
 import logging
 import click
 from arcana import __version__
@@ -18,14 +18,11 @@ def derive():
 @derive.command(name='column', help="""Derive data for a data sink column and
 all prerequisite columns.
 
-DATASET_ID_STR string containing the nick-name of the store, the ID of the dataset
+DATASET_ID_STR string containing the nickname of the data store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
-format <NICKNAME>//DATASET_ID:DATASET_NAME
+format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 
-NAME of the pipeline
-
-WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
-<MODULE>:<WORKFLOW>""")
+COLUMNS are the names of the sink columns to derive""")
 @click.argument('dataset_id_str')
 @click.argument('columns', nargs=-1)
 @click.option(
@@ -39,12 +36,20 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
     '--loglevel', type=str, default='info',
     help=("The level of detail logging information is presented"))
 def derive_column(dataset_id_str, columns, work, plugin, loglevel):
+
+    if work is not None:
+        work_dir = Path(work)
+        store_cache = work_dir / 'store-cache'
+        pipeline_cache = work_dir / 'pipeline-cache'
+    else:
+        store_cache = None
+        pipeline_cache = None
     
-    dataset = Dataset.load(dataset_id_str)
+    dataset = Dataset.load(dataset_id_str, cache_dir=store_cache)
 
     set_loggers(loglevel)
 
-    dataset.derive(*columns, cache_dir=work, plugin=plugin)
+    dataset.derive(*columns, cache_dir=pipeline_cache, plugin=plugin)
     
     columns_str = "', '".join(columns)
     logger.info(f"Derived data for '{columns_str}' column(s) successfully")

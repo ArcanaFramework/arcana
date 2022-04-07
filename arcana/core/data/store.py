@@ -250,7 +250,7 @@ class DataStore(metaclass=ABCMeta):
         cls.save_entries(entries)
 
     @classmethod
-    def load(cls, name: str):
+    def load(cls, name: str, **kwargs):
         """Loads a DataStore from that has been saved in the configuration file.
         If no entry is saved under that name, then it searches for DataStore
         sub-classes with aliases matching `name` and checks whether they can
@@ -260,6 +260,9 @@ class DataStore(metaclass=ABCMeta):
         ----------
         name
             Name that the store was saved under
+        **kwargs
+            keyword args passed to the store, overriding values stored in the
+            entry
 
         Returns
         -------
@@ -282,6 +285,7 @@ class DataStore(metaclass=ABCMeta):
                     name,
                     f"No saved data store or built-in type matches '{name}'")
         else:
+            entry.update(kwargs)
             store = resolve_class(entry.pop('type'))(**entry)
         return store
 
