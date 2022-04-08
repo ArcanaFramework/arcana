@@ -17,6 +17,11 @@ def deploy():
     pass
 
 
+@deploy.group()
+def xnat():
+    pass
+
+
 @deploy.command(help="""Build a wrapper image specified in a module
 
 module_path - the file system path to the module to build""")
