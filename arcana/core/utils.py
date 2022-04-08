@@ -513,7 +513,7 @@ class classproperty(object):
         return self.f(owner)
 
 
-def pkg_from_module(module: Sequence[str]):
+def package_from_module(module: Sequence[str]):
     """Resolves the installed package (e.g. from PyPI) that provides the given
     module.
 
@@ -574,7 +574,7 @@ def pkg_from_module(module: Sequence[str]):
 
 
 def pkg_versions(modules):
-    versions = {p.key: p.version for p in pkg_from_module(modules)}
+    versions = {p.key: p.version for p in package_from_module(modules)}
     versions['arcana'] = __version__
     return versions
 
@@ -767,7 +767,7 @@ def pydra_asdict(obj: TaskBase, required_modules: ty.Set[str],
             # TODO: check source for references to external modules that aren't
             #       imported within function
         elif type(obj).__module__ != 'pydra.engine.task':
-            pkg = pkg_from_module(type(obj).__module__)
+            pkg = package_from_module(type(obj).__module__)
             dct['package'] = pkg.key
             dct['version'] = pkg.version
         if hasattr(obj, 'container'):
