@@ -10,19 +10,24 @@ import os
 import yaml
 from dataclasses import dataclass, field as dataclass_field
 from arcana import __version__
+from arcana.exceptions import ArcanaError
 
 
-@dataclass
-class PipSpec():
-    """Specification of a Python package"""
+def load_yaml_spec(path: Path, base_dir: Path=None):
+    """Loads a deploy-build specification from a YAML file
 
-    version: str = None
-    url: str = None
-    file_path: str = None
-    extras: ty.List[str] = dataclass_field(default_factory=list)
+    Parameters
+    ----------
+    path : Path
+        path to the YAML file to load
+    base_dir : Path
+        path to the base directory of the suite of specs to be read
 
-
-def load_yaml_spec(path, base_dir=None):
+    Returns
+    -------
+    dict
+        The loaded dictionary
+    """
     def concat(loader, node):
         seq = loader.construct_sequence(node)
         return ''.join([str(i) for i in seq])
@@ -71,63 +76,111 @@ def walk_spec_paths(spec_path: Path) -> ty.Iterable[Path]:
             yield path
 
 
-def installed_package_locations(
-        packages: ty.Iterable[str or pkg_resources.DistInfoDistribution]):
+@dataclass
+class PipSpec():
+    """Specification of a Python package"""
+
+    name: str
+    version: str = None
+    url: str = None
+    file_path: str = None
+    extras: ty.List[str] = dataclass_field(default_factory=list)
+
+    @classmethod
+    def unique(cls, pip_specs: ty.Iterable):
+        """Merge a list of Pip install specs so each package only appears once
+
+        Parameters
+        ----------
+        pip_specs : ty.Iterable[PipSpec]
+            the pip specs to merge
+
+        Returns
+        -------
+        list[PipSpec]
+            the merged pip specs
+
+        Raises
+        ------
+        ArcanaError
+            if there is a mismatch between two entries of the same package
+        """
+        dct = {}
+        for pip_spec in pip_specs:
+            if isinstance(pkg_spec, dict):
+                pkg_spec = PipSpec(**pkg_spec)
+            try:
+                prev_spec = dct[pip_spec.name]
+            except KeyError:
+                dct[pip_spec.name] = pip_spec
+            else:
+                if (prev_spec.version != pip_spec.version
+                    or prev_spec.url != pip_spec.url
+                        or prev_spec.file_path != pip_spec.file_path):
+                    raise ArcanaError(
+                        f"Cannot install '{pip_spec.name}' due to conflict "
+                        f"between requested versions, {pip_spec} and {prev_spec}")
+                prev_spec.extras.extend(pip_spec.extras)
+        return list(dct.values())
+
+def installed_package_location(package: PipSpec):
     """Detect the installed locations of the packages, including development
     versions.
 
     Parameters
     ----------
-    packages: Iterable[str or pkg_resources.DistInfoDistribution]
+    package: [PipSpec]
         the packages (or names of) the versions to detect
 
     Returns
     -------
-    dict[str, PipSpec]
-        the pip specifications corresponding to the 
+    PipSpec
+        the pip specification for the installation location of the package
     """
-    site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]
-    pip_specs = {}
-    for pkg in packages:
-        if isinstance(pkg, str):
-            parts = pkg.split('==')
-            pkg_name = parts[0]
-            pkg_version = parts[1] if len(parts) == 2 else None
-            try:
-                pkg = next(p for p in pkg_resources.working_set
-                           if p.project_name == pkg_name)
-            except StopIteration:
-                raise ArcanaBuildError(
-                    f"Did not find {pkg_name} in installed working set:\n"
-                    + "\n".join(sorted(
-                        p.key + '/' + p.project_name
-                        for p in pkg_resources.working_set)))
-            if pkg_version and pkg.version != pkg_version:
-                raise ArcanaBuildError(
-                    f"Requested package {pkg_version} does not match installed "
-                    f"{pkg.version}")
-        pkg_loc = Path(pkg.location).resolve()
-        # Determine whether installed version of requirement is locally
-        # installed (and therefore needs to be copied into image) or can
-        # be just downloaded from PyPI
-        if pkg_loc not in site_pkg_locs:
-            # Copy package into Docker image and instruct pip to install from
-            # that copy
-            pip_spec = PipSpec(file_path='/python-packages/' + pkg.key)
+    
+    if isinstance(package, str):
+        parts = package.split('==')
+        pkg_name = parts[0]
+        pkg_version = parts[1] if len(parts) == 2 else None
+        try:
+            pkg = next(p for p in pkg_resources.working_set
+                        if p.project_name == pkg_name)
+        except StopIteration:
+            raise ArcanaBuildError(
+                f"Did not find {pkg_name} in installed working set:\n"
+                + "\n".join(sorted(
+                    p.key + '/' + p.project_name
+                    for p in pkg_resources.working_set)))
+        if pkg_version and pkg.version != pkg_version:
+            raise ArcanaBuildError(
+                f"Requested package {pkg_version} does not match installed "
+                f"{pkg.version}")
+    pkg_loc = Path(pkg.location).resolve()
+    # Determine whether installed version of requirement is locally
+    # installed (and therefore needs to be copied into image) or can
+    # be just downloaded from PyPI
+    if pkg_loc not in site_pkg_locs:
+        # Copy package into Docker image and instruct pip to install from
+        # that copy
+        pip_spec = PipSpec(file_path='/python-packages/' + pkg.key)
+    else:
+        # Check to see whether package is installed via "direct URL" instead
+        # of through PyPI
+        direct_url_path = Path(pkg.egg_info) / 'direct_url.json'
+        if direct_url_path.exists():
+            with open(direct_url_path) as f:
+                url_spec = json.load(f)
+            url = url_spec['url']
+            if 'vcs' in url_spec:
+                url = url_spec['vcs'] + '+' + url
+            if 'commit_id' in url_spec:
+                url += '@' + url_spec['commit_id']
+            pip_spec = PipSpec(url=url)
         else:
-            # Check to see whether package is installed via "direct URL" instead
-            # of through PyPI
-            direct_url_path = Path(pkg.egg_info) / 'direct_url.json'
-            if direct_url_path.exists():
-                with open(direct_url_path) as f:
-                    url_spec = json.load(f)
-                url = url_spec['url']
-                if 'vcs' in url_spec:
-                    url = url_spec['vcs'] + '+' + url
-                if 'commit_id' in url_spec:
-                    url += '@' + url_spec['commit_id']
-                pip_spec = PipSpec(url=url)
-            else:
-                pip_spec = PipSpec(version=pkg.version)
-        pip_specs[pkg.key] = pip_spec
-    return pip_specs
+            pip_spec = PipSpec(version=pkg.version)
+    return pip_spec
+
+
+
+DOCKER_HUB = 'https://index.docker.io/v1/'
+site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]

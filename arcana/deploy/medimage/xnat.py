@@ -5,9 +5,12 @@ import json
 from attr import NOTHING
 from dataclasses import dataclass
 from arcana.data.spaces.medimage import Clinical
+from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.deploy.build import (
     generate_neurodocker_specs, render_dockerfile, docker_build)
-from arcana.core.utils import resolve_class, DOCKER_HUB
+from arcana.core.deploy.utils import DOCKER_HUB
+from arcana.core.utils import resolve_class
+from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaUsageError
 
 
@@ -79,7 +82,10 @@ def build_cs_image(image_tag: str,
 
     # Copy the generated XNAT commands inside the container for ease of reference
     nd_specs['instructions'].append(
-        xnat_command_ref_copy_cmd(xnat_commands, build_dir))
+        copy_command_ref(xnat_commands, build_dir))
+
+    nd_specs['instructions'].extend(
+        save_store_config(build_dir))
 
     render_dockerfile(nd_specs, build_dir)
 
@@ -251,12 +257,15 @@ def generate_xnat_cs_command(cls,
 
     cmdline = (
         f"conda run --no-capture-output -n arcana "  # activate conda
-        f"arcana run {pydra_task} "  # run pydra task in Arcana
-        f"[PROJECT_ID] {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
-        f"--ignore_blank_inputs "  # Allow input patterns to be blank, just ignore them in that case
-        f"--pydra_plugin serial "  # Use serial processing instead of parallel to simplify outputs
+        f"run-arcana-pipeline  xnat-cs//[PROJECT_ID] {name} {pydra_task} "  # run pydra task in Arcana
+        f" {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
+        f"--plugin serial "  # Use serial processing instead of parallel to simplify outputs
+        f"--loglevel info "
         f"--work {cls.WORK_MOUNT} "  # working directory
-        f"--store xnat_via_cs {frequency} ")  # pass XNAT API details
+        f"--dataset_space medimage:Clinical "
+        f"--dataset_hierarchy subject,session "
+        f"--frequency {frequency} ")  # pass XNAT API details
+        # TODO: add option for whether to overwrite existing pipeline
 
     # Create Project input that can be passed to the command line, which will
     # be populated by inputs derived from the XNAT object passed to the pipeline
@@ -378,7 +387,7 @@ def generate_xnat_cs_command(cls,
     return xnat_command
 
 
-def xnat_command_ref_copy_cmd(xnat_commands, build_dir):
+def copy_command_ref(xnat_commands, build_dir):
     """Generate Neurodocker instructions to copy a version of the XNAT commands
     into the image for reference
 
@@ -403,6 +412,25 @@ def xnat_command_ref_copy_cmd(xnat_commands, build_dir):
             json.dump(cmd, f, indent='    ')
     return ['copy', ['./xnat_commands', '/xnat_commands']]
 
+
+def save_store_config(build_dir: Path):
+    """Save a configuration for 
+
+    Parameters
+    ----------
+    build_dir : Path
+        _description_
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    DataStore.save_entries({'xnat-cs': {}},
+                           config_path=build_dir / 'stores.yml')
+    return [
+        ['run', ['mkdir', '-p', '/root/.arcana']],
+        ['copy', ['./stores.yml', '/root/.arcana/stores.yml']]]
 
 @dataclass
 class InputArg():

@@ -37,6 +37,8 @@ COLUMNS are the names of the sink columns to derive""")
     help=("The level of detail logging information is presented"))
 def derive_column(dataset_id_str, columns, work, plugin, loglevel):
 
+    logging.basicConfig(level=getattr(logging, loglevel.upper()))
+
     if work is not None:
         work_dir = Path(work)
         store_cache = work_dir / 'store-cache'

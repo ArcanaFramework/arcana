@@ -41,7 +41,6 @@ CHECKSUM_SUFFIX = '_checksum'
 
 ARCANA_HOME_DIR = Path.home() / '.arcana'
 
-DOCKER_HUB = 'https://index.docker.io/v1/'
 ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
 
 

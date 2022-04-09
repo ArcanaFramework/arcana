@@ -216,15 +216,15 @@ class DataStore(metaclass=ABCMeta):
         If a connection session is required to the store manage it here
         """
 
-    def save(self, name: str):
+    def save(self, name: str, config_path: Path=None):
         """Saves the configuration of a DataStore in 'stores.yml' 
 
         Parameters
         ----------
         name
             The name under which to save the data store
-        store : DataStore
-            The DataStore to save
+        config_path : Path, optional
+            the path to save the config file to, defaults to `~/.arcana/stores.yml`
         """
         if name in self.singletons():
             raise ArcanaNameError(
@@ -234,23 +234,10 @@ class DataStore(metaclass=ABCMeta):
         # test the connection in general before it is saved
         with self:  
             entries[name] = asdict(self)
-        self.save_entries(entries)
+        self.save_entries(entries, config_path=config_path)
 
     @classmethod
-    def remove(cls, name: str):
-        """Removes the entry saved under 'name' in the config file
-
-        Parameters
-        ----------
-        name
-            Name of the configuration to remove
-        """
-        entries = cls.load_saved_entries()
-        del entries[name]
-        cls.save_entries(entries)
-
-    @classmethod
-    def load(cls, name: str, **kwargs):
+    def load(cls, name: str, config_path: Path=None, **kwargs):
         """Loads a DataStore from that has been saved in the configuration file.
         If no entry is saved under that name, then it searches for DataStore
         sub-classes with aliases matching `name` and checks whether they can
@@ -258,8 +245,10 @@ class DataStore(metaclass=ABCMeta):
 
         Parameters
         ----------
-        name
+        name : str
             Name that the store was saved under
+        config_path : Path, optional
+            path to the config file, defaults to `~/.arcana/stores.yml`
         **kwargs
             keyword args passed to the store, overriding values stored in the
             entry
@@ -274,7 +263,7 @@ class DataStore(metaclass=ABCMeta):
         ArcanaNameError
             If the name is not found in the saved stores
         """
-        entries = cls.load_saved_entries()
+        entries = cls.load_saved_entries(config_path)
         try:
             entry = entries[name]
         except KeyError:
@@ -289,6 +278,18 @@ class DataStore(metaclass=ABCMeta):
             store = resolve_class(entry.pop('type'))(**entry)
         return store
 
+    @classmethod
+    def remove(cls, name: str, config_path: Path=None):
+        """Removes the entry saved under 'name' in the config file
+
+        Parameters
+        ----------
+        name
+            Name of the configuration to remove
+        """
+        entries = cls.load_saved_entries(config_path)
+        del entries[name]
+        cls.save_entries(entries)
 
     def new_dataset(self, id, hierarchy=None, space=None, **kwargs):
         """
@@ -355,18 +356,21 @@ class DataStore(metaclass=ABCMeta):
         return cls._singletons
 
     @classmethod
-    def load_saved_entries(cls):
-        fpath = get_config_file_path(cls.CONFIG_NAME)
-        if fpath.exists():
-            with open(fpath) as f:
+    def load_saved_entries(cls, config_path: Path=None):
+        if config_path is None:
+            config_path = get_config_file_path(cls.CONFIG_NAME)
+        if config_path.exists():
+            with open(config_path) as f:
                 entries = yaml.load(f, Loader=yaml.Loader)
         else:
             entries = {}
         return entries
 
     @classmethod
-    def save_entries(cls, entries):
-        with open(get_config_file_path(cls.CONFIG_NAME), 'w') as f:
+    def save_entries(cls, entries, config_path: Path=None):
+        if config_path is None:
+            config_path = get_config_file_path(cls.CONFIG_NAME)
+        with open(config_path, 'w') as f:
             yaml.dump(entries, f)
 
     def __enter__(self):

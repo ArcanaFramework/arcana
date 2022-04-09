@@ -10,7 +10,7 @@ import docker
 from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME, python_versions
 from arcana.exceptions import ArcanaBuildError
-from .utils import PipSpec
+from .utils import PipSpec, installed_package_location
 
 
 logger = logging.getLogger('arcana')
@@ -48,29 +48,34 @@ def generate_neurodocker_specs(
         labels: ty.Dict[str, str]=None,
         package_manager: str='apt',
         arcana_install_extras: ty.Iterable[str]=(),
-        readme: str=None):
+        readme: str=None,
+        use_local_packages: bool=False):
     """Constructs a dockerfile that wraps a with dependencies
 
     Parameters
     ----------
-    build_dir: Path
+    build_dir : Path
         Path to the directory the Dockerfile will be written into copy any local
         files to
-    python_packages: Iterable[tuple[str, str]], optional
+    python_packages:  Iterable[tuple[str, str]], optional
         Name and version of the Python PyPI packages to add to the image (in
         addition to Arcana itself)
-    base_image: str, optional
+    base_image : str, optional
         The base image to build from
     system_packages: Iterable[str], optional
         Name and version of operating system packages (see Neurodocker) to add
         to the image
     labels : ty.Dict[str, str], optional
         labels to be added to the image
-    arcana_install_extras, Iterable[str], optional
+    arcana_install_extras : Iterable[str], optional
         Extras for the Arcana package that need to be installed into the
         dockerfile (e.g. tests)
-    readme: str, optional
+    readme : str, optional
         Description of the container to put in a README
+    use_local_packages: bool, optional
+        Use the python package versions that are installed within the
+        current environment, i.e. instead of pulling from PyPI. Useful during
+        development and testing
 
     Returns
     -------
@@ -89,7 +94,8 @@ def generate_neurodocker_specs(
         install_system_packages(system_packages))
 
     instructions.extend(
-        install_python(python_packages, build_dir, arcana_install_extras))
+        install_python(python_packages, build_dir, arcana_install_extras,
+                       use_local_packages=use_local_packages))
 
     if readme:
         instructions.append(insert_readme(readme, build_dir))
@@ -141,20 +147,25 @@ def docker_build(build_dir: Path, image_tag: str):
     logging.info("Successfully built docker image %s", image_tag)
 
 
-def install_python(packages: ty.Dict[str, PipSpec], build_dir: Path,
-                   arcana_install_extras: ty.Iterable=()):
+def install_python(packages: ty.Iterable[PipSpec], build_dir: Path,
+                   arcana_install_extras: ty.Iterable=(),
+                   use_local_packages: bool=False):
     """Generate Neurodocker instructions to install an appropriate version of
     Python and the required Python packages
 
     Parameters
     ----------
-    python_packages : dict[str, PipSpec or dict]
+    python_packages : ty.Iterable[PipSpec]
         the python packages (with optional extras) that need to be installed
+    build_dir : Path
+        the path to the build directory
     arcana_install_extras : Iterable[str]
         Optional extras (i.e. as defined in "extras_require" in setup.py) required
         for the arcana package
-    build_dir : Path
-        the path to the build directory
+    use_local_packages: bool, optional
+        Use the python package versions that are installed within the
+        current environment, i.e. instead of defaulting to the release from PyPI.
+        Useful during development and testing
 
     Returns
     -------
@@ -177,28 +188,28 @@ def install_python(packages: ty.Dict[str, PipSpec], build_dir: Path,
     # Copy the local development versions of Python dependencies into the
     # docker image if present, instead of relying on the PyPI version,
     # which might be missing local changes and bugfixes (particularly in testing)
-    pip_addresses = []
+    pip_strs = []  # list of packages to install using pip
     instructions = []
-    for pkg_name, pkg_spec in packages.items():
-        if isinstance(pkg_spec, dict):
-            pkg_spec = PipSpec(**pkg_spec)
-        if pkg_spec.file_path:
-            if pkg_spec.version or pkg_spec.url:
+    for pip_spec in PipSpec.unique(packages):
+        if use_local_packages:
+            pip_spec = installed_package_location(pip_spec)
+        if pip_spec.file_path:
+            if pip_spec.version or pip_spec.url:
                 raise ArcanaBuildError(
                     "Cannot specify a package by `file_path`, `version` and/or "
                     "`url`")
-            copy_package_into_build_dir(pkg_name, pkg_spec.file_path, build_dir)
-            pip_address = '/python-packages/' + pkg_name
-            instructions.append(['copy', ['./' + pkg_name, pip_address]])
-        elif pkg_spec.url:
-            if pkg_spec.version:
+            copy_package_into_build_dir(pip_spec.name, pip_spec.file_path, build_dir)
+            pip_str = '/python-packages/' + pip_spec.name
+            instructions.append(['copy', ['./' + pip_spec.name, pip_str]])
+        elif pip_spec.url:
+            if pip_spec.version:
                 raise ArcanaBuildError(
                     "Cannot specify a package by `url` and `version`")
-            pip_address = pkg_spec.url
-        if pkg_spec.extras:
-            pip_address += '[' + ','.join(pkg_spec.extras) + ']'
-        pip_address += '==' + pkg_spec.version
-        pip_addresses.append(pip_address)
+            pip_str = pip_spec.url
+        if pip_spec.extras:
+            pip_str += '[' + ','.join(pip_spec.extras) + ']'
+        pip_str += '==' + pip_spec.version
+        pip_strs.append(pip_str)
 
     instructions.append(
         ["miniconda", {
@@ -210,7 +221,7 @@ def install_python(packages: ty.Dict[str, PipSpec], build_dir: Path,
                 "dcm2niix",
                 "mrtrix3"],
             "conda_opts": "--channel mrtrix3",
-            "pip_install": pip_addresses}])  
+            "pip_install": pip_strs}])  
 
     return instructions
 
