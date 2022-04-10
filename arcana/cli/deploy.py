@@ -198,7 +198,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
 """)
 @click.argument("dataset_id_str")
 @click.argument('pipeline_name')
-@click.argument('workflow_location', nargs=-1)
+@click.argument('workflow_location')
 @click.option(
     '--parameter', '-p', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
     help=("a fixed parameter of the workflow to set when applying it"))
@@ -219,6 +219,9 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     help=("the frequency of the nodes the pipeline will be executed over, i.e. "
           "will it be run once per-session, per-subject or per whole dataset, "
           "by default the highest frequency nodes (e.g. per-session)"))
+@click.option(
+    '--ids', default=None, type=str,
+    help="List of IDs to restrict the pipeline to")
 @click.option(
     '--work', '-w', 'work_dir', default=None,
     help=("The location of the directory where the working files "
@@ -243,7 +246,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     help=("Whether to overwrite the saved pipeline with the same name, if present"))
 def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
                  input, output, frequency, overwrite, work_dir, plugin, loglevel,
-                 dataset_name, dataset_space, dataset_hierarchy):
+                 dataset_name, dataset_space, dataset_hierarchy, ids):
 
     if len(workflow_location) == 1:
         workflow_location = workflow_location[0]
@@ -299,16 +302,13 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
         if col_name not in dataset.columns:
             dataset.add_sink(col_name, format)
 
-    if workflow_location:
-        workflow = resolve_class(workflow_location)(
-            name='workflow',
-            **{n: parse_value(v) for n, v in parameter})
-    else:
-        workflow = None   
+    workflow = resolve_class(workflow_location)(
+        name='workflow',
+        **{n: parse_value(v) for n, v in parameter})
 
     if pipeline_name in dataset.pipelines and not overwrite:
         pipeline = dataset.pipelines[pipeline_name]
-        if workflow is not None and workflow != pipeline.workflow:
+        if workflow != pipeline.workflow:
             raise RuntimeError(
                 f"A pipeline named '{pipeline_name}' has already been applied to "
                 "which differs from one specified. Please use '--overwrite' option "
@@ -322,7 +322,7 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
     workflow = pipeline(cache_dir=pipeline_cache_dir, plugin=plugin)
 
     # execute the workflow
-    result = workflow()
+    result = workflow(ids=ids.split(','))
 
     logger.info("Pipeline %s ran successfully for the following nodes\n: %s",
                 pipeline_name, '\n'.join(result.output.processed))

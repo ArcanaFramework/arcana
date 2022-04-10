@@ -22,17 +22,17 @@ def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
     
     IMAGE_TAG = 'arcana-test-xnat-cs'
 
-    # build_xnat_cs_image(
-    #     image_tag=IMAGE_TAG,
-    #     commands=[],
-    #     authors=['some.one@an.org'],
-    #     info_url='http://concatenate.readthefakedocs.io',
-    #     system_packages=[],
-    #     python_packages=[],
-    #     readme='This is a test README',
-    #     docker_registry='a.docker.registry.io',
-    #     use_local_packages=True,
-    #     arcana_install_extras=['test'])
+    build_xnat_cs_image(
+        image_tag=IMAGE_TAG,
+        commands=[],
+        authors=['some.one@an.org'],
+        info_url='http://concatenate.readthefakedocs.io',
+        system_packages=[],
+        python_packages=[],
+        readme='This is a test README',
+        docker_registry='a.docker.registry.io',
+        use_local_packages=True,
+        arcana_install_extras=['test'])
 
     with xnat_repository:
 

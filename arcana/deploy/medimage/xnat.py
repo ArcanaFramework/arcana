@@ -294,7 +294,6 @@ def generate_xnat_cs_command(name: str,
     if frequency == Clinical.session:
         # Set the object the pipeline is to be run against
         context = ["xnat:imageSessionData"]
-        cmdline += ' [SESSION_LABEL]'  # Pass node-id to XnatViaCS repo
         # Create Session input that  can be passed to the command line, which
         # will be populated by inputs derived from the XNAT session object
         # passed to the pipeline.
