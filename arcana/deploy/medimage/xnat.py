@@ -10,7 +10,7 @@ from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.deploy.build import (
     generate_neurodocker_specs, render_dockerfile, docker_build)
 from arcana.core.deploy.utils import DOCKER_HUB
-from arcana.core.utils import resolve_class
+from arcana.core.utils import resolve_class, class_location, asdict
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaUsageError
 
@@ -434,10 +434,14 @@ def save_store_config(build_dir: Path):
     _type_
         _description_
     """
-    DataStore.save_entries({'xnat-cs': {}},
+    cache_dir = '/xnat-cache'
+    entry = asdict(XnatViaCS(cache_dir=cache_dir),
+                   omit=['server', 'user', 'password'])
+    DataStore.save_entries({'xnat-cs': entry},
                            config_path=build_dir / 'stores.yml')
     return [
         ['run', 'mkdir -p /root/.arcana'],
+        ['run', f'mkdir -p {cache_dir}'],
         ['copy', ['./stores.yml', '/root/.arcana/stores.yml']]]
 
 
