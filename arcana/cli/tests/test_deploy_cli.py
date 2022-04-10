@@ -1,47 +1,37 @@
-import pytest
-import tempfile
-from pathlib import Path
-from click.testing import CliRunner
-from arcana.cli.deploy import build_all
+import yaml
+from arcana.cli.deploy import build
 from arcana.test.utils import show_cli_trace
 
-@pytest.mark.skip("needs to be updated to match refactoring")
-def test_deploy_build():
 
-    build_dir = Path(tempfile.mkdtemp())
-    docs_dir = Path(tempfile.mkdtemp())
-    pkg_dir = Path(tempfile.mkdtemp()) / 'arcanatest'
-    sub_pkg_dir = pkg_dir / 'wrapper'
-    sub_pkg_dir.mkdir(parents=True)
-    # Write package __init__.py
-    for d in [pkg_dir, sub_pkg_dir]:
-        with open(d / '__init__.py', 'w') as f:
-            f.write('\n')
-    with open(sub_pkg_dir / 'concatenate.py', 'w') as f:
-        f.write(concatenate_module_contents)
+def test_deploy_build(command_spec, cli_runner, work_dir):
 
-    runner = CliRunner()
-    result = runner.invoke(build_all,
-                           [str(pkg_dir), '--build_dir', str(build_dir),
-                            '--docs', str(docs_dir)])
+    DOCKER_ORG = 'test-org'
+    DOCKER_REGISTRY = 'test-registry'
+    PKG_NAME = 'test-pkg'
+
+    concatenate_spec = {
+        'pkg_name': 'concatenate',
+        'commands': [command_spec],
+        'pkg_version': '1.0',
+        'wrapper_version': '1',
+        'packages': [],
+        'python_packages': [],
+        'base_image': None,
+        'authors': ['some.one@an.email.org'],
+        'info_url': 'http://concatenate.readthefakedocs.io'}
+
+    build_dir = work_dir / 'build'
+    build_dir.mkdir()
+    spec_path = work_dir / 'test-specs'
+    sub_dir = spec_path / PKG_NAME
+    sub_dir.mkdir(parents=True)
+    with open(sub_dir / 'concatenate.yml', 'w') as f:
+        yaml.dump(concatenate_spec, f)
+
+    result = cli_runner(build,
+                        [str(spec_path), DOCKER_ORG,
+                         '--build_dir', str(build_dir),
+                         '--registry', DOCKER_REGISTRY,
+                         '--loglevel', 'warning'])
     assert result.exit_code == 0, show_cli_trace(result)
-    assert result.output == 'docker.io/arcanatest/wrapper.concatenate:1.0-1\n'
-
-concatenate_module_contents = """from arcana.data.formats.common import text
-
-spec = {
-    'commands': [
-        {'pydra_task': 'arcana.test.tasks:concatenate',
-         'inputs': [('in_file1', text), ('in_file2', text)],
-         'outputs': [('out_file', text)],
-         'parameters': ['duplicates'],
-         'description': (
-             "Concatenates two text files together into a single text file")}],
-    'pkg_version': '1.0',
-    'wrapper_version': '1',
-    'packages': [],
-    'python_packages': [],
-    'base_image': None,
-    'authors': ['some.one@an.email.org'],
-    'info_url': 'http://concatenate.readthefakedocs.io'}
-"""
+    assert result.output == f'{DOCKER_REGISTRY}/{DOCKER_ORG}/{PKG_NAME}.concatenate:1.0-1\n'

@@ -210,6 +210,44 @@ def concatenate_task(request):
         task = concatenate_reverse
     return task
 
+@pytest.fixture
+def command_spec():
+    return {
+        'pipeline_name': 'conctenate-test',
+        'pydra_task': 'arcana.test.tasks:concatenate',
+        'image_tag': 'arcana-concatenate:latest',
+        'inputs': [
+            {
+                'pydra_field': 'in_file1',
+                'format': 'medimage:Text',
+                'ui_name': 'to_concat1',
+                'frequency': 'session'
+            },
+            {
+                'pydra_field': 'in_file2',
+                'format': 'medimage:Text',
+                'ui_name': 'to_concat2',
+                'frequency': 'session'
+            },
+        ],
+        'outputs': [
+            {
+                'pydra_field': 'out_file',
+                'format': 'medimage:Text',
+                'xnat_path': 'concatenated'
+            }
+        ],
+        'parameters': [
+            {
+                'pydra_field': 'duplicates',
+                'ui_name': 'Number of duplicates'
+            }
+        ],
+        'description': "A pipeline to test Arcana's deployment tool",
+        'version': '0.1',
+        'frequency': 'session',
+        'info_url': None}
+
 
 # For debugging in IDE's don't catch raised exceptions and let the IDE
 # break at it

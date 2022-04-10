@@ -1,14 +1,16 @@
 import logging
 from pathlib import Path
 import click
+from click.exceptions import UsageError as ClickUsageError
 import docker.errors
 import tempfile
+from traceback import format_exc
 from arcana.core.cli import cli
 from arcana.core.utils import resolve_class, parse_value
 from arcana.core.deploy.utils import load_yaml_spec, walk_spec_paths, DOCKER_HUB
 from arcana.core.deploy.docs import create_doc
 from arcana.core.utils import package_from_module, pydra_asdict
-from arcana.deploy.medimage.xnat import build_cs_image
+from arcana.deploy.medimage.xnat import build_xnat_cs_image
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from .apply import parse_col_option
@@ -35,13 +37,18 @@ containing multiple specifications
 DOCKER_ORG is the Docker organisation to build the """)
 @click.argument('spec_path', type=click.Path(exists=True, path_type=Path))
 @click.argument('docker_org', type=str)
-@click.option('--registry', name='docker_registry', default=None,
+@click.option('--registry', 'docker_registry', default=None,
               help="The Docker registry to deploy the pipeline to")
-@click.option('--build_dir', default=None, type=Path,
+@click.option('--build_dir', default=None,
+              type=click.Path(exists=True, path_type=Path),
               help="Specify the directory to build the Docker image in")
 @click.option('--loglevel', default='warning',
               help="The level to display logs at")
 def build(spec_path, docker_org, docker_registry, loglevel, build_dir):
+
+    spec_path = Path(spec_path.decode('utf-8'))  # FIXME: This shouldn't be necessary
+    if build_dir:
+        build_dir = Path(build_dir.decode('utf-8'))
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
@@ -49,8 +56,8 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir):
         spec = load_yaml_spec(spath, base_dir=spec_path)
 
         # Make image tag
-        pkg_name = spec['pkg_name'].lower().replace('-', '_')
-        tag = '-'.join(spath.relative_to(spec_path).parents.parts + [pkg_name])
+        pkg_name = spec['pkg_name'].lower()  #.replace('-', '_')
+        tag = '.'.join(spath.relative_to(spec_path).parent.parts + (pkg_name,))
         image_version = str(spec['pkg_version'])
         if 'wrapper_version' in spec:
             image_version += f"-{spec['wrapper_version']}"
@@ -60,10 +67,18 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir):
         else:
             docker_registry = DOCKER_HUB
 
-        build_cs_image(image_tag=image_tag, build_dir=build_dir,
-                       docker_org=docker_org, docker_registry=docker_registry,
-                       **spec)
-        logger.info("Successfully built %s wrapper", image_tag)
+        # try:
+        build_xnat_cs_image(
+            image_tag=image_tag,
+            build_dir=build_dir,
+            docker_org=docker_org,
+            docker_registry=docker_registry,
+            **spec)
+        # except Exception:
+        #     logger.error("Could not build %s pipeline:\n%s", image_tag, format_exc())
+        # else:
+        #     click.echo(image_tag)
+        #     logger.info("Successfully built %s pipeline", image_tag)
 
 
 
@@ -164,7 +179,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
 """)
 @click.argument("dataset_id_str")
 @click.argument('pipeline_name')
-@click.option('workflow_location', default=None)
+@click.argument('workflow_location', nargs=-1)
 @click.option(
     '--parameter', '-p', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
     help=("a fixed parameter of the workflow to set when applying it"))
@@ -186,7 +201,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
           "will it be run once per-session, per-subject or per whole dataset, "
           "by default the highest frequency nodes (e.g. per-session)"))
 @click.option(
-    '--work', '-w', name='work_dir', default=None,
+    '--work', '-w', 'work_dir', default=None,
     help=("The location of the directory where the working files "
           "created during the pipeline execution will be stored"))
 @click.option(
@@ -210,6 +225,13 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
 def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
                  input, output, frequency, overwrite, work_dir, plugin, loglevel,
                  dataset_name, dataset_space, dataset_hierarchy):
+
+    if len(workflow_location) == 1:
+        workflow_location = workflow_location[0]
+    elif len(workflow_location) > 1:
+        raise ClickUsageError(
+            f"Only one workflow can be specified to be run in pipeline: "
+            f"{workflow_location}.")
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
@@ -258,7 +280,7 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
         if col_name not in dataset:
             dataset.add_sink(col_name, format)
 
-    if workflow_location is not None:
+    if workflow_location:
         workflow = resolve_class(workflow_location)(
             name='workflow',
             **{n: parse_value(v) for n, v in parameter})

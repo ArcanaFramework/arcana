@@ -14,22 +14,23 @@ from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaUsageError
 
 
-def build_cs_image(image_tag: str,
-                   commands: ty.List[ty.Dict[str, ty.Any]],
-                   version: str,
-                   authors: ty.List[ty.Tuple[str, str]],
-                   info_url: str,
-                   python_packages: ty.Iterable[str]=(),
-                   system_packages: ty.Iterable[str]=(),
-                   readme: str=None,
-                   docker_registry: str=DOCKER_HUB,
-                   **kwargs):
+def build_xnat_cs_image(image_tag: str,
+                        commands: ty.List[ty.Dict[str, ty.Any]],
+                        pkg_version: str,
+                        authors: ty.List[ty.Tuple[str, str]],
+                        info_url: str,
+                        python_packages: ty.Iterable[str]=(),
+                        system_packages: ty.Iterable[str]=(),
+                        readme: str=None,
+                        docker_registry: str=DOCKER_HUB,
+                        build_dir: Path=None,
+                        **kwargs):
     """Creates a Docker image containing one or more XNAT commands ready
     to be installed in XNAT's container service plugin
 
     Parameters
     ----------
-    pkg_name
+    pkg_name : str
         Name of the package as a whole
     commands
         List of command specifications (in dicts) to be installed on the
@@ -49,6 +50,9 @@ def build_cs_image(image_tag: str,
     wrapper_version
         The version of the wrapper specific to the pkg version. It will be
         appended to the package version, e.g. 0.16.2 -> 0.16.2--1
+    build_dir : Path
+        the directory to build the docker image within, i.e. where to write
+        Dockerfile and supporting files to be copied within the image
     **kwargs:
         Passed on to `generate_neurodocker_specs` method
     """   
@@ -65,7 +69,7 @@ def build_cs_image(image_tag: str,
 
         xnat_cmd = generate_xnat_cs_command(
             image_tag=image_tag,
-            version=version,
+            version=pkg_version,
             registry=docker_registry,
             **cmd_spec)
 
@@ -92,9 +96,7 @@ def build_cs_image(image_tag: str,
     docker_build(build_dir, image_tag)
 
 
-@classmethod
-def generate_xnat_cs_command(cls,
-                             name: str,
+def generate_xnat_cs_command(name: str,
                              pydra_task: str,
                              image_tag: str,
                              inputs,
@@ -118,9 +120,9 @@ def generate_xnat_cs_command(cls,
     image_tag : str
         Name + version of the Docker image to be created
     inputs : ty.List[ty.Union[InputArg, tuple]]
-        Inputs to be provided to the container (pydra_field, format, dialog_name, frequency).
+        Inputs to be provided to the container (pydra_field, format, ui_name, frequency).
         'pydra_field' and 'format' will be passed to "inputs" arg of the Dataset.pipeline() method,
-        'frequency' to the Dataset.add_source() method and 'dialog_name' is displayed in the XNAT
+        'frequency' to the Dataset.add_source() method and 'ui_name' is displayed in the XNAT
         UI
     outputs : ty.List[ty.Union[OutputArg, tuple]]
         Outputs to extract from the container (pydra_field, format, output_path).
@@ -153,19 +155,19 @@ def generate_xnat_cs_command(cls,
         parameters = []
     if isinstance(frequency, str):
         frequency = Clinical[frequency]
-    if frequency not in cls.VALID_FREQUENCIES:
+    if frequency not in VALID_FREQUENCIES:
         raise ArcanaUsageError(
             f"'{frequency}'' is not a valid option ('"
-            + "', '".join(cls.VALID_FREQUENCIES) + "')")
+            + "', '".join(VALID_FREQUENCIES) + "')")
 
     # Convert tuples to appropriate dataclasses for inputs, outputs and parameters
-    inputs = [cls.InputArg(*i) if not isinstance(i, cls.InputArg) else i
-                for i in inputs]
-    outputs = [cls.OutputArg(*o) if not isinstance(o, cls.OutputArg) else o
-                for o in outputs]
+    inputs = [InputArg(*i) if not isinstance(i, InputArg) else i
+              for i in inputs]
+    outputs = [OutputArg(*o) if not isinstance(o, OutputArg) else o
+               for o in outputs]
     parameters = [
-        cls.ParamArg(p) if isinstance(p, str) else (
-            cls.ParamArg(*p) if not isinstance(p, cls.ParamArg) else p)
+        ParamArg(p) if isinstance(p, str) else (
+            ParamArg(*p) if not isinstance(p, ParamArg) else p)
         for p in parameters]
 
     pydra_task = resolve_class(pydra_task)()
@@ -178,8 +180,8 @@ def generate_xnat_cs_command(cls,
     # Add task inputs to inputs JSON specification
     input_args = []
     for inpt in inputs:
-        dialog_name = inpt.dialog_name if inpt.dialog_name else inpt.pydra_field
-        replacement_key = f'[{dialog_name.upper()}_INPUT]'
+        ui_name = inpt.ui_name if inpt.ui_name else inpt.pydra_field
+        replacement_key = f'[{ui_name.upper()}_INPUT]'
         spec = input_specs[inpt.pydra_field]
         
         desc = spec.metadata.get('help_string', '')
@@ -188,9 +190,9 @@ def generate_xnat_cs_command(cls,
             input_type = 'string'
         else:
             desc = f"Match field ({spec.type}) [PATH:STORED_DTYPE]: {desc} "
-            input_type = cls.COMMAND_INPUT_TYPES.get(spec.type, 'string')
+            input_type = COMMAND_INPUT_TYPES.get(spec.type, 'string')
         inputs_json.append({
-            "name": dialog_name,
+            "name": ui_name,
             "description": desc,
             "type": input_type,
             "default-value": "",
@@ -203,17 +205,17 @@ def generate_xnat_cs_command(cls,
     # Add parameters as additional inputs to inputs JSON specification
     param_args = []
     for param in parameters:
-        dialog_name = param.dialog_name if param.dialog_name else param.pydra_field
+        ui_name = param.ui_name if param.ui_name else param.pydra_field
         spec = input_specs[param.pydra_field]
         desc = f"Parameter ({spec.type}): " + spec.metadata.get('help_string', '')
         required = spec._default is NOTHING
         
-        replacement_key = f'[{dialog_name.upper()}_PARAM]'
+        replacement_key = f'[{ui_name.upper()}_PARAM]'
 
         inputs_json.append({
-            "name": dialog_name,
+            "name": ui_name,
             "description": desc,
-            "type": cls.COMMAND_INPUT_TYPES.get(spec.type, 'string'),
+            "type": COMMAND_INPUT_TYPES.get(spec.type, 'string'),
             "default-value": (spec._default if not required else ""),
             "required": required,
             "user-settable": True,
@@ -261,7 +263,7 @@ def generate_xnat_cs_command(cls,
         f" {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
         f"--plugin serial "  # Use serial processing instead of parallel to simplify outputs
         f"--loglevel info "
-        f"--work {cls.WORK_MOUNT} "  # working directory
+        f"--work {XnatViaCS.WORK_MOUNT} "  # working directory
         f"--dataset_space medimage:Clinical "
         f"--dataset_hierarchy subject,session "
         f"--frequency {frequency} ")  # pass XNAT API details
@@ -353,17 +355,17 @@ def generate_xnat_cs_command(cls,
             {
                 "name": "in",
                 "writable": False,
-                "path": str(cls.INPUT_MOUNT)
+                "path": str(XnatViaCS.INPUT_MOUNT)
             },
             {
                 "name": "out",
                 "writable": True,
-                "path": str(cls.OUTPUT_MOUNT)
+                "path": str(XnatViaCS.OUTPUT_MOUNT)
             },
             {  # Saves the Pydra-cache directory outside of the container for easier debugging
                 "name": "work",
                 "writable": True,
-                "path": str(cls.WORK_MOUNT)
+                "path": str(XnatViaCS.WORK_MOUNT)
             }
         ],
         "ports": {},
@@ -432,11 +434,12 @@ def save_store_config(build_dir: Path):
         ['run', ['mkdir', '-p', '/root/.arcana']],
         ['copy', ['./stores.yml', '/root/.arcana/stores.yml']]]
 
+
 @dataclass
 class InputArg():
     pydra_field: str  # Must match the name of the Pydra task input
     format: type
-    dialog_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
+    ui_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
     frequency: Clinical = Clinical.session
 
 
@@ -450,7 +453,7 @@ class OutputArg():
 @dataclass
 class ParamArg():
     pydra_field: str  # Name of parameter to expose in Pydra task
-    dialog_name: str = None  # defaults to pydra_field
+    ui_name: str = None  # defaults to pydra_field
 
 
 COMMAND_INPUT_TYPES = {

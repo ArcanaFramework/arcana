@@ -23,7 +23,9 @@ setup(
     install_requires=install_requires,
     tests_require=tests_require,
     entry_points={
-        'console_scripts': ['arcana = arcana.cli:cli']},
+        'console_scripts': [
+            'arcana = arcana.cli:cli',
+            'run-arcana-pipeline = arcana.cli.deploy:run-arcana-pipeline']},
     extras_require={
         'test': tests_require},
     cmdclass=versioneer.get_cmdclass(),
