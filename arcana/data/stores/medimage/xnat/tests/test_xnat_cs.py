@@ -22,9 +22,11 @@ def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
     
     IMAGE_TAG = 'arcana-test-xnat-cs'
 
+    cmd_name = command_spec['name'] = 'xnat-cs-test' + run_prefix
+
     build_xnat_cs_image(
         image_tag=IMAGE_TAG,
-        commands=[],
+        commands=[command_spec],
         authors=['some.one@an.org'],
         info_url='http://concatenate.readthefakedocs.io',
         system_packages=[],
@@ -43,7 +45,6 @@ def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
         # the fact that the container service test XNAT instance shares the
         # outer Docker socket. Since we build the pipeline image with the same
         # socket there is no need to pull it.
-        cmd_name = command_spec['name'] = 'xnat-cs-test' + run_prefix
         xnat_command = generate_xnat_cs_command(image_tag=IMAGE_TAG,
                                                 **command_spec)
         cmd_id = xlogin.post('/xapi/commands', json=xnat_command).json()

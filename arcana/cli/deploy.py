@@ -302,6 +302,14 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
         if col_name not in dataset.columns:
             dataset.add_sink(col_name, format)
 
+    params_dict = {}
+    for pname, pval in parameter:
+        if pval == '':
+            pval = None
+        else:
+            pval = parse_value(pval)
+        params_dict[pname] = pval
+
     workflow = resolve_class(workflow_location)(
         name='workflow',
         **{n: parse_value(v) for n, v in parameter})

@@ -211,7 +211,7 @@ def generate_xnat_cs_command(name: str,
             "user-settable": True,
             "replacement-key": replacement_key})
         input_args.append(
-            f"--input {inpt.field} {inpt.format} {replacement_key}")
+            f"--input {inpt.field} {inpt.format} '{replacement_key}'")
 
     # Add parameters as additional inputs to inputs JSON specification
     param_args = []
@@ -230,7 +230,7 @@ def generate_xnat_cs_command(name: str,
             "user-settable": True,
             "replacement-key": replacement_key})
         param_args.append(
-            f"--parameter {param.field} {replacement_key}")
+            f"--parameter {param.field} '{replacement_key}'")
 
     # Set up output handlers and arguments
     outputs_json = []
