@@ -23,7 +23,7 @@ def work_dir():
     # return work_dir
     work_dir = mkdtemp()
     yield Path(work_dir)
-    shutil.rmtree(work_dir)
+    # shutil.rmtree(work_dir)
 
 
 TEST_TASKS = {
@@ -213,34 +213,34 @@ def concatenate_task(request):
 @pytest.fixture
 def command_spec():
     return {
-        'pipeline_name': 'conctenate-test',
+        'name': 'conctenate-test',
         'pydra_task': 'arcana.test.tasks:concatenate',
-        'image_tag': 'arcana-concatenate:latest',
         'inputs': [
             {
-                'pydra_field': 'in_file1',
-                'format': 'medimage:Text',
-                'ui_name': 'to_concat1',
+                'field': 'in_file1',
+                'format': 'common:Text',
+                'ui': 'First-file',
                 'frequency': 'session'
             },
             {
-                'pydra_field': 'in_file2',
-                'format': 'medimage:Text',
-                'ui_name': 'to_concat2',
+                'field': 'in_file2',
+                'format': 'common:Text',
+                'ui': 'Second-file',
                 'frequency': 'session'
             },
         ],
         'outputs': [
             {
-                'pydra_field': 'out_file',
-                'format': 'medimage:Text',
+                'field': 'out_file',
+                'format': 'common:Text',
                 'xnat_path': 'concatenated'
             }
         ],
         'parameters': [
             {
-                'pydra_field': 'duplicates',
-                'ui_name': 'Number of duplicates'
+                'field': 'duplicates',
+                'ui': 'Number-of-duplicates',
+                'required': True
             }
         ],
         'description': "A pipeline to test Arcana's deployment tool",

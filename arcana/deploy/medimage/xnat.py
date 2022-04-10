@@ -4,6 +4,7 @@ import tempfile
 import json
 from attr import NOTHING
 from dataclasses import dataclass
+import arcana.data.formats.common
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.deploy.build import (
@@ -16,7 +17,6 @@ from arcana.exceptions import ArcanaUsageError
 
 def build_xnat_cs_image(image_tag: str,
                         commands: ty.List[ty.Dict[str, ty.Any]],
-                        pkg_version: str,
                         authors: ty.List[ty.Tuple[str, str]],
                         info_url: str,
                         python_packages: ty.Iterable[str]=(),
@@ -35,9 +35,6 @@ def build_xnat_cs_image(image_tag: str,
     commands
         List of command specifications (in dicts) to be installed on the
         image, see `generate_xnat_command` for valid args (dictionary keys).
-    pkg_version
-        Version of the package the commands are drawn from (could be 3.0.3
-        for MRtrix3 for example)
     authors
         Names and emails of the maintainers of the wrapper pipeline
     info_url
@@ -69,7 +66,6 @@ def build_xnat_cs_image(image_tag: str,
 
         xnat_cmd = generate_xnat_cs_command(
             image_tag=image_tag,
-            version=pkg_version,
             registry=docker_registry,
             **cmd_spec)
 
@@ -82,7 +78,7 @@ def build_xnat_cs_image(image_tag: str,
         python_packages=python_packages,
         system_packages=system_packages,
         readme=readme,
-        **kwargs)
+        **{k: v for k, v in kwargs.items() if not k.startswith('_')})
 
     # Copy the generated XNAT commands inside the container for ease of reference
     nd_specs['instructions'].append(
@@ -103,10 +99,10 @@ def generate_xnat_cs_command(name: str,
                              outputs,
                              description,
                              version,
+                             info_url,
                              parameters=None,
                              frequency='session',
-                             registry=DOCKER_HUB,
-                             info_url=None):
+                             registry=DOCKER_HUB):
     """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
     should handle the containerised pipeline
 
@@ -120,26 +116,26 @@ def generate_xnat_cs_command(name: str,
     image_tag : str
         Name + version of the Docker image to be created
     inputs : ty.List[ty.Union[InputArg, tuple]]
-        Inputs to be provided to the container (pydra_field, format, ui_name, frequency).
-        'pydra_field' and 'format' will be passed to "inputs" arg of the Dataset.pipeline() method,
-        'frequency' to the Dataset.add_source() method and 'ui_name' is displayed in the XNAT
+        Inputs to be provided to the container (field, format, ui, frequency).
+        'field' and 'format' will be passed to "inputs" arg of the Dataset.pipeline() method,
+        'frequency' to the Dataset.add_source() method and 'ui' is displayed in the XNAT
         UI
     outputs : ty.List[ty.Union[OutputArg, tuple]]
-        Outputs to extract from the container (pydra_field, format, output_path).
-        'pydra_field' and 'format' will be passed as "outputs" arg the Dataset.pipeline() method,
+        Outputs to extract from the container (field, format, output_path).
+        'field' and 'format' will be passed as "outputs" arg the Dataset.pipeline() method,
         'output_path' determines the path the output will saved in the XNAT data tree.
     description : str
         User-facing description of the pipeline
     version : str
         Version string for the wrapped pipeline
+    info_url : str
+        URI explaining in detail what the pipeline does
     parameters : ty.List[str]
         Parameters to be exposed in the CS command    
     frequency : str
         Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
     registry : str
         URI of the Docker registry to upload the image to
-    info_url : str
-        URI explaining in detail what the pipeline does
 
     Returns
     -------
@@ -161,17 +157,35 @@ def generate_xnat_cs_command(name: str,
             + "', '".join(VALID_FREQUENCIES) + "')")
 
     # Convert tuples to appropriate dataclasses for inputs, outputs and parameters
-    inputs = [InputArg(*i) if not isinstance(i, InputArg) else i
-              for i in inputs]
-    outputs = [OutputArg(*o) if not isinstance(o, OutputArg) else o
-               for o in outputs]
-    parameters = [
-        ParamArg(p) if isinstance(p, str) else (
-            ParamArg(*p) if not isinstance(p, ParamArg) else p)
-        for p in parameters]
+    def parse_specs(args, klass):
+        parsed_args = []
+        for arg in args:
+            if isinstance(arg, klass):
+                parsed = arg
+            else:
+                parsed = klass(**arg)
+                if isinstance(parsed.format, str):
+                    parsed.format = resolve_class(
+                        parsed.format, prefixes=['arcana.data.formats'])
+            parsed_args.append(parsed)
+        return parsed_args
+    
+    inputs = parse_specs(inputs, InputArg)
+    outputs = parse_specs(outputs, OutputArg)
 
-    pydra_task = resolve_class(pydra_task)()
-    input_specs = dict(f[:2] for f in pydra_task.input_spec.fields)
+    parsed_params = []
+    for param in parameters:
+        if isinstance(param, ParamArg):
+            parsed = param
+        elif isinstance(param, str):
+            parsed = ParamArg(field=param)
+        else:
+            parsed = ParamArg(**param)
+        parsed_params.append(parsed)
+    parameters = parsed_params
+
+    # pydra_task = resolve_class(pydra_task)()
+    # input_specs = dict(f[:2] for f in pydra_task.input_spec.fields)
     # output_specs = dict(f[:2] for f in pydra_task.output_spec.fields)
 
     # JSON to define all inputs and parameters to the pipelines
@@ -180,19 +194,16 @@ def generate_xnat_cs_command(name: str,
     # Add task inputs to inputs JSON specification
     input_args = []
     for inpt in inputs:
-        ui_name = inpt.ui_name if inpt.ui_name else inpt.pydra_field
-        replacement_key = f'[{ui_name.upper()}_INPUT]'
-        spec = input_specs[inpt.pydra_field]
-        
-        desc = spec.metadata.get('help_string', '')
-        if spec.type in (str, Path):
-            desc = (f"Match resource [PATH:STORED_DTYPE]: {desc} ")
+        replacement_key = f'[{inpt.field.upper()}_INPUT]'
+        # spec = input_specs[inpt.field]
+        if inpt.format in (str, Path):
+            desc = (f"Match resource [PATH:STORED_DTYPE]: {inpt.description} ")
             input_type = 'string'
         else:
-            desc = f"Match field ({spec.type}) [PATH:STORED_DTYPE]: {desc} "
-            input_type = COMMAND_INPUT_TYPES.get(spec.type, 'string')
+            desc = f"Match field ({inpt.format.format_name()}) [PATH:STORED_DTYPE]: {inpt.description} "
+            input_type = COMMAND_INPUT_TYPES.get(inpt.format, 'string')
         inputs_json.append({
-            "name": ui_name,
+            "name": inpt.ui,
             "description": desc,
             "type": input_type,
             "default-value": "",
@@ -200,58 +211,56 @@ def generate_xnat_cs_command(name: str,
             "user-settable": True,
             "replacement-key": replacement_key})
         input_args.append(
-            f"--input {inpt.pydra_field} {inpt.format} {replacement_key}")
+            f"--input {inpt.field} {inpt.format} {replacement_key}")
 
     # Add parameters as additional inputs to inputs JSON specification
     param_args = []
     for param in parameters:
-        ui_name = param.ui_name if param.ui_name else param.pydra_field
-        spec = input_specs[param.pydra_field]
-        desc = f"Parameter ({spec.type}): " + spec.metadata.get('help_string', '')
-        required = spec._default is NOTHING
+        # spec = input_specs[param.field]
+        desc = f"Parameter ({param.type}): " + param.description
         
-        replacement_key = f'[{ui_name.upper()}_PARAM]'
+        replacement_key = f'[{param.field.upper()}_PARAM]'
 
         inputs_json.append({
-            "name": ui_name,
+            "name": param.ui,
             "description": desc,
-            "type": COMMAND_INPUT_TYPES.get(spec.type, 'string'),
-            "default-value": (spec._default if not required else ""),
-            "required": required,
+            "type": COMMAND_INPUT_TYPES.get(param.type, 'string'),
+            "default-value": (param.default if not param.required else ""),
+            "required": param.required,
             "user-settable": True,
             "replacement-key": replacement_key})
         param_args.append(
-            f"--parameter {param.pydra_field} {replacement_key}")
+            f"--parameter {param.field} {replacement_key}")
 
     # Set up output handlers and arguments
     outputs_json = []
     output_handlers = []
     output_args = []
     for output in outputs:
-        xnat_path = output.xnat_path if output.xnat_path else output.pydra_field
+        xnat_path = output.xnat_path if output.xnat_path else output.field
         label = xnat_path.split('/')[0]
-        out_fname = xnat_path + (output.format.ext if output.format.ext else '')
+        out_fname = xnat_path + output.format.ext
         # output_fname = xnat_path
         # if output.format.ext is not None:
         #     output_fname += output.format.ext
         # Set the path to the 
         outputs_json.append({
-            "name": output.pydra_field,
-            "description": f"{output.pydra_field} ({output.format})",
+            "name": output.field,
+            "description": f"{output.field} ({output.format})",
             "required": True,
             "mount": "out",
             "path": out_fname,
             "glob": None})
         output_handlers.append({
-            "name": f"{output.pydra_field}-resource",
-            "accepts-command-output": output.pydra_field,
+            "name": f"{output.field}-resource",
+            "accepts-command-output": output.field,
             "via-wrapup-command": None,
             "as-a-child-of": "SESSION",
             "type": "Resource",
             "label": label,
-            "format": output.format.name})
+            "format": output.format.format_name()})
         output_args.append(
-            f'--output {output.pydra_field} {output.format} {xnat_path}')
+            f'--output {output.field} {output.format} {xnat_path}')
 
     input_args_str = ' '.join(input_args)
     output_args_str = ' '.join(output_args)
@@ -410,7 +419,7 @@ def copy_command_ref(xnat_commands, build_dir):
     cmds_dir.mkdir()
     for cmd in xnat_commands:
         fname = cmd.get('name', 'command') + '.json'
-        with open(build_dir / fname, 'w') as f:
+        with open(cmds_dir / fname, 'w') as f:
             json.dump(cmd, f, indent='    ')
     return ['copy', ['./xnat_commands', '/xnat_commands']]
 
@@ -431,29 +440,39 @@ def save_store_config(build_dir: Path):
     DataStore.save_entries({'xnat-cs': {}},
                            config_path=build_dir / 'stores.yml')
     return [
-        ['run', ['mkdir', '-p', '/root/.arcana']],
+        ['run', 'mkdir -p /root/.arcana'],
         ['copy', ['./stores.yml', '/root/.arcana/stores.yml']]]
 
 
 @dataclass
 class InputArg():
-    pydra_field: str  # Must match the name of the Pydra task input
-    format: type
-    ui_name: str = None # The name of the parameter in the XNAT dialog, defaults to the pydra name
+    field: str  # Must match the name of the Pydra task input
+    format: type = arcana.data.formats.common.File
+    ui: str = None # How the input will be referred to in the XNAT dialog, defaults to the field name
     frequency: Clinical = Clinical.session
+    description: str = ''  # description of the input
 
+    def __post_init__(self):
+        if self.ui is None:
+            self.ui = self.field
 
 @dataclass
 class OutputArg():
-    pydra_field: str  # Must match the name of the Pydra task output
-    format: type
+    field: str  # Must match the name of the Pydra task output
+    format: type = arcana.data.formats.common.File
     xnat_path: str = None  # The path the output is stored at in XNAT, defaults to the pydra name
-
 
 @dataclass
 class ParamArg():
-    pydra_field: str  # Name of parameter to expose in Pydra task
-    ui_name: str = None  # defaults to pydra_field
+    field: str  # Name of parameter to expose in Pydra task
+    ui: str = None  # How the input will be referred to in the XNAT dialog, defaults to field name
+    type: type = str
+    required: bool = False
+    description: str = ''  # description of the parameter
+
+    def __post_init__(self):
+        if self.ui is None:
+            self.ui = self.field
 
 
 COMMAND_INPUT_TYPES = {

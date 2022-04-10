@@ -44,11 +44,27 @@ DOCKER_ORG is the Docker organisation to build the """)
               help="Specify the directory to build the Docker image in")
 @click.option('--loglevel', default='warning',
               help="The level to display logs at")
-def build(spec_path, docker_org, docker_registry, loglevel, build_dir):
+@click.option('--use-local-packages/--dont-use-local-packages', type=bool,
+              default=False,
+              help=("Use locally installed Python packages, instead of pulling "
+                    "them down from PyPI"))
+@click.option('--install_extras', type=str, default=None,
+              help=("Install extras to use when installing Arcana inside the "
+                    "container image. Typically only used in tests to provide "
+                    "'test' extra"))
+@click.option('--raise-errors/--log-errors', type=bool, default=False,
+              help=("Raise exceptions instead of logging failures"))
+def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
+          use_local_packages, install_extras, raise_errors):
 
     spec_path = Path(spec_path.decode('utf-8'))  # FIXME: This shouldn't be necessary
     if build_dir:
         build_dir = Path(build_dir.decode('utf-8'))
+
+    if install_extras:
+        install_extras = install_extras.split(',')
+    else:
+        install_extras = []
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
@@ -56,29 +72,32 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir):
         spec = load_yaml_spec(spath, base_dir=spec_path)
 
         # Make image tag
-        pkg_name = spec['pkg_name'].lower()  #.replace('-', '_')
+        pkg_name = spec.pop('pkg_name').lower() # .replace('-', '_')
         tag = '.'.join(spath.relative_to(spec_path).parent.parts + (pkg_name,))
-        image_version = str(spec['pkg_version'])
+        image_version = str(spec.pop('pkg_version'))
         if 'wrapper_version' in spec:
-            image_version += f"-{spec['wrapper_version']}"
+            image_version += f"-{spec.pop('wrapper_version')}"
         image_tag = f"{docker_org}/{tag}:{image_version}"
         if docker_registry is not None:
-            image_tag = docker_registry + '/' + image_tag
+            image_tag = docker_registry.lower() + '/' + image_tag
         else:
             docker_registry = DOCKER_HUB
 
-        # try:
-        build_xnat_cs_image(
-            image_tag=image_tag,
-            build_dir=build_dir,
-            docker_org=docker_org,
-            docker_registry=docker_registry,
-            **spec)
-        # except Exception:
-        #     logger.error("Could not build %s pipeline:\n%s", image_tag, format_exc())
-        # else:
-        #     click.echo(image_tag)
-        #     logger.info("Successfully built %s pipeline", image_tag)
+        try:
+            build_xnat_cs_image(
+                image_tag=image_tag,
+                build_dir=build_dir,
+                docker_registry=docker_registry,
+                use_local_packages=use_local_packages,
+                arcana_install_extras=install_extras,
+                **spec)
+        except Exception:
+            if raise_errors:
+                raise
+            logger.error("Could not build %s pipeline:\n%s", image_tag, format_exc())
+        else:
+            click.echo(image_tag)
+            logger.info("Successfully built %s pipeline", image_tag)
 
 
 
@@ -273,11 +292,11 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
     outputs = parse_col_option(output)
 
     for col_name, _, format in inputs:
-        if col_name not in dataset:
+        if col_name not in dataset.columns:
             dataset.add_source(col_name, format)
 
     for col_name, _, format in outputs:
-        if col_name not in dataset:
+        if col_name not in dataset.columns:
             dataset.add_sink(col_name, format)
 
     if workflow_location:
@@ -287,7 +306,7 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
     else:
         workflow = None   
 
-    if dataset.pipelines[pipeline_name] and not overwrite:
+    if pipeline_name in dataset.pipelines and not overwrite:
         pipeline = dataset.pipelines[pipeline_name]
         if workflow is not None and workflow != pipeline.workflow:
             raise RuntimeError(
@@ -300,12 +319,12 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
             frequency=frequency, overwrite=overwrite)
 
     # Instantiate the Pydra workflow
-    workflow = pipeline(name=pipeline_name, cache_dir=pipeline_cache_dir,
-                        plugin=plugin)
+    workflow = pipeline(cache_dir=pipeline_cache_dir, plugin=plugin)
 
     # execute the workflow
     result = workflow()
 
-    logger.info("Pipeline %s ran successfully\n: %", pipeline_name,
-                result.stdout)
+    logger.info("Pipeline %s ran successfully for the following nodes\n: %s",
+                pipeline_name, '\n'.join(result.output.processed))
+
     

@@ -689,7 +689,8 @@ class WithSideCars(BaseFile):
     side car files
     """
 
-    side_cars: ty.Dict[str, str] = attr.ib(converter=optional(absolute_paths_dict))
+    side_cars: ty.Dict[str, str] = attr.ib(
+        converter=optional(absolute_paths_dict))
 
     @side_cars.default
     def default_side_cars(self):

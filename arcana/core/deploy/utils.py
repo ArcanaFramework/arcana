@@ -13,6 +13,54 @@ from arcana import __version__
 from arcana.exceptions import ArcanaError
 
 
+@dataclass
+class PipSpec():
+    """Specification of a Python package"""
+
+    name: str
+    version: str = None
+    url: str = None
+    file_path: str = None
+    extras: ty.List[str] = dataclass_field(default_factory=list)
+
+    @classmethod
+    def unique(cls, pip_specs: ty.Iterable):
+        """Merge a list of Pip install specs so each package only appears once
+
+        Parameters
+        ----------
+        pip_specs : ty.Iterable[PipSpec]
+            the pip specs to merge
+
+        Returns
+        -------
+        list[PipSpec]
+            the merged pip specs
+
+        Raises
+        ------
+        ArcanaError
+            if there is a mismatch between two entries of the same package
+        """
+        dct = {}
+        for pip_spec in pip_specs:
+            if isinstance(pip_spec, dict):
+                pkg_spec = PipSpec(**pkg_spec)
+            try:
+                prev_spec = dct[pip_spec.name]
+            except KeyError:
+                dct[pip_spec.name] = pip_spec
+            else:
+                if (prev_spec.version != pip_spec.version
+                    or prev_spec.url != pip_spec.url
+                        or prev_spec.file_path != pip_spec.file_path):
+                    raise ArcanaError(
+                        f"Cannot install '{pip_spec.name}' due to conflict "
+                        f"between requested versions, {pip_spec} and {prev_spec}")
+                prev_spec.extras.extend(pip_spec.extras)
+        return list(dct.values())
+
+
 def load_yaml_spec(path: Path, base_dir: Path=None):
     """Loads a deploy-build specification from a YAML file
 
@@ -75,55 +123,7 @@ def walk_spec_paths(spec_path: Path) -> ty.Iterable[Path]:
         for path in spec_path.rglob('*.yml'):
             yield path
 
-
-@dataclass
-class PipSpec():
-    """Specification of a Python package"""
-
-    name: str
-    version: str = None
-    url: str = None
-    file_path: str = None
-    extras: ty.List[str] = dataclass_field(default_factory=list)
-
-    @classmethod
-    def unique(cls, pip_specs: ty.Iterable):
-        """Merge a list of Pip install specs so each package only appears once
-
-        Parameters
-        ----------
-        pip_specs : ty.Iterable[PipSpec]
-            the pip specs to merge
-
-        Returns
-        -------
-        list[PipSpec]
-            the merged pip specs
-
-        Raises
-        ------
-        ArcanaError
-            if there is a mismatch between two entries of the same package
-        """
-        dct = {}
-        for pip_spec in pip_specs:
-            if isinstance(pkg_spec, dict):
-                pkg_spec = PipSpec(**pkg_spec)
-            try:
-                prev_spec = dct[pip_spec.name]
-            except KeyError:
-                dct[pip_spec.name] = pip_spec
-            else:
-                if (prev_spec.version != pip_spec.version
-                    or prev_spec.url != pip_spec.url
-                        or prev_spec.file_path != pip_spec.file_path):
-                    raise ArcanaError(
-                        f"Cannot install '{pip_spec.name}' due to conflict "
-                        f"between requested versions, {pip_spec} and {prev_spec}")
-                prev_spec.extras.extend(pip_spec.extras)
-        return list(dct.values())
-
-def installed_package_location(package: PipSpec):
+def local_package_location(pip_spec: PipSpec):
     """Detect the installed locations of the packages, including development
     versions.
 
@@ -138,23 +138,24 @@ def installed_package_location(package: PipSpec):
         the pip specification for the installation location of the package
     """
     
-    if isinstance(package, str):
-        parts = package.split('==')
-        pkg_name = parts[0]
-        pkg_version = parts[1] if len(parts) == 2 else None
-        try:
-            pkg = next(p for p in pkg_resources.working_set
-                        if p.project_name == pkg_name)
-        except StopIteration:
-            raise ArcanaBuildError(
-                f"Did not find {pkg_name} in installed working set:\n"
-                + "\n".join(sorted(
-                    p.key + '/' + p.project_name
-                    for p in pkg_resources.working_set)))
-        if pkg_version and pkg.version != pkg_version:
-            raise ArcanaBuildError(
-                f"Requested package {pkg_version} does not match installed "
-                f"{pkg.version}")
+    if isinstance(pip_spec, str):
+        parts = pip_spec.split('==')
+        pip_spec = PipSpec(
+            name=parts[0],
+            version=(parts[1] if len(parts) == 2 else None))    
+    try:
+        pkg = next(p for p in pkg_resources.working_set
+                    if p.project_name == pip_spec.name)
+    except StopIteration:
+        raise ArcanaBuildError(
+            f"Did not find {pip_spec.name} in installed working set:\n"
+            + "\n".join(sorted(
+                p.key + '/' + p.project_name
+                for p in pkg_resources.working_set)))
+    if pip_spec.version and not pkg.version.endswith('.dirty') and pkg.version != pip_spec.version:
+        raise ArcanaBuildError(
+            f"Requested package {pip_spec.version} does not match installed "
+            f"{pkg.version}")
     pkg_loc = Path(pkg.location).resolve()
     # Determine whether installed version of requirement is locally
     # installed (and therefore needs to be copied into image) or can
@@ -162,7 +163,9 @@ def installed_package_location(package: PipSpec):
     if pkg_loc not in site_pkg_locs:
         # Copy package into Docker image and instruct pip to install from
         # that copy
-        pip_spec = PipSpec(file_path='/python-packages/' + pkg.key)
+        pip_spec = PipSpec(name=pip_spec.name,
+                           file_path=pkg_loc,
+                           extras=pip_spec.extras)
     else:
         # Check to see whether package is installed via "direct URL" instead
         # of through PyPI
@@ -175,9 +178,13 @@ def installed_package_location(package: PipSpec):
                 url = url_spec['vcs'] + '+' + url
             if 'commit_id' in url_spec:
                 url += '@' + url_spec['commit_id']
-            pip_spec = PipSpec(url=url)
+            pip_spec = PipSpec(name=pip_spec.name,
+                               url=url,
+                           extras=pip_spec.extras)
         else:
-            pip_spec = PipSpec(version=pkg.version)
+            pip_spec = PipSpec(name=pip_spec.name,
+                               version=pkg.version,
+                               extras=pip_spec.extras)
     return pip_spec
 
 

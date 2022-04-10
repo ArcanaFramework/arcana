@@ -60,6 +60,9 @@ class TestDatasetBlueprint():
     expected_formats: ty.Dict[str, ty.Tuple[type, ty.List[str]]]  # expected formats
     to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataSpace, type, ty.List[str]]]]  # files to insert as derivatives
 
+    @property
+    def space(self):
+        return type(self.hierarchy[0])
 
 
 def make_dataset(blueprint, dataset_path):

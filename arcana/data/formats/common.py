@@ -77,6 +77,8 @@ class File(BaseFile):
 
 class Directory(BaseDirectory):
 
+    ext = ''
+
     @classmethod
     @converter(Zip)
     def unzip(cls, fs_path):
