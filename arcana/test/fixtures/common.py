@@ -217,29 +217,29 @@ def command_spec():
         'pydra_task': 'arcana.test.tasks:concatenate',
         'inputs': [
             {
-                'field': 'in_file1',
+                'pydra_field': 'in_file1',
                 'format': 'common:Text',
-                'ui': 'First-file',
+                'xnat_name': 'first-file',
                 'frequency': 'session'
             },
             {
-                'field': 'in_file2',
+                'pydra_field': 'in_file2',
                 'format': 'common:Text',
-                'ui': 'Second-file',
+                'xnat_name': 'second-file',
                 'frequency': 'session'
             },
         ],
         'outputs': [
             {
-                'field': 'out_file',
+                'pydra_field': 'out_file',
                 'format': 'common:Text',
                 'xnat_path': 'concatenated'
             }
         ],
         'parameters': [
             {
-                'field': 'duplicates',
-                'ui': 'Number-of-duplicates',
+                'pydra_field': 'duplicates',
+                'xnat_name': 'Number-of-duplicates',
                 'required': True
             }
         ],

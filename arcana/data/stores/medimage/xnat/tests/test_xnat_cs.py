@@ -24,7 +24,7 @@ def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
 
     cmd_name = command_spec['name'] = 'xnat-cs-test' + run_prefix
 
-    build_xnat_cs_image(
+    build_dir = build_xnat_cs_image(
         image_tag=IMAGE_TAG,
         commands=[command_spec],
         authors=['some.one@an.org'],
@@ -60,8 +60,8 @@ def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
         launch_result = xlogin.post(
             f"/xapi/projects/{dataset.id}/wrappers/{cmd_id}/root/SESSION/launch",
             json={'SESSION': f'/archive/experiments/{test_xsession.id}',
-                  'to_concat1': 'scan1:Text',
-                  'to_concat2': 'scan2:Text',
+                  'to_concat1': 'scan1',
+                  'to_concat2': 'scan2',
                   'duplicates': '2'}).json()
 
         assert launch_result['status'] == 'success'
