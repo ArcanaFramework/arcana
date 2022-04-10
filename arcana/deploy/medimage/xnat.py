@@ -197,7 +197,7 @@ def generate_xnat_cs_command(name: str,
             desc = (f"Match resource [PATH:STORED_DTYPE]: {inpt.description} ")
             input_type = 'string'
         else:
-            desc = f"Match field ({inpt.format.format_name()}) [PATH:STORED_DTYPE]: {inpt.description} "
+            desc = f"Match field ({inpt.format.class_name()}) [PATH:STORED_DTYPE]: {inpt.description} "
             input_type = COMMAND_INPUT_TYPES.get(inpt.format, 'string')
         inputs_json.append({
             "name": inpt.xnat_name,
@@ -208,7 +208,7 @@ def generate_xnat_cs_command(name: str,
             "user-settable": True,
             "replacement-key": replacement_key})
         input_args.append(
-            f"--input {inpt.pydra_field} {inpt.format} '{replacement_key}'")
+            f"--input '{replacement_key}' {inpt.pydra_field} {inpt.format.location()} ")
 
     # Add parameters as additional inputs to inputs JSON specification
     param_args = []
@@ -226,7 +226,7 @@ def generate_xnat_cs_command(name: str,
             "user-settable": True,
             "replacement-key": replacement_key})
         param_args.append(
-            f"--parameter {param.pydra_field} '{replacement_key}'")
+            f"--parameter {param.pydra_field} '{replacement_key}' ")
 
     # Set up output handlers and arguments
     outputs_json = []
@@ -242,7 +242,7 @@ def generate_xnat_cs_command(name: str,
         # Set the path to the 
         outputs_json.append({
             "name": output.pydra_field,
-            "description": f"{output.pydra_field} ({output.format})",
+            "description": f"{output.pydra_field} ({output.format.location()})",
             "required": True,
             "mount": "out",
             "path": out_fname,
@@ -254,9 +254,9 @@ def generate_xnat_cs_command(name: str,
             "as-a-child-of": "SESSION",
             "type": "Resource",
             "label": label,
-            "format": output.format.format_name()})
+            "format": output.format.class_name()})
         output_args.append(
-            f'--output {output.pydra_field} {output.format} {xnat_path}')
+            f'--output {xnat_path} {output.pydra_field} {output.format.location()} ')
 
     input_args_str = ' '.join(input_args)
     output_args_str = ' '.join(output_args)
@@ -265,7 +265,9 @@ def generate_xnat_cs_command(name: str,
     cmdline = (
         f"conda run --no-capture-output -n arcana "  # activate conda
         f"run-arcana-pipeline  xnat-cs//[PROJECT_ID] {name} {pydra_task} "  # run pydra task in Arcana
-        f" {input_args_str} {output_args_str} {param_args_str} " # inputs, outputs + params
+        + input_args_str
+        + output_args_str
+        + param_args_str +
         f"--plugin serial "  # Use serial processing instead of parallel to simplify outputs
         f"--loglevel info "
         f"--work {XnatViaCS.WORK_MOUNT} "  # working directory

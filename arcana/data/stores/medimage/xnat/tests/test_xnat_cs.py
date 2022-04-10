@@ -60,9 +60,9 @@ def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
         launch_result = xlogin.post(
             f"/xapi/projects/{dataset.id}/wrappers/{cmd_id}/root/SESSION/launch",
             json={'SESSION': f'/archive/experiments/{test_xsession.id}',
-                  'to_concat1': 'scan1',
-                  'to_concat2': 'scan2',
-                  'duplicates': '2'}).json()
+                  'first-file': 'scan1',
+                  'second-file': 'scan2',
+                  'number-of-duplicates': '2'}).json()
 
         assert launch_result['status'] == 'success'
         workflow_id = launch_result['workflow-id']

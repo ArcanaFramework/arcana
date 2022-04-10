@@ -248,13 +248,6 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
                  input, output, frequency, overwrite, work_dir, plugin, loglevel,
                  dataset_name, dataset_space, dataset_hierarchy, ids):
 
-    if len(workflow_location) == 1:
-        workflow_location = workflow_location[0]
-    elif len(workflow_location) > 1:
-        raise ClickUsageError(
-            f"Only one workflow can be specified to be run in pipeline: "
-            f"{workflow_location}.")
-
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
     if work_dir is None:

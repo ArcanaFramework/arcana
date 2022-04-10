@@ -239,7 +239,7 @@ def command_spec():
         'parameters': [
             {
                 'pydra_field': 'duplicates',
-                'xnat_name': 'Number-of-duplicates',
+                'xnat_name': 'number-of-duplicates',
                 'required': True
             }
         ],

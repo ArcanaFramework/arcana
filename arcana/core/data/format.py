@@ -12,7 +12,7 @@ from abc import ABCMeta, abstractmethod
 import attr
 from attr.converters import optional
 from pydra.engine.core import LazyField, Workflow
-from arcana.core.utils import parse_value, func_task
+from arcana.core.utils import class_location, parse_value, func_task
 from arcana.exceptions import (
     ArcanaUnresolvableFormatException, ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
     ArcanaDataNotDerivedYetError, ArcanaFileFormatError, ArcanaFormatConversionError)
@@ -108,6 +108,31 @@ class DataItem(metaclass=ABCMeta):
         if self.data_node is None:
             raise ArcanaUsageError(
                 f"Cannot 'get' {self} as it is not part of a dataset")
+
+    @classmethod
+    def class_name(cls):
+        return cls.__name__.lower()
+
+    @classmethod
+    def location(cls, relative=True):
+        """Returns the location of the format class definition
+
+        Parameters
+        ----------
+        relative : bool, optional
+            return the module location relative to `arcana.data.formats`, 
+            if applicable, by default True
+
+        Returns
+        -------
+        str
+            the location of the class format in <module-path>:<class-name>
+        """
+        loc = class_location(cls)
+        if relative and loc.startswith('arcana.data.formats.'):
+            loc = loc[len('arcana.data.formats.'):]
+        return loc
+
 
 @attr.s
 class Field(DataItem):
@@ -289,11 +314,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         if self.fs_path is None:
             raise ArcanaUsageError(
                 f"Attempting to access file path of {self} before it is set")
-        return [self.fs_path]        
-
-    @classmethod
-    def format_name(cls):
-        return cls.__name__.lower()
+        return [self.fs_path]
 
     @classmethod
     def fs_names(cls):
@@ -324,7 +345,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             whether or not the name matches the format
         """
         return name.lower() in [
-            n.lower() for n in (cls.format_name(),) + cls.alternative_names]
+            n.lower() for n in (cls.class_name(),) + cls.alternative_names]
 
     @property
     def value(self):
@@ -407,7 +428,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             if item is None:
                 raise ArcanaFileFormatError(
                     f"Could not file a matching resource in {unresolved.path} for"
-                    f" the given format ({cls.format_name()}), found "
+                    f" the given format ({cls.class_name()}), found "
                     "('{}')".format("', '".join(unresolved.uris)))
         else:
             item = cls(**unresolved.item_kwargs)
@@ -618,7 +639,7 @@ def encapsulate_paths(to_format: type, to_convert: FileGroup, **fs_paths: ty.Lis
     except for extensions"""
     logger.debug("Encapsulating %s into %s format after conversion",
                  fs_paths, to_format)
-    file_group = to_format(to_convert.path + '_' + to_format.format_name())
+    file_group = to_format(to_convert.path + '_' + to_format.class_name())
     file_group.set_fs_paths(fs_paths.values())
     return file_group
 
