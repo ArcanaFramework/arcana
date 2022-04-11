@@ -275,7 +275,7 @@ class DataStore(metaclass=ABCMeta):
                     f"No saved data store or built-in type matches '{name}'")
         else:
             entry.update(kwargs)
-            store = resolve_class(entry.pop('type'))(**entry)
+            store = resolve_class(entry.pop('class'))(**entry)
         return store
 
     @classmethod
@@ -334,6 +334,8 @@ class DataStore(metaclass=ABCMeta):
         if name is None:
             name = Dataset.DEFAULT_NAME
         dct = self.load_dataset_definition(id, name)
+        if dct is None:
+            raise KeyError(f"Did not find a dataset '{id}:{name}'")
         return fromdict(dct, store=self)
 
 
@@ -351,7 +353,7 @@ class DataStore(metaclass=ABCMeta):
         for store_cls in list_subclasses(arcana.data.stores, DataStore):
             try:
                 cls._singletons[store_cls.get_alias()] = store_cls()
-            except TypeError:
+            except Exception:
                 pass
         return cls._singletons
 

@@ -235,7 +235,7 @@ def generate_xnat_cs_command(name: str,
     for output in outputs:
         xnat_path = output.xnat_path if output.xnat_path else output.pydra_field
         label = xnat_path.split('/')[0]
-        out_fname = xnat_path + output.format.ext
+        out_fname = xnat_path + ('.' + output.format.ext if output.format.ext else '')
         # output_fname = xnat_path
         # if output.format.ext is not None:
         #     output_fname += output.format.ext
@@ -422,26 +422,24 @@ def copy_command_ref(xnat_commands, build_dir):
 
 
 def save_store_config(build_dir: Path):
-    """Save a configuration for 
+    """Save a configuration for a XnatViaCS store.
 
     Parameters
     ----------
     build_dir : Path
-        _description_
+        the build directory to save supporting files
 
     Returns
     -------
-    _type_
-        _description_
+    list[list[str]]
+        Docker instructions to add stores to the image
     """
-    cache_dir = '/xnat-cache'
-    entry = asdict(XnatViaCS(cache_dir=cache_dir),
-                   omit=['server', 'user', 'password'])
-    DataStore.save_entries({'xnat-cs': entry},
-                           config_path=build_dir / 'stores.yml')
+    DataStore.save_entries(
+        {'xnat-cs': {'class': '<' + class_location(XnatViaCS) + '>'}},
+        config_path=build_dir / 'stores.yml')
     return [
         ['run', 'mkdir -p /root/.arcana'],
-        ['run', f'mkdir -p {cache_dir}'],
+        ['run', f'mkdir -p {str(XnatViaCS.CACHE_DIR)}'],
         ['copy', ['./stores.yml', '/root/.arcana/stores.yml']]]
 
 

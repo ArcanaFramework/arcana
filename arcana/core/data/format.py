@@ -623,7 +623,13 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     def from_fs_path(cls, fs_path):
         file_group = cls(path=Path(fs_path).stem)
         file_group.set_fs_paths([fs_path])
-        return file_group       
+        return file_group
+
+    @classmethod
+    def append_ext(cls, path: Path):
+        if path.ext is not None:
+            path = path.with_suffix(cls.ext)
+        return path
 
 
 def access_paths(from_format, file_group):

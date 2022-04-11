@@ -676,7 +676,7 @@ def fromdict(dct: dict, **kwargs):
         Overrides those stored"""
     try:
         arcana_version = dct['pkg_versions']['arcana']
-    except KeyError:
+    except (TypeError, KeyError):
         pass
     else:
         if packaging.version.parse(arcana_version) < packaging.version.parse(MIN_SERIAL_VERSION):

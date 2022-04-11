@@ -277,12 +277,13 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
                 "'--dataset_space' must be provided")
 
         store = DataStore.load(store_name, cache_dir=store_cache_dir)   
-        space = resolve_class(space, ['arcana.data.spaces'])
+        space = resolve_class(dataset_space, ['arcana.data.spaces'])
+        hierarchy = dataset_hierarchy.split(',')
     
         dataset = store.new_dataset(
             id,
-            hierarchy=dataset_hierarchy,
-            space=dataset_space)
+            hierarchy=hierarchy,
+            space=space)
 
     inputs = parse_col_option(input)
     outputs = parse_col_option(output)

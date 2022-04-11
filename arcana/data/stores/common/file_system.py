@@ -74,12 +74,6 @@ class FileSystem(DataStore):
     def definition_save_path(self, dataset_id, name):
         return Path(dataset_id) / self.METADATA_DIR / (name + '.yml')
 
-    @property
-    def provenance(self):
-        return {
-            'type': get_class_info(type(self)),
-            'host': HOSTNAME}
-
     def get_file_group_paths(self, file_group: FileGroup):
         """
         Set the path of the file_group from the store

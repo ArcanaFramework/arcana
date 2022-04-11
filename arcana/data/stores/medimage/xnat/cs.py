@@ -50,6 +50,7 @@ class XnatViaCS(Xnat):
     INPUT_MOUNT = Path("/input")
     OUTPUT_MOUNT = Path("/output")
     WORK_MOUNT = Path('/work')
+    CACHE_DIR = Path('/cache')
     
     frequency: DataSpace = attr.ib(default=Clinical.session)
     node_id: str = attr.ib(default=None)
@@ -58,6 +59,7 @@ class XnatViaCS(Xnat):
     server: str = attr.ib()
     user: str = attr.ib()
     password: str = attr.ib()
+    cache_dir: str = attr.ib(default=CACHE_DIR, converter=Path)
 
 
     alias = 'xnat_via_cs'
