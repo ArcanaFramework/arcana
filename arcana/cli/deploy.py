@@ -57,8 +57,9 @@ DOCKER_ORG is the Docker organisation to build the """)
 def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors):
 
-    spec_path = Path(spec_path.decode('utf-8'))  # FIXME: This shouldn't be necessary
-    if build_dir:
+    if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
+        spec_path = Path(spec_path.decode('utf-8'))  
+    if isinstance(build_dir, bytes):  # FIXME: This shouldn't be necessary
         build_dir = Path(build_dir.decode('utf-8'))
 
     if install_extras:
