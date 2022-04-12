@@ -89,8 +89,8 @@ def build_xnat_cs_image(image_tag: str,
 
     try:
         render_dockerfile(nd_specs, build_dir)
-    except Exception as e:
-        e.msg += '\n\n' + json.dumps(nd_specs)
+    except ValueError as e:
+        e.args = ((e.args[0] + '\n\n' + json.dumps(nd_specs)),)
         raise e
 
     docker_build(build_dir, image_tag)
