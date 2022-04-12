@@ -422,7 +422,8 @@ def copy_command_ref(xnat_commands, build_dir):
         fname = cmd.get('name', 'command') + '.json'
         with open(cmds_dir / fname, 'w') as f:
             json.dump(cmd, f, indent='    ')
-    return ['copy', ['./xnat_commands', '/xnat_commands']]
+    return {'name': 'copy',
+            'kwds': ['./xnat_commands', '/xnat_commands']}
 
 
 def save_store_config(build_dir: Path):
@@ -442,9 +443,9 @@ def save_store_config(build_dir: Path):
         {'xnat-cs': {'class': '<' + class_location(XnatViaCS) + '>'}},
         config_path=build_dir / 'stores.yml')
     return [
-        ['run', 'mkdir -p /root/.arcana'],
-        ['run', f'mkdir -p {str(XnatViaCS.CACHE_DIR)}'],
-        ['copy', ['./stores.yml', '/root/.arcana/stores.yml']]]
+        {'name': 'run', 'kwds': ['mkdir -p /root/.arcana']},
+        {'name': 'run', 'kwds': [f'mkdir -p {str(XnatViaCS.CACHE_DIR)}']},
+        {'name': 'copy', 'kwds': ['./stores.yml', '/root/.arcana/stores.yml']}]
 
 
 @dataclass

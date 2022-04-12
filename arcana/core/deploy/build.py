@@ -1,10 +1,9 @@
 import typing as ty
 from pathlib import Path
 import tempfile
-from copy import copy
 import logging
 import shutil
-import neurodocker as nd
+from neurodocker.reproenv import DockerRenderer
 from natsort import natsorted
 import docker
 from arcana import __version__
@@ -87,8 +86,9 @@ def generate_neurodocker_specs(
         raise ArcanaBuildError(f"Build dir '{str(build_dir)}' is not a valid directory")
 
     instructions = [
-        ["base", base_image],
-        ["install", ["git", "ssh-client", "vim"]]]  # git and ssh-client to install dev python packages, VIM for debugging
+        {"name": "from_", "kwds": {'base_image': base_image}},
+        {"name": "install",
+         "kwds": ["git", "ssh-client", "vim"]}]  # git and ssh-client to install dev python packages, VIM for debugging
 
     instructions.extend(
         install_system_packages(system_packages))
@@ -101,7 +101,7 @@ def generate_neurodocker_specs(
         instructions.append(insert_readme(readme, build_dir))
 
     if labels:
-        instructions.append(["label", labels])
+        instructions.append({"name": "label", "kwds": labels})
 
     neurodocker_specs = {
         "pkg_manager": package_manager,
@@ -122,7 +122,11 @@ def render_dockerfile(neurodocker_specs, build_dir):
         be the one provided to `generate_neurodocker_specs`)
     """
 
-    dockerfile = nd.Dockerfile(neurodocker_specs).render()
+    print(neurodocker_specs)
+
+    renderer = DockerRenderer.from_dict(neurodocker_specs)
+
+    dockerfile = renderer.render()
 
     # Save generated dockerfile to file
     out_file = build_dir / 'Dockerfile'
@@ -198,7 +202,8 @@ def install_python(packages: ty.Iterable[PipSpec], build_dir: Path,
                 pip_spec.name, pip_spec.file_path, build_dir)
             pip_str = '/python-packages/' + pip_spec.name
             instructions.append(
-                ['copy', [str(pkg_build_path.relative_to(build_dir)), pip_str]])
+                {'name': 'copy',
+                 'kwds': [str(pkg_build_path.relative_to(build_dir)), pip_str]})
         elif pip_spec.url:
             if pip_spec.version:
                 raise ArcanaBuildError(
@@ -213,7 +218,8 @@ def install_python(packages: ty.Iterable[PipSpec], build_dir: Path,
         pip_strs.append(pip_str)
 
     instructions.append(
-        ["miniconda", {
+        {"name": "miniconda",
+         "kwds": {
             "create_env": "arcana",
             "install_python": [
                 "python=" + natsorted(python_versions)[-1],
@@ -222,7 +228,7 @@ def install_python(packages: ty.Iterable[PipSpec], build_dir: Path,
                 "dcm2niix",
                 "mrtrix3"],
             "conda_opts": "--channel mrtrix3",
-            "pip_install": pip_strs}])  
+            "pip_install": pip_strs}})
 
     return instructions
 
@@ -252,7 +258,7 @@ def install_system_packages(packages: ty.Iterable[str]):
                 install_properties['version'] = pkg[1]
             if len(pkg) > 2:
                 install_properties['method'] = pkg[2]   
-        instructions.append([pkg_name, install_properties])
+        instructions.append({'name': pkg_name, 'kwds': install_properties})
     return instructions
 
 
@@ -280,7 +286,8 @@ def insert_readme(description, build_dir):
     with open(build_dir / 'README.md', 'w') as f:
         f.write(DOCKERFILE_README_TEMPLATE.format(
             __version__, description))
-    return ['copy', ['./README.md', '/README.md']]
+    return {'name': 'copy',
+            'kwds': ['./README.md', '/README.md']}
 
 
 def copy_package_into_build_dir(package_name: str, local_installation: Path,

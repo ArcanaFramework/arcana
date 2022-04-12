@@ -15,7 +15,7 @@ install_requires = [
     'natsort>=7.1.1',
     'fasteners>=0.7.0',
     'docker>=5.0.2',
-    'neurodocker==0.7.0',
+    'neurodocker>=0.8.0',
     'deepdiff>=3.3',
     'importlib-metadata>=1.4',
     'PyYAML>=6.0']
