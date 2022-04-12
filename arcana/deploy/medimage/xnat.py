@@ -73,8 +73,8 @@ def build_xnat_cs_image(image_tag: str,
 
     nd_specs = generate_neurodocker_specs(
         build_dir,
-        labels={'org.nrg.commands': json.dumps(xnat_commands),
-                'maintainer': authors[0][1]},
+        # labels={'org.nrg.commands': json.dumps(xnat_commands),
+        #         'maintainer': authors[0]},
         python_packages=python_packages,
         system_packages=system_packages,
         readme=readme,
@@ -423,7 +423,9 @@ def copy_command_ref(xnat_commands, build_dir):
         with open(cmds_dir / fname, 'w') as f:
             json.dump(cmd, f, indent='    ')
     return {'name': 'copy',
-            'kwds': ['./xnat_commands', '/xnat_commands']}
+            'kwds': {
+                'source': ['./xnat_commands'],
+                'destination': '/xnat_commands'}}
 
 
 def save_store_config(build_dir: Path):
@@ -443,9 +445,14 @@ def save_store_config(build_dir: Path):
         {'xnat-cs': {'class': '<' + class_location(XnatViaCS) + '>'}},
         config_path=build_dir / 'stores.yml')
     return [
-        {'name': 'run', 'kwds': ['mkdir -p /root/.arcana']},
-        {'name': 'run', 'kwds': [f'mkdir -p {str(XnatViaCS.CACHE_DIR)}']},
-        {'name': 'copy', 'kwds': ['./stores.yml', '/root/.arcana/stores.yml']}]
+        {'name': 'run',
+         'kwds': {'command': 'mkdir -p /root/.arcana'}},
+        {'name': 'run',
+         'kwds': {'command': f'mkdir -p {str(XnatViaCS.CACHE_DIR)}'}},
+        {'name': 'copy',
+         'kwds': {
+             'source': ['./stores.yml'],
+             'destination': '/root/.arcana/stores.yml'}}]
 
 
 @dataclass

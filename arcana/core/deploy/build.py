@@ -88,7 +88,8 @@ def generate_neurodocker_specs(
     instructions = [
         {"name": "from_", "kwds": {'base_image': base_image}},
         {"name": "install",
-         "kwds": ["git", "ssh-client", "vim"]}]  # git and ssh-client to install dev python packages, VIM for debugging
+         "kwds": {
+             "pkgs": ["git", "ssh-client", "vim"]}}]  # git and ssh-client to install dev python packages, VIM for debugging
 
     instructions.extend(
         install_system_packages(system_packages))
@@ -203,7 +204,9 @@ def install_python(packages: ty.Iterable[PipSpec], build_dir: Path,
             pip_str = '/python-packages/' + pip_spec.name
             instructions.append(
                 {'name': 'copy',
-                 'kwds': [str(pkg_build_path.relative_to(build_dir)), pip_str]})
+                 'kwds': {
+                     'source': [str(pkg_build_path.relative_to(build_dir))],
+                     'destination': pip_str}})
         elif pip_spec.url:
             if pip_spec.version:
                 raise ArcanaBuildError(
@@ -218,18 +221,23 @@ def install_python(packages: ty.Iterable[PipSpec], build_dir: Path,
         pip_strs.append(pip_str)
 
     instructions.append(
-        {"name": "miniconda",
-         "kwds": {
-            "create_env": "arcana",
-            "install_python": [
-                "python=" + natsorted(python_versions)[-1],
-                "numpy",
-                "traits",
-                "dcm2niix",
-                "mrtrix3"],
-            "conda_opts": "--channel mrtrix3",
-            "pip_install": pip_strs}})
-
+        {
+            "name": "miniconda",
+            "kwds": {
+                "version": "latest",
+                "env_name": "arcana",
+                "env_exists": False,
+                "conda_install": ' '.join([
+                    "python=" + natsorted(python_versions)[-1],
+                    "numpy",
+                    "traits",
+                    "dcm2niix",
+                    "mrtrix3"]),
+                "conda_opts": "--channel mrtrix3",
+                "pip_install": ' '.join(pip_strs)
+            }
+        }
+    )
     return instructions
 
 
@@ -287,7 +295,9 @@ def insert_readme(description, build_dir):
         f.write(DOCKERFILE_README_TEMPLATE.format(
             __version__, description))
     return {'name': 'copy',
-            'kwds': ['./README.md', '/README.md']}
+            'kwds': {
+                'source': ['./README.md'],
+                'destination': '/README.md'}}
 
 
 def copy_package_into_build_dir(package_name: str, local_installation: Path,
