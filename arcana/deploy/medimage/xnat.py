@@ -71,10 +71,16 @@ def build_xnat_cs_image(image_tag: str,
 
         xnat_commands.append(xnat_cmd)
 
+    # Convert XNAT command label into string that can by placed inside the
+    # Docker label
+    command_label = '[' + ', \\\n\t'.join(
+        json.dumps(c).replace('"', r'\"').replace('$', r'\$')
+        for c in xnat_commands) + ']'
+
     nd_specs = generate_neurodocker_specs(
         build_dir,
-        # labels={'org.nrg.commands': json.dumps(xnat_commands),
-        #         'maintainer': authors[0]},
+        labels={'org.nrg.commands': command_label,
+                'maintainer': authors[0]},
         python_packages=python_packages,
         system_packages=system_packages,
         readme=readme,

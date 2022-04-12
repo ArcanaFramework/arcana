@@ -6,7 +6,6 @@ __authors__ = [
 
 install_requires = [
     'xnat>=0.3.17',
-    # 'requests>=2.0',
     'pydra>=0.17',
     'pydra-dcm2niix>=1.0.0rc2',
     'pydra-mrtrix3>=0.1',
@@ -15,7 +14,7 @@ install_requires = [
     'natsort>=7.1.1',
     'fasteners>=0.7.0',
     'docker>=5.0.2',
-    'neurodocker>=0.8.0',
+    'neurodocker==git+https://github.com/tclose/neurodocker.git@printf-escape-single-quote',
     'deepdiff>=3.3',
     'importlib-metadata>=1.4',
     'PyYAML>=6.0']

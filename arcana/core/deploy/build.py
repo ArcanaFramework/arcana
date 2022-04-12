@@ -123,8 +123,6 @@ def render_dockerfile(neurodocker_specs, build_dir):
         be the one provided to `generate_neurodocker_specs`)
     """
 
-    print(neurodocker_specs)
-
     renderer = DockerRenderer.from_dict(neurodocker_specs)
 
     dockerfile = renderer.render()
