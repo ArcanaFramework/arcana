@@ -87,7 +87,11 @@ def build_xnat_cs_image(image_tag: str,
     nd_specs['instructions'].extend(
         save_store_config(build_dir))
 
-    render_dockerfile(nd_specs, build_dir)
+    try:
+        render_dockerfile(nd_specs, build_dir)
+    except Exception as e:
+        e.msg += json.dumps('\n\n' + nd_specs)
+        raise e
 
     docker_build(build_dir, image_tag)
 
