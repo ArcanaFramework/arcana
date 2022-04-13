@@ -41,7 +41,6 @@ CHECKSUM_SUFFIX = '_checksum'
 
 ARCANA_HOME_DIR = Path.home() / '.arcana'
 
-DOCKER_HUB = 'https://index.docker.io/v1/'
 ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
 
 
@@ -513,7 +512,7 @@ class classproperty(object):
         return self.f(owner)
 
 
-def pkg_from_module(module: Sequence[str]):
+def package_from_module(module: Sequence[str]):
     """Resolves the installed package (e.g. from PyPI) that provides the given
     module.
 
@@ -574,7 +573,7 @@ def pkg_from_module(module: Sequence[str]):
 
 
 def pkg_versions(modules):
-    versions = {p.key: p.version for p in pkg_from_module(modules)}
+    versions = {p.key: p.version for p in package_from_module(modules)}
     versions['arcana'] = __version__
     return versions
 
@@ -677,7 +676,7 @@ def fromdict(dct: dict, **kwargs):
         Overrides those stored"""
     try:
         arcana_version = dct['pkg_versions']['arcana']
-    except KeyError:
+    except (TypeError, KeyError):
         pass
     else:
         if packaging.version.parse(arcana_version) < packaging.version.parse(MIN_SERIAL_VERSION):
@@ -767,7 +766,7 @@ def pydra_asdict(obj: TaskBase, required_modules: ty.Set[str],
             # TODO: check source for references to external modules that aren't
             #       imported within function
         elif type(obj).__module__ != 'pydra.engine.task':
-            pkg = pkg_from_module(type(obj).__module__)
+            pkg = package_from_module(type(obj).__module__)
             dct['package'] = pkg.key
             dct['version'] = pkg.version
         if hasattr(obj, 'container'):

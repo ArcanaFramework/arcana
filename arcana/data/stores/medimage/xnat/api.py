@@ -88,13 +88,13 @@ class Xnat(DataStore):
 
     def save_dataset_definition(self, dataset, definition, name):
         with self:
-            root_xnode = self.get_xnode(dataset.root)
+            xproject = self.login.projects[dataset.id]
             try:
-                xresource = root_xnode.resources[self.METADATA_RESOURCE]
+                xresource = xproject.resources[self.METADATA_RESOURCE]
             except KeyError:
                 # Create the new resource for the file_group
                 xresource = self.login.classes.ResourceCatalog(
-                    parent=root_xnode, label=self.METADATA_RESOURCE,
+                    parent=xproject, label=self.METADATA_RESOURCE,
                     format='json')
             definition_file = Path(tempfile.mkdtemp()) / name + '.json'
             with open(definition_file, 'w') as f:
@@ -103,9 +103,9 @@ class Xnat(DataStore):
 
     def load_dataset_definition(self, dataset_id, name):
         with self:
-            root_xnode = self.get_xnode(self.dataset(dataset_id).root)
+            xproject = self.login.projects[dataset_id]
             try:
-                xresource = root_xnode.resources[self.METADATA_RESOURCE]
+                xresource = xproject.resources[self.METADATA_RESOURCE]
             except KeyError:
                 definition = None
             else:
@@ -118,12 +118,6 @@ class Xnat(DataStore):
                 else:
                     definition = None
         return definition
-
-    @property
-    def prov(self):
-        return {
-            'type': get_class_info(type(self)),
-            'server': self.server}
 
     @cache_dir.validator
     def cache_dir_validator(self, _, cache_dir):
@@ -233,7 +227,7 @@ class Xnat(DataStore):
                 #     xscan = xnode.scans[file_group.name]
                 #     file_group.id = xscan.id
                 #     base_uri += '/scans/' + xscan.id
-                #     xresource = xscan.resources[file_group.format_name]
+                #     xresource = xscan.resources[file_group.class_name]
                 # Set URI so we can retrieve checksums if required. We ensure we
                 # use the resource name instead of its ID in the URI for
                 # consistency with other locations where it is set and to keep the
@@ -330,7 +324,7 @@ class Xnat(DataStore):
             # Create the new resource for the file_group
             xresource = self.login.classes.ResourceCatalog(
                 parent=xnode, label=escaped_name,
-                format=file_group.format_name())
+                format=file_group.class_name())
             # Create cache path
             base_cache_path = self.cache_path(file_group)
             if base_cache_path.exists():

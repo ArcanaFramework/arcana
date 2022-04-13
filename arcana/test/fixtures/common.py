@@ -23,7 +23,7 @@ def work_dir():
     # return work_dir
     work_dir = mkdtemp()
     yield Path(work_dir)
-    shutil.rmtree(work_dir)
+    # shutil.rmtree(work_dir)
 
 
 TEST_TASKS = {
@@ -209,6 +209,44 @@ def concatenate_task(request):
     else:
         task = concatenate_reverse
     return task
+
+@pytest.fixture
+def command_spec():
+    return {
+        'name': 'conctenate-test',
+        'pydra_task': 'arcana.test.tasks:concatenate',
+        'inputs': [
+            {
+                'pydra_field': 'in_file1',
+                'format': 'common:Text',
+                'xnat_name': 'first-file',
+                'frequency': 'session'
+            },
+            {
+                'pydra_field': 'in_file2',
+                'format': 'common:Text',
+                'xnat_name': 'second-file',
+                'frequency': 'session'
+            },
+        ],
+        'outputs': [
+            {
+                'pydra_field': 'out_file',
+                'format': 'common:Text',
+                'xnat_path': 'concatenated'
+            }
+        ],
+        'parameters': [
+            {
+                'pydra_field': 'duplicates',
+                'xnat_name': 'number-of-duplicates',
+                'required': True
+            }
+        ],
+        'description': "A pipeline to test Arcana's deployment tool",
+        'version': '0.1',
+        'frequency': 'session',
+        'info_url': None}
 
 
 # For debugging in IDE's don't catch raised exceptions and let the IDE

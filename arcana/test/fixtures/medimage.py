@@ -140,25 +140,6 @@ def xnat_repository(run_prefix):
 
 
 @pytest.fixture(scope='session')
-def concatenate_container(xnat_repository, xnat_container_registry):
-
-    image_tag = f'arcana-concatenate:latest'
-
-    build_dir = XnatViaCS.generate_dockerfile(
-        xnat_commands=[],
-        maintainer='some.one@an.org',
-        packages=[],
-        python_packages=[],
-        extra_labels={},
-        pkg_extras=['test'])
-
-    dc = docker.from_env()
-    dc.images.build(path=str(build_dir), tag=image_tag)
-
-    return image_tag
-
-
-@pytest.fixture(scope='session')
 def run_prefix():
     "A datetime string used to avoid stale data left over from previous tests"
     return datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')

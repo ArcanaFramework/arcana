@@ -13,15 +13,15 @@ def apply():
 @apply.command(name='pipeline', help="""Apply a Pydra workflow to a dataset as a pipeline between
 two columns
 
-ID_STR string containing the nickname of the data store, the ID of the dataset
+DATASET_ID_STR string containing the nickname of the data store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
 format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 
-PIPELINE_NAME of the pipeline
+PIPELINE_NAME is the name of the pipeline
 
 WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
 <MODULE>:<WORKFLOW>""")
-@click.argument('id_str')
+@click.argument('dataset_id_str')
 @click.argument('pipeline_name')
 @click.argument('workflow_location')
 @click.option(
@@ -58,19 +58,15 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
           "by default the highest frequency nodes (e.g. per-session)"))
 @click.option(
     '--overwrite/--no-overwrite', default=False,
-    help=("whether to overwrite previous connections to existing sink columns "
-          "or not"))
-def apply_pipeline(id_str, pipeline_name, workflow_location, input, output,
-                   parameter, source, sink, frequency, overwrite):
+    help=("whether to overwrite previous pipelines"))
+def apply_pipeline(dataset_id_str, pipeline_name, workflow_location, input,
+                   output, parameter, source, sink, frequency, overwrite):
 
-    dataset = Dataset.load(id_str)
+    dataset = Dataset.load(dataset_id_str)
     workflow = resolve_class(workflow_location)(
         name='workflow',
         **{n: parse_value(v) for n, v in parameter})
 
-    def parse_col_option(option):
-        return [(c, p, resolve_class(f, prefixes=['arcana.data.formats']))
-                for c, p, f in option]
     inputs = parse_col_option(input)
     outputs = parse_col_option(output)
     sources = parse_col_option(source)
@@ -109,3 +105,8 @@ def apply_analysis():
           "applicable to BIDS app tasks)"))
 def apply_bids_app():
     raise NotImplementedError
+
+
+def parse_col_option(option):
+    return [(c, p, resolve_class(f, prefixes=['arcana.data.formats']))
+            for c, p, f in option]

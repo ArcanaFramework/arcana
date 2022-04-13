@@ -6,120 +6,63 @@ import pytest
 import docker.errors
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats import Text
-from arcana.data.stores.medimage.xnat.cs import XnatViaCS
+from arcana.deploy.medimage import build_xnat_cs_image, generate_xnat_cs_command
 from arcana.test.fixtures.medimage import make_mutable_dataset
 
 
 PIPELINE_NAME = 'test-concatenate'
 
-@pytest.mark.skip(reason="test container registry is not configured properly")
-def test_deploy_cs_pipeline(xnat_repository, xnat_container_registry,
-                            run_prefix):
-
-    build_dir = Path(tempfile.mkdtemp())
-
-    image_tag = f'arcana-concatenate{run_prefix}:latest'
-
-    pipeline_name = 'detected_' + PIPELINE_NAME + run_prefix
-    pydra_task = 'arcana.test.tasks:concatenate'
-
-    xnat_command = XnatViaCS.generate_xnat_command(
-        pipeline_name=pipeline_name,
-        pydra_task=pydra_task,
-        image_tag=image_tag,
-        inputs=[
-            ('in_file1', Text, 'to_concat1', Clinical.session),
-            ('in_file2', Text, 'to_concat2', Clinical.session)],
-        outputs=[
-            ('out_file', Text, 'concatenated')],
-        parameters=['duplicates'],
-        description="A pipeline to test Arcana's wrap4xnat function",
-        version='0.1',
-        registry=xnat_container_registry,
-        frequency=Clinical.session,
-        info_url=None)
-
-    build_dir = XnatViaCS.generate_dockerfile(
-        xnat_commands=[xnat_command],
-        maintainer='some.one@an.org',
-        build_dir=build_dir,
-        packages=[],
-        python_packages=[],
-        extra_labels={})
-
-    dc = docker.from_env()
-    try:
-        dc.images.build(path=str(build_dir), tag=image_tag)
-    except docker.errors.BuildError as e:
-        logging.error(f"Error building docker file in {build_dir}")
-        logging.error('\n'.join(l.get('stream', '') for l in e.build_log))
-        raise
-
-    image_path = f'{xnat_container_registry}/{image_tag}'
-
-    dc.images.push(image_path)
-
-    # Login to XNAT and attempt to pull the image and check the command has
-    # been detected correctly
-    with xnat_repository:
-
-        xlogin = xnat_repository.login
-
-        # Pull image from test registry to XNAT container service
-        xlogin.post('/xapi/docker/pull', json={
-            'image': image_tag,
-            'save-commands': True})
-
-        commands = {c['name']: c for c in xlogin.get(f'/xapi/commands/').json()}
-        assert pipeline_name in commands, "Pipeline config wasn't detected automatically"
-        assert xnat_command == commands[pipeline_name]
-
-@pytest.mark.skip("needs to be reworked after refactor")
-def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
-                         xnat_container_registry, concatenate_container,
-                         run_prefix):
+def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
+                          command_spec, run_prefix):
 
     dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
                                   'concatenate_test.direct')
 
-    pipeline_name = PIPELINE_NAME + run_prefix
+    # Append run_prefix to command name to avoid clash with previous test runs
+    
+    IMAGE_TAG = 'arcana-test-xnat-cs'
 
-    xnat_command = XnatViaCS.generate_xnat_command(
-        pipeline_name=pipeline_name,
-        pydra_task='arcana.test.tasks:concatenate',
-        image_tag=concatenate_container,
-        inputs=[
-            ('in_file1', Text, 'to_concat1', Clinical.session),
-            ('in_file2', Text, 'to_concat2', Clinical.session)],
-        outputs=[
-            ('out_file', Text, 'concatenated')],
-        parameters=['duplicates'],
-        description="A pipeline to test Arcana's wrap4xnat function",
-        version='0.1',
-        registry=xnat_container_registry,
-        frequency=Clinical.session,
-        info_url=None)
+    cmd_name = command_spec['name'] = 'xnat-cs-test' + run_prefix
+
+    build_dir = build_xnat_cs_image(
+        image_tag=IMAGE_TAG,
+        commands=[command_spec],
+        authors=['some.one@an.org'],
+        info_url='http://concatenate.readthefakedocs.io',
+        system_packages=[],
+        python_packages=[],
+        readme='This is a test README',
+        docker_registry='a.docker.registry.io',
+        use_local_packages=True,
+        arcana_install_extras=['test'])
 
     with xnat_repository:
 
         xlogin = xnat_repository.login
 
+        # We manually set the command in the test XNAT instance as commands are
+        # loaded from images when they are pulled from a registry and we use
+        # the fact that the container service test XNAT instance shares the
+        # outer Docker socket. Since we build the pipeline image with the same
+        # socket there is no need to pull it.
+        xnat_command = generate_xnat_cs_command(image_tag=IMAGE_TAG,
+                                                **command_spec)
         cmd_id = xlogin.post('/xapi/commands', json=xnat_command).json()
 
         # Enable the command globally and in the project
         xlogin.put(
-            f'/xapi/commands/{cmd_id}/wrappers/{pipeline_name}/enabled')
+            f"/xapi/commands/{cmd_id}/wrappers/{cmd_name}/enabled")
         xlogin.put(
-            f'/xapi/projects/{dataset.id}/commands/{cmd_id}/wrappers/{pipeline_name}/enabled')
+            f"/xapi/projects/{dataset.id}/commands/{cmd_id}/wrappers/{cmd_name}/enabled")
 
         test_xsession = next(iter(xlogin.projects[dataset.id].experiments.values()))
 
         launch_result = xlogin.post(
             f"/xapi/projects/{dataset.id}/wrappers/{cmd_id}/root/SESSION/launch",
             json={'SESSION': f'/archive/experiments/{test_xsession.id}',
-                  'to_concat1': 'scan1:Text',
-                  'to_concat2': 'scan2:Text',
-                  'duplicates': '2'}).json()
+                  'first-file': 'scan1',
+                  'second-file': 'scan2',
+                  'number-of-duplicates': '2'}).json()
 
         assert launch_result['status'] == 'success'
         workflow_id = launch_result['workflow-id']
@@ -137,8 +80,17 @@ def test_run_cs_pipeline(xnat_repository, xnat_archive_dir,
             if wf_result['status'] not in INCOMPLETE_STATES:
                 break
             time.sleep(SLEEP_PERIOD)
+
+        # Get workflow stdout/stderr for error messages if required
+        out_str = ''
+        stdout_result = xlogin.get(f'/xapi/workflows/{workflow_id}/logs/stdout', accepted_status=[200, 204])
+        if stdout_result.status_code == 200:
+            out_str = f"stdout:\n{stdout_result.content}\n"
+        stderr_result = xlogin.get(f'/xapi/workflows/{workflow_id}/logs/stderr', accepted_status=[200, 204])
+        if stderr_result.status_code == 200:
+            out_str += f"\nstderr:\n{stderr_result.content}"
         
-        assert i != 99, f"Workflow {workflow_id} did not complete in {max_runtime}"
-        assert wf_result['status'] == 'Complete'
+        assert i != 99, f"Workflow {workflow_id} did not complete in {max_runtime}.\n{out_str}"
+        assert wf_result['status'] == 'Complete', f"Workflow {workflow_id} failed.\n{out_str}"
 
         assert list(test_xsession.resources['concatenated'].files) == ['concatenated.txt']
