@@ -80,8 +80,17 @@ def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
             if wf_result['status'] not in INCOMPLETE_STATES:
                 break
             time.sleep(SLEEP_PERIOD)
+
+        # Get workflow stdout/stderr for error messages if required
+        out_str = ''
+        stdout_result = xlogin.get(f'/xapi/workflows/{workflow_id}/logs/stdout', accepted_status=[200, 204])
+        if stdout_result.status_code == 200:
+            out_str = f"stdout:\n{stdout_result.content}\n"
+        stderr_result = xlogin.get(f'/xapi/workflows/{workflow_id}/logs/stderr', accepted_status=[200, 204])
+        if stderr_result.status_code == 200:
+            out_str += f"\nstderr:\n{stderr_result.content}"
         
-        assert i != 99, f"Workflow {workflow_id} did not complete in {max_runtime}"
-        assert wf_result['status'] == 'Complete'
+        assert i != 99, f"Workflow {workflow_id} did not complete in {max_runtime}.\n{out_str}"
+        assert wf_result['status'] == 'Complete', f"Workflow {workflow_id} failed.\n{out_str}"
 
         assert list(test_xsession.resources['concatenated'].files) == ['concatenated.txt']

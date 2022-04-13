@@ -85,6 +85,9 @@ def generate_neurodocker_specs(
     if not build_dir.is_dir():
         raise ArcanaBuildError(f"Build dir '{str(build_dir)}' is not a valid directory")
 
+    # dockerfile = DockerRenderer(package_manager).from_(base_image)
+    # dockerfile.install(["git", "ssh-client", "vim"])
+
     instructions = [
         {"name": "from_", "kwds": {'base_image': base_image}},
         {"name": "install",
