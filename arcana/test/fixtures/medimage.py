@@ -8,6 +8,7 @@ import typing as ty
 import pytest
 import docker
 import xnat4tests
+from arcana.data.stores.common import FileSystem
 from arcana.data.stores.medimage.xnat.api import Xnat
 from arcana.data.stores.medimage.xnat.cs import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
@@ -20,6 +21,13 @@ from arcana.test.datasets import create_test_file
 @pytest.fixture
 def nifti_sample_dir():
     return Path(__file__).parent.parent.parent.parent / 'test-data'/ 'nifti'
+
+
+@pytest.fixture
+def dicom_dataset(test_dicom_dataset_dir):
+    return FileSystem().dataset(
+        test_dicom_dataset_dir,
+        hierarchy=['session'])
 
 
 # -----------------------
@@ -137,25 +145,6 @@ def xnat_repository(run_prefix):
     repository.run_prefix = run_prefix
 
     yield repository
-
-
-@pytest.fixture(scope='session')
-def concatenate_container(xnat_repository, xnat_container_registry):
-
-    image_tag = f'arcana-concatenate:latest'
-
-    build_dir = XnatViaCS.generate_dockerfile(
-        xnat_commands=[],
-        maintainer='some.one@an.org',
-        packages=[],
-        python_packages=[],
-        extra_labels={},
-        pkg_extras=['test'])
-
-    dc = docker.from_env()
-    dc.images.build(path=str(build_dir), tag=image_tag)
-
-    return image_tag
 
 
 @pytest.fixture(scope='session')

@@ -471,16 +471,6 @@ class Dataset():
         """
         return self.columns[name]
 
-    def __iter__(self):
-        """Iterate over all columns in the dataset
-
-        Returns
-        -------
-        Sequence[DataColumn]
-            All columns in the dataset
-        """
-        return self.columns.values()
-
     def add_leaf_node(self, tree_path, explicit_ids=None):
         """Creates a new node at a the path down the tree of the dataset as
         well as all "parent" nodes upstream in the data tree

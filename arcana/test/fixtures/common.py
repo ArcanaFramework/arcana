@@ -1,29 +1,16 @@
-import os
 from tempfile import mkdtemp
 from pathlib import Path
 import shutil
 import pytest
-from arcana.data.stores.common import FileSystem
 from arcana.data.formats.common import Text, Directory, Json
 from arcana.data.formats.medimage import (
     NiftiGz, NiftiGzX, NiftiX, Nifti, Analyze, MrtrixImage)
 from pathlib import Path
 import pytest
-from click.testing import CliRunner
 from arcana.test.tasks import (
     add, path_manip, attrs_func, A, B, C, concatenate, concatenate_reverse)
 from arcana.test.datasets import (
     TestDatasetBlueprint, TestDataSpace as TDS, Xyz, make_dataset)
-
-
-@pytest.fixture
-def work_dir():
-    # work_dir = Path.home() / '.arcana-tests'
-    # work_dir.mkdir(exist_ok=True)
-    # return work_dir
-    work_dir = mkdtemp()
-    yield Path(work_dir)
-    shutil.rmtree(work_dir)
 
 
 TEST_TASKS = {
@@ -162,13 +149,6 @@ def test_dicom_dataset_dir(test_ref_data_dir):
     return Path(__file__).parent / 'test-dataset'
 
 
-@pytest.fixture
-def dicom_dataset(test_dicom_dataset_dir):
-    return FileSystem().dataset(
-        test_dicom_dataset_dir,
-        hierarchy=['session'])
-
-
 @pytest.fixture(params=GOOD_DATASETS)
 def dataset(work_dir, request):
     dataset_name = request.param
@@ -210,28 +190,40 @@ def concatenate_task(request):
         task = concatenate_reverse
     return task
 
-
-# For debugging in IDE's don't catch raised exceptions and let the IDE
-# break at it
-if os.getenv('_PYTEST_RAISE', "0") != "0":
-
-    @pytest.hookimpl(tryfirst=True)
-    def pytest_exception_interact(call):
-        raise call.excinfo.value
-
-    @pytest.hookimpl(tryfirst=True)
-    def pytest_internalerror(excinfo):
-        raise excinfo.value
-
-    catch_cli_exceptions = False
-else:
-    catch_cli_exceptions = True
-
 @pytest.fixture
-def cli_runner():
-    def invoke(*args, **kwargs):
-        runner = CliRunner()
-        result = runner.invoke(*args, catch_exceptions=catch_cli_exceptions,
-                               **kwargs)
-        return result
-    return invoke
+def command_spec():
+    return {
+        'name': 'conctenate-test',
+        'pydra_task': 'arcana.test.tasks:concatenate',
+        'inputs': [
+            {
+                'pydra_field': 'in_file1',
+                'format': 'common:Text',
+                'xnat_name': 'first-file',
+                'frequency': 'session'
+            },
+            {
+                'pydra_field': 'in_file2',
+                'format': 'common:Text',
+                'xnat_name': 'second-file',
+                'frequency': 'session'
+            },
+        ],
+        'outputs': [
+            {
+                'pydra_field': 'out_file',
+                'format': 'common:Text',
+                'xnat_path': 'concatenated'
+            }
+        ],
+        'parameters': [
+            {
+                'pydra_field': 'duplicates',
+                'xnat_name': 'number-of-duplicates',
+                'required': True
+            }
+        ],
+        'description': "A pipeline to test Arcana's deployment tool",
+        'version': '0.1',
+        'frequency': 'session',
+        'info_url': None}
