@@ -30,6 +30,7 @@ if os.getenv('_PYTEST_RAISE', "0") != "0":
 else:
     catch_cli_exceptions = True
 
+
 @pytest.fixture
 def cli_runner():
     def invoke(*args, **kwargs):
