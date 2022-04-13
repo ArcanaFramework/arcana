@@ -4,11 +4,12 @@ import tempfile
 import json
 from attr import NOTHING
 from dataclasses import dataclass
+from neurodocker.reproenv import DockerRenderer
 import arcana.data.formats.common
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.deploy.build import (
-    generate_neurodocker_specs, render_dockerfile, docker_build)
+    construct_dockerfile, dockerfile_build)
 from arcana.core.deploy.utils import DOCKER_HUB
 from arcana.core.utils import resolve_class, class_location, asdict
 from arcana.core.data.store import DataStore
@@ -51,7 +52,7 @@ def build_xnat_cs_image(image_tag: str,
         the directory to build the docker image within, i.e. where to write
         Dockerfile and supporting files to be copied within the image
     **kwargs:
-        Passed on to `generate_neurodocker_specs` method
+        Passed on to `construct_dockerfile` method
     """   
 
     if build_dir is None:
@@ -77,7 +78,7 @@ def build_xnat_cs_image(image_tag: str,
         json.dumps(c).replace('"', r'\"').replace('$', r'\$')
         for c in xnat_commands) + ']'
 
-    nd_specs = generate_neurodocker_specs(
+    dockerfile = construct_dockerfile(
         build_dir,
         labels={'org.nrg.commands': command_label,
                 'maintainer': authors[0]},
@@ -87,19 +88,11 @@ def build_xnat_cs_image(image_tag: str,
         **{k: v for k, v in kwargs.items() if not k.startswith('_')})
 
     # Copy the generated XNAT commands inside the container for ease of reference
-    nd_specs['instructions'].append(
-        copy_command_ref(xnat_commands, build_dir))
+    copy_command_ref(dockerfile, xnat_commands, build_dir)
 
-    nd_specs['instructions'].extend(
-        save_store_config(build_dir))
+    save_store_config(dockerfile, build_dir)
 
-    try:
-        render_dockerfile(nd_specs, build_dir)
-    except ValueError as e:
-        e.args = ((e.args[0] + '\n\n' + json.dumps(nd_specs)),)
-        raise e
-
-    docker_build(build_dir, image_tag)
+    dockerfile_build(dockerfile, build_dir, image_tag)
 
     return build_dir
 
@@ -405,21 +398,18 @@ def generate_xnat_cs_command(name: str,
     return xnat_command
 
 
-def copy_command_ref(xnat_commands, build_dir):
+def copy_command_ref(dockerfile: DockerRenderer, xnat_commands, build_dir):
     """Generate Neurodocker instructions to copy a version of the XNAT commands
     into the image for reference
 
     Parameters
     ----------
+    dockerfile : DockerRenderer
+        Neurodocker renderer to build
     xnat_commands : list[dict]
         XNAT command JSONs to copy into the Dockerfile for reference
     build_dir : Path
         path to build directory
-
-    Returns
-    -------
-    list[str, list[str, str]]
-        Instruction to copy the XNAT commands into the Dockerfile
     """
     # Copy command JSON inside dockerfile for ease of reference
     cmds_dir = build_dir / 'xnat_commands'
@@ -428,37 +418,25 @@ def copy_command_ref(xnat_commands, build_dir):
         fname = cmd.get('name', 'command') + '.json'
         with open(cmds_dir / fname, 'w') as f:
             json.dump(cmd, f, indent='    ')
-    return {'name': 'copy',
-            'kwds': {
-                'source': ['./xnat_commands'],
-                'destination': '/xnat_commands'}}
+    dockerfile.copy(source=['./xnat_commands'], destination='/xnat_commands')
 
 
-def save_store_config(build_dir: Path):
+def save_store_config(dockerfile: DockerRenderer, build_dir: Path):
     """Save a configuration for a XnatViaCS store.
 
     Parameters
     ----------
+    dockerfile : DockerRenderer
+        Neurodocker renderer to build
     build_dir : Path
         the build directory to save supporting files
-
-    Returns
-    -------
-    list[list[str]]
-        Docker instructions to add stores to the image
     """
     DataStore.save_entries(
         {'xnat-cs': {'class': '<' + class_location(XnatViaCS) + '>'}},
         config_path=build_dir / 'stores.yml')
-    return [
-        {'name': 'run',
-         'kwds': {'command': 'mkdir -p /root/.arcana'}},
-        {'name': 'run',
-         'kwds': {'command': f'mkdir -p {str(XnatViaCS.CACHE_DIR)}'}},
-        {'name': 'copy',
-         'kwds': {
-             'source': ['./stores.yml'],
-             'destination': '/root/.arcana/stores.yml'}}]
+    dockerfile.run(command='mkdir -p /root/.arcana')
+    dockerfile.run(command=f'mkdir -p {str(XnatViaCS.CACHE_DIR)}')
+    dockerfile.copy(source=['./stores.yml'], destination='/root/.arcana/stores.yml')
 
 
 @dataclass

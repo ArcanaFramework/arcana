@@ -32,14 +32,12 @@ def build_docker_image(image_tag: str,
         build_dir = tempfile.mkdtemp()
     build_dir = Path(build_dir)
 
-    nd_specs = generate_neurodocker_specs(build_dir, **kwargs)
+    dockerfile = construct_dockerfile(build_dir, **kwargs)
 
-    render_dockerfile(nd_specs, build_dir)
-
-    docker_build(build_dir, image_tag)
+    dockerfile_build(dockerfile, build_dir, image_tag)
 
 
-def generate_neurodocker_specs(
+def construct_dockerfile(
         build_dir: Path,
         base_image: str="debian:bullseye",
         python_packages: ty.Iterable[ty.Tuple[str, str]]=(),
@@ -48,7 +46,7 @@ def generate_neurodocker_specs(
         package_manager: str='apt',
         arcana_install_extras: ty.Iterable[str]=(),
         readme: str=None,
-        use_local_packages: bool=False):
+        use_local_packages: bool=False) -> DockerRenderer:
     """Constructs a dockerfile that wraps a with dependencies
 
     Parameters
@@ -78,82 +76,64 @@ def generate_neurodocker_specs(
 
     Returns
     -------
-    dict[str, Any]
-        path to the build directory containing the Dockerfile and any supporting
-        files to be copied in the image
+    DockerRenderer
+        Neurodocker Docker renderer to construct dockerfile from
     """
     if not build_dir.is_dir():
         raise ArcanaBuildError(f"Build dir '{str(build_dir)}' is not a valid directory")
 
-    # dockerfile = DockerRenderer(package_manager).from_(base_image)
-    # dockerfile.install(["git", "ssh-client", "vim"])
+    dockerfile = DockerRenderer(package_manager).from_(base_image)
+    dockerfile.install(["git", "ssh-client", "vim"])
 
-    instructions = [
-        {"name": "from_", "kwds": {'base_image': base_image}},
-        {"name": "install",
-         "kwds": {
-             "pkgs": ["git", "ssh-client", "vim"]}}]  # git and ssh-client to install dev python packages, VIM for debugging
+    # instructions = [
+    #     {"name": "from_", "kwds": {'base_image': base_image}},
+    #     {"name": "install",
+    #      "kwds": {
+    #          "pkgs": ["git", "ssh-client", "vim"]}}]  # git and ssh-client to install dev python packages, VIM for debugging
 
-    instructions.extend(
-        install_system_packages(system_packages))
+    install_system_packages(dockerfile, system_packages)
 
-    instructions.extend(
-        install_python(python_packages, build_dir, arcana_install_extras,
-                       use_local_packages=use_local_packages))
+    install_python(dockerfile, python_packages, build_dir,
+                   arcana_install_extras, use_local_packages=use_local_packages)
 
     if readme:
-        instructions.append(insert_readme(readme, build_dir))
+        insert_readme(dockerfile, readme, build_dir)
 
     if labels:
-        instructions.append({"name": "label", "kwds": labels})
+        # dockerfile.label(labels)
+        dockerfile._parts.append(
+            "LABEL " + " \\\n      ".join(f'{k}="{v}"' for k, v in labels.items()))
 
-    neurodocker_specs = {
-        "pkg_manager": package_manager,
-        "instructions": instructions}
-
-    return neurodocker_specs
+    return dockerfile
 
 
-def render_dockerfile(neurodocker_specs, build_dir):
-    """Renders a Docker image from Neurodocker specs
-
-    Parameters
-    ----------
-    neurodocker_specs : dict
-        specifications for NeuroDocker build
-    build_dir : Path
-        path to build directory that the specs were created for (i.e. needs to
-        be the one provided to `generate_neurodocker_specs`)
-    """
-
-    renderer = DockerRenderer.from_dict(neurodocker_specs)
-
-    dockerfile = renderer.render()
-
-    # Save generated dockerfile to file
-    out_file = build_dir / 'Dockerfile'
-    out_file.parent.mkdir(exist_ok=True, parents=True)
-    with open(str(out_file), 'w') as f:
-        f.write(dockerfile)
-    logger.info("Dockerfile generated at %s", out_file)
-
-
-def docker_build(build_dir: Path, image_tag: str):
+def dockerfile_build(dockerfile: DockerRenderer, build_dir: Path, image_tag: str):
     """Builds the dockerfile in the specified build directory
 
     Parameters
     ----------
+    dockerfile : DockerRenderer
+        Neurodocker renderer to build
     build_dir : Path
         path of the build directory
     image_tag : str
         Docker image tag to assign to the built image
     """
+
+    # Save generated dockerfile to file
+    out_file = build_dir / 'Dockerfile'
+    out_file.parent.mkdir(exist_ok=True, parents=True)
+    with open(str(out_file), 'w') as f:
+        f.write(dockerfile.render())
+    logger.info("Dockerfile generated at %s", str(out_file))
+    
     dc = docker.from_env()
     dc.images.build(path=str(build_dir), tag=image_tag)
     logging.info("Successfully built docker image %s", image_tag)
 
 
-def install_python(packages: ty.Iterable[PipSpec], build_dir: Path,
+def install_python(dockerfile: DockerRenderer,
+                   packages: ty.Iterable[PipSpec], build_dir: Path,
                    arcana_install_extras: ty.Iterable=(),
                    use_local_packages: bool=False):
     """Generate Neurodocker instructions to install an appropriate version of
@@ -161,7 +141,9 @@ def install_python(packages: ty.Iterable[PipSpec], build_dir: Path,
 
     Parameters
     ----------
-    python_packages : ty.Iterable[PipSpec]
+    dockerfile : DockerRenderer
+        the neurodocker renderer to append the install instructions to
+    packages : ty.Iterable[PipSpec]
         the python packages (with optional extras) that need to be installed
     build_dir : Path
         the path to the build directory
@@ -203,11 +185,8 @@ def install_python(packages: ty.Iterable[PipSpec], build_dir: Path,
             pkg_build_path = copy_package_into_build_dir(
                 pip_spec.name, pip_spec.file_path, build_dir)
             pip_str = '/python-packages/' + pip_spec.name
-            instructions.append(
-                {'name': 'copy',
-                 'kwds': {
-                     'source': [str(pkg_build_path.relative_to(build_dir))],
-                     'destination': pip_str}})
+            dockerfile.copy(source=[str(pkg_build_path.relative_to(build_dir))],
+                            destination=pip_str)
         elif pip_spec.url:
             if pip_spec.version:
                 raise ArcanaBuildError(
@@ -221,41 +200,33 @@ def install_python(packages: ty.Iterable[PipSpec], build_dir: Path,
             pip_str += '==' + pip_spec.version
         pip_strs.append(pip_str)
 
-    instructions.append(
-        {
-            "name": "miniconda",
-            "kwds": {
-                "version": "latest",
-                "env_name": "arcana",
-                "env_exists": False,
-                "conda_install": ' '.join([
-                    "python=" + natsorted(python_versions)[-1],
-                    "numpy",
-                    "traits",
-                    "dcm2niix",
-                    "mrtrix3"]),
-                "conda_opts": "--channel mrtrix3",
-                "pip_install": ' '.join(pip_strs)
-            }
-        }
-    )
+    dockerfile.add_registered_template(
+        'miniconda',
+        version="latest",
+        env_name="arcana",
+        env_exists=False,
+        conda_install=' '.join([
+            "python=" + natsorted(python_versions)[-1],
+            "numpy",
+            "traits",
+            "dcm2niix",
+            "mrtrix3"]),
+        conda_opts="--channel mrtrix3",
+        pip_install=' '.join(pip_strs))
+
     return instructions
 
 
-def install_system_packages(packages: ty.Iterable[str]):
+def install_system_packages(dockerfile: DockerRenderer, packages: ty.Iterable[str]):
     """Generate Neurodocker instructions to install systems packages in dockerfile
 
     Parameters
     ----------
+    dockerfile : DockerRenderer
+        the neurodocker renderer to append the install instructions to
     system_packages : Iterable[str]
         the packages to install on the operating system
-
-    Returns
-    -------
-    list[str, list[str]]
-        Neurodocker instructions to install the system packages
     """
-    instructions = []
     for pkg in packages:
         install_properties = {}
         if isinstance(pkg, str):
@@ -267,26 +238,22 @@ def install_system_packages(packages: ty.Iterable[str]):
                 install_properties['version'] = pkg[1]
             if len(pkg) > 2:
                 install_properties['method'] = pkg[2]   
-        instructions.append({'name': pkg_name, 'kwds': install_properties})
-    return instructions
+        getattr(dockerfile, pkg_name)(**install_properties)
 
 
-def insert_readme(description, build_dir):
+def insert_readme(dockerfile: DockerRenderer, description, build_dir):
     """Generate Neurodocker instructions to install README file inside the docker
     image
 
     Parameters
     ----------
+    dockerfile : DockerRenderer
+        the neurodocker renderer to append the install instructions to
     description : str
         a description of what the pipeline does, to be inserted in a README file
         in the Docker image
     build_dir : Path
         path to build dir
-
-    Returns
-    -------
-    list[str, list[str]]
-        Neurodocker instructions to install the system packages
     """
     if description is None:
         description = ''
@@ -295,10 +262,8 @@ def insert_readme(description, build_dir):
     with open(build_dir / 'README.md', 'w') as f:
         f.write(DOCKERFILE_README_TEMPLATE.format(
             __version__, description))
-    return {'name': 'copy',
-            'kwds': {
-                'source': ['./README.md'],
-                'destination': '/README.md'}}
+    return dockerfile.copy(source=['./README.md'],
+                           destination='/README.md')
 
 
 def copy_package_into_build_dir(package_name: str, local_installation: Path,

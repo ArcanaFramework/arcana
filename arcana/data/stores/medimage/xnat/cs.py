@@ -2,6 +2,7 @@
 Helper functions for generating XNAT Container Service compatible Docker
 containers
 """
+import sys
 import os
 import re
 import logging
@@ -71,7 +72,11 @@ class XnatViaCS(Xnat):
         # Convert localhost path to host.docker.internal by default
         match = re.match(r'(https?://)localhost(.*)', server)
         if match:
-            server = match.group(1) + 'host.docker.internal' + match.group(2)
+            if sys.platform == 'linux':
+                ip_address = '172.17.0.1'
+            else:
+                ip_address = 'host.docker.internal'
+            server = match.group(1) + ip_address + match.group(2)
             logger.debug("Converted localhost server to %s", server)
         return server
 
