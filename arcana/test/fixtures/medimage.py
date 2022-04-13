@@ -8,6 +8,7 @@ import typing as ty
 import pytest
 import docker
 import xnat4tests
+from arcana.data.stores.common import FileSystem
 from arcana.data.stores.medimage.xnat.api import Xnat
 from arcana.data.stores.medimage.xnat.cs import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
@@ -20,6 +21,13 @@ from arcana.test.datasets import create_test_file
 @pytest.fixture
 def nifti_sample_dir():
     return Path(__file__).parent.parent.parent.parent / 'test-data'/ 'nifti'
+
+
+@pytest.fixture
+def dicom_dataset(test_dicom_dataset_dir):
+    return FileSystem().dataset(
+        test_dicom_dataset_dir,
+        hierarchy=['session'])
 
 
 # -----------------------

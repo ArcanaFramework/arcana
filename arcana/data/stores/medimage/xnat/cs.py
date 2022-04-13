@@ -73,9 +73,9 @@ class XnatViaCS(Xnat):
         match = re.match(r'(https?://)localhost(.*)', server)
         if match:
             if sys.platform == 'linux':
-                ip_address = '172.17.0.1'
+                ip_address = '172.17.0.1'  # Linux + GH Actions
             else:
-                ip_address = 'host.docker.internal'
+                ip_address = 'host.docker.internal'  # Mac/Windows local debug
             server = match.group(1) + ip_address + match.group(2)
             logger.debug("Converted localhost server to %s", server)
         return server
