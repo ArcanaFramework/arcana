@@ -680,15 +680,18 @@ class Xnat(DataStore):
                 raise
         return xresource, uri, cache_path
 
-    def asdict(self):
+    def _encrypt_credentials(self, serialised):
+        with self:
+            serialised['user'], serialised['password'] = self.login.services.issue_token()
+
+    def asdict(self, **kwargs):
         # Call asdict utility method with 'ignore_instance_method' to avoid
         # infinite recursion
-        dct = asdict(self)
-        # TODO: Methods to replace username/password with tokens go here
+        dct = asdict(self, **kwargs)
+        self._encrypt_credentials(dct)
         return dct
 
-
-#TBC move this to utils?
+# TBC move to utils?
 def append_suffix(path, suffix):
     "Appends a string suffix to a Path object"
     return Path(str(path) + suffix)

@@ -232,9 +232,12 @@ class DataStore(metaclass=ABCMeta):
         entries = self.load_saved_entries()
         # connect to store in case it is needed in the asdict method and to
         # test the connection in general before it is saved
-        with self:  
-            entries[name] = asdict(self)
+        with self:
+            entries[name] = self.asdict()
         self.save_entries(entries)
+
+    def asdict(self, **kwargs):
+        return asdict(self, **kwargs)
 
     @classmethod
     def remove(cls, name: str):
