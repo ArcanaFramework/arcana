@@ -174,18 +174,18 @@ def func_task(func, in_fields, out_fields, **inputs):
             name=f'{func_name}Out', bases=(BaseSpec,), fields=out_fields),
         **inputs)
 
-
-
-package_dir = os.path.join(os.path.dirname(__file__), '..')
-
-try:
-    HOSTNAME = sp.check_output('hostname').strip().decode('utf-8')
-except sp.CalledProcessError:
-    HOSTNAME = None
-JSON_ENCODING = {'encoding': 'utf-8'}
-
-
 def set_loggers(loglevel, pydra_level='warning', depend_level='warning'):
+    """Sets loggers for arcana and pydra. To be used in CLI
+
+    Parameters
+    ----------
+    loglevel : str
+        the threshold to produce logs at (e.g. debug, info, warning, error)
+    pydra_level : str, optional
+        the threshold to produce logs from Pydra at
+    depend_level : str, optional
+        the threshold to produce logs in dependency packages
+    """
     def parse(level):
         if isinstance(level, str):
             level = getattr(logging, level.upper())
@@ -196,23 +196,6 @@ def set_loggers(loglevel, pydra_level='warning', depend_level='warning'):
 
     # set logging format
     logging.basicConfig(level=parse(depend_level))
-
-
-# def to_list(arg):
-#     if arg is None:
-#         arg = []
-#     else:
-#         arg = list(arg)
-#     return arg
-
-
-# def to_dict(arg):
-#     if arg is None:
-#         arg = {}
-#     else:
-#         arg = dict(arg)
-#     return arg
-
 
 
 def class_location(cls):
@@ -314,23 +297,6 @@ def list_subclasses(package, base_class):
     return subclasses
 
 
-def resolve_subclass(package, base_class, name):
-    sub_class = None
-    for module in submodules(package):
-        try:
-            sub_class = getattr(module, name)
-        except AttributeError:
-            pass
-    if sub_class is None:
-        raise ArcanaNameError(
-            name,
-            f"Could not find '{name}'' in {package.__package__} sub-modules:\n")
-    if not issubclass(sub_class, base_class):
-        raise ArcanaUsageError(
-            f"{sub_class} is not a sub-class of {base_class}")
-    return sub_class
-
-
 @contextmanager
 def set_cwd(path):
     """Sets the current working directory to `path` and back to original 
@@ -355,12 +321,6 @@ def dir_modtime(dpath):
     directory
     """
     return max(os.path.getmtime(d) for d, _, _ in os.walk(dpath))
-
-
-def lower(s):
-    if s is None:
-        return None
-    return s.lower()
 
 
 def parse_single_value(value, format=None):
@@ -476,32 +436,6 @@ def find_mismatch(first, second, indent=''):
                                                        indent=sub_indent),
                                          indent=sub_indent))
     return mismatch
-
-
-def extract_package_version(package_name):
-    version = None
-    try:
-        module = import_module(package_name)
-    except ImportError:
-        if package_name.startswith('py'):
-            try:
-                module = import_module(package_name[2:])
-            except ImportError:
-                pass
-    else:
-        try:
-            version = module.__version__
-        except AttributeError:
-            pass
-    return version
-
-
-def get_class_info(cls):
-    info = {'class': '{}.{}'.format(cls.__module__, cls.__name__)}
-    version = extract_package_version(cls.__module__.split('.')[0])
-    if version is not None:
-        info['pkg_version'] = version
-    return info
 
 
 def wrap_text(text, line_length, indent, prefix_indent=False):
@@ -621,24 +555,6 @@ def pkg_versions(modules):
     versions = {p.key: p.version for p in package_from_module(modules)}
     versions['arcana'] = __version__
     return versions
-
-
-def parse_dimensions(dimensions_str):
-    """Parse a string representation of DataSpace"""
-    parts = dimensions_str.split('.')
-    if len(parts) < 2:
-        raise ArcanaUsageError(
-            f"Value provided to '--dimensions' arg ({dimensions_str}) "
-            "needs to include module, either relative to "
-            "'arcana.dimensionss' (e.g. medimage.Clinical) or an "
-            "absolute path")
-    module_path = '.'.join(parts[:-1])
-    cls_name = parts[-1]
-    try:
-        module = import_module('arcana.data.spaces.' + module_path)
-    except ImportError:
-        module = import_module(module_path)
-    return getattr(module, cls_name)
 
 
 def asdict(obj, omit: ty.Iterable[str]=(), required_modules: set=None):
@@ -939,3 +855,12 @@ def pydra_eq(a: TaskBase, b: TaskBase):
 
 # Minimum version of Arcana that this version can read the serialisation from
 MIN_SERIAL_VERSION = '0.0.0'
+
+
+package_dir = os.path.join(os.path.dirname(__file__), '..')
+
+try:
+    HOSTNAME = sp.check_output('hostname').strip().decode('utf-8')
+except sp.CalledProcessError:
+    HOSTNAME = None
+JSON_ENCODING = {'encoding': 'utf-8'}

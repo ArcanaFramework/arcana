@@ -12,7 +12,6 @@ import attr
 import yaml
 from fasteners import InterProcessLock
 from arcana.exceptions import ArcanaMissingDataException, ArcanaUsageError
-from arcana.core.utils import get_class_info, HOSTNAME
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical, DataSpace
 from arcana.core.data.store import DataStore

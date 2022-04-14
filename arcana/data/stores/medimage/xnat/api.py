@@ -19,9 +19,8 @@ from arcana.core.utils import JSON_ENCODING
 from arcana.core.data.store import DataStore
 from arcana.core.data.node import DataNode
 from arcana.exceptions import (
-    ArcanaError, ArcanaUsageError, ArcanaFileFormatError,
-    ArcanaWrongRepositoryError)
-from arcana.core.utils import dir_modtime, get_class_info, parse_value
+    ArcanaError, ArcanaUsageError, ArcanaWrongRepositoryError)
+from arcana.core.utils import dir_modtime, parse_value
 from arcana.core.data.set import Dataset
 from arcana.core.utils import path2name, name2path, asdict
 from arcana.data.spaces.medimage import Clinical
