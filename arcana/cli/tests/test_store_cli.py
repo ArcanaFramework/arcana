@@ -1,7 +1,4 @@
 import os
-import yaml
-from yaml.loader import *
-
 from unittest.mock import patch
 from arcana.cli.store import add, ls
 from arcana.test.utils import show_cli_trace
