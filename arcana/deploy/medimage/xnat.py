@@ -1,3 +1,4 @@
+import sys
 import typing as ty
 from pathlib import Path
 import tempfile
@@ -20,37 +21,36 @@ def build_xnat_cs_image(image_tag: str,
                         commands: ty.List[ty.Dict[str, ty.Any]],
                         authors: ty.List[ty.Tuple[str, str]],
                         info_url: str,
-                        python_packages: ty.Iterable[str]=(),
-                        system_packages: ty.Iterable[str]=(),
-                        readme: str=None,
                         docker_registry: str=DOCKER_HUB,
                         build_dir: Path=None,
+                        test_config: bool=False,
                         **kwargs):
     """Creates a Docker image containing one or more XNAT commands ready
     to be installed in XNAT's container service plugin
 
     Parameters
     ----------
-    pkg_name : str
-        Name of the package as a whole
-    commands
+    image_tag : str
+        Tag to name the built Docker image with
+    commands: dict[str, Any]
         List of command specifications (in dicts) to be installed on the
         image, see `generate_xnat_command` for valid args (dictionary keys).
-    authors
+    authors : list[str]
         Names and emails of the maintainers of the wrapper pipeline
-    info_url
+    info_url : str
         The URL of the package website explaining the analysis software
         and what it does
-    docker_org
-        The docker organisation the image will uploaded to
-    docker_registry
+    docker_registry : str
         The Docker registry the image will be uploaded to
-    wrapper_version
+    wrapper_version : str
         The version of the wrapper specific to the pkg version. It will be
         appended to the package version, e.g. 0.16.2 -> 0.16.2--1
     build_dir : Path
         the directory to build the docker image within, i.e. where to write
         Dockerfile and supporting files to be copied within the image
+    test_config : bool
+        whether to create the container so that it will work with the test
+        XNAT configuration (i.e. hard-coding the XNAT server IP)
     **kwargs:
         Passed on to `construct_dockerfile` method
     """   
@@ -82,15 +82,12 @@ def build_xnat_cs_image(image_tag: str,
         build_dir,
         labels={'org.nrg.commands': command_label,
                 'maintainer': authors[0]},
-        python_packages=python_packages,
-        system_packages=system_packages,
-        readme=readme,
-        **{k: v for k, v in kwargs.items() if not k.startswith('_')})
+        **kwargs)
 
     # Copy the generated XNAT commands inside the container for ease of reference
     copy_command_ref(dockerfile, xnat_commands, build_dir)
 
-    save_store_config(dockerfile, build_dir)
+    save_store_config(dockerfile, build_dir, test_config=test_config)
 
     dockerfile_build(dockerfile, build_dir, image_tag)
 
@@ -421,7 +418,8 @@ def copy_command_ref(dockerfile: DockerRenderer, xnat_commands, build_dir):
     dockerfile.copy(source=['./xnat_commands'], destination='/xnat_commands')
 
 
-def save_store_config(dockerfile: DockerRenderer, build_dir: Path):
+def save_store_config(dockerfile: DockerRenderer, build_dir: Path,
+                      test_config=False):
     """Save a configuration for a XnatViaCS store.
 
     Parameters
@@ -430,10 +428,20 @@ def save_store_config(dockerfile: DockerRenderer, build_dir: Path):
         Neurodocker renderer to build
     build_dir : Path
         the build directory to save supporting files
+    test_config : bool
+        whether the target XNAT is using the local test configuration, in which
+        case the server location will be hard-coded rather than rely on the
+        XNAT_HOST environment variable passed to the container by the XNAT CS
     """
-    DataStore.save_entries(
-        {'xnat-cs': {'class': '<' + class_location(XnatViaCS) + '>'}},
-        config_path=build_dir / 'stores.yml')
+    xnat_cs_store_entry = {'class': '<' + class_location(XnatViaCS) + '>'}
+    if test_config:
+        if sys.platform == 'linux':
+            ip_address = '172.17.0.1'  # Linux + GH Actions
+        else:
+            ip_address = 'host.docker.internal'  # Mac/Windows local debug
+        xnat_cs_store_entry['server'] = 'http://' + ip_address + ':8080'
+    DataStore.save_entries({'xnat-cs': xnat_cs_store_entry},
+                           config_path=build_dir / 'stores.yml')
     dockerfile.run(command='mkdir -p /root/.arcana')
     dockerfile.run(command=f'mkdir -p {str(XnatViaCS.CACHE_DIR)}')
     dockerfile.copy(source=['./stores.yml'], destination='/root/.arcana/stores.yml')

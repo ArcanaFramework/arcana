@@ -91,7 +91,7 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
                 docker_registry=docker_registry,
                 use_local_packages=use_local_packages,
                 arcana_install_extras=install_extras,
-                **spec)
+                **{k: v for k, v in spec.items() if not k.startswith('_')})
         except Exception:
             if raise_errors:
                 raise

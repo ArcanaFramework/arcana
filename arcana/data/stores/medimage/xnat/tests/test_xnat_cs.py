@@ -1,11 +1,4 @@
-from pathlib import Path
-import logging
 import time
-import tempfile
-import pytest
-import docker.errors
-from arcana.data.spaces.medimage import Clinical
-from arcana.data.formats import Text
 from arcana.deploy.medimage import build_xnat_cs_image, generate_xnat_cs_command
 from arcana.test.fixtures.medimage import make_mutable_dataset
 
@@ -34,7 +27,8 @@ def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
         readme='This is a test README',
         docker_registry='a.docker.registry.io',
         use_local_packages=True,
-        arcana_install_extras=['test'])
+        arcana_install_extras=['test'],
+        test_config=True)
 
     with xnat_repository:
 

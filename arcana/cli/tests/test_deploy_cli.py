@@ -20,7 +20,8 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         'system_packages': [],
         'python_packages': [],
         'authors': ['some.one@an.email.org'],
-        'info_url': 'http://concatenate.readthefakedocs.io'}
+        'info_url': 'http://concatenate.readthefakedocs.io',
+        'test_config': True}
 
     build_dir = work_dir / 'build'
     build_dir.mkdir()

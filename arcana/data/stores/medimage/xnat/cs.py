@@ -69,15 +69,6 @@ class XnatViaCS(Xnat):
     def server_default(self):
         server = os.environ['XNAT_HOST']
         logger.debug("XNAT (via CS) server found %s", server)
-        # Convert localhost path to host.docker.internal by default
-        match = re.match(r'(https?://)localhost(.*)', server)
-        if match:
-            if sys.platform == 'linux':
-                ip_address = '172.17.0.1'  # Linux + GH Actions
-            else:
-                ip_address = 'host.docker.internal'  # Mac/Windows local debug
-            server = match.group(1) + ip_address + match.group(2)
-            logger.debug("Converted localhost server to %s", server)
         return server
 
     @user.default
