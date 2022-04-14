@@ -70,8 +70,45 @@ def get_config_file_path(name: str):
     return get_home_dir() / (name + '.yml')
 
 
+# Escape values for invalid characters for Python variable names
+PATH_ESCAPES = {
+    '__': '__dunder__',
+    '/': '__l__',
+    '.': '__o__',
+    ',': '__comma__',
+    '>': '__gt__',
+    '<': '__lt__',
+    '-': '__hyphen__',
+    "'": '__singlequote__',
+    '"': '__doublequote__',
+    '(': '__openparens__',
+    ')': '__closeparens__',
+    '[': '__openbracket__',
+    ']': '__closebracket__',
+    '{': '__openbrace__',
+    '}': '__closebrace__',
+    ':': '__colon__',
+    ';': '__semicolon__',
+    '`': '__tick__',
+    '~': '__tilde__',
+    '|': '__pipe__',
+    '?': '__question__',
+    '\\': '__forwardslash__',
+    '$': '__dollar__',
+    '@': '__at__',
+    '!': '__exclaimation__',
+    '#': '__pound__',
+    '%': '__percent__',
+    '^': '__caret__',
+    '&': '__ampersand__',
+    '*': '__star__',
+    '+': '__plus__',
+    '=': '__equals__'}
+
+
 def path2name(path):
-    """Escape the name of an item by replacing '/' with a valid substring
+    """Escape a string so that it can be used as a Python variable name by
+    replacing non-valid characters with escape sequences in PATH_ESCAPES.
 
     Parameters
     ----------
@@ -83,23 +120,31 @@ def path2name(path):
     str
         A python safe name
     """
-    return PATH_SEP.join(str(path).split('/'))
+    name = path
+    for char, esc in PATH_ESCAPES.items():
+        name = name.replace(char, esc)
+    return name
 
 
 def name2path(name):
-    """Unescape a name created by path2name
+    """Unescape a Pythonic name created by `path2name`
 
     Parameters
     ----------
     name : str
-        An escaped path
+        the escaped path
 
     Returns
     -------
     str
-        The derived name
+        the original path
     """
-    return '/'.join(name.split(PATH_SEP))
+    path = name
+    # the order needs to be reversed so that "dunder" (double underscore) is
+    # unescaped last
+    for char, esc in reversed(PATH_ESCAPES.items()):
+        path = path.replace(esc, char)
+    return path
 
 
 def func_task(func, in_fields, out_fields, **inputs):
@@ -130,8 +175,6 @@ def func_task(func, in_fields, out_fields, **inputs):
         **inputs)
 
 
-PATH_SEP = '__l__'
-
 
 package_dir = os.path.join(os.path.dirname(__file__), '..')
 
@@ -139,20 +182,7 @@ try:
     HOSTNAME = sp.check_output('hostname').strip().decode('utf-8')
 except sp.CalledProcessError:
     HOSTNAME = None
-JSON_ENCODING = {'encoding': 'utf-8'}    
-
-# def set_loggers(loggers):
-
-#     # Overwrite earlier (default) versions of logger levels with later options
-#     loggers = dict(loggers)
-
-#     for name, level in loggers.items():
-#         logger = logging.getLogger(name)
-#         logger.setLevel(level)
-#         handler = logging.StreamHandler()
-#         formatter = logging.Formatter("%(levelname)s - %(message)s")
-#         handler.setFormatter(formatter)
-#         logger.addHandler(handler)
+JSON_ENCODING = {'encoding': 'utf-8'}
 
 
 def set_loggers(loglevel, pydra_level='warning', depend_level='warning'):
@@ -241,14 +271,40 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
                 class_str, "', '".join(prefixes)))
     return cls
 
-def submodules(module):
-    for mod_info in pkgutil.iter_modules([str(Path(module.__file__).parent)],
-                                         prefix=module.__package__ + '.'):
+def submodules(package):
+    """Iterates all modules within the given package
+
+    Parameters
+    ----------
+    package : module
+        the package to iterate over
+
+    Yields
+    ------
+    module
+        all modules within the package
+    """
+    for mod_info in pkgutil.iter_modules([str(Path(package.__file__).parent)],
+                                         prefix=package.__package__ + '.'):
         yield import_module(mod_info.name)
 
 
 def list_subclasses(package, base_class):
-    """List all available cmds in """
+    """List all available subclasses of a base class in modules within the given
+    package
+
+    Parameters
+    ----------
+    package : module
+        the package to list the subclasses within
+    base_class : type
+        the base class
+
+    Returns
+    -------
+    list
+        all subclasses of the base-class found with the package
+    """
     subclasses = []
     for module in submodules(package):
         for obj_name in dir(module):
@@ -256,17 +312,6 @@ def list_subclasses(package, base_class):
             if isclass(obj) and issubclass(obj, base_class) and obj is not base_class:
                 subclasses.append(obj)
     return subclasses
-
-
-def list_instances(package, cls):
-    """List all available cmds in """
-    instances = []
-    for module in submodules(package):
-        for obj_name in dir(module):
-            obj = getattr(module, obj_name)
-            if isinstance(obj, cls):
-                instances.append(obj)
-    return instances
 
 
 def resolve_subclass(package, base_class, name):
