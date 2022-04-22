@@ -275,7 +275,7 @@ class DataStore(metaclass=ABCMeta):
                     f"No saved data store or built-in type matches '{name}'")
         else:
             entry.update(kwargs)
-            store = resolve_class(entry.pop('class'))(**entry)
+            store = fromdict(entry)
         return store
 
     @classmethod
