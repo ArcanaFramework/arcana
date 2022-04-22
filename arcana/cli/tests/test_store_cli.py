@@ -1,6 +1,6 @@
 import os
 from unittest.mock import patch
-from arcana.cli.store import add, ls, remove
+from arcana.cli.store import add, ls, remove, rename
 from arcana.test.utils import show_cli_trace
 
 
@@ -43,4 +43,26 @@ def test_store_cli_remove(xnat_repository, cli_runner, work_dir):
         # Check store is gone
         result = cli_runner(ls, [])
         assert new_store_name not in result.output
+        
+def test_store_cli_rename(xnat_repository, cli_runner, work_dir):
+    test_home_dir = work_dir / 'test-arcana-home'
+    old_store_name = 'test-xnat'
+    new_store_name = 'test-xnat-renamed'
+    # Create a new home directory so it doesn't conflict with user settings
+    with patch.dict(os.environ, {'ARCANA_HOME': str(test_home_dir)}):
+        # Add new XNAT configuration
+        cli_runner(
+            add,
+            [old_store_name, 'medimage:Xnat', xnat_repository.server,
+             '--user', xnat_repository.user,
+             '--password', xnat_repository.password])
+        # Check store is saved
+        result = cli_runner(ls, [])
+        assert old_store_name in result.output
+
+        cli_runner(rename,[old_store_name,new_store_name])
+        # Check store is renamed
+        result = cli_runner(ls, [])
+        assert old_store_name not in result.output
+        assert new_store_name in result.output
         
