@@ -236,6 +236,9 @@ class DataStore(metaclass=ABCMeta):
             entries[name] = asdict(self)
         self.save_entries(entries, config_path=config_path)
 
+    def asdict(self, **kwargs):
+        return asdict(self, **kwargs)
+
     @classmethod
     def load(cls, name: str, config_path: Path=None, **kwargs):
         """Loads a DataStore from that has been saved in the configuration file.
@@ -275,7 +278,7 @@ class DataStore(metaclass=ABCMeta):
                     f"No saved data store or built-in type matches '{name}'")
         else:
             entry.update(kwargs)
-            store = resolve_class(entry.pop('class'))(**entry)
+            store = fromdict(entry)
         return store
 
     @classmethod

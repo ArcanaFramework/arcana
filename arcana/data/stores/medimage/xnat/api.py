@@ -10,11 +10,10 @@ import logging
 import errno
 import json
 import re
-import hashlib
 from zipfile import ZipFile, BadZipfile
 import shutil
 import attr
-import xnat
+import xnat.session
 from arcana.core.utils import JSON_ENCODING
 from arcana.core.data.store import DataStore
 from arcana.core.data.node import DataNode
@@ -73,7 +72,7 @@ class Xnat(DataStore):
     check_md5: bool = attr.ib(default=True)
     race_condition_delay: int = attr.ib(default=30)
     _cached_datasets: ty.Dict[str, Dataset]= attr.ib(factory=dict, init=False)
-    _login = attr.ib(default=None, init=False)
+    _login: xnat.session.XNATSession = attr.ib(default=None, init=False)
 
     alias = 'xnat'
     MD5_SUFFIX = '.md5.json'
@@ -85,7 +84,7 @@ class Xnat(DataStore):
     METADATA_RESOURCE = '__arcana__'
 
 
-    def save_dataset_definition(self, dataset, definition, name):
+    def save_dataset_definition(self, dataset: Dataset, definition: ty.Dict[str, ty.Any], name: str):
         with self:
             xproject = self.login.projects[dataset.id]
             try:
@@ -100,7 +99,7 @@ class Xnat(DataStore):
                 json.dump(definition, f)
             xresource.upload(str(definition_file), name + '.json')
 
-    def load_dataset_definition(self, dataset_id, name):
+    def load_dataset_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
         with self:
             xproject = self.login.projects[dataset_id]
             try:
@@ -674,13 +673,16 @@ class Xnat(DataStore):
                 raise
         return xresource, uri, cache_path
 
-    def asdict(self):
+    def _encrypt_credentials(self, serialised):
+        with self:
+            serialised['user'], serialised['password'] = self.login.services.issue_token()
+
+    def asdict(self, **kwargs):
         # Call asdict utility method with 'ignore_instance_method' to avoid
         # infinite recursion
-        dct = asdict(self)
-        # TODO: Methods to replace username/password with tokens go here
+        dct = asdict(self, **kwargs)
+        self._encrypt_credentials(dct)
         return dct
-
 
 def append_suffix(path, suffix):
     "Appends a string suffix to a Path object"
