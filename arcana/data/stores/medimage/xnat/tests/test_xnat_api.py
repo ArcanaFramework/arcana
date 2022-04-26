@@ -1,7 +1,5 @@
 import os
-import os
-from pwd import getpwuid
-from grp import getgrgid
+import sys
 import os.path
 import operator as op
 import shutil
@@ -13,6 +11,23 @@ from functools import reduce
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.set import Dataset
 from arcana.test.datasets import create_test_file
+
+if sys.platform == 'win32':
+
+    def get_perms(f):
+        return 'WINDOWS-UNKNOWN'
+
+else:
+    from pwd import getpwuid
+    from grp import getgrgid
+
+    def get_perms(f):
+        st = os.stat(f)
+        return (
+            getpwuid(st.st_uid).pw_name,
+            getgrgid(st.st_gid).gr_name,
+            oct(st.st_mode))
+
 
 # logger = logging.getLogger('arcana')
 # logger.setLevel(logging.INFO)
@@ -47,15 +62,9 @@ def test_get_items(xnat_dataset, caplog):
                 try:
                     item.get()
                 except PermissionError:
-                    def get_perms(f):
-                        st = os.stat(f)
-                        return (
-                            getpwuid(st.st_uid).pw_name,
-                            getgrgid(st.st_gid).gr_name,
-                            oct(st.st_mode))
-                    current_user = getpwuid(os.getuid()).pw_name
                     archive_dir = str(Path.home() / '.xnat4tests' / 'xnat_root' / 'archive' / xnat_dataset.id)
                     archive_perms = get_perms(archive_dir)
+                    current_user = os.getlogin()
                     msg = f"Error accessing {item} as '{current_user}' when '{archive_dir}' has {archive_perms} permissions"
                     raise PermissionError(msg)
                 if item.is_dir:
