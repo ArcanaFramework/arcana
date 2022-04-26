@@ -685,7 +685,6 @@ class Xnat(DataStore):
         self._encrypt_credentials(dct)
         return dct
 
-# TBC move to utils?
 def append_suffix(path, suffix):
     "Appends a string suffix to a Path object"
     return Path(str(path) + suffix)
