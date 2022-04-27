@@ -450,11 +450,14 @@ def sink_items(dataset, frequency, id, provenance, **to_sink):
 def access_paths_and_values(**data_items):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
-    logger.debug("Extracting paths/values from %s", data_items)
+    from pathlib import Path
+    from tempfile import mkdtemp
+    logger.debug("Extracting paths/values from %s", data_items) 
     values = []
+    tmpdir = Path(mkdtemp())
     for name, item in data_items.items():
         if isinstance(item, FileGroup):
-            cpy = item.copy_to('./' + name, symlink=True)
+            cpy = item.copy_to(tmpdir / name, symlink=True)
             values.append(cpy.fs_path)
         else:
             values.append(item.value)

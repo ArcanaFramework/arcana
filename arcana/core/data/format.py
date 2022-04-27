@@ -636,7 +636,9 @@ def access_paths(from_format, file_group):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
     logger.debug("Extracting paths from %s (%s format) before conversion", file_group, from_format)
-    cpy = file_group.copy_to(Path(file_group.path).name, symlink=True)
+    import tempfile
+    from pathlib import Path
+    cpy = file_group.copy_to(Path(tempfile.mkdtemp()) / Path(file_group.path).name, symlink=True)
     return cpy.fs_paths if len(cpy.fs_paths) > 1 else cpy.fs_path
 
 
@@ -665,13 +667,13 @@ class BaseFile(FileGroup):
                 f"Attempting to access file paths of {self} before they are set")
         return self.fs_paths
 
-    def copy_to(self, fs_path: str, symlink: bool=False):
+    def copy_to(self, fs_path: Path, symlink: bool=False):
         """Copies the file-group to the new path, with auxiliary files saved
         alongside the primary-file path.
 
         Parameters
         ----------
-        path : str
+        path : Path
             Path to save the file-group to excluding file extensions
         symlink : bool
             Use symbolic links instead of copying files to new location
@@ -680,7 +682,7 @@ class BaseFile(FileGroup):
             copy_file = os.symlink
         else:
             copy_file = shutil.copyfile
-        dest_path = fs_path + '.' + self.ext
+        dest_path = str(fs_path) + '.' + self.ext
         copy_file(self.fs_path, dest_path)
         cpy = copy(self)
         cpy.set_fs_paths([dest_path])
