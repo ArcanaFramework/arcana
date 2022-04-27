@@ -46,11 +46,10 @@ def test_store_cli_remove(xnat_repository, cli_runner, work_dir):
         result = cli_runner(ls, [])
         assert new_store_name not in result.output
         
-@pytest.mark.skip("Run it when xnat_store_token branch has been merge to develop")
 def test_store_cli_rename(xnat_repository, cli_runner, work_dir):
     test_home_dir = work_dir / 'test-arcana-home'
-    old_store_name = 'test-xnat'
-    new_store_name = 'test-xnat-renamed'
+    old_store_name = 'i123'
+    new_store_name = 'y456'
     # Create a new home directory so it doesn't conflict with user settings
     with patch.dict(os.environ, {'ARCANA_HOME': str(test_home_dir)}):
         # Add new XNAT configuration
@@ -61,13 +60,13 @@ def test_store_cli_rename(xnat_repository, cli_runner, work_dir):
              '--password', xnat_repository.password])
         # Check store is saved
         result = cli_runner(ls, [])
-        assert old_store_name in result.output
+        assert 'i123 - arcana.data.stores.medimage.xnat.api:Xnat' in result.output
 
         cli_runner(rename,[old_store_name,new_store_name])
         # Check store is renamed
         result = cli_runner(ls, [])
-        assert old_store_name not in result.output
-        assert new_store_name in result.output
+        assert 'i123 - arcana.data.stores.medimage.xnat.api:Xnat' not in result.output
+        assert 'y456 - arcana.data.stores.medimage.xnat.api:Xnat' in result.output
 
         
 def test_store_cli_encrypt_credentials(xnat_repository, cli_runner, work_dir):
@@ -83,6 +82,8 @@ def test_store_cli_encrypt_credentials(xnat_repository, cli_runner, work_dir):
         assert result.exit_code == 0, show_cli_trace(result)
         # Check credentials have been encrypted
         loaded_xnat_repository = DataStore.load('test-xnat')
+        assert loaded_xnat_repository.password is not ''
         assert loaded_xnat_repository.password is not xnat_repository.password
+        assert loaded_xnat_repository.user is not ''
         assert loaded_xnat_repository.user is not xnat_repository.user
 
