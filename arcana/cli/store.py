@@ -49,14 +49,12 @@ def add(nickname, type, location, varargs, cache, user, password):
 
 @store.command(help="""
 Gives a data store saved in the config file ('~/.arcana/stores.yml') a new
-nickname
+nickname.
 
 Arguments
----------
-old_nickname
-    The current name of the store
-new_nickname
-    The new name for the store""")
+
+OLD_NICKNAME The current name of the store.
+NEW_NICKNAME The new name for the store.""")
 @click.argument('old_nickname')
 @click.argument('new_nickname')
 def rename(old_nickname, new_nickname):
@@ -68,6 +66,7 @@ def rename(old_nickname, new_nickname):
 
 nickname
     The nickname the store was given when its details were saved""")
+@click.argument('nickname')
 def remove(nickname):
     DataStore.remove(nickname)
 
