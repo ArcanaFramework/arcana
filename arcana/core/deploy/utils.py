@@ -4,12 +4,11 @@ from pathlib import Path
 import json
 import site
 import pkg_resources
+import os
+from dataclasses import dataclass, field as dataclass_field
+import yaml
 from arcana import __version__
 from arcana.exceptions import (ArcanaBuildError)
-import os
-import yaml
-from dataclasses import dataclass, field as dataclass_field
-from arcana import __version__
 from arcana.exceptions import ArcanaError
 
 

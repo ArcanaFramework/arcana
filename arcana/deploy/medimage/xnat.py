@@ -103,6 +103,7 @@ def generate_xnat_cs_command(name: str,
                              version,
                              info_url,
                              parameters=None,
+                             configuration=None,
                              frequency='session',
                              registry=DOCKER_HUB):
     """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
@@ -138,6 +139,9 @@ def generate_xnat_cs_command(name: str,
         Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
     registry : str
         URI of the Docker registry to upload the image to
+    configuration : dict[str, Any]
+        Fixed arguments passed to the workflow at initialisation. Can be used to specify
+        the input fields of the workflow/task
 
     Returns
     -------
@@ -151,6 +155,8 @@ def generate_xnat_cs_command(name: str,
     """
     if parameters is None:
         parameters = []
+    if configuration is None:
+        configuration = {}
     if isinstance(frequency, str):
         frequency = Clinical[frequency]
     if frequency not in VALID_FREQUENCIES:
@@ -254,16 +260,24 @@ def generate_xnat_cs_command(name: str,
         output_args.append(
             f'--output {output.path} {output.pydra_field} {output.format.location()} ')
 
+    # Set up fixed arguments used to configure the workflow at initialisation
+    config_args = []
+    for cname, cvalue in configuration:
+        config_args.append(
+            f"--configuration {cname} {cvalue} ")            
+
     input_args_str = ' '.join(input_args)
     output_args_str = ' '.join(output_args)
     param_args_str = ' '.join(param_args)
+    config_args_str = ' '.join(config_args)
 
     cmdline = (
         f"conda run --no-capture-output -n arcana "  # activate conda
         f"run-arcana-pipeline  xnat-cs//[PROJECT_ID] {name} {workflow} "  # run pydra task in Arcana
         + input_args_str
         + output_args_str
-        + param_args_str +
+        + param_args_str
+        + config_args_str +
         f"--plugin serial "  # Use serial processing instead of parallel to simplify outputs
         f"--loglevel info "
         f"--work {XnatViaCS.WORK_MOUNT} "  # working directory
