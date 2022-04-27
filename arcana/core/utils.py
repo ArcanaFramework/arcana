@@ -529,6 +529,8 @@ def package_from_module(module: Sequence[str]):
             paths = importlib_metadata.files(pkg.key)
         except importlib_metadata.PackageNotFoundError:
             continue
+        if paths is None:
+            continue
         match = False
         for path in paths:
             if path.suffix != '.py':

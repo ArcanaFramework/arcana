@@ -747,7 +747,7 @@ class Dataset():
             store_name = 'file'
         else:
             store_name, id = parts
-        parts = id.split(':')
+        parts = id.split('::')
         if len(parts) == 1:
             name = cls.DEFAULT_NAME
         return store_name, id, name
