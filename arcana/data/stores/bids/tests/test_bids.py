@@ -10,7 +10,7 @@ import docker
 from arcana import __version__
 from arcana.data.formats import NiftiX
 from arcana.data.stores.bids import BidsDataset
-from arcana.tasks.bids import BidsApp
+from arcana.tasks.bids import bids_app
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 
@@ -129,7 +129,7 @@ ENTRYPOINT ["/launch.sh"]""")
     
     dc.images.build(path=str(build_dir), tag=MOCK_BIDS_APP_IMAGE)
 
-    task_interface = BidsApp(
+    task_interface = bids_app(
         app_name=MOCK_BIDS_APP_NAME,
         image=MOCK_BIDS_APP_IMAGE,
         executable='/launch.sh',  # Extracted using `docker_image_executable(docker_image)`
@@ -199,7 +199,7 @@ echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
 
     os.chmod(launch_sh, stat.S_IRWXU)
 
-    task_interface = BidsApp(
+    task_interface = bids_app(
         app_name=MOCK_BIDS_APP_NAME,
         image=MOCK_BIDS_APP_IMAGE,
         executable=launch_sh,  # Extracted using `docker_image_executable(docker_image)`

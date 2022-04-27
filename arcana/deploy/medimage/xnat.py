@@ -12,7 +12,7 @@ from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.deploy.build import (
     construct_dockerfile, dockerfile_build)
 from arcana.core.deploy.utils import DOCKER_HUB
-from arcana.core.utils import resolve_class, class_location, asdict
+from arcana.core.utils import resolve_class, class_location
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaUsageError
 
