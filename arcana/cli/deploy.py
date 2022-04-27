@@ -202,7 +202,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
 @click.argument('workflow_location')
 @click.option(
     '--parameter', '-p', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
-    help=("a fixed parameter of the workflow to set when applying it"))
+    help=("free parameters of the workflow to be passed by the pipeline user"))
 @click.option(
     '--input', '-s', nargs=3, default=(), metavar='<col-name> <pydra-field> <required-format>',
     multiple=True, type=str,
@@ -245,9 +245,13 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
 @click.option(
     '--overwrite/--no-overwrite', type=bool,
     help=("Whether to overwrite the saved pipeline with the same name, if present"))
+@click.option(
+    '--configuration', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
+    help=("configuration args of the workflow. Differ from parameters in that they is passed to the "
+          "workflow at initialisation (and can therefore help specify its inputs) not as inputs"))
 def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
                  input, output, frequency, overwrite, work_dir, plugin, loglevel,
-                 dataset_name, dataset_space, dataset_hierarchy, ids):
+                 dataset_name, dataset_space, dataset_hierarchy, ids, configuration):
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
@@ -297,17 +301,13 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
         if col_name not in dataset.columns:
             dataset.add_sink(col_name, format)
 
-    params_dict = {}
-    for pname, pval in parameter:
-        if pval == '':
-            pval = None
-        else:
-            pval = parse_value(pval)
-        params_dict[pname] = pval
-
     workflow = resolve_class(workflow_location)(
         name='workflow',
-        **{n: parse_value(v) for n, v in parameter})
+        **{n: parse_value(v) for n, v in configuration})
+
+    for pname, pval in parameter:
+        if pval != '':
+            setattr(workflow.inputs, pname, parse_value(pval))
 
     if pipeline_name in dataset.pipelines and not overwrite:
         pipeline = dataset.pipelines[pipeline_name]
