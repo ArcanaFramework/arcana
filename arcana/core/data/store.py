@@ -226,6 +226,8 @@ class DataStore(metaclass=ABCMeta):
         config_path : Path, optional
             the path to save the config file to, defaults to `~/.arcana/stores.yml`
         """
+        if not name:
+            raise ArcanaNameError(name, f"Store Name can not be empty")
         if name in self.singletons():
             raise ArcanaNameError(
                 name, f"Name '{name}' clashes with built-in type of store")
