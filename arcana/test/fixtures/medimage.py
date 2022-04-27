@@ -29,6 +29,7 @@ def dicom_dataset(test_dicom_dataset_dir):
         test_dicom_dataset_dir,
         hierarchy=['session'])
 
+# Here I am
 
 # -----------------------
 # Test dataset structures
