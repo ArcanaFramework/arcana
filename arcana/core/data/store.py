@@ -233,7 +233,7 @@ class DataStore(metaclass=ABCMeta):
         # connect to store in case it is needed in the asdict method and to
         # test the connection in general before it is saved
         with self:  
-            entries[name] = asdict(self)
+            entries[name] = self.asdict()
         self.save_entries(entries, config_path=config_path)
 
     def asdict(self, **kwargs):
