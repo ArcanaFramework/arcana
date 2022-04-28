@@ -1,34 +1,60 @@
 import time
+import pytest
 from arcana.deploy.medimage import build_xnat_cs_image, generate_xnat_cs_command
 from arcana.test.fixtures.medimage import make_mutable_dataset
 
 
 PIPELINE_NAME = 'test-concatenate'
 
-def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
-                          command_spec, run_prefix):
 
-    dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
-                                  'concatenate_test.direct')
+@pytest.fixture(params=['func', 'bids_app'], scope='session')
+def build_spec_and_dataset(command_spec, bids_command_spec, xnat_repository, xnat_archive_dir, request):
+    if request.param == 'func':
+        build_spec = {
+            'image_tag': 'arcana-tests/concatenate-xnat-cs',
+            'commands': [command_spec],
+            'authors': ['some.one@an.org'],
+            'info_url': 'http://concatenate.readthefakedocs.io',
+            'system_packages': [],
+            'python_packages': [],
+            'readme': 'This is a test README',
+            'docker_registry': 'a.docker.registry.io',
+            'use_local_packages': True,
+            'arcana_install_extras': ['test'],
+            'test_config': True}
+        dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
+                                       'concatenate.direct')
+    elif request.param == 'bids_app':
+        build_spec = {
+            'image_tag': 'arcana-tests/bids-app-xnat-cs',
+            'commands': [bids_command_spec],
+            'authors': ['some.one.else@another.org'],
+            'info_url': 'http://a-bids-app.readthefakedocs.io',
+            'system_packages': [],
+            'python_packages': [],
+            'readme': 'This is another test README for BIDS app image',
+            'docker_registry': 'another.docker.registry.io',
+            'use_local_packages': True,
+            'test_config': True}
+        dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
+                                       'concatenate.direct')
+    else:
+        assert False, f"unrecognised request param '{request.param}'"
+    return build_spec, dataset
+
+
+
+def test_xnat_cs_pipeline(xnat_repository, build_spec_and_dataset, run_prefix, work_dir):
+    """Tests the complete XNAT deployment pipeline by building and running a container"""
+
+    # Retrieve test dataset and build and command specs from fixtures
+    build_spec, dataset = build_spec_and_dataset
+    command_spec = build_spec['commands'][0]
 
     # Append run_prefix to command name to avoid clash with previous test runs
-    
-    IMAGE_TAG = 'arcana-test-xnat-cs'
-
     cmd_name = command_spec['name'] = 'xnat-cs-test' + run_prefix
 
-    build_dir = build_xnat_cs_image(
-        image_tag=IMAGE_TAG,
-        commands=[command_spec],
-        authors=['some.one@an.org'],
-        info_url='http://concatenate.readthefakedocs.io',
-        system_packages=[],
-        python_packages=[],
-        readme='This is a test README',
-        docker_registry='a.docker.registry.io',
-        use_local_packages=True,
-        arcana_install_extras=['test'],
-        test_config=True)
+    build_xnat_cs_image(build_dir=work_dir, **build_spec)
 
     with xnat_repository:
 
@@ -39,7 +65,7 @@ def test_xnat_cs_pipeline(xnat_repository, xnat_archive_dir,
         # the fact that the container service test XNAT instance shares the
         # outer Docker socket. Since we build the pipeline image with the same
         # socket there is no need to pull it.
-        xnat_command = generate_xnat_cs_command(image_tag=IMAGE_TAG,
+        xnat_command = generate_xnat_cs_command(image_tag=build_spec['image_tag'],
                                                 **command_spec)
         cmd_id = xlogin.post('/xapi/commands', json=xnat_command).json()
 
