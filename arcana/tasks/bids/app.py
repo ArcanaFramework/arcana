@@ -14,18 +14,13 @@ from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.exceptions import ArcanaUsageError
-from arcana.core.utils import func_task
-
-
-def outputs_converter(outputs):
-    """Sets the path of an output to '' if not provided or None"""
-    return [o[:2] + ('',) if len(o) < 3 or o[2] is None else o for o in outputs]
+from arcana.core.utils import func_task, path2name, name2path
 
 
 def bids_app(name: str,
              inputs: ty.List[ty.Tuple[str, type]],
              outputs: ty.List[ty.Tuple[str, type]],
-             executable: str='',             
+             executable: str='',
              container_image: str= None,
              parameters: ty.Dict[str, type]=None,
              frequency: Clinical or str=Clinical.session,
@@ -88,8 +83,8 @@ def bids_app(name: str,
             subject_ids=[DEFAULT_BIDS_ID])
 
     # Ensure output paths all start with 'derivatives
-    input_names = [i[0] for i in inputs]
-    output_names = [o[0] for o in outputs]
+    input_names = [path2name(i[0]) for i in inputs]
+    output_names = [path2name(o[0]) for o in outputs]
     workflow = Workflow(
         name=name,
         input_spec=input_names + list(parameters) + ['id'])
@@ -247,7 +242,7 @@ def add_main_task(workflow: Workflow,
         input_spec=SpecInfo(name="Input", fields=input_fields,
                             bases=(base_spec_cls,)),
         output_spec=SpecInfo(name="Output", fields=output_fields,
-                                bases=(ShellOutSpec,)),
+                             bases=(ShellOutSpec,)),
         dataset_path=dataset_path,
         output_path=app_output_path,
         analysis_level=analysis_level,
@@ -290,13 +285,16 @@ def bidsify_id(id):
 def to_bids(frequency, inputs, dataset, id, **input_values):
     """Takes generic inptus and stores them within a BIDS dataset
     """
-    for inpt_name, inpt_type, inpt_path in inputs:
-        dataset.add_sink(inpt_name, inpt_type, path=inpt_path)
+    for inpt_path, inpt_type in inputs:
+        dataset.add_sink(path2name(inpt_path), inpt_type, path=inpt_path)
     data_node = dataset.node(frequency, id)
     with dataset.store:
         for inpt_name, inpt_value in input_values.items():
+            if inpt_value is attr.NOTHING:
+                raise ArcanaUsageError(
+                    f"No value passed to {inpt_name}")
             node_item = data_node[inpt_name]
-            node_item.put(inpt_value) # Store value/path in store
+            node_item.put(inpt_value)  # Store value/path in store
     return dataset
 
 
@@ -314,7 +312,7 @@ def dataset_paths(app_name: str, dataset: Dataset, id: str):
 
 def extract_bids(dataset: Dataset,
                  frequency: Clinical,
-                 outputs: ty.List[ty.Tuple[str, type, str]],
+                 outputs: ty.List[ty.Tuple[str, type]],
                  path_prefix: str,
                  id: str,
                  app_completed: bool):
@@ -327,12 +325,12 @@ def extract_bids(dataset: Dataset,
     """
     output_paths = []
     data_node = dataset.node(frequency, id)
-    for output_name, output_type, output_path in outputs:
-        dataset.add_sink(output_name, output_type,
+    for output_path, output_type in outputs:
+        dataset.add_sink(path2name(output_path), output_type,
                          path=path_prefix + '/' + output_path)
     with dataset.store:
         for output in outputs:
-            item = data_node[output[0]]
+            item = data_node[path2name(output[0])]
             item.get()  # download to host if required
             output_paths.append(item.value)
     return tuple(output_paths) if len(outputs) > 1 else output_paths[0]

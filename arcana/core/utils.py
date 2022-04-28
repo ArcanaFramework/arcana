@@ -93,7 +93,7 @@ PATH_ESCAPES = {
     '~': '__tilde__',
     '|': '__pipe__',
     '?': '__question__',
-    '\\': '__forwardslash__',
+    '\\': '__backslash__',
     '$': '__dollar__',
     '@': '__at__',
     '!': '__exclaimation__',
@@ -105,10 +105,14 @@ PATH_ESCAPES = {
     '+': '__plus__',
     '=': '__equals__'}
 
+PATH_NAME_PREFIX = 'P_'
+
+EMPTY_PATH_NAME = '__empty__'
+
 
 def path2name(path):
-    """Escape a string so that it can be used as a Python variable name by
-    replacing non-valid characters with escape sequences in PATH_ESCAPES.
+    """Escape a string (typically a file-system path) so that it can be used as a Python
+    variable name by replacing non-valid characters with escape sequences in PATH_ESCAPES.
 
     Parameters
     ----------
@@ -120,10 +124,13 @@ def path2name(path):
     str
         A python safe name
     """
-    name = path
-    for char, esc in PATH_ESCAPES.items():
-        name = name.replace(char, esc)
-    return name
+    if not path:
+        name = EMPTY_PATH_NAME
+    else:
+        name = path
+        for char, esc in PATH_ESCAPES.items():
+            name = name.replace(char, esc)
+    return PATH_NAME_PREFIX + name
 
 
 def name2path(name):
@@ -139,7 +146,11 @@ def name2path(name):
     str
         the original path
     """
-    path = name
+    if not name.startswith(PATH_NAME_PREFIX):
+        raise ArcanaUsageError(f"'{name}' is not an escaped path (must start with '{PATH_NAME_PREFIX}')")
+    path = name[len(PATH_NAME_PREFIX):]  # strip path-name prefix
+    if path == EMPTY_PATH_NAME:
+        return ''
     # the order needs to be reversed so that "dunder" (double underscore) is
     # unescaped last
     for char, esc in reversed(PATH_ESCAPES.items()):

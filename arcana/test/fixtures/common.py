@@ -194,32 +194,32 @@ def concatenate_task(request):
 def command_spec():
     return {
         'name': 'conctenate-test',
-        'pydra_task': 'arcana.test.tasks:concatenate',
+        'workflow': 'arcana.test.tasks:concatenate',
         'inputs': [
             {
-                'pydra_field': 'in_file1',
+                'name': 'first-file',
                 'format': 'common:Text',
-                'xnat_name': 'first-file',
+                'pydra_field': 'in_file1',
                 'frequency': 'session'
             },
             {
-                'pydra_field': 'in_file2',
+                'name': 'second-file',
                 'format': 'common:Text',
-                'xnat_name': 'second-file',
+                'pydra_field': 'in_file2',
                 'frequency': 'session'
             },
         ],
         'outputs': [
             {
-                'pydra_field': 'out_file',
+                'path': 'concatenated',
                 'format': 'common:Text',
-                'xnat_path': 'concatenated'
+                'pydra_field': 'out_file'
             }
         ],
         'parameters': [
             {
+                'name': 'number-of-duplicates',
                 'pydra_field': 'duplicates',
-                'xnat_name': 'number-of-duplicates',
                 'required': True
             }
         ],
