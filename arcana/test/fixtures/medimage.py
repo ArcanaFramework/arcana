@@ -164,7 +164,7 @@ def xnat_container_registry():
 
     xnat4tests.launch_docker_registry()
 
-    return 'localhost'  # {DOCKER_REGISTRY_PORT}  # Needs to be on 80 to avoid bug with ':' in URI 
+    return 'localhost'  # {DOCKER_REGISTRY_PORT}  # Needs to be on 80 to avoid bug with ':' in URI
 
 
 def make_mutable_dataset(xnat_repository, xnat_archive_dir, test_name):

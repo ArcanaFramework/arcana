@@ -190,7 +190,8 @@ def concatenate_task(request):
         task = concatenate_reverse
     return task
 
-@pytest.fixture
+
+@pytest.fixture(scope='session')
 def command_spec():
     return {
         'name': 'conctenate-test',
