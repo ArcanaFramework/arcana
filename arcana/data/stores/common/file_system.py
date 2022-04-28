@@ -80,12 +80,13 @@ class FileSystem(DataStore):
         # Don't need to cache file_group as it is already local as long
         # as the path is set
         stem_path = self.file_group_stem_path(file_group)
+        # Get all paths that match the stem path (but with different extensions)
         matches = [p for p in stem_path.parent.iterdir()
                    if str(p).startswith(str(stem_path))]
         if not matches:
             raise ArcanaMissingDataException(
                 f"No files/sub-dirs matching '{file_group.path}' path found in "
-                f"{str(self.absolute_node_path(file_group))} directory")
+                f"{str(self.absolute_node_path(file_group.data_node))} directory")
         return matches
 
     def get_field_value(self, field):

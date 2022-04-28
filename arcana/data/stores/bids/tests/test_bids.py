@@ -13,6 +13,7 @@ from arcana.data.stores.bids import BidsDataset
 from arcana.tasks.bids import bids_app
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
+from arcana.core.utils import path2name
 
 
 BIDS_VALIDATOR_DOCKER = 'bids/validator'
@@ -84,14 +85,12 @@ def test_bids_roundtrip(work_dir):
 def test_run_bids_app_docker(nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = [('T1w', NiftiGzX, 'anat/T1w'),
-              ('T2w', NiftiGzX, 'anat/T2w'),
-              ('dwi', NiftiGzXFslgrad, 'dwi/dwi'),
-            #   ('bold', NiftiGzX, 'func/task-REST_bold')
-              ]
-    OUTPUTS = [('whole_dir', Directory, None),
-               ('out1', Text, f'file1'),
-               ('out2', Text, f'file2')]
+    INPUTS = [('anat/T1w', NiftiGzX),
+              ('anat/T2w', NiftiGzX),
+              ('dwi/dwi', NiftiGzXFslgrad)]
+    OUTPUTS = [('', Directory),  # whole derivative directory
+               ('file1', Text),
+               ('file2', Text)]
 
     dc = docker.from_env()
 
@@ -129,39 +128,37 @@ ENTRYPOINT ["/launch.sh"]""")
     
     dc.images.build(path=str(build_dir), tag=MOCK_BIDS_APP_IMAGE)
 
-    task_interface = bids_app(
-        app_name=MOCK_BIDS_APP_NAME,
-        image=MOCK_BIDS_APP_IMAGE,
-        executable='/launch.sh',  # Extracted using `docker_image_executable(docker_image)`
-        inputs=INPUTS,
-        outputs=OUTPUTS)
-
-    for inpt, dtype, _ in INPUTS:
-        esc_inpt = inpt
-        kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + '.' + dtype.ext)
-
     bids_dir = work_dir / 'bids'
 
     shutil.rmtree(bids_dir, ignore_errors=True)
 
-    task = task_interface(dataset=bids_dir, virtualisation='docker')
+    task = bids_app(
+        name=MOCK_BIDS_APP_NAME,
+        container_image=MOCK_BIDS_APP_IMAGE,
+        executable='/launch.sh',  # Extracted using `docker_image_executable(docker_image)`
+        inputs=INPUTS,
+        outputs=OUTPUTS,
+        dataset=bids_dir)
+
+    for inpt_path, dtype in INPUTS:
+        inpt_name = path2name(inpt_path)
+        kwargs[inpt_name] = nifti_sample_dir.joinpath(*inpt_path.split('/')).with_suffix('.' + dtype.ext)
+
     result = task(plugin='serial', **kwargs)
 
-    for output, dtype, _ in OUTPUTS:
-        assert Path(getattr(result.output, output)).exists()
+    for output_path, dtype in OUTPUTS:
+        assert Path(getattr(result.output, path2name(output_path))).exists()
 
 
 def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = [('T1w', NiftiGzX, 'anat/T1w'),
-              ('T2w', NiftiGzX, 'anat/T2w'),
-              ('dwi', NiftiGzXFslgrad, 'dwi/dwi'),
-            #   ('bold', NiftiGzX, 'func/task-REST_bold')
-              ]
-    OUTPUTS = [('whole_dir', Directory, None),
-               ('out1', Text, f'file1'),
-               ('out2', Text, f'file2')]
+    INPUTS = [('anat/T1w', NiftiGzX),
+              ('anat/T2w', NiftiGzX),
+              ('dwi/dwi', NiftiGzXFslgrad)]
+    OUTPUTS = [('', Directory),  # whole derivative directory
+               ('file1', Text),
+               ('file2', Text)]
 
     dc = docker.from_env()
 
@@ -176,8 +173,8 @@ def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
 
     # Generate tests to see if input files have been created properly
     file_tests = ''
-    for _, dtype, path in INPUTS:
-        subdir, suffix = path.split('/')
+    for inpt_path, dtype in INPUTS:
+        subdir, suffix = inpt_path.split('/')
         file_tests += f"""
         if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{dtype.ext}" ]; then
             echo "Did not find {suffix} file at $BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{dtype.ext}"
@@ -199,23 +196,21 @@ echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
 
     os.chmod(launch_sh, stat.S_IRWXU)
 
-    task_interface = bids_app(
-        app_name=MOCK_BIDS_APP_NAME,
-        image=MOCK_BIDS_APP_IMAGE,
+    task = bids_app(
+        name=MOCK_BIDS_APP_NAME,
         executable=launch_sh,  # Extracted using `docker_image_executable(docker_image)`
         inputs=INPUTS,
         outputs=OUTPUTS)
 
-    for inpt, dtype, _ in INPUTS:
-        esc_inpt = inpt
-        kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + '.' + dtype.ext)
+    for inpt_path, dtype in INPUTS:
+        inpt_name = path2name(inpt_path)
+        kwargs[inpt_name] = nifti_sample_dir.joinpath(*inpt_path.split('/')).with_suffix('.' + dtype.ext)
 
     bids_dir = work_dir / 'bids'
 
     shutil.rmtree(bids_dir, ignore_errors=True)
 
-    task = task_interface(dataset=bids_dir, virtualisation=None)
     result = task(plugin='serial', **kwargs)
 
-    for output, dtype, _ in OUTPUTS:
-        assert Path(getattr(result.output, output)).exists()
+    for output_path, dtype in OUTPUTS:
+        assert Path(getattr(result.output, path2name(output_path))).exists()
