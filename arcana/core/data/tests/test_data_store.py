@@ -32,7 +32,7 @@ def test_store_save_fails_with_no_name(xnat_repository, work_dir):
             store.save("")
             assert str(excinfo.value) == "Store Name can not be empty"
 
-def test_new_store_gets_loaded(xnat_repository, work_dir):
+def test_store_load_new_stores(xnat_repository, work_dir):
     test_home_dir = work_dir / 'test-arcana-home'
     # Create a new home directory so it doesn't conflict with user settings
     with patch.dict(os.environ, {'ARCANA_HOME': str(test_home_dir)}):
