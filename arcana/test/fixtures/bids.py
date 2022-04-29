@@ -1,13 +1,16 @@
 import pytest
 import docker
+from arcana.data.formats.medimage import NiftiGzX
 
 
-BIDS_VALIDATOR_DOCKER = 'bids/validator'
+BIDS_VALIDATOR_DOCKER = 'bids/validator:latest'
 SUCCESS_STR = 'This dataset appears to be BIDS compatible'
 MOCK_BIDS_APP_IMAGE = 'arcana-mock-bids-app'
+BIDS_VALIDATOR_APP_IMAGE = 'arcana-bids-validator-app'
 
-
-MOCK_BIDS_APP_SCRIPT = f"""#!/bin/sh
+@pytest.fixture(scope='session')
+def bids_validator_app_script():
+    return f"""#!/bin/sh
 BIDS_DATASET=$1
 OUTPUTS_DIR=$2
 SUBJ_ID=$5
@@ -18,6 +21,30 @@ if [[ "$output" != *"{SUCCESS_STR}"* ]]; then
     echo $output
     exit 1;
 fi
+# Write mock output files to 'derivatives' Directory
+mkdir -p $OUTPUTS_DIR
+echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
+echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
+"""
+
+# FIXME: should be converted to python script to be Windows compatible
+@pytest.fixture(scope='session')
+def mock_bids_app_script():
+    file_tests = ''
+    for inpt_path, format in [('anat/T1w', NiftiGzX), ('anat/T2w', NiftiGzX), ('dwi/dwi', NiftiGzX)]:
+        subdir, suffix = inpt_path.split('/')
+        file_tests += f"""
+        if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{format.ext}" ]; then
+            echo "Did not find {suffix} file at $BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{format.ext}"
+            exit 1;
+        fi
+        """
+        
+    return f"""#!/bin/sh
+BIDS_DATASET=$1
+OUTPUTS_DIR=$2
+SUBJ_ID=$5
+{file_tests}
 # Write mock output files to 'derivatives' Directory
 mkdir -p $OUTPUTS_DIR
 echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
@@ -38,63 +65,77 @@ def bids_validator_docker():
 
 
 @pytest.fixture(scope='session')
-def mock_bids_app_image(bids_validator_docker, build_cache_dir):
+def bids_validator_app_image(bids_validator_app_script, bids_validator_docker, build_cache_dir):
+    return build_app_image(BIDS_VALIDATOR_APP_IMAGE, bids_validator_app_script, build_cache_dir,
+                           base_image=bids_validator_docker)
+    
+
+@pytest.fixture(scope='session')
+def mock_bids_app_image(mock_bids_app_script, build_cache_dir):
+    return build_app_image(BIDS_VALIDATOR_APP_IMAGE, mock_bids_app_script, build_cache_dir,
+                           base_image='ubuntu:latest')    
+    
+
+def build_app_image(tag_name, script, build_cache_dir, base_image):
     dc = docker.from_env()
 
     # Create executable that runs validator then produces some mock output
     # files
-    build_dir = build_cache_dir / 'mock_bids_app_image'
+    build_dir = build_cache_dir / 'bids_validator_app_image'
     build_dir.mkdir()
     launch_sh = build_dir / 'launch.sh'
     with open(launch_sh, 'w') as f:
-        f.write(MOCK_BIDS_APP_SCRIPT)
+        f.write(script)
 
     # Build mock BIDS app image
     with open(build_dir / 'Dockerfile', 'w') as f:
-        f.write(f"""FROM {bids_validator_docker}:latest
+        f.write(f"""FROM {base_image}
 ADD ./launch.sh /launch.sh
 RUN chmod +x /launch.sh
 ENTRYPOINT ["/launch.sh"]""")
     
-    dc.images.build(path=str(build_dir), tag=MOCK_BIDS_APP_IMAGE)
+    dc.images.build(path=str(build_dir), tag=tag_name)
 
-    return MOCK_BIDS_APP_IMAGE
+    return tag_name
 
 
 @pytest.fixture(scope='session')
 def bids_command_spec():
+    inputs = [
+        {
+            'name': 'anat/T1w',
+            'format': 'medimage:NiftiGzX'
+        },
+        {
+            'name': 'anat/T2w',
+            'format': 'medimage:NiftiGzX'
+        },
+        {
+            'name': 'dwi/dwi',
+            'format': 'medimage:NiftiGzXFslgrad'
+        },
+    ]
+    
+    outputs = [
+        {
+            'path': 'file1',
+            'format': 'common:Text'
+        },
+        {
+            'path': 'file1',
+            'format': 'common:Text'
+        }
+    ]
+    
     return {
         'name': 'bids-app-test',
         'workflow': 'arcana.tasks.bids.app:bids_app',
-        'inputs': [
-            {
-                'name': 'first-file',
-                'format': 'common:Text',
-                'pydra_field': 'in_file1',
-                'frequency': 'session'
-            },
-            {
-                'name': 'second-file',
-                'format': 'common:Text',
-                'pydra_field': 'in_file2',
-                'frequency': 'session'
-            },
-        ],
-        'outputs': [
-            {
-                'path': 'concatenated',
-                'format': 'common:Text',
-                'pydra_field': 'out_file'
-            }
-        ],
-        'parameters': [
-            {
-                'name': 'number-of-duplicates',
-                'pydra_field': 'duplicates',
-                'required': True
-            }
-        ],
+        'inputs': inputs,
+        'outputs': outputs,
         'description': "A pipeline to test wrapping of BIDS apps",
         'version': '0.1',
         'frequency': 'session',
-        'info_url': None}
+        'info_url': None,
+        'configuration': {
+            'inputs': inputs,
+            'outputs': outputs}}

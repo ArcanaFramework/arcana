@@ -48,13 +48,13 @@ def test_find_nodes(xnat_dataset):
 
 def test_get_items(xnat_dataset, caplog):
     expected_files = {}
-    for scan_name, resources in xnat_dataset.blueprint.scans:
-        for resource_name, format, files in resources:
-            if format is not None:
-                source_name = scan_name + resource_name
-                xnat_dataset.add_source(source_name, path=scan_name,
-                                        format=format)
-                expected_files[source_name] = set(files)
+    for scan in xnat_dataset.blueprint.scans:
+        for resource in scan.resources:
+            if resource.format is not None:
+                source_name = scan.name + resource.name
+                xnat_dataset.add_source(source_name, path=scan.name,
+                                        format=resource.format)
+                expected_files[source_name] = set(resource.filenames)
     with caplog.at_level(logging.INFO, logger='arcana'):
         for node in xnat_dataset.nodes(Clinical.session):
             for source_name, files in expected_files.items():
@@ -72,45 +72,46 @@ def test_get_items(xnat_dataset, caplog):
                 else:
                     item_files = set(p.name for p in item.fs_paths)
                 assert item_files == files
-    assert f'{xnat_dataset.access_method} access' in caplog.text.lower()
+    method_str = 'direct' if xnat_dataset.access_method == 'cs' else 'api'
+    assert f'{method_str} access' in caplog.text.lower()
 
 
 def test_put_items(mutable_xnat_dataset: Dataset, caplog):
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
-    for name, freq, format, files in mutable_xnat_dataset.blueprint.to_insert:
-        mutable_xnat_dataset.add_sink(name=name, format=format,
-                                        frequency=freq)
-        deriv_tmp_dir = tmp_dir / name
+    for deriv in mutable_xnat_dataset.blueprint.to_insert:
+        mutable_xnat_dataset.add_sink(name=deriv.name, format=deriv.format,
+                                      frequency=deriv.frequency)
+        deriv_tmp_dir = tmp_dir / deriv.name
         # Create test files, calculate checkums and recorded expected paths
         # for inserted files
-        all_checksums[name] = checksums = {}
+        all_checksums[deriv.name] = checksums = {}
         fs_paths = []        
-        for fname in files:
+        for fname in deriv.filenames:
             test_file = create_test_file(fname, deriv_tmp_dir)
             fhash = hashlib.md5()
             with open(deriv_tmp_dir / test_file, 'rb') as f:
                 fhash.update(f.read())
             try:
-                rel_path = str(test_file.relative_to(Path(files[0])))
+                rel_path = str(test_file.relative_to(Path(deriv.filenames[0])))
             except ValueError:
                 rel_path = '.'.join(test_file.suffixes)[1:]
             checksums[rel_path] = fhash.hexdigest()
             fs_paths.append(deriv_tmp_dir / test_file.parts[0])
         # Insert into first node of that frequency in xnat_dataset
-        node = next(iter(mutable_xnat_dataset.nodes(freq)))
-        item = node[name]
+        node = next(iter(mutable_xnat_dataset.nodes(deriv.frequency)))
+        item = node[deriv.name]
         with caplog.at_level(logging.INFO, logger='arcana'):
             item.put(*fs_paths)
-        assert f'{mutable_xnat_dataset.access_method} access' in caplog.text.lower()
+        method_str = 'direct' if mutable_xnat_dataset.access_method == 'cs' else 'api'
+        assert f'{method_str} access' in caplog.text.lower()
     def check_inserted():
-        for name, freq, format, _ in mutable_xnat_dataset.blueprint.to_insert:
-            node = next(iter(mutable_xnat_dataset.nodes(freq)))
-            item = node[name]
-            item.get_checksums(force_calculate=(
-                mutable_xnat_dataset.access_method == 'direct'))
-            assert isinstance(item, format)
-            assert item.checksums == all_checksums[name]
+        for deriv in mutable_xnat_dataset.blueprint.to_insert:
+            node = next(iter(mutable_xnat_dataset.nodes(deriv.frequency)))
+            item = node[deriv.name]
+            item.get_checksums(force_calculate=(mutable_xnat_dataset.access_method == 'cs'))
+            assert isinstance(item, deriv.format)
+            assert item.checksums == all_checksums[deriv.name]
             item.get()
             assert all(p.exists() for p in item.fs_paths)
     if mutable_xnat_dataset.access_method == 'api':

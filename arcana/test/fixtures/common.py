@@ -144,11 +144,6 @@ def test_dataspace_location():
     return __name__ + '.TestDataSpace'
 
 
-@pytest.fixture
-def test_dicom_dataset_dir(test_ref_data_dir):
-    return Path(__file__).parent / 'test-dataset'
-
-
 @pytest.fixture(params=GOOD_DATASETS)
 def dataset(work_dir, request):
     dataset_name = request.param
