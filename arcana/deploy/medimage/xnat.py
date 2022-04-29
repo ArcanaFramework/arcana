@@ -262,9 +262,9 @@ def generate_xnat_cs_command(name: str,
 
     # Set up fixed arguments used to configure the workflow at initialisation
     config_args = []
-    for cname, cvalue in configuration:
+    for cname, cvalue in configuration.items():
         config_args.append(
-            f"--configuration {cname} {cvalue} ")            
+            f"--configuration {cname} '{cvalue}' ")            
 
     input_args_str = ' '.join(input_args)
     output_args_str = ' '.join(output_args)

@@ -1,14 +1,18 @@
 import time
 import pytest
 from arcana.deploy.medimage import build_xnat_cs_image, generate_xnat_cs_command
-from arcana.test.fixtures.medimage import make_mutable_dataset
+from arcana.test.fixtures.medimage import (
+    make_mutable_dataset, TEST_XNAT_DATASET_BLUEPRINTS, TestXnatDatasetBlueprint,
+    ResourceBlueprint, ScanBlueprint)
+from arcana.data.formats.medimage import NiftiGzX
 
 
 PIPELINE_NAME = 'test-concatenate'
 
 
 @pytest.fixture(params=['func', 'bids_app'], scope='session')
-def build_spec_and_dataset(command_spec, bids_command_spec, xnat_repository, xnat_archive_dir, request):
+def build_spec_and_dataset(command_spec, bids_command_spec, xnat_repository, xnat_archive_dir, request,
+                           nifti_sample_dir, mock_bids_app_image):
     if request.param == 'func':
         build_spec = {
             'image_tag': 'arcana-tests/concatenate-xnat-cs',
@@ -22,22 +26,38 @@ def build_spec_and_dataset(command_spec, bids_command_spec, xnat_repository, xna
             'use_local_packages': True,
             'arcana_install_extras': ['test'],
             'test_config': True}
-        dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
-                                       'concatenate.direct')
+        dataset = make_mutable_dataset(dataset_name='xnat_cs_func',
+                                       blueprint=TEST_XNAT_DATASET_BLUEPRINTS['concatenate_test'],
+                                       xnat_repository=xnat_repository,
+                                       xnat_archive_dir=xnat_archive_dir,
+                                       access_method='cs')
     elif request.param == 'bids_app':
         build_spec = {
             'image_tag': 'arcana-tests/bids-app-xnat-cs',
+            'base_image': mock_bids_app_image,
             'commands': [bids_command_spec],
             'authors': ['some.one.else@another.org'],
             'info_url': 'http://a-bids-app.readthefakedocs.io',
             'system_packages': [],
             'python_packages': [],
+            'package_manager': 'apt',
             'readme': 'This is another test README for BIDS app image',
             'docker_registry': 'another.docker.registry.io',
             'use_local_packages': True,
             'test_config': True}
-        dataset = make_mutable_dataset(xnat_repository, xnat_archive_dir,
-                                       'concatenate.direct')
+        blueprint = TestXnatDatasetBlueprint(
+            [1, 1, 1],
+            [ScanBlueprint('T1w', [ResourceBlueprint('NiftiGzX', NiftiGzX, ['anat/T1w.nii.gz', 'anat/T1w.json'])]),
+             ScanBlueprint('T2w', [ResourceBlueprint('NiftiGzX', NiftiGzX, ['anat/T2w.nii.gz', 'anat/T2w.json'])]),
+             ScanBlueprint('dwi', [ResourceBlueprint('NiftiGzX', NiftiGzX,
+                                                     ['dwi/dwi.nii.gz', 'dwi/dwi.json', 'dwi/dwi.bvec', 'dwi/dwi.bval'])])],
+            {}, [])
+        dataset = make_mutable_dataset(dataset_name='xnat_cs_bids_app',
+                                       blueprint=blueprint,
+                                       xnat_repository=xnat_repository,
+                                       xnat_archive_dir=xnat_archive_dir,
+                                       access_method='cs',
+                                       source_data_dir=nifti_sample_dir)
     else:
         assert False, f"unrecognised request param '{request.param}'"
     return build_spec, dataset

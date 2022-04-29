@@ -81,7 +81,7 @@ def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
     assert dataset == reloaded
 
 
-def test_run_bids_app_docker(mock_bids_app_image: str, nifti_sample_dir: Path, work_dir: Path):
+def test_run_bids_app_docker(bids_validator_app_image: str, nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
     INPUTS = [('anat/T1w', NiftiGzX),
@@ -98,7 +98,7 @@ def test_run_bids_app_docker(mock_bids_app_image: str, nifti_sample_dir: Path, w
 
     task = bids_app(
         name=MOCK_BIDS_APP_NAME,
-        container_image=mock_bids_app_image,
+        container_image=bids_validator_app_image,
         executable='/launch.sh',  # Extracted using `docker_image_executable(docker_image)`
         inputs=INPUTS,
         outputs=OUTPUTS,
@@ -114,7 +114,7 @@ def test_run_bids_app_docker(mock_bids_app_image: str, nifti_sample_dir: Path, w
         assert Path(getattr(result.output, path2name(output_path))).exists()
 
 
-def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
+def test_run_bids_app_naked(mock_bids_app_script: str, nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
     INPUTS = [('anat/T1w', NiftiGzX),
@@ -131,30 +131,9 @@ def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
     launch_sh = work_dir / 'launch.sh'
 
     # We don't need to run the full validation in this case as it is already tested by test_run_bids_app_docker
-    # so we create a simpler test script. FIXME: should be converted to python script to be Windows compatible
-
-    # Generate tests to see if input files have been created properly
-    file_tests = ''
-    for inpt_path, dtype in INPUTS:
-        subdir, suffix = inpt_path.split('/')
-        file_tests += f"""
-        if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{dtype.ext}" ]; then
-            echo "Did not find {suffix} file at $BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{dtype.ext}"
-            exit 1;
-        fi
-        """
-    
+    # so we use the simpler test script.
     with open(launch_sh, 'w') as f:
-        f.write(f"""#!/bin/sh
-BIDS_DATASET=$1
-OUTPUTS_DIR=$2
-SUBJ_ID=$5
-{file_tests}
-# Write mock output files to 'derivatives' Directory
-mkdir -p $OUTPUTS_DIR
-echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
-echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
-""")
+        f.write(mock_bids_app_script)
 
     os.chmod(launch_sh, stat.S_IRWXU)
 
