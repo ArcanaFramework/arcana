@@ -14,12 +14,12 @@ from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.exceptions import ArcanaUsageError
-from arcana.core.utils import func_task, path2name, name2path
+from arcana.core.utils import func_task, path2name, name2path, resolve_class
 
 
 def bids_app(name: str,
-             inputs: ty.List[ty.Tuple[str, type]],
-             outputs: ty.List[ty.Tuple[str, type]],
+             inputs: ty.List[ty.Tuple[str, type] or ty.Dict[str, str]],
+             outputs: ty.List[ty.Tuple[str, type] or ty.Dict[str, str]],
              executable: str='',
              container_image: str= None,
              parameters: ty.Dict[str, type]=None,
@@ -35,12 +35,12 @@ def bids_app(name: str,
     name : str
         Name of the workflow/BIDS app. Will be used to name the 'derivatives'
         sub-directory where the app outputs are stored
-    inputs : list[tuple[str, type]]
+    inputs : list[tuple[str, type] or dict[str, str]]
         The inputs to be inserted into the BIDS dataset. Should be a list of tuples
         consisting of the the path the file/directory should be stored within a BIDS subject/session,
         e.g. anat/T1w, func/bold, and the DataFormat class it should be stored in, e.g.
         arcana.data.formats.bids.NiftiGzX.
-    outputs : list[tuple[str, type]]
+    outputs : list[tuple[str, type] or dict[str, str]]
         The outputs to be extracted from the derivatives directory. Should be a list of tuples
         consisting of the the path the file/directory is saved by the app within a BIDS subject/session,
         e.g. freesurfer/recon-all, and the DataFormat class it is stored in, e.g.
@@ -81,6 +81,12 @@ def bids_app(name: str,
             path=dataset,
             name=name + '_dataset',
             subject_ids=[DEFAULT_BIDS_ID])
+
+    # Convert from JSON format inputs/outputs to tuples with resolved data formats
+    inputs = [(i['name'], resolve_class(i['format'], prefixes=['arcana.data.formats']))
+               if isinstance(i, dict) else i for i in inputs]
+    outputs = [(o['path'], resolve_class(o['format'], prefixes=['arcana.data.formats']))
+               if isinstance(o, dict) else o for o in outputs]
 
     # Ensure output paths all start with 'derivatives
     input_names = [path2name(i[0]) for i in inputs]

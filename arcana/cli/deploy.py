@@ -4,6 +4,7 @@ import click
 from click.exceptions import UsageError as ClickUsageError
 import docker.errors
 import tempfile
+import json
 from traceback import format_exc
 from arcana.core.cli import cli
 from arcana.core.utils import resolve_class, parse_value
@@ -248,7 +249,8 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
 @click.option(
     '--configuration', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
     help=("configuration args of the workflow. Differ from parameters in that they is passed to the "
-          "workflow at initialisation (and can therefore help specify its inputs) not as inputs"))
+          "workflow at initialisation (and can therefore help specify its inputs) not as inputs. Values "
+          "can be any valid JSON (including basic types)."))
 def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
                  input, output, frequency, overwrite, work_dir, plugin, loglevel,
                  dataset_name, dataset_space, dataset_hierarchy, ids, configuration):
@@ -303,7 +305,7 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
 
     workflow = resolve_class(workflow_location)(
         name='workflow',
-        **{n: parse_value(v) for n, v in configuration})
+        **{n: json.loads(v.replace('\\"', '"')) for n, v in configuration})
 
     for pname, pval in parameter:
         if pval != '':

@@ -12,7 +12,7 @@ from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.deploy.build import (
     construct_dockerfile, dockerfile_build)
 from arcana.core.deploy.utils import DOCKER_HUB
-from arcana.core.utils import resolve_class, class_location
+from arcana.core.utils import resolve_class, class_location, path2name
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaUsageError
 
@@ -206,7 +206,7 @@ def generate_xnat_cs_command(name: str,
             desc = f"Match field ({inpt.format.class_name()}) [PATH:STORED_DTYPE]: {inpt.description} "
             input_type = COMMAND_INPUT_TYPES.get(inpt.format, 'string')
         inputs_json.append({
-            "name": inpt.name,
+            "name": path2name(inpt.name),
             "description": desc,
             "type": input_type,
             "default-value": "",
@@ -224,7 +224,7 @@ def generate_xnat_cs_command(name: str,
         replacement_key = f'[{param.pydra_field.upper()}_PARAM]'
 
         inputs_json.append({
-            "name": param.name,
+            "name": path2name(param.name),
             "description": desc,
             "type": COMMAND_INPUT_TYPES.get(param.type, 'string'),
             "default-value": (param.default if not param.required else ""),
@@ -263,8 +263,8 @@ def generate_xnat_cs_command(name: str,
     # Set up fixed arguments used to configure the workflow at initialisation
     config_args = []
     for cname, cvalue in configuration.items():
-        config_args.append(
-            f"--configuration {cname} '{cvalue}' ")            
+        cvalue_json = json.dumps(cvalue).replace('"', '\\"')
+        config_args.append(f"--configuration {cname} '{cvalue_json}' ")
 
     input_args_str = ' '.join(input_args)
     output_args_str = ' '.join(output_args)
@@ -467,7 +467,7 @@ class InputArg():
 
     def __post_init__(self):
         if self.pydra_field is None:
-            self.pydra_field = self.name
+            self.pydra_field = path2name(self.name)
 
 @dataclass
 class OutputArg():
@@ -477,7 +477,7 @@ class OutputArg():
 
     def __post_init__(self):
         if self.pydra_field is None:
-            self.pydra_field = self.path
+            self.pydra_field = path2name(self.path)
     
 
 @dataclass
@@ -490,7 +490,7 @@ class ParamArg():
 
     def __post_init__(self):
         if self.pydra_field is None:
-            self.pydra_field = self.name
+            self.pydra_field = path2name(self.name)
 
 
 COMMAND_INPUT_TYPES = {

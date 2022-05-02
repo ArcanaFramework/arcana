@@ -103,9 +103,10 @@ PATH_ESCAPES = {
     '&': '__ampersand__',
     '*': '__star__',
     '+': '__plus__',
-    '=': '__equals__'}
+    '=': '__equals__',
+    'XXX': '__tripplex__'}
 
-PATH_NAME_PREFIX = 'P_'
+PATH_NAME_PREFIX = 'XXX'
 
 EMPTY_PATH_NAME = '__empty__'
 
@@ -130,7 +131,9 @@ def path2name(path):
         name = path
         for char, esc in PATH_ESCAPES.items():
             name = name.replace(char, esc)
-    return PATH_NAME_PREFIX + name
+    if name.startswith('_'):
+        name = PATH_NAME_PREFIX + name
+    return name
 
 
 def name2path(name):
@@ -146,8 +149,8 @@ def name2path(name):
     str
         the original path
     """
-    if not name.startswith(PATH_NAME_PREFIX):
-        raise ArcanaUsageError(f"'{name}' is not an escaped path (must start with '{PATH_NAME_PREFIX}')")
+    if name.startswith(PATH_NAME_PREFIX):
+        name = name[len(PATH_NAME_PREFIX):]
     path = name[len(PATH_NAME_PREFIX):]  # strip path-name prefix
     if path == EMPTY_PATH_NAME:
         return ''
