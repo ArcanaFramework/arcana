@@ -122,7 +122,7 @@ def bids_command_spec():
             'format': 'common:Text'
         },
         {
-            'path': 'file1',
+            'path': 'file2',
             'format': 'common:Text'
         }
     ]
