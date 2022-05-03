@@ -18,11 +18,12 @@ def work_dir():
 
 @pytest.fixture(scope='session')
 def build_cache_dir():
-    build_cache_dir = Path.home() / '.arcana-test-build-cache'
-    if build_cache_dir.exists():
-        shutil.rmtree(build_cache_dir)
-    build_cache_dir.mkdir()
-    return build_cache_dir
+    # build_cache_dir = Path.home() / '.arcana-test-build-cache'
+    # if build_cache_dir.exists():
+    #     shutil.rmtree(build_cache_dir)
+    # build_cache_dir.mkdir()
+    return Path(mkdtemp())
+    # return build_cache_dir
 
 
 # For debugging in IDE's don't catch raised exceptions and let the IDE
