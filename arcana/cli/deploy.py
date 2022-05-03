@@ -111,6 +111,10 @@ module_path
     The file system path to the module to build""")
 @click.argument('spec_path', type=click.Path(exists=True, path_type=Path))
 def test(spec_path):
+    # FIXME: Workaround for click 7.x, which improperly handles path_type
+    if type(spec_path) is bytes:
+        spec_path = Path(spec_path.decode('utf-8'))
+
     raise NotImplementedError
 
 
@@ -127,6 +131,11 @@ The generated documentation will be saved to OUTPUT.
 @click.option('--loglevel', default='warning',
               help="The level to display logs at")
 def build_docs(spec_path, output, flatten, loglevel):
+    # FIXME: Workaround for click 7.x, which improperly handles path_type
+    if type(spec_path) is bytes:
+        spec_path = Path(spec_path.decode('utf-8'))
+    if type(output) is bytes:
+        output = Path(output.decode('utf-8'))
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
