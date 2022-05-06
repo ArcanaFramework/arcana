@@ -3,6 +3,7 @@ import re
 import typing as ty
 import attr
 from attr.converters import optional
+
 # from arcana.core.data.node import DataNode
 from arcana.exceptions import ArcanaDataMatchError
 from ..enum import DataQuality, DataSalience
@@ -11,19 +12,21 @@ from .space import DataSpace
 
 @attr.s
 class DataColumn(metaclass=ABCMeta):
+    """
+    TODO add description
+    """
 
     name: str = attr.ib()
     path: str = attr.ib()
     format = attr.ib()
     frequency: DataSpace = attr.ib()
-    dataset = attr.ib(default=None, metadata={'asdict': False},
-                      eq=False, hash=False)
+    dataset = attr.ib(default=None, metadata={"asdict": False}, eq=False, hash=False)
 
     def __iter__(self):
         return (n[self.name] for n in self.dataset.nodes(self.frequency))
 
-    def __getitem__(self, id):
-        return self.dataset.node(id=id, frequency=self.frequency)[self.name]
+    def __getitem__(self, id_):
+        return self.dataset.node(id=id_, frequency=self.frequency)[self.name]
 
     def __len__(self):
         return len(list(self.dataset.nodes(self.frequency)))
@@ -47,7 +50,7 @@ class DataColumn(metaclass=ABCMeta):
         DataItem
             the data item that matches the criteria/path
 
-        Rasies
+        Raises
         ------
         ArcanaDataMatchError
             if none or multiple items match the criteria/path of the column
@@ -74,7 +77,7 @@ class DataSource(DataColumn):
         one and only one file_group per <frequency>. If None, the name
         is used instead.
     format : type
-        File format that data will be 
+        File format that data will be
     frequency : DataSpace
         The frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
@@ -90,13 +93,14 @@ class DataSource(DataColumn):
     header_vals : Dict[str, str]
         To be used to distinguish multiple items that match the
         the other criteria. The provided dictionary contains
-        header values that must match the stored header_vals exactly.   
+        header values that must match the stored header_vals exactly.
     is_regex : bool
         Flags whether the name_path is a regular expression or not
     """
 
     quality_threshold: DataQuality = attr.ib(
-        default=None, converter=optional(lambda q: DataQuality[str(q)]))
+        default=None, converter=optional(lambda q: DataQuality[str(q)])
+    )
     order: int = attr.ib(default=None)
     header_vals: ty.Dict[str, ty.Any] = attr.ib(default=None)
     is_regex: bool = attr.ib(default=False)
@@ -108,16 +112,21 @@ class DataSource(DataColumn):
             (match_path, self.path if not self.is_regex else None),
             (match_path_regex, self.path if self.is_regex else None),
             (match_quality, self.quality_threshold),
-            (match_header_vals, self.header_vals)]
+            (match_header_vals, self.header_vals),
+        ]
         # Get all items that match the data format of the source
         matches = node.resolved(self.format)
         if not matches:
-            msg = (f"Did not find any items matching data format "
-                   f"{self.format} in {node}, found unresolved items:\n")
+            msg = (
+                f"Did not find any items matching data format "
+                f"{self.format} in {node}, found unresolved items:\n"
+            )
             for item in node.unresolved:
-                msg += f'\n{item.path}: paths=' + ','.join(
-                    p.name for p in item.file_paths) + (
-                        (', uris=' + ','.join(item.uris.keys())) if item.uris else '')
+                msg += (
+                    f"\n{item.path}: paths="
+                    + ",".join(p.name for p in item.file_paths)
+                    + ((", uris=" + ",".join(item.uris.keys())) if item.uris else "")
+                )
             raise ArcanaDataMatchError(msg)
         # Apply all filters to find items that match criteria
         for func, arg in criteria:
@@ -125,21 +134,24 @@ class DataSource(DataColumn):
                 filtered = [m for m in matches if func(m, arg)]
                 if not filtered:
                     raise ArcanaDataMatchError(
-                        "Did not find any items " + func.__doc__.format(arg)
-                        + self._error_msg(node, matches))
+                        "Did not find any items "
+                        + func.__doc__.format(arg)
+                        + self._error_msg(node, matches)
+                    )
                 matches = filtered
         # Select a single item from the ones that match the criteria
         if self.order is not None:
             try:
                 match = matches[self.order]
-            except IndexError as e:
+            except IndexError as ex:
                 raise ArcanaDataMatchError(
                     "Not enough matching items to select one at index "
-                    f"{self.order}, found "
-                    + ", ".join(str(m) for m in matches)) from e
+                    f"{self.order}, found " + ", ".join(str(m) for m in matches)
+                ) from ex
         elif len(matches) > 1:
             raise ArcanaDataMatchError(
-                "Found multiple matches " + self._error_msg(node, matches))
+                "Found multiple matches " + self._error_msg(node, matches)
+            )
         else:
             match = matches[0]
         return match
@@ -147,21 +159,26 @@ class DataSource(DataColumn):
     def _error_msg(self, node, matches):
         return (
             f" attempting to select an item from {node} matching {self}, "
-            "found:\n" + "\n    ".join(str(m) for m in matches))
+            "found:\n" + "\n    ".join(str(m) for m in matches)
+        )
+
 
 def match_path(item, path):
     "at the path {}"
     return item.path == path
 
+
 def match_path_regex(item, pattern):
     "with a path that matched the pattern {}"
-    if not pattern.endswith('$'):
-        pattern += '$'
+    if not pattern.endswith("$"):
+        pattern += "$"
     return re.match(pattern, item.path)
+
 
 def match_quality(item, threshold):
     "with an acceptable quality {}"
     return item.quality >= threshold
+
 
 def match_header_vals(item, header_vals):
     "with the header values {}"
@@ -193,22 +210,23 @@ class DataSink(DataColumn):
         The nane of the workflow applied to the dataset to generates the data
         for the sink
     """
-    salience: DataSalience = attr.ib(default=DataSalience.supplementary,
-                                     converter=lambda s: DataSalience[str(s)])
+
+    salience: DataSalience = attr.ib(
+        default=DataSalience.supplementary, converter=lambda s: DataSalience[str(s)]
+    )
     pipeline_name: str = attr.ib(default=None)
 
     is_sink = True
 
     def match(self, node):
-        matches = [i for i in node.resolved(self.format)
-                   if i.path == self.path]
+        matches = [i for i in node.resolved(self.format) if i.path == self.path]
         if not matches:
             # Return a placeholder data item that can be set
-            return self.format(path=self.path, data_node=node,
-                                    exists=False)
+            return self.format(path=self.path, data_node=node, exists=False)
         elif len(matches) > 1:
             raise ArcanaDataMatchError(
-                "Found multiple matches " + self._error_msg(node, matches))
+                "Found multiple matches " + self._error_msg(node, matches)
+            )
         return matches[0]
 
     def derive(self, ids=None):
