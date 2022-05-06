@@ -63,6 +63,12 @@ class DataColumn(metaclass=ABCMeta):
         for item in self:
             item.get(assume_exists=True)
 
+    def _error_msg(self, node, matches):
+        return (
+            f" attempting to select an item from {node} matching {self}, "
+            "found:\n" + "\n    ".join(str(m) for m in matches)
+        )
+
 
 @attr.s
 class DataSource(DataColumn):
@@ -155,12 +161,6 @@ class DataSource(DataColumn):
         else:
             match = matches[0]
         return match
-
-    def _error_msg(self, node, matches):
-        return (
-            f" attempting to select an item from {node} matching {self}, "
-            "found:\n" + "\n    ".join(str(m) for m in matches)
-        )
 
 
 def match_path(item, path):
