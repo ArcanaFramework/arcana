@@ -639,12 +639,12 @@ def fromdict(dct: dict, **kwargs):
         arcana_version = dct['pkg_versions']['arcana']
     except (TypeError, KeyError):
         pass
-    else:
-        if packaging.version.parse(arcana_version) < packaging.version.parse(MIN_SERIAL_VERSION):
-            raise ArcanaVersionError(
-                f"Serialised version ('{arcana_version}' is too old to be "
-                f"read by this version of arcana ('{__version__}'), the minimum "
-                f"version is {MIN_SERIAL_VERSION}")
+#     else:
+#         if packaging.version.parse(arcana_version) < packaging.version.parse(MIN_SERIAL_VERSION):
+#             raise ArcanaVersionError(
+#                 f"Serialised version ('{arcana_version}' is too old to be "
+#                 f"read by this version of arcana ('{__version__}'), the minimum "
+#                 f"version is {MIN_SERIAL_VERSION}")
 
     def field_filter(klass, field_name):
         if attr.has(klass):

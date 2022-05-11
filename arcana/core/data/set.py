@@ -152,7 +152,7 @@ class Dataset():
         definition = asdict(self, omit=['store'])
         if name is None:
             name = self.name
-        self.store.save_dataset_definition(self.id, definition, name=name)
+        self.store.save_dataset_definition(self, definition, name=name)
 
     @classmethod
     def load(cls, id: str, store: datastore.DataStore=None, name: str=None,
@@ -747,9 +747,11 @@ class Dataset():
             store_name = 'file'
         else:
             store_name, id = parts
-        parts = id.split(':')
+        parts = id.split('::')
         if len(parts) == 1:
             name = cls.DEFAULT_NAME
+        else:
+            id, name = parts
         return store_name, id, name
 
 

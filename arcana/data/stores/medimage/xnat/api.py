@@ -94,7 +94,7 @@ class Xnat(DataStore):
                 xresource = self.login.classes.ResourceCatalog(
                     parent=xproject, label=self.METADATA_RESOURCE,
                     format='json')
-            definition_file = Path(tempfile.mkdtemp()) / name + '.json'
+            definition_file = Path(tempfile.mkdtemp()) / str(name + '.json')
             with open(definition_file, 'w') as f:
                 json.dump(definition, f)
             xresource.upload(str(definition_file), name + '.json')
@@ -109,7 +109,8 @@ class Xnat(DataStore):
             else:
                 download_dir = Path(tempfile.mkdtemp())
                 xresource.download_dir(download_dir)
-                fpath = download_dir / name + '.json'
+                fpath = download_dir / dataset_id / 'resources' / '__arcana__' / 'files' / (name + '.json')
+                print(fpath)
                 if fpath.exists():
                     with open(fpath) as f:
                         definition = json.load(f)
