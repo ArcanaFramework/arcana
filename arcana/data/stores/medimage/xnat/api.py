@@ -84,9 +84,9 @@ class Xnat(DataStore):
     METADATA_RESOURCE = '__arcana__'
 
 
-    def save_dataset_definition(self, dataset: Dataset, definition: ty.Dict[str, ty.Any], name: str):
+    def save_dataset_definition(self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str):
         with self:
-            xproject = self.login.projects[dataset.id]
+            xproject = self.login.projects[dataset_id]
             try:
                 xresource = xproject.resources[self.METADATA_RESOURCE]
             except KeyError:

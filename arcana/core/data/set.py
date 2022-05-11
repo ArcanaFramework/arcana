@@ -152,7 +152,7 @@ class Dataset():
         definition = asdict(self, omit=['store'])
         if name is None:
             name = self.name
-        self.store.save_dataset_definition(self, definition, name=name)
+        self.store.save_dataset_definition(self.id, definition, name=name)
 
     @classmethod
     def load(cls, id: str, store: datastore.DataStore=None, name: str=None,
