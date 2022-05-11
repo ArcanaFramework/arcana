@@ -49,6 +49,7 @@ def run_spec(
         )
         spec['params'] = {'duplicates': 2}
     elif request.param == "bids_app":
+        bids_command_spec['configuration']['executable'] = '/launch.sh'
         spec['build'] = {
             "image_tag": "arcana-tests/bids-app-xnat-cs",
             "base_image": mock_bids_app_image,

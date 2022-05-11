@@ -193,13 +193,13 @@ def command_spec():
         'workflow': 'arcana.test.tasks:concatenate',
         'inputs': [
             {
-                'name': 'first-file',
+                'path': 'first-file',
                 'format': 'common:Text',
                 'pydra_field': 'in_file1',
                 'frequency': 'session'
             },
             {
-                'name': 'second-file',
+                'path': 'second-file',
                 'format': 'common:Text',
                 'pydra_field': 'in_file2',
                 'frequency': 'session'
