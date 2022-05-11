@@ -151,8 +151,9 @@ def local_package_location(pip_spec: PipSpec):
             + "\n".join(sorted(
                 p.key + '/' + p.project_name
                 for p in pkg_resources.working_set)))
-    if pip_spec.version and not (pkg.version.endswith('.dirty')
-                                 or pip_spec.version.endswith('.dirty')) and pkg.version != pip_spec.version:
+    if (pip_spec.version
+            and not (pkg.version.endswith('.dirty') or pip_spec.version.endswith('.dirty'))
+            and pkg.version != pip_spec.version):
         raise ArcanaBuildError(
             f"Requested package {pip_spec.version} does not match installed "
             f"{pkg.version}")

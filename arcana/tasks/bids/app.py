@@ -84,7 +84,7 @@ def bids_app(name: str,
             subject_ids=[DEFAULT_BIDS_ID])
 
     # Convert from JSON format inputs/outputs to tuples with resolved data formats
-    inputs = [(i['name'], resolve_class(i['format'], prefixes=['arcana.data.formats']))
+    inputs = [(i['path'], resolve_class(i['format'], prefixes=['arcana.data.formats']))
                if isinstance(i, dict) else i for i in inputs]
     outputs = [(o['path'], resolve_class(o['format'], prefixes=['arcana.data.formats']))
                if isinstance(o, dict) else o for o in outputs]

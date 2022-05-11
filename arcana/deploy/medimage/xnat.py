@@ -174,11 +174,10 @@ def generate_xnat_cs_command(name: str,
         for arg in args:
             if isinstance(arg, klass):
                 parsed = arg
-            else:
+            elif isinstance(arg, dict):
                 parsed = klass(**arg)
-                if isinstance(parsed.format, str):
-                    parsed.format = resolve_class(
-                        parsed.format, prefixes=['arcana.data.formats'])
+            else:
+                parsed = klass(*arg)
             parsed_args.append(parsed)
         return parsed_args
     
@@ -474,7 +473,12 @@ class InputArg():
         if self.pydra_field is None:
             self.pydra_field = path2varname(self.path)
         if self.column_format is None:
-            self.column_format = self.column_format
+            self.column_format = self.format
+        if isinstance(self.format, str):
+            self.format = resolve_class(self.format, prefixes=['arcana.data.formats'])
+        if isinstance(self.column_format, str):
+            self.column_format = resolve_class(self.column_format,
+                                               prefixes=['arcana.data.formats'])
 
 @dataclass
 class OutputArg():
@@ -487,7 +491,12 @@ class OutputArg():
         if self.pydra_field is None:
             self.pydra_field = path2varname(self.path)
         if self.column_format is None:
-            self.column_format = self.column_format
+            self.column_format = self.format
+        if isinstance(self.format, str):
+            self.format = resolve_class(self.format, prefixes=['arcana.data.formats'])
+        if isinstance(self.column_format, str):
+            self.column_format = resolve_class(self.column_format,
+                                               prefixes=['arcana.data.formats'])
     
 
 @dataclass

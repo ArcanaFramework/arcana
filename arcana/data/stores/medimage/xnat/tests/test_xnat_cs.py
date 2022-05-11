@@ -8,7 +8,7 @@ from arcana.test.fixtures.medimage import (
     ResourceBlueprint,
     ScanBlueprint,
 )
-from arcana.data.formats.medimage import NiftiGzX
+from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 from arcana.core.utils import path2varname
 
 
@@ -86,8 +86,8 @@ def run_spec(
                     "dwi/dwi",
                     [
                         ResourceBlueprint(
-                            "NiftiGzX",
-                            NiftiGzX,
+                            "NiftiGzXFslgrad",
+                            NiftiGzXFslgrad,
                             [
                                 "dwi/dwi.nii.gz",
                                 "dwi/dwi.json",
@@ -130,7 +130,7 @@ def test_xnat_cs_pipeline(
     # Append run_prefix to command name to avoid clash with previous test runs
     cmd_name = command_spec["name"] = "xnat-cs-test" + run_prefix
 
-    # build_xnat_cs_image(build_dir=work_dir, **run_spec["commands"])
+    build_xnat_cs_image(build_dir=work_dir, **build_spec)
 
     with xnat_repository:
 
