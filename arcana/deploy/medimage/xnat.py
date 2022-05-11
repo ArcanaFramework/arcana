@@ -218,7 +218,7 @@ def generate_xnat_cs_command(name: str,
             "user-settable": True,
             "replacement-key": replacement_key})
         input_args.append(
-            f"--input '{replacement_key}' {inpt.format.location()} {inpt.pydra_field} {inpt.format.location()} ")
+            f"--input '{replacement_key}' {inpt.column_format.location()} {inpt.pydra_field} {inpt.format.location()} ")
 
     # Add parameters as additional inputs to inputs JSON specification
     param_args = []
@@ -262,7 +262,7 @@ def generate_xnat_cs_command(name: str,
             "label": label,
             "format": output.format.class_name()})
         output_args.append(
-            f'--output {output.path} {output.format.location()} {output.pydra_field} {output.format.location()} ')
+            f'--output {output.path} {output.column_format.location()} {output.pydra_field} {output.format.location()} ')
 
     # Set up fixed arguments used to configure the workflow at initialisation
     config_args = []

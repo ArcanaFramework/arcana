@@ -157,7 +157,7 @@ def test_xnat_cs_pipeline(
         launch_json = {"SESSION": f"/archive/experiments/{test_xsession.id}"}
 
         for inpt, scan in zip(xnat_command['inputs'], dataset.blueprint.scans):
-            launch_json[path2xnatname(inpt['path'])] = scan.name
+            launch_json[path2xnatname(inpt['name'])] = scan.name
 
         for pname, pval in params.items():
             launch_json[pname] = pval
