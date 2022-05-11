@@ -659,7 +659,7 @@ class Dataset():
         def parsed_conns(lst, conn_type):
             parsed = []
             for spec in lst:
-                if isinstance(lst, conn_type):
+                if isinstance(spec, conn_type):
                     parsed.append(spec)
                 elif len(spec) == 3:
                     parsed.append(conn_type(*spec))

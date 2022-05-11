@@ -79,7 +79,7 @@ def test_get_items(xnat_dataset, caplog):
 def test_put_items(mutable_xnat_dataset: Dataset, caplog):
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
-    for deriv in mutable_xnat_dataset.blueprint.to_insert:
+    for deriv in mutable_xnat_dataset.blueprint.derivatives:
         mutable_xnat_dataset.add_sink(name=deriv.name, format=deriv.format,
                                       frequency=deriv.frequency)
         deriv_tmp_dir = tmp_dir / deriv.name
@@ -106,7 +106,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
         method_str = 'direct' if mutable_xnat_dataset.access_method == 'cs' else 'api'
         assert f'{method_str} access' in caplog.text.lower()
     def check_inserted():
-        for deriv in mutable_xnat_dataset.blueprint.to_insert:
+        for deriv in mutable_xnat_dataset.blueprint.derivatives:
             node = next(iter(mutable_xnat_dataset.nodes(deriv.frequency)))
             item = node[deriv.name]
             item.get_checksums(force_calculate=(mutable_xnat_dataset.access_method == 'cs'))

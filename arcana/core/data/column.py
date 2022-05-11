@@ -205,7 +205,7 @@ class DataSink(DataColumn):
         if not matches:
             # Return a placeholder data item that can be set
             return self.format(path=self.path, data_node=node,
-                                    exists=False)
+                               exists=False)
         elif len(matches) > 1:
             raise ArcanaDataMatchError(
                 "Found multiple matches " + self._error_msg(node, matches))

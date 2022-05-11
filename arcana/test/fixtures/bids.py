@@ -1,3 +1,4 @@
+import os
 import pytest
 import docker
 from arcana.data.formats.medimage import NiftiGzX
@@ -51,6 +52,16 @@ echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
 echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
 """
 
+@pytest.fixture(scope='session')
+def mock_bids_app_executable(build_cache_dir, mock_bids_app_script):
+    # Create executable that runs validator then produces some mock output
+    # files
+    script_path = build_cache_dir / 'mock-bids-app-executable.sh'
+    with open(script_path, 'w') as f:
+        f.write(mock_bids_app_script)
+    os.chmod(script_path, 0o777)
+    return script_path
+
 
 @pytest.fixture(scope='session')
 def bids_success_str():
@@ -73,15 +84,15 @@ def bids_validator_app_image(bids_validator_app_script, bids_validator_docker, b
 @pytest.fixture(scope='session')
 def mock_bids_app_image(mock_bids_app_script, build_cache_dir):
     return build_app_image(BIDS_VALIDATOR_APP_IMAGE, mock_bids_app_script, build_cache_dir,
-                           base_image='ubuntu:latest')    
-    
+                           base_image='ubuntu:latest')
+
 
 def build_app_image(tag_name, script, build_cache_dir, base_image):
     dc = docker.from_env()
 
     # Create executable that runs validator then produces some mock output
     # files
-    build_dir = build_cache_dir / 'bids_validator_app_image'
+    build_dir = build_cache_dir / tag_name.replace(':', '__i__')
     build_dir.mkdir()
     launch_sh = build_dir / 'launch.sh'
     with open(launch_sh, 'w') as f:
@@ -100,18 +111,18 @@ ENTRYPOINT ["/launch.sh"]""")
 
 
 @pytest.fixture(scope='session')
-def bids_command_spec():
+def bids_command_spec(mock_bids_app_executable):
     inputs = [
         {
-            'name': 'anat/T1w',
+            'path': 'anat/T1w',
             'format': 'medimage:NiftiGzX'
         },
         {
-            'name': 'anat/T2w',
+            'path': 'anat/T2w',
             'format': 'medimage:NiftiGzX'
         },
         {
-            'name': 'dwi/dwi',
+            'path': 'dwi/dwi',
             'format': 'medimage:NiftiGzXFslgrad'
         },
     ]
@@ -138,4 +149,5 @@ def bids_command_spec():
         'info_url': None,
         'configuration': {
             'inputs': inputs,
-            'outputs': outputs}}
+            'outputs': outputs,
+            'executable': str(mock_bids_app_executable)}}

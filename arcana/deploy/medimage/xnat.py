@@ -1,4 +1,5 @@
 import sys
+import re
 import typing as ty
 from pathlib import Path
 import tempfile
@@ -12,9 +13,12 @@ from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.deploy.build import (
     construct_dockerfile, dockerfile_build)
 from arcana.core.deploy.utils import DOCKER_HUB
-from arcana.core.utils import resolve_class, class_location, path2name
+from arcana.core.utils import resolve_class, class_location, path2varname
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaUsageError
+
+def path2xnatname(path):
+    return re.sub(r'[^a-zA-Z0-9_]+', '_', path)
 
 
 def build_xnat_cs_image(image_tag: str,
@@ -206,7 +210,7 @@ def generate_xnat_cs_command(name: str,
             desc = f"Match field ({inpt.format.class_name()}) [PATH:STORED_DTYPE]: {inpt.description} "
             input_type = COMMAND_INPUT_TYPES.get(inpt.format, 'string')
         inputs_json.append({
-            "name": path2name(inpt.name),
+            "name": path2xnatname(inpt.path),
             "description": desc,
             "type": input_type,
             "default-value": "",
@@ -214,7 +218,7 @@ def generate_xnat_cs_command(name: str,
             "user-settable": True,
             "replacement-key": replacement_key})
         input_args.append(
-            f"--input '{replacement_key}' {inpt.pydra_field} {inpt.format.location()} ")
+            f"--input '{replacement_key}' {inpt.format.location()} {inpt.pydra_field} {inpt.format.location()} ")
 
     # Add parameters as additional inputs to inputs JSON specification
     param_args = []
@@ -224,7 +228,7 @@ def generate_xnat_cs_command(name: str,
         replacement_key = f'[{param.pydra_field.upper()}_PARAM]'
 
         inputs_json.append({
-            "name": path2name(param.name),
+            "name": path2varname(param.name),
             "description": desc,
             "type": COMMAND_INPUT_TYPES.get(param.type, 'string'),
             "default-value": (param.default if not param.required else ""),
@@ -258,7 +262,7 @@ def generate_xnat_cs_command(name: str,
             "label": label,
             "format": output.format.class_name()})
         output_args.append(
-            f'--output {output.path} {output.pydra_field} {output.format.location()} ')
+            f'--output {output.path} {output.format.location()} {output.pydra_field} {output.format.location()} ')
 
     # Set up fixed arguments used to configure the workflow at initialisation
     config_args = []
@@ -459,25 +463,31 @@ def save_store_config(dockerfile: DockerRenderer, build_dir: Path,
 
 @dataclass
 class InputArg():
-    name: str # How the input will be referred to in the XNAT dialog, defaults to the pydra_field name
+    path: str # How the input will be referred to in the XNAT dialog, defaults to the pydra_field name
     format: type = arcana.data.formats.common.File
     pydra_field: str = None  # Must match the name of the Pydra task input    
     frequency: Clinical = Clinical.session
     description: str = ''  # description of the input
+    column_format: type = None
 
     def __post_init__(self):
         if self.pydra_field is None:
-            self.pydra_field = path2name(self.name)
+            self.pydra_field = path2varname(self.path)
+        if self.column_format is None:
+            self.column_format = self.column_format
 
 @dataclass
 class OutputArg():
     path: str  # The path the output is stored at in XNAT
     format: type = arcana.data.formats.common.File
     pydra_field: str = None  # Must match the name of the Pydra task output, defaults to the path
+    column_format: type = None
 
     def __post_init__(self):
         if self.pydra_field is None:
-            self.pydra_field = path2name(self.path)
+            self.pydra_field = path2varname(self.path)
+        if self.column_format is None:
+            self.column_format = self.column_format
     
 
 @dataclass
@@ -490,7 +500,7 @@ class ParamArg():
 
     def __post_init__(self):
         if self.pydra_field is None:
-            self.pydra_field = path2name(self.name)
+            self.pydra_field = path2varname(self.name)
 
 
 COMMAND_INPUT_TYPES = {

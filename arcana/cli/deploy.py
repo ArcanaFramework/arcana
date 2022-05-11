@@ -1,12 +1,11 @@
 import logging
 from pathlib import Path
 import click
-from click.exceptions import UsageError as ClickUsageError
 import docker.errors
 import tempfile
-import json
 from traceback import format_exc
 from arcana.core.cli import cli
+from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
 from arcana.core.utils import resolve_class, parse_value
 from arcana.core.deploy.utils import load_yaml_spec, walk_spec_paths, DOCKER_HUB
 from arcana.core.deploy.docs import create_doc
@@ -14,7 +13,7 @@ from arcana.core.utils import package_from_module, pydra_asdict
 from arcana.deploy.medimage.xnat import build_xnat_cs_image
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
-from .apply import parse_col_option
+from arcana.exceptions import ArcanaError
 
 
 logger = logging.getLogger('arcana')
@@ -205,13 +204,14 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     '--parameter', '-p', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
     help=("free parameters of the workflow to be passed by the pipeline user"))
 @click.option(
-    '--input', '-s', nargs=3, default=(), metavar='<col-name> <pydra-field> <required-format>',
+    '--input', nargs=4, default=(), metavar='<col-name> <format> <pydra-field> <required-format>',
     multiple=True, type=str,
-    help=("add a source to the dataset and link it to an input of the workflow "
-          "in a single step. The source column must be able to be specified by its "
+    help=("link an input of the workflow to a column of the dataset, adding a source"
+          "column matched by the name/path of the column if it isn't already present. "
+          "Automatically generated source columns must be able to be specified by their "
           "path alone and be already in the format required by the workflow"))
 @click.option(
-    '--output', '-k', nargs=3, default=(), metavar='<col-name> <pydra-field> <produced-format>',
+    '--output', nargs=4, default=(), metavar='<col-name> <format> <pydra-field> <produced-format>',
     multiple=True, type=str,
     help=("add a sink to the dataset and link it to an output of the workflow "
           "in a single step. The sink column be in the same format as produced "
@@ -292,20 +292,40 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
             hierarchy=hierarchy,
             space=space)
 
-    inputs = parse_col_option(input)
-    outputs = parse_col_option(output)
+    pipeline_inputs = []
+    for col_name, format_name, pydra_field, required_format_name in input:
+        format = resolve_class(format_name, prefixes=['arcana.data.formats'])
+        required_format = resolve_class(required_format_name, prefixes=['arcana.data.formats'])
+        pipeline_inputs.append(PipelineInput(col_name, pydra_field, required_format))
+        if col_name in dataset.columns:
+            column = dataset[col_name]
+            logger.info(f"Found existing source column {column}")
+        else:
+            logger.info(f"Adding new source column '{col_name}'")
+            dataset.add_source(name=col_name, format=format)
+            
+    logger.info("Pipeline inputs: %s", pipeline_inputs)
 
-    for col_name, _, format in inputs:
-        if col_name not in dataset.columns:
-            dataset.add_source(col_name, format)
+    pipeline_outputs = []
+    for col_name, format_name, pydra_field, produced_format_name in output:
+        format = resolve_class(format_name, prefixes=['arcana.data.formats'])
+        produced_format = resolve_class(produced_format_name, prefixes=['arcana.data.formats'])
+        pipeline_outputs.append(PipelineOutput(col_name, pydra_field, produced_format))
+        if col_name in dataset.columns:
+            column = dataset[col_name]
+            if not column.is_sink:
+                raise ArcanaError(
+                    "Output column name '{col_name}' shadows existing source column")
+            logger.info(f"Found existing sink column {column}")
+        else:
+            logger.info(f"Adding new source column '{col_name}'")
+            dataset.add_sink(name=col_name, format=format)
 
-    for col_name, _, format in outputs:
-        if col_name not in dataset.columns:
-            dataset.add_sink(col_name, format)
+    logger.info("Pipeline outputs: %s", pipeline_outputs)
 
     workflow = resolve_class(workflow_location)(
         name='workflow',
-        **{n: json.loads(v.replace('\\"', '"')) for n, v in configuration})
+        **{n: parse_value(v) for n, v in configuration})
 
     for pname, pval in parameter:
         if pval != '':
@@ -320,8 +340,8 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
                 "if this is intentional")
     else:
         pipeline = dataset.apply_pipeline(
-            pipeline_name, workflow, inputs=inputs, outputs=outputs,
-            frequency=frequency, overwrite=overwrite)
+            pipeline_name, workflow, inputs=pipeline_inputs,
+            outputs=pipeline_outputs, frequency=frequency, overwrite=overwrite)
 
     # Instantiate the Pydra workflow
     workflow = pipeline(cache_dir=pipeline_cache_dir, plugin=plugin)

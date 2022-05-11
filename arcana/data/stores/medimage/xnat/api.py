@@ -21,7 +21,7 @@ from arcana.exceptions import (
     ArcanaError, ArcanaUsageError, ArcanaWrongRepositoryError)
 from arcana.core.utils import dir_modtime, parse_value
 from arcana.core.data.set import Dataset
-from arcana.core.utils import path2name, name2path, asdict
+from arcana.core.utils import path2varname, varname2path, asdict
 from arcana.data.spaces.medimage import Clinical
 
 
@@ -187,11 +187,11 @@ class Xnat(DataStore):
                               for r in xscan.resources.values()})
             for name, value in xnode.fields.items():
                 data_node.add_field(
-                    path=name2path(name),
+                    path=varname2path(name),
                     value=value)
             for xresource in xnode.resources.values():
                 data_node.add_file_group(
-                    path=name2path(xresource.label),
+                    path=varname2path(xresource.label),
                     uris={xresource.format: xresource.uri})               
 
     def get_file_group_paths(self, file_group):
@@ -218,7 +218,7 @@ class Xnat(DataStore):
             if not file_group.uri:
                 base_uri = self.standard_uri(xnode)
                 # if file_group.derived:
-                xresource = xnode.resources[path2name(file_group.path)]
+                xresource = xnode.resources[path2varname(file_group.path)]
                 # else:
                 #     # If file_group is a primary 'scan' (rather than a
                 #     # derivative) we need to get the resource of the scan
@@ -305,7 +305,7 @@ class Xnat(DataStore):
         with self:
             # Add session for derived scans if not present
             xnode = self.get_xnode(file_group.data_node)
-            escaped_name = path2name(file_group.path)
+            escaped_name = path2varname(file_group.path)
             if not file_group.uri:
                 # Set the uri of the file_group
                 file_group.uri = '{}/resources/{}'.format(
@@ -380,7 +380,7 @@ class Xnat(DataStore):
         self._check_store(field)
         with self:
             xsession = self.get_xnode(field.data_node)
-            val = xsession.fields[path2name(field)]
+            val = xsession.fields[path2varname(field)]
             val = val.replace('&quot;', '"')
             val = parse_value(val)
         return val
@@ -404,7 +404,7 @@ class Xnat(DataStore):
             value = '"{}"'.format(value)
         with self:
             xsession = self.get_xnode(field.data_node)
-            xsession.fields[path2name(field)] = value
+            xsession.fields[path2varname(field)] = value
 
     def get_checksums(self, file_group):
         """
@@ -659,7 +659,7 @@ class Xnat(DataStore):
         if item.is_field:
             fname = self.FIELD_PROV_PREFIX + fname
         else:
-            fname = path2name(item) + '.json'
+            fname = path2varname(item) + '.json'
         uri = f'{self.standard_uri(xnode)}/resources/{self.PROV_RESOURCE}/files/{fname}'
         cache_path = self.cache_path(uri)
         cache_path.parent.mkdir(parent=True, exist_ok=True)

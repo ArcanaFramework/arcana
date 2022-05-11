@@ -4,6 +4,7 @@ import subprocess as sp
 import importlib_metadata
 from itertools import chain
 import pkgutil
+import json
 import typing as ty
 from enum import Enum
 from copy import copy
@@ -72,7 +73,7 @@ def get_config_file_path(name: str):
 
 # Escape values for invalid characters for Python variable names
 PATH_ESCAPES = {
-    '__': '__dunder__',
+    '__': '_dunder_',
     '/': '__l__',
     '.': '__o__',
     ',': '__comma__',
@@ -111,7 +112,7 @@ PATH_NAME_PREFIX = 'XXX'
 EMPTY_PATH_NAME = '__empty__'
 
 
-def path2name(path):
+def path2varname(path):
     """Escape a string (typically a file-system path) so that it can be used as a Python
     variable name by replacing non-valid characters with escape sequences in PATH_ESCAPES.
 
@@ -136,8 +137,8 @@ def path2name(path):
     return name
 
 
-def name2path(name):
-    """Unescape a Pythonic name created by `path2name`
+def varname2path(name):
+    """Unescape a Pythonic name created by `path2varname`
 
     Parameters
     ----------
@@ -150,8 +151,9 @@ def name2path(name):
         the original path
     """
     if name.startswith(PATH_NAME_PREFIX):
-        name = name[len(PATH_NAME_PREFIX):]
-    path = name[len(PATH_NAME_PREFIX):]  # strip path-name prefix
+        path = name[len(PATH_NAME_PREFIX):]
+    else:
+        path = name  # strip path-name prefix
     if path == EMPTY_PATH_NAME:
         return ''
     # the order needs to be reversed so that "dunder" (double underscore) is
@@ -337,52 +339,61 @@ def dir_modtime(dpath):
     return max(os.path.getmtime(d) for d, _, _ in os.walk(dpath))
 
 
-def parse_single_value(value, format=None):
-    """
-    Tries to convert to int, float and then gives up and assumes the value
-    is of type string. Useful when excepting values that may be string
-    representations of numerical values
-    """
-    if isinstance(value, str):
-        try:
-            if value.startswith('"') and value.endswith('"'):
-                value = str(value[1:-1])
-            elif '.' in value:
-                value = float(value)
-            else:
-                value = int(value)
-        except ValueError:
-            value = str(value)
-    elif not isinstance(value, (int, float, bool)):
-        raise ArcanaUsageError(
-            "Unrecognised type for single value {}".format(value))
-    if format is not None:
-        value = format(value)
-    return value
+# def parse_single_value(value, format=None):
+#     """
+#     Tries to convert to int, float and then gives up and assumes the value
+#     is of type string. Useful when excepting values that may be string
+#     representations of numerical values
+#     """
+#     if isinstance(value, str):
+#         try:
+#             if value.startswith('"') and value.endswith('"'):
+#                 value = str(value[1:-1])
+#             elif '.' in value:
+#                 value = float(value)
+#             else:
+#                 value = int(value)
+#         except ValueError:
+#             value = str(value)
+#     elif not isinstance(value, (int, float, bool)):
+#         raise ArcanaUsageError(
+#             "Unrecognised type for single value {}".format(value))
+#     if format is not None:
+#         value = format(value)
+#     return value
 
 
-def parse_value(value, format=None):
-    # Split strings with commas into lists
-    if isinstance(value, str):
-        if value.startswith('[') and value.endswith(']'):
-            value = value[1:-1].split(',')
-    else:
-        # Cast all iterables (except strings) into lists
-        try:
-            value = list(value)
-        except TypeError:
-            pass
-    if isinstance(value, list):
-        value = [parse_single_value(v, format=format) for v in value]
-        # Check to see if datatypes are consistent
-        datatypes = set(type(v) for v in value)
-        if len(datatypes) > 1:
-            raise ArcanaUsageError(
-                "Inconsistent datatypes in values array ({})"
-                .format(value))
-    else:
-        value = parse_single_value(value, format=format)
+def parse_value(value):
+    """Parses values from string representations"""
+    try:
+        value = json.loads(value.replace('\\"', '"'))
+    except (TypeError, json.decoder.JSONDecodeError):
+        pass
     return value
+                
+
+# def parse_value(value, format=None):
+#     # Split strings with commas into lists
+#     if isinstance(value, str):
+#         if value.startswith('[') and value.endswith(']'):
+#             value = value[1:-1].split(',')
+#     else:
+#         # Cast all iterables (except strings) into lists
+#         try:
+#             value = list(value)
+#         except TypeError:
+#             pass
+#     if isinstance(value, list):
+#         value = [parse_single_value(v, format=format) for v in value]
+#         # Check to see if datatypes are consistent
+#         datatypes = set(type(v) for v in value)
+#         if len(datatypes) > 1:
+#             raise ArcanaUsageError(
+#                 "Inconsistent datatypes in values array ({})"
+#                 .format(value))
+#     else:
+#         value = parse_single_value(value, format=format)
+#     return value
 
 
 def iscontainer(*items):

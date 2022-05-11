@@ -6,6 +6,7 @@ from arcana.core.utils import class_location
 from arcana.test.utils import show_cli_trace, make_dataset_id_str
 from arcana.data.formats.common import Text
 
+
 def test_deploy_build_cli(command_spec, cli_runner, work_dir):
 
     DOCKER_ORG = 'testorg'

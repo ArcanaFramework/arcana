@@ -14,13 +14,13 @@ from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.exceptions import ArcanaUsageError
-from arcana.core.utils import func_task, path2name, name2path, resolve_class
+from arcana.core.utils import func_task, path2varname, varname2path, resolve_class
 
 
 def bids_app(name: str,
              inputs: ty.List[ty.Tuple[str, type] or ty.Dict[str, str]],
              outputs: ty.List[ty.Tuple[str, type] or ty.Dict[str, str]],
-             executable: str='',
+             executable: str='',  # Use entrypoint of container
              container_image: str= None,
              parameters: ty.Dict[str, type]=None,
              frequency: Clinical or str=Clinical.session,
@@ -47,7 +47,8 @@ def bids_app(name: str,
         arcana.data.formats.common.Directory.
     executable : str, optional
         Name of the executable within the image to run (i.e. the entrypoint of the image).
-        Required when extending the base image and launching Arcana within it
+        Required when extending the base image and launching Arcana within it. Defaults to
+        empty string, i.e. the entrypoint of the BIDS app container image
     container_image : str, optional
         Name of the BIDS app image to wrap
     parameters : str, optional
@@ -89,8 +90,8 @@ def bids_app(name: str,
                if isinstance(o, dict) else o for o in outputs]
 
     # Ensure output paths all start with 'derivatives
-    input_names = [path2name(i[0]) for i in inputs]
-    output_names = [path2name(o[0]) for o in outputs]
+    input_names = [path2varname(i[0]) for i in inputs]
+    output_names = [path2varname(o[0]) for o in outputs]
     workflow = Workflow(
         name=name,
         input_spec=input_names + list(parameters) + ['id'])
@@ -292,7 +293,7 @@ def to_bids(frequency, inputs, dataset, id, **input_values):
     """Takes generic inptus and stores them within a BIDS dataset
     """
     for inpt_path, inpt_type in inputs:
-        dataset.add_sink(path2name(inpt_path), inpt_type, path=inpt_path)
+        dataset.add_sink(path2varname(inpt_path), inpt_type, path=inpt_path)
     data_node = dataset.node(frequency, id)
     with dataset.store:
         for inpt_name, inpt_value in input_values.items():
@@ -332,11 +333,11 @@ def extract_bids(dataset: Dataset,
     output_paths = []
     data_node = dataset.node(frequency, id)
     for output_path, output_type in outputs:
-        dataset.add_sink(path2name(output_path), output_type,
+        dataset.add_sink(path2varname(output_path), output_type,
                          path=path_prefix + '/' + output_path)
     with dataset.store:
         for output in outputs:
-            item = data_node[path2name(output[0])]
+            item = data_node[path2varname(output[0])]
             item.get()  # download to host if required
             output_paths.append(item.value)
     return tuple(output_paths) if len(outputs) > 1 else output_paths[0]

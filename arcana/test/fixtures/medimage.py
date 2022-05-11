@@ -71,7 +71,7 @@ class TestXnatDatasetBlueprint():
     dim_lengths: ty.List[int]
     scans: ty.List[ScanBlueprint]
     id_inference: ty.Dict[str, str]
-    to_insert: ty.List[DerivBlueprint]  # files to insert as derivatives
+    derivatives: ty.List[DerivBlueprint]  # files to insert as derivatives
 
 
 
@@ -128,7 +128,8 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
             ScanBlueprint(
                 'scan2',
                 [ResourceBlueprint('Text', Text, ['file2.txt'])])],
-        {}, [])}
+        {},
+        [DerivBlueprint('concatenated', Clinical.session, Text, ['concatenated.txt'])])}
 
 GOOD_DATASETS = ['basic.api', 'multi.api', 'basic.cs', 'multi.cs']
 MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.cs', 'multi.cs']
@@ -203,7 +204,7 @@ def xnat_respository_uri(xnat_repository):
 
 
 def make_mutable_dataset(dataset_name: str, blueprint: TestXnatDatasetBlueprint, xnat_repository: Xnat,
-                         xnat_archive_dir: Path, access_method: str, source_data_dir: Path=None):
+                         xnat_archive_dir: Path, access_method: str, source_data: Path=None):
     """Create a dataset (project) in the test XNAT repository
     """
     test_suffix = 'mutable' + access_method + str(hex(random.getrandbits(16)))[2:]
@@ -213,7 +214,7 @@ def make_mutable_dataset(dataset_name: str, blueprint: TestXnatDatasetBlueprint,
                                 blueprint=blueprint,
                                 run_prefix=xnat_repository.run_prefix,
                                 test_suffix=test_suffix,
-                                source_data_dir=source_data_dir)
+                                source_data=source_data)
     return access_dataset(xnat_repository=xnat_repository,
                           dataset_name=dataset_name,
                           blueprint=blueprint,
@@ -253,7 +254,7 @@ def access_dataset(xnat_repository: Xnat, dataset_name: str, blueprint: TestXnat
 
 
 def create_dataset_data_in_repo(dataset_name: str, blueprint: TestXnatDatasetBlueprint,
-                                run_prefix: str='', test_suffix: str='', source_data_dir: Path=None):
+                                run_prefix: str='', test_suffix: str='', source_data: Path=None):
     """
     Creates dataset for each entry in dataset_structures
     """
@@ -290,8 +291,8 @@ def create_dataset_data_in_repo(dataset_name: str, blueprint: TestXnatDatasetBlu
                     xresource = xscan.create_resource(resource.name)
                     # Create the dummy files
                     for fname in resource.filenames:
-                        if source_data_dir is not None:
-                            fpath = source_data_dir.joinpath(*fname.split('/'))
+                        if source_data is not None:
+                            fpath = source_data.joinpath(*fname.split('/'))
                         else:
                             fpath = create_test_file(fname, tmp_dir)
                         xresource.upload(str(tmp_dir / fpath), str(fpath))

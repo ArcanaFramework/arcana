@@ -14,7 +14,7 @@ from arcana.data.stores.bids import BidsDataset
 from arcana.tasks.bids import bids_app
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
-from arcana.core.utils import path2name
+from arcana.core.utils import path2varname
 
 
 MOCK_BIDS_APP_NAME = 'mockapp'
@@ -105,13 +105,13 @@ def test_run_bids_app_docker(bids_validator_app_image: str, nifti_sample_dir: Pa
         dataset=bids_dir)
 
     for inpt_path, dtype in INPUTS:
-        inpt_name = path2name(inpt_path)
+        inpt_name = path2varname(inpt_path)
         kwargs[inpt_name] = nifti_sample_dir.joinpath(*inpt_path.split('/')).with_suffix('.' + dtype.ext)
 
     result = task(plugin='serial', **kwargs)
 
     for output_path, dtype in OUTPUTS:
-        assert Path(getattr(result.output, path2name(output_path))).exists()
+        assert Path(getattr(result.output, path2varname(output_path))).exists()
 
 
 def test_run_bids_app_naked(mock_bids_app_script: str, nifti_sample_dir: Path, work_dir: Path):
@@ -144,7 +144,7 @@ def test_run_bids_app_naked(mock_bids_app_script: str, nifti_sample_dir: Path, w
         outputs=OUTPUTS)
 
     for inpt_path, dtype in INPUTS:
-        inpt_name = path2name(inpt_path)
+        inpt_name = path2varname(inpt_path)
         kwargs[inpt_name] = nifti_sample_dir.joinpath(*inpt_path.split('/')).with_suffix('.' + dtype.ext)
 
     bids_dir = work_dir / 'bids'
@@ -154,4 +154,4 @@ def test_run_bids_app_naked(mock_bids_app_script: str, nifti_sample_dir: Path, w
     result = task(plugin='serial', **kwargs)
 
     for output_path, dtype in OUTPUTS:
-        assert Path(getattr(result.output, path2name(output_path))).exists()
+        assert Path(getattr(result.output, path2varname(output_path))).exists()
