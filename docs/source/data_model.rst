@@ -254,7 +254,7 @@ with ``exclude`` but not for the same frequencies.
 
 
 You may want multiple dataset definitions for a given project/directory,
-for different analysese.g. with different subsets of IDs depending on which
+for different analyses e.g. with different subsets of IDs depending on which
 scans have passed quality control. To avoid conflicts, you can
 assign a dataset definition a name, which is used differentiate between multiple
 dataset definitions stored in the same project/directory. To do this simply
