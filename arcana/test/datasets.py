@@ -1,10 +1,11 @@
 import os
+import shutil
 import typing as ty
 from itertools import product
 import zipfile
 from pathlib import Path
-from dataclasses import dataclass
-from arcana.core.utils import set_cwd
+from dataclasses import dataclass, field as dataclass_field
+from arcana.core.utils import set_cwd, path2varname
 from arcana.core.data.space import DataSpace
 from arcana.core.data.format import WithSideCars
 from arcana.data.stores.common import FileSystem
@@ -56,31 +57,41 @@ class TestDatasetBlueprint():
     hierarchy: ty.List[DataSpace]
     dim_lengths: ty.List[int]  # size of layers a-d respectively
     files: ty.List[str]  # files present at bottom layer
-    id_inference: ty.Dict[DataSpace, str]  # id_inference dict
-    expected_formats: ty.Dict[str, ty.Tuple[type, ty.List[str]]]  # expected formats
-    to_insert: ty.List[ty.Tuple[str, ty.Tuple[DataSpace, type, ty.List[str]]]]  # files to insert as derivatives
+    id_inference: ty.List[ty.Tuple[DataSpace, str]] = dataclass_field(default_factory=list)   # id_inference dict
+    expected_formats: ty.Dict[str, ty.Tuple[type, ty.List[str]]] = dataclass_field(default_factory=dict)  # expected formats
+    derivatives: ty.List[ty.Tuple[str, DataSpace, type, ty.List[str]]] = dataclass_field(default_factory=list)  # files to insert as derivatives
 
     @property
     def space(self):
         return type(self.hierarchy[0])
 
 
-def make_dataset(blueprint, dataset_path):
-    create_dataset_data_in_repo(blueprint, dataset_path)
+def make_dataset(blueprint: TestDatasetBlueprint, dataset_path: Path, source_data: Path=None):
+    create_dataset_data_in_repo(blueprint, dataset_path, source_data=source_data)
     return access_dataset(blueprint, dataset_path)
 
 
-def create_dataset_data_in_repo(blueprint, dataset_path):
+def create_dataset_data_in_repo(blueprint: TestDatasetBlueprint, dataset_path: Path, source_data: Path=None):
     "Creates a dataset from parameters in TEST_DATASETS"
     dataset_path.mkdir(exist_ok=True, parents=True)
     for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
-        ids = dict(zip(TestDataSpace.axes(), id_tple))
+        ids = dict(zip(blueprint.space.axes(), id_tple))
         dpath = dataset_path
         for layer in blueprint.hierarchy:
             dpath /= ''.join(f'{b}{ids[b]}' for b in layer.span())
         os.makedirs(dpath)
         for fname in blueprint.files:
-            create_test_file(fname, dpath)
+            if source_data is not None:
+                src_path = source_data.joinpath(*fname.split('/'))
+                parts = fname.split('.')
+                dst_path = dpath / (path2varname(parts[0]) + '.' + '.'.join(parts[1:]))
+                dst_path.parent.mkdir(exist_ok=True)
+                if src_path.is_dir():
+                    shutil.copytree(src_path, dst_path)
+                else:
+                    shutil.copyfile(src_path, dst_path, follow_symlinks=True)
+            else:
+                create_test_file(fname, dpath)
 
 
 def access_dataset(blueprint, dataset_path):

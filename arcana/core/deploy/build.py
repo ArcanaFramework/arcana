@@ -40,8 +40,8 @@ def build_docker_image(image_tag: str,
 def construct_dockerfile(
         build_dir: Path,
         base_image: str="ubuntu:kinetic",
-        python_packages: ty.Iterable[ty.Tuple[str, str]]=(),
-        system_packages: ty.Iterable[ty.Iterable[ty.Tuple[str, str]]]=(),
+        python_packages: ty.Iterable[ty.Tuple[str, str]]=None,
+        system_packages: ty.Iterable[ty.Iterable[ty.Tuple[str, str]]]=None,
         labels: ty.Dict[str, str]=None,
         package_manager: str='apt',
         arcana_install_extras: ty.Iterable[str]=(),
@@ -79,6 +79,12 @@ def construct_dockerfile(
     DockerRenderer
         Neurodocker Docker renderer to construct dockerfile from
     """
+
+    if system_packages is None:
+        system_packages = []
+    if python_packages is None:
+        python_packages = []
+
     if not build_dir.is_dir():
         raise ArcanaBuildError(f"Build dir '{str(build_dir)}' is not a valid directory")
 

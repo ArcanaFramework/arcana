@@ -279,7 +279,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             raise ArcanaFileFormatError(
                 f"Cannot put more than one directory, {dir_paths_str}, as part "
                 f"of the same file group {self}")
-        # Make a local copy of the file-group to validate the paths and create
+        # Make a copy of the file-group to validate the local paths and auto-gen
         # any defaults before they are pushed to the store
         cpy = copy(self)
         cpy.set_fs_paths(fs_paths)
@@ -288,6 +288,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         # Set the paths to the cached files
         self.set_fs_paths(cache_paths)
         self.validate_file_paths()
+        self.exists = True
         # Save provenance
         if self.provenance:
             self.data_node.dataset.store.put_provenance(self)
@@ -665,7 +666,7 @@ class BaseFile(FileGroup):
                 f"Attempting to access file paths of {self} before they are set")
         return self.fs_paths
 
-    def copy_to(self, fs_path: str, symlink: bool=False):
+    def copy_to(self, fs_path: str or Path, symlink: bool=False):
         """Copies the file-group to the new path, with auxiliary files saved
         alongside the primary-file path.
 
@@ -675,12 +676,17 @@ class BaseFile(FileGroup):
             Path to save the file-group to excluding file extensions
         symlink : bool
             Use symbolic links instead of copying files to new location
+            
+        Returns
+        -------
+        BaseFile
+            A copy of the file object at the new file system path
         """
         if symlink:
             copy_file = os.symlink
         else:
             copy_file = shutil.copyfile
-        dest_path = fs_path + '.' + self.ext
+        dest_path = Path(str(fs_path) + '.' + self.ext)
         copy_file(self.fs_path, dest_path)
         cpy = copy(self)
         cpy.set_fs_paths([dest_path])
@@ -779,13 +785,13 @@ class WithSideCars(BaseFile):
     def side_car(self, name):
         return self.side_cars[name]
 
-    def copy_to(self, fs_path: str, symlink: bool=False):
+    def copy_to(self, fs_path: str or Path, symlink: bool=False):
         """Copies the file-group to the new path, with auxiliary files saved
         alongside the primary-file path.
 
         Parameters
         ----------
-        path : str
+        fs_path : str or Path
             Path to save the file-group to excluding file extensions
         symlink : bool
             Use symbolic links instead of copying files to new location
@@ -794,7 +800,7 @@ class WithSideCars(BaseFile):
             copy_file = os.symlink
         else:
             copy_file = shutil.copyfile
-        dest_path = fs_path + '.' + self.ext
+        dest_path = Path(str(fs_path) + '.' + self.ext)
         copy_file(self.fs_path, dest_path)
         dest_side_cars = self.default_side_car_paths(dest_path)
         for sc_ext, sc_path in self.side_cars.items():

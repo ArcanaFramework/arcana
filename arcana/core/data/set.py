@@ -152,7 +152,7 @@ class Dataset():
         definition = asdict(self, omit=['store'])
         if name is None:
             name = self.name
-        self.store.save_dataset_definition(self, definition, name=name)
+        self.store.save_dataset_definition(self.id, definition, name=name)
 
     @classmethod
     def load(cls, id: str, store: datastore.DataStore=None, name: str=None,
@@ -659,7 +659,7 @@ class Dataset():
         def parsed_conns(lst, conn_type):
             parsed = []
             for spec in lst:
-                if isinstance(lst, conn_type):
+                if isinstance(spec, conn_type):
                     parsed.append(spec)
                 elif len(spec) == 3:
                     parsed.append(conn_type(*spec))

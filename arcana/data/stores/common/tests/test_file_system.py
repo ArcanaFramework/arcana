@@ -38,7 +38,7 @@ def test_get_items(dataset: Dataset):
 def test_put_items(dataset: Dataset):
     all_checksums = {}
     all_fs_paths = {}
-    for name, freq, format, files in dataset.blueprint.to_insert:
+    for name, freq, format, files in dataset.blueprint.derivatives:
         dataset.add_sink(name=name, format=format, frequency=freq)
         deriv_tmp_dir = Path(mkdtemp())
         # Create test files, calculate checkums and recorded expected paths
@@ -62,7 +62,7 @@ def test_put_items(dataset: Dataset):
             item.put(*fs_paths)
     def check_inserted():
         """Check that the inserted items are present in the dataset"""
-        for name, freq, format, _ in dataset.blueprint.to_insert:
+        for name, freq, format, _ in dataset.blueprint.derivatives:
             for node in dataset.nodes(freq):
                 item = node[name]
                 item.get_checksums()

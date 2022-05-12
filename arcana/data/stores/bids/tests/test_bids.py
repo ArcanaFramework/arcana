@@ -6,24 +6,24 @@ from pathlib import Path
 import nibabel as nb
 import numpy.random
 import shutil
+import pytest
 import docker
 from arcana import __version__
 from arcana.data.formats import NiftiX
 from arcana.data.stores.bids import BidsDataset
-from arcana.tasks.bids import BidsApp
+from arcana.tasks.bids import bids_app
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
+from arcana.core.utils import path2varname
 
 
-BIDS_VALIDATOR_DOCKER = 'bids/validator'
-SUCCESS_STR = 'This dataset appears to be BIDS compatible'
-MOCK_BIDS_APP_IMAGE = 'arcana-mock-bids-app'
 MOCK_BIDS_APP_NAME = 'mockapp'
 MOCK_README = 'A dummy readme\n' * 100
 MOCK_AUTHORS = ['Dumm Y. Author',
                 'Another D. Author']
 
-def test_bids_roundtrip(work_dir):
+
+def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
 
     path = work_dir / 'bids-dataset'
     name = 'bids-dataset'
@@ -69,11 +69,11 @@ def test_bids_roundtrip(work_dir):
 
     # Full dataset validation using dockerized validator
     dc = docker.from_env()
-    dc.images.pull(BIDS_VALIDATOR_DOCKER)
-    result = dc.containers.run(BIDS_VALIDATOR_DOCKER, '/data',
+    dc.images.pull(bids_validator_docker)
+    result = dc.containers.run(bids_validator_docker, '/data',
                                volumes=[f'{path}:/data:ro'],
                                remove=True, stderr=True).decode('utf-8')
-    assert SUCCESS_STR in result
+    assert bids_success_str in result
     
     reloaded = BidsDataset.load(path)
     reloaded.add_sink('t1w', format=NiftiX, path='anat/T1w')
@@ -81,141 +81,77 @@ def test_bids_roundtrip(work_dir):
     assert dataset == reloaded
 
 
-def test_run_bids_app_docker(nifti_sample_dir: Path, work_dir: Path):
+def test_run_bids_app_docker(bids_validator_app_image: str, nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = [('T1w', NiftiGzX, 'anat/T1w'),
-              ('T2w', NiftiGzX, 'anat/T2w'),
-              ('dwi', NiftiGzXFslgrad, 'dwi/dwi'),
-            #   ('bold', NiftiGzX, 'func/task-REST_bold')
-              ]
-    OUTPUTS = [('whole_dir', Directory, None),
-               ('out1', Text, f'file1'),
-               ('out2', Text, f'file2')]
+    INPUTS = [('anat/T1w', NiftiGzX),
+              ('anat/T2w', NiftiGzX),
+              ('dwi/dwi', NiftiGzXFslgrad)]
+    OUTPUTS = [('', Directory),  # whole derivative directory
+               ('file1', Text),
+               ('file2', Text)]
 
-    dc = docker.from_env()
-
-    dc.images.pull(BIDS_VALIDATOR_DOCKER)
-
-    # Build mock BIDS app image
-    build_dir = Path(tempfile.mkdtemp())
-
-    # Create executable that runs validator then produces some mock output
-    # files
-    launch_sh = build_dir / 'launch.sh'
-    with open(launch_sh, 'w') as f:
-        f.write(f"""#!/bin/sh
-BIDS_DATASET=$1
-OUTPUTS_DIR=$2
-SUBJ_ID=$5
-# Run BIDS validator to check whether BIDS dataset is created properly
-output=$(/usr/local/bin/bids-validator "$BIDS_DATASET")
-if [[ "$output" != *"{SUCCESS_STR}"* ]]; then
-    echo "BIDS validation was not successful, exiting:\n "
-    echo $output
-    exit 1;
-fi
-# Write mock output files to 'derivatives' Directory
-mkdir -p $OUTPUTS_DIR
-echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
-echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
-""")
-
-    with open(build_dir / 'Dockerfile', 'w') as f:
-        f.write(f"""FROM {BIDS_VALIDATOR_DOCKER}:latest
-ADD ./launch.sh /launch.sh
-RUN chmod +x /launch.sh
-ENTRYPOINT ["/launch.sh"]""")
-    
-    dc.images.build(path=str(build_dir), tag=MOCK_BIDS_APP_IMAGE)
-
-    task_interface = BidsApp(
-        app_name=MOCK_BIDS_APP_NAME,
-        image=MOCK_BIDS_APP_IMAGE,
-        executable='/launch.sh',  # Extracted using `docker_image_executable(docker_image)`
-        inputs=INPUTS,
-        outputs=OUTPUTS)
-
-    for inpt, dtype, _ in INPUTS:
-        esc_inpt = inpt
-        kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + '.' + dtype.ext)
 
     bids_dir = work_dir / 'bids'
 
     shutil.rmtree(bids_dir, ignore_errors=True)
 
-    task = task_interface(dataset=bids_dir, virtualisation='docker')
+    task = bids_app(
+        name=MOCK_BIDS_APP_NAME,
+        container_image=bids_validator_app_image,
+        executable='/launch.sh',  # Extracted using `docker_image_executable(docker_image)`
+        inputs=INPUTS,
+        outputs=OUTPUTS,
+        dataset=bids_dir)
+
+    for inpt_path, dtype in INPUTS:
+        inpt_name = path2varname(inpt_path)
+        kwargs[inpt_name] = nifti_sample_dir.joinpath(*inpt_path.split('/')).with_suffix('.' + dtype.ext)
+
     result = task(plugin='serial', **kwargs)
 
-    for output, dtype, _ in OUTPUTS:
-        assert Path(getattr(result.output, output)).exists()
+    for output_path, dtype in OUTPUTS:
+        assert Path(getattr(result.output, path2varname(output_path))).exists()
 
 
-def test_run_bids_app_naked(nifti_sample_dir: Path, work_dir: Path):
+def test_run_bids_app_naked(mock_bids_app_script: str, nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = [('T1w', NiftiGzX, 'anat/T1w'),
-              ('T2w', NiftiGzX, 'anat/T2w'),
-              ('dwi', NiftiGzXFslgrad, 'dwi/dwi'),
-            #   ('bold', NiftiGzX, 'func/task-REST_bold')
-              ]
-    OUTPUTS = [('whole_dir', Directory, None),
-               ('out1', Text, f'file1'),
-               ('out2', Text, f'file2')]
-
-    dc = docker.from_env()
-
-    dc.images.pull(BIDS_VALIDATOR_DOCKER)
+    INPUTS = [('anat/T1w', NiftiGzX),
+              ('anat/T2w', NiftiGzX),
+              ('dwi/dwi', NiftiGzXFslgrad)]
+    OUTPUTS = [('', Directory),  # whole derivative directory
+               ('file1', Text),
+               ('file2', Text)]
 
     # Build mock BIDS app image
-    build_dir = Path(tempfile.mkdtemp())
 
     # Create executable that runs validator then produces some mock output
     # files
-    launch_sh = build_dir / 'launch.sh'
+    launch_sh = work_dir / 'launch.sh'
 
-    # Generate tests to see if input files have been created properly
-    file_tests = ''
-    for _, dtype, path in INPUTS:
-        subdir, suffix = path.split('/')
-        file_tests += f"""
-        if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{dtype.ext}" ]; then
-            echo "Did not find {suffix} file at $BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{dtype.ext}"
-            exit 1;
-        fi
-        """
-    
+    # We don't need to run the full validation in this case as it is already tested by test_run_bids_app_docker
+    # so we use the simpler test script.
     with open(launch_sh, 'w') as f:
-        f.write(f"""#!/bin/sh
-BIDS_DATASET=$1
-OUTPUTS_DIR=$2
-SUBJ_ID=$5
-{file_tests}
-# Write mock output files to 'derivatives' Directory
-mkdir -p $OUTPUTS_DIR
-echo 'file1' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file1.txt
-echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
-""")
+        f.write(mock_bids_app_script)
 
     os.chmod(launch_sh, stat.S_IRWXU)
 
-    task_interface = BidsApp(
-        app_name=MOCK_BIDS_APP_NAME,
-        image=MOCK_BIDS_APP_IMAGE,
+    task = bids_app(
+        name=MOCK_BIDS_APP_NAME,
         executable=launch_sh,  # Extracted using `docker_image_executable(docker_image)`
         inputs=INPUTS,
         outputs=OUTPUTS)
 
-    for inpt, dtype, _ in INPUTS:
-        esc_inpt = inpt
-        kwargs[esc_inpt] = nifti_sample_dir / (esc_inpt  + '.' + dtype.ext)
+    for inpt_path, dtype in INPUTS:
+        inpt_name = path2varname(inpt_path)
+        kwargs[inpt_name] = nifti_sample_dir.joinpath(*inpt_path.split('/')).with_suffix('.' + dtype.ext)
 
     bids_dir = work_dir / 'bids'
 
     shutil.rmtree(bids_dir, ignore_errors=True)
 
-    task = task_interface(dataset=bids_dir, virtualisation=None)
     result = task(plugin='serial', **kwargs)
 
-    for output, dtype, _ in OUTPUTS:
-        assert Path(getattr(result.output, output)).exists()
+    for output_path, dtype in OUTPUTS:
+        assert Path(getattr(result.output, path2varname(output_path))).exists()

@@ -1,1 +1,1 @@
-from .app import BidsApp
+from .app import bids_app
