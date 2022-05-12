@@ -3,11 +3,11 @@ import yaml
 from arcana import __version__
 
 
-def create_doc(spec, doc_dir, pkg_name, flatten: bool):
+def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
     header = {
-        "title": spec["package_name"],
+        "title": pkg_name,
         "weight": 10,
-        "source_file": pkg_name,
+        "source_file": str(src_file),
     }
 
     if flatten:
@@ -17,25 +17,23 @@ def create_doc(spec, doc_dir, pkg_name, flatten: bool):
 
         out_dir = doc_dir.joinpath(spec['_relative_dir'])
 
-        assert doc_dir in out_dir.parents
+        assert doc_dir in out_dir.parents or out_dir == doc_dir
 
-        out_dir.mkdir(parents=True)
-
-    # task = resolve_class(spec['pydra_task'])
+        out_dir.mkdir(parents=True, exist_ok=True)
 
     with open(f"{out_dir}/{pkg_name}.md", "w") as f:
         f.write("---\n")
         yaml.dump(header, f)
         f.write("\n---\n\n")
 
-        f.write(f'{spec["description"]}\n\n')
-
-        f.write("### Info\n")
+        f.write("## Package Info\n")
         tbl_info = MarkdownTable(f, "Key", "Value")
         if spec.get("version", None):
             tbl_info.write_row("Version", spec["version"])
         if spec.get("pkg_version", None):
             tbl_info.write_row("App version", spec["pkg_version"])
+        if spec.get("wrapper_version", None):
+            tbl_info.write_row("XNAT wrapper version", str(spec["wrapper_version"]))
         # if task.image and task.image != ':':
         #     tbl_info.write_row("Image", escaped_md(task.image))
         if spec.get("base_image", None):  # and task.image != spec["base_image"]:
@@ -44,36 +42,42 @@ def create_doc(spec, doc_dir, pkg_name, flatten: bool):
             tbl_info.write_row("Maintainer", spec["maintainer"])
         if spec.get("info_url", None):
             tbl_info.write_row("Info URL", spec["info_url"])
-        if spec.get("frequency", None):
-            tbl_info.write_row("Frequency", spec["frequency"].name.title())
 
         f.write("\n")
+        
+        f.write('## Commands\n')
+        
+        for cmd in spec['commands']:
 
-        first_cmd = spec['commands'][0]
+            f.write(f"### {cmd['name']}\n")
 
-        f.write("### Inputs\n")
-        tbl_inputs = MarkdownTable(f, "Name", "Bids path", "Data type")
-        # for x in task.inputs:
-        for x in first_cmd.get('inputs', []):
-            name, dtype, path = x
-            tbl_inputs.write_row(escaped_md(name), escaped_md(path), escaped_md(dtype))
-        f.write("\n")
+            f.write(f'{cmd["description"]}\n\n')
+            
+            if spec.get("frequency", None):
+                f.write(f'\nOperates on: {cmd["frequency"]}\n\n')
 
-        f.write("### Outputs\n")
-        tbl_outputs = MarkdownTable(f, "Name", "Data type")
-        # for x in task.outputs:
-        for name, dtype in first_cmd.get('outputs', []):
-            tbl_outputs.write_row(escaped_md(name), escaped_md(dtype))
-        f.write("\n")
+            # for x in task.inputs:
+            f.write("#### Inputs\n")
+            tbl_inputs = MarkdownTable(f, "Path", "Input format", "Stored format")
+            if cmd.get('inputs'):
+                for inpt in cmd['inputs']:
+                    tbl_inputs.write_row(escaped_md(inpt['path']), escaped_md(inpt['format']), escaped_md(inpt.get('stored_format', 'format')))
+                f.write("\n")
 
-        f.write("### Parameters\n")
-        if not first_cmd.get("parameters", None):
-            f.write("None\n")
-        else:
+            f.write("#### Outputs\n")
+            tbl_outputs = MarkdownTable(f, "Name", "Output format", "Stored format")
+            if cmd.get('outputs'):
+                # for x in task.outputs:
+                for outpt in cmd.get('outputs', []):
+                    tbl_outputs.write_row(escaped_md(outpt['path']), escaped_md(outpt['format']), escaped_md(outpt.get('stored_format', 'format')))
+                f.write("\n")
+
+            f.write("#### Parameters\n")
             tbl_params = MarkdownTable(f, "Name", "Data type")
-            for param in spec["parameters"]:
-                tbl_params.write_row("Todo", "Todo", "Todo")
-        f.write("\n")
+            if cmd.get('parameters'):
+                for param in cmd.get("parameters", []):
+                    tbl_params.write_row(param['name'], param['format'])
+                f.write("\n")
 
 
 def escaped_md(value: str) -> str:
