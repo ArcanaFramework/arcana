@@ -144,11 +144,6 @@ def test_dataspace_location():
     return __name__ + '.TestDataSpace'
 
 
-@pytest.fixture
-def test_dicom_dataset_dir(test_ref_data_dir):
-    return Path(__file__).parent / 'test-dataset'
-
-
 @pytest.fixture(params=GOOD_DATASETS)
 def dataset(work_dir, request):
     dataset_name = request.param
@@ -190,36 +185,37 @@ def concatenate_task(request):
         task = concatenate_reverse
     return task
 
-@pytest.fixture
+
+@pytest.fixture(scope='session')
 def command_spec():
     return {
         'name': 'conctenate-test',
-        'pydra_task': 'arcana.test.tasks:concatenate',
+        'workflow': 'arcana.test.tasks:concatenate',
         'inputs': [
             {
-                'pydra_field': 'in_file1',
+                'path': 'first-file',
                 'format': 'common:Text',
-                'xnat_name': 'first-file',
+                'pydra_field': 'in_file1',
                 'frequency': 'session'
             },
             {
-                'pydra_field': 'in_file2',
+                'path': 'second-file',
                 'format': 'common:Text',
-                'xnat_name': 'second-file',
+                'pydra_field': 'in_file2',
                 'frequency': 'session'
             },
         ],
         'outputs': [
             {
-                'pydra_field': 'out_file',
+                'path': 'concatenated',
                 'format': 'common:Text',
-                'xnat_path': 'concatenated'
+                'pydra_field': 'out_file'
             }
         ],
         'parameters': [
             {
+                'name': 'number-of-duplicates',
                 'pydra_field': 'duplicates',
-                'xnat_name': 'number-of-duplicates',
                 'required': True
             }
         ],

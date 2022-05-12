@@ -2,6 +2,7 @@ from __future__ import annotations
 import attr
 import typing as ty
 from collections import OrderedDict
+from pathlib import Path
 from dataclasses import dataclass
 import logging
 from copy import copy, deepcopy
@@ -17,7 +18,8 @@ from .data.format import DataItem, FileGroup
 import arcana.core.data.set
 from .data.space import DataSpace
 from .utils import (
-    func_task, asdict, fromdict, pydra_asdict, pydra_fromdict, pydra_eq)
+    func_task, asdict, fromdict, pydra_asdict, pydra_fromdict, pydra_eq,
+    path2varname, varname2path)
 
 logger = logging.getLogger('arcana')
 
@@ -93,12 +95,12 @@ class Pipeline():
                 f"pipeline: " + "', '".join(self.workflow.output_names))            
 
     @property
-    def input_col_names(self):
-        return [i.col_name for i in self.inputs]
+    def input_varnames(self):
+        return [path2varname(i.col_name) for i in self.inputs]
 
     @property
-    def output_col_names(self):
-        return [o.col_name for o in self.outputs]
+    def output_varnames(self):
+        return [path2varname(o.col_name) for o in self.outputs]
 
     # parameterisation = self.get_parameterisation(kwargs)
     # self.wf.to_process.inputs.parameterisation = parameterisation
@@ -157,10 +159,10 @@ class Pipeline():
 
         source_out_dct = {
             s: (DataItem
-                if self.dataset[s].frequency.is_parent(self.frequency,
-                                                       if_match=True)
+                if self.dataset[varname2path(s)].frequency.is_parent(
+                    self.frequency, if_match=True)
                 else ty.Sequence[DataItem])
-            for s in self.input_col_names}
+            for s in self.input_varnames}
         source_out_dct['provenance_'] = ty.Dict[str, ty.Any]
 
         wf.per_node.add(func_task(
@@ -170,12 +172,12 @@ class Pipeline():
             name='source',
             dataset=self.dataset,
             frequency=self.frequency,
-            inputs=self.input_col_names,
+            inputs=[i.col_name for i in self.inputs],
             id=wf.per_node.lzin.id))
 
         # Set the inputs
         sourced = {i: getattr(wf.per_node.source.lzout, i)
-                   for i in self.input_col_names}
+                   for i in self.input_varnames}
 
         # Do input format conversions if required
         for inpt in self.inputs:
@@ -185,24 +187,25 @@ class Pipeline():
                 logger.info("Adding implicit conversion for input '%s' "
                             "from %s to %s", inpt.col_name, stored_format,
                             inpt.required_format)
+                source_name = path2varname(inpt.col_name)
                 converter = inpt.required_format.converter_task(
-                    stored_format, name=f"{inpt.col_name}_input_converter")
-                converter.inputs.to_convert = sourced.pop(inpt.col_name)
-                if issubclass(source_out_dct[inpt.col_name], ty.Sequence):
+                    stored_format, name=f"{source_name}_input_converter")
+                converter.inputs.to_convert = sourced.pop(source_name)
+                if issubclass(source_out_dct[source_name], ty.Sequence):
                     # Iterate over all items in the sequence and convert them
                     # separately
                     converter.split('to_convert')
                 # Insert converter
                 wf.per_node.add(converter)
                 # Map converter output to input_interface
-                sourced[inpt.col_name] = converter.lzout.converted
+                sourced[source_name] = converter.lzout.converted
 
         # Create identity node to accept connections from user-defined nodes
         # via `set_output` method
         wf.per_node.add(func_task(
             access_paths_and_values,
-            in_fields=[(i, DataItem) for i in self.input_col_names],
-            out_fields=[(i, ty.Any) for i in self.input_col_names],
+            in_fields=[(i, DataItem) for i in self.input_varnames],
+            out_fields=[(i, ty.Any) for i in self.input_varnames],
             name='input_interface',
             **sourced))
 
@@ -213,15 +216,15 @@ class Pipeline():
         for inpt in self.inputs:
             setattr(getattr(wf.per_node, self.workflow.name).inputs,
                     inpt.pydra_field,
-                    getattr(wf.per_node.input_interface.lzout, inpt.col_name))
+                    getattr(wf.per_node.input_interface.lzout, path2varname(inpt.col_name)))
 
         # Creates a node to accept values from user-defined nodes and
         # encapsulate them into DataItems
         wf.per_node.add(func_task(
             encapsulate_paths_and_values,
             in_fields=[('outputs', ty.Dict[str, type])] + [
-                (o, ty.Any) for o in self.output_col_names],
-            out_fields=[(o, DataItem) for o in self.output_col_names],
+                (o, ty.Any) for o in self.output_varnames],
+            out_fields=[(o, DataItem) for o in self.output_varnames],
             name='output_interface',
             outputs=self.outputs,
             **{o.col_name: getattr(
@@ -230,7 +233,7 @@ class Pipeline():
 
         # Set format converters where required
         to_sink = {o: getattr(wf.per_node.output_interface.lzout, o)
-                   for o in self.output_col_names}
+                   for o in self.output_varnames}
 
         # Do output format conversions if required
         for outpt in self.outputs:
@@ -241,13 +244,14 @@ class Pipeline():
                     "from %s to %s", outpt.col_name, outpt.produced_format,
                     stored_format)
                 # Insert converter
+                sink_name = path2varname(outpt.col_name)
                 converter = stored_format.converter_task(
                     outpt.produced_format,
-                    name=f"{outpt.col_name}_output_converter")
-                converter.inputs.to_convert = to_sink.pop(outpt.col_name)
+                    name=f"{sink_name}_output_converter")
+                converter.inputs.to_convert = to_sink.pop(sink_name)
                 wf.per_node.add(converter)
                 # Map converter output to workflow output
-                to_sink[outpt.col_name] = converter.lzout.converted
+                to_sink[sink_name] = converter.lzout.converted
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
@@ -339,7 +343,7 @@ class Pipeline():
                 raise ArcanaDesignError(
                     f"{sink} hasn't been connected to a pipeline yet")
             pipeline = sink.dataset.pipelines[sink.pipeline_name]
-            if sink.name not in pipeline.output_col_names:
+            if sink.name not in pipeline.output_varnames:
                 raise ArcanaOutputNotProducedException(
                     f"{pipeline.name} does not produce {sink.name}")
             # Check downstream piplines for circular dependencies
@@ -454,7 +458,7 @@ def access_paths_and_values(**data_items):
     values = []
     for name, item in data_items.items():
         if isinstance(item, FileGroup):
-            cpy = item.copy_to('./' + name, symlink=True)
+            cpy = item.copy_to(Path.cwd() / name, symlink=True)
             values.append(cpy.fs_path)
         else:
             values.append(item.value)

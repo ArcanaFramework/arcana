@@ -57,7 +57,7 @@ class Bids(FileSystem):
         parts = file_group.path.split('/')
         if parts[-1] == '':
             parts = parts[:-1]
-        if parts[0] == 'derivatives':
+        if is_derivative:= (parts[0] == 'derivatives'):
             if len(parts) < 2:
                 raise ArcanaUsageError(
                     f"Derivative paths should have at least 3 parts ({file_group.path}")
@@ -68,12 +68,11 @@ class Bids(FileSystem):
             fs_path /= parts[0]
             fs_path /= parts[1]
             parts = parts[2:]
-        if parts:  # Often the whole derivatives folder is the output for a BIDS apps
+        if parts:  # The whole derivatives directories can be the output for a BIDS app
             fs_path /= self.node_path(dn)
             for part in parts[:-1]:
                 fs_path /= part
-            fname = '_'.join(dn.ids[h]
-                             for h in dn.dataset.hierarchy) + '_' + parts[-1]
+            fname = '_'.join(dn.ids[h] for h in dn.dataset.hierarchy) + '_' + parts[-1]
             fs_path /= fname
         return fs_path
 
@@ -97,3 +96,4 @@ class Bids(FileSystem):
 def outputs_converter(outputs):
     """Sets the path of an output to '' if not provided or None"""
     return [o[:2] + ('',) if len(o) < 3 or o[2] is None else o for o in outputs]
+

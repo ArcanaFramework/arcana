@@ -4,12 +4,11 @@ from pathlib import Path
 import json
 import site
 import pkg_resources
+import os
+from dataclasses import dataclass, field as dataclass_field
+import yaml
 from arcana import __version__
 from arcana.exceptions import (ArcanaBuildError)
-import os
-import yaml
-from dataclasses import dataclass, field as dataclass_field
-from arcana import __version__
 from arcana.exceptions import ArcanaError
 
 
@@ -152,8 +151,9 @@ def local_package_location(pip_spec: PipSpec):
             + "\n".join(sorted(
                 p.key + '/' + p.project_name
                 for p in pkg_resources.working_set)))
-    if pip_spec.version and not (pkg.version.endswith('.dirty')
-                                 or pip_spec.version.endswith('.dirty')) and pkg.version != pip_spec.version:
+    if (pip_spec.version
+            and not (pkg.version.endswith('.dirty') or pip_spec.version.endswith('.dirty'))
+            and pkg.version != pip_spec.version):
         raise ArcanaBuildError(
             f"Requested package {pip_spec.version} does not match installed "
             f"{pkg.version}")
