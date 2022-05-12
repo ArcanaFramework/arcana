@@ -1,0 +1,20 @@
+{
+  "creators": [
+    {
+      "affiliation": "Department of Biomedical Engineering, University of Sydney and Australian National Imaging Facility",
+      "name": "Close, Thomas G.",
+      "orcid": "0000-0002-4160-2134"
+    }
+  ],
+  "keywords": [
+    "neuroimaging",
+    "workflow",
+    "pipeline",
+    "informatics",
+    "repository",
+    "xnat",
+    "bids"
+  ],
+  "license": "CC BY-NC-SA 4.0",
+  "upload_type": "software"
+}

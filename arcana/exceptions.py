@@ -84,27 +84,23 @@ class ArcanaIndexError(ArcanaError):
         self.index = index
 
 
-class ArcanaMissingDataException(ArcanaUsageError):
-    pass
 
 
 class ArcanaDataNotDerivedYetError(NamedArcanaError, ArcanaDesignError):
     pass
 
 
-class ArcanaSelectionError(ArcanaUsageError):
+class ArcanaDataMatchError(ArcanaUsageError):
     pass
 
 
-class ArcanaInputMissingMatchError(ArcanaSelectionError):
+class ArcanaPipelinesStackError(ArcanaError):
     pass
 
-
-class ArcanaMultipleMatchesInputError(ArcanaSelectionError):
+class ArcanaMissingDataException(ArcanaPipelinesStackError):
     pass
 
-
-class ArcanaOutputNotProducedException(ArcanaException):
+class ArcanaOutputNotProducedException(ArcanaPipelinesStackError):
     """
     Raised when a given spec is not produced due to switches and inputs
     provided to the analysis
@@ -160,7 +156,7 @@ class ArcanaFileFormatClashError(ArcanaError):
     """
 
 
-class ArcanaNoConverterError(ArcanaError):
+class ArcanaFormatConversionError(ArcanaError):
     "No converters exist between formats"
 
 
@@ -201,7 +197,7 @@ class ArcanaDataTreeConstructionError(ArcanaError):
 class ArcanaBadlyFormattedIDError(ArcanaDataTreeConstructionError):
     "Error attempting to extract an ID from a tree path using a user provided regex"
 
-class ArcanaWrongDataDimensionssError(ArcanaError):
+class ArcanaWrongDataSpaceError(ArcanaError):
     "Provided frequency is not a valid member of the dataset's dimensions"
 
 
@@ -211,4 +207,8 @@ class ArcanaNoDirectXnatMountException(ArcanaException):
 
 
 class ArcanaEmptyDatasetError(ArcanaException):
+    pass
+
+
+class ArcanaBuildError(ArcanaError):
     pass

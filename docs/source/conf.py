@@ -25,7 +25,6 @@ sys.path.insert(0, package_path)
 from arcana import __version__, __authors__  # @UnresolvedImport @IgnorePep8
 # from arcana import *
 
-
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use op.abspath to make it absolute, like shown here.
@@ -50,6 +49,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autosectionlabel',
     'sphinxarg.ext',
+    'sphinx_click.ext',
     'numpydoc'
 ]
 
@@ -115,7 +115,8 @@ exclude_patterns = []
 #show_authors = False
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
+pygments_style = 'lovelace'
+pygments_dark_style = 'fruity'
 
 # A list of ignored prefixes for module index sorting.
 #modindex_common_prefix = []
@@ -131,26 +132,35 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'furo'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {
+    "light_css_variables": {
+        "color-brand-primary": "#7b112d",
+        "color-brand-content": "#7b112d"
+    },
+    "dark_css_variables": {
+        "color-brand-primary": "#b94e5e",
+        "color-brand-content": "#b94e5e"
+    }
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+# html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-#html_title = None
+html_title = 'Arcana v{}'.format(__version__)
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-#html_short_title = None
+# html_short_title = 'Arcana v<release>'
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = 'logo_small.png'
+html_logo = '_static/images/logo_small.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -223,13 +233,13 @@ html_static_path = ['_static']
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'ArcanaDoc'
+htmlhelp_basename = 'Arcana'
 
 # -- Options for LaTeX output ---------------------------------------------
 
 latex_elements = {
 # The paper size ('letterpaper' or 'a4paper').
-#'papersize': 'letterpaper',
+'papersize': 'a4paper',
 
 # The font size ('10pt', '11pt' or '12pt').
 #'pointsize': '10pt',

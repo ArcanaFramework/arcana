@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from arcana.data.stores.xnat.tests.fixtures import create_dataset_in_repo
+from arcana.test.fixtures.medimage import create_dataset_data_in_repo
 
 
 parser = ArgumentParser()
@@ -12,6 +12,4 @@ parser.add_argument('secret', help="Password or token secret to access server wi
 args = parser.parse_args()
 
 
-create_dataset_in_repo(args.dataset_name, server=args.xnat_server,
-                       user=args.alias, password=args.secret,
-                       max_attempts=1)
+create_dataset_data_in_repo(args.dataset_name)

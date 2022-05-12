@@ -1,74 +1,30 @@
 import logging
 from abc import abstractmethod, ABCMeta
+import inspect
+from pathlib import Path
 import attr
-from arcana.exceptions import ArcanaUsageError
-from . import set as set_module
+import typing as ty
+import yaml
+from arcana.core.utils import (
+    get_config_file_path, list_subclasses, resolve_class, class_location,
+    asdict, fromdict)
+from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
 
 logger = logging.getLogger('arcana')
 
 @attr.s
 class DataStore(metaclass=ABCMeta):
-    """
-    Abstract base class for all Repository systems, DaRIS, XNAT and
-    local file system. Sets out the interface that all Repository
-    classes should implement.
-
-    Parameters
-
-    """
+    # """
+    # Abstract base class for all Repository systems, DaRIS, XNAT and
+    # local file system. Sets out the interface that all Repository
+    # classes should implement.
+    # """
 
     _connection_depth = attr.ib(default=0, init=False, hash=False, repr=False,
                                 eq=False)
 
-    def __enter__(self):
-        # This allows the store to be used within nested contexts
-        # but still only use one connection. This is useful for calling
-        # methods that need connections, and therefore control their
-        # own connection, in batches using the same connection by
-        # placing the batch calls within an outer context.
-        if self._connection_depth == 0:
-            self.connect()
-        self._connection_depth += 1
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._connection_depth -= 1
-        if self._connection_depth == 0:
-            self.disconnect()
-
-    def dataset(self, name, hierarchy=None, **kwargs):
-        """
-        Returns a dataset from the XNAT repository
-
-        Parameters
-        ----------
-        name : str
-            The name, path or ID of the dataset within the store
-        sources : Dict[Str, DataSource]
-            A dictionary that maps "name-paths" of input "columns" in the
-            dataset to criteria in a Selector object that select the
-            corresponding items in the dataset
-        sinks : Dict[str, Spec]
-            A dictionary that maps "name-paths" of sinks analysis
-            workflows to be stored in the dataset
-        dimensions : EnumMeta
-            The DataDimensions enum that defines the frequencies (e.g.
-            per-session, per-subject,...) present in the dataset.                       
-        **kwargs:
-            Keyword args passed on to the Dataset init method
-        """
-        if not hierarchy:
-            try:
-                hierarchy = self.DEFAULT_HIERARCHY
-            except AttributeError:
-                raise ArcanaUsageError(
-                    "'hierarchy' kwarg must be specified for datasets in "
-                    f"{type(self)} stores")
-        return set_module.Dataset(name,
-                                  store=self,
-                                  hierarchy=hierarchy,
-                                  **kwargs)
+    CONFIG_NAME = 'stores'
 
     @abstractmethod
     def find_nodes(self, dataset):
@@ -82,6 +38,7 @@ class DataStore(metaclass=ABCMeta):
             The dataset to populate with nodes
         """
 
+    @abstractmethod
     def find_items(self, data_node):
         """
         Find all data items within a data node and populate the DataNode object
@@ -94,7 +51,7 @@ class DataStore(metaclass=ABCMeta):
         """        
 
     @abstractmethod
-    def get_file_group(self, file_group, cache_only=False):
+    def get_file_group_paths(self, file_group, cache_only=False):
         """
         Cache the file_group locally (if required) and return the locations
         of the cached primary file and side cars
@@ -109,10 +66,8 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        path : str
-            The file-system path to the cached file
-        side_cars : Dict[str, str] or None
-            The file-system paths to the cached side-cars if present
+        fs_paths : list[str]
+            The file-system path to the cached files
 
         Raises
         ------
@@ -122,7 +77,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get_field(self, field):
+    def get_field_value(self, field):
         """
         Extract and return the value of the field from the store
 
@@ -138,7 +93,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_file_group(self, file_group, fs_path, side_cars):
+    def put_file_group_paths(self, file_group, fs_paths):
         """
         Inserts or updates the file_group into the store
 
@@ -146,10 +101,17 @@ class DataStore(metaclass=ABCMeta):
         ----------
         file_group : FileGroup
             The file_group to insert into the store
+        fs_paths : list[Path]
+            The file-system paths to the files/directories to sync
+
+        Returns
+        -------
+        cached_paths : list[str]
+            The paths of the files where they are cached in the file system
         """
 
     @abstractmethod
-    def put_field(self, field, value):
+    def put_field_value(self, field, value):
         """
         Inserts or updates the fields into the store
 
@@ -158,13 +120,76 @@ class DataStore(metaclass=ABCMeta):
         field : Field
             The field to insert into the store
         """
+        
+    @abstractmethod
+    def save_dataset_definition(self,
+                                dataset_id: str,
+                                definition: ty.Dict[str, ty.Any],
+                                name: str):
+        """Save definition of dataset within the store
+
+        Parameters
+        ----------
+        dataset_id: str
+            The ID/path of the dataset within the store
+        definition: dict[str, Any]
+            A dictionary containing the dct Dataset to be saved. The
+            dictionary is in a format ready to be dumped to file as JSON or
+            YAML.
+        name: str
+            Name for the dataset definition to distinguish it from other
+            definitions for the same directory/project"""
+
+    @abstractmethod
+    def load_dataset_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
+        """Load definition of a dataset saved within the store
+
+        Parameters
+        ----------
+        dataset_id: str
+            The ID (e.g. file-system path, XNAT project ID) of the project
+        name: str
+            Name for the dataset definition to distinguish it from other
+            definitions for the same directory/project
+
+        Returns
+        -------
+        definition: dict[str, Any]
+            A dct Dataset object that was saved in the data store
+        """
+
+    @abstractmethod
+    def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataItem
+            The item to store the provenance data for
+        provenance: dict[str, Any]
+            The provenance data to store"""
+
+    @abstractmethod
+    def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataItem
+            The item to store the provenance data for
+
+        Returns
+        -------
+        provenance: dict[str, Any] or None
+            The provenance data stored in the repository for the data item.
+            None if no provenance data has been stored"""            
 
     def get_checksums(self, file_group):
         """
-        Returns the checksums for the files in the file_group that are stored
-        in the store. If no checksums are stored in the store then
-        this method should be left to return None and the checksums will be
-        calculated by downloading the files and taking calculating the digests
+        Override this method to return checksums for files that are stored
+        with remote files (e.g. in XNAT). If no checksums are stored in the
+        store then just leave this method to just access the file and
+        recalculate them.
 
         Parameters
         ----------
@@ -183,21 +208,196 @@ class DataStore(metaclass=ABCMeta):
 
     def connect(self):
         """
-        If a connection session is required to the store,
-        manage it here
+        If a connection session is required to the store manage it here
         """
 
     def disconnect(self):
         """
-        If a connection session is required to the store,
-        manage it here
+        If a connection session is required to the store manage it here
         """
 
-    # @abstractmethod
-    # def save(self, dataset):
-    #     """Save metadata associated with the dataset in the store"""
+    def save(self, name: str, config_path: Path=None):
+        """Saves the configuration of a DataStore in 'stores.yml' 
+
+        Parameters
+        ----------
+        name
+            The name under which to save the data store
+        config_path : Path, optional
+            the path to save the config file to, defaults to `~/.arcana/stores.yml`
+        """
+        if name in self.singletons():
+            raise ArcanaNameError(
+                name, f"Name '{name}' clashes with built-in type of store")
+        entries = self.load_saved_entries()
+        # connect to store in case it is needed in the asdict method and to
+        # test the connection in general before it is saved
+        with self:  
+            entries[name] = self.asdict()
+        self.save_entries(entries, config_path=config_path)
+
+    def asdict(self, **kwargs):
+        return asdict(self, **kwargs)
+
+    @classmethod
+    def load(cls, name: str, config_path: Path=None, **kwargs):
+        """Loads a DataStore from that has been saved in the configuration file.
+        If no entry is saved under that name, then it searches for DataStore
+        sub-classes with aliases matching `name` and checks whether they can
+        be initialised without any parameters.
+
+        Parameters
+        ----------
+        name : str
+            Name that the store was saved under
+        config_path : Path, optional
+            path to the config file, defaults to `~/.arcana/stores.yml`
+        **kwargs
+            keyword args passed to the store, overriding values stored in the
+            entry
+
+        Returns
+        -------
+        DataStore
+            The data store retrieved from the stores.yml file
+
+        Raises
+        ------
+        ArcanaNameError
+            If the name is not found in the saved stores
+        """
+        entries = cls.load_saved_entries(config_path)
+        try:
+            entry = entries[name]
+        except KeyError:
+            try:
+                return cls.singletons()[name]
+            except KeyError:
+                raise ArcanaNameError(
+                    name,
+                    f"No saved data store or built-in type matches '{name}'")
+        else:
+            entry.update(kwargs)
+            store = fromdict(entry)
+        return store
+
+    @classmethod
+    def remove(cls, name: str, config_path: Path=None):
+        """Removes the entry saved under 'name' in the config file
+
+        Parameters
+        ----------
+        name
+            Name of the configuration to remove
+        """
+        entries = cls.load_saved_entries(config_path)
+        del entries[name]
+        cls.save_entries(entries)
+
+    def new_dataset(self, id, hierarchy=None, space=None, **kwargs):
+        """
+        Returns a dataset from the XNAT repository
+
+        Parameters
+        ----------
+        id : str
+            The ID (or file-system path) of the project (or directory) within
+            the store
+        space: DataSpace
+            The data space of the dataset
+        hierarchy: list[DataSpace or str]
+            The hierarchy of the dataset
+        space : EnumMeta
+            The DataSpace enum that defines the frequencies (e.g.
+            per-session, per-subject,...) present in the dataset.                       
+        **kwargs:
+            Keyword args passed on to the Dataset init method
+        """
+        if not hierarchy:
+            try:
+                hierarchy = self.DEFAULT_HIERARCHY
+            except AttributeError as e:
+                raise ArcanaUsageError(
+                    "'hierarchy' kwarg must be specified for datasets in "
+                    f"{type(self)} stores") from e
+        if not space:
+            try:
+                space = self.DEFAULT_SPACE
+            except AttributeError as e:
+                raise ArcanaUsageError(
+                    "'space' kwarg must be specified for datasets in "
+                    f"{type(self)} stores") from e                
+        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
+        dataset = Dataset(id, store=self, space=space, hierarchy=hierarchy,
+                          **kwargs)           
+        return dataset
+
+    def load_dataset(self, id, name=None):
+        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
+        if name is None:
+            name = Dataset.DEFAULT_NAME
+        dct = self.load_dataset_definition(id, name)
+        if dct is None:
+            raise KeyError(f"Did not find a dataset '{id}::{name}'")
+        return fromdict(dct, store=self)
 
 
-    # @abstractmethod
-    # def load(self, dataset):
-    #     """Load metadata associated with the dataset in the store"""
+    @classmethod
+    def singletons(cls):
+        """Returns stores in a dictionary indexed by their aliases, for which there only needs to be a single instance"""
+        try:
+            return cls._singletons
+        except AttributeError:
+            pass
+        # If not saved in the configuration file search for sub-classes
+        # whose alias matches `name` and can be initialised without params
+        import arcana.data.stores
+        cls._singletons = {}
+        for store_cls in list_subclasses(arcana.data.stores, DataStore):
+            try:
+                cls._singletons[store_cls.get_alias()] = store_cls()
+            except Exception:
+                pass
+        return cls._singletons
+
+    @classmethod
+    def load_saved_entries(cls, config_path: Path=None):
+        if config_path is None:
+            config_path = get_config_file_path(cls.CONFIG_NAME)
+        if config_path.exists():
+            with open(config_path) as f:
+                entries = yaml.load(f, Loader=yaml.Loader)
+        else:
+            entries = {}
+        return entries
+
+    @classmethod
+    def save_entries(cls, entries, config_path: Path=None):
+        if config_path is None:
+            config_path = get_config_file_path(cls.CONFIG_NAME)
+        with open(config_path, 'w') as f:
+            yaml.dump(entries, f)
+
+    def __enter__(self):
+        # This allows the store to be used within nested contexts
+        # but still only use one connection. This is useful for calling
+        # methods that need connections, and therefore control their
+        # own connection, in batches using the same connection by
+        # placing the batch calls within an outer context.
+        if self._connection_depth == 0:
+            self.connect()
+        self._connection_depth += 1
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self._connection_depth -= 1
+        if self._connection_depth == 0:
+            self.disconnect()
+
+    @classmethod
+    def get_alias(cls):
+        try:
+            alias = cls.alias
+        except AttributeError:
+            alias = cls.__name__.lower()
+        return alias

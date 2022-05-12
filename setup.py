@@ -14,7 +14,7 @@ setup(
     version=versioneer.get_version(),
     author='Thomas G. Close',
     author_email='tom.g.close@gmail.com',
-    packages=find_packages(exclude=['tests']),
+    packages=find_packages(exclude=['tests', 'test']),
     url=CODE_URL,
     license='Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License',
     description=(
@@ -23,7 +23,9 @@ setup(
     install_requires=install_requires,
     tests_require=tests_require,
     entry_points={
-        'console_scripts': ['arcana = arcana.core.entrypoint:MainCmd.run']},
+        'console_scripts': [
+            'arcana=arcana.cli:cli',
+            'run-arcana-pipeline=arcana.cli.deploy:run_pipeline']},
     extras_require={
         'test': tests_require},
     cmdclass=versioneer.get_cmdclass(),

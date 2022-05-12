@@ -1,10 +1,26 @@
-import os
-from arcana.data.stores.xnat.cs import XnatViaCS
+import attr
 
-os.environ['XNAT_HOST'] = 'http://localhost:8080'
-os.environ['XNAT_PASS'] = 'admin'
-os.environ['XNAT_USER'] = 'admin'
 
-store = XnatViaCS(cache_dir='/Users/tclose/Desktop/test-cache')
+@attr.s
+class A():
 
-print(store.server)
+    a = attr.ib()
+    b = attr.ib()
+
+
+a = A(1, 2)
+
+class B(A):
+
+    c = 1
+
+b = B(3, 5)
+
+
+class C():
+
+    d = 4
+
+c = C()
+
+attr.asdict(c)

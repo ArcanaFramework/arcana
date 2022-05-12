@@ -17,13 +17,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from .__about__ import __authors__
-from .core.data.item import FileGroup, Field
-from .core.data.spec import DataSink
-from .core.data.spec import DataSource
+from .core.data.format import FileGroup, Field
+from .core.data.column import DataSink
+from .core.data.column import DataSource
 from .core.data.set import Dataset
 # Should be set explicitly in all FSL interfaces, but this squashes the warning
 # os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'
 
-from . import _version
-__version__ = _version.get_versions()['version']
 from .__about__ import __authors__
+
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions

@@ -7,13 +7,13 @@ import re
 import attr
 import attr.filters
 from attr.converters import default_if_none
-from pydra import Workflow
 from arcana.exceptions import (
     ArcanaNameError, ArcanaDataTreeConstructionError, ArcanaUsageError,
-    ArcanaBadlyFormattedIDError, ArcanaWrongDataDimensionssError)
-from .dimensions import DataDimensions
-from .spec import DataSink, DataSource
-from . import store
+    ArcanaBadlyFormattedIDError, ArcanaWrongDataSpaceError)
+from arcana.core.utils import asdict
+from .space import DataSpace
+from .column import DataColumn, DataSink, DataSource
+from . import store as datastore
 
 from .node import DataNode
 
@@ -35,20 +35,20 @@ class Dataset():
     store : Repository
         The store the dataset is stored into. Can be the local file
         system by providing a FileSystem repo.
-    hierarchy : Sequence[DataDimensions]
+    hierarchy : Sequence[str]
         The data frequencies that are explicitly present in the data tree.
         For example, if a FileSystem dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
 
-            [Clinical.subject, Clinical.timepoint]
+            ['subject', 'timepoint']
 
         Alternatively, in some stores (e.g. XNAT) the second layer in the
         hierarchy may be named with session ID that is unique across the project,
         in which case the layer dimensions would instead be
 
-            [Clinical.subject, Clinical.session]
+            ['subject', 'session']
         
         In such cases, if there are multiple timepoints, the timepoint ID of the
         session will need to be extracted using the `id_inference` argument.
@@ -58,13 +58,16 @@ class Dataset():
         labelled by member ID, with the final layer containing sessions of
         matched members labelled by their groups (e.g. test & control):
 
-            [Clinical.timepoint, Clinical.member, Clinical.group]
+            ['timepoint', 'member', 'group']
 
         Note that the combination of layers in the hierarchy must span the
-        space defined in the DataDimensions enum, i.e. the "bitwise or" of the
+        space defined in the DataSpace enum, i.e. the "bitwise or" of the
         layer values of the hierarchy must be 1 across all bits
-        (e.g. Clinical.session: 0b111).
-    id_inference : Dict[DataDimensions, str]
+        (e.g. 'session': 0b111).
+    space: DataSpace
+        The space of the dataset. See https://arcana.readthedocs.io/en/latest/data_model.html#spaces)
+        for a description
+    id_inference : list[tuple[DataSpace, str]]
         Not all IDs will appear explicitly within the hierarchy of the data
         tree, and some will need to be inferred by extracting components of
         more specific lables.
@@ -79,62 +82,127 @@ class Dataset():
         containing ID to source the inferred IDs from coupled with a regular
         expression with named groups
 
-            id_inference=[(Clinical.subject,
+            id_inference=[('subject',
                            r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')}
-
-        Alternatively, a general function with signature `f(ids)` that returns
-        a dictionary with the mapped IDs can be provided instead.
-    column_specs : Dict[str, DataSource or DataSink]
-        The sources and sinks to be initially added to the dataset (columns are
-        explicitly added when workflows are applied to the dataset).
-    included : Dict[DataDimensions, List[str]]
+    include : list[tuple[DataSpace, str or list[str]]]
         The IDs to be included in the dataset per frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
         QC. If a frequency is omitted or its value is None, then all available
         will be used
-    excluded : Dict[DataDimensions, List[str]]
+    exclude : list[tuple[DataSpace, str or list[str]]]
         The IDs to be excluded in the dataset per frequency. E.g. can be
         used to exclude specific subjects that failed QC. If a frequency is
         omitted or its value is None, then all available will be used
+    name : str
+        The name of the dataset as saved in the store under
+    columns : list[tuple[str, DataSource or DataSink]
+        The sources and sinks to be initially added to the dataset (columns are
+        explicitly added when workflows are applied to the dataset).
     workflows : Dict[str, pydra.Workflow]
         Workflows that have been applied to the dataset to generate sink
     access_args: ty.Dict[str, Any]
         Repository specific args used to control the way the dataset is accessed
     """
+    DEFAULT_NAME = 'default'
 
-    id: str = attr.ib()
-    store: store.DataStore = attr.ib()
-    hierarchy: ty.List[DataDimensions] = attr.ib()
-    id_inference: (ty.Dict[DataDimensions, str] or ty.Callable) = attr.ib(
+    id: str = attr.ib(converter=str)
+    store: datastore.DataStore = attr.ib()
+    hierarchy: ty.List[DataSpace] = attr.ib()
+    space: DataSpace = attr.ib(default=None)
+    id_inference: ty.List[ty.Tuple[DataSpace, str]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict))
-    column_specs: ty.Optional[ty.Dict[str, ty.Union[DataSource, DataSink]]] = attr.ib(
+    include: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    included: ty.Dict[DataDimensions, ty.List[str]] = attr.ib(
+    exclude: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    excluded: ty.Dict[DataDimensions, ty.List[str]] = attr.ib(
+    name: str = attr.ib(default=DEFAULT_NAME)
+    columns: ty.Optional[ty.Dict[str, DataColumn]] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    workflows: ty.Dict[str, Workflow] = attr.ib(factory=dict, repr=False)
-    access_args: ty.Dict[str, ty.Any] = attr.ib(factory=dict)
+    pipelines: ty.Dict[str, ty.Any] = attr.ib(
+        factory=dict, converter=default_if_none(factory=dict), repr=False)
     _root_node: DataNode = attr.ib(default=None, init=False, repr=False,
-                                   eq=False)  
+                                   eq=False)
 
-    @column_specs.validator
-    def column_specs_validator(self, _, column_specs):
-        wrong_freq = [m for m in column_specs.values()
+    def __attrs_post_init__(self):
+        # Ensure that hierarchy items are in the DataSpace enums not strings
+        # or set the space from the provided enums
+        if self.space is not None:
+            self.hierarchy = [self.space[str(h)] for h in self.hierarchy]
+        else:
+            first_layer = self.hierarchy[0]
+            if not isinstance(first_layer, DataSpace):
+                raise ArcanaUsageError(
+                    "Data space needs to be specified explicitly as an "
+                    "argument or implicitly via hierarchy types")
+            self.space = type()
+
+        # Ensure the keys of the include, exclude and id_inference attrs are
+        # in the space of the dataset
+        self.include = [(self.space[str(k)], v) for k, v in self.include]
+        self.exclude = [(self.space[str(k)], v) for k, v in self.exclude]
+        self.id_inference = [(self.space[str(k)], v) for k, v in self.id_inference]
+        # Set reference to pipeline in columns and pipelines
+        for column in self.columns.values():
+            column.dataset = self
+        for pipeline in self.pipelines.values():
+            pipeline.dataset = self
+
+    def save(self, name=None):
+        """Save metadata in project definition file for future reference"""
+        definition = asdict(self, omit=['store'])
+        if name is None:
+            name = self.name
+        self.store.save_dataset_definition(self.id, definition, name=name)
+
+    @classmethod
+    def load(cls, id: str, store: datastore.DataStore=None, name: str=None,
+             **kwargs):
+        """Loads a dataset from an store/ID/name string, as used in the CLI
+
+        Parameters
+        ----------
+        id: str
+            either the ID of a dataset if `store` keyword arg is provied or a
+            "dataset ID string" in the format
+            <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
+        store: DataStore, optional
+            the store to load the dataset. If not provided the provided ID
+            is interpreted as an ID string
+        name: str, optional
+            the name of the dataset within the project/directory
+            (e.g. 'test', 'training'). Used to specify a subset of data nodes
+            to work with, within a greater project
+        **kwargs
+            keyword arguments parsed to the data store load
+
+        Returns
+        -------
+        Dataset
+            the loaded dataset"""
+        if store is None:
+            store_name, id, parsed_name = cls.parse_id_str(id)
+            store = datastore.DataStore.load(store_name, **kwargs)
+        if name is None:
+            name = parsed_name
+        return store.load_dataset(id, name=name)
+
+    @columns.validator
+    def columns_validator(self, _, columns):
+        wrong_freq = [m for m in columns.values()
                     if not isinstance(m.frequency, self.space)]
         if wrong_freq:
             raise ArcanaUsageError(
                 f"Data hierarchy of {wrong_freq} column specs do(es) not match"
                 f" that of dataset {self.space}")
 
-    @excluded.validator
-    def excluded_validator(self, _, excluded):
-        both = [f for f in self.included
-                if (self.included[f] is not None
-                    and excluded[f] is not None)]
+    @exclude.validator
+    def exclude_validator(self, _, exclude):
+        both = [f for f in self.include
+                if (self.include[f] is not None
+                    and exclude[f] is not None)]
         if both:
             raise ArcanaUsageError(
-                    "Cannot provide both 'included' and 'excluded' arguments "
+                    "Cannot provide both 'include' and 'exclude' arguments "
                     "for frequencies ('{}') to Dataset".format(
                         "', '".join(both)))
 
@@ -145,10 +213,18 @@ class Dataset():
                 f"hierarchy provided to {self} cannot be empty")
 
         not_valid = [f for f in hierarchy
-                     if not isinstance(f, self.space)]
-        if not_valid:
-            raise ArcanaWrongDataDimensionssError(
-                "{} are not part of the {} data dimensions"
+                     if f not in self.space.__members__]
+        space = type(hierarchy[0]) if self.space is None else self.space
+        if space is str:
+            raise ArcanaUsageError(
+                "Either the data space of the set needs to be provided "
+                "separately, or the hierarchy must be provided as members of "
+                "a single data space, not strings")
+        try:
+            hierarchy = [space[str(h)] for h in hierarchy]
+        except KeyError:
+            raise ArcanaWrongDataSpaceError(
+                "{} are not part of the {} data space"
                 .format(', '.join(not_valid), self.space))
         # Check that all data frequencies are "covered" by the hierarchy and
         # each subsequent
@@ -164,12 +240,8 @@ class Dataset():
             raise ArcanaUsageError(
                 f"The data hierarchy {hierarchy} does not cover the following "
                 f"basis frequencies "
-                + ', '.join(str(m) for m in (~covered).nonzero_basis()) +
+                + ', '.join(str(m) for m in (~covered).span()) +
                 f"f the {self.space} data dimensions")
-
-    @property
-    def space(self):
-        return type(self.hierarchy[0])
 
     @property
     def root_freq(self):
@@ -209,7 +281,7 @@ class Dataset():
         """Refresh the dataset nodes"""
         self._root_node = None
 
-    def add_source(self, name, datatype, path=None, frequency=None,
+    def add_source(self, name, format, path=None, frequency=None,
                    overwrite=False, **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -219,12 +291,12 @@ class Dataset():
         name : str
             The name used to reference the dataset "column" for the
             source
-        datatype : FileFormat or type
-            The file-format (for file-groups) or datatype (for fields)
+        format : type
+            The file-format (for file-groups) or format (for fields)
             that the source will be stored in within the dataset
         path : str, default `name`
             The location of the source within the dataset
-        frequency : DataDimensions, default self.leaf_freq
+        frequency : DataSpace, default self.leaf_freq
             The frequency of the source within the dataset            
         overwrite : bool
             Whether to overwrite existing columns
@@ -234,10 +306,11 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if path is None:
             path = name
-        self._add_spec(name, DataSource(path, datatype, frequency, **kwargs),
-                       overwrite)
+        source = DataSource(name, path, format, frequency, dataset=self, **kwargs)
+        self._add_spec(name, source, overwrite)
+        return source
 
-    def add_sink(self, name, datatype, path=None, frequency=None,
+    def add_sink(self, name, format, path=None, frequency=None,
                  overwrite=False, **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -247,12 +320,12 @@ class Dataset():
         name : str
             The name used to reference the dataset "column" for the
             sink
-        datatype : FileFormat or type
-            The file-format (for file-groups) or datatype (for fields)
+        format : type
+            The file-format (for file-groups) or format (for fields)
             that the sink will be stored in within the dataset
         path : str, default `name`
             The location of the sink within the dataset            
-        frequency : DataDimensions, default self.leaf_freq
+        frequency : DataSpace, default self.leaf_freq
             The frequency of the sink within the dataset            
         overwrite : bool
             Whether to overwrite an existing sink
@@ -260,29 +333,30 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if path is None:
             path = name
-        self._add_spec(name, DataSink(path, datatype, frequency, **kwargs),
-                       overwrite)
+        sink = DataSink(name, path, format, frequency, dataset=self, **kwargs)
+        self._add_spec(name, sink, overwrite)
+        return sink
 
     def _add_spec(self, name, spec, overwrite):
-        if name in self.column_specs:
+        if name in self.columns:
             if overwrite:
                 logger.info(
-                    f"Overwriting {self.column_specs[name]} with {spec} in "
+                    f"Overwriting {self.columns[name]} with {spec} in "
                     f"{self}")
             else:
                 raise ArcanaNameError(
                     name,
                     f"Name clash attempting to add {spec} to {self} "
-                    f"with {self.column_specs[name]}. Use 'overwrite' option "
+                    f"with {self.columns[name]}. Use 'overwrite' option "
                     "if this is desired")
-        self.column_specs[name] = spec
+        self.columns[name] = spec
 
     def node(self, frequency=None, id=None, **id_kwargs):
         """Returns the node associated with the given frequency and ids dict
 
         Parameters
         ----------
-        frequency : DataDimensions or str
+        frequency : DataSpace or str
             The frequency of the node
         id : str or Tuple[str], optional
             The ID of the node to 
@@ -316,33 +390,33 @@ class Dataset():
                 raise ArcanaUsageError(
                     f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
                     f"provided to `node` method of {self}")
-            # Convert to the DataDimensions of the dataset
+            # Convert to the DataSpace of the dataset
             node = self.root_node
             for freq, id in id_kwargs.items():
                 try:
                     children_dict = node.children[self.space[freq]]
-                except KeyError:
+                except KeyError as e:
                     raise ArcanaNameError(
-                        freq, f"{freq} is not a child frequency of {node}")
+                        freq, f"{freq} is not a child frequency of {node}") from e
                 try:
                     node = children_dict[id]
-                except KeyError:
+                except KeyError as e:
                     raise ArcanaNameError(
-                        id, f"{id} ({freq}) not a child node of {node}")
+                        id, f"{id} ({freq}) not a child node of {node}") from e
         else:
             try:
                 return self.root_node.children[frequency][id]
-            except KeyError:
+            except KeyError as e:
                 raise ArcanaNameError(
                     id, f"{id} not present in data tree "
-                    f"({list(self.node_ids(frequency))})")
+                    f"({list(self.node_ids(frequency))})") from e
 
     def nodes(self, frequency=None, ids=None):
         """Return all the IDs in the dataset for a given frequency
 
         Parameters
         ----------
-        frequency : DataDimensions or None
+        frequency : DataSpace or None
             The "frequency" of the nodes, e.g. per-session, per-subject. If
             None then all nodes are returned
         ids : Sequence[str or Tuple[str]]
@@ -369,7 +443,7 @@ class Dataset():
 
         Parameters
         ----------
-        frequency : DataDimensions
+        frequency : DataSpace
             The "frequency" of the nodes, e.g. per-session, per-subject...
 
         Returns
@@ -388,27 +462,14 @@ class Dataset():
         Parameters
         ----------
         name : str
-            Name of the source/sink to select
+            Name of the column to return
 
         Returns
         -------
-        Sequence[DataItem]
-            All data items in the column
+        DataColumn
+            the column object
         """
-        spec = self.column_specs[name]
-        return (n[name] for n in self.nodes(spec.frequency))
-
-    def columns(self, *names):
-        """Iterate over all columns in the dataset
-
-        Returns
-        -------
-        Sequence[List[DataItem]]
-            All columns in the dataset
-        """
-        if not names:
-            names = self.column_specs
-        return (list(self.column(n)) for n in names)
+        return self.columns[name]
 
     def add_leaf_node(self, tree_path, explicit_ids=None):
         """Creates a new node at a the path down the tree of the dataset as
@@ -419,7 +480,7 @@ class Dataset():
         tree_path : Sequence[str]
             The sequence of labels for each layer in the hierarchy of the
             dataset leading to the current node.
-        explicit_ids : dict[DataDimensions, str]
+        explicit_ids : dict[DataSpace, str]
             IDs for frequencies not in the dataset hierarchy that are to be
             set explicitly
 
@@ -446,14 +507,13 @@ class Dataset():
         frequency = self.space(0)
         for layer, label in zip(self.hierarchy, tree_path):
             ids[layer] = label
-            try:
-                regex = self.id_inference[layer]
-            except KeyError:
-                # If the layer introduces completely new bases then the basis
+            regexes = [r for l, r in self.id_inference if l == layer]
+            if not regexes:
+                # If the layer introduces completely new axes then the axis
                 # with the least significant bit (the order of the bits in the
-                # DataDimensions class should be arranged to account for this)
+                # DataSpace class should be arranged to account for this)
                 # can be considered be considered to be equivalent to the label.
-                # E.g. Given a hierarchy of [Clinical.subject, Clinical.session]
+                # E.g. Given a hierarchy of ['subject', 'session']
                 # no groups are assumed to be present by default (although this
                 # can be overridden by the `id_inference` attr) and the `member`
                 # ID is assumed to be equivalent to the `subject` ID. Conversely,
@@ -468,28 +528,29 @@ class Dataset():
                 # extracted with the
                 #
                 #       id_inference={
-                #           Clinical.session: r'.*(?P<timepoint>0-9+)$'}
+                #           'session': r'.*(?P<timepoint>0-9+)$'}
                 if not (layer & frequency):
-                    ids[layer.nonzero_basis()[-1]] = label
+                    ids[layer.span()[-1]] = label
             else:
-                match = re.match(regex, label)
-                if match is None:
-                    raise ArcanaBadlyFormattedIDError(
-                        f"{layer} label '{label}', does not match ID inference"
-                        f" pattern '{regex}'")
-                new_freqs = layer - (layer & frequency)
-                for target_freq, target_id in match.groupdict().items():
-                    target_freq = self.space[target_freq]
-                    if (target_freq & new_freqs) != target_freq:
-                        raise ArcanaUsageError(
-                            f"Inferred ID target, {target_freq}, is not a "
-                            f"data frequency added by layer {layer}")
-                    if ids[target_freq] is not None:
-                        raise ArcanaUsageError(
-                            f"ID '{target_freq}' is specified twice in the ID "
-                            f"inference of {tree_path} ({ids[target_freq]} "
-                            f"and {target_id} from {regex}")
-                    ids[target_freq] = target_id
+                for regex in regexes:
+                    match = re.match(regex, label)
+                    if match is None:
+                        raise ArcanaBadlyFormattedIDError(
+                            f"{layer} label '{label}', does not match ID inference"
+                            f" pattern '{regex}'")
+                    new_freqs = layer - (layer & frequency)
+                    for target_freq, target_id in match.groupdict().items():
+                        target_freq = self.space[target_freq]
+                        if (target_freq & new_freqs) != target_freq:
+                            raise ArcanaUsageError(
+                                f"Inferred ID target, {target_freq}, is not a "
+                                f"data frequency added by layer {layer}")
+                        if ids[target_freq] is not None:
+                            raise ArcanaUsageError(
+                                f"ID '{target_freq}' is specified twice in the ID "
+                                f"inference of {tree_path} ({ids[target_freq]} "
+                                f"and {target_id} from {regex}")
+                        ids[target_freq] = target_id
             frequency |= layer
         assert(frequency == max(self.space))
         # Set or override any inferred IDs within the ones that have been
@@ -497,9 +558,9 @@ class Dataset():
         ids.update(explicit_ids)
         # Create composite IDs for non-basis frequencies if they are not
         # explicitly in the layer dimensions
-        for freq in (set(self.space) - set(frequency.nonzero_basis())):
+        for freq in (set(self.space) - set(frequency.span())):
             if ids[freq] is None:
-                id = tuple(ids[b] for b in freq.nonzero_basis() if ids[b] is not None)
+                id = tuple(ids[b] for b in freq.span() if ids[b] is not None)
                 if id:
                     if len(id) == 1:
                         id = id[0]
@@ -562,57 +623,102 @@ class Dataset():
                 children_dict[diff_id] = node
         return node
 
-    def new_pipeline(self, name, inputs, outputs, frequency=None, **kwargs):
-        """Generate a Pydra task that sources the specified inputs from the
-        dataset
+    def apply_pipeline(self, name, workflow, inputs, outputs, frequency=None,
+                       overwrite=False):
+        """Connect a Pydra workflow as a pipeline of the dataset
 
         Parameters
         ----------
         name : str
-            A name for the workflow (must be globally unique)
+            name of the pipeline
         workflow : pydra.Workflow
-            The Pydra workflow to add to the store
-        inputs : Sequence[str or tuple[str, FileFormat]]
-            List of column names (i.e. either data sources or sinks) to be
-            connected to the inputs of the pipeline. If the pipelines requires
-            the input to be in a format to the source, then it can be specified
-            in a tuple (NAME, FORMAT)
-        outputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
-            List of sink names to be connected to the outputs of the pipeline
-            If teh the input to be in a specific format, then it can be provided in
-            a tuple (NAME, FORMAT)
-        frequency : DataDimensions, optional
-            The frequency of the pipeline, i.e. the frequency of the
-            derivatvies within the dataset, e.g. per-session, per-subject, etc,
-            by default None
-        **kwargs : Dict[str, Any]
-            Keyword arguments passed to Pipeline.factory()
-        """
-        from arcana.core.pipeline import Pipeline
-        frequency = self._parse_freq(frequency)
-        return Pipeline.factory(
-            name=name, inputs=inputs, outputs=outputs, frequency=frequency,
-            dataset=self, **kwargs)
+            pydra workflow to connect to the dataset as a pipeline
+        inputs : list[arcana.core.pipeline.Input or tuple[str, str, type] or tuple[str, str]]
+            List of inputs to the pipeline (see `arcana.core.pipeline.Pipeline.Input`)
+        outputs : list[arcana.core.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
+            List of outputs of the pipeline (see `arcana.core.pipeline.Pipeline.Output`)
+        frequency : str, optional
+            the frequency of the nodes the pipeline will be executed over, i.e.
+            will it be run once per-session, per-subject or per whole dataset,
+            by default the highest frequency nodes (e.g. per-session)
+        overwrite : bool, optional
+            overwrite connections to previously connected sinks, by default False
 
-    def derive(self, *names, ids=None):
+        Returns
+        -------
+        Pipeline
+            the pipeline added to the dataset
+
+        Raises
+        ------
+        ArcanaUsageError
+            if overwrite is false and 
+        """
+        from arcana.core.pipeline import Pipeline, Input, Output
+        frequency = self._parse_freq(frequency)
+        def parsed_conns(lst, conn_type):
+            parsed = []
+            for spec in lst:
+                if isinstance(spec, conn_type):
+                    parsed.append(spec)
+                elif len(spec) == 3:
+                    parsed.append(conn_type(*spec))
+                else:
+                    col_name, pydra_field = spec
+                    parsed.append(conn_type(col_name, pydra_field,
+                                            self[col_name].format))
+            return parsed
+        pipeline = Pipeline(
+            name=name,
+            dataset=self,
+            frequency=frequency,
+            workflow=workflow,
+            inputs=parsed_conns(inputs, Input),
+            outputs=parsed_conns(outputs, Output))
+        for outpt in pipeline.outputs:
+            sink = self[outpt.col_name]
+            if sink.pipeline_name is not None:
+                if overwrite:
+                    logger.info(
+                        f"Overwriting pipeline of sink '{outpt.col_name}' "
+                        f"{sink.pipeline_name} with {name}")
+                else:
+                    raise ArcanaUsageError(
+                        f"Attempting to overwrite pipeline of '{outpt.col_name}' "
+                        f"sink ({sink.pipeline_name}) with {name}. Use "
+                        f"'overwrite' option if this is desired")
+            sink.pipeline_name = pipeline.name
+        self.pipelines[name] = pipeline
+
+        return pipeline
+
+    def derive(self, *sink_names, ids=None, cache_dir=None, **kwargs):
         """Generate derivatives from the workflows
 
         Parameters
         ----------
-        *names : Sequence[str]
+        *sink_names : Iterable[str]
             Names of the columns corresponding to the items to derive
-        ids : Sequence[str]
+        ids : Iterable[str]
             The IDs of the data nodes in each column to derive
+        cache_dir
 
         Returns
         -------
         Sequence[List[DataItem]]
             The derived columns
         """
-        # TODO: Should construct full stack of required workflows
-        for workflow in set(self.column_spec[n].workflow for n in names):
-            workflow(ids=ids)
-        return self.columns(*names)
+        from arcana.core.pipeline import Pipeline
+        sinks = [self[s] for s in set(sink_names)]
+        for pipeline, _ in Pipeline.stack(*sinks):
+            # Excecute pipelines in stack
+            # FIXME: Should combine the pipelines into a single workflow and
+            # dialate the IDs that need to be run when summarising over different
+            # data axes
+            pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
+        # Update local cache of sink paths
+        for sink in sinks:
+            sink.assume_exists()
 
     def _parse_freq(self, freq):
         """Parses the data frequency, converting from string if necessary and
@@ -624,15 +730,29 @@ class Dataset():
                 freq = self.space[freq]
             elif not isinstance(freq, self.space):
                 raise KeyError
-        except KeyError:
-            raise ArcanaWrongDataDimensionssError(
+        except KeyError as e:
+            raise ArcanaWrongDataSpaceError(
                 f"{freq} is not a valid dimension for {self} "
-                f"({self.space})")
+                f"({self.space})") from e
         return freq
 
     @classmethod
     def _sink_path(cls, workflow_name, sink_name):
         return f'{workflow_name}/{sink_name}'
+
+    @classmethod
+    def parse_id_str(cls, id):
+        parts = id.split('//')
+        if len(parts) == 1:  # No store definition, default to file system
+            store_name = 'file'
+        else:
+            store_name, id = parts
+        parts = id.split('::')
+        if len(parts) == 1:
+            name = cls.DEFAULT_NAME
+        else:
+            id, name = parts
+        return store_name, id, name
 
 
 @attr.s

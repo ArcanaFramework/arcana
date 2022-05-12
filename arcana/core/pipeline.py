@@ -1,22 +1,39 @@
 from __future__ import annotations
 import attr
 import typing as ty
-from types import SimpleNamespace
+from collections import OrderedDict
+from pathlib import Path
+from dataclasses import dataclass
 import logging
-from copy import copy
+from copy import copy, deepcopy
+import re
+from collections.abc import Iterable
 import attr
-from pydra import Workflow, mark
-from pydra.engine.task import FunctionTask
-from pydra.engine.specs import BaseSpec, SpecInfo
-from arcana.exceptions import ArcanaNameError, ArcanaUsageError
-from .data.item import DataItem, FileGroup
-from .data.set import Dataset
-from .data.type import FileFormat
-from .data.dimensions import DataDimensions
-from .utils import func_task
+import pydra.mark
+from pydra.engine.core import Workflow
+from arcana.exceptions import (
+    ArcanaNameError, ArcanaUsageError, ArcanaDesignError,
+    ArcanaPipelinesStackError, ArcanaOutputNotProducedException)
+from .data.format import DataItem, FileGroup
+import arcana.core.data.set
+from .data.space import DataSpace
+from .utils import (
+    func_task, asdict, fromdict, pydra_asdict, pydra_fromdict, pydra_eq,
+    path2varname, varname2path)
 
 logger = logging.getLogger('arcana')
 
+@dataclass
+class Input():
+    col_name: str
+    pydra_field: str
+    required_format: type
+
+@dataclass
+class Output():
+    col_name: str
+    pydra_field: str
+    produced_format: type
 
 @attr.s
 class Pipeline():
@@ -25,133 +42,87 @@ class Pipeline():
 
     Parameters
     ----------
-    wf : Workflow
-        The pydra workflow
+    frequency : DataSpace, optional
+        The frequency of the pipeline, i.e. the frequency of the
+        derivatvies within the dataset, e.g. per-session, per-subject, etc,
+        by default None
+    workflow : Workflow
+        The pydra workflow that performs the actual analysis      
+    inputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
+        List of column names (i.e. either data sources or sinks) to be
+        connected to the inputs of the pipeline. If the pipelines requires
+        the input to be in a format to the source, then it can be specified
+        in a tuple (NAME, FORMAT)
+    outputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
+        List of sink names to be connected to the outputs of the pipeline
+        If the input to be in a specific format, then it can be provided in
+        a tuple (NAME, FORMAT)
     """
 
-    wf: Workflow = attr.ib()
-    frequency: DataDimensions = attr.ib()
-    inputs: ty.List[ty.Tuple[str, FileFormat]] = attr.ib(factory=list)
-    outputs: ty.List[ty.Tuple[str, FileFormat]] = attr.ib(factory=list)
-    _connected: ty.Set[str] = attr.ib(factory=set, repr=False)
+    name: str = attr.ib()
+    frequency: DataSpace = attr.ib()
+    workflow: Workflow = attr.ib(
+        eq=attr.cmp_using(pydra_eq))
+    inputs: ty.List[Input] = attr.ib(
+        converter=lambda lst: [Input(*i) if isinstance(i, Iterable) else i
+                               for i in lst])
+    outputs: ty.List[Output] = attr.ib(
+        converter=lambda lst: [Output(*o) if isinstance(o, Iterable) else o
+                               for o in lst])
+    dataset: arcana.core.data.set.Dataset = attr.ib(
+        metadata={'asdict': False}, default=None, eq=False, hash=False)
+
+    @inputs.validator
+    def inputs_validator(self, _, inpt):
+        column = self.dataset.column[inpt.col_name]
+        inpt.required_format.find_converter(column.format)
+        if inpt.pydra_field not in self.workflow.input_names:
+            raise ArcanaNameError(
+                f"{inpt.pydra_field} is not in the input spec of '{self.name}' "
+                f"pipeline: " + "', '".join(self.workflow.input_names))
+
+    @outputs.validator
+    def outputs_validator(self, _, outpt):
+        column = self.dataset.column[outpt.col_name]
+        if column.frequency != self.frequency:
+            raise ArcanaUsageError(
+                f"Pipeline frequency ('{str(self.frequency)}') doesn't match "
+                f"that of '{outpt.col_name}' output ('{str(self.frequency)}')")
+        column.format.find_converter(outpt.produced_format)
+        if outpt.pydra_field not in self.workflow.output_names:
+            raise ArcanaNameError(
+                f"{outpt.pydra_field} is not in the output spec of '{self.name}' "
+                f"pipeline: " + "', '".join(self.workflow.output_names))            
 
     @property
-    def lzin(self):
-        """
-        Treat the 'lzout' of the source node as the 'lzin' of the pipeline to
-        allow pipelines to be treated the same as normal Pydra workflow
-        """
-        return self.wf.per_node.input_interface.lzout
+    def input_varnames(self):
+        return [path2varname(i.col_name) for i in self.inputs]
 
-    def set_output(self, connections):
-        """Connect the output using the same syntax as used for a Pydra workflow
+    @property
+    def output_varnames(self):
+        return [path2varname(o.col_name) for o in self.outputs]
 
+    # parameterisation = self.get_parameterisation(kwargs)
+    # self.wf.to_process.inputs.parameterisation = parameterisation
+    # self.wf.per_node.source.inputs.parameterisation = parameterisation
+
+    def __call__(self, **kwargs):
+        """
+        Create an "outer" workflow that interacts with the dataset to pull input
+        data, process it and then push the derivatives back to the store.
+        
         Parameters
         ----------
-        connections : ty.List[ty.Tuple[str, ty.Any]] or ty.Tuple[str, ty.Any] or ty.Dict[str, ty.Any]
-            The connections to set
-
-        Raises
-        ------
-        Exception
-            An exception is raised if the connections are provided in the wrong
-            format
-        """
-        if isinstance(connections, tuple) and len(connections) == 2:
-            connections = [connections]
-        elif isinstance(connections, dict):
-            connections = list(connections.items())
-        elif not (isinstance(connections, list)
-                  and all([len(el) == 2 for el in connections])):
-            raise Exception(
-                "Connections can be a 2-elements tuple, a list of these "
-                "tuples, or dictionary")
-        # Connect "outputs" the pipeline to the 
-        for out_name, node_out in connections:
-            setattr(self.wf.per_node.output_interface.inputs, out_name,
-                    node_out)
-            self._connected.add(out_name)
-
-    def add(self, task):
-        if task.name in self.wf.name2obj:
-            raise ValueError(
-                "Another task named {} is already added to the pipeline"
-                .format(task.name))        
-        if task.name in dir(self):
-            raise ValueError(
-                "Cannot use names of pipeline attributes or methods "
-                f"({task.name}) as task name")        
-        self.wf.per_node.add(task)
-        # Favour setting a proper attribute instead of using __getattr__ to
-        # redirect to name2obj
-        setattr(self, task.name, task)
-
-    @property
-    def nodes(self):
-        return self.wf.nodes
-
-    @property
-    def dataset(self):
-        return self.wf.per_node.sink.inputs.dataset
-
-    def __call__(self, *args, **kwargs):
-        self.check_connections()
-        result = self.wf(*args, **kwargs)
-        # Set derivatives as existing
-        for node in self.dataset.nodes(self.frequency):
-            for output in self.output_names:
-                node[output].get(assume_exists=True)
-        return result
-
-    def check_connections(self):
-        missing = set(self.output_names) - self._connected
-        if missing:
-            raise Exception(
-                f"The following outputs haven't been connected: {missing}")
-
-    @property
-    def input_names(self):
-        return (n for n, _ in self.inputs)
-
-    @property
-    def output_names(self):
-        return (n for n, _ in self.outputs)
-
-    @classmethod
-    def factory(cls, name, dataset, inputs, outputs, frequency=None,
-                overwrite=False, **kwargs):
-        """Generate a new pipeline connected with its inputs and outputs
-        connected to sources/sinks in the dataset
-
-        Parameters
-        ----------
-        name : str
-            Name of the pipeline
-        dataset : Dataset
-            The dataset to connect the pipeline to
-        inputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
-            List of column names (i.e. either data sources or sinks) to be
-            connected to the inputs of the pipeline. If the pipelines requires
-            the input to be in a format to the source, then it can be specified
-            in a tuple (NAME, FORMAT)
-        outputs : Sequence[ty.Union[str, ty.Tuple[str, FileFormat]]]
-            List of sink names to be connected to the outputs of the pipeline
-            If the input to be in a specific format, then it can be provided in
-            a tuple (NAME, FORMAT)
-        frequency : DataDimensions, optional
-            The frequency of the pipeline, i.e. the frequency of the
-            derivatvies within the dataset, e.g. per-session, per-subject, etc,
-            by default None
-        overwrite : bool, optional
-            Whether to overwrite existing connections to sinks, by default False
         **kwargs
-            Passed to Pydra.Workflow init
+            passed directly to the Pydra.Workflow init. The `ids` arg can be
+            used to filter the data nodes over which the pipeline is run.
 
         Returns
         -------
-        Pipeline
-            The newly created pipeline ready for analysis nodes to be added to
-            it
+        pydra.Workflow
+            a Pydra workflow that iterates through the dataset, pulls data to the
+            processing node, executes the analysis workflow on each data node,
+            then uploads the outputs back to the data store
 
         Raises
         ------
@@ -159,82 +130,16 @@ class Pipeline():
             If the new pipeline will overwrite an existing pipeline connection
             with overwrite == False.
         """
-        if frequency is None:
-            frequency = max(dataset.space)
-        else:
-            frequency = dataset._parse_freq(frequency)
-
-        inputs = list(inputs)
-        outputs = list(outputs)
-
-        if not inputs:
-            raise ArcanaUsageError(f"No inputs provided to {name} pipeline")
-
-        if not outputs:
-            raise ArcanaUsageError(f"No outputs provided to {name} pipeline")
-
-        # Separate required formats and input names
-        input_types = dict(i for i in inputs if not isinstance(i, str))
-        input_names = [i if isinstance(i, str) else i[0] for i in inputs]
-
-        # Separate produced formats and output names
-        output_types = dict(o for o in outputs if not isinstance(o, str))
-        output_names = [o if isinstance(o, str) else o[0] for o in outputs]
 
         # Create the outer workflow to link the analysis workflow with the
         # data node iteration and store connection nodes
-        wf = Workflow(name=name, input_spec=['ids'], **kwargs)
-
-        pipeline = Pipeline(wf, frequency=frequency)
-
-        # Add sinks for the output of the workflow
-        sources = {}
-        for input_name in input_names:
-            try:
-                source = dataset.column_specs[input_name]
-            except KeyError:
-                raise ArcanaNameError(
-                    input_name,
-                    f"{input_name} is not the name of a source in {dataset}")
-            sources[input_name] = source
-            try:
-                required_format = input_types[input_name]
-            except KeyError:
-                input_types[input_name] = required_format = source.datatype
-            pipeline.inputs.append((input_name, required_format))
-
-        # Add sinks for the output of the workflow
-        sinks = {}
-        for output_name in output_names:
-            try:
-                sink = dataset.column_specs[output_name]
-            except KeyError:
-                raise ArcanaNameError(
-                    output_name,
-                    f"{output_name} is not the name of a sink in {dataset}")
-            if sink.pipeline is not None:
-                if overwrite:
-                    logger.info(
-                        f"Overwriting pipeline of sink '{output_name}' "
-                        f"{sink.pipeline} with {pipeline}")
-                else:
-                    raise ArcanaUsageError(
-                        f"Attempting to overwrite pipeline of '{output_name}' "
-                        f"sink ({sink.pipeline}). Use 'overwrite' option if "
-                        "this is desired")
-            sink.pipeline = pipeline
-            sinks[output_name] = sink
-            try:
-                produced_format = output_types[output_name]
-            except KeyError:
-                output_types[output_name] = produced_format = sink.datatype
-            pipeline.outputs.append((output_name, produced_format))
+        wf = Workflow(name=self.name, input_spec=['ids'], **kwargs)
 
         # Generate list of nodes to process checking existing outputs
         wf.add(to_process(
-            dataset=dataset,
-            frequency=frequency,
-            outputs=pipeline.outputs,
+            dataset=self.dataset,
+            frequency=self.frequency,
+            outputs=self.outputs,
             requested_ids=None,  # FIXME: Needs to be set dynamically
             name='to_process'))
 
@@ -246,100 +151,124 @@ class Pipeline():
             id=wf.to_process.lzout.ids).split('id'))
 
         source_in = [
-            ('dataset', Dataset),
-            ('frequency', DataDimensions),
+            ('dataset', arcana.core.data.set.Dataset),
+            ('frequency', DataSpace),
             ('id', str),
-            ('inputs', ty.Sequence[str])]
+            ('inputs', ty.Sequence[str]),
+            ('parameterisation', ty.Dict[str, ty.Any])]
 
         source_out_dct = {
             s: (DataItem
-                if dataset.column_specs[s].frequency.is_parent(
-                    frequency, if_match=True)
+                if self.dataset[varname2path(s)].frequency.is_parent(
+                    self.frequency, if_match=True)
                 else ty.Sequence[DataItem])
-            for s in input_names}
+            for s in self.input_varnames}
+        source_out_dct['provenance_'] = ty.Dict[str, ty.Any]
 
         wf.per_node.add(func_task(
             source_items,
             in_fields=source_in,
             out_fields=list(source_out_dct.items()),
             name='source',
-            dataset=dataset,
-            frequency=frequency,
-            inputs=input_names,
+            dataset=self.dataset,
+            frequency=self.frequency,
+            inputs=[i.col_name for i in self.inputs],
             id=wf.per_node.lzin.id))
 
         # Set the inputs
-        sourced = {i: getattr(wf.per_node.source.lzout, i) for i in input_names}
+        sourced = {i: getattr(wf.per_node.source.lzout, i)
+                   for i in self.input_varnames}
 
         # Do input format conversions if required
-        for input_name, required_format in pipeline.inputs:
-            stored_format = dataset.column_specs[input_name].datatype
-            if required_format != stored_format:
+        for inpt in self.inputs:
+            stored_format = self.dataset[inpt.col_name].format
+            if not (inpt.required_format is stored_format
+                    or issubclass(stored_format, inpt.required_format)):
                 logger.info("Adding implicit conversion for input '%s' "
-                            "from %s to %s", input_name, stored_format,
-                            required_format)
-                cname = f"{input_name}_input_converter"                
-                converter_task = required_format.converter(stored_format)(
-                    name=cname,
-                    to_convert=sourced[input_name])
-                if source_out_dct[input_name] == ty.Sequence[DataItem]:
+                            "from %s to %s", inpt.col_name, stored_format,
+                            inpt.required_format)
+                source_name = path2varname(inpt.col_name)
+                converter = inpt.required_format.converter_task(
+                    stored_format, name=f"{source_name}_input_converter")
+                converter.inputs.to_convert = sourced.pop(source_name)
+                if issubclass(source_out_dct[source_name], ty.Sequence):
                     # Iterate over all items in the sequence and convert them
-                    converter_task.split('to_convert')
+                    # separately
+                    converter.split('to_convert')
                 # Insert converter
-                wf.per_node.add(converter_task)
+                wf.per_node.add(converter)
                 # Map converter output to input_interface
-                sourced[input_name] = getattr(wf.per_node, cname).lzout.converted
+                sourced[source_name] = converter.lzout.converted
 
         # Create identity node to accept connections from user-defined nodes
         # via `set_output` method
         wf.per_node.add(func_task(
-            extract_paths_and_values,
-            in_fields=[(i, DataItem) for i in input_names],
-            out_fields=[(i, ty.Any) for i in input_names],
+            access_paths_and_values,
+            in_fields=[(i, DataItem) for i in self.input_varnames],
+            out_fields=[(i, ty.Any) for i in self.input_varnames],
             name='input_interface',
-            **sourced))        
+            **sourced))
+
+        # Add the "inner" workflow of the pipeline that actually performs the
+        # processing
+        wf.per_node.add(deepcopy(self.workflow))
+        # Make connections to "inner" workflow
+        for inpt in self.inputs:
+            setattr(getattr(wf.per_node, self.workflow.name).inputs,
+                    inpt.pydra_field,
+                    getattr(wf.per_node.input_interface.lzout, path2varname(inpt.col_name)))
 
         # Creates a node to accept values from user-defined nodes and
         # encapsulate them into DataItems
         wf.per_node.add(func_task(
             encapsulate_paths_and_values,
             in_fields=[('outputs', ty.Dict[str, type])] + [
-                (o, ty.Any) for o in output_names],
-            out_fields=[(o, DataItem) for o in output_names],
+                (o, ty.Any) for o in self.output_varnames],
+            out_fields=[(o, DataItem) for o in self.output_varnames],
             name='output_interface',
-            outputs=output_types))
+            outputs=self.outputs,
+            **{o.col_name: getattr(
+                getattr(wf.per_node, self.workflow.name).lzout, o.pydra_field)
+               for o in self.outputs}))
 
         # Set format converters where required
         to_sink = {o: getattr(wf.per_node.output_interface.lzout, o)
-                   for o in output_names}
+                   for o in self.output_varnames}
 
         # Do output format conversions if required
-        for output_name, produced_format in pipeline.outputs:
-            stored_format = dataset.column_specs[output_name].datatype
-            if produced_format != stored_format:
+        for outpt in self.outputs:
+            stored_format = self.dataset[outpt.col_name].format
+            if not (outpt.produced_format is stored_format
+                    or issubclass(outpt.produced_format, stored_format)):
                 logger.info("Adding implicit conversion for output '%s' "
-                    "from %s to %s", output_name, produced_format,
+                    "from %s to %s", outpt.col_name, outpt.produced_format,
                     stored_format)
-                cname = f"{output_name}_output_converter"
                 # Insert converter
-                wf.per_node.add(stored_format.converter(produced_format)(
-                    name=cname, to_convert=to_sink[output_name]))
+                sink_name = path2varname(outpt.col_name)
+                converter = stored_format.converter_task(
+                    outpt.produced_format,
+                    name=f"{sink_name}_output_converter")
+                converter.inputs.to_convert = to_sink.pop(sink_name)
+                wf.per_node.add(converter)
                 # Map converter output to workflow output
-                to_sink[output_name] = getattr(wf.per_node,
-                                               cname).lzout.converted
+                to_sink[sink_name] = converter.lzout.converted
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
         wf.per_node.add(func_task(
             sink_items,
             in_fields=(
-                [('dataset', Dataset), ('frequency', DataDimensions), ('id', str)]
+                [('dataset', arcana.core.data.set.Dataset),
+                 ('frequency', DataSpace),
+                 ('id', str),
+                 ('provenance', ty.Dict[str, ty.Any])]
                 + [(s, DataItem) for s in to_sink]),
             out_fields=[('id', str)],
             name='sink',
-            dataset=dataset,
-            frequency=frequency,
+            dataset=self.dataset,
+            frequency=self.frequency,
             id=wf.per_node.lzin.id,
+            provenance=wf.per_node.source.lzout.provenance_,
             **to_sink))
 
         wf.per_node.set_output(
@@ -349,26 +278,114 @@ class Pipeline():
             [('processed', wf.per_node.lzout.id),
              ('couldnt_process', wf.to_process.lzout.cant_process)])
 
-        return pipeline
+        return wf
 
+    PROVENANCE_VERSION = '1.0'
+    WORKFLOW_NAME = 'processing'
 
-# def identity(**kwargs):
-#     "Returns the keyword arguments as a tuple"
-#     to_return = tuple(kwargs.values())
-#     if len(to_return) == 1:
-#         to_return = to_return[0]
-#     return to_return
+    def asdict(self, required_modules=None):
+        dct = asdict(self, omit=['workflow'],
+                      required_modules=required_modules)
+        dct['workflow'] = pydra_asdict(
+            self.workflow,
+            required_modules=required_modules)
+        return dct
 
+    @classmethod
+    def fromdict(cls, dct, **kwargs):
+        return fromdict(
+            dct,
+            workflow=pydra_fromdict(dct['workflow']),
+            **kwargs)
 
-# def extract_paths(**data_items):
-#     paths = tuple(i.value for i in kwargs.values())
-#     return paths if len(paths) > 1 else paths[0]
+    @classmethod
+    def stack(cls, *sinks):
+        """Determines the pipelines stack, in order of execution,
+        required to generate the specified sink columns.
+    
+        Parameters
+        ----------
+        sinks : Iterable[DataSink or str]
+            the sink columns, or their names, that are to be generated
 
+        Returns
+        -------
+        list[tuple[Pipeline, list[DataSink]]]
+            stack of pipelines required to produce the specified data sinks,
+            along with the sinks each stage needs to produce.
 
-# def encapsulate_paths(outputs, **kwargs):
-#     items = [v.datatype(kwargs[k]) for k, v in outputs]
-#     return items if len(items) > 1 else items[0]
+        Raises
+        ------
+        ArcanaDesignError
+            when there are circular references in the pipelines stack
+        """
+                
+        # Stack of pipelines to process in reverse order of required execution
+        stack = OrderedDict()
 
+        def push_pipeline_on_stack(sink, downstream: ty.Tuple[Pipeline]=None):
+            """
+            Push a pipeline onto the stack of pipelines to be processed,
+            detecting common upstream pipelines and resolving them to a single
+            pipeline
+
+            Parameters
+            ----------
+            sink: DataSink
+                the sink to push its deriving pipeline for
+            downstream : tuple[Pipeline]
+                The pipelines directly downstream of the pipeline to be added.
+                Used to detect circular dependencies
+            """
+            if downstream is None:
+                downstream = []
+            if sink.pipeline_name is None:
+                raise ArcanaDesignError(
+                    f"{sink} hasn't been connected to a pipeline yet")
+            pipeline = sink.dataset.pipelines[sink.pipeline_name]
+            if sink.name not in pipeline.output_varnames:
+                raise ArcanaOutputNotProducedException(
+                    f"{pipeline.name} does not produce {sink.name}")
+            # Check downstream piplines for circular dependencies
+            downstream_pipelines = [p for p, _ in downstream]
+            if pipeline in downstream_pipelines:
+                recur_index = downstream_pipelines.index(pipeline)
+                raise ArcanaDesignError(
+                    f"{pipeline} cannot be a dependency of itself. Call-stack:\n"
+                    + '\n'.join('{} ({})'.format(p, ', '.join(ro))
+                                for p, ro in ([[pipeline, sink.name]]
+                                              + downstream[:(recur_index + 1)])))
+            if pipeline.name in stack:
+                # Pop pipeline from stack in order to add it to the end of the
+                # stack and ensure it is run before all downstream pipelines
+                prev_pipeline, to_produce = stack.pop(pipeline.name)
+                assert pipeline is prev_pipeline
+                # Combined required output to produce
+                to_produce.append(sink)
+            else:
+                to_produce = []
+            # Add the pipeline to the stack
+            stack[pipeline.name] = pipeline, to_produce
+            # Recursively add all the pipeline's prerequisite pipelines to the stack
+            for inpt in pipeline.inputs:
+                inpt_column = sink.dataset[inpt.col_name]
+                if inpt_column.is_sink:
+                    try:
+                        push_pipeline_on_stack(
+                            inpt_column,
+                            downstream=[(pipeline, to_produce)] + downstream)
+                    except ArcanaPipelinesStackError as e:
+                        e.msg += ("\nwhich are required as inputs to the '{}' "
+                                  "pipeline to produce '{}'".format(
+                                      pipeline.name,
+                                      "', '".join(s.name for s in to_produce)))
+                        raise e
+
+        # Add all pipelines
+        for sink in sinks:
+            push_pipeline_on_stack(sink)
+
+        return reversed(stack.values())
 
 def append_side_car_suffix(name, suffix):
     """Creates a new combined field name out of a basename and a side car"""
@@ -380,23 +397,24 @@ def split_side_car_suffix(name):
     return name.split('__o__')
 
 
-@mark.task
-@mark.annotate({
-    'dataset': Dataset,
-    'frequency': DataDimensions,
+@pydra.mark.task
+@pydra.mark.annotate({
+    'dataset': arcana.core.data.set.Dataset,
+    'frequency': DataSpace,
     'outputs': ty.Sequence[str],
     'requested_ids': ty.Sequence[str] or None,
+    'parameterisation': ty.Dict[str, ty.Any],
     'return': {
         'ids': ty.List[str],
         'cant_process': ty.List[str]}})
-def to_process(dataset, frequency, outputs, requested_ids):
+def to_process(dataset, frequency, outputs, requested_ids, parameterisation):
     if requested_ids is None:
         requested_ids = dataset.node_ids(frequency)
     ids = []
     cant_process = []
     for data_node in dataset.nodes(frequency, ids=requested_ids):
         # TODO: Should check provenance of existing nodes to see if it matches
-        not_exist = [not data_node[o[0]].exists for o in outputs]
+        not_exist = [not data_node[o.col_name].exists for o in outputs]
         if all(not_exist):
             ids.append(data_node.id)
         elif any(not_exist):
@@ -406,11 +424,12 @@ def to_process(dataset, frequency, outputs, requested_ids):
     return ids, cant_process
 
 
-def source_items(dataset, frequency, id, inputs):
+def source_items(dataset, frequency, id, inputs, parameterisation):
     """Selects the items from the dataset corresponding to the input 
     sources and retrieves them from the store to a cache on 
     the host"""
     logger.debug("Sourcing %s", inputs)
+    provenance = copy(parameterisation)
     sourced = []
     data_node = dataset.node(frequency, id)
     with dataset.store:
@@ -418,10 +437,10 @@ def source_items(dataset, frequency, id, inputs):
             item = data_node[inpt_name]
             item.get()  # download to host if required
             sourced.append(item)
-    return tuple(sourced) if len(sourced) > 1 else sourced[0]
+    return tuple(sourced) + (provenance,)
 
 
-def sink_items(dataset, frequency, id, **to_sink):
+def sink_items(dataset, frequency, id, provenance, **to_sink):
     """Stores items generated by the pipeline back into the store"""
     logger.debug("Sinking %s", to_sink)
     data_node = dataset.node(frequency, id)
@@ -432,14 +451,14 @@ def sink_items(dataset, frequency, id, **to_sink):
     return id
 
 
-def extract_paths_and_values(**data_items):
+def access_paths_and_values(**data_items):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
     logger.debug("Extracting paths/values from %s", data_items)
     values = []
     for name, item in data_items.items():
         if isinstance(item, FileGroup):
-            cpy = item.copy_to('./' + name, symlink=True)
+            cpy = item.copy_to(Path.cwd() / name, symlink=True)
             values.append(cpy.fs_path)
         else:
             values.append(item.value)
@@ -451,9 +470,75 @@ def encapsulate_paths_and_values(outputs, **kwargs):
     except for extensions"""
     logger.debug("Encapsulating %s into %s", kwargs, outputs)
     items = []
-    for out_name, out_type in outputs.items():
-        if isinstance(out_type, FileFormat):
-            items.append(out_type.from_path(kwargs[out_name]))
+    for outpt in outputs:
+        val = kwargs[outpt.col_name]
+        if issubclass(outpt.produced_format, FileGroup):
+            obj = outpt.produced_format.from_fs_path(val)
         else:
-            items.append(out_type(kwargs[out_name]))
+            obj = outpt.produced_format(val)
+        items.append(obj)
     return tuple(items) if len(items) > 1 else items[0]
+
+
+
+
+# Provenance mismatch detection methods salvaged from data.provenance
+
+# def mismatches(self, other, include=None, exclude=None):
+#     """
+#     Compares information stored within provenance objects with the
+#     exception of version information to see if they match. Matches are
+#     constrained to the name_paths passed to the 'include' kwarg, with the
+#     exception of sub-name_paths passed to the 'exclude' kwarg
+
+#     Parameters
+#     ----------
+#     other : Provenance
+#         The provenance object to compare against
+#     include : ty.List[ty.List[str]] | None
+#         Paths in the provenance to include in the match. If None all are
+#         incluced
+#     exclude : ty.List[ty.List[str]] | None
+#         Paths in the provenance to exclude from the match. In None all are
+#         excluded
+#     """
+#     if include is not None:
+#         include_res = [self._gen_prov_path_regex(p) for p in include]
+#     if exclude is not None:
+#         exclude_res = [self._gen_prov_path_regex(p) for p in exclude]
+#     diff = DeepDiff(self._prov, other._prov, ignore_order=True)
+#     # Create regular expresssions for the include and exclude name_paths in
+#     # the format that deepdiff uses for nested dictionary/lists
+
+#     def include_change(change):
+#         if include is None:
+#             included = True
+#         else:
+#             included = any(rx.match(change) for rx in include_res)
+#         if included and exclude is not None:
+#             included = not any(rx.match(change) for rx in exclude_res)
+#         return included
+
+#     filtered_diff = {}
+#     for change_type, changes in diff.items():
+#         if isinstance(changes, dict):
+#             filtered = dict((k, v) for k, v in changes.items()
+#                             if include_change(k))
+#         else:
+#             filtered = [c for c in changes if include_change(c)]
+#         if filtered:
+#             filtered_diff[change_type] = filtered
+#     return filtered_diff
+
+# @classmethod
+# def _gen_prov_path_regex(self, file_path):
+#     if isinstance(file_path, str):
+#         if file_path.startswith('/'):
+#             file_path = file_path[1:]
+#         regex = re.compile(r"root\['{}'\].*"
+#                             .format(r"'\]\['".join(file_path.split('/'))))
+#     elif not isinstance(file_path, re.Pattern):
+#         raise ArcanaUsageError(
+#             "Provenance in/exclude name_paths can either be name_path "
+#             "strings or regexes, not '{}'".format(file_path))
+#     return regex

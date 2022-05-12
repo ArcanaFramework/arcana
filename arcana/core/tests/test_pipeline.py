@@ -1,36 +1,41 @@
 
+import pytest
 import zipfile
 import tempfile
 from pathlib import Path
-from arcana.data.stores.tests.fixtures import (
-    make_dataset, TEST_DATASET_BLUEPRINTS, TestDataDimensions)
-from arcana.tasks.tests.fixtures import concatenate
-from arcana.data.types.general import text, zip
+from arcana.data.formats.common import Text, Zip
+from arcana.core.data.set import Dataset
+from arcana.test.datasets import (
+    make_dataset, TestDataSpace)
+from arcana.test.fixtures.common import TEST_DATASET_BLUEPRINTS
+from arcana.test.tasks import concatenate
+# from pydra.tasks.fsl.preprocess.bet import BET
+# from arcana.data.formats.medimage import Dicom, NiftiGz
 
 
 def test_pipeline(work_dir):
-    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'], work_dir)
+    dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_test'],
+                           work_dir / 'dataset')
 
-    dataset.add_source('file1', text)
-    dataset.add_source('file2', text)
-    dataset.add_sink('deriv', text)
+    dataset.add_source('file1', Text)
+    dataset.add_source('file2', Text)
+    dataset.add_sink('deriv', Text)
 
-    pipeline = dataset.new_pipeline(
+    pipeline = dataset.apply_pipeline(
         name='test_pipeline',
-        inputs=['file1', 'file2'],
-        outputs=['deriv'],
-        frequency=TestDataDimensions.abcd)
-
-    pipeline.add(concatenate(in_file1=pipeline.lzin.file1,
-                             in_file2=pipeline.lzin.file2,
-                             duplicates=2,
-                             name='concatenate'))
-
-    pipeline.set_output(('deriv', pipeline.concatenate.lzout.out_file))
+        workflow=concatenate(duplicates=2,
+                             name='concatenate'),
+        inputs=[('file1', 'in_file1'),
+                ('file2', 'in_file2')],
+        outputs=[('deriv', 'out_file')],
+        frequency=TestDataSpace.abcd)
 
     IDS = ['a0b0c0d0', 'a0b0c0d1']
 
-    pipeline(ids=IDS, plugin='serial')
+    workflow = pipeline(cache_dir=work_dir / 'pipeline-cache')
+    workflow(ids=IDS, plugin='serial')
+
+    dataset.refresh()  # Reset cached values
 
     for item in dataset['deriv']:
         with open(item.fs_path) as f:
@@ -39,31 +44,29 @@ def test_pipeline(work_dir):
 
 
 def test_pipeline_with_implicit_conversion(work_dir):
-    """Input files are converted from zip to text, concatenated and then
+    """Input files are converted from zip to Text, concatenated and then
     written back as zip files into the data store"""
     dataset = make_dataset(TEST_DATASET_BLUEPRINTS['concatenate_zip_test'],
-                           work_dir)
+                           work_dir / 'dataset')
 
-    dataset.add_source('file1', zip)
-    dataset.add_source('file2', zip)
-    dataset.add_sink('deriv', zip)
+    dataset.add_source('file1', Zip)
+    dataset.add_source('file2', Zip)
+    dataset.add_sink('deriv', Zip)
 
-    pipeline = dataset.new_pipeline(
+    pipeline = dataset.apply_pipeline(
         name='test_pipeline',
-        inputs=[('file1', text), ('file2', text)],
-        outputs=[('deriv', text)],
-        frequency=TestDataDimensions.abcd)
-
-    pipeline.add(concatenate(in_file1=pipeline.lzin.file1,
-                             in_file2=pipeline.lzin.file2,
-                             duplicates=2,
-                             name='concatenate'))
-
-    pipeline.set_output(('deriv', pipeline.concatenate.lzout.out_file))
+        workflow=concatenate(duplicates=2,
+                             name='concatenate'),
+        inputs=[('file1', 'in_file1', Text), ('file2', 'in_file2', Text)],
+        outputs=[('deriv', 'out_file', Text)],
+        frequency=TestDataSpace.abcd)
 
     IDS = ['a0b0c0d0', 'a0b0c0d1']
 
-    pipeline(ids=IDS, plugin='serial')
+    workflow = pipeline(cache_dir=work_dir / 'pipeline-cache')
+    workflow(ids=IDS, plugin='serial')
+
+    dataset.refresh()
 
     for item in dataset['deriv']:
         tmp_dir = Path(tempfile.mkdtemp())

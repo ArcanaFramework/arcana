@@ -1,9 +1,20 @@
+from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import subprocess as sp
 import importlib_metadata
+from itertools import chain
 import pkgutil
+import json
+import typing as ty
+from enum import Enum
+from copy import copy
 import re
+import inspect
+import cloudpickle as cp
+from pydra.engine.core import Workflow, LazyField, TaskBase
+from pydra.engine.task import FunctionTask
 from pathlib import Path
+import packaging
 from importlib import import_module
 from inspect import isclass
 from itertools import zip_longest
@@ -13,21 +24,97 @@ import os.path
 from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
-from pydra.engine.task import FunctionTask
+import attr
+from pydra import Workflow
+from pydra.engine.task import FunctionTask, TaskBase
 from pydra.engine.specs import BaseSpec, SpecInfo
-from arcana.exceptions import ArcanaUsageError, ArcanaNameError
+from arcana.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaVersionError
+
+# Avoid arcana.__version__ causing a circular import
+from arcana._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
 
 
 PATH_SUFFIX = '_path'
 FIELD_SUFFIX = '_field'
 CHECKSUM_SUFFIX = '_checksum'
 
-DOCKER_HUB = 'https://index.docker.io/v1/'
+ARCANA_HOME_DIR = Path.home() / '.arcana'
+
 ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
 
 
-def path2name(path):
-    """Escape the name of an item by replacing '/' with a valid substring
+def get_home_dir():
+    try:
+        home_dir = Path(os.environ['ARCANA_HOME'])
+    except KeyError:
+        home_dir = ARCANA_HOME_DIR
+    if not home_dir.exists():
+        home_dir.mkdir()
+    return home_dir
+
+
+def get_config_file_path(name: str):
+    """Gets the file path for the configuration file corresponding to `name`
+
+    Parameters
+    ----------
+    name
+        Name of the configuration file to return
+
+    Returns
+    -------
+    Path
+        Path to configuration file
+    """
+    return get_home_dir() / (name + '.yml')
+
+
+# Escape values for invalid characters for Python variable names
+PATH_ESCAPES = {
+    '__': '_dunder_',
+    '/': '__l__',
+    '.': '__o__',
+    ',': '__comma__',
+    '>': '__gt__',
+    '<': '__lt__',
+    '-': '__hyphen__',
+    "'": '__singlequote__',
+    '"': '__doublequote__',
+    '(': '__openparens__',
+    ')': '__closeparens__',
+    '[': '__openbracket__',
+    ']': '__closebracket__',
+    '{': '__openbrace__',
+    '}': '__closebrace__',
+    ':': '__colon__',
+    ';': '__semicolon__',
+    '`': '__tick__',
+    '~': '__tilde__',
+    '|': '__pipe__',
+    '?': '__question__',
+    '\\': '__backslash__',
+    '$': '__dollar__',
+    '@': '__at__',
+    '!': '__exclaimation__',
+    '#': '__pound__',
+    '%': '__percent__',
+    '^': '__caret__',
+    '&': '__ampersand__',
+    '*': '__star__',
+    '+': '__plus__',
+    '=': '__equals__',
+    'XXX': '__tripplex__'}
+
+PATH_NAME_PREFIX = 'XXX'
+
+EMPTY_PATH_NAME = '__empty__'
+
+
+def path2varname(path):
+    """Escape a string (typically a file-system path) so that it can be used as a Python
+    variable name by replacing non-valid characters with escape sequences in PATH_ESCAPES.
 
     Parameters
     ----------
@@ -39,23 +126,41 @@ def path2name(path):
     str
         A python safe name
     """
-    return PATH_SEP.join(str(path).split('/'))
+    if not path:
+        name = EMPTY_PATH_NAME
+    else:
+        name = path
+        for char, esc in PATH_ESCAPES.items():
+            name = name.replace(char, esc)
+    if name.startswith('_'):
+        name = PATH_NAME_PREFIX + name
+    return name
 
 
-def name2path(name):
-    """Unescape a name created by path2name
+def varname2path(name):
+    """Unescape a Pythonic name created by `path2varname`
 
     Parameters
     ----------
     name : str
-        An escaped path
+        the escaped path
 
     Returns
     -------
     str
-        The derived name
+        the original path
     """
-    return '/'.join(name.split(PATH_SEP))
+    if name.startswith(PATH_NAME_PREFIX):
+        path = name[len(PATH_NAME_PREFIX):]
+    else:
+        path = name  # strip path-name prefix
+    if path == EMPTY_PATH_NAME:
+        return ''
+    # the order needs to be reversed so that "dunder" (double underscore) is
+    # unescaped last
+    for char, esc in reversed(PATH_ESCAPES.items()):
+        path = path.replace(esc, char)
+    return path
 
 
 def func_task(func, in_fields, out_fields, **inputs):
@@ -85,33 +190,18 @@ def func_task(func, in_fields, out_fields, **inputs):
             name=f'{func_name}Out', bases=(BaseSpec,), fields=out_fields),
         **inputs)
 
-
-PATH_SEP = '__l__'
-
-
-package_dir = os.path.join(os.path.dirname(__file__), '..')
-
-try:
-    HOSTNAME = sp.check_output('hostname').strip().decode('utf-8')
-except sp.CalledProcessError:
-    HOSTNAME = None
-JSON_ENCODING = {'encoding': 'utf-8'}    
-
-# def set_loggers(loggers):
-
-#     # Overwrite earlier (default) versions of logger levels with later options
-#     loggers = dict(loggers)
-
-#     for name, level in loggers.items():
-#         logger = logging.getLogger(name)
-#         logger.setLevel(level)
-#         handler = logging.StreamHandler()
-#         formatter = logging.Formatter("%(levelname)s - %(message)s")
-#         handler.setFormatter(formatter)
-#         logger.addHandler(handler)
-
-
 def set_loggers(loglevel, pydra_level='warning', depend_level='warning'):
+    """Sets loggers for arcana and pydra. To be used in CLI
+
+    Parameters
+    ----------
+    loglevel : str
+        the threshold to produce logs at (e.g. debug, info, warning, error)
+    pydra_level : str, optional
+        the threshold to produce logs from Pydra at
+    depend_level : str, optional
+        the threshold to produce logs in dependency packages
+    """
     def parse(level):
         if isinstance(level, str):
             level = getattr(logging, level.upper())
@@ -123,25 +213,18 @@ def set_loggers(loglevel, pydra_level='warning', depend_level='warning'):
     # set logging format
     logging.basicConfig(level=parse(depend_level))
 
-def to_list(arg):
-    if arg is None:
-        arg = []
-    else:
-        arg = list(arg)
-    return arg
 
-
-def to_dict(arg):
-    if arg is None:
-        arg = {}
-    else:
-        arg = dict(arg)
-    return arg
+def class_location(cls):
+    """Records the location of a class so it can be loaded later using 
+    `resolve_class`, in the format <module-name>:<class-name>"""
+    if not isinstance(cls, type):
+        cls = type(cls)  # Get the class rather than the object
+    return cls.__module__ + ':' + cls.__name__
 
 
 def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     """
-    Resolves a class from the '.' delimted module + class name string
+    Resolves a class from a location string in the format "<module-name>:<class-name>"
 
     Parameters
     ----------
@@ -158,11 +241,13 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
     type:
         The resolved class
     """
+    if class_str.startswith('<') and class_str.endswith('>'):
+        class_str = class_str[1:-1]
     module_path, class_name = class_str.split(':')
     cls = None
     for prefix in [None] + list(prefixes):
         if prefix is not None:
-            mod_name = prefix + '.' + module_path
+            mod_name = prefix + ('.' if prefix[-1] != '.' else '') + module_path
         else:
             mod_name = module_path
         if not mod_name:
@@ -185,72 +270,40 @@ def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
                 class_str, "', '".join(prefixes)))
     return cls
 
-
-# def resolve_datatype(name):
-#     """Resolves a in a sub-module of arcana.data.types based on its
-#     name
-
-#     Parameters
-#     ----------
-#     name : str
-#         The name of the format
-
-#     Returns
-#     -------
-#     FileFormat or type
-#         The resolved file format or type
-#     """
-#     if re.match(r'int|float|str|list\[(int|float|str)\]', name):
-#         return eval(name)
-#     import arcana.data.types
-#     import arcana.core.data.datatype
-#     return resolve_subclass(arcana.data.types,
-#                         arcana.core.data.datatype.FileFormat, name)
-
-def resolve_datatype(name):
-    """Resolves a in a sub-module of arcana.file_format based on its
-    name
+def submodules(package):
+    """Iterates all modules within the given package
 
     Parameters
     ----------
-    name : str
-        The name of the format
+    package : module
+        the package to iterate over
 
-    Returns
-    -------
-    FileFormat or type
-        The resolved file format or type
+    Yields
+    ------
+    module
+        all modules within the package
     """
-    if re.match(r'int|float|str|list\[(int|float|str)\]', name):
-        return eval(name)
-    import arcana.data.types
-    data_format = None
-    module_names = [
-        i.name for i in pkgutil.iter_modules(
-            [os.path.dirname(arcana.data.types.__file__)])]
-    for module_name in module_names:
-        module = import_module('arcana.data.types.' + module_name)
-        try:
-            data_format = getattr(module, name)
-        except AttributeError:
-            pass
-    if data_format is None:
-        raise ArcanaNameError(
-            name,
-            f"Could not find format {name} in installed modules:\n"
-            + "\n    ".join(module_names))
-    return data_format
-
-
-def submodules(module):
-    module_names = [i.name for i in pkgutil.iter_modules(
-        [str(Path(module.__file__).parent)])]
-    for module_name in module_names:
-        yield import_module(module.__package__ + '.' + module_name)
+    for mod_info in pkgutil.iter_modules([str(Path(package.__file__).parent)],
+                                         prefix=package.__package__ + '.'):
+        yield import_module(mod_info.name)
 
 
 def list_subclasses(package, base_class):
-    """List all available cmds in """
+    """List all available subclasses of a base class in modules within the given
+    package
+
+    Parameters
+    ----------
+    package : module
+        the package to list the subclasses within
+    base_class : type
+        the base class
+
+    Returns
+    -------
+    list
+        all subclasses of the base-class found with the package
+    """
     subclasses = []
     for module in submodules(package):
         for obj_name in dir(module):
@@ -258,34 +311,6 @@ def list_subclasses(package, base_class):
             if isclass(obj) and issubclass(obj, base_class) and obj is not base_class:
                 subclasses.append(obj)
     return subclasses
-
-
-def list_instances(package, cls):
-    """List all available cmds in """
-    instances = []
-    for module in submodules(package):
-        for obj_name in dir(module):
-            obj = getattr(module, obj_name)
-            if isinstance(obj, cls):
-                instances.append(obj)
-    return instances
-
-
-def resolve_subclass(package, base_class, name):
-    sub_class = None
-    for module in submodules(package):
-        try:
-            sub_class = getattr(module, name)
-        except AttributeError:
-            pass
-    if sub_class is None:
-        raise ArcanaNameError(
-            name,
-            f"Could not find '{name}'' in {package.__package__} sub-modules:\n")
-    if not issubclass(sub_class, base_class):
-        raise ArcanaUsageError(
-            f"{sub_class} is not a sub-class of {base_class}")
-    return sub_class
 
 
 @contextmanager
@@ -314,90 +339,61 @@ def dir_modtime(dpath):
     return max(os.path.getmtime(d) for d, _, _ in os.walk(dpath))
 
 
-double_exts = ('.tar.gz', '.nii.gz')
+# def parse_single_value(value, format=None):
+#     """
+#     Tries to convert to int, float and then gives up and assumes the value
+#     is of type string. Useful when excepting values that may be string
+#     representations of numerical values
+#     """
+#     if isinstance(value, str):
+#         try:
+#             if value.startswith('"') and value.endswith('"'):
+#                 value = str(value[1:-1])
+#             elif '.' in value:
+#                 value = float(value)
+#             else:
+#                 value = int(value)
+#         except ValueError:
+#             value = str(value)
+#     elif not isinstance(value, (int, float, bool)):
+#         raise ArcanaUsageError(
+#             "Unrecognised type for single value {}".format(value))
+#     if format is not None:
+#         value = format(value)
+#     return value
 
 
-def split_extension(path):
-    """
-    A extension splitter that checks for compound extensions such as
-    'file.nii.gz'
-
-    Parameters
-    ----------
-    filename : str
-        A filename to split into base and extension
-
-    Returns
-    -------
-    base : str
-        The base part of the string, i.e. 'file' of 'file.nii.gz'
-    ext : str
-        The extension part of the string, i.e. 'nii.gz' of 'file.nii.gz'
-    """
-    for double_ext in double_exts:
-        if path.name.endswith(double_ext):
-            return str(path)[:-len(double_ext)], double_ext
-    parts = path.name.split('.')
-    if len(parts) == 1:
-        base = path.name
-        ext = None
-    else:
-        ext = '.' + parts[-1]
-        base = '.'.join(parts[:-1])
-    return path.parent / base, ext
-
-def lower(s):
-    if s is None:
-        return None
-    return s.lower()
-
-
-def parse_single_value(value, datatype=None):
-    """
-    Tries to convert to int, float and then gives up and assumes the value
-    is of type string. Useful when excepting values that may be string
-    representations of numerical values
-    """
-    if isinstance(value, str):
-        try:
-            if value.startswith('"') and value.endswith('"'):
-                value = str(value[1:-1])
-            elif '.' in value:
-                value = float(value)
-            else:
-                value = int(value)
-        except ValueError:
-            value = str(value)
-    elif not isinstance(value, (int, float, bool)):
-        raise ArcanaUsageError(
-            "Unrecognised type for single value {}".format(value))
-    if datatype is not None:
-        value = datatype(value)
+def parse_value(value):
+    """Parses values from string representations"""
+    try:
+        value = json.loads(value.replace('\\"', '"'))
+    except (TypeError, json.decoder.JSONDecodeError):
+        pass
     return value
+                
 
-
-def parse_value(value, datatype=None):
-    # Split strings with commas into lists
-    if isinstance(value, str):
-        if value.startswith('[') and value.endswith(']'):
-            value = value[1:-1].split(',')
-    else:
-        # Cast all iterables (except strings) into lists
-        try:
-            value = list(value)
-        except TypeError:
-            pass
-    if isinstance(value, list):
-        value = [parse_single_value(v, datatype=datatype) for v in value]
-        # Check to see if datatypes are consistent
-        datatypes = set(type(v) for v in value)
-        if len(datatypes) > 1:
-            raise ArcanaUsageError(
-                "Inconsistent datatypes in values array ({})"
-                .format(value))
-    else:
-        value = parse_single_value(value, datatype=datatype)
-    return value
+# def parse_value(value, format=None):
+#     # Split strings with commas into lists
+#     if isinstance(value, str):
+#         if value.startswith('[') and value.endswith(']'):
+#             value = value[1:-1].split(',')
+#     else:
+#         # Cast all iterables (except strings) into lists
+#         try:
+#             value = list(value)
+#         except TypeError:
+#             pass
+#     if isinstance(value, list):
+#         value = [parse_single_value(v, format=format) for v in value]
+#         # Check to see if datatypes are consistent
+#         datatypes = set(type(v) for v in value)
+#         if len(datatypes) > 1:
+#             raise ArcanaUsageError(
+#                 "Inconsistent datatypes in values array ({})"
+#                 .format(value))
+#     else:
+#         value = parse_single_value(value, format=format)
+#     return value
 
 
 def iscontainer(*items):
@@ -413,7 +409,7 @@ def find_mismatch(first, second, indent=''):
     """
     Finds where two objects differ, iterating down into nested containers
     (i.e. dicts, lists and tuples) They can be nested containers
-    any combination of primary datatypes, str, int, float, dict and lists
+    any combination of primary formats, str, int, float, dict and lists
 
     Parameters
     ----------
@@ -465,32 +461,6 @@ def find_mismatch(first, second, indent=''):
                                                        indent=sub_indent),
                                          indent=sub_indent))
     return mismatch
-
-
-def extract_package_version(package_name):
-    version = None
-    try:
-        module = import_module(package_name)
-    except ImportError:
-        if package_name.startswith('py'):
-            try:
-                module = import_module(package_name[2:])
-            except ImportError:
-                pass
-    else:
-        try:
-            version = module.__version__
-        except AttributeError:
-            pass
-    return version
-
-
-def get_class_info(cls):
-    info = {'class': '{}.{}'.format(cls.__module__, cls.__name__)}
-    version = extract_package_version(cls.__module__.split('.')[0])
-    if version is not None:
-        info['pkg_version'] = version
-    return info
 
 
 def wrap_text(text, line_length, indent, prefix_indent=False):
@@ -546,22 +516,45 @@ class classproperty(object):
         return self.f(owner)
 
 
-def get_pkg_name(module_path: str):
-    """Gets the name of the package that provides the given module
+def package_from_module(module: Sequence[str]):
+    """Resolves the installed package (e.g. from PyPI) that provides the given
+    module.
 
     Parameters
     ----------
-    module_path
-        The path to the module to retrieve the package for
+    module: str or module or Sequence[str or module]
+        a module or its import path string to retrieve the package for. Can be
+        provided as a list of modules/strings, in which case a list of packages
+        are returned
+
+    Returns
+    -------
+    PackageInfo or list[PackageInfo]
+        the package info object corresponding to the module. If `module`
+        parameter is a list of modules/strings then a set of packages are
+        returned
     """
-    if not isinstance(module_path, str):
-        module_path = module_path.__module__
-    module_path = importlib_metadata.PackagePath(module_path.replace('.', '/'))
+    module_paths = set()
+    if isinstance(module, Iterable) and not isinstance(module, str):
+        modules = module
+        as_tuple = True
+    else:
+        modules = [module]
+        as_tuple = False
+    for module in modules:
+        try:
+            module_path = module.__name__
+        except AttributeError:
+            module_path = module
+        module_paths.add(
+            importlib_metadata.PackagePath(module_path.replace('.', '/')))
+    packages = set()
     for pkg in pkg_resources.working_set:
         try:
             paths = importlib_metadata.files(pkg.key)
         except importlib_metadata.PackageNotFoundError:
             continue
+        match = False
         for path in paths:
             if path.suffix != '.py':
                 continue
@@ -569,6 +562,330 @@ def get_pkg_name(module_path: str):
             if path.name == '__init__':
                 path = path.parent
             
-            if module_path in ([path] + list(path.parents)):
-                return pkg.key
-    raise ArcanaUsageError(f'{module_path} is not an installed module')
+            for module_path in copy(module_paths):
+                if module_path in ([path] + list(path.parents)):
+                    match = True
+                    module_paths.remove(module_path)
+        if match:
+            packages.add(pkg)
+            if not module_paths:  # If there are no more modules to find pkgs for
+                break
+    if module_paths:
+        paths_str = "', '".join(module_paths)
+        raise ArcanaUsageError(f'Did not find package for {paths_str}')
+    return tuple(packages) if as_tuple else next(iter(packages))
+
+
+def pkg_versions(modules):
+    versions = {p.key: p.version for p in package_from_module(modules)}
+    versions['arcana'] = __version__
+    return versions
+
+
+def asdict(obj, omit: ty.Iterable[str]=(), required_modules: set=None):
+    """Serialises an object of a class defined with attrs to a dictionary
+
+    Parameters
+    ----------
+    obj
+        The Arcana object to asdict. Must be defined using the attrs
+        decorator
+    omit: Iterable[str]
+        the names of attributes to omit from the dictionary
+    required_modules: set
+        modules required to reload the serialised object into memory"""
+
+    def filter(atr, value):
+        return (atr.init and atr.metadata.get('asdict', True))
+
+    if required_modules is None:
+        required_modules = set()
+        include_versions = True  # Assume top-level dictionary so need to include
+    else:
+        include_versions = False
+
+    def serialise_class(klass):
+        required_modules.add(klass.__module__)
+        return '<' + class_location(klass) + '>'
+    
+    def value_asdict(value):
+        if isclass(value):
+            value = serialise_class(value)
+        elif hasattr(value, 'asdict'):
+            value = value.asdict(required_modules=required_modules)
+        elif attr.has(value):  # is class with attrs
+            value_class = serialise_class(type(value))
+            value = attr.asdict(
+                value,
+                recurse=False,
+                filter=filter,
+                value_serializer=lambda i, f, v: value_asdict(v))
+            value['class'] = value_class
+        elif isinstance(value, Enum):
+            value = serialise_class(type(value)) + '[' + str(value) + ']'
+        elif isinstance(value, Path):
+            value = 'file://' + str(value.resolve())
+        elif isinstance(value, (tuple, list, set, frozenset)):
+            value = [value_asdict(x) for x in value]    
+        elif isinstance(value, dict):
+            value = {value_asdict(k): value_asdict(v) for k, v in value.items()}
+        elif is_dataclass(value):
+            value = [value_asdict(getattr(value, f.name))
+                     for f in dataclass_fields(value)]
+        return value
+
+    dct = attr.asdict(
+        obj,
+        recurse=False,
+        filter=lambda a, v: filter(a, v) and a.name not in omit,
+        value_serializer=lambda i, f, v: value_asdict(v))
+
+    dct['class'] = serialise_class(type(obj))
+    if include_versions:
+        dct['pkg_versions'] = pkg_versions(required_modules)
+
+    return dct
+
+
+def fromdict(dct: dict, **kwargs):
+    """Unserialise an object from a dict created by the `asdict` method
+
+    Parameters
+    ----------
+    dct : dict
+        A dictionary containing a serialsed Arcana object such as a data store
+        or dataset definition
+    omit: Iterable[str]
+        key names to ignore when unserialising
+    **kwargs : dict[str, Any]
+        Additional initialisation arguments for the object when it is reinitialised.
+        Overrides those stored"""
+    try:
+        arcana_version = dct['pkg_versions']['arcana']
+    except (TypeError, KeyError):
+        pass
+#     else:
+#         if packaging.version.parse(arcana_version) < packaging.version.parse(MIN_SERIAL_VERSION):
+#             raise ArcanaVersionError(
+#                 f"Serialised version ('{arcana_version}' is too old to be "
+#                 f"read by this version of arcana ('{__version__}'), the minimum "
+#                 f"version is {MIN_SERIAL_VERSION}")
+
+    def field_filter(klass, field_name):
+        if attr.has(klass):
+            return field_name in (f.name for f in attr.fields(klass))
+        else:
+            return field_name != 'class'
+
+    def fromdict(value):
+        if isinstance(value, dict):
+            if 'class' in value:
+                klass = resolve_class(value['class'])
+                if hasattr(klass, 'fromdict'):
+                    return klass.fromdict(value)
+            value = {fromdict(k): fromdict(v) for k, v in value.items()}
+            if 'class' in value:
+                value = klass(**{k: v for k, v in value.items()
+                                 if field_filter(klass, k)})
+        elif isinstance(value, str):
+            if match:= re.match(r'<(.*)>$', value): # Class location
+                value = resolve_class(match.group(1))
+            elif match:= re.match(r'<(.*)>\[(.*)\]$', value):  # Enum
+                value = resolve_class(match.group(1))[match.group(2)]
+            elif match:= re.match(r'file://(.*)', value):
+                value = Path(match.group(1))
+        elif isinstance(value, Sequence):
+            value = [fromdict(x) for x in value]
+        return value
+
+    klass = resolve_class(dct['class'])
+
+    kwargs.update({k: fromdict(v) for k, v in dct.items()
+                   if field_filter(klass, k) and k not in kwargs})
+
+    return klass(**kwargs)
+
+
+extract_import_re = re.compile(r'\s*(?:from|import)\s+([\w\.]+)')
+
+NOTHING_STR = '__PIPELINE_INPUT__'
+
+def pydra_asdict(obj: TaskBase, required_modules: ty.Set[str],
+                  workflow: Workflow=None) -> dict:
+    """Converts a Pydra Task/Workflow into a dictionary that can be serialised
+
+    Parameters
+    ----------
+    obj : pydra.engine.core.TaskBase
+        the Pydra object to convert to a dictionary
+    required_modules : set[str]
+        a set of modules that are required to load the pydra object back
+        out from disk and run it
+    workflow : pydra.Workflow, optional
+        the containing workflow that the object to serialised is part of
+
+    Returns
+    -------
+    dict
+        the dictionary containing the contents of the Pydra object
+    """
+    dct = {'name': obj.name,
+           'class': '<' + class_location(obj) + '>'}
+    if isinstance(obj, Workflow):
+        dct['nodes'] = [pydra_asdict(n, required_modules=required_modules,
+                                      workflow=obj)
+                        for n in obj.nodes]
+        dct['outputs'] = outputs = {}
+        for outpt_name, lf in obj._connections:
+            outputs[outpt_name] = {"pydra_task": lf.name, "pydra_field": lf.field}
+    else:
+        if isinstance(obj, FunctionTask):
+            func = cp.loads(obj.inputs._func)
+            module = inspect.getmodule(func)
+            dct['class'] = '<' + module.__name__ + ':' + func.__name__ + '>'
+            required_modules.add(module.__name__)
+            # inspect source for any import lines (should be present in function
+            # not module)
+            for line in inspect.getsourcelines(func)[0]:
+                if match:= extract_import_re.match(line):
+                    required_modules.add(match.group(1))
+            # TODO: check source for references to external modules that aren't
+            #       imported within function
+        elif type(obj).__module__ != 'pydra.engine.task':
+            pkg = package_from_module(type(obj).__module__)
+            dct['package'] = pkg.key
+            dct['version'] = pkg.version
+        if hasattr(obj, 'container'):
+            dct['container'] = {"type": obj.container,
+                                "image": obj.image}
+    dct['inputs'] = inputs = {} 
+    for inpt_name in obj.input_names:
+        if not inpt_name.startswith('_'):
+            inpt_value = getattr(obj.inputs, inpt_name)
+            if isinstance(inpt_value, LazyField):
+                inputs[inpt_name] = {'pydra_field': inpt_value.field}
+                # If the lazy field comes from the workflow lazy in, we omit
+                # the "pydra_task" item
+                if workflow is None or inpt_value.name != workflow.name:
+                    inputs[inpt_name]["pydra_task"] = inpt_value.name
+            elif inpt_value == attr.NOTHING:
+                inputs[inpt_name] = NOTHING_STR
+            else:
+                inputs[inpt_name] = inpt_value
+    return dct
+
+
+def lazy_field_fromdict(dct: dict, workflow: Workflow):
+    """Unserialises a LazyField object from a dictionary"""
+    if "pydra_task" in dct:
+        inpt_task = getattr(workflow, dct['pydra_task'])
+        lf = getattr(inpt_task.lzout, dct['pydra_field'])
+    else:
+        lf = getattr(workflow.lzin, dct['pydra_field'])
+    return lf
+
+
+def pydra_fromdict(dct: dict, workflow: Workflow=None,
+                    **kwargs) -> TaskBase:
+    """Recreates a Pydra Task/Workflow from a dictionary object created by
+    `pydra_asdict`
+
+    Parameters
+    ----------
+    dct : dict
+        dictionary representations of the object to recreate
+    name : str
+        name to give the object
+    workflow : pydra.Workflow, optional
+        the containing workflow that the object to recreate is connected to
+    **kwargs
+        additional keyword arguments passed to the pydra Object init method
+
+    Returns
+    -------
+    pydra.engine.core.TaskBase
+        the recreated Pydra object
+    """
+    klass = resolve_class(dct['class'])
+    # Resolve lazy-field references to workflow fields
+    inputs = {}
+    for inpt_name, inpt_val in dct['inputs'].items():
+        if inpt_val == NOTHING_STR:
+            continue
+        # Check for 'pydra_field' key in a dictionary val and convert to a
+        # LazyField object
+        if isinstance(inpt_val, dict) and 'pydra_field' in inpt_val:
+            inpt_val = lazy_field_fromdict(inpt_val, workflow=workflow)
+        inputs[inpt_name] = inpt_val
+    kwargs.update((k, v) for k, v in inputs.items() if k not in kwargs)
+    if klass is Workflow:
+        obj = Workflow(
+            name=dct['name'],
+            input_spec=list(dct['inputs']),
+            **kwargs)
+        for node_dict in dct['nodes']:
+            obj.add(pydra_fromdict(node_dict, workflow=obj))
+        obj.set_output([(n, lazy_field_fromdict(f, workflow=obj))
+                        for n, f in dct['outputs'].items()])
+    else:
+        obj = klass(name=dct['name'], **kwargs)
+    return obj
+
+
+def pydra_eq(a: TaskBase, b: TaskBase):
+    """Compares two Pydra Task/Workflows for equality
+
+    Parameters
+    ----------
+    a : pydra.engine.core.TaskBase
+        first object to compare
+    b : pydra.engine.core.TaskBase
+        second object to compare
+
+    Returns
+    -------
+    bool
+        whether the two objects are equal
+    """
+    if type(a) != type(b):
+        return False
+    if a.name != b.name:
+        return False
+    if sorted(a.input_names) != sorted(b.input_names):
+        return False
+    if a.output_spec.fields != b.output_spec.fields:
+        return False
+    for inpt_name in a.input_names:
+        a_input = getattr(a.inputs, inpt_name)
+        b_input = getattr(b.inputs, inpt_name)
+        if isinstance(a_input, LazyField):
+            if a_input.field != b_input.field or a_input.name != b_input.name:
+                return False
+        elif a_input != b_input:
+            return False
+    if isinstance(a, Workflow):
+        a_node_names = [n.name for n in a.nodes]
+        b_node_names = [n.name for n in b.nodes]
+        if a_node_names != b_node_names:
+            return False
+        for node_name in a_node_names:
+            if not pydra_eq(getattr(a, node_name), getattr(b, node_name)):
+                return False
+    else:
+        if isinstance(a, FunctionTask):
+            if a.inputs._func != b.inputs._func:
+                return False
+    return True
+
+
+# Minimum version of Arcana that this version can read the serialisation from
+MIN_SERIAL_VERSION = '0.0.0'
+
+
+package_dir = os.path.join(os.path.dirname(__file__), '..')
+
+try:
+    HOSTNAME = sp.check_output('hostname').strip().decode('utf-8')
+except sp.CalledProcessError:
+    HOSTNAME = None
+JSON_ENCODING = {'encoding': 'utf-8'}
