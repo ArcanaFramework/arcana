@@ -39,7 +39,7 @@ def build_docker_image(image_tag: str,
 
 def construct_dockerfile(
         build_dir: Path,
-        base_image: str="debian:bullseye",
+        base_image: str="ubuntu:kinetic",
         python_packages: ty.Iterable[ty.Tuple[str, str]]=(),
         system_packages: ty.Iterable[ty.Iterable[ty.Tuple[str, str]]]=(),
         labels: ty.Dict[str, str]=None,
