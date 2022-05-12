@@ -293,6 +293,8 @@ def create_dataset_data_in_repo(dataset_name: str, blueprint: TestXnatDatasetBlu
                     for fname in resource.filenames:
                         if source_data is not None:
                             fpath = source_data.joinpath(*fname.split('/'))
+                            target_fpath = fpath.name
                         else:
                             fpath = create_test_file(fname, tmp_dir)
-                        xresource.upload(str(tmp_dir / fpath), fpath.name)
+                            target_fpath = str(fpath)
+                        xresource.upload(str(tmp_dir / fpath), target_fpath)

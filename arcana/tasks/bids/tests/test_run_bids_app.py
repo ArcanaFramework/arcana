@@ -43,10 +43,10 @@ def test_run_bids_pipeline(mock_bids_app_executable, cli_runner, nifti_sample_di
             '--dataset_space', class_location(blueprint.space),
             '--dataset_hierarchy', ','.join([str(l) for l in blueprint.hierarchy])]
     inputs_config = []
-    for name, (format, _) in blueprint.expected_formats.items():
+    for path, (format, _) in blueprint.expected_formats.items():
         format_str = class_location(format)
-        args.extend(['--input', path2varname(name), format_str, path2varname(name), format_str])
-        inputs_config.append({'name': name, 'format': format_str})
+        args.extend(['--input', path2varname(path), format_str, path2varname(path), format_str])
+        inputs_config.append({'path': path, 'format': format_str})
     args.extend(['--configuration', 'inputs', json.dumps(inputs_config).replace('"', '\\"')])
     outputs_config = []
     for path, _, format, _ in blueprint.derivatives:
