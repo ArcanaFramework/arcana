@@ -42,6 +42,7 @@ def construct_dockerfile(
         base_image: str="ubuntu:kinetic",
         python_packages: ty.Iterable[ty.Tuple[str, str]]=None,
         system_packages: ty.Iterable[ty.Iterable[ty.Tuple[str, str]]]=None,
+        package_templates: ty.Iterable[ty.Dict[str, str]]=None,
         labels: ty.Dict[str, str]=None,
         package_manager: str='apt',
         arcana_install_extras: ty.Iterable[str]=(),
@@ -54,14 +55,18 @@ def construct_dockerfile(
     build_dir : Path
         Path to the directory the Dockerfile will be written into copy any local
         files to
+    base_image : str, optional
+        The base image to build from
     python_packages:  Iterable[tuple[str, str]], optional
         Name and version of the Python PyPI packages to add to the image (in
         addition to Arcana itself)
-    base_image : str, optional
-        The base image to build from
     system_packages: Iterable[str], optional
         Name and version of operating system packages (see Neurodocker) to add
         to the image
+    package_templates : Iterable[dict[str, str]]
+        Neurodocker package installation templates to be installed inside the image. A
+        dictionary containing the 'name' and 'version' of the template along
+        with any additional keyword arguments required by the template
     labels : ty.Dict[str, str], optional
         labels to be added to the image
     arcana_install_extras : Iterable[str], optional
@@ -80,27 +85,21 @@ def construct_dockerfile(
         Neurodocker Docker renderer to construct dockerfile from
     """
 
-    if system_packages is None:
-        system_packages = []
-    if python_packages is None:
-        python_packages = []
-
     if not build_dir.is_dir():
         raise ArcanaBuildError(f"Build dir '{str(build_dir)}' is not a valid directory")
 
     dockerfile = DockerRenderer(package_manager).from_(base_image)
     dockerfile.install(["git", "ssh-client", "vim"])
 
-    # instructions = [
-    #     {"name": "from_", "kwds": {'base_image': base_image}},
-    #     {"name": "install",
-    #      "kwds": {
-    #          "pkgs": ["git", "ssh-client", "vim"]}}]  # git and ssh-client to install dev python packages, VIM for debugging
+    if system_packages is not None:
+        install_system_packages(dockerfile, system_packages)
+    
+    if package_templates is not None:
+        install_package_templates(dockerfile, package_templates)
 
-    install_system_packages(dockerfile, system_packages)
-
-    install_python(dockerfile, python_packages, build_dir,
-                   arcana_install_extras, use_local_packages=use_local_packages)
+    if python_packages is not None:
+        install_python(dockerfile, python_packages, build_dir,
+                    arcana_install_extras, use_local_packages=use_local_packages)
 
     if readme:
         insert_readme(dockerfile, readme, build_dir)
@@ -214,10 +213,7 @@ def install_python(dockerfile: DockerRenderer,
         conda_install=' '.join([
             "python=" + natsorted(python_versions)[-1],
             "numpy",
-            "traits",
-            "dcm2niix",
-            "mrtrix3"]),
-        conda_opts="--channel mrtrix3",
+            "traits"]),
         pip_install=' '.join(pip_strs))
 
     return instructions
@@ -245,6 +241,23 @@ def install_system_packages(dockerfile: DockerRenderer, packages: ty.Iterable[st
             if len(pkg) > 2:
                 install_properties['method'] = pkg[2]   
         getattr(dockerfile, pkg_name)(**install_properties)
+
+
+def install_package_templates(dockerfile: DockerRenderer, package_templates: ty.Iterable[ty.Dict[str, str]]):
+    """Install custom packages from Neurodocker package_templates
+    
+    Parameters
+    ----------
+    dockerfile : DockerRenderer
+        the neurodocker renderer to append the install instructions to
+    package_templates : Iterable[dict[str, str]]
+        Neurodocker installation package_templates to be installed inside the image. A
+        dictionary containing the 'name' and 'version' of the template along
+        with any additional keyword arguments required by the template
+    """
+    
+    for kwds in package_templates:
+        dockerfile.add_registered_template(kwds.pop('name'), **kwds)
 
 
 def insert_readme(dockerfile: DockerRenderer, description, build_dir):

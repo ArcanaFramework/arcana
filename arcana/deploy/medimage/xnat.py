@@ -217,7 +217,7 @@ def generate_xnat_cs_command(name: str,
             "user-settable": True,
             "replacement-key": replacement_key})
         input_args.append(
-            f"--input '{replacement_key}' {inpt.column_format.location()} {inpt.pydra_field} {inpt.format.location()} ")
+            f"--input '{replacement_key}' {inpt.stored_format.location()} {inpt.pydra_field} {inpt.format.location()} ")
 
     # Add parameters as additional inputs to inputs JSON specification
     param_args = []
@@ -261,7 +261,7 @@ def generate_xnat_cs_command(name: str,
             "label": label,
             "format": output.format.class_name()})
         output_args.append(
-            f'--output {output.path} {output.column_format.location()} {output.pydra_field} {output.format.location()} ')
+            f'--output {output.path} {output.stored_format.location()} {output.pydra_field} {output.format.location()} ')
 
     # Set up fixed arguments used to configure the workflow at initialisation
     config_args = []
@@ -467,17 +467,17 @@ class InputArg():
     pydra_field: str = None  # Must match the name of the Pydra task input    
     frequency: Clinical = Clinical.session
     description: str = ''  # description of the input
-    column_format: type = None
+    stored_format: type = None  # the format the input is stored in the data store in
 
     def __post_init__(self):
         if self.pydra_field is None:
             self.pydra_field = path2varname(self.path)
-        if self.column_format is None:
-            self.column_format = self.format
+        if self.stored_format is None:
+            self.stored_format = self.format
         if isinstance(self.format, str):
             self.format = resolve_class(self.format, prefixes=['arcana.data.formats'])
-        if isinstance(self.column_format, str):
-            self.column_format = resolve_class(self.column_format,
+        if isinstance(self.stored_format, str):
+            self.stored_format = resolve_class(self.stored_format,
                                                prefixes=['arcana.data.formats'])
 
 @dataclass
@@ -485,17 +485,17 @@ class OutputArg():
     path: str  # The path the output is stored at in XNAT
     format: type = arcana.data.formats.common.File
     pydra_field: str = None  # Must match the name of the Pydra task output, defaults to the path
-    column_format: type = None
+    stored_format: type = None  # the format the output is to be stored in the data store in
 
     def __post_init__(self):
         if self.pydra_field is None:
             self.pydra_field = path2varname(self.path)
-        if self.column_format is None:
-            self.column_format = self.format
+        if self.stored_format is None:
+            self.stored_format = self.format
         if isinstance(self.format, str):
             self.format = resolve_class(self.format, prefixes=['arcana.data.formats'])
-        if isinstance(self.column_format, str):
-            self.column_format = resolve_class(self.column_format,
+        if isinstance(self.stored_format, str):
+            self.stored_format = resolve_class(self.stored_format,
                                                prefixes=['arcana.data.formats'])
     
 
