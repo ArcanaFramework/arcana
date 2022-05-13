@@ -1,4 +1,3 @@
-import time
 import pytest
 from arcana.deploy.medimage.xnat import build_xnat_cs_image, generate_xnat_cs_command, path2xnatname
 from arcana.test.fixtures.medimage import (
@@ -8,6 +7,7 @@ from arcana.test.fixtures.medimage import (
     ResourceBlueprint,
     ScanBlueprint,
 )
+from arcana.test.stores.medimage.xnat import install_and_launch_xnat_cs_command
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 from arcana.core.utils import path2varname
 
@@ -133,82 +133,39 @@ def test_xnat_cs_pipeline(
 
     build_xnat_cs_image(build_dir=work_dir, **build_spec)
 
+    # We manually set the command in the test XNAT instance as commands are
+    # loaded from images when they are pulled from a registry and we use
+    # the fact that the container service test XNAT instance shares the
+    # outer Docker socket. Since we build the pipeline image with the same
+    # socket there is no need to pull it.
+    xnat_command = generate_xnat_cs_command(
+        image_tag=build_spec["image_tag"], **command_spec
+    )
+    
+    launch_inputs = {}
+    
+    for inpt, scan in zip(xnat_command["inputs"], dataset.blueprint.scans):
+        launch_inputs[path2xnatname(inpt["name"])] = scan.name
+
+    for pname, pval in params.items():
+        launch_inputs[pname] = pval
+
     with xnat_repository:
 
         xlogin = xnat_repository.login
-
-        # We manually set the command in the test XNAT instance as commands are
-        # loaded from images when they are pulled from a registry and we use
-        # the fact that the container service test XNAT instance shares the
-        # outer Docker socket. Since we build the pipeline image with the same
-        # socket there is no need to pull it.
-        xnat_command = generate_xnat_cs_command(
-            image_tag=build_spec["image_tag"], **command_spec
-        )
-        cmd_id = xlogin.post("/xapi/commands", json=xnat_command).json()
-
-        # Enable the command globally and in the project
-        xlogin.put(f"/xapi/commands/{cmd_id}/wrappers/{cmd_name}/enabled")
-        xlogin.put(
-            f"/xapi/projects/{dataset.id}/commands/{cmd_id}/wrappers/{cmd_name}/enabled"
-        )
-
+        
         test_xsession = next(iter(xlogin.projects[dataset.id].experiments.values()))
 
-        launch_json = {"SESSION": f"/archive/experiments/{test_xsession.id}"}
-
-        for inpt, scan in zip(xnat_command['inputs'], dataset.blueprint.scans):
-            launch_json[path2xnatname(inpt['name'])] = scan.name
-
-        for pname, pval in params.items():
-            launch_json[pname] = pval
-
-        launch_result = xlogin.post(
-            f"/xapi/projects/{dataset.id}/wrappers/{cmd_id}/root/SESSION/launch",
-            json=launch_json
-        ).json()
-
-        assert launch_result["status"] == "success"
-        workflow_id = launch_result["workflow-id"]
-        assert workflow_id != "To be assigned"
-
-        NUM_ATTEMPTS = 100
-        SLEEP_PERIOD = 10
-        max_runtime = NUM_ATTEMPTS * SLEEP_PERIOD
-
-        INCOMPLETE_STATES = (
-            "Pending",
-            "Running",
-            "_Queued",
-            "Staging",
-            "Finalizing",
-            "Created",
-        )
-
-        for i in range(NUM_ATTEMPTS):
-            wf_result = xlogin.get(f"/xapi/workflows/{workflow_id}").json()
-            if wf_result["status"] not in INCOMPLETE_STATES:
-                break
-            time.sleep(SLEEP_PERIOD)
-
-        # Get workflow stdout/stderr for error messages if required
-        out_str = ""
-        stdout_result = xlogin.get(
-            f"/xapi/workflows/{workflow_id}/logs/stdout", accepted_status=[200, 204]
-        )
-        if stdout_result.status_code == 200:
-            out_str = f"stdout:\n{stdout_result.content.decode('utf-8')}\n"
-        stderr_result = xlogin.get(
-            f"/xapi/workflows/{workflow_id}/logs/stderr", accepted_status=[200, 204]
-        )
-        if stderr_result.status_code == 200:
-            out_str += f"\nstderr:\n{stderr_result.content.decode('utf-8')}"
+        workflow_id, status, out_str = install_and_launch_xnat_cs_command(
+            cmd_name=cmd_name,
+            xnat_command=xnat_command,
+            project_id=dataset.id,
+            session_id=test_xsession.id,
+            inputs=launch_inputs,
+            xlogin=xlogin)
 
         assert (
-            i != 99
-        ), f"Workflow {workflow_id} did not complete in {max_runtime}.\n{out_str}"
-        assert (
-            wf_result["status"] == "Complete"
+            status == "Complete"
         ), f"Workflow {workflow_id} failed.\n{out_str}"
 
         for deriv in dataset.blueprint.derivatives:
