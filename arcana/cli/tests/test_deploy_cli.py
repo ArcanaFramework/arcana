@@ -14,7 +14,6 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
     PKG_NAME = 'testpkg'
 
     concatenate_spec = {
-        'pkg_name': 'concatenate',
         'commands': [command_spec],
         'pkg_version': '1.0',
         'wrapper_version': '1',
