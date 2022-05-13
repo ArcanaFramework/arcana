@@ -73,7 +73,7 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
         spec = load_yaml_spec(spath, base_dir=spec_path)
 
         # Make image tag
-        pkg_name = spec.pop('pkg_name').lower() # .replace('-', '_')
+        pkg_name = spath.stem.lower()
         tag = '.'.join(spath.relative_to(spec_path).parent.parts + (pkg_name,))
         image_version = str(spec.pop('pkg_version'))
         if 'wrapper_version' in spec:
@@ -363,5 +363,4 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
 
     logger.info("Pipeline %s ran successfully for the following nodes\n: %s",
                 pipeline_name, '\n'.join(result.output.processed))
-
     

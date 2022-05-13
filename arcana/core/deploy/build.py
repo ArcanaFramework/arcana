@@ -84,6 +84,8 @@ def construct_dockerfile(
     DockerRenderer
         Neurodocker Docker renderer to construct dockerfile from
     """
+    if python_packages is None:
+        python_packages = []
 
     if not build_dir.is_dir():
         raise ArcanaBuildError(f"Build dir '{str(build_dir)}' is not a valid directory")
@@ -97,9 +99,8 @@ def construct_dockerfile(
     if package_templates is not None:
         install_package_templates(dockerfile, package_templates)
 
-    if python_packages is not None:
-        install_python(dockerfile, python_packages, build_dir,
-                    arcana_install_extras, use_local_packages=use_local_packages)
+    install_python(dockerfile, python_packages, build_dir,
+                   arcana_install_extras, use_local_packages=use_local_packages)
 
     if readme:
         insert_readme(dockerfile, readme, build_dir)

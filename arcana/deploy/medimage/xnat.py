@@ -423,7 +423,7 @@ def copy_command_ref(dockerfile: DockerRenderer, xnat_commands, build_dir):
     """
     # Copy command JSON inside dockerfile for ease of reference
     cmds_dir = build_dir / 'xnat_commands'
-    cmds_dir.mkdir()
+    cmds_dir.mkdir(exist_ok=True)
     for cmd in xnat_commands:
         fname = cmd.get('name', 'command') + '.json'
         with open(cmds_dir / fname, 'w') as f:

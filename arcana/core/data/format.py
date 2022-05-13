@@ -631,6 +631,10 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         if path.ext is not None:
             path = path.with_suffix(cls.ext)
         return path
+    
+    @classmethod
+    def all_exts(cls):
+        return ['']
 
 
 def access_paths(from_format, file_group):
@@ -715,6 +719,9 @@ class BaseFile(FileGroup):
                 f"of file, '{cls.ext}'")
         return Path(new_path).with_suffix('.' + cls.ext)
 
+    @classmethod
+    def all_exts(cls):
+        return [cls.ext]
      
 @attr.s
 class WithSideCars(BaseFile):
@@ -906,6 +913,11 @@ class WithSideCars(BaseFile):
                     continue  # skip these files
             generalised[str(rel_key)] = chksum
         return generalised
+    
+    
+    @classmethod
+    def all_exts(cls):
+        return [cls.ext] + list(cls.side_car_exts)
         
 
 @attr.s
