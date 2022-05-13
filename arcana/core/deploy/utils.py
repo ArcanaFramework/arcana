@@ -121,6 +121,8 @@ def walk_spec_paths(spec_path: Path) -> ty.Iterable[Path]:
     else:
         for path in spec_path.rglob('*.yml'):
             yield path
+        for path in spec_path.rglob('*.yaml'):
+            yield path
 
 def local_package_location(pip_spec: PipSpec):
     """Detect the installed locations of the packages, including development
