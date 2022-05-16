@@ -337,5 +337,6 @@ DOCKERFILE_README_TEMPLATE = """
     
     """
 
-PATHS_TO_NOT_COPY_INTO_BUILD = ('conftest.py', 'debug-build')
-PATTERNS_TO_NOT_COPY_INTO_BUILD = ('*.pyc', '__pycache__', '.pytest_cache')
+PATHS_TO_NOT_COPY_INTO_BUILD = ('debug-build')
+PATTERNS_TO_NOT_COPY_INTO_BUILD = (
+    'conftest.py', '*.pyc', '__pycache__', '.pytest_cache', 'tests')
