@@ -2,6 +2,7 @@ import os
 import pytest
 import docker
 from arcana.data.formats.medimage import NiftiGzX
+from arcana.core.deploy.build import DEFAULT_BASE_IMAGE
 
 
 BIDS_VALIDATOR_DOCKER = 'bids/validator:latest'
@@ -84,7 +85,7 @@ def bids_validator_app_image(bids_validator_app_script, bids_validator_docker, b
 @pytest.fixture(scope='session')
 def mock_bids_app_image(mock_bids_app_script, build_cache_dir):
     return build_app_image(MOCK_BIDS_APP_IMAGE, mock_bids_app_script, build_cache_dir,
-                           base_image='ubuntu:latest')
+                           base_image=DEFAULT_BASE_IMAGE)
 
 
 def build_app_image(tag_name, script, build_cache_dir, base_image):

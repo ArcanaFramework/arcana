@@ -14,6 +14,8 @@ from .utils import PipSpec, local_package_location
 
 logger = logging.getLogger('arcana')
 
+DEFAULT_BASE_IMAGE = "ubuntu:kinetic"
+
 
 def build_docker_image(image_tag: str,
                        build_dir: Path=None,
@@ -39,7 +41,7 @@ def build_docker_image(image_tag: str,
 
 def construct_dockerfile(
         build_dir: Path,
-        base_image: str="ubuntu:kinetic",
+        base_image: str=DEFAULT_BASE_IMAGE,
         python_packages: ty.Iterable[ty.Tuple[str, str]]=None,
         system_packages: ty.Iterable[ty.Iterable[ty.Tuple[str, str]]]=None,
         package_templates: ty.Iterable[ty.Dict[str, str]]=None,
