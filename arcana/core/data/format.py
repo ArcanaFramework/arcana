@@ -265,8 +265,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         if assume_exists:
             self.exists = True
         self._check_part_of_data_node()
-        self.set_fs_paths(
-            self.data_node.dataset.store.get_file_group_paths(self))
+        fs_paths = self.data_node.dataset.store.get_file_group_paths(self)
+        self.set_fs_paths(fs_paths)
         self.validate_file_paths()
 
     def put(self, *fs_paths):
@@ -291,22 +291,6 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         # Save provenance
         if self.provenance:
             self.data_node.dataset.store.put_provenance(self)
-
-    @abstractmethod
-    def set_fs_paths(self, fs_paths: ty.List[Path]):
-        """Takes a list of file-system paths, sorts them (i.e. into primary 
-        and side-cars) and sets the relevant fields in the file-group object.
-
-        Parameters
-        ----------
-        fs_paths : list[Path]
-            _description_
-
-        Rasises
-        -------
-        ArcanaFileFormatError
-            _description_
-        """
 
     @property
     def fs_paths(self):
@@ -436,12 +420,12 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         return item
 
     @abstractmethod
-    def set_fs_paths(self, paths):
+    def set_fs_paths(self, fs_paths):
         """Set the file paths of the file group
 
         Parameters
         ----------
-        paths : list[Path]
+        fs_paths : list[Path]
             The candidate paths from which to set the paths of the 
             file group from. Note that not all paths need to be set if
             they are not relevant.
@@ -490,6 +474,14 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     def validate_file_paths(self):
         attr.validate(self)
         self.exists = True
+
+    @classmethod
+    def _check_paths_exist(cls, fs_paths):
+        if missing := [str(p) for p in fs_paths if not p.exists()]:
+            missing_str = '\n'.join(missing)
+            raise ArcanaFileFormatError(
+                f"Provided file system paths do not exist:\n{missing_str}")
+        
     
     @classmethod
     def converter_task(cls, from_format, name):
@@ -523,7 +515,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
 
         # Create converter node
         converter, output_lfs = cls.find_converter(from_format)(**{
-            n: getattr(wf.access_paths.lzout, n) for n in cls.fs_names()})
+            n: getattr(wf.access_paths.lzout, n) for n in from_format.fs_names()})
         # If there is only one output lazy field, place it in a tuple so it can
         # be zipped with cls.fs_names()
         if isinstance(output_lfs, LazyField):
@@ -659,8 +651,9 @@ class BaseFile(FileGroup):
 
     is_dir = False
 
-    def set_fs_paths(self, paths):
-        self.fs_path = absolute_path(self.matches_ext(*paths))
+    def set_fs_paths(self, fs_paths):
+        self._check_paths_exist(fs_paths)
+        self.fs_path = absolute_path(self.matches_ext(*fs_paths))
 
     def all_file_paths(self):
         """The paths of all nested files within the file-group"""
@@ -925,8 +918,9 @@ class BaseDirectory(FileGroup):
     is_dir = True
     content_types = ()  # By default, don't check contents for any types
     
-    def set_fs_paths(self, paths: ty.List[Path]):
-        matches = [p for p in paths if p.is_dir() and self.contents_match(p)]
+    def set_fs_paths(self, fs_paths: ty.List[Path]):
+        self._check_paths_exist(fs_paths)
+        matches = [p for p in fs_paths if p.is_dir() and self.contents_match(p)]
         types_str = ', '.join(t.__name__ for t in self.content_types)
         if not matches:
             raise ArcanaFileFormatError(
@@ -941,7 +935,7 @@ class BaseDirectory(FileGroup):
     @classmethod
     def contents_match(cls, path: Path):
         from arcana.core.data.node import UnresolvedFileGroup
-        contents = UnresolvedFileGroup.from_paths(path.iterdir())
+        contents = UnresolvedFileGroup.from_paths(path, path.iterdir())
         for content_type in cls.content_types:
             resolved = False
             for unresolved in contents:
@@ -953,9 +947,7 @@ class BaseDirectory(FileGroup):
                     resolved = True
                     break
             if not resolved:
-                raise ArcanaFileFormatError(
-                    f"Did not find a match for required content type {content_type} "
-                    f"of {cls} in {path} directory")
+                return False
         return True
 
     def all_file_paths(self):

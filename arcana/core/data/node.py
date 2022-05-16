@@ -252,58 +252,17 @@ class UnresolvedFileGroup(UnresolvedDataItem):
                                             converter=normalise_paths)
     uris: ty.Dict[str] = attr.ib(default=None)
 
-    # def _resolve(self, format):
-    #     # Perform matching based on resource names in multi-format
-    #     # file-group
-    #     if self.uris is not None:
-    #         item = None
-    #         for format_name, uri in self.uris.items():
-    #             if format_name.lower() in format.all_names:
-    #                 item = format(uri=uri, **self.item_kwargs)
-    #         if item is None:
-    #             raise ArcanaUnresolvableFormatException(
-    #                 f"Could not file a matching resource in {self.path} for"
-    #                 f" the given format ({format.name}), found "
-    #                 "('{}')".format("', '".join(self.uris)))
-    #     # Perform matching based on file-extensions of local name_paths
-    #     # in multi-format file-group
-    #     else:
-    #         file_path = None
-    #         side_cars = None
-    #         if format.directory:
-    #             if (len(self.file_paths) == 1
-    #                 and self.file_paths[0].is_dir()
-    #                 and (format.within_dir_exts is None
-    #                     or (format.within_dir_exts == frozenset(
-    #                         split_extension(f)[1]
-    #                         for f in self.file_paths[0].iterdir()
-    #                         if not str(f).startswith('.'))))):
-    #                 file_path = self.file_paths[0]
-    #         else:
-    #             try:
-    #                 file_path, side_cars = format.from_paths(
-    #                     self.file_paths)
-    #             except ArcanaFileFormatError:
-    #                 pass
-    #         if file_path is not None:
-    #             item = format(
-    #                 fs_path=file_path, side_cars=side_cars,
-    #                 **self.item_kwargs)
-    #         else:
-    #             raise ArcanaUnresolvableFormatException(
-    #                 f"Paths in {self.path} in node {self.data_node.frequency}:"
-    #                 f"{self.data_node.id} ('" + "', '".join(
-    #                     str(p) for p in self.file_paths) 
-    #                 + "') did not match the naming conventions expected by "
-    #                 f"format '{format.name}'")
-    #     return item
-
     @classmethod
-    def from_paths(cls, paths: ty.List[Path], **kwargs):
-        def key(p: Path):
-            return str(p)[:-(len('.'.join(p.suffixes)))]
-        return [cls(file_paths=list(g), **kwargs)
-                for _, g in groupby(sorted(paths, key=key), key=key)]
+    def from_paths(cls, base_dir: Path, paths: ty.List[Path], **kwargs):
+        groups = defaultdict(list)
+        for path in paths:
+            relpath = path.relative_to(base_dir)
+            path_stem = str(relpath)[:-len(''.join(relpath.suffixes))]
+            groups[path_stem].append(path)  # No extension case
+            # Add all possible stems
+            for i in range(len(relpath.suffixes)):
+                groups[''.join([path_stem] + relpath.suffixes[:(i + 1)])].append(path)
+        return [cls(path=p, file_paths=g, **kwargs) for p, g in groups.items()]
 
 
 @attr.s

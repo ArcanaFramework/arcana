@@ -21,11 +21,9 @@ from arcana.test.stores.medimage.xnat import (
 
 
 @pytest.fixture(scope='session')
-def nifti_sample_dir():
-    return Path(__file__).parent.parent.parent.parent / 'test-data'/ 'nifti'
+def nifti_sample_dir(pkg_dir):
+    return pkg_dir / 'test-data'/ 'nifti'
 
-
-TEST_DICOM_DATASET_DIR = Path(__file__).parent / 'test-dataset'
 
 @pytest.fixture(scope='session')
 def dicom_dataset(test_dicom_dataset_dir):
@@ -35,8 +33,8 @@ def dicom_dataset(test_dicom_dataset_dir):
 
 
 @pytest.fixture(scope='session')
-def test_dicom_dataset_dir():
-    return TEST_DICOM_DATASET_DIR
+def test_dicom_dataset_dir(pkg_dir):
+    return pkg_dir / 'test-data' / 'dicom-dataset'
 
 
 # -----------------------

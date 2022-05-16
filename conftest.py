@@ -1,4 +1,5 @@
 import logging
+import pytest
 from pathlib import Path
 import pkgutil
 
@@ -15,9 +16,16 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 sch.setFormatter(formatter)
 logger.addHandler(sch)
 
+PKG_DIR = Path(__file__).parent
+
+
+@pytest.fixture(scope='session')
+def pkg_dir():
+    return PKG_DIR
+
 
 # Load all test fixtures under `arcana.test.fixtures` package
 pytest_plugins = [
     m.name for m in pkgutil.iter_modules(
-        [str(Path(__file__).parent / 'arcana'/ 'test'/ 'fixtures')],
+        [str(PKG_DIR / 'arcana'/ 'test'/ 'fixtures')],
         prefix='arcana.test.fixtures.')]
