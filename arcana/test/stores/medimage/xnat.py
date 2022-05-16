@@ -159,7 +159,7 @@ INCOMPLETE_CS_STATES = (
     "Staging",
     "Finalizing",
     "Created",
-    "die",
+    "_die",
 )
 
 
