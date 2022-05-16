@@ -217,14 +217,14 @@ class DataStore(metaclass=ABCMeta):
         """
 
     def save(self, name: str, config_path: Path=None):
-        """Saves the configuration of a DataStore in 'stores.yml' 
+        """Saves the configuration of a DataStore in 'stores.yaml' 
 
         Parameters
         ----------
         name
             The name under which to save the data store
         config_path : Path, optional
-            the path to save the config file to, defaults to `~/.arcana/stores.yml`
+            the path to save the config file to, defaults to `~/.arcana/stores.yaml`
         """
         if name in self.singletons():
             raise ArcanaNameError(
@@ -251,7 +251,7 @@ class DataStore(metaclass=ABCMeta):
         name : str
             Name that the store was saved under
         config_path : Path, optional
-            path to the config file, defaults to `~/.arcana/stores.yml`
+            path to the config file, defaults to `~/.arcana/stores.yaml`
         **kwargs
             keyword args passed to the store, overriding values stored in the
             entry
@@ -259,7 +259,7 @@ class DataStore(metaclass=ABCMeta):
         Returns
         -------
         DataStore
-            The data store retrieved from the stores.yml file
+            The data store retrieved from the stores.yaml file
 
         Raises
         ------

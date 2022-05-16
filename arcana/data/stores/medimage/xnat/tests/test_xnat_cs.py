@@ -36,9 +36,7 @@ def run_spec(
             "python_packages": [],
             "readme": "This is a test README",
             "docker_registry": "a.docker.registry.io",
-            "use_local_packages": True,
-            "arcana_install_extras": ["test"],
-            "test_config": True,
+            "arcana_install_extras": ["test"]
         }
         spec['dataset'] = make_mutable_dataset(
             dataset_name="xnat_cs_func",
@@ -61,8 +59,6 @@ def run_spec(
             "package_manager": "apt",
             "readme": "This is another test README for BIDS app image",
             "docker_registry": "another.docker.registry.io",
-            "use_local_packages": True,
-            "test_config": True,
         }
         blueprint = TestXnatDatasetBlueprint(
             [1, 1, 1],
@@ -129,9 +125,11 @@ def test_xnat_cs_pipeline(
     command_spec = build_spec["commands"][0]
 
     # Append run_prefix to command name to avoid clash with previous test runs
-    cmd_name = command_spec["name"] = "xnat-cs-test" + run_prefix
+    command_spec["name"] = "xnat-cs-test" + run_prefix
 
-    build_xnat_cs_image(build_dir=work_dir, **build_spec)
+    build_xnat_cs_image(build_dir=work_dir,
+                        use_local_packages=True,
+                        test_config=True, **build_spec)
 
     # We manually set the command in the test XNAT instance as commands are
     # loaded from images when they are pulled from a registry and we use
@@ -157,7 +155,6 @@ def test_xnat_cs_pipeline(
         test_xsession = next(iter(xlogin.projects[dataset.id].experiments.values()))
 
         workflow_id, status, out_str = install_and_launch_xnat_cs_command(
-            cmd_name=cmd_name,
             command_json=xnat_command,
             project_id=dataset.id,
             session_id=test_xsession.id,

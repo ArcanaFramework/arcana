@@ -52,10 +52,17 @@ DOCKER_ORG is the Docker organisation to build the """)
               help=("Install extras to use when installing Arcana inside the "
                     "container image. Typically only used in tests to provide "
                     "'test' extra"))
+@click.option('--use-test-config/--dont-use-test-config', type=bool,  # FIXME: This should be replaced with option to set XNAT CS IP address
+              default=False,
+              help=("Build the image so that it can be run in Arcana's test "
+                    "configuration (only for internal use)"))
 @click.option('--raise-errors/--log-errors', type=bool, default=False,
               help=("Raise exceptions instead of logging failures"))
+@click.option('--generate-only/--build', type=bool, default=False,
+              help="Just create the build directory and dockerfile")
 def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
-          use_local_packages, install_extras, raise_errors):
+          use_local_packages, install_extras, raise_errors, generate_only,
+          use_test_config):
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode('utf-8'))  
@@ -91,6 +98,8 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
                 docker_registry=docker_registry,
                 use_local_packages=use_local_packages,
                 arcana_install_extras=install_extras,
+                generate_only=generate_only,
+                test_config=use_test_config,
                 **{k: v for k, v in spec.items() if not k.startswith('_')})
         except Exception:
             if raise_errors:

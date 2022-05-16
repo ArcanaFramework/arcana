@@ -68,7 +68,7 @@ def get_config_file_path(name: str):
     Path
         Path to configuration file
     """
-    return get_home_dir() / (name + '.yml')
+    return get_home_dir() / (name + '.yaml')
 
 
 # Escape values for invalid characters for Python variable names

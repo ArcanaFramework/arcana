@@ -164,7 +164,6 @@ INCOMPLETE_CS_STATES = (
 
 
 def install_and_launch_xnat_cs_command(
-    cmd_name: str,
     command_json: dict,
     project_id: str,
     session_id: str,
@@ -199,12 +198,14 @@ def install_and_launch_xnat_cs_command(
         stdout and stderr from the workflow run
     """
 
+    cmd_name = command_json['name']
+    wrapper_name = command_json['xnat'][0]['name']
     cmd_id = xlogin.post("/xapi/commands", json=command_json).json()
 
     # Enable the command globally and in the project
-    xlogin.put(f"/xapi/commands/{cmd_id}/wrappers/{cmd_name}/enabled")
+    xlogin.put(f"/xapi/commands/{cmd_id}/wrappers/{wrapper_name}/enabled")
     xlogin.put(
-        f"/xapi/projects/{project_id}/commands/{cmd_id}/wrappers/{cmd_name}/enabled"
+        f"/xapi/projects/{project_id}/commands/{cmd_id}/wrappers/{wrapper_name}/enabled"
     )
 
     launch_json = {"SESSION": f"/archive/experiments/{session_id}"}

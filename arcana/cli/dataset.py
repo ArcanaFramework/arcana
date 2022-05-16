@@ -94,7 +94,7 @@ def define(id_str, hierarchy, include, exclude, space, id_inference):
     dataset.save(name)
 
 @dataset.command(help="""
-Renames a data store saved in the stores.yml to a new name
+Renames a data store saved in the stores.yaml to a new name
 
 dataset_path
     The current name of the store

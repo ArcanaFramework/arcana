@@ -144,8 +144,6 @@ class Field(DataItem):
     name_path : str
         The name_path to the relative location of the field, i.e. excluding
         information about which node in the data tree it belongs to
-    format : type
-        The format of the value. Can be one of (float, int, str)
     derived : bool
         Whether or not the value belongs in the derived session or not
     data_node : DataNode
@@ -205,6 +203,7 @@ def absolute_path(path):
 
 def absolute_paths_dict(dct):
     return {n: absolute_path(p) for n, p in dict(dct).items()}
+
 
 @attr.s
 class FileGroup(DataItem, metaclass=ABCMeta):

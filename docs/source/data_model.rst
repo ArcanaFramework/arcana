@@ -31,7 +31,7 @@ instructions on how to add support for new systems see :ref:`alternative_stores`
 
 To configure access to a data store a via the API, initialise the :class:`.DataStore`
 sub-class corresponding to the required data location/access-method then save
-it to the YAML configuration file stored at `~/.arcana/stores.yml`.
+it to the YAML configuration file stored at `~/.arcana/stores.yaml`.
 
 .. code-block:: python
 
@@ -46,7 +46,7 @@ it to the YAML configuration file stored at `~/.arcana/stores.yml`.
         cache_dir='/work/xnat-cache'
     )
 
-    # Save it to the configuration file stored at '~/.arcana/stores.yml' with
+    # Save it to the configuration file stored at '~/.arcana/stores.yaml' with
     # the nickname 'xnat-central'
     xnat_store.save('xnat-central')
 

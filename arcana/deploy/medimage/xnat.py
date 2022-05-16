@@ -7,6 +7,7 @@ import json
 from attr import NOTHING
 from dataclasses import dataclass
 from neurodocker.reproenv import DockerRenderer
+from arcana.core.data.format import FileGroup
 import arcana.data.formats.common
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.medimage import XnatViaCS
@@ -20,6 +21,8 @@ from arcana.exceptions import ArcanaUsageError
 def path2xnatname(path):
     return re.sub(r'[^a-zA-Z0-9_]+', '_', path)
 
+IN_DOCKER_ARCANA_HOME_DIR = '/arcana-home'
+
 
 def build_xnat_cs_image(image_tag: str,
                         commands: ty.List[ty.Dict[str, ty.Any]],
@@ -28,6 +31,7 @@ def build_xnat_cs_image(image_tag: str,
                         docker_registry: str=DOCKER_HUB,
                         build_dir: Path=None,
                         test_config: bool=False,
+                        generate_only: bool=False,
                         **kwargs):
     """Creates a Docker image containing one or more XNAT commands ready
     to be installed in XNAT's container service plugin
@@ -93,7 +97,8 @@ def build_xnat_cs_image(image_tag: str,
 
     save_store_config(dockerfile, build_dir, test_config=test_config)
 
-    dockerfile_build(dockerfile, build_dir, image_tag)
+    if not generate_only:
+        dockerfile_build(dockerfile, build_dir, image_tag)
 
     return build_dir
 
@@ -202,11 +207,11 @@ def generate_xnat_cs_command(name: str,
     input_args = []
     for inpt in inputs:
         replacement_key = f'[{inpt.pydra_field.upper()}_INPUT]'
-        if inpt.format in (str, Path):
-            desc = (f"Match resource [PATH:STORED_DTYPE]: {inpt.description} ")
+        if issubclass(inpt.format, FileGroup):
+            desc = (f"Match resource [SCAN_TYPE]: {inpt.description} ")
             input_type = 'string'
         else:
-            desc = f"Match field ({inpt.format.class_name()}) [PATH:STORED_DTYPE]: {inpt.description} "
+            desc = f"Match field ({inpt.format.dtype}) [FIELD_NAME]: {inpt.description} "
             input_type = COMMAND_INPUT_TYPES.get(inpt.format, 'string')
         inputs_json.append({
             "name": path2xnatname(inpt.path),
@@ -454,10 +459,12 @@ def save_store_config(dockerfile: DockerRenderer, build_dir: Path,
             ip_address = 'host.docker.internal'  # Mac/Windows local debug
         xnat_cs_store_entry['server'] = 'http://' + ip_address + ':8080'
     DataStore.save_entries({'xnat-cs': xnat_cs_store_entry},
-                           config_path=build_dir / 'stores.yml')
+                           config_path=build_dir / 'stores.yaml')
     dockerfile.run(command='mkdir -p /root/.arcana')
     dockerfile.run(command=f'mkdir -p {str(XnatViaCS.CACHE_DIR)}')
-    dockerfile.copy(source=['./stores.yml'], destination='/root/.arcana/stores.yml')
+    dockerfile.copy(source=['./stores.yaml'],
+                    destination=IN_DOCKER_ARCANA_HOME_DIR + '/stores.yaml')
+    dockerfile.env(ARCANA_HOME=IN_DOCKER_ARCANA_HOME_DIR)
 
 
 @dataclass

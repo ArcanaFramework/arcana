@@ -13,7 +13,7 @@ def store():
 
 
 @store.command(help="""Saves the details for a new data store in the configuration
-file ('~/.arcana/stores.yml').
+file ('~/.arcana/stores.yaml').
 
 Arguments
 ---------
@@ -48,7 +48,7 @@ def add(nickname, type, location, varargs, cache, user, password):
 
 
 @store.command(help="""
-Gives a data store saved in the config file ('~/.arcana/stores.yml') a new
+Gives a data store saved in the config file ('~/.arcana/stores.yaml') a new
 nickname.
 
 Arguments
