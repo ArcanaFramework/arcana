@@ -158,7 +158,7 @@ def test_xnat_cs_pipeline(
 
         workflow_id, status, out_str = install_and_launch_xnat_cs_command(
             cmd_name=cmd_name,
-            xnat_command=xnat_command,
+            command_json=xnat_command,
             project_id=dataset.id,
             session_id=test_xsession.id,
             inputs=launch_inputs,
