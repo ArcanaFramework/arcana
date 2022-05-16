@@ -315,6 +315,7 @@ def copy_package_into_build_dir(package_name: str, local_installation: Path,
             p for p in gitignore if not p.startswith('/'))
         ignore_paths.extend(
             Path(p[1:]) for p in gitignore if p.startswith('/'))
+    patterns_to_ignore.append('conftest.py')  # confuses pytest if nested within build dirs
     ignore_patterns = shutil.ignore_patterns(*patterns_to_ignore)
     def ignore_paths_and_patterns(directory, contents):
         to_ignore = ignore_patterns(directory, contents)
