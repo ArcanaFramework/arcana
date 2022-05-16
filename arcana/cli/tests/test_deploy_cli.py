@@ -20,8 +20,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         'system_packages': [],
         'python_packages': [],
         'authors': ['some.one@an.email.org'],
-        'info_url': 'http://concatenate.readthefakedocs.io',
-        'test_config': True}
+        'info_url': 'http://concatenate.readthefakedocs.io'}
 
     build_dir = work_dir / 'build'
     build_dir.mkdir()
@@ -38,7 +37,8 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
                          '--loglevel', 'warning',
                          '--use-local-packages',
                          '--install_extras', 'test',
-                         '--raise-errors'])
+                         '--raise-errors',
+                         '--use-test-config'])
     assert result.exit_code == 0, show_cli_trace(result)
     assert result.output == f'{DOCKER_REGISTRY}/{DOCKER_ORG}/{PKG_NAME}.concatenate:1.0-1\n'
 

@@ -477,7 +477,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
 
     @classmethod
     def _check_paths_exist(cls, fs_paths):
-        if missing := [str(p) for p in fs_paths if not p.exists()]:
+        if missing := [str(p) for p in fs_paths if not Path(p).exists()]:
             missing_str = '\n'.join(missing)
             raise ArcanaFileFormatError(
                 f"Provided file system paths do not exist:\n{missing_str}")
@@ -920,13 +920,13 @@ class BaseDirectory(FileGroup):
     
     def set_fs_paths(self, fs_paths: ty.List[Path]):
         self._check_paths_exist(fs_paths)
-        matches = [p for p in fs_paths if p.is_dir() and self.contents_match(p)]
+        matches = [p for p in fs_paths if Path(p).is_dir() and self.contents_match(p)]
         types_str = ', '.join(t.__name__ for t in self.content_types)
         if not matches:
             raise ArcanaFileFormatError(
                 f"No matching directories with contents matching {types_str}")
         elif len(matches) > 1:
-            matches_str = ', '.join(matches)
+            matches_str = ', '.join(str(m) for m in matches)
             raise ArcanaFileFormatError(
                 f"Multiple directories with contents matching {types_str}: "
                 f"{matches_str}")
@@ -935,6 +935,7 @@ class BaseDirectory(FileGroup):
     @classmethod
     def contents_match(cls, path: Path):
         from arcana.core.data.node import UnresolvedFileGroup
+        path = Path(path)  # Ensure a Path object not a string
         contents = UnresolvedFileGroup.from_paths(path, path.iterdir())
         for content_type in cls.content_types:
             resolved = False
