@@ -97,10 +97,11 @@ class Bids(FileSystem):
             val = super().get_field_val(field)
         return val
 
-    def put_file_group_paths(self, file_group: FileGroup, fs_paths: ty.List[Path]):
+    def put_file_group_paths(self, file_group: FileGroup, fs_paths: ty.Iterable[Path]):
         # Ensure TaskName field is present in the JSON side-car if task is in
         # the filename
-        for fs_path in fs_paths:
+        stored_paths = super().put_file_group_paths(file_group, fs_paths)
+        for fs_path in stored_paths:
             if fs_path.suffix == '.json':
                 if match:= re.match(r'.*task-([a-zA-Z]+).*', fs_path.stem):
                     with open(fs_path) as f:
@@ -109,7 +110,7 @@ class Bids(FileSystem):
                         dct['TaskName'] = match.group(1)
                     with open(fs_path, 'w') as f:
                         json.dump(dct, f)
-        return super().put_file_group_paths(file_group, fs_paths)
+        return stored_paths
 
 
 def outputs_converter(outputs):
