@@ -7,7 +7,7 @@ from neurodocker.reproenv import DockerRenderer
 from natsort import natsorted
 import docker
 from arcana import __version__
-from arcana.__about__ import PACKAGE_NAME, python_versions
+from arcana.__about__ import PACKAGE_NAME, PACKAGE_ROOT, python_versions
 from arcana.exceptions import ArcanaBuildError
 from .utils import PipSpec, local_package_location
 
@@ -15,6 +15,7 @@ from .utils import PipSpec, local_package_location
 logger = logging.getLogger('arcana')
 
 DEFAULT_BASE_IMAGE = "ubuntu:kinetic"
+PYTHON_PACKAGE_DIR = 'python-packages'
 
 
 def build_docker_image(image_tag: str,
@@ -102,7 +103,9 @@ def construct_dockerfile(
         install_package_templates(dockerfile, package_templates)
 
     install_python(dockerfile, python_packages, build_dir,
-                   arcana_install_extras, use_local_packages=use_local_packages)
+                   use_local_packages=use_local_packages)
+
+    install_arcana(dockerfile, build_dir, arcana_install_extras)
 
     if readme:
         insert_readme(dockerfile, readme, build_dir)
@@ -142,7 +145,6 @@ def dockerfile_build(dockerfile: DockerRenderer, build_dir: Path, image_tag: str
 
 def install_python(dockerfile: DockerRenderer,
                    packages: ty.Iterable[PipSpec], build_dir: Path,
-                   arcana_install_extras: ty.Iterable=(),
                    use_local_packages: bool=False):
     """Generate Neurodocker instructions to install an appropriate version of
     Python and the required Python packages
@@ -173,9 +175,7 @@ def install_python(dockerfile: DockerRenderer,
     # between dependencies of the same package
     # Add arcana dependency
     
-    packages = PipSpec.unique(
-        packages + [PipSpec(name=PACKAGE_NAME, version=__version__,
-                            extras=arcana_install_extras)])
+    packages = PipSpec.unique(packages, remove_arcana=True)
 
     # Copy the local development versions of Python dependencies into the
     # docker image if present, instead of relying on the PyPI version,
@@ -192,7 +192,7 @@ def install_python(dockerfile: DockerRenderer,
                     "`url`")
             pkg_build_path = copy_package_into_build_dir(
                 pip_spec.name, pip_spec.file_path, build_dir)
-            pip_str = '/python-packages/' + pip_spec.name
+            pip_str = '/' + PYTHON_PACKAGE_DIR + '/' + pip_spec.name
             dockerfile.copy(source=[str(pkg_build_path.relative_to(build_dir))],
                             destination=pip_str)
         elif pip_spec.url:
@@ -220,6 +220,31 @@ def install_python(dockerfile: DockerRenderer,
         pip_install=' '.join(pip_strs))
 
     return instructions
+
+
+def install_arcana(dockerfile: DockerRenderer,
+                   build_dir: Path,
+                   install_extras: ty.Iterable=()):
+    """Install the Arcana Python package into the Dockerfile
+
+    Parameters
+    ----------
+    dockerfile : DockerRenderer
+        the Neurdocker renderer
+    build_dir : Path
+        the directory the Docker image is built from
+    install_extras : list[str]
+        list of "install extras" (options) to specify when installing Arcana
+        (e.g. 'test')
+    """
+    pkg_build_path = copy_package_into_build_dir(PACKAGE_NAME, PACKAGE_ROOT.parent,
+                                                 build_dir)
+    pip_str = '/' + PYTHON_PACKAGE_DIR + '/' + PACKAGE_NAME
+    if install_extras:
+        pip_str += '[' + ','.join(install_extras) + ']'
+    dockerfile.copy(source=[str(pkg_build_path.relative_to(build_dir))],
+                            destination=pip_str)
+    dockerfile.run(f'conda run -n arcana pip install {pip_str}')
 
 
 def install_system_packages(dockerfile: DockerRenderer, packages: ty.Iterable[str]):
@@ -301,7 +326,7 @@ def copy_package_into_build_dir(package_name: str, local_installation: Path,
     build_dir : Path
         path to the build directory
     """
-    pkg_build_path = build_dir / 'python-packages' / package_name
+    pkg_build_path = build_dir / PYTHON_PACKAGE_DIR / package_name
     if pkg_build_path.exists():
         shutil.rmtree(pkg_build_path)
     # Copy source tree into build dir minus any cache files and paths

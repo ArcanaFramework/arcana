@@ -1,4 +1,6 @@
+from pathlib import Path
 PACKAGE_NAME = 'arcana'
+PACKAGE_ROOT = Path(__file__).parent
 CODE_URL = f'https://github.com/australian-imaging-service/{PACKAGE_NAME}'
 
 __authors__ = [
