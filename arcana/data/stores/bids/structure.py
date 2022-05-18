@@ -1,5 +1,10 @@
+import typing as ty
+import json
+import re
+from pathlib import Path
 from arcana import __version__
 from ..common import FileSystem
+from arcana.core.data.format import FileGroup
 from arcana.exceptions import ArcanaUsageError, ArcanaEmptyDatasetError
 
 
@@ -91,6 +96,20 @@ class Bids(FileSystem):
         else:
             val = super().get_field_val(field)
         return val
+
+    def put_file_group_paths(self, file_group: FileGroup, fs_paths: ty.List[Path]):
+        # Ensure TaskName field is present in the JSON side-car if task is in
+        # the filename
+        for fs_path in fs_paths:
+            if fs_path.suffix == '.json':
+                if match:= re.match(r'.*task-([a-zA-Z]+).*', fs_path.stem):
+                    with open(fs_path) as f:
+                        dct = json.load(f)
+                    if 'TaskName' not in dct:
+                        dct['TaskName'] = match.group(1)
+                    with open(fs_path, 'w') as f:
+                        json.dump(dct, f)
+        return super().put_file_group_paths(file_group, fs_paths)
 
 
 def outputs_converter(outputs):
