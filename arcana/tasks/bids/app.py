@@ -303,7 +303,7 @@ def bidsify_id(id):
 def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
     """Takes generic inptus and stores them within a BIDS dataset
     """
-    parsed_edits = parse_json_edits(json_edits)
+    dataset.json_edits = parse_json_edits(json_edits)
     for inpt_path, inpt_type in inputs:
         dataset.add_sink(path2varname(inpt_path), inpt_type, path=inpt_path)
     data_node = dataset.node(frequency, id)
@@ -382,7 +382,3 @@ def parse_json_edits(edit_str: str):
         metavar=('FILE_PATH', 'JSON_PATH', 'REPLACE_EXPRESSION'),
         help="Edit a field(s) of a JSON file ")
     return parser.parse_args(shlex.split(edit_str)).edit
-
-
-if __name__ == '__main__':
-    print(parse_json_edits("-e anat/T1w $.SliceTimings[*] '$. / 1000'"))

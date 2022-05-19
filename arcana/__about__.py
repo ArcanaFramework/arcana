@@ -19,7 +19,8 @@ install_requires = [
     'neurodocker @ git+https://github.com/tclose/neurodocker.git@printf-escape-single-quote',
     'deepdiff>=3.3',
     'importlib-metadata>=1.4',
-    'PyYAML>=6.0']
+    'PyYAML>=6.0',
+    'jsonpath-ng>=1.5.3']
 
 tests_require = [
     'pytest>=5.4.3',
