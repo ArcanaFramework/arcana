@@ -3,6 +3,7 @@ import typing as ty
 from pathlib import Path
 import json
 import site
+from itertools import chain
 import pkg_resources
 import os
 from dataclasses import dataclass, field as dataclass_field
@@ -124,10 +125,10 @@ def walk_spec_paths(spec_path: Path) -> ty.Iterable[Path]:
     if spec_path.is_file():
         yield spec_path
     else:
-        for path in spec_path.rglob('*.yml'):
-            yield path
-        for path in spec_path.rglob('*.yaml'):
-            yield path
+        for path in chain(spec_path.rglob('*.yml'), spec_path.rglob('*.yaml')):
+            if not any(p.startswith('.') for p in path.parts):
+                yield path
+
 
 def local_package_location(pip_spec: PipSpec):
     """Detect the installed locations of the packages, including development
