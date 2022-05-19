@@ -1,11 +1,13 @@
 import os
 import stat
+import typing as ty
 import json
 import tempfile
 from pathlib import Path
 import nibabel as nb
 import numpy.random
 import shutil
+from dataclasses import dataclass
 import pytest
 import docker
 from arcana import __version__
@@ -79,6 +81,91 @@ def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
     reloaded.add_sink('t1w', format=NiftiX, path='anat/T1w')
 
     assert dataset == reloaded
+
+
+@dataclass
+class JsonEditBlueprint():
+
+    path_re: str  # regular expression for the path
+    json_path: str  # json path to select the field
+    edit_str: str  # String to edict
+    orig_dict: dict  # Test JSON dictionary to be edited
+    edited_dict: dict  # Dictionary after the edits
+    # file_paths: ty.List[str]  # 
+
+
+JSON_EDIT_TESTS = {
+    'basic': JsonEditBlueprint(
+        path_re='anat/T.*w',
+        json_path='a.b',
+        edit_str='{value} + 4',
+        orig_dict={'a': {
+                   'b': 1.0}},
+        edited_dict={'a': {
+                   'b': 5.0}})}
+
+
+@pytest.fixture(params=JSON_EDIT_TESTS)
+def json_edit_blueprint(request):
+    return JSON_EDIT_TESTS[request.param]
+
+
+def test_bids_json_edit(json_edit_blueprint, work_dir):
+
+    bp = json_edit_blueprint  # shorten name
+    
+    path = work_dir / 'bids-dataset'
+    name = 'bids-dataset'
+
+    shutil.rmtree(path, ignore_errors=True)
+    dataset = BidsDataset.create(
+        path,
+        name,
+        subject_ids=['1'],
+        session_ids=['1'],
+        readme=MOCK_README,
+        authors=MOCK_AUTHORS,
+        json_edits=[(bp.path_re, bp.json_path, bp.edit_str)])
+
+    dataset.add_generator_metadata(
+        name='arcana', version=__version__,
+        description='Dataset was created programmatically from scratch',
+        code_url='http://arcana.readthedocs.io')
+
+    dataset.save_metadata()
+
+    dataset.add_sink('t1w', format=NiftiX, path='anat/T1w')
+
+    nifti_fs_path = work_dir / 't1w.nii'
+    # dummy_nifti_gz = dummy_nifti + '.gz'
+    json_fs_path = work_dir / 't1w.json'
+
+    N = 10 ** 6
+
+    # Create a random Nifti file to satisfy BIDS parsers
+    hdr = nb.Nifti1Header()
+    hdr.set_data_shape((10, 10, 10))
+    hdr.set_zooms((1., 1., 1.))  # set voxel size
+    hdr.set_xyzt_units(2)  # millimeters
+    hdr.set_qform(numpy.diag([1, 2, 3, 1]))
+    nb.save(nb.Nifti1Image(
+        numpy.random.randint(0, 1, size=[10, 10, 10]), hdr.get_best_affine(),
+        header=hdr), nifti_fs_path)
+
+    with open(json_fs_path, 'w') as f:
+        json.dump(bp.orig_dict, f)
+
+    # Get single item in dataset
+    item = dataset['t1w'][('ses-1', 'sub-1')]
+
+    # Put file paths in item
+    item.put(nifti_fs_path, json_fs_path)
+
+    with open(item.side_car('json')) as f:
+        saved_dict = json.load(f)
+
+    assert saved_dict == bp.edited_dict
+    
 
 
 def test_run_bids_app_docker(bids_validator_app_image: str, nifti_sample_dir: Path, work_dir: Path):

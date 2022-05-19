@@ -3,8 +3,10 @@ import json
 import re
 import ast
 import attr
+from attr.converters import default_if_none
 from pathlib import Path
 import jsonpath_ng
+import numexpr
 from arcana import __version__
 from ..common import FileSystem
 from arcana.core.data.format import FileGroup
@@ -25,7 +27,8 @@ class Bids(FileSystem):
         mathematical expression used to edit the field.
     """
 
-    json_edits: ty.List[ty.Tuple[str, str, str]] = attr.ib(factory=list)
+    json_edits: ty.List[ty.Tuple[str, str, str]] = attr.ib(
+        factory=list, converter=default_if_none(factory=list))
 
     alias = "bids"
 
@@ -149,8 +152,8 @@ class Bids(FileSystem):
                 dct = lazy_load_json()
                 jpath = jsonpath_ng.parse(jpath_str)
                 for match in jpath.find(dct):
-                    new_value = ast.literal_eval(
-                        edit_str.format(value=match.value))
+                    new_value = numexpr.evaluate(
+                        edit_str.format(value=match.value)).item()
                     match.full_path.update(dct, new_value)
         # Write dictionary back to file if it has been loaded
         if dct is not None:
