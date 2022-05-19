@@ -3,6 +3,8 @@ import re
 import tempfile
 import typing as ty
 import shutil
+import shlex
+from argparse import ArgumentParser
 from pathlib import Path
 from arcana import __version__
 from pydra import Workflow, mark
@@ -20,7 +22,7 @@ from arcana.core.utils import func_task, path2varname, varname2path, resolve_cla
 def bids_app(name: str,
              inputs: ty.List[ty.Tuple[str, type] or ty.Dict[str, str]],
              outputs: ty.List[ty.Tuple[str, type] or ty.Dict[str, str]],
-             executable: str='',  # Use entrypoint of container
+             executable: str='',  # Use entrypoint of container,
              container_image: str= None,
              parameters: ty.Dict[str, type]=None,
              frequency: Clinical or str=Clinical.session,
@@ -92,9 +94,11 @@ def bids_app(name: str,
     # Ensure output paths all start with 'derivatives
     input_names = [path2varname(i[0]) for i in inputs]
     output_names = [path2varname(o[0]) for o in outputs]
+
+    input_spec = ['id', 'flags', 'metdata_edits'] + input_names + list(parameters)
     workflow = Workflow(
         name=name,
-        input_spec=input_names + list(parameters) + ['id'])
+        input_spec=input_spec)
 
     # Check id startswith 'sub-' as per BIDS
     workflow.add(bidsify_id(name='bidsify_id', id=workflow.lzin.id))
@@ -107,7 +111,8 @@ def bids_app(name: str,
             [('frequency', Clinical),
                 ('inputs', ty.List[ty.Tuple[str, type, str]]),
                 ('dataset', Dataset or str),
-                ('id', str)]
+                ('id', str),
+                ('json_edits', str)]
             + [(i, str) for i in input_names]),
         out_fields=[('dataset', BidsDataset)],
         name='to_bids',
@@ -115,6 +120,7 @@ def bids_app(name: str,
         inputs=inputs,
         dataset=dataset,
         id=workflow.bidsify_id.lzout.out,
+        json_edits=workflow.lzin.json_edits,
         **{i: getattr(workflow.lzin, i) for i in input_names}))
 
     workflow.add(dataset_paths(
@@ -173,22 +179,26 @@ def add_main_task(workflow: Workflow,
 
     input_fields = [
         ("dataset_path", str,
-            {"help_string": "Path to BIDS dataset in the container",
-            "position": 1,
-            "mandatory": True,
-            "argstr": ""}),
+         {"help_string": "Path to BIDS dataset in the container",
+          "position": 1,
+          "mandatory": True,
+          "argstr": ""}),
         ("output_path", str,
-            {"help_string": "Directory where outputs will be written in the container",
-            "position": 2,
-            "argstr": ""}),
+         {"help_string": "Directory where outputs will be written in the container",
+          "position": 2,
+          "argstr": ""}),
         ("analysis_level", str,
-            {"help_string": "The analysis level the app will be run at",
-            "position": 3,
-            "argstr": ""}),
+         {"help_string": "The analysis level the app will be run at",
+          "position": 3,
+          "argstr": ""}),
         ("participant_label", ty.List[str],
-            {"help_string": "The IDs to include in the analysis",
-            "argstr": "--participant_label ",
-            "position": 4})]
+         {"help_string": "The IDs to include in the analysis",
+          "argstr": "--participant_label ",
+          "position": 4}),
+        ("flags", str,
+         {"help_string": "Additional flags to pass to the command",
+          "argstr": "%s",
+          "position": -1})]
 
     output_fields=[
         ("completed", bool,
@@ -253,6 +263,7 @@ def add_main_task(workflow: Workflow,
         dataset_path=dataset_path,
         output_path=app_output_path,
         analysis_level=analysis_level,
+        flags=workflow.lzin.flags,
         **kwargs))
 
     if container_image is not None:
@@ -289,9 +300,10 @@ def bidsify_id(id):
     return id, id[len('sub-'):]
 
 
-def to_bids(frequency, inputs, dataset, id, **input_values):
+def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
     """Takes generic inptus and stores them within a BIDS dataset
     """
+    parsed_edits = parse_json_edits(json_edits)
     for inpt_path, inpt_type in inputs:
         dataset.add_sink(path2varname(inpt_path), inpt_type, path=inpt_path)
     data_node = dataset.node(frequency, id)
@@ -361,3 +373,16 @@ def make_bindings(dataset_path: str):
 def copytree(src: str, dest: str, app_completed: bool) -> bool:
     shutil.copytree(src, dest)
     return app_completed
+
+
+def parse_json_edits(edit_str: str):
+    parser = ArgumentParser()
+    parser.add_argument(
+        '--edit', '-e', nargs=3, action='append',
+        metavar=('FILE_PATH', 'JSON_PATH', 'REPLACE_EXPRESSION'),
+        help="Edit a field(s) of a JSON file ")
+    return parser.parse_args(shlex.split(edit_str)).edit
+
+
+if __name__ == '__main__':
+    print(parse_json_edits("-e anat/T1w $.SliceTimings[*] '$. / 1000'"))
