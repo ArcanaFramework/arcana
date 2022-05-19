@@ -29,7 +29,7 @@ def xnat():
     pass
 
 
-@deploy.command(help="""Build a wrapper image specified in a module
+@xnat.command(help="""Build a wrapper image specified in a module
 
 SPEC_PATH is the file system path to the specification to build, or directory
 containing multiple specifications
@@ -42,7 +42,7 @@ DOCKER_ORG is the Docker organisation to build the """)
 @click.option('--build_dir', default=None,
               type=click.Path(exists=True, path_type=Path),
               help="Specify the directory to build the Docker image in")
-@click.option('--loglevel', default='warning',
+@click.option('--loglevel', default='info',
               help="The level to display logs at")
 @click.option('--use-local-packages/--dont-use-local-packages', type=bool,
               default=False,
@@ -77,6 +77,8 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
     for spath in walk_spec_paths(spec_path):
+
+        logging.info("Building '%s' image", spath)
         spec = load_yaml_spec(spath, base_dir=spec_path)
 
         # Make image tag
