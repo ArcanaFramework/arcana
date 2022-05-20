@@ -1,7 +1,7 @@
 import typing as ty
 import json
 import re
-import ast
+import logging
 import attr
 from attr.converters import default_if_none
 from pathlib import Path
@@ -11,6 +11,9 @@ from arcana import __version__
 from ..common import FileSystem
 from arcana.core.data.format import FileGroup
 from arcana.exceptions import ArcanaUsageError, ArcanaEmptyDatasetError
+
+
+logger = logging.getLogger('arcana')
 
 
 @attr.s

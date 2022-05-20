@@ -53,8 +53,9 @@ def bids_app(name: str,
         empty string, i.e. the entrypoint of the BIDS app container image
     container_image : str, optional
         Name of the BIDS app image to wrap
-    parameters : str, optional
+    parameters : dict[str, type], optional
         a list of parameters of the app (i.e. CLI flags) to be exposed to the user
+        mapped to their data type.
     frequency : Clinical, optional
         Frequency to run the app at, i.e. per-"session" or per-"dataset"
     container_type : str, optional
@@ -95,10 +96,10 @@ def bids_app(name: str,
     input_names = [path2varname(i[0]) for i in inputs]
     output_names = [path2varname(o[0]) for o in outputs]
 
-    input_spec = ['id', 'flags', 'json_edits'] + input_names + list(parameters)
+    input_spec = set(['id', 'flags', 'json_edits'] + input_names + list(parameters))
     workflow = Workflow(
         name=name,
-        input_spec=input_spec)
+        input_spec=list(input_spec))
 
     # Check id startswith 'sub-' as per BIDS
     workflow.add(bidsify_id(name='bidsify_id', id=workflow.lzin.id))
@@ -303,7 +304,7 @@ def bidsify_id(id):
 def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
     """Takes generic inptus and stores them within a BIDS dataset
     """
-    dataset.json_edits = parse_json_edits(json_edits)
+    dataset.store.json_edits = parse_json_edits(json_edits)
     for inpt_path, inpt_type in inputs:
         dataset.add_sink(path2varname(inpt_path), inpt_type, path=inpt_path)
     data_node = dataset.node(frequency, id)
@@ -376,7 +377,7 @@ def copytree(src: str, dest: str, app_completed: bool) -> bool:
 
 
 def parse_json_edits(edit_str: str):
-    if edit_str == attr.NOTHING:
+    if edit_str is None or edit_str == attr.NOTHING:
         return []
     parser = ArgumentParser()
     parser.add_argument(
