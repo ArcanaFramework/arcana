@@ -34,7 +34,7 @@ def xnat():
 SPEC_PATH is the file system path to the specification to build, or directory
 containing multiple specifications
 
-DOCKER_ORG is the Docker organisation to build the """)
+DOCKER_ORG is the Docker organisation the images should belong to""")
 @click.argument('spec_path', type=click.Path(exists=True, path_type=Path))
 @click.argument('docker_org', type=str)
 @click.option('--registry', 'docker_registry', default=None,
@@ -112,13 +112,20 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
             logger.info("Successfully built %s pipeline", image_tag)
 
 
-@deploy.command(help="""Walk through the specification paths and push them up
-to a registry""")
+@deploy.command(
+    name='list-images',
+    help="""Walk through the specification paths and list tags of the images
+that will be build from them.
+
+SPEC_PATH is the file system path to the specification to build, or directory
+containing multiple specifications
+
+DOCKER_ORG is the Docker organisation the images should belong to""")
 @click.argument('spec_path', type=click.Path(exists=True, path_type=Path))
 @click.argument('docker_org', type=str)
 @click.option('--registry', 'docker_registry', default=None,
               help="The Docker registry to deploy the pipeline to")
-def push(spec_path, docker_org, docker_registry):
+def list_images(spec_path, docker_org, docker_registry):
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode('utf-8'))
@@ -137,8 +144,7 @@ def push(spec_path, docker_org, docker_registry):
             image_tag = docker_registry.lower() + '/' + image_tag
         else:
             docker_registry = DOCKER_HUB
-        docker.push(image_tag)
-        logger.info(f"'{image_tag}' pushed to registry")
+        click.echo(image_tag)
             
 
 @deploy.command(name='test', help="""Test container images defined by YAML
