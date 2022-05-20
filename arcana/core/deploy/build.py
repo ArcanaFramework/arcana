@@ -240,10 +240,10 @@ def install_arcana(dockerfile: DockerRenderer,
     pkg_build_path = copy_package_into_build_dir(PACKAGE_NAME, PACKAGE_ROOT.parent,
                                                  build_dir)
     pip_str = '/' + PYTHON_PACKAGE_DIR + '/' + PACKAGE_NAME
-    if install_extras:
-        pip_str += '[' + ','.join(install_extras) + ']'
     dockerfile.copy(source=[str(pkg_build_path.relative_to(build_dir))],
                             destination=pip_str)
+    if install_extras:
+        pip_str += '[' + ','.join(install_extras) + ']'
     dockerfile.run(f'conda run -n arcana pip install {pip_str}')
 
 

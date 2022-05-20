@@ -95,7 +95,7 @@ def bids_app(name: str,
     input_names = [path2varname(i[0]) for i in inputs]
     output_names = [path2varname(o[0]) for o in outputs]
 
-    input_spec = ['id', 'flags', 'metdata_edits'] + input_names + list(parameters)
+    input_spec = ['id', 'flags', 'json_edits'] + input_names + list(parameters)
     workflow = Workflow(
         name=name,
         input_spec=input_spec)
@@ -376,6 +376,8 @@ def copytree(src: str, dest: str, app_completed: bool) -> bool:
 
 
 def parse_json_edits(edit_str: str):
+    if edit_str == attr.NOTHING:
+        return []
     parser = ArgumentParser()
     parser.add_argument(
         '--edit', '-e', nargs=3, action='append',
