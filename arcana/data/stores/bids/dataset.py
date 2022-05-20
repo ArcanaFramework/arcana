@@ -136,7 +136,8 @@ class BidsDataset(Dataset):
 
     @classmethod
     def create(cls, path, name, subject_ids, session_ids=None,
-               readme=None, authors=None, generated_by=None, **kwargs):
+               readme=None, authors=None, generated_by=None,
+               json_edits=None, **kwargs):
         path = Path(path)
         path.mkdir()
         if session_ids is not None:
@@ -157,7 +158,7 @@ class BidsDataset(Dataset):
                        'Mock B. Author']
         dataset = BidsDataset(
             path,
-            store=Bids(),
+            store=Bids(json_edits=json_edits),
             space=Clinical,
             hierarchy=hierarchy,
             name=name,

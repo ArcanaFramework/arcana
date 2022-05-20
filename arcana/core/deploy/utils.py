@@ -3,11 +3,13 @@ import typing as ty
 from pathlib import Path
 import json
 import site
+from itertools import chain
 import pkg_resources
 import os
 from dataclasses import dataclass, field as dataclass_field
 import yaml
 from arcana import __version__
+from arcana.__about__ import PACKAGE_NAME
 from arcana.exceptions import (ArcanaBuildError)
 from arcana.exceptions import ArcanaError
 
@@ -23,13 +25,15 @@ class PipSpec():
     extras: ty.List[str] = dataclass_field(default_factory=list)
 
     @classmethod
-    def unique(cls, pip_specs: ty.Iterable):
+    def unique(cls, pip_specs: ty.Iterable, remove_arcana: bool=False):
         """Merge a list of Pip install specs so each package only appears once
 
         Parameters
         ----------
         pip_specs : ty.Iterable[PipSpec]
             the pip specs to merge
+        remove_arcana : bool
+            remove arcana if present from the merged list
 
         Returns
         -------
@@ -45,6 +49,8 @@ class PipSpec():
         for pip_spec in pip_specs:
             if isinstance(pip_spec, dict):
                 pkg_spec = PipSpec(**pkg_spec)
+            if pip_spec.name == PACKAGE_NAME and remove_arcana:
+                continue
             try:
                 prev_spec = dct[pip_spec.name]
             except KeyError:
@@ -119,10 +125,10 @@ def walk_spec_paths(spec_path: Path) -> ty.Iterable[Path]:
     if spec_path.is_file():
         yield spec_path
     else:
-        for path in spec_path.rglob('*.yml'):
-            yield path
-        for path in spec_path.rglob('*.yaml'):
-            yield path
+        for path in chain(spec_path.rglob('*.yml'), spec_path.rglob('*.yaml')):
+            if not any(p.startswith('.') for p in path.parts):
+                yield path
+
 
 def local_package_location(pip_spec: PipSpec):
     """Detect the installed locations of the packages, including development

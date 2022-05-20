@@ -146,10 +146,6 @@ def create_dataset_data_in_repo(dataset_name: str, blueprint: TestXnatDatasetBlu
                         xresource.upload(str(tmp_dir / fpath), target_fpath)
 
 
-NUM_ATTEMPTS = 100
-SLEEP_PERIOD = 10
-max_runtime = NUM_ATTEMPTS * SLEEP_PERIOD
-
 # List of intermediatary states can pass through
 # before completing successully
 INCOMPLETE_CS_STATES = (
@@ -169,6 +165,8 @@ def install_and_launch_xnat_cs_command(
     session_id: str,
     inputs: ty.Dict[str, str],
     xlogin: xnat.XNATSession,
+    timeout: int=1000, # seconds
+    poll_interval: int=10  # seconds
 ):
     """Installs a new command for the XNAT container service and lanches it on
     the specified session.
@@ -187,6 +185,10 @@ def install_and_launch_xnat_cs_command(
         Inputs passed to the pipeline at launch (i.e. typically through text fields in the CS launch UI)
     xlogin : xnat.XNATSession
         XnatPy connection to the XNAT server
+    timeout : int
+        the time to wait for the pipeline to complete (seconds)
+    poll_interval : int
+        the time interval between status polls (seconds)
         
     Returns
     -------
@@ -224,11 +226,15 @@ def install_and_launch_xnat_cs_command(
     workflow_id = launch_result["workflow-id"]
     assert workflow_id != "To be assigned"
 
-    for i in range(NUM_ATTEMPTS):
+    num_attempts = (timeout // poll_interval) + 1
+
+    for i in range(num_attempts):
         wf_result = xlogin.get(f"/xapi/workflows/{workflow_id}").json()
         if wf_result["status"] not in INCOMPLETE_CS_STATES:
             break
-        time.sleep(SLEEP_PERIOD)
+        time.sleep(poll_interval)
+
+    max_runtime = num_attempts * poll_interval
 
     # Get workflow stdout/stderr for error messages if required
     out_str = ""
@@ -243,7 +249,7 @@ def install_and_launch_xnat_cs_command(
     if stderr_result.status_code == 200:
         out_str += f"\nstderr:\n{stderr_result.content.decode('utf-8')}"
         
-    if i == NUM_ATTEMPTS - 1:
+    if i == num_attempts - 1:
         status = f'NotCompletedAfter{max_runtime}Seconds'
     else:
         status = wf_result['status']

@@ -42,7 +42,7 @@ DOCKER_ORG is the Docker organisation to build the """)
 @click.option('--build_dir', default=None,
               type=click.Path(exists=True, path_type=Path),
               help="Specify the directory to build the Docker image in")
-@click.option('--loglevel', default='warning',
+@click.option('--loglevel', default='info',
               help="The level to display logs at")
 @click.option('--use-local-packages/--dont-use-local-packages', type=bool,
               default=False,
@@ -77,6 +77,8 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
     for spath in walk_spec_paths(spec_path):
+
+        logging.info("Building '%s' image", spath)
         spec = load_yaml_spec(spath, base_dir=spec_path)
 
         # Make image tag
@@ -110,6 +112,34 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
             logger.info("Successfully built %s pipeline", image_tag)
 
 
+@deploy.command(help="""Walk through the specification paths and push them up
+to a registry""")
+@click.argument('spec_path', type=click.Path(exists=True, path_type=Path))
+@click.argument('docker_org', type=str)
+@click.option('--registry', 'docker_registry', default=None,
+              help="The Docker registry to deploy the pipeline to")
+def push(spec_path, docker_org, docker_registry):
+
+    if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
+        spec_path = Path(spec_path.decode('utf-8'))
+    
+    for spath in walk_spec_paths(spec_path):
+        spec = load_yaml_spec(spath, base_dir=spec_path)
+
+        # Make image tag
+        pkg_name = spath.stem.lower()
+        tag = '.'.join(spath.relative_to(spec_path).parent.parts + (pkg_name,))
+        image_version = str(spec.pop('pkg_version'))
+        if 'wrapper_version' in spec:
+            image_version += f"-{spec.pop('wrapper_version')}"
+        image_tag = f"{docker_org}/{tag}:{image_version}"
+        if docker_registry is not None:
+            image_tag = docker_registry.lower() + '/' + image_tag
+        else:
+            docker_registry = DOCKER_HUB
+        docker.push(image_tag)
+        logger.info(f"'{image_tag}' pushed to registry")
+            
 
 @deploy.command(name='test', help="""Test container images defined by YAML
 specs

@@ -79,7 +79,7 @@ PATH_ESCAPES = {
     ',': '__comma__',
     '>': '__gt__',
     '<': '__lt__',
-    '-': '__hyphen__',
+    '-': '__H__',
     "'": '__singlequote__',
     '"': '__doublequote__',
     '(': '__openparens__',

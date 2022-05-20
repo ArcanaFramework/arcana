@@ -235,7 +235,7 @@ def generate_xnat_cs_command(name: str,
             "name": path2varname(param.name),
             "description": desc,
             "type": COMMAND_INPUT_TYPES.get(param.type, 'string'),
-            "default-value": (param.default if not param.required else ""),
+            "default-value": (param.default if param.default else ""),
             "required": param.required,
             "user-settable": True,
             "replacement-key": replacement_key})
@@ -512,6 +512,7 @@ class ParamArg():
     type: type = str
     pydra_field: str = None  # Name of parameter to expose in Pydra task
     required: bool = False
+    default: str = None
     description: str = ''  # description of the parameter
 
     def __post_init__(self):

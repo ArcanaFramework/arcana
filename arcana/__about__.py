@@ -1,4 +1,6 @@
+from pathlib import Path
 PACKAGE_NAME = 'arcana'
+PACKAGE_ROOT = Path(__file__).parent
 CODE_URL = f'https://github.com/australian-imaging-service/{PACKAGE_NAME}'
 
 __authors__ = [
@@ -17,7 +19,9 @@ install_requires = [
     'neurodocker @ git+https://github.com/tclose/neurodocker.git@printf-escape-single-quote',
     'deepdiff>=3.3',
     'importlib-metadata>=1.4',
-    'PyYAML>=6.0']
+    'PyYAML>=6.0',
+    'jsonpath-ng>=1.5.3',
+    'numexpr>=1.10.1']
 
 tests_require = [
     'pytest>=5.4.3',
