@@ -12,7 +12,7 @@ import arcana.data.formats.common
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.deploy.build import (
-    construct_dockerfile, dockerfile_build)
+    construct_dockerfile, dockerfile_build, CONDA_ENV)
 from arcana.core.deploy.utils import DOCKER_HUB
 from arcana.core.utils import resolve_class, class_location, path2varname
 from arcana.core.data.store import DataStore
@@ -280,7 +280,7 @@ def generate_xnat_cs_command(name: str,
     config_args_str = ' '.join(config_args)
 
     cmdline = (
-        f"conda run --no-capture-output -n arcana "  # activate conda
+        f"conda run --no-capture-output -n {CONDA_ENV} "  # activate conda
         f"run-arcana-pipeline  xnat-cs//[PROJECT_ID] {name} {workflow} "  # run pydra task in Arcana
         + input_args_str
         + output_args_str
