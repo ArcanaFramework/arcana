@@ -3,6 +3,7 @@ import typing as ty
 from pathlib import Path
 import json
 import site
+import logging
 from itertools import chain
 import pkg_resources
 import os
@@ -13,6 +14,7 @@ from arcana.__about__ import PACKAGE_NAME
 from arcana.exceptions import (ArcanaBuildError)
 from arcana.exceptions import ArcanaError
 
+logger = logging.getLogger('arcana')
 
 @dataclass
 class PipSpec():
@@ -130,14 +132,16 @@ def walk_spec_paths(spec_path: Path) -> ty.Iterable[Path]:
                 yield path
 
 
-def local_package_location(pip_spec: PipSpec):
+def local_package_location(pip_spec: PipSpec, pypi_fallback: bool=True):
     """Detect the installed locations of the packages, including development
     versions.
 
     Parameters
     ----------
-    package: [PipSpec]
+    package : [PipSpec]
         the packages (or names of) the versions to detect
+    pypi_fallback : bool
+        Fallback to PyPI version if requested version isn't installed locally
 
     Returns
     -------
@@ -154,17 +158,26 @@ def local_package_location(pip_spec: PipSpec):
         pkg = next(p for p in pkg_resources.working_set
                     if p.project_name == pip_spec.name)
     except StopIteration:
+        if pypi_fallback:
+            logger.info(
+                f"Did not find local installation of package {pip_spec.name} "
+                "falling back to installation from PyPI")
+            return pip_spec
         raise ArcanaBuildError(
             f"Did not find {pip_spec.name} in installed working set:\n"
             + "\n".join(sorted(
                 p.key + '/' + p.project_name
                 for p in pkg_resources.working_set)))
     if (pip_spec.version
-            and not (pkg.version.endswith('.dirty') or pip_spec.version.endswith('.dirty'))
+            and (not (pkg.version.endswith('.dirty')
+                      or pip_spec.version.endswith('.dirty')))
             and pkg.version != pip_spec.version):
-        raise ArcanaBuildError(
-            f"Requested package {pip_spec.version} does not match installed "
-            f"{pkg.version}")
+        msg = (f"Requested package {pip_spec.name}=={pip_spec.version} does "
+               "not match installed " + pkg.version)
+        if pypi_fallback:
+            logger.warning(msg + " falling back to installation from PyPI")
+            return pip_spec
+        raise ArcanaBuildError(msg)
     pkg_loc = Path(pkg.location).resolve()
     # Determine whether installed version of requirement is locally
     # installed (and therefore needs to be copied into image) or can
