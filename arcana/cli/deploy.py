@@ -60,14 +60,19 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               help=("Raise exceptions instead of logging failures"))
 @click.option('--generate-only/--build', type=bool, default=False,
               help="Just create the build directory and dockerfile")
+@click.option('--license-dir', type=click.Path(exists=True, path_type=Path),
+              default=None,
+              help="Directory containing licences required to build the images")
 def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors, generate_only,
-          use_test_config):
+          use_test_config, license_dir):
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode('utf-8'))  
     if isinstance(build_dir, bytes):  # FIXME: This shouldn't be necessary
         build_dir = Path(build_dir.decode('utf-8'))
+    if isinstance(license_dir, bytes):  # FIXME: This shouldn't be necessary
+        license_dir = Path(license_dir.decode('utf-8'))
 
     if install_extras:
         install_extras = install_extras.split(',')
@@ -102,6 +107,7 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
                 arcana_install_extras=install_extras,
                 generate_only=generate_only,
                 test_config=use_test_config,
+                license_dir=license_dir,
                 **{k: v for k, v in spec.items() if not k.startswith('_')})
         except Exception:
             if raise_errors:
