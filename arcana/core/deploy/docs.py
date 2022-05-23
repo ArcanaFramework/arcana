@@ -76,7 +76,7 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
             tbl_params = MarkdownTable(f, "Name", "Data type")
             if cmd.get('parameters'):
                 for param in cmd.get("parameters", []):
-                    tbl_params.write_row(param['name'], param['format'])
+                    tbl_params.write_row(param['name'], param['type'])
                 f.write("\n")
 
 

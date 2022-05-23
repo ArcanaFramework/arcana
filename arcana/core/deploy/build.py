@@ -17,6 +17,8 @@ logger = logging.getLogger('arcana')
 DEFAULT_BASE_IMAGE = "ubuntu:kinetic"
 PYTHON_PACKAGE_DIR = 'python-packages'
 
+CONDA_ENV = 'arcana'
+
 
 def build_docker_image(image_tag: str,
                        build_dir: Path=None,
@@ -43,14 +45,16 @@ def build_docker_image(image_tag: str,
 def construct_dockerfile(
         build_dir: Path,
         base_image: str=DEFAULT_BASE_IMAGE,
-        python_packages: ty.Iterable[ty.Tuple[str, str]]=None,
+        python_packages: ty.Iterable[PipSpec or ty.Dict[str, str] or ty.Tuple[str, str]]=None,
         system_packages: ty.Iterable[ty.Iterable[ty.Tuple[str, str]]]=None,
         package_templates: ty.Iterable[ty.Dict[str, str]]=None,
         labels: ty.Dict[str, str]=None,
         package_manager: str='apt',
         arcana_install_extras: ty.Iterable[str]=(),
         readme: str=None,
-        use_local_packages: bool=False) -> DockerRenderer:
+        use_local_packages: bool=False,
+        license_dir: Path=None,
+        licenses: ty.Iterable[ty.Dict[str, str]]=()) -> DockerRenderer:
     """Constructs a dockerfile that wraps a with dependencies
 
     Parameters
@@ -60,7 +64,7 @@ def construct_dockerfile(
         files to
     base_image : str, optional
         The base image to build from
-    python_packages:  Iterable[tuple[str, str]], optional
+    python_packages:  Iterable[PipSpec or dict[str, str] or tuple[str, str]], optional
         Name and version of the Python PyPI packages to add to the image (in
         addition to Arcana itself)
     system_packages: Iterable[str], optional
@@ -81,6 +85,9 @@ def construct_dockerfile(
         Use the python package versions that are installed within the
         current environment, i.e. instead of pulling from PyPI. Useful during
         development and testing
+    license_dir : Path, optional
+        path to the directory containing the licence files to copy into the
+        image
 
     Returns
     -------
@@ -89,6 +96,12 @@ def construct_dockerfile(
     """
     if python_packages is None:
         python_packages = []
+    else:
+        python_packages = [
+            (PipSpec(**p) if isinstance(p, dict)
+             else (PipSpec(*p) if not isinstance(p, PipSpec)
+                   else p))
+            for p in python_packages]
 
     if not build_dir.is_dir():
         raise ArcanaBuildError(f"Build dir '{str(build_dir)}' is not a valid directory")
@@ -106,6 +119,8 @@ def construct_dockerfile(
                    use_local_packages=use_local_packages)
 
     install_arcana(dockerfile, build_dir, arcana_install_extras)
+
+    install_licenses(dockerfile, licenses, license_dir, build_dir)
 
     if readme:
         insert_readme(dockerfile, readme, build_dir)
@@ -211,7 +226,7 @@ def install_python(dockerfile: DockerRenderer,
     dockerfile.add_registered_template(
         'miniconda',
         version="latest",
-        env_name="arcana",
+        env_name=CONDA_ENV,
         env_exists=False,
         conda_install=' '.join([
             "python=" + natsorted(python_versions)[-1],
@@ -244,7 +259,9 @@ def install_arcana(dockerfile: DockerRenderer,
                             destination=pip_str)
     if install_extras:
         pip_str += '[' + ','.join(install_extras) + ']'
-    dockerfile.run(f'conda run -n arcana pip install {pip_str}')
+    dockerfile.run(
+        f'bash -c "source activate {CONDA_ENV} \\'
+        f'&& python -m pip install --no-cache-dir {pip_str}"')
 
 
 def install_system_packages(dockerfile: DockerRenderer, packages: ty.Iterable[str]):
@@ -287,6 +304,32 @@ def install_package_templates(dockerfile: DockerRenderer, package_templates: ty.
     for kwds in package_templates:
         dockerfile.add_registered_template(kwds.pop('name'), **kwds)
 
+def install_licenses(dockerfile: DockerRenderer,
+                     licenses: ty.List[ty.Dict[str, str]],
+                     license_dir: Path,
+                     build_dir: Path):
+    """Generate Neurodocker instructions to install README file inside the docker
+    image
+
+    Parameters
+    ----------
+    dockerfile : DockerRenderer
+        the neurodocker renderer to append the install instructions to
+    description : str
+        a description of what the pipeline does, to be inserted in a README file
+        in the Docker image
+    build_dir : Path
+        path to build dir
+    """
+    if not licenses:
+        return
+    # Copy licenses into build directory
+    license_build_dir = build_dir / 'licenses'
+    shutil.copytree(license_dir, license_build_dir, dirs_exist_ok=True)
+    for spec in licenses:
+        src = license_build_dir / spec['source']
+        dockerfile.copy(source=[str(src.relative_to(build_dir))],
+                        destination=spec['destination'])
 
 def insert_readme(dockerfile: DockerRenderer, description, build_dir):
     """Generate Neurodocker instructions to install README file inside the docker
@@ -309,7 +352,7 @@ def insert_readme(dockerfile: DockerRenderer, description, build_dir):
     with open(build_dir / 'README.md', 'w') as f:
         f.write(DOCKERFILE_README_TEMPLATE.format(
             __version__, description))
-    return dockerfile.copy(source=['./README.md'],
+    dockerfile.copy(source=['./README.md'],
                            destination='/README.md')
 
 
