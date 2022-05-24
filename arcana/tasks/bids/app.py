@@ -4,6 +4,7 @@ import tempfile
 import logging
 import typing as ty
 import shutil
+import logging
 import shlex
 from argparse import ArgumentParser
 from pathlib import Path
@@ -62,6 +63,8 @@ class Output():
         if isinstance(self.format, str):
             self.format = resolve_class(self.format,
                                         prefixes=['arcana.data.formats'])
+
+logger = logging.getLogger('arcana')
 
 
 def bids_app(name: str,

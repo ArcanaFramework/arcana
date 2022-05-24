@@ -43,7 +43,9 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               help="The Docker registry to deploy the pipeline to")
 @click.option('--build_dir', default=None,
               type=click.Path(exists=True, path_type=Path),
-              help="Specify the directory to build the Docker image in")
+              help=("Specify the directory to build the Docker image in. "
+                    "Defaults to `.build` in the directory containing the "
+                    "YAML specification"))
 @click.option('--loglevel', default='info',
               help="The level to display logs at")
 @click.option('--use-local-packages/--dont-use-local-packages', type=bool,
@@ -65,9 +67,14 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
 @click.option('--license-dir', type=click.Path(exists=True, path_type=Path),
               default=None,
               help="Directory containing licences required to build the images")
+@click.option('--check-against-registry/--dont-check-against_registry',
+              type=bool, default=False,
+              help=("Check the registry to see if an existing image with the "
+                    "same tag is present, and if so whether the specification "
+                    "matches (and can be skipped) or not (raise an error)"))
 def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors, generate_only,
-          use_test_config, license_dir):
+          use_test_config, license_dir, check_against_registry):
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode('utf-8'))  
@@ -80,7 +87,7 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
         install_extras = install_extras.split(',')
     else:
         install_extras = []
-
+    
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
     for spath in walk_spec_paths(spec_path):
@@ -97,14 +104,20 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
             image_version += f"-{spec.pop('wrapper_version')}"
 
         image_tag = f"{docker_org}/{tag}:{image_version}"
-
         if docker_registry != DOCKER_HUB:
             image_tag = docker_registry.lower() + '/' + image_tag
+
+        if build_dir is None:
+            image_build_dir = spath.parent / '.build' / spath.stem
+        else:
+            image_build_dir = build_dir / spath.parent.relative_to(spec_path) / spath.stem
+
+        image_build_dir.mkdir(exist_ok=True, parents=True)
 
         try:
             build_xnat_cs_image(
                 image_tag=image_tag,
-                build_dir=build_dir,
+                build_dir=image_build_dir,
                 docker_registry=docker_registry,
                 use_local_packages=use_local_packages,
                 arcana_install_extras=install_extras,
@@ -150,7 +163,7 @@ def list_images(spec_path, docker_org, docker_registry):
             image_version += f"-{spec.pop('wrapper_version')}"
         image_tag = f"{docker_org}/{tag}:{image_version}"
         if docker_registry is not None:
-            image_tag = docker_registry.lower() + '/' + image_tag
+            image_tag = docker_registry.lower().rstrip('/') + '/' + image_tag
         else:
             docker_registry = DOCKER_HUB
         click.echo(image_tag)
