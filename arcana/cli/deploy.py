@@ -2,6 +2,9 @@ import logging
 import sys
 import shutil
 from pathlib import Path
+import shutil
+import tarfile
+import json
 import click
 import docker.errors
 import tempfile
@@ -11,6 +14,7 @@ from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutpu
 from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
 from arcana.core.deploy.utils import load_yaml_spec, walk_spec_paths, DOCKER_HUB
 from arcana.core.deploy.docs import create_doc
+from arcana.core.deploy.build import SPEC_PATH
 from arcana.core.utils import package_from_module, pydra_asdict
 from arcana.deploy.medimage.xnat import build_xnat_cs_image
 from arcana.core.data.set import Dataset
@@ -93,6 +97,8 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
     logging.basicConfig(filename=logfile,
                         level=getattr(logging, loglevel.upper()))
 
+    temp_dir = tempfile.mkdtemp()
+
     for spath in walk_spec_paths(spec_path):
 
         logging.info("Building '%s' image", spath)
@@ -124,8 +130,27 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
             except docker.errors.ImageNotFound:
                 pass
             else:
-                dc.containers.run(image_tag, command='/bin/cat')        
-
+                container = dc.containers.get(dc.api.create_container(image_tag)['Id'])
+                with tempfile.NamedTemporaryFile(mode='w+b') as f:
+                    try:
+                        stream, _ = dc.api.get_archive(container, SPEC_PATH)
+                    except docker.errors.NotFound:
+                        pass
+                    else:
+                        for chunk in stream:
+                            f.write(chunk)
+                        f.flush()
+                        with tarfile.open(f) as tf:
+                            saved_spec = json.load(f)
+                        if spec == saved_spec:
+                            logger.info(
+                                "Skipping '%s' build as identical image already "
+                                "exists in registry")
+                            continue
+                        else:
+                            logger.error(
+                                "Mismatching specs for %s image:\n%s\n\nvs\n\n%s",
+                                image_tag, spec, saved_spec)
         try:
             build_xnat_cs_image(
                 image_tag=image_tag,
@@ -145,6 +170,8 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
         else:
             click.echo(image_tag)
             logger.info("Successfully built %s pipeline", image_tag)
+
+    shutil.rmtree(temp_dir)       
 
 
 @deploy.command(
