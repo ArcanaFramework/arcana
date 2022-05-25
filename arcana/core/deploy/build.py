@@ -4,9 +4,10 @@ import json
 import tempfile
 import logging
 import shutil
-from neurodocker.reproenv import DockerRenderer
 from natsort import natsorted
 import docker
+import yaml
+from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME, PACKAGE_ROOT, python_versions
 from arcana.exceptions import ArcanaBuildError
@@ -19,6 +20,8 @@ DEFAULT_BASE_IMAGE = "ubuntu:kinetic"
 PYTHON_PACKAGE_DIR = 'python-packages'
 
 CONDA_ENV = 'arcana'
+
+SPEC_PATH = '/arcana-spec.json'
 
 
 def build_docker_image(image_tag: str,
@@ -136,6 +139,9 @@ def construct_dockerfile(
 
     if readme:
         insert_readme(dockerfile, readme, build_dir)
+
+    if spec:
+        insert_spec(dockerfile, spec, build_dir)
 
     if labels:
         # dockerfile.label(labels)
@@ -372,6 +378,24 @@ def insert_readme(dockerfile: DockerRenderer, description, build_dir):
             __version__, description))
     dockerfile.copy(source=['./README.md'],
                            destination='/README.md')
+
+
+def insert_spec(dockerfile: DockerRenderer, spec, build_dir):
+    """Generate Neurodocker instructions to install README file inside the docker
+    image
+
+    Parameters
+    ----------
+    dockerfile : DockerRenderer
+        the neurodocker renderer to append the install instructions to
+    spec : dict
+        the specification used to build the image
+    build_dir : Path
+        path to build dir
+    """
+    with open(build_dir / 'arcana-spec.json', 'w') as f:
+        yaml.dump(spec, f)
+    dockerfile.copy(source=['./arcana-spec.json'], destination=SPEC_PATH)    
 
 
 def copy_package_into_build_dir(package_name: str, local_installation: Path,

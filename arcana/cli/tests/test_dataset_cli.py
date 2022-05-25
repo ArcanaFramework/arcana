@@ -1,5 +1,6 @@
 import pytest
 import os.path
+from unittest.mock import patch
 from arcana.core.data.set import Dataset
 from arcana.core.enum import DataQuality, DataSalience
 from arcana.test.datasets import TestDataSpace
@@ -21,7 +22,7 @@ def get_arbitrary_slice(i, dim_length):
 
 
 def test_add_column_cli(saved_dataset, cli_runner):
-    dataset_id_str = make_dataset_id_str(saved_dataset)
+    dataset_id_str = make_dataset_id_str(saved_dataset, name='test-source')
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     # Add source to loaded dataset
     saved_dataset.add_source(
@@ -61,6 +62,46 @@ def test_add_column_cli(saved_dataset, cli_runner):
     loaded_dataset = Dataset.load(dataset_id_str)
     assert saved_dataset.columns == loaded_dataset.columns
 
+
+def test_add_source_xnat(mutable_xnat_dataset, cli_runner, work_dir):
+
+    test_home_dir = work_dir / 'test-arcana-home'
+
+    with patch.dict(os.environ, {'ARCANA_HOME': str(test_home_dir)}):
+        store_nickname = mutable_xnat_dataset.id + '_store'
+        dataset_name = 'testing123'
+        mutable_xnat_dataset.store.save(store_nickname)
+        dataset_id_str = store_nickname + '//' + mutable_xnat_dataset.id + '::' + dataset_name
+        mutable_xnat_dataset.save(dataset_name)
+        
+        result = cli_runner(
+            add_source,
+            [dataset_id_str, 'a_source', 'common:Text',
+            '--path', 'file1',
+            '--frequency', 'session',
+            '--quality', 'questionable',
+            '--order', '1',
+            '--no-regex'])
+        assert result.exit_code == 0, show_cli_trace(result)
+
+
+def test_add_sink_xnat(mutable_xnat_dataset, work_dir, cli_runner):
+
+    test_home_dir = work_dir / 'test-arcana-home'
+
+    with patch.dict(os.environ, {'ARCANA_HOME': str(test_home_dir)}):
+        store_nickname = mutable_xnat_dataset.id + '_store'
+        dataset_name = 'testing123'
+        mutable_xnat_dataset.store.save(store_nickname)
+        dataset_id_str = store_nickname + '//' + mutable_xnat_dataset.id + '::' + dataset_name
+        mutable_xnat_dataset.save(dataset_name)
+    
+        result = cli_runner(add_sink, [
+            dataset_id_str, 'a_sink', 'common:Text',
+            '--path', 'deriv',
+            '--frequency', 'session',
+            '--salience', 'qa'])
+        assert result.exit_code == 0, show_cli_trace(result)
 
 @pytest.mark.skip("Not implemented")
 def test_add_missing_items_cli(dataset, cli_runner):

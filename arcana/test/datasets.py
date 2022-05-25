@@ -131,3 +131,16 @@ def create_test_file(fname, dpath):
         (dpath / fpath).unlink()
         fpath = Path(fname)
     return fpath
+
+
+def save_dataset(work_dir):
+    blueprint = TestDatasetBlueprint(
+        [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        [1, 1, 1, 1],
+        ['file1.txt', 'file2.txt'],
+        {}, {}, [])
+
+    dataset_path = work_dir / 'saved_dataset'
+    dataset = make_dataset(blueprint, dataset_path)
+    dataset.save()
+    return dataset

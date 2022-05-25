@@ -15,9 +15,10 @@ from arcana.test.stores.medimage.xnat import (
     ScanBlueprint,
     DerivBlueprint,
     create_dataset_data_in_repo,
-    make_project_name,
+    make_project_id,
     access_dataset
 )
+from arcana.test.datasets import save_dataset as save_file_system_dataset
 
 
 @pytest.fixture(scope='session')
@@ -111,7 +112,7 @@ def xnat_dataset(xnat_repository, xnat_archive_dir, request):
     dataset_name, access_method = request.param.split('.')
     blueprint = TEST_XNAT_DATASET_BLUEPRINTS[dataset_name]
     with xnat4tests.connect() as login:
-        if make_project_name(dataset_name,
+        if make_project_id(dataset_name,
                              xnat_repository.run_prefix) not in login.projects:
             create_dataset_data_in_repo(dataset_name, blueprint, xnat_repository.run_prefix)    
     return access_dataset(dataset_name=dataset_name,
@@ -123,13 +124,34 @@ def xnat_dataset(xnat_repository, xnat_archive_dir, request):
 
 @pytest.fixture(params=MUTABLE_DATASETS, scope='function')
 def mutable_xnat_dataset(xnat_repository, xnat_archive_dir, request):
-    dataset_name, access_method = request.param.split('.')
-    blueprint = TEST_XNAT_DATASET_BLUEPRINTS[dataset_name]
-    return make_mutable_dataset(dataset_name=dataset_name,
+    dataset_id, access_method = request.param.split('.')
+    blueprint = TEST_XNAT_DATASET_BLUEPRINTS[dataset_id]
+    return make_mutable_dataset(dataset_id=dataset_id,
                                 blueprint=blueprint,
                                 xnat_repository=xnat_repository,
                                 xnat_archive_dir=xnat_archive_dir,
-                                access_method=access_method)
+                                access_method=access_method,
+                                dataset_name='test')
+
+multi_store = ['file_system', 'xnat']
+
+@pytest.fixture(params=multi_store)
+def saved_dataset_multi_store(xnat_archive_dir, xnat_repository, work_dir, request):
+    if request.param == 'file_system':
+        return save_file_system_dataset(work_dir)
+    elif request.param == 'xnat':
+        blueprint = TestXnatDatasetBlueprint(
+            dim_lengths=[1, 1, 1, 1],
+            scans=['file1.txt', 'file2.txt'],
+            id_inference={},
+            derivatives=[])
+        dataset = make_mutable_dataset(
+            'saved_dataset', blueprint, xnat_repository, xnat_archive_dir,
+            access_method='api')
+        dataset.save()
+        return dataset
+    else:
+        assert False
 
 
 @pytest.fixture(scope='session')

@@ -10,7 +10,7 @@ import pytest
 from arcana.test.tasks import (
     add, path_manip, attrs_func, A, B, C, concatenate, concatenate_reverse)
 from arcana.test.datasets import (
-    TestDatasetBlueprint, TestDataSpace as TDS, Xyz, make_dataset)
+    TestDatasetBlueprint, TestDataSpace as TDS, Xyz, make_dataset, save_dataset)
 
 
 TEST_TASKS = {
@@ -156,17 +156,7 @@ def dataset(work_dir, request):
 
 @pytest.fixture
 def saved_dataset(work_dir):
-
-    blueprint = TestDatasetBlueprint(
-        [TDS.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [1, 1, 1, 1],
-        ['file1.txt', 'file2.txt'],
-        {}, {}, [])
-
-    dataset_path = work_dir / 'saved_dataset'
-    dataset = make_dataset(blueprint, dataset_path)
-    dataset.save()
-    return dataset
+    return save_dataset(work_dir)
 
 
 @pytest.fixture

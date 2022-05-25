@@ -46,6 +46,8 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               help=("Specify the directory to build the Docker image in. "
                     "Defaults to `.build` in the directory containing the "
                     "YAML specification"))
+@click.option('--logfile', default=None, type=click.Path(path_type=Path),
+              help="Log output to file instead of stdout")
 @click.option('--loglevel', default='info',
               help="The level to display logs at")
 @click.option('--use-local-packages/--dont-use-local-packages', type=bool,
@@ -72,7 +74,7 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               help=("Check the registry to see if an existing image with the "
                     "same tag is present, and if so whether the specification "
                     "matches (and can be skipped) or not (raise an error)"))
-def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
+def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors, generate_only,
           use_test_config, license_dir, check_against_registry):
 
@@ -88,7 +90,8 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
     else:
         install_extras = []
     
-    logging.basicConfig(level=getattr(logging, loglevel.upper()))
+    logging.basicConfig(filename=logfile,
+                        level=getattr(logging, loglevel.upper()))
 
     for spath in walk_spec_paths(spec_path):
 
@@ -114,6 +117,15 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
 
         image_build_dir.mkdir(exist_ok=True, parents=True)
 
+        if check_against_registry:
+            dc = docker.from_env()
+            try:
+                dc.pull(image_tag)
+            except docker.errors.ImageNotFound:
+                pass
+            else:
+                dc.containers.run(image_tag, command='/bin/cat')        
+
         try:
             build_xnat_cs_image(
                 image_tag=image_tag,
@@ -124,6 +136,7 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
                 generate_only=generate_only,
                 test_config=use_test_config,
                 license_dir=license_dir,
+                spec=spec,
                 **{k: v for k, v in spec.items() if not k.startswith('_')})
         except Exception:
             if raise_errors:
