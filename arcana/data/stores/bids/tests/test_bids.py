@@ -13,7 +13,7 @@ import docker
 from arcana import __version__
 from arcana.data.formats import NiftiX
 from arcana.data.stores.bids import BidsDataset
-from arcana.tasks.bids import bids_app
+from arcana.tasks.bids.app import bids_app, Input, Output
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 from arcana.core.utils import path2varname
@@ -171,12 +171,12 @@ def test_bids_json_edit(json_edit_blueprint, work_dir):
 def test_run_bids_app_docker(bids_validator_app_image: str, nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = [('anat/T1w', NiftiGzX),
-              ('anat/T2w', NiftiGzX),
-              ('dwi/dwi', NiftiGzXFslgrad)]
-    OUTPUTS = [('', Directory),  # whole derivative directory
-               ('file1', Text),
-               ('file2', Text)]
+    INPUTS = [Input('anat/T1w', NiftiGzX),
+              Input('anat/T2w', NiftiGzX),
+              Input('dwi/dwi', NiftiGzXFslgrad)]
+    OUTPUTS = [Output('', Directory),  # whole derivative directory
+               Output('file1', Text),
+               Output('file2', Text)]
 
 
     bids_dir = work_dir / 'bids'
@@ -191,25 +191,24 @@ def test_run_bids_app_docker(bids_validator_app_image: str, nifti_sample_dir: Pa
         outputs=OUTPUTS,
         dataset=bids_dir)
 
-    for inpt_path, dtype in INPUTS:
-        inpt_name = path2varname(inpt_path)
-        kwargs[inpt_name] = nifti_sample_dir.joinpath(*inpt_path.split('/')).with_suffix('.' + dtype.ext)
+    for inpt in INPUTS:
+        kwargs[inpt.name] = nifti_sample_dir.joinpath(*inpt.path.split('/')).with_suffix('.' + inpt.format.ext)
 
     result = task(plugin='serial', **kwargs)
 
-    for output_path, dtype in OUTPUTS:
-        assert Path(getattr(result.output, path2varname(output_path))).exists()
+    for output in OUTPUTS:
+        assert Path(getattr(result.output, output.name)).exists()
 
 
 def test_run_bids_app_naked(mock_bids_app_script: str, nifti_sample_dir: Path, work_dir: Path):
 
     kwargs = {}
-    INPUTS = [('anat/T1w', NiftiGzX),
-              ('anat/T2w', NiftiGzX),
-              ('dwi/dwi', NiftiGzXFslgrad)]
-    OUTPUTS = [('', Directory),  # whole derivative directory
-               ('file1', Text),
-               ('file2', Text)]
+    INPUTS = [Input('anat/T1w', NiftiGzX),
+              Input('anat/T2w', NiftiGzX),
+              Input('dwi/dwi', NiftiGzXFslgrad)]
+    OUTPUTS = [Output('', Directory),  # whole derivative directory
+               Output('file1', Text),
+               Output('file2', Text)]
 
     # Build mock BIDS app image
 
@@ -230,9 +229,8 @@ def test_run_bids_app_naked(mock_bids_app_script: str, nifti_sample_dir: Path, w
         inputs=INPUTS,
         outputs=OUTPUTS)
 
-    for inpt_path, dtype in INPUTS:
-        inpt_name = path2varname(inpt_path)
-        kwargs[inpt_name] = nifti_sample_dir.joinpath(*inpt_path.split('/')).with_suffix('.' + dtype.ext)
+    for inpt in INPUTS:
+        kwargs[inpt.name] = nifti_sample_dir.joinpath(*inpt.path.split('/')).with_suffix('.' + inpt.format.ext)
 
     bids_dir = work_dir / 'bids'
 
@@ -240,5 +238,5 @@ def test_run_bids_app_naked(mock_bids_app_script: str, nifti_sample_dir: Path, w
 
     result = task(plugin='serial', **kwargs)
 
-    for output_path, dtype in OUTPUTS:
-        assert Path(getattr(result.output, path2varname(output_path))).exists()
+    for output in OUTPUTS:
+        assert Path(getattr(result.output, output.name)).exists()

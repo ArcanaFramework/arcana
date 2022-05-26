@@ -108,13 +108,14 @@ def generate_xnat_cs_command(name: str,
                              image_tag: str,
                              inputs,
                              outputs,
-                             description,
-                             version,
-                             info_url,
+                             description: str,
+                             version: str,
+                             info_url: str,
                              parameters=None,
                              configuration=None,
                              frequency='session',
-                             registry=DOCKER_HUB):
+                             registry=DOCKER_HUB,
+                             long_description: str=None):
     """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
     should handle the containerised pipeline
 
@@ -151,6 +152,10 @@ def generate_xnat_cs_command(name: str,
     configuration : dict[str, Any]
         Fixed arguments passed to the workflow at initialisation. Can be used to specify
         the input fields of the workflow/task
+    long_description : str
+        A long description of the pipeline, used in documentation and ignored
+        here. Only included in the signature so that an error isn't thrown when
+        it is encountered.
 
     Returns
     -------

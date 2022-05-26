@@ -23,8 +23,8 @@ from arcana.core.utils import func_task, path2varname, resolve_class
 @dataclass
 class Input():
 
-    format: type
     path: str
+    format: type
     name: str = None
 
     def __post_init__(self):
