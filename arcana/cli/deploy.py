@@ -264,14 +264,14 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     '--parameter', '-p', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
     help=("free parameters of the workflow to be passed by the pipeline user"))
 @click.option(
-    '--input', nargs=4, default=(), metavar='<col-name> <col-format> <pydra-field> <format>',
+    '--input', nargs=5, default=(), metavar='<col-name> <col-format> <match-criteria> <pydra-field> <format>',
     multiple=True, type=str,
     help=("link an input of the workflow to a column of the dataset, adding a source"
           "column matched by the name/path of the column if it isn't already present. "
           "Automatically generated source columns must be able to be specified by their "
           "path alone and be already in the format required by the workflow"))
 @click.option(
-    '--output', nargs=4, default=(), metavar='<col-name> <col-format> <pydra-field> <format>',
+    '--output', nargs=5, default=(), metavar='<col-name> <col-format> <output-path> <pydra-field> <format>',
     multiple=True, type=str,
     help=("add a sink to the dataset and link it to an output of the workflow "
           "in a single step. The sink column be in the same format as produced "
@@ -331,10 +331,6 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
         store_name, id, name = Dataset.parse_id_str(dataset_id_str)
 
         if dataset_name is not None:
-            if name is not None:
-                raise RuntimeError(
-                    f"Dataset name specified in ID string {name} and "
-                    f"'--dataset_name', {dataset_name}")
             name = dataset_name
 
         if dataset_hierarchy is None or dataset_space is None:
@@ -353,7 +349,7 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
             space=space)
 
     pipeline_inputs = []
-    for col_name, col_format_name, pydra_field, format_name in input:
+    for col_name, col_format_name, col_path, pydra_field, format_name in input:
         col_format = resolve_class(col_format_name, prefixes=['arcana.data.formats'])
         format = resolve_class(format_name, prefixes=['arcana.data.formats'])
         pipeline_inputs.append(PipelineInput(col_name, pydra_field, format))
@@ -362,12 +358,12 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
             logger.info(f"Found existing source column {column}")
         else:
             logger.info(f"Adding new source column '{col_name}'")
-            dataset.add_source(name=col_name, format=col_format)
+            dataset.add_source(name=col_name, format=col_format, path=col_path)
             
     logger.info("Pipeline inputs: %s", pipeline_inputs)
 
     pipeline_outputs = []
-    for col_name, col_format_name, pydra_field, format_name in output:
+    for col_name, col_format_name, col_path, pydra_field, format_name in output:
         format = resolve_class(format_name, prefixes=['arcana.data.formats'])
         col_format = resolve_class(col_format_name, prefixes=['arcana.data.formats'])
         pipeline_outputs.append(PipelineOutput(col_name, pydra_field, format))
@@ -379,7 +375,7 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
             logger.info(f"Found existing sink column {column}")
         else:
             logger.info(f"Adding new source column '{col_name}'")
-            dataset.add_sink(name=col_name, format=col_format)
+            dataset.add_sink(name=col_name, format=col_format, path=col_path)
 
     logger.info("Pipeline outputs: %s", pipeline_outputs)
 

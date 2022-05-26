@@ -53,9 +53,9 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
     result = cli_runner(
         run_pipeline,
         [dataset_id_str, 'a_pipeline', 'arcana.test.tasks:' + concatenate_task.__name__,
-         '--input', 'file1', 'common:Text', 'in_file1', 'common:Text',
-         '--input', 'file2', 'common:Text', 'in_file2', 'common:Text',
-         '--output', 'concatenated', 'common:Text', 'out_file', 'common:Text',
+         '--input', 'source1', 'common:Text', 'file1', 'in_file1', 'common:Text',
+         '--input', 'source2', 'common:Text', 'file2', 'in_file2', 'common:Text',
+         '--output', 'sink1', 'common:Text', 'concatenated', 'out_file', 'common:Text',
          '--parameter', 'duplicates', str(duplicates),
          '--plugin', 'serial',
          '--work', str(work_dir),
