@@ -37,7 +37,7 @@ containing multiple specifications
 DOCKER_ORG is the Docker organisation the images should belong to""")
 @click.argument('spec_path', type=click.Path(exists=True, path_type=Path))
 @click.argument('docker_org', type=str)
-@click.option('--registry', 'docker_registry', default=None,
+@click.option('--registry', 'docker_registry', default=DOCKER_HUB,
               help="The Docker registry to deploy the pipeline to")
 @click.option('--build_dir', default=None,
               type=click.Path(exists=True, path_type=Path),
@@ -89,14 +89,15 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
         # Make image tag
         pkg_name = spath.stem.lower()
         tag = '.'.join(spath.relative_to(spec_path).parent.parts + (pkg_name,))
+
         image_version = str(spec.pop('pkg_version'))
         if 'wrapper_version' in spec:
             image_version += f"-{spec.pop('wrapper_version')}"
+
         image_tag = f"{docker_org}/{tag}:{image_version}"
-        if docker_registry is not None:
+
+        if docker_registry != DOCKER_HUB:
             image_tag = docker_registry.lower() + '/' + image_tag
-        else:
-            docker_registry = DOCKER_HUB
 
         try:
             build_xnat_cs_image(
