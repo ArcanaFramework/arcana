@@ -27,6 +27,12 @@ class Input():
     format: type
     name: str = None
 
+    @classmethod
+    def fromdict(cls, dct):
+        return cls(path=dct['path'],
+                   format=dct['format'],
+                   name=dct['name'])
+
     def __post_init__(self):
         if isinstance(self.format, str):
             self.format = resolve_class(self.format,
@@ -109,8 +115,8 @@ def bids_app(name: str,
             subject_ids=[DEFAULT_BIDS_ID])
 
     # Convert from JSON format inputs/outputs to tuples with resolved data formats
-    inputs = [Input(**i) if not isinstance(i, Input) else i for i in inputs]
-    outputs = [Output(**o) if not isinstance(o, Output) else o for o in outputs]
+    inputs = [Input.fromdict(i) if not isinstance(i, Input) else i for i in inputs]
+    outputs = [Output.fromdict(o) if not isinstance(o, Output) else o for o in outputs]
 
     # Ensure output paths all start with 'derivatives
     input_names = [i.name for i in inputs]

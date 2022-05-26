@@ -82,9 +82,7 @@ def build_xnat_cs_image(image_tag: str,
 
     # Convert XNAT command label into string that can by placed inside the
     # Docker label
-    command_label = '[' + ', \\\n\t'.join(
-        json.dumps(c).replace('"', r'\"').replace('$', r'\$')
-        for c in xnat_commands) + ']'
+    command_label = json.dumps(xnat_commands).replace('$', r'\$')
 
     dockerfile = construct_dockerfile(
         build_dir,
@@ -288,7 +286,7 @@ def generate_xnat_cs_command(name: str,
     # Set up fixed arguments used to configure the workflow at initialisation
     config_args = []
     for cname, cvalue in configuration.items():
-        cvalue_json = json.dumps(cvalue).replace('"', '\\"')
+        cvalue_json = json.dumps(cvalue)  #.replace('"', '\\"')
         config_args.append(f"--configuration {cname} '{cvalue_json}' ")
 
     input_args_str = ' '.join(input_args)
