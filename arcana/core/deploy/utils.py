@@ -211,5 +211,5 @@ def local_package_location(pip_spec: PipSpec, pypi_fallback: bool=True):
 
 
 
-DOCKER_HUB = 'index.docker.io/v1/'
+DOCKER_HUB = 'docker.io'
 site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]
