@@ -272,10 +272,12 @@ class Dataset():
             The root node of the data tree
         """
         if self._root_node is None:
-            self._root_node = DataNode({self.root_freq: None}, self.root_freq,
-                                       self)
+            self._set_root_node()
             self.store.find_nodes(self)
         return self._root_node
+
+    def _set_root_node(self):
+        self._root_node = DataNode({self.root_freq: None}, self.root_freq, self)
 
     def refresh(self):
         """Refresh the dataset nodes"""
@@ -403,6 +405,7 @@ class Dataset():
                 except KeyError as e:
                     raise ArcanaNameError(
                         id, f"{id} ({freq}) not a child node of {node}") from e
+            return node
         else:
             try:
                 return self.root_node.children[frequency][id]
@@ -493,6 +496,8 @@ class Dataset():
             raised if one of the groups specified in the ID inference reg-ex
             doesn't match a valid frequency in the data dimensions
         """
+        if self._root_node is None:
+            self._set_root_node()
         if explicit_ids is None:
             explicit_ids = {}
         # Get basis frequencies covered at the given depth of the
@@ -565,6 +570,7 @@ class Dataset():
                     if len(id) == 1:
                         id = id[0]
                     ids[freq] = id
+        # TODO: filter node based on dataset include & exlcude attrs
         return self.add_node(ids, frequency)
 
     def add_node(self, ids, frequency):

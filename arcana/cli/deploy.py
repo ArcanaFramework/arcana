@@ -305,6 +305,11 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     '--dataset_name', type=str, default=None,
     help="The name of the dataset")
 @click.option(
+    '--single-row', type=str, default=None,
+    help=("Restrict the dataset created to a single row (to avoid issues with "
+          "unrelated rows that aren't being processed). Comma-separated list "
+          "of IDs for each layer of the hierarchy (passed to `Dataset.add_leaf_node`)"))
+@click.option(
     '--overwrite/--no-overwrite', type=bool,
     help=("Whether to overwrite the saved pipeline with the same name, if present"))
 @click.option(
@@ -314,7 +319,8 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
           "can be any valid JSON (including basic types)."))
 def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
                  input, output, frequency, overwrite, work_dir, plugin, loglevel,
-                 dataset_name, dataset_space, dataset_hierarchy, ids, configuration):
+                 dataset_name, dataset_space, dataset_hierarchy, ids, configuration,
+                 single_row):
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
@@ -349,6 +355,10 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
             hierarchy=hierarchy,
             space=space)
 
+    if single_row is not None:
+        # Adds a single row to the dataset (i.e. skips a full scan)
+        dataset.add_leaf_node(single_row.split(','))
+
     pipeline_inputs = []
     for col_name, col_format_name, col_path, pydra_field, format_name in input:
         col_format = resolve_class(col_format_name, prefixes=['arcana.data.formats'])
@@ -359,7 +369,8 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
             logger.info(f"Found existing source column {column}")
         else:
             logger.info(f"Adding new source column '{col_name}'")
-            dataset.add_source(name=col_name, format=col_format, path=col_path)
+            dataset.add_source(name=col_name, format=col_format, path=col_path,
+                               is_regex=True)
             
     logger.info("Pipeline inputs: %s", pipeline_inputs)
 
