@@ -1,5 +1,6 @@
 from pathlib import Path
 import logging
+import cloudpickle as cp
 import click
 from arcana import __version__
 from arcana.core.cli import cli
@@ -62,9 +63,33 @@ def derive_output():
     raise NotImplementedError
 
 
-@derive.command(help="""Derive an output""")
+@derive.command(help="""Display the potential derivatives that can be derived""")
 def menu():
     raise NotImplementedError
+
+
+@derive.command(name="show-errors", help="""Show a Pydra crash report
+
+NODE_WORK_DIR is the directory containing the error pickle file""")
+@click.argument('node_work_dir')
+def show_errors(node_work_dir):
+    node_work_dir = Path(node_work_dir)
+    files = ['_task.pklz', '_result.pklz', '_error.pklz'] # 
+    for fname in files:
+        fpath = node_work_dir / fname
+        if fpath.exists():
+            with open(fpath, 'rb') as f:
+                contents = cp.load(f)
+            click.echo(f'{fname}:')
+            if isinstance(contents, dict):
+                for k, v in contents.items():
+                    if k == 'error message':
+                        click.echo(f'{k}:\n' + ''.join(v))
+                    else:
+                        click.echo(f'{k}: {v}')
+            else:
+                click.echo(contents)
+    
 
 
 @derive.command(
@@ -73,3 +98,13 @@ def menu():
 and new parameterisation""")
 def ignore_diff():
     raise NotImplementedError
+
+
+if __name__ == '__main__':
+    from click.testing import CliRunner
+
+    runner = CliRunner()
+    runner.invoke(
+        show_errors,
+        ['/Users/tclose/Downloads/892d1907-fe2b-40ac-9b77-a3f2ee21ca76/pipeline-cache/Workflow_f3a2bb7474848840aec86fd87e88f5938217fae5976fc699bfc993d95d48a3b8'],
+        catch_exceptions=False)
