@@ -262,7 +262,7 @@ def install_arcana(dockerfile: DockerRenderer,
     if install_extras:
         pip_str += '[' + ','.join(install_extras) + ']'
     dockerfile.run(
-        f'bash -c "source activate {CONDA_ENV} \\'
+        f'bash -c "source activate {CONDA_ENV} \\\n'
         f'&& python -m pip install --no-cache-dir {pip_str}"')
 
 

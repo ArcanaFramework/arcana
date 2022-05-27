@@ -26,6 +26,11 @@ class PipSpec():
     file_path: str = None
     extras: ty.List[str] = dataclass_field(default_factory=list)
 
+    def __post_init__(self):
+        if self.version and not isinstance(self.version, str):
+            self.version = str(self.version)
+
+
     @classmethod
     def unique(cls, pip_specs: ty.Iterable, remove_arcana: bool=False):
         """Merge a list of Pip install specs so each package only appears once
