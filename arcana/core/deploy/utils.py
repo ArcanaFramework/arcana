@@ -137,7 +137,7 @@ def walk_spec_paths(spec_path: Path) -> ty.Iterable[Path]:
                 yield path
 
 
-def local_package_location(pip_spec: PipSpec, pypi_fallback: bool=True):
+def local_package_location(pip_spec: PipSpec, pypi_fallback: bool=False):
     """Detect the installed locations of the packages, including development
     versions.
 
@@ -145,7 +145,7 @@ def local_package_location(pip_spec: PipSpec, pypi_fallback: bool=True):
     ----------
     package : [PipSpec]
         the packages (or names of) the versions to detect
-    pypi_fallback : bool
+    pypi_fallback : bool, optional
         Fallback to PyPI version if requested version isn't installed locally
 
     Returns

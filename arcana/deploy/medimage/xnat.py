@@ -32,6 +32,8 @@ def build_xnat_cs_image(image_tag: str,
                         build_dir: Path=None,
                         test_config: bool=False,
                         generate_only: bool=False,
+                        pkg_version: str=None, # Ignored here, just included to allow specs to be passed directly as kwargs
+                        wrapper_version: str=None, # ditto
                         **kwargs):
     """Creates a Docker image containing one or more XNAT commands ready
     to be installed in XNAT's container service plugin
@@ -98,7 +100,7 @@ def build_xnat_cs_image(image_tag: str,
     if not generate_only:
         dockerfile_build(dockerfile, build_dir, image_tag)
 
-    return build_dir
+    return dockerfile
 
 
 def generate_xnat_cs_command(name: str,
