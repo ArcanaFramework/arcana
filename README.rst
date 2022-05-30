@@ -2,7 +2,7 @@ Arcana
 ======
 .. image:: https://github.com/australian-imaging-service/arcana/actions/workflows/tests.yml/badge.svg
    :target: https://github.com/australian-imaging-service/arcana/actions/workflows/tests.yml
-.. image:: https://codecov.io/gh/australian-imaging-service/arcana/branch/master/graph/badge.svg
+.. image:: https://codecov.io/gh/australian-imaging-service/arcana/branch/main/graph/badge.svg?token=UIS0OGPST7
    :target: https://codecov.io/gh/australian-imaging-service/arcana
 .. image:: https://img.shields.io/pypi/pyversions/arcana.svg
    :target: https://pypi.python.org/pypi/arcana/
