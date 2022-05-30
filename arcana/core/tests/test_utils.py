@@ -7,11 +7,15 @@ def test_package_from_module():
 
 
 def test_path2varname():
-    escape_pairs = [('func/task-rest_bold', 'func__l__task__H__rest_bold'),
-                    ('__a.very$illy*ath~', 'XXX_dunder_a__o__very__dollar__illy__star__ath__tilde__'),
+    escape_pairs = [('func/task-rest_bold', 'func__l__task__H__rest_u_bold'),
+                    ('with spaces and__ underscores',
+                     'with__s__spaces__s__and_u__u___s__underscores'),
+                    ('__a.very$illy*ath~',
+                     'XXX_u__u_a__o__very__dollar__illy__star__ath__tilde__'),
                     ('anat/T1w', 'anat__l__T1w'),
-                    ('anat__l__T1w', 'anat_dunder_l_dunder_T1w')]
-
+                    ('anat__l__T1w', 'anat_u__u_l_u__u_T1w'),
+                    ('_u__u_', 'XXX_u_u_u__u_u_u_')]
     for path, varname in escape_pairs:
         assert path2varname(path) == varname
         assert varname2path(varname) == path
+        assert varname2path(varname2path(path2varname(path2varname(path)))) == path

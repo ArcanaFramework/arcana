@@ -73,9 +73,11 @@ def get_config_file_path(name: str):
 
 # Escape values for invalid characters for Python variable names
 PATH_ESCAPES = {
-    '__': '_dunder_',
+    '_': '_u_',
     '/': '__l__',
     '.': '__o__',
+    ' ': '__s__',
+    '\t': '__t__',
     ',': '__comma__',
     '>': '__gt__',
     '<': '__lt__',
