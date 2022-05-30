@@ -26,6 +26,11 @@ class PipSpec():
     file_path: str = None
     extras: ty.List[str] = dataclass_field(default_factory=list)
 
+    def __post_init__(self):
+        if self.version and not isinstance(self.version, str):
+            self.version = str(self.version)
+
+
     @classmethod
     def unique(cls, pip_specs: ty.Iterable, remove_arcana: bool=False):
         """Merge a list of Pip install specs so each package only appears once
@@ -132,7 +137,7 @@ def walk_spec_paths(spec_path: Path) -> ty.Iterable[Path]:
                 yield path
 
 
-def local_package_location(pip_spec: PipSpec, pypi_fallback: bool=True):
+def local_package_location(pip_spec: PipSpec, pypi_fallback: bool=False):
     """Detect the installed locations of the packages, including development
     versions.
 
@@ -140,7 +145,7 @@ def local_package_location(pip_spec: PipSpec, pypi_fallback: bool=True):
     ----------
     package : [PipSpec]
         the packages (or names of) the versions to detect
-    pypi_fallback : bool
+    pypi_fallback : bool, optional
         Fallback to PyPI version if requested version isn't installed locally
 
     Returns

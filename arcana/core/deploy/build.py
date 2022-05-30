@@ -54,6 +54,7 @@ def construct_dockerfile(
         arcana_install_extras: ty.Iterable[str]=(),
         readme: str=None,
         use_local_packages: bool=False,
+        pypi_fallback: bool=False,
         license_dir: Path=None,
         licenses: ty.Iterable[ty.Dict[str, str]]=()) -> DockerRenderer:
     """Constructs a dockerfile that wraps a with dependencies
@@ -86,9 +87,15 @@ def construct_dockerfile(
         Use the python package versions that are installed within the
         current environment, i.e. instead of pulling from PyPI. Useful during
         development and testing
+    pypi_fallback : bool, optional
+        whether to fallback to packages installed on PyPI when versions of
+        local packages don't match installed
     license_dir : Path, optional
         path to the directory containing the licence files to copy into the
         image
+    licenses : list[dict[str, str]], optional
+        specification of licences to install inside docker image. Each dict
+        should contain 'source' and 'destination' items.
 
     Returns
     -------
@@ -117,7 +124,8 @@ def construct_dockerfile(
         install_package_templates(dockerfile, package_templates)
 
     install_python(dockerfile, python_packages, build_dir,
-                   use_local_packages=use_local_packages)
+                   use_local_packages=use_local_packages,
+                   pypi_fallback=pypi_fallback)
 
     install_arcana(dockerfile, build_dir, arcana_install_extras)
 
@@ -162,7 +170,8 @@ def dockerfile_build(dockerfile: DockerRenderer, build_dir: Path, image_tag: str
 
 def install_python(dockerfile: DockerRenderer,
                    packages: ty.Iterable[PipSpec], build_dir: Path,
-                   use_local_packages: bool=False):
+                   use_local_packages: bool=False,
+                   pypi_fallback: bool=False):
     """Generate Neurodocker instructions to install an appropriate version of
     Python and the required Python packages
 
@@ -181,6 +190,9 @@ def install_python(dockerfile: DockerRenderer,
         Use the python package versions that are installed within the
         current environment, i.e. instead of defaulting to the release from PyPI.
         Useful during development and testing
+    pypi_fallback : bool, optional
+        Whether to fall back to PyPI version when local version doesn't match
+        requested
 
     Returns
     -------
@@ -201,7 +213,8 @@ def install_python(dockerfile: DockerRenderer,
     instructions = []
     for pip_spec in packages:
         if use_local_packages:
-            pip_spec = local_package_location(pip_spec)
+            pip_spec = local_package_location(pip_spec,
+                                              pypi_fallback=pypi_fallback)
         if pip_spec.file_path:
             if pip_spec.version or pip_spec.url:
                 raise ArcanaBuildError(
@@ -262,7 +275,7 @@ def install_arcana(dockerfile: DockerRenderer,
     if install_extras:
         pip_str += '[' + ','.join(install_extras) + ']'
     dockerfile.run(
-        f'bash -c "source activate {CONDA_ENV} \\'
+        f'bash -c "source activate {CONDA_ENV} \\\n'
         f'&& python -m pip install --no-cache-dir {pip_str}"')
 
 

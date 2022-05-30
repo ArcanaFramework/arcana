@@ -32,6 +32,8 @@ def build_xnat_cs_image(image_tag: str,
                         build_dir: Path=None,
                         test_config: bool=False,
                         generate_only: bool=False,
+                        pkg_version: str=None, # Ignored here, just included to allow specs to be passed directly as kwargs
+                        wrapper_version: str=None, # ditto
                         **kwargs):
     """Creates a Docker image containing one or more XNAT commands ready
     to be installed in XNAT's container service plugin
@@ -98,7 +100,7 @@ def build_xnat_cs_image(image_tag: str,
     if not generate_only:
         dockerfile_build(dockerfile, build_dir, image_tag)
 
-    return build_dir
+    return dockerfile
 
 
 def generate_xnat_cs_command(name: str,
@@ -306,6 +308,7 @@ def generate_xnat_cs_command(name: str,
         f"--work {XnatViaCS.WORK_MOUNT} "  # working directory
         f"--dataset_space medimage:Clinical "
         f"--dataset_hierarchy subject,session "
+        "--single-row [SUBJECT_LABEL],[SESSION_LABEL] "
         f"--frequency {frequency} ")  # pass XNAT API details
         # TODO: add option for whether to overwrite existing pipeline
 
@@ -328,7 +331,7 @@ def generate_xnat_cs_command(name: str,
         # Create Session input that  can be passed to the command line, which
         # will be populated by inputs derived from the XNAT session object
         # passed to the pipeline.
-        inputs_json.append(
+        inputs_json.extend([
             {
                 "name": "SESSION_LABEL",
                 "description": "Imaging session label",
@@ -336,7 +339,16 @@ def generate_xnat_cs_command(name: str,
                 "required": True,
                 "user-settable": False,
                 "replacement-key": "[SESSION_LABEL]"
-            })
+            },
+            {
+                "name": "SUBJECT_LABEL",
+                "description": "Subject label",
+                "type": "string",
+                "required": True,
+                "user-settable": False,
+                "replacement-key": "[SUBJECT_LABEL]"
+            }
+            ])
         # Add specific session to process to command line args
         cmdline += " --ids [SESSION_LABEL] "
         # Access the session XNAT object passed to the pipeline
@@ -363,6 +375,14 @@ def generate_xnat_cs_command(name: str,
                 "derived-from-wrapper-input": "SESSION",
                 "derived-from-xnat-object-property": "label",
                 "provides-value-for-command-input": "SESSION_LABEL",
+                "user-settable": False
+            },
+            {
+                "name": "__SUBJECT_ID__",
+                "type": "string",
+                "derived-from-wrapper-input": "SESSION",
+                "derived-from-xnat-object-property": "subject-id",
+                "provides-value-for-command-input": "SUBJECT_LABEL",
                 "user-settable": False
             },
             {
