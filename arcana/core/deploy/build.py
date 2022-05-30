@@ -1,5 +1,6 @@
 import typing as ty
 from pathlib import Path
+import json
 import tempfile
 import logging
 import shutil
@@ -128,7 +129,8 @@ def construct_dockerfile(
     if labels:
         # dockerfile.label(labels)
         dockerfile._parts.append(
-            "LABEL " + " \\\n      ".join(f'{k}="{v}"' for k, v in labels.items()))
+            "LABEL " + " \\\n      ".join(
+                f'{k}={json.dumps(v)}' for k, v in labels.items()))
 
     return dockerfile
 
@@ -151,7 +153,7 @@ def dockerfile_build(dockerfile: DockerRenderer, build_dir: Path, image_tag: str
     out_file.parent.mkdir(exist_ok=True, parents=True)
     with open(str(out_file), 'w') as f:
         f.write(dockerfile.render())
-    logger.info("Dockerfile generated at %s", str(out_file))
+    logger.info("Dockerfile for '%s' generated at %s", image_tag, str(out_file))
     
     dc = docker.from_env()
     dc.images.build(path=str(build_dir), tag=image_tag)

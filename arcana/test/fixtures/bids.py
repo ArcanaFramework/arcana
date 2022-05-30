@@ -115,14 +115,17 @@ ENTRYPOINT ["/launch.sh"]""")
 def bids_command_spec(mock_bids_app_executable):
     inputs = [
         {
+            'name': 'T1w',
             'path': 'anat/T1w',
             'format': 'medimage:NiftiGzX'
         },
         {
+            'name': 'T2w',
             'path': 'anat/T2w',
             'format': 'medimage:NiftiGzX'
         },
         {
+            'name': 'DWI',
             'path': 'dwi/dwi',
             'format': 'medimage:NiftiGzXFslgrad'
         },
@@ -130,10 +133,12 @@ def bids_command_spec(mock_bids_app_executable):
     
     outputs = [
         {
+            'name': 'file1',
             'path': 'file1',
             'format': 'common:Text'
         },
         {
+            'name': 'file2',
             'path': 'file2',
             'format': 'common:Text'
         }

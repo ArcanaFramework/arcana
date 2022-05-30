@@ -82,9 +82,7 @@ def build_xnat_cs_image(image_tag: str,
 
     # Convert XNAT command label into string that can by placed inside the
     # Docker label
-    command_label = '[' + ', \\\n\t'.join(
-        json.dumps(c).replace('"', r'\"').replace('$', r'\$')
-        for c in xnat_commands) + ']'
+    command_label = json.dumps(xnat_commands).replace('$', r'\$')
 
     dockerfile = construct_dockerfile(
         build_dir,
@@ -108,13 +106,14 @@ def generate_xnat_cs_command(name: str,
                              image_tag: str,
                              inputs,
                              outputs,
-                             description,
-                             version,
-                             info_url,
+                             description: str,
+                             version: str,
+                             info_url: str,
                              parameters=None,
                              configuration=None,
                              frequency='session',
-                             registry=DOCKER_HUB):
+                             registry=DOCKER_HUB,
+                             long_description: str=None):
     """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
     should handle the containerised pipeline
 
@@ -151,6 +150,10 @@ def generate_xnat_cs_command(name: str,
     configuration : dict[str, Any]
         Fixed arguments passed to the workflow at initialisation. Can be used to specify
         the input fields of the workflow/task
+    long_description : str
+        A long description of the pipeline, used in documentation and ignored
+        here. Only included in the signature so that an error isn't thrown when
+        it is encountered.
 
     Returns
     -------
@@ -214,15 +217,15 @@ def generate_xnat_cs_command(name: str,
             desc = f"Match field ({inpt.format.dtype}) [FIELD_NAME]: {inpt.description} "
             input_type = COMMAND_INPUT_TYPES.get(inpt.format, 'string')
         inputs_json.append({
-            "name": path2xnatname(inpt.path),
+            "name": path2xnatname(inpt.name),
             "description": desc,
             "type": input_type,
-            "default-value": "",
+            "default-value": inpt.path,
             "required": True,
             "user-settable": True,
             "replacement-key": replacement_key})
         input_args.append(
-            f"--input '{replacement_key}' {inpt.stored_format.location()} {inpt.pydra_field} {inpt.format.location()} ")
+            f"--input {inpt.name} {inpt.stored_format.location()} '{replacement_key}' {inpt.pydra_field} {inpt.format.location()} ")
 
     # Add parameters as additional inputs to inputs JSON specification
     param_args = []
@@ -232,7 +235,7 @@ def generate_xnat_cs_command(name: str,
         replacement_key = f'[{param.pydra_field.upper()}_PARAM]'
 
         inputs_json.append({
-            "name": path2varname(param.name),
+            "name": path2xnatname(param.name),
             "description": desc,
             "type": COMMAND_INPUT_TYPES.get(param.type, 'string'),
             "default-value": (param.default if param.default else ""),
@@ -241,6 +244,18 @@ def generate_xnat_cs_command(name: str,
             "replacement-key": replacement_key})
         param_args.append(
             f"--parameter {param.pydra_field} '{replacement_key}' ")
+
+    # Add input for dataset name
+    DATASET_NAME_KEY = '#DATASET_NAME#'
+    inputs_json.append({
+        "name": "Dataset_config",
+        "description": "Name of the Arcana dataset configuration to use",
+        "type": "string",
+        "default-value": "default",
+        "required": True,
+        "user-settable": True,
+        "replacement-key": DATASET_NAME_KEY})
+    param_args.append(f"--dataset_name {DATASET_NAME_KEY} ")
 
     # Set up output handlers and arguments
     outputs_json = []
@@ -251,27 +266,27 @@ def generate_xnat_cs_command(name: str,
         out_fname = output.path + ('.' + output.format.ext if output.format.ext else '')
         # Set the path to the 
         outputs_json.append({
-            "name": output.pydra_field,
+            "name": output.name,
             "description": f"{output.pydra_field} ({output.format.location()})",
             "required": True,
             "mount": "out",
             "path": out_fname,
             "glob": None})
         output_handlers.append({
-            "name": f"{output.pydra_field}-resource",
-            "accepts-command-output": output.pydra_field,
+            "name": f"{output.name}-resource",
+            "accepts-command-output": output.name,
             "via-wrapup-command": None,
             "as-a-child-of": "SESSION",
             "type": "Resource",
             "label": label,
             "format": output.format.class_name()})
         output_args.append(
-            f'--output {output.path} {output.stored_format.location()} {output.pydra_field} {output.format.location()} ')
+            f"--output {output.name} {output.stored_format.location()} '{output.path}' {output.pydra_field} {output.format.location()} ")
 
     # Set up fixed arguments used to configure the workflow at initialisation
     config_args = []
     for cname, cvalue in configuration.items():
-        cvalue_json = json.dumps(cvalue).replace('"', '\\"')
+        cvalue_json = json.dumps(cvalue)  #.replace('"', '\\"')
         config_args.append(f"--configuration {cname} '{cvalue_json}' ")
 
     input_args_str = ' '.join(input_args)
@@ -469,7 +484,8 @@ def save_store_config(dockerfile: DockerRenderer, build_dir: Path,
 
 @dataclass
 class InputArg():
-    path: str # How the input will be referred to in the XNAT dialog, defaults to the pydra_field name
+    name: str # How the input will be referred to in the XNAT dialog, defaults to the pydra_field name
+    path: str = None
     format: type = arcana.data.formats.common.File
     pydra_field: str = None  # Must match the name of the Pydra task input    
     frequency: Clinical = Clinical.session
@@ -477,8 +493,10 @@ class InputArg():
     stored_format: type = None  # the format the input is stored in the data store in
 
     def __post_init__(self):
+        if self.path is None:
+            self.path = self.name
         if self.pydra_field is None:
-            self.pydra_field = path2varname(self.path)
+            self.pydra_field = self.name
         if self.stored_format is None:
             self.stored_format = self.format
         if isinstance(self.format, str):
@@ -489,14 +507,17 @@ class InputArg():
 
 @dataclass
 class OutputArg():
-    path: str  # The path the output is stored at in XNAT
+    name: str
+    path: str = None # The path the output is stored at in XNAT
     format: type = arcana.data.formats.common.File
     pydra_field: str = None  # Must match the name of the Pydra task output, defaults to the path
     stored_format: type = None  # the format the output is to be stored in the data store in
 
     def __post_init__(self):
+        if self.path is None:
+            self.path = self.name
         if self.pydra_field is None:
-            self.pydra_field = path2varname(self.path)
+            self.pydra_field = self.name
         if self.stored_format is None:
             self.stored_format = self.format
         if isinstance(self.format, str):

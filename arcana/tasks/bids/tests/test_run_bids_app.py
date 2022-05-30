@@ -45,14 +45,16 @@ def test_run_bids_pipeline(mock_bids_app_executable, cli_runner, nifti_sample_di
     inputs_config = []
     for path, (format, _) in blueprint.expected_formats.items():
         format_str = class_location(format)
-        args.extend(['--input', path2varname(path), format_str, path2varname(path), format_str])
-        inputs_config.append({'path': path, 'format': format_str})
+        varname = path2varname(path)
+        args.extend(['--input', varname, format_str, varname, varname, format_str])
+        inputs_config.append({'name': varname, 'path': path, 'format': format_str})
     args.extend(['--configuration', 'inputs', json.dumps(inputs_config).replace('"', '\\"')])
     outputs_config = []
     for path, _, format, _ in blueprint.derivatives:
         format_str = class_location(format)
-        args.extend(['--output', path, format_str, path2varname(path), format_str])
-        outputs_config.append({'path': path, 'format': format_str})
+        varname = path2varname(path)
+        args.extend(['--output', varname, format_str, varname, varname, format_str])
+        outputs_config.append({'name': varname, 'path': path, 'format': format_str})
     args.extend(['--configuration', 'outputs', json.dumps(outputs_config).replace('"', '\\"')])
     
     result = cli_runner(run_pipeline, args)

@@ -6,6 +6,7 @@ import shutil
 import shlex
 from argparse import ArgumentParser
 from pathlib import Path
+from dataclasses import dataclass
 from arcana import __version__
 from pydra import Workflow, mark
 from pydra.engine.task import (
@@ -16,12 +17,39 @@ from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.exceptions import ArcanaUsageError
-from arcana.core.utils import func_task, path2varname, varname2path, resolve_class
+from arcana.core.utils import func_task, path2varname, resolve_class
+
+
+@dataclass
+class Input():
+
+    path: str
+    format: type
+    name: str = None
+
+    @classmethod
+    def fromdict(cls, dct):
+        return cls(path=dct['path'],
+                   format=dct['format'],
+                   name=dct['name'])
+
+    def __post_init__(self):
+        if isinstance(self.format, str):
+            self.format = resolve_class(self.format,
+                                        prefixes=['arcana.data.formats'])
+        if self.name is None:
+            self.name = path2varname(self.path)
+
+
+# Definition of output is the same as Input but we keep it separate in case we
+# need to change it later
+class Output(Input):  
+    pass
 
 
 def bids_app(name: str,
-             inputs: ty.List[ty.Tuple[str, type] or ty.Dict[str, str]],
-             outputs: ty.List[ty.Tuple[str, type] or ty.Dict[str, str]],
+             inputs: ty.List[Input or ty.Dict[str, str]],
+             outputs: ty.List[Output or ty.Dict[str, str]],
              executable: str='',  # Use entrypoint of container,
              container_image: str= None,
              parameters: ty.Dict[str, type]=None,
@@ -87,14 +115,12 @@ def bids_app(name: str,
             subject_ids=[DEFAULT_BIDS_ID])
 
     # Convert from JSON format inputs/outputs to tuples with resolved data formats
-    inputs = [(i['path'], resolve_class(i['format'], prefixes=['arcana.data.formats']))
-               if isinstance(i, dict) else i for i in inputs]
-    outputs = [(o['path'], resolve_class(o['format'], prefixes=['arcana.data.formats']))
-               if isinstance(o, dict) else o for o in outputs]
+    inputs = [Input.fromdict(i) if not isinstance(i, Input) else i for i in inputs]
+    outputs = [Output.fromdict(o) if not isinstance(o, Output) else o for o in outputs]
 
     # Ensure output paths all start with 'derivatives
-    input_names = [path2varname(i[0]) for i in inputs]
-    output_names = [path2varname(o[0]) for o in outputs]
+    input_names = [i.name for i in inputs]
+    output_names = [o.name for o in outputs]
 
     input_spec = set(['id', 'flags', 'json_edits'] + input_names + list(parameters))
     workflow = Workflow(
@@ -304,9 +330,10 @@ def bidsify_id(id):
 def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
     """Takes generic inptus and stores them within a BIDS dataset
     """
+    # Update the Bids store with the JSON edits requested by the user
     dataset.store.json_edits = parse_json_edits(json_edits)
-    for inpt_path, inpt_type in inputs:
-        dataset.add_sink(path2varname(inpt_path), inpt_type, path=inpt_path)
+    for inpt in inputs:
+        dataset.add_sink(inpt.name, inpt.format, path=inpt.path)
     data_node = dataset.node(frequency, id)
     with dataset.store:
         for inpt_name, inpt_value in input_values.items():
@@ -345,12 +372,12 @@ def extract_bids(dataset: Dataset,
     """
     output_paths = []
     data_node = dataset.node(frequency, id)
-    for output_path, output_type in outputs:
-        dataset.add_sink(path2varname(output_path), output_type,
-                         path=path_prefix + '/' + output_path)
+    for output in outputs:
+        dataset.add_sink(output.name, output.format,
+                         path=path_prefix + '/' + output.path)
     with dataset.store:
         for output in outputs:
-            item = data_node[path2varname(output[0])]
+            item = data_node[output.name]
             item.get()  # download to host if required
             output_paths.append(item.value)
     return tuple(output_paths) if len(outputs) > 1 else output_paths[0]
