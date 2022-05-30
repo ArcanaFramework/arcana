@@ -101,7 +101,7 @@ def access_dataset(blueprint, dataset_path):
         space=space,
         hierarchy=blueprint.hierarchy,
         id_inference=blueprint.id_inference)
-    dataset.blueprint = blueprint
+    dataset.blueprint = blueprint  # Stashed in here for future reference by tests
     return dataset
 
 
