@@ -7,7 +7,7 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
     header = {
         "title": pkg_name,
         "weight": 10,
-        "source_file": str(src_file),
+        "source_file": src_file.as_posix(),
     }
 
     if flatten:
