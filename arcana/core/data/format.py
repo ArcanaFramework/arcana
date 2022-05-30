@@ -12,7 +12,7 @@ from abc import ABCMeta, abstractmethod
 import attr
 from attr.converters import optional
 from pydra.engine.core import LazyField, Workflow
-from arcana.core.utils import class_location, parse_value, func_task
+from arcana.core.utils import class_location, parse_value, func_task, path2varname
 from arcana.exceptions import (
     ArcanaUnresolvableFormatException, ArcanaUsageError, ArcanaNameError, ArcanaUsageError,
     ArcanaDataNotDerivedYetError, ArcanaFileFormatError, ArcanaFormatConversionError)
@@ -632,7 +632,7 @@ def access_paths(from_format, file_group):
     """Copies files into the CWD renaming so the basenames match
     except for extensions"""
     logger.debug("Extracting paths from %s (%s format) before conversion", file_group, from_format)
-    cpy = file_group.copy_to(Path(file_group.path).name, symlink=True)
+    cpy = file_group.copy_to(path2varname(file_group.path), symlink=True)
     return cpy.fs_paths if len(cpy.fs_paths) > 1 else cpy.fs_path
 
 
