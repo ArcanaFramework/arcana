@@ -210,7 +210,7 @@ class Pipeline():
             **sourced))
 
         # Add the "inner" workflow of the pipeline that actually performs the
-        # processing
+        # analysis/processing
         wf.per_node.add(deepcopy(self.workflow))
         # Make connections to "inner" workflow
         for inpt in self.inputs:

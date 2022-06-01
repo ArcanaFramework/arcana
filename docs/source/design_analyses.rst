@@ -137,19 +137,43 @@ files can be accessed as attributes of the primary ``LazyField``, e.g.
 
 .. code-block:: python
 
-    repetition_time: float = column("The repetition time of the MR sequence used")
+    from arcana.data.spaces.medimage import Clinical
+    from arcana.tasks.misc import ExtractFromJson
+    from arcana.data.salience import DataSalience as ds
 
-    @pipeline(repetition_time)
-    def preprocess_pipeline(self, wf, primary_image: NiftiGzX):
 
-        wf.add(
-            ExtractFromJson(
-                name='extract_tr',
-                # JSON side car is accessed by an attribute of the primary image
-                in_file=primary_image.json,  
-                field='tr'))
+    @analysis(Clinical)
+    class AnotherExampleAnalysis():
 
-        return wf.extract_tr.lzout.out_file
+        primary_image: Dicom = column(
+            desc="The primary image to be analysed",
+            salience=ds.primary)
+        repetition_time: float = column(
+            "The repetition time of the MR sequence used",
+            salience=ds.debug)
+        slice_timing_interval: float = column(
+            "The time interval between slices",
+            salience=ds.debug)
+
+        @pipeline(repetition_time, slice_timing_interval)
+        def preprocess_pipeline(self, wf, primary_image: NiftiGzX):
+
+            wf.add(
+                ExtractFromJson(
+                    name='extract_tr',
+                    # JSON side car is accessed by an attribute of the primary image
+                    in_file=primary_image.json,  
+                    field='tr'))
+            
+            wf.add(
+                ExtractFromJson(
+                    name='extract_st',
+                    # JSON side car is accessed by an attribute of the primary image
+                    in_file=primary_image.json,
+                    x=wf.extract_tr.lzout.out,  
+                    field='SliceTiming'))
+
+            return wf.extract_tr.lzout.out, wf.extract_st.lzout.out
 
 The "frequency" (see :ref:`data_spaces` and :ref:`data_columns`) of a pipeline,
 (whether it is run per-session, per-subject, per-timepoint, etc... for example)

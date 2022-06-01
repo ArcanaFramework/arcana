@@ -94,7 +94,7 @@ def construct_dockerfile(
         path to the directory containing the licence files to copy into the
         image
     licenses : list[dict[str, str]], optional
-        specification of licences to install inside docker image. Each dict
+        specification of licenses to install inside docker image. Each dict
         should contain 'source' and 'destination' items.
 
     Returns
@@ -128,6 +128,9 @@ def construct_dockerfile(
                    pypi_fallback=pypi_fallback)
 
     install_arcana(dockerfile, build_dir, arcana_install_extras)
+
+    if licenses and license_dir is None:
+        raise ArcanaBuildError(f"'--license_dir' input must be provided for specifications including 'licenses' items ({licenses})")
 
     install_licenses(dockerfile, licenses, license_dir, build_dir)
 

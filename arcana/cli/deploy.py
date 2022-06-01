@@ -412,13 +412,13 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
             outputs=pipeline_outputs, frequency=frequency, overwrite=overwrite)
 
     # Instantiate the Pydra workflow
-    workflow = pipeline(cache_dir=pipeline_cache_dir, plugin=plugin)
+    workflow = pipeline(cache_dir=pipeline_cache_dir)
     
     if ids is not None:
         ids = ids.split(',')
 
     # execute the workflow    
-    result = workflow(ids=ids)
+    result = workflow(ids=ids, plugin=plugin)
 
     logger.info("Pipeline %s ran successfully for the following nodes\n: %s",
                 pipeline_name, '\n'.join(result.output.processed))
