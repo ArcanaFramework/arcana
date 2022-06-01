@@ -107,7 +107,7 @@ def bids_app(name: str,
 
     # Create BIDS dataset to hold translated data
     if dataset is None:
-        dataset = Path(tempfile.mkdtemp()) / 'bids_dataset'
+        dataset = Path.cwd() / 'bids_dataset'
     if not isinstance(dataset, Dataset):
         dataset = BidsDataset.create(
             path=dataset,
