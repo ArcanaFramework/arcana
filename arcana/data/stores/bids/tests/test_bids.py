@@ -216,6 +216,8 @@ def test_run_bids_app_naked(mock_bids_app_script: str, nifti_sample_dir: Path, w
     # files
     launch_sh = work_dir / 'launch.sh'
 
+    bids_app_output_dir = work_dir / 'output'
+
     # We don't need to run the full validation in this case as it is already tested by test_run_bids_app_docker
     # so we use the simpler test script.
     with open(launch_sh, 'w') as f:
@@ -227,7 +229,8 @@ def test_run_bids_app_naked(mock_bids_app_script: str, nifti_sample_dir: Path, w
         name=MOCK_BIDS_APP_NAME,
         executable=launch_sh,  # Extracted using `docker_image_executable(docker_image)`
         inputs=INPUTS,
-        outputs=OUTPUTS)
+        outputs=OUTPUTS,
+        app_output_dir=bids_app_output_dir)
 
     for inpt in INPUTS:
         kwargs[inpt.name] = nifti_sample_dir.joinpath(*inpt.path.split('/')).with_suffix('.' + inpt.format.ext)
