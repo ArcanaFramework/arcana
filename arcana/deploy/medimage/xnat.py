@@ -237,7 +237,7 @@ def generate_xnat_cs_command(name: str,
         replacement_key = f'[{param.pydra_field.upper()}_PARAM]'
 
         inputs_json.append({
-            "name": path2xnatname(param.name),
+            "name": param.name,
             "description": desc,
             "type": COMMAND_INPUT_TYPES.get(param.type, 'string'),
             "default-value": (param.default if param.default else ""),

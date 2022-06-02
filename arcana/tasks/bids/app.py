@@ -93,7 +93,7 @@ def bids_app(name: str,
         The dataset to run the BIDS app on. If a string or Path is provided
         then a new BIDS dataset is created at that location with a single
         subject (sub-DEFAULT). If nothing is provided then a dataset is
-        created at './bids_dataset'.
+        created in a temporary directory.
 
     Returns
     -------
@@ -107,7 +107,7 @@ def bids_app(name: str,
 
     # Create BIDS dataset to hold translated data
     if dataset is None:
-        dataset = Path.cwd() / 'arcana_bids_dataset'
+        dataset = Path(tempfile.mkdtemp()) / 'arcana_bids_dataset'
     if not isinstance(dataset, Dataset):
         dataset = BidsDataset.create(
             path=dataset,
