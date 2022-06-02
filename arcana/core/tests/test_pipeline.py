@@ -72,6 +72,6 @@ def test_pipeline_with_implicit_conversion(work_dir):
         tmp_dir = Path(tempfile.mkdtemp())
         with zipfile.ZipFile(item.fs_path) as zfile:
             zfile.extractall(path=tmp_dir)
-        with open(tmp_dir / 'out_file.txt') as f:
+        with open(tmp_dir / 'out_u_file.txt') as f:
             contents = f.read()
         assert contents == '\n'.join(['file1.zip', 'file2.zip'] * 2)
