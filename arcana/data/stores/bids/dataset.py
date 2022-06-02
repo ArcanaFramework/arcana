@@ -139,7 +139,7 @@ class BidsDataset(Dataset):
                readme=None, authors=None, generated_by=None,
                json_edits=None, **kwargs):
         path = Path(path)
-        path.mkdir()
+        path.mkdir(exist_ok=True, parents=True)
         if session_ids is not None:
             hierarchy = ['subject', 'timepoint']
         else:

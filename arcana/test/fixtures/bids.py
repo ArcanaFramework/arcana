@@ -13,8 +13,9 @@ BIDS_VALIDATOR_APP_IMAGE = 'arcana-bids-validator-app'
 @pytest.fixture(scope='session')
 def bids_validator_app_script():
     return f"""#!/bin/sh
-BIDS_DATASET=$1
-OUTPUTS_DIR=$2
+# Echo inputs to get rid of any quotes
+BIDS_DATASET=$(echo $1)
+OUTPUTS_DIR=$(echo $2)
 SUBJ_ID=$5
 # Run BIDS validator to check whether BIDS dataset is created properly
 output=$(/usr/local/bin/bids-validator "$BIDS_DATASET")

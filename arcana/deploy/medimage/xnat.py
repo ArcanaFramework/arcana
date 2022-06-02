@@ -237,7 +237,7 @@ def generate_xnat_cs_command(name: str,
         replacement_key = f'[{param.pydra_field.upper()}_PARAM]'
 
         inputs_json.append({
-            "name": path2xnatname(param.name),
+            "name": param.name,
             "description": desc,
             "type": COMMAND_INPUT_TYPES.get(param.type, 'string'),
             "default-value": (param.default if param.default else ""),
@@ -246,6 +246,8 @@ def generate_xnat_cs_command(name: str,
             "replacement-key": replacement_key})
         param_args.append(
             f"--parameter {param.pydra_field} '{replacement_key}' ")
+
+    other_args = []
 
     # Add input for dataset name
     DATASET_NAME_KEY = '#DATASET_NAME#'
@@ -257,7 +259,19 @@ def generate_xnat_cs_command(name: str,
         "required": True,
         "user-settable": True,
         "replacement-key": DATASET_NAME_KEY})
-    param_args.append(f"--dataset_name {DATASET_NAME_KEY} ")
+    other_args.append(f"--dataset_name {DATASET_NAME_KEY} ")
+
+    # Add input for dataset name
+    LOGLEVEL_KEY = '#LOGLEVEL#'
+    inputs_json.append({
+        "name": "Log_level",
+        "description": "Name of the Arcana dataset configuration to use",
+        "type": "string",
+        "default-value": "info",
+        "required": True,
+        "user-settable": True,
+        "replacement-key": LOGLEVEL_KEY})
+    other_args.append(f"--loglevel {LOGLEVEL_KEY} ")    
 
     # Set up output handlers and arguments
     outputs_json = []
@@ -295,6 +309,7 @@ def generate_xnat_cs_command(name: str,
     output_args_str = ' '.join(output_args)
     param_args_str = ' '.join(param_args)
     config_args_str = ' '.join(config_args)
+    other_args_str = ' '.join(other_args)
 
     cmdline = (
         f"conda run --no-capture-output -n {CONDA_ENV} "  # activate conda
@@ -302,9 +317,9 @@ def generate_xnat_cs_command(name: str,
         + input_args_str
         + output_args_str
         + param_args_str
-        + config_args_str +
+        + config_args_str
+        + other_args_str + 
         f"--plugin serial "  # Use serial processing instead of parallel to simplify outputs
-        f"--loglevel info "
         f"--work {XnatViaCS.WORK_MOUNT} "  # working directory
         f"--dataset_space medimage:Clinical "
         f"--dataset_hierarchy subject,session "
