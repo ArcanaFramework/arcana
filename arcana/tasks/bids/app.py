@@ -55,7 +55,8 @@ def bids_app(name: str,
              parameters: ty.Dict[str, type]=None,
              frequency: Clinical or str=Clinical.session,
              container_type: str='docker',
-             dataset: ty.Optional[ty.Union[str, Path, Dataset]]=None) -> Workflow:
+             dataset: ty.Optional[ty.Union[str, Path, Dataset]]=None,
+             app_output_dir: Path=None) -> Workflow:
     """Creates a Pydra workflow which takes file inputs, maps them to
     a BIDS dataset, executes a BIDS app, and then extracts the
     the derivatives that were stored back in the BIDS dataset by the app
@@ -94,6 +95,9 @@ def bids_app(name: str,
         then a new BIDS dataset is created at that location with a single
         subject (sub-DEFAULT). If nothing is provided then a dataset is
         created in a temporary directory.
+    app_output_dir : Path, optional
+        file system path where the app outputs will be written before being
+        copied to the dataset directory
 
     Returns
     -------
@@ -102,6 +106,8 @@ def bids_app(name: str,
     """
     if parameters is None:
         parameters = {}
+    if app_output_dir is None:
+        app_output_dir = Path(tempfile.mkdtemp())
     if isinstance(frequency, str):
         frequency = Clinical[frequency]
 
@@ -123,16 +129,15 @@ def bids_app(name: str,
     output_names = [o.name for o in outputs]
 
     input_spec = set(['id', 'flags', 'json_edits'] + input_names + list(parameters))
-    workflow = Workflow(
-        name=name,
-        input_spec=list(input_spec))
+
+    wf = Workflow(name=name, input_spec=list(input_spec))
 
     # Check id startswith 'sub-' as per BIDS
-    workflow.add(bidsify_id(name='bidsify_id', id=workflow.lzin.id))
+    wf.add(bidsify_id(name='bidsify_id', id=wf.lzin.id))
 
     # Can't use a decorated function as we need to allow for dynamic
     # arguments
-    workflow.add(func_task(
+    wf.add(func_task(
         to_bids,
         in_fields=(
             [('frequency', Clinical),
@@ -141,79 +146,31 @@ def bids_app(name: str,
                 ('id', str),
                 ('json_edits', str)]
             + [(i, str) for i in input_names]),
-        out_fields=[('dataset', BidsDataset)],
+        out_fields=[('dataset', BidsDataset),
+                    ('completed', bool, {'callable': lambda: True})],
         name='to_bids',
         frequency=frequency,
         inputs=inputs,
         dataset=dataset,
-        id=workflow.bidsify_id.lzout.out,
-        json_edits=workflow.lzin.json_edits,
-        **{i: getattr(workflow.lzin, i) for i in input_names}))
+        id=wf.bidsify_id.lzout.out,
+        json_edits=wf.lzin.json_edits,
+        **{i: getattr(wf.lzin, i) for i in input_names}))
 
-    workflow.add(dataset_paths(
-        app_name=name,
-        dataset=workflow.to_bids.lzout.dataset,
-        id=workflow.bidsify_id.lzout.out))
-        
-    app_completed = add_main_task(
-        workflow=workflow,
-        executable=executable,
-        dataset_path=workflow.dataset_paths.lzout.base,
-        output_path=workflow.dataset_paths.lzout.output,
-        parameters={p: type(p) for p in parameters},
-        frequency=frequency,
-        id=workflow.bidsify_id.lzout.no_prefix,
-        container_type=container_type,
-        container_image=container_image)
-
-    workflow.add(func_task(
-        extract_bids,
-        in_fields=[
-            ('dataset', Dataset),
-            ('frequency', Clinical),
-            ('outputs', ty.List[ty.Tuple[str, type, str]]),
-            ('path_prefix', str),
-            ('id', str),
-            ('app_completed', bool)],
-        out_fields=[(o, str) for o in output_names],
-        name='extract_bids',
-        dataset=workflow.to_bids.lzout.dataset,
-        path_prefix=workflow.dataset_paths.lzout.path_prefix,
-        frequency=frequency,
-        outputs=outputs,
-        id=workflow.bidsify_id.lzout.out,
-        app_completed=app_completed))
-
-    for output_name in output_names:
-        workflow.set_output(
-            (output_name, getattr(workflow.extract_bids.lzout, output_name)))
-
-    return workflow
-
-
-def add_main_task(workflow: Workflow,
-                  executable: str,
-                  dataset_path: LazyField,
-                  output_path: LazyField,
-                  frequency: Clinical,
-                  id: str,
-                  parameters: ty.Dict[str, type]=None,
-                  container_image=None,
-                  container_type='docker') -> ShellCommandTask:
-
-    if parameters is None:
-        parameters = {}
+        # dataset_path=Path(dataset.id),
+        # output_dir=app_output_dir,
+        # parameters={p: type(p) for p in parameters},
+        # id=wf.bidsify_id.lzout.no_prefix,
 
     input_fields = [
         ("dataset_path", str,
          {"help_string": "Path to BIDS dataset in the container",
           "position": 1,
           "mandatory": True,
-          "argstr": ""}),
+          "argstr": "'{dataset_path}'"}),
         ("output_path", str,
          {"help_string": "Directory where outputs will be written in the container",
           "position": 2,
-          "argstr": ""}),
+          "argstr": "'{output_path}'"}),
         ("analysis_level", str,
          {"help_string": "The analysis level the app will be run at",
           "position": 3,
@@ -225,23 +182,26 @@ def add_main_task(workflow: Workflow,
         ("flags", str,
          {"help_string": "Additional flags to pass to the command",
           "argstr": "%s",
-          "position": -1})]
+          "position": -1}),
+        ("setup_completed", bool,
+         {"help_string":
+             "Dummy field to ensure that the BIDS dataset construction completes first"})]
 
     output_fields=[
         ("completed", bool,
             {"help_string": "a simple flag to indicate app has completed",
             "callable": lambda: True})]
 
-    for param, dtype in parameters.items():
+    for param in parameters.items():
         argstr = f'--{param}'
-        if dtype is not bool:
+        if type(param) is not bool:
             argstr += ' %s'
         input_fields.append((
-            param, dtype, {
+            param, type(param), {
                 "help_string": f"Optional parameter {param}",
                 "argstr": argstr}))
 
-    kwargs = {p: getattr(workflow.lzin, p) for p in parameters}
+    kwargs = {p: getattr(wf.lzin, p) for p in parameters}
 
     # If 'image' is None, don't use any virtualisation (i.e. assume we are running from "inside" the
     # container or extension of it)
@@ -249,18 +209,13 @@ def add_main_task(workflow: Workflow,
         task_cls = ShellCommandTask
         base_spec_cls = ShellSpec
         kwargs['executable'] = executable
-        app_output_path = output_path
+        app_output_path = str(app_output_dir)
+        app_dataset_path = Path(dataset.id)
     else:
-
-        workflow.add(make_bindings(
-            name='make_bindings',
-            dataset_path=dataset_path))
-
-        kwargs['bindings'] = workflow.make_bindings.lzout.bindings
 
         # Set input and output directories to "internal" paths within the
         # container
-        dataset_path = CONTAINER_DATASET_PATH
+        app_dataset_path = CONTAINER_DATASET_PATH
         app_output_path = CONTAINER_DERIV_PATH
         kwargs['image'] = container_image
 
@@ -277,33 +232,56 @@ def add_main_task(workflow: Workflow,
 
     if frequency == Clinical.session:
         analysis_level = 'participant'
-        kwargs['participant_label'] = id
+        kwargs['participant_label'] = wf.bidsify_id.lzout.no_prefix
     else:
         analysis_level = 'group'
 
-    workflow.add(task_cls(
+    main_task = task_cls(
         name='bids_app',
         input_spec=SpecInfo(name="Input", fields=input_fields,
                             bases=(base_spec_cls,)),
         output_spec=SpecInfo(name="Output", fields=output_fields,
-                             bases=(ShellOutSpec,)),
-        dataset_path=dataset_path,
+                            bases=(ShellOutSpec,)),
+        dataset_path=app_dataset_path,
         output_path=app_output_path,
         analysis_level=analysis_level,
-        flags=workflow.lzin.flags,
-        **kwargs))
+        flags=wf.lzin.flags,
+        setup_completed=wf.to_bids.lzout.completed,
+        **kwargs)
 
     if container_image is not None:
-        workflow.add(copytree(
-            name='copy_output_dir',
-            src=workflow.make_bindings.lzout.tmp_output_dir,
-            dest=output_path,
-            app_completed=workflow.bids_app.lzout.completed))
-        completed = workflow.copy_output_dir.lzout.out
-    else:
-        completed = workflow.bids_app.lzout.completed
+        main_task.bindings = {
+            dataset.id: (CONTAINER_DATASET_PATH, 'ro'),
+            app_output_dir: (CONTAINER_DERIV_PATH, 'rw')}
 
-    return completed
+    wf.add(main_task)
+
+    wf.add(func_task(
+        extract_bids,
+        in_fields=[
+            ('dataset', Dataset),
+            ('frequency', Clinical),
+            ('app_name', str),
+            ('output_dir', Path),
+            ('outputs', ty.List[ty.Tuple[str, type, str]]),
+            ('id', str),
+            ('app_completed', bool)],
+        out_fields=[(o, str) for o in output_names],
+        name='extract_bids',
+        app_name=name,
+        dataset=wf.to_bids.lzout.dataset,  # We pass dataset object modified by to_bids rather than initial one passed to the bids_app method
+        output_dir=app_output_dir,
+        frequency=frequency,
+        outputs=outputs,
+        id=wf.bidsify_id.lzout.out,
+        app_completed=wf.bids_app.lzout.completed))
+
+    for output_name in output_names:
+        wf.set_output(
+            (output_name, getattr(wf.extract_bids.lzout, output_name)))
+
+    return wf
+
 
 # For running 
 CONTAINER_DERIV_PATH = '/arcana_bids_outputs'
@@ -342,25 +320,14 @@ def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
                     f"No value passed to {inpt_name}")
             node_item = data_node[inpt_name]
             node_item.put(inpt_value)  # Store value/path in store
-    return dataset
-
-
-@mark.task
-@mark.annotate(
-    {'return':
-        {'base': str,
-         'path_prefix': str,
-         'output': str}})
-def dataset_paths(app_name: str, dataset: Dataset, id: str):
-    return (dataset.id,
-            'derivatives' + '/' + app_name,
-            str(Path(dataset.id) / 'derivatives' / app_name / id))
+    return (dataset, dataset.id)
 
 
 def extract_bids(dataset: Dataset,
                  frequency: Clinical,
+                 app_name: str,
+                 output_dir: Path,
                  outputs: ty.List[ty.Tuple[str, type]],
-                 path_prefix: str,
                  id: str,
                  app_completed: bool):
     """Selects the items from the dataset corresponding to the input 
@@ -369,38 +336,29 @@ def extract_bids(dataset: Dataset,
 
     Parameters
     ----------
+    dataset : Dataset
+    frequency : Clinical
+    output_dir : Path
+    outputs : ty.List[ty.Tuple[str, type]]
+    id : str
+        id of the row to be processed
+    app_completed : bool
+        a dummy field produced by the main BIDS app task on output, to ensure
+        'extract_bids' is run after the app has completed.
     """
+    # Copy output dir into BIDS dataset
+    shutil.copytree(output_dir, Path(dataset.id) / 'derivatives' / app_name / id)
     output_paths = []
     data_node = dataset.node(frequency, id)
     for output in outputs:
         dataset.add_sink(output.name, output.format,
-                         path=path_prefix + '/' + output.path)
+                         path='derivatives/' + app_name + '/' + output.path)
     with dataset.store:
         for output in outputs:
             item = data_node[output.name]
             item.get()  # download to host if required
             output_paths.append(item.value)
     return tuple(output_paths) if len(outputs) > 1 else output_paths[0]
-
-
-@mark.task
-@mark.annotate(
-    {'return':
-        {'bindings': ty.List[ty.Tuple[str, str, str]],
-         'tmp_output_dir': Path}})
-def make_bindings(dataset_path: str):
-    """Make bindings for directories to be mounted inside the container
-        for both the input dataset and the output derivatives"""
-    tmp_output_dir = tempfile.mkdtemp()
-    bindings = [(str(dataset_path), CONTAINER_DATASET_PATH, 'ro'),
-                (tmp_output_dir, CONTAINER_DERIV_PATH, 'rw')]
-    return (bindings, Path(tmp_output_dir))
-
-
-@mark.task
-def copytree(src: str, dest: str, app_completed: bool) -> bool:
-    shutil.copytree(src, dest)
-    return app_completed
 
 
 def parse_json_edits(edit_str: str):
