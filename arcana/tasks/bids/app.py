@@ -108,6 +108,10 @@ def bids_app(name: str,
         parameters = {}
     if app_output_dir is None:
         app_output_dir = Path(tempfile.mkdtemp())
+    else:
+        app_output_dir = Path(app_output_dir)
+        app_output_dir.mkdir(parents=True, exist_ok=True)
+
     if isinstance(frequency, str):
         frequency = Clinical[frequency]
 
