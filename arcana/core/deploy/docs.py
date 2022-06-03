@@ -44,6 +44,15 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
             tbl_info.write_row("Info URL", spec["info_url"])
 
         f.write("\n")
+
+        if "licenses" in spec:
+            f.write("### Required licenses\n")
+
+            tbl_lic = MarkdownTable(f, "Source file", "Mounted at", "Info")
+            for lic in spec.get("licenses", []):
+                tbl_lic.write_row(escaped_md(lic.get("source", None)), escaped_md(lic.get("destination", None)), lic.get("description", ""))
+
+            f.write("\n")
         
         f.write('## Commands\n')
         
@@ -51,32 +60,52 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
 
             f.write(f"### {cmd['name']}\n")
 
-            f.write(f'{cmd["description"]}\n\n')
-            
-            if spec.get("frequency", None):
-                f.write(f'\nOperates on: {cmd["frequency"]}\n\n')
+            short_desc = cmd.get("long_description", None) or cmd["description"]
+            f.write(f"{short_desc}\n\n")
 
-            # for x in task.inputs:
+            tbl_cmd = MarkdownTable(f, "Key", "Value")
+            tbl_cmd.write_row("Short description", cmd["description"])
+            if cmd.get("workflow"):
+                tbl_cmd.write_row("Workflow", escaped_md(cmd["workflow"]))
+            if cmd.get("version"):
+                tbl_cmd.write_row("Version", escaped_md(cmd["version"]))
+            if cmd.get("configuration"):
+                config = cmd["configuration"]
+                # configuration keys are variable depending on the workflow class
+                if config.get("executable"):
+                    tbl_cmd.write_row("Executable", escaped_md(config["executable"]))
+            if cmd.get("frequency"):
+                tbl_cmd.write_row("Operates on", cmd["frequency"].title())
+
             f.write("#### Inputs\n")
-            tbl_inputs = MarkdownTable(f, "Path", "Input format", "Stored format")
+            tbl_inputs = MarkdownTable(f, "Path", "Input format", "Stored format", "Description")
             if cmd.get('inputs'):
                 for inpt in cmd['inputs']:
-                    tbl_inputs.write_row(escaped_md(inpt['path']), escaped_md(inpt['format']), escaped_md(inpt.get('stored_format', 'format')))
+                    tbl_inputs.write_row(
+                        escaped_md(inpt["path"]),
+                        escaped_md(inpt["format"]),
+                        escaped_md(inpt.get("stored_format", "format")),
+                        inpt.get("description", ""),
+                    )
                 f.write("\n")
 
             f.write("#### Outputs\n")
-            tbl_outputs = MarkdownTable(f, "Name", "Output format", "Stored format")
+            tbl_outputs = MarkdownTable(f, "Name", "Output format", "Stored format", "Description")
             if cmd.get('outputs'):
-                # for x in task.outputs:
                 for outpt in cmd.get('outputs', []):
-                    tbl_outputs.write_row(escaped_md(outpt['path']), escaped_md(outpt['format']), escaped_md(outpt.get('stored_format', 'format')))
+                    tbl_outputs.write_row(
+                        escaped_md(outpt["path"]),
+                        escaped_md(outpt["format"]),
+                        escaped_md(outpt.get("stored_format", "format")),
+                        outpt.get("description", ""),
+                    )
                 f.write("\n")
 
-            f.write("#### Parameters\n")
-            tbl_params = MarkdownTable(f, "Name", "Data type")
             if cmd.get('parameters'):
+                f.write("#### Parameters\n")
+                tbl_params = MarkdownTable(f, "Name", "Data type")
                 for param in cmd.get("parameters", []):
-                    tbl_params.write_row(param['name'], param['type'])
+                    tbl_params.write_row(escaped_md(param["name"]), escaped_md(param["type"]))
                 f.write("\n")
 
 
@@ -107,4 +136,4 @@ class MarkdownTable:
         cols += [""] * (len(self.headers) - len(cols))
 
         # TODO handle new lines in col
-        self.f.write("|" + "|".join(col.replace("|", "\\|") for col in cols) + "|\n")
+        self.f.write("|" + "|".join(str(col).replace("|", "\\|") for col in cols) + "|\n")
