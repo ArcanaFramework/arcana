@@ -391,9 +391,11 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
 
     logger.info("Pipeline outputs: %s", pipeline_outputs)
 
-    workflow = resolve_class(workflow_location)(
-        name='workflow',
-        **{n: parse_value(v) for n, v in configuration})
+    kwargs = {n: parse_value(v) for n, v in configuration}
+    if 'name' not in kwargs:
+        kwargs['name'] = 'workflow'
+
+    workflow = resolve_class(workflow_location)(**kwargs)
 
     for pname, pval in parameter:
         if pval != '':

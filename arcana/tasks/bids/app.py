@@ -29,9 +29,9 @@ class Input():
 
     @classmethod
     def fromdict(cls, dct):
-        return cls(path=dct['path'],
-                   format=dct['format'],
-                   name=dct['name'])
+        return cls(path=dct.get('path'),
+                   format=dct.get('format'),
+                   name=dct.get('name'))
 
     def __post_init__(self):
         if isinstance(self.format, str):
@@ -41,10 +41,25 @@ class Input():
             self.name = path2varname(self.path)
 
 
-# Definition of output is the same as Input but we keep it separate in case we
-# need to change it later
-class Output(Input):  
-    pass
+@dataclass
+class Output():  
+
+    name: str
+    format: type
+    path: str = None
+
+    @classmethod
+    def fromdict(cls, dct):
+        return cls(path=dct.get('path'),
+                   format=dct.get('format'),
+                   name=dct.get('name'))
+
+    def __post_init__(self):
+        if self.path is None:
+            self.path = ''
+        if isinstance(self.format, str):
+            self.format = resolve_class(self.format,
+                                        prefixes=['arcana.data.formats'])
 
 
 def bids_app(name: str,
