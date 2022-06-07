@@ -320,7 +320,7 @@ def generate_xnat_cs_command(name: str,
         + config_args_str
         + other_args_str + 
         f"--plugin cf "  # Use serial processing instead of parallel to simplify outputs
-        f"--work {XnatViaCS.WORK_MOUNT} "  # working directory
+        f"--work {XnatViaCS.WORK_MOUNT}-local "  # working directory
         f"--dataset_space medimage:Clinical "
         f"--dataset_hierarchy subject,session "
         "--single-row [SUBJECT_LABEL],[SESSION_LABEL] "
