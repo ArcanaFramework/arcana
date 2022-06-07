@@ -327,6 +327,7 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
     if work_dir is None:
         work_dir = tempfile.mkdtemp()
     work_dir = Path(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
 
     store_cache_dir = work_dir / 'store-cache'
     pipeline_cache_dir = work_dir / 'pipeline-cache'

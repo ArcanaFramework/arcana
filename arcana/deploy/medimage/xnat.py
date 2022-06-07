@@ -319,7 +319,7 @@ def generate_xnat_cs_command(name: str,
         + param_args_str
         + config_args_str
         + other_args_str + 
-        f"--plugin serial "  # Use serial processing instead of parallel to simplify outputs
+        f"--plugin cf "  # Use serial processing instead of parallel to simplify outputs
         f"--work {XnatViaCS.WORK_MOUNT} "  # working directory
         f"--dataset_space medimage:Clinical "
         f"--dataset_hierarchy subject,session "
