@@ -330,7 +330,10 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
                  dataset_name, dataset_space, dataset_hierarchy, ids, configuration,
                  single_row, export_work, raise_errors):
 
-    if loglevel is not 'none':
+    if type(export_work) is bytes:
+        export_work = Path(export_work.decode('utf-8'))
+
+    if loglevel != 'none':
         logging.basicConfig(stream=sys.stdout,
                             level=getattr(logging, loglevel.upper()))
 
