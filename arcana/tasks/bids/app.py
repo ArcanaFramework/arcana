@@ -1,6 +1,7 @@
 import attr
 import re
 import tempfile
+import logging
 import typing as ty
 import shutil
 import shlex
@@ -19,6 +20,7 @@ from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.exceptions import ArcanaUsageError
 from arcana.core.utils import func_task, path2varname, resolve_class
 
+logger = logging.getLogger('arcana')
 
 @dataclass
 class Input():
@@ -335,6 +337,7 @@ def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
     with dataset.store:
         for inpt_name, inpt_value in input_values.items():
             if inpt_value is attr.NOTHING:
+                logger.warning("No input provided for '%s' input", inpt_name)
                 continue
             node_item = data_node[inpt_name]
             node_item.put(inpt_value)  # Store value/path in store
