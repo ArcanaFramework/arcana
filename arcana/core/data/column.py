@@ -2,6 +2,7 @@ from abc import abstractmethod, ABCMeta
 import re
 import typing as ty
 import attr
+from operator import attrgetter
 from attr.converters import optional
 # from arcana.core.data.node import DataNode
 from arcana.core.utils import class_location
@@ -114,12 +115,16 @@ class DataSource(DataColumn):
         # Get all items that match the data format of the source
         matches = node.resolved(self.format)
         if not matches:
+            format_str = class_location(self.format,
+                                        strip_prefix='arcana.data.formats.')
             msg = (f"Did not find any items matching data format "
-                   f"{self.format} in {node}, found unresolved items:\n")
-            for item in node.unresolved:
+                   f"{format_str} in '{node.id}' {self.frequency} for the "
+                   f"'{self.name}' column, found unresolved items:")
+            for item in sorted(node.unresolved, key=attrgetter('path')):
                 msg += f'\n    {item.path}: paths=' + ','.join(
                     p.name for p in item.file_paths) + (
                         (', uris=' + ','.join(item.uris.keys())) if item.uris else '')
+            msg += self._format_criteria()
             raise ArcanaDataMatchError(msg)
         # Apply all filters to find items that match criteria
         for func, arg in criteria:
@@ -149,15 +154,19 @@ class DataSource(DataColumn):
         format_str = class_location(self.format, strip_prefix='arcana.data.formats.')
         return (
             f" attempting to select a {format_str} item for the '{node.id}' "
-            f"{node.frequency} of the '{self.name}' column, found:"
-            + self._format_matches(matches)
-            + f"\n\nfull criteria: path='{self.path}', is_regex={self.is_regex}, "
-            + f"format={self.format}, quality_threshold='{self.quality_threshold}', "
+            f"{node.frequency} in the '{self.name}' column, found:"
+            + self._format_matches(matches) + self._format_criteria())
+
+    def _format_criteria(self):
+        format_str = class_location(self.format, strip_prefix='arcana.data.formats.')
+        return (
+            f"\n\n    criteria: path='{self.path}', is_regex={self.is_regex}, "
+            + f"format={format_str}, quality_threshold='{self.quality_threshold}', "
             + f"header_vals={self.header_vals}, order={self.order}")
 
     def _format_matches(self, matches):
         out_str = ''
-        for match in matches:
+        for match in sorted(matches, key=attrgetter('path')):
             out_str += f"\n    "
             if match.order:
                 out_str += match.order + ': '
