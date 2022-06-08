@@ -4,9 +4,11 @@ import typing as ty
 import attr
 from attr.converters import optional
 # from arcana.core.data.node import DataNode
+from arcana.core.utils import class_location
 from arcana.exceptions import ArcanaDataMatchError
 from ..enum import DataQuality, DataSalience
 from .space import DataSpace
+
 
 
 @attr.s
@@ -17,7 +19,7 @@ class DataColumn(metaclass=ABCMeta):
     format = attr.ib()
     frequency: DataSpace = attr.ib()
     dataset = attr.ib(default=None, metadata={'asdict': False},
-                      eq=False, hash=False)
+                      eq=False, hash=False, repr=False)
 
     def __iter__(self):
         return (n[self.name] for n in self.dataset.nodes(self.frequency))
@@ -115,7 +117,7 @@ class DataSource(DataColumn):
             msg = (f"Did not find any items matching data format "
                    f"{self.format} in {node}, found unresolved items:\n")
             for item in node.unresolved:
-                msg += f'\n{item.path}: paths=' + ','.join(
+                msg += f'\n    {item.path}: paths=' + ','.join(
                     p.name for p in item.file_paths) + (
                         (', uris=' + ','.join(item.uris.keys())) if item.uris else '')
             raise ArcanaDataMatchError(msg)
@@ -135,8 +137,7 @@ class DataSource(DataColumn):
             except IndexError as e:
                 raise ArcanaDataMatchError(
                     "Not enough matching items to select one at index "
-                    f"{self.order}, found "
-                    + ", ".join(str(m) for m in matches)) from e
+                    f"{self.order}, found:" + self._format_matches(matches)) from e
         elif len(matches) > 1:
             raise ArcanaDataMatchError(
                 "Found multiple matches " + self._error_msg(node, matches))
@@ -145,26 +146,42 @@ class DataSource(DataColumn):
         return match
 
     def _error_msg(self, node, matches):
+        format_str = class_location(self.format, strip_prefix='arcana.data.formats.')
         return (
-            f" attempting to select an item from {node} matching {self}, "
-            "found:\n" + "\n    ".join(str(m) for m in matches))
+            f" attempting to select a {format_str} item for the '{node.id}' "
+            f"{node.frequency} of the '{self.name}' column, found:"
+            + self._format_matches(matches)
+            + f"\n\nfull criteria: path='{self.path}', is_regex={self.is_regex}, "
+            + f"format={self.format}, quality_threshold='{self.quality_threshold}', "
+            + f"header_vals={self.header_vals}, order={self.order}")
+
+    def _format_matches(self, matches):
+        out_str = ''
+        for match in matches:
+            out_str += f"\n    "
+            if match.order:
+                out_str += match.order + ': '
+            out_str += match.path
+            out_str += f" ({match.quality})"
+        return out_str
+
 
 def match_path(item, path):
-    "at the path {}"
+    "at the path '{}'"
     return item.path == path
 
 def match_path_regex(item, pattern):
-    "with a path that matched the pattern {}"
+    "that matched the path pattern '{}'"
     if not pattern.endswith('$'):
         pattern += '$'
     return re.match(pattern, item.path)
 
 def match_quality(item, threshold):
-    "with an acceptable quality {}"
+    "with an acceptable quality '{}'"
     return item.quality >= threshold
 
 def match_header_vals(item, header_vals):
-    "with the header values {}"
+    "with the header values '{}'"
     return all(item.header(k) == v for k, v in header_vals.items())
 
 

@@ -2,7 +2,6 @@ from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import subprocess as sp
 import importlib_metadata
-from itertools import chain
 import pkgutil
 import json
 import typing as ty
@@ -26,6 +25,7 @@ from collections.abc import Iterable
 import logging
 import attr
 from pydra import Workflow
+from pydra.engine.task import TaskBase
 from pydra.engine.task import FunctionTask, TaskBase
 from pydra.engine.specs import BaseSpec, SpecInfo
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaVersionError
@@ -216,12 +216,15 @@ def set_loggers(loglevel, pydra_level='warning', depend_level='warning'):
     logging.basicConfig(level=parse(depend_level))
 
 
-def class_location(cls):
+def class_location(cls, strip_prefix=None):
     """Records the location of a class so it can be loaded later using 
     `resolve_class`, in the format <module-name>:<class-name>"""
     if not isinstance(cls, type):
         cls = type(cls)  # Get the class rather than the object
-    return cls.__module__ + ':' + cls.__name__
+    module_name = cls.__module__
+    if strip_prefix and module_name.startswith(strip_prefix):
+        module_name = module_name[len(strip_prefix):]
+    return module_name + ':' + cls.__name__
 
 
 def resolve_class(class_str: str, prefixes: Sequence[str]=()) -> type:
@@ -879,6 +882,61 @@ def pydra_eq(a: TaskBase, b: TaskBase):
                 return False
     return True
 
+
+def show_workflow_errors(pipeline_cache_dir: Path,
+                         omit_nodes: list[str]=None) -> str:
+    """Extract nodes with errors and display results
+
+    Parameters
+    ----------
+    pipeline_cache_dir : Path
+        the path container the pipeline cache directories
+    omit_nodes : list[str], optional
+        The names of the nodes to omit from the error message
+
+    Returns
+    -------
+    str
+        a string displaying the error messages
+    """
+    PKL_FILES = ['_task.pklz', '_result.pklz', '_error.pklz']
+    out_str = ''
+    def load_contents(fpath):
+        contents = None
+        if fpath.exists():
+            with open(fpath, 'rb') as f:
+                contents = cp.load(f)
+        return contents
+        
+    for path in pipeline_cache_dir.iterdir():
+        if not path.is_dir():
+            continue
+        if '_error.pklz' in [p.name for p in path.iterdir()]:
+            task = load_contents(path / '_task.pklz')
+            if task.name in omit_nodes:
+                continue
+            if task:
+                out_str += f'{task.name} ({type(task)}):\n'
+                out_str += f"    inputs:"
+                for inpt_name in task.input_names:
+                    out_str += f"\n        {inpt_name}: {getattr(task.inputs, inpt_name)}"
+                try:
+                    out_str += "\n\n    cmdline: " + task.cmdline
+                except:
+                    pass
+            else:
+                out_str += f'Anonymous task:\n'
+            error = load_contents(path / '_error.pklz')
+            out_str += '\n\n    errors:\n'
+            for k, v in error.items():
+                if k == 'error message':
+                    indent = '            '
+                    out_str += f'        message:\n' + indent + ''.join(
+                        l.replace('\n', '\n' + indent) for l in v)
+                else:
+                    out_str += f'        {k}: {v}\n'
+    return out_str
+    
 
 # Minimum version of Arcana that this version can read the serialisation from
 MIN_SERIAL_VERSION = '0.0.0'

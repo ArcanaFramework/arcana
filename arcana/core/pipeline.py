@@ -13,7 +13,8 @@ import pydra.mark
 from pydra.engine.core import Workflow
 from arcana.exceptions import (
     ArcanaNameError, ArcanaUsageError, ArcanaDesignError,
-    ArcanaPipelinesStackError, ArcanaOutputNotProducedException)
+    ArcanaPipelinesStackError, ArcanaOutputNotProducedException,
+    ArcanaDataMatchError)
 from .data.format import DataItem, FileGroup
 import arcana.core.data.set
 from .data.space import DataSpace
@@ -433,10 +434,17 @@ def source_items(dataset, frequency, id, inputs, parameterisation):
     sourced = []
     data_node = dataset.node(frequency, id)
     with dataset.store:
+        missing_inputs = {}
         for inpt_name in inputs:
-            item = data_node[inpt_name]
-            item.get()  # download to host if required
-            sourced.append(item)
+            try:
+                item = data_node[inpt_name]
+            except ArcanaDataMatchError as e:
+                missing_inputs[inpt_name] = str(e)
+            else:
+                item.get()  # download to host if required
+                sourced.append(item)
+        if missing_inputs:
+            raise ArcanaDataMatchError('\n\n' + '\n\n'.join(missing_inputs.values()))
     return tuple(sourced) + (provenance,)
 
 

@@ -1,4 +1,6 @@
 import logging
+import sys
+import shutil
 from pathlib import Path
 import click
 import docker.errors
@@ -6,7 +8,7 @@ import tempfile
 from traceback import format_exc
 from arcana.core.cli import cli
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
-from arcana.core.utils import resolve_class, parse_value
+from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
 from arcana.core.deploy.utils import load_yaml_spec, walk_spec_paths, DOCKER_HUB
 from arcana.core.deploy.docs import create_doc
 from arcana.core.utils import package_from_module, pydra_asdict
@@ -204,12 +206,12 @@ def build_docs(spec_path, output, flatten, loglevel):
 @deploy.command(name='required-packages',
                 help="""Detect the Python packages required to run the 
 specified workflows and return them and their versions""")
-@click.argument('workflow_locations', nargs=-1)
-def required_packages(workflow_locations):
+@click.argument('task_locations', nargs=-1)
+def required_packages(task_locations):
 
     required_modules = set()
-    for workflow_location in workflow_locations:
-        workflow = resolve_class(workflow_location)
+    for task_location in task_locations:
+        workflow = resolve_class(task_location)
         pydra_asdict(workflow, required_modules)
 
     for pkg in package_from_module(required_modules):
@@ -242,11 +244,11 @@ IMAGE_TAG is the tag of the Docker image to inspect"""
 @click.command(name='run-arcana-pipeline',
                help="""Defines a new dataset, applies and launches a pipeline
 in a single command. Given the complexity of combining all these steps in one
-CLI, it isn't recommended for manual use, and is typically used when
-deploying a pipeline within a container image.
+CLI, it isn't recommended to use this command manually, it is typically used
+by automatically generated code when deploying a pipeline within a container image.
 
 Not all options are be used when defining datasets, however, the
-'--dataset <NAME>' option can be provided to use an existing dataset
+'--dataset_name <NAME>' option can be provided to use an existing dataset
 definition.
 
 DATASET_ID_STR string containing the nickname of the data store, the ID of the
@@ -260,23 +262,23 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
 """)
 @click.argument("dataset_id_str")
 @click.argument('pipeline_name')
-@click.argument('workflow_location')
+@click.argument('task_location')
 @click.option(
     '--parameter', '-p', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
     help=("free parameters of the workflow to be passed by the pipeline user"))
 @click.option(
     '--input', nargs=5, default=(), metavar='<col-name> <col-format> <match-criteria> <pydra-field> <format>',
     multiple=True, type=str,
-    help=("link an input of the workflow to a column of the dataset, adding a source"
+    help=("link an input of the task/workflow to a column of the dataset, adding a source"
           "column matched by the name/path of the column if it isn't already present. "
           "Automatically generated source columns must be able to be specified by their "
-          "path alone and be already in the format required by the workflow"))
+          "path alone and be already in the format required by the task/workflow"))
 @click.option(
     '--output', nargs=5, default=(), metavar='<col-name> <col-format> <output-path> <pydra-field> <format>',
     multiple=True, type=str,
-    help=("add a sink to the dataset and link it to an output of the workflow "
+    help=("add a sink to the dataset and link it to an output of the task/workflow "
           "in a single step. The sink column be in the same format as produced "
-          "by the workflow"))
+          "by the task/workflow"))
 @click.option(
     '--frequency', '-f', default=None, type=str,
     help=("the frequency of the nodes the pipeline will be executed over, i.e. "
@@ -291,7 +293,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
           "created during the pipeline execution will be stored"))
 @click.option(
     '--plugin', default='cf',
-    help=("The Pydra plugin with which to process the workflow"))
+    help=("The Pydra plugin with which to process the task/workflow"))
 @click.option(
     '--loglevel', type=str, default='info',
     help=("The level of detail logging information is presented"))
@@ -314,15 +316,23 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     help=("Whether to overwrite the saved pipeline with the same name, if present"))
 @click.option(
     '--configuration', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
-    help=("configuration args of the workflow. Differ from parameters in that they is passed to the "
-          "workflow at initialisation (and can therefore help specify its inputs) not as inputs. Values "
+    help=("configuration args of the task/workflow. Differ from parameters in that they is passed to the "
+          "task/workflow at initialisation (and can therefore help specify its inputs) not as inputs. Values "
           "can be any valid JSON (including basic types)."))
-def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
+@click.option(
+    '--export-work', default=None, type=click.Path(exists=False, path_type=Path),
+    help="Export the work directory to another location after the task/workflow exits")
+@click.option(
+    '--raise-errors/--catch-errors', type=bool, default=False,
+    help="raise exceptions instead of capturing them to supress call stack")
+def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
                  input, output, frequency, overwrite, work_dir, plugin, loglevel,
                  dataset_name, dataset_space, dataset_hierarchy, ids, configuration,
-                 single_row):
+                 single_row, export_work, raise_errors):
 
-    logging.basicConfig(level=getattr(logging, loglevel.upper()))
+    if loglevel is not 'none':
+        logging.basicConfig(stream=sys.stdout,
+                            level=getattr(logging, loglevel.upper()))
 
     if work_dir is None:
         work_dir = tempfile.mkdtemp()
@@ -362,6 +372,9 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
 
     pipeline_inputs = []
     for col_name, col_format_name, col_path, pydra_field, format_name in input:
+        if not col_path:
+            logger.info("Skipping '{col_name}' source column as no input was provided")
+            continue
         col_format = resolve_class(col_format_name, prefixes=['arcana.data.formats'])
         format = resolve_class(format_name, prefixes=['arcana.data.formats'])
         pipeline_inputs.append(PipelineInput(col_name, pydra_field, format))
@@ -394,35 +407,53 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
 
     kwargs = {n: parse_value(v) for n, v in configuration}
     if 'name' not in kwargs:
-        kwargs['name'] = 'workflow'
+        kwargs['name'] = 'workflow_to_run'
 
-    workflow = resolve_class(workflow_location)(**kwargs)
+    task = resolve_class(task_location)(**kwargs)
 
     for pname, pval in parameter:
         if pval != '':
-            setattr(workflow.inputs, pname, parse_value(pval))
+            setattr(task.inputs, pname, parse_value(pval))
 
     if pipeline_name in dataset.pipelines and not overwrite:
         pipeline = dataset.pipelines[pipeline_name]
-        if workflow != pipeline.workflow:
+        if task != pipeline.workflow:
             raise RuntimeError(
                 f"A pipeline named '{pipeline_name}' has already been applied to "
                 "which differs from one specified. Please use '--overwrite' option "
                 "if this is intentional")
     else:
         pipeline = dataset.apply_pipeline(
-            pipeline_name, workflow, inputs=pipeline_inputs,
+            pipeline_name, task, inputs=pipeline_inputs,
             outputs=pipeline_outputs, frequency=frequency, overwrite=overwrite)
 
     # Instantiate the Pydra workflow
-    workflow = pipeline(cache_dir=pipeline_cache_dir)
+    wf = pipeline(cache_dir=pipeline_cache_dir)
     
     if ids is not None:
         ids = ids.split(',')
 
-    # execute the workflow    
-    result = workflow(ids=ids, plugin=plugin)
-
-    logger.info("Pipeline %s ran successfully for the following nodes\n: %s",
-                pipeline_name, '\n'.join(result.output.processed))
+    # execute the workflow
+    try:
+        result = wf(ids=ids, plugin=plugin)
+    except Exception:
+        logger.error("Pipeline failed with errors for the following nodes:\n\n%s",
+                     show_workflow_errors(pipeline_cache_dir,
+                                          omit_nodes=['per_node', wf.name]))
+        if raise_errors:
+            raise
+        errors = True
+    else:
+        logger.info("Pipeline %s ran successfully for the following data rows:\n%s",
+                    pipeline_name, '\n'.join(result.output.processed))
+        errors = False
+    finally:
+        if export_work:
+            logger.info("Exporting work directory to '%s'", export_work)
+            export_work.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(pipeline_cache_dir, export_work / 'pipeline-cache')
+    # Abort at the end after the working directory can be copied back to the
+    # host so that XNAT knows there was an error
+    if errors:
+        sys.exit(1)
     
