@@ -440,12 +440,13 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
     try:
         result = wf(ids=ids, plugin=plugin)
     except Exception:
-        logger.error("Pipeline failed with errors for the following nodes:\n\n%s",
-                     show_workflow_errors(pipeline_cache_dir,
-                                          omit_nodes=['per_node', wf.name]))
-        if raise_errors:
+        msg = show_workflow_errors(pipeline_cache_dir,
+                                   omit_nodes=['per_node', wf.name])
+        logger.error("Pipeline failed with errors for the following nodes:\n\n%s", msg)
+        if raise_errors or not msg:
             raise
-        errors = True
+        else:
+            errors = True
     else:
         logger.info("Pipeline %s ran successfully for the following data rows:\n%s",
                     pipeline_name, '\n'.join(result.output.processed))

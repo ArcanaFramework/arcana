@@ -335,8 +335,7 @@ def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
     with dataset.store:
         for inpt_name, inpt_value in input_values.items():
             if inpt_value is attr.NOTHING:
-                raise ArcanaUsageError(
-                    f"No value passed to {inpt_name}")
+                continue
             node_item = data_node[inpt_name]
             node_item.put(inpt_value)  # Store value/path in store
     return (dataset, dataset.id)
