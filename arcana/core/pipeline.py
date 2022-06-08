@@ -186,8 +186,9 @@ class Pipeline():
             if not (inpt.required_format is stored_format
                     or issubclass(stored_format, inpt.required_format)):
                 logger.info("Adding implicit conversion for input '%s' "
-                            "from %s to %s", inpt.col_name, stored_format,
-                            inpt.required_format)
+                            "from %s to %s", inpt.col_name,
+                            stored_format.class_name(),
+                            inpt.required_format.class_name())
                 source_name = path2varname(inpt.col_name)
                 converter = inpt.required_format.converter_task(
                     stored_format, name=f"{source_name}_input_converter")
@@ -242,8 +243,9 @@ class Pipeline():
             if not (outpt.produced_format is stored_format
                     or issubclass(outpt.produced_format, stored_format)):
                 logger.info("Adding implicit conversion for output '%s' "
-                    "from %s to %s", outpt.col_name, outpt.produced_format,
-                    stored_format)
+                    "from %s to %s", outpt.col_name,
+                    outpt.produced_format.class_name(),
+                    stored_format.class_name())
                 # Insert converter
                 sink_name = path2varname(outpt.col_name)
                 converter = stored_format.converter_task(

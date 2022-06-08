@@ -376,7 +376,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
     pipeline_inputs = []
     for col_name, col_format_name, col_path, pydra_field, format_name in input:
         if not col_path:
-            logger.info("Skipping '{col_name}' source column as no input was provided")
+            logger.warning("Skipping '{col_name}' source column as no input was provided")
             continue
         col_format = resolve_class(col_format_name, prefixes=['arcana.data.formats'])
         format = resolve_class(format_name, prefixes=['arcana.data.formats'])
@@ -389,7 +389,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
             dataset.add_source(name=col_name, format=col_format, path=col_path,
                                is_regex=True)
             
-    logger.info("Pipeline inputs: %s", pipeline_inputs)
+    logger.debug("Pipeline inputs: %s", pipeline_inputs)
 
     pipeline_outputs = []
     for col_name, col_format_name, col_path, pydra_field, format_name in output:
@@ -406,7 +406,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
             logger.info(f"Adding new source column '{col_name}'")
             dataset.add_sink(name=col_name, format=col_format, path=col_path)
 
-    logger.info("Pipeline outputs: %s", pipeline_outputs)
+    logger.debug("Pipeline outputs: %s", pipeline_outputs)
 
     kwargs = {n: parse_value(v) for n, v in configuration}
     if 'name' not in kwargs:
