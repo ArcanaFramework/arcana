@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import tempfile
 import logging
+import inspect
 import shutil
 from natsort import natsorted
 import docker
@@ -59,7 +60,8 @@ def construct_dockerfile(
         use_local_packages: bool=False,
         pypi_fallback: bool=False,
         license_dir: Path=None,
-        licenses: ty.Iterable[ty.Dict[str, str]]=()) -> DockerRenderer:
+        licenses: ty.Iterable[ty.Dict[str, str]]=(),
+        spec: dict=None) -> DockerRenderer:
     """Constructs a dockerfile that wraps a with dependencies
 
     Parameters
@@ -99,6 +101,9 @@ def construct_dockerfile(
     licenses : list[dict[str, str]], optional
         specification of licenses to install inside docker image. Each dict
         should contain 'source' and 'destination' items.
+    spec : dict, optional
+        the specification used to generate the image to be saved inside it for
+        future reference
 
     Returns
     -------

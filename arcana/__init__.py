@@ -16,16 +16,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-from .__about__ import __authors__
-from .core.data.format import FileGroup, Field
-from .core.data.column import DataSink
-from .core.data.column import DataSource
-from .core.data.set import Dataset
-# Should be set explicitly in all FSL interfaces, but this squashes the warning
-# os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'
-
-from .__about__ import __authors__
 
 from ._version import get_versions
 __version__ = get_versions()['version']
 del get_versions
+from .__about__ import __authors__
+
+# Should be set explicitly in all FSL interfaces, but this squashes the warning
+# os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'

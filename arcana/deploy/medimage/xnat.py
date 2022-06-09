@@ -3,10 +3,13 @@ import re
 import typing as ty
 from pathlib import Path
 import tempfile
+from copy import copy
+import inspect
 import json
 from attr import NOTHING
 from dataclasses import dataclass
 from neurodocker.reproenv import DockerRenderer
+from arcana import __version__
 from arcana.core.data.format import FileGroup
 import arcana.data.formats.common
 from arcana.data.spaces.medimage import Clinical
@@ -64,6 +67,13 @@ def build_xnat_cs_image(image_tag: str,
     **kwargs:
         Passed on to `construct_dockerfile` method
     """
+    # Save a snapshot of the arguments to this function in a dict to save
+    # within the built image
+    spec = copy(kwargs)
+    for argname in inspect.signature(build_xnat_cs_image).parameters:
+        if argname != 'kwargs':
+            spec[argname] = locals()[argname]
+    spec['arcana-version'] = __version__
 
     if build_dir is None:
         build_dir = tempfile.mkdtemp()
@@ -90,6 +100,7 @@ def build_xnat_cs_image(image_tag: str,
         build_dir,
         labels={'org.nrg.commands': command_label,
                 'maintainer': authors[0]},
+        spec=spec,
         **kwargs)
 
     # Copy the generated XNAT commands inside the container for ease of reference

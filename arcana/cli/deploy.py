@@ -161,7 +161,6 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
                 generate_only=generate_only,
                 test_config=use_test_config,
                 license_dir=license_dir,
-                spec=spec,
                 **{k: v for k, v in spec.items() if not k.startswith('_')})
         except Exception:
             if raise_errors:
