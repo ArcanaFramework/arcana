@@ -3,18 +3,19 @@ import sys
 import shutil
 from pathlib import Path
 import shutil
-import tarfile
 import json
 import click
 import docker.errors
 import tempfile
 from traceback import format_exc
+from deepdiff import DeepDiff
 from arcana.core.cli import cli
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
 from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
-from arcana.core.deploy.utils import load_yaml_spec, walk_spec_paths, DOCKER_HUB
+from arcana.core.deploy.utils import (
+    load_yaml_spec, walk_spec_paths, DOCKER_HUB, extract_file_from_docker_image)
 from arcana.core.deploy.docs import create_doc
-from arcana.core.deploy.build import SPEC_PATH
+from arcana.core.deploy.build import SPEC_PATH as spec_path_in_docker
 from arcana.core.utils import package_from_module, pydra_asdict
 from arcana.deploy.medimage.xnat import build_xnat_cs_image
 from arcana.core.data.set import Dataset
@@ -74,7 +75,7 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               default=None,
               help="Directory containing licences required to build the images")
 @click.option('--check-against-registry/--dont-check-against_registry',
-              type=bool, default=False,
+              type=bool, default=True,
               help=("Check the registry to see if an existing image with the "
                     "same tag is present, and if so whether the specification "
                     "matches (and can be skipped) or not (raise an error)"))
@@ -124,33 +125,23 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
         image_build_dir.mkdir(exist_ok=True, parents=True)
 
         if check_against_registry:
-            dc = docker.from_env()
-            try:
-                dc.pull(image_tag)
-            except docker.errors.ImageNotFound:
-                pass
+            with open(extract_file_from_docker_image(image_tag, spec_path_in_docker)) as f:
+                saved_spec = json.load(f)
+            if spec == saved_spec:
+                logger.info(
+                    "Skipping '%s' build as identical image already "
+                    "exists in registry")
+                continue
             else:
-                container = dc.containers.get(dc.api.create_container(image_tag)['Id'])
-                with tempfile.NamedTemporaryFile(mode='w+b') as f:
-                    try:
-                        stream, _ = dc.api.get_archive(container, SPEC_PATH)
-                    except docker.errors.NotFound:
-                        pass
-                    else:
-                        for chunk in stream:
-                            f.write(chunk)
-                        f.flush()
-                        with tarfile.open(f) as tf:
-                            saved_spec = json.load(f)
-                        if spec == saved_spec:
-                            logger.info(
-                                "Skipping '%s' build as identical image already "
-                                "exists in registry")
-                            continue
-                        else:
-                            logger.error(
-                                "Mismatching specs for %s image:\n%s\n\nvs\n\n%s",
-                                image_tag, spec, saved_spec)
+                diff = DeepDiff(spec, saved_spec, ignore_order=True)
+                if saved_spec['image_tag'] == image_tag:
+                    logger.error(
+                        "Mismatching specs for %s image for same image tag '%s':\n\n%s",
+                        image_tag, image_tag, diff.to_dict())
+                else:
+                    logger.info("Rebuilding '%s' due to changes in spec:\n\n%s",
+                                diff.to_dict())
+
         try:
             build_xnat_cs_image(
                 image_tag=image_tag,
@@ -522,4 +513,3 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
                 pass
         else:
             sys.exit(1)
-    

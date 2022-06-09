@@ -1,13 +1,16 @@
 
 import typing as ty
-from pathlib import Path
+from pathlib import Path, PosixPath
 import json
 import site
+import tempfile
+import tarfile
 import logging
 from itertools import chain
 import pkg_resources
 import os
 from dataclasses import dataclass, field as dataclass_field
+import docker
 import yaml
 from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME
@@ -213,6 +216,45 @@ def local_package_location(pip_spec: PipSpec, pypi_fallback: bool=False):
                                version=pkg.version,
                                extras=pip_spec.extras)
     return pip_spec
+
+
+def extract_file_from_docker_image(image_tag: str, file_path: PosixPath,
+                                   out_path: Path=None) -> Path:
+    """Extracts a file from a Docker image onto the local host
+
+    Parameters
+    ----------
+    image_tag : str
+        the name/tag of the image to extract the file from
+    file_path : PosixPath
+        the path to the file inside the image
+
+    Returns
+    -------
+    Path
+        path to the extracted file
+    """
+    if out_path is None:
+        out_path = Path(tempfile.mkdtemp()) / file_path.name
+    dc = docker.from_env()
+    try:
+        dc.pull(image_tag)
+    except docker.errors.ImageNotFound:
+        pass
+    else:
+        container = dc.containers.get(dc.api.create_container(image_tag)['Id'])
+        with tempfile.NamedTemporaryFile(mode='w+b') as f:
+            try:
+                stream, _ = dc.api.get_archive(container, file_path)
+            except docker.errors.NotFound:
+                pass
+            else:
+                for chunk in stream:
+                    f.write(chunk)
+                f.flush()
+                with tarfile.open(f) as tf:
+                    tf.extractall(out_path)
+    return out_path
 
 
 
