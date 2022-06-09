@@ -325,10 +325,16 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
 @click.option(
     '--raise-errors/--catch-errors', type=bool, default=False,
     help="raise exceptions instead of capturing them to supress call stack")
+@click.option(
+    '--keep-running-on-errors/--exit-on-errors', type=bool, default=False,
+    help=("Keep the the pipeline running in infinite loop on error (will need "
+          "to be manually killed). Can be useful in situations where the "
+          "enclosing container will be removed on completion and you need to "
+          "be able to 'exec' into the container to debug."))
 def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
                  input, output, frequency, overwrite, work_dir, plugin, loglevel,
                  dataset_name, dataset_space, dataset_hierarchy, ids, configuration,
-                 single_row, export_work, raise_errors):
+                 single_row, export_work, raise_errors, keep_running_on_errors):
 
     if type(export_work) is bytes:
         export_work = Path(export_work.decode('utf-8'))
@@ -459,5 +465,9 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
     # Abort at the end after the working directory can be copied back to the
     # host so that XNAT knows there was an error
     if errors:
-        sys.exit(1)
+        if keep_running_on_errors:
+            while True:
+                pass
+        else:
+            sys.exit(1)
     
