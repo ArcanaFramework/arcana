@@ -3,10 +3,15 @@ from functools import reduce
 from operator import mul
 import logging
 import sys
+import tempfile
+from pathlib import Path
+import pytest
+import docker
 from arcana.cli.deploy import build, run_pipeline
 from arcana.core.utils import class_location
 from arcana.test.utils import show_cli_trace, make_dataset_id_str
 from arcana.data.formats.common import Text
+from arcana.exceptions import ArcanaBuildError
 
 
 def test_deploy_build_cli(command_spec, cli_runner, work_dir):
@@ -40,9 +45,80 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
                          '--use-local-packages',
                          '--install_extras', 'test',
                          '--raise-errors',
-                         '--use-test-config'])
+                         '--use-test-config',
+                         '--dont-check-against_registry'])
     assert result.exit_code == 0, show_cli_trace(result)
-    assert result.output == f'{DOCKER_REGISTRY}/{DOCKER_ORG}/{PKG_NAME}.concatenate:1.0-1\n'
+    tag = result.output.strip()
+    assert tag == f'{DOCKER_REGISTRY}/{DOCKER_ORG}/{PKG_NAME}.concatenate:1.0-1'
+
+    # Clean up the built image
+    dc = docker.from_env()
+    dc.images.remove(tag)
+
+
+def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefix):
+    """Tests the check to see whether """
+
+    DOCKER_ORG = 'testorg'
+    PKG_NAME = 'testpkg-rebuild' + run_prefix
+
+    def build_spec(spec):
+        work_dir = Path(tempfile.mkdtemp())
+        build_dir = work_dir / 'build'
+        build_dir.mkdir()
+        spec_path = work_dir / 'test-specs'
+        sub_dir = spec_path / PKG_NAME
+        sub_dir.mkdir(parents=True)
+        with open(sub_dir / 'concatenate.yml', 'w') as f:
+            yaml.dump(spec, f)
+
+        result = cli_runner(build,
+                            [str(spec_path), DOCKER_ORG,
+                            '--build_dir', str(build_dir),
+                            '--registry', docker_registry,
+                            '--loglevel', 'warning',
+                            '--use-local-packages',
+                            '--install_extras', 'test',
+                            '--raise-errors',
+                            '--use-test-config'])
+        assert result.exit_code == 0, show_cli_trace(result)
+        return result
+
+    concatenate_spec = {
+        'commands': [command_spec],
+        'pkg_version': '1.0',
+        'wrapper_version': '1',
+        'system_packages': [],
+        'python_packages': [],
+        'authors': ['some.one@an.email.org'],
+        'info_url': 'http://concatenate.readthefakedocs.io'}
+
+    # Build a basic image
+    result = build_spec(concatenate_spec)
+    tag = result.output.strip()
+
+    dc = docker.from_env()
+    dc.api.push(tag)
+
+    # Modify the spec so it doesn't match the original that has just been
+    # built (but don't increment the version number -> image tag so there
+    # is a clash)
+    concatenate_spec['system_packages'].append('vim')
+
+    with pytest.raises(ArcanaBuildError) as excinfo:
+        build_spec(concatenate_spec)
+
+    assert "Mismatching specs" in str(excinfo.value)
+
+    # Increment the version number to avoid the clash
+    concatenate_spec['wrapper_version'] = '2'
+
+    result = build_spec(concatenate_spec) 
+    rebuilt_tag = result.output.strip()
+
+    # Clean up the built images
+    dc.images.remove(tag)
+    dc.images.remove(rebuilt_tag)
 
 
 def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir):

@@ -22,7 +22,7 @@ def get_arbitrary_slice(i, dim_length):
 
 
 def test_add_column_cli(saved_dataset, cli_runner):
-    dataset_id_str = make_dataset_id_str(saved_dataset, name='test-source')
+    dataset_id_str = make_dataset_id_str(saved_dataset)
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     # Add source to loaded dataset
     saved_dataset.add_source(

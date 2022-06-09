@@ -3,24 +3,24 @@ import sys
 import shutil
 from pathlib import Path
 import shutil
-import json
 import click
 import docker.errors
 import tempfile
 from traceback import format_exc
-from deepdiff import DeepDiff
+from arcana import __version__
 from arcana.core.cli import cli
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
 from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
 from arcana.core.deploy.utils import (
-    load_yaml_spec, walk_spec_paths, DOCKER_HUB, extract_file_from_docker_image)
+    load_yaml_spec, walk_spec_paths, DOCKER_HUB, extract_file_from_docker_image,
+    compare_specs)
 from arcana.core.deploy.docs import create_doc
 from arcana.core.deploy.build import SPEC_PATH as spec_path_in_docker
 from arcana.core.utils import package_from_module, pydra_asdict
 from arcana.deploy.medimage.xnat import build_xnat_cs_image
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
-from arcana.exceptions import ArcanaError
+from arcana.exceptions import ArcanaBuildError, ArcanaError
 
 
 logger = logging.getLogger('arcana')
@@ -74,14 +74,19 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
 @click.option('--license-dir', type=click.Path(exists=True, path_type=Path),
               default=None,
               help="Directory containing licences required to build the images")
-@click.option('--check-against-registry/--dont-check-against_registry',
+@click.option('--check-against-prebuilt/--dont-check-against-prebuilt',
               type=bool, default=True,
               help=("Check the registry to see if an existing image with the "
                     "same tag is present, and if so whether the specification "
                     "matches (and can be skipped) or not (raise an error)"))
+@click.option('--check-prebuilt-arcana-version/--ignore-prebuilt-arcana-version',
+              type=bool, default=True,
+              help=("When checking against registry version, whether to also "
+                    "check the Arcana version that was used to generate it"))
 def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors, generate_only,
-          use_test_config, license_dir, check_against_registry):
+          use_test_config, license_dir, check_against_prebuilt,
+          check_prebuilt_arcana_version):
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode('utf-8'))  
@@ -124,23 +129,28 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
 
         image_build_dir.mkdir(exist_ok=True, parents=True)
 
-        if check_against_registry:
-            with open(extract_file_from_docker_image(image_tag, spec_path_in_docker)) as f:
-                saved_spec = json.load(f)
-            if spec == saved_spec:
-                logger.info(
-                    "Skipping '%s' build as identical image already "
-                    "exists in registry")
-                continue
-            else:
-                diff = DeepDiff(spec, saved_spec, ignore_order=True)
-                if saved_spec['image_tag'] == image_tag:
-                    logger.error(
-                        "Mismatching specs for %s image for same image tag '%s':\n\n%s",
-                        image_tag, image_tag, diff.to_dict())
+        if check_against_prebuilt:
+            extracted_dir = extract_file_from_docker_image(
+                image_tag, spec_path_in_docker)
+            if extracted_dir is not None:
+                built_spec = load_yaml_spec(
+                    extracted_dir / Path(spec_path_in_docker).name)
+                if diff:= compare_specs(
+                        spec, built_spec,
+                        check_version=check_prebuilt_arcana_version):
+                    msg = (
+                        f"Spec for '{image_tag}' doesn't match the one that was "
+                        "used to build the image in the registry:\n\n"
+                        + str(diff.pretty()))
+                    if raise_errors:
+                        raise ArcanaBuildError(msg)
+                    else:
+                        logger.errors(msg)
                 else:
-                    logger.info("Rebuilding '%s' due to changes in spec:\n\n%s",
-                                diff.to_dict())
+                    logger.info(
+                        "Skipping '%s' build as identical image already "
+                        "exists in registry")
+                    continue
 
         try:
             build_xnat_cs_image(

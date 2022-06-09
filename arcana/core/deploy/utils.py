@@ -11,6 +11,8 @@ import pkg_resources
 import os
 from dataclasses import dataclass, field as dataclass_field
 import docker
+from deepdiff import DeepDiff
+from requests.exceptions import HTTPError
 import yaml
 from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME
@@ -234,29 +236,65 @@ def extract_file_from_docker_image(image_tag: str, file_path: PosixPath,
     Path
         path to the extracted file
     """
+    tmp_dir = Path(tempfile.mkdtemp())
     if out_path is None:
-        out_path = Path(tempfile.mkdtemp()) / file_path.name
+        out_path = tmp_dir / 'extracted'
     dc = docker.from_env()
     try:
-        dc.pull(image_tag)
+        dc.api.pull(image_tag)
     except docker.errors.ImageNotFound:
-        pass
+        return None
+    except HTTPError as e:
+        if e.response.status_code == 404:
+            return None
+        else:
+            raise
     else:
         container = dc.containers.get(dc.api.create_container(image_tag)['Id'])
-        with tempfile.NamedTemporaryFile(mode='w+b') as f:
+        tarfile_path = tmp_dir / '_tar-file.tar.gz'
+        with open(tarfile_path, mode='w+b') as f:
             try:
-                stream, _ = dc.api.get_archive(container, file_path)
+                stream, _ = dc.api.get_archive(container.id, str(file_path))
             except docker.errors.NotFound:
                 pass
             else:
                 for chunk in stream:
                     f.write(chunk)
                 f.flush()
-                with tarfile.open(f) as tf:
-                    tf.extractall(out_path)
+        with tarfile.open(tarfile_path) as f:
+            f.extractall(out_path)
     return out_path
 
 
+def compare_specs(s1, s2, check_version=True):
+    """Compares to build specs against each other and returns the difference
+
+    Parameters
+    ----------
+    s1 : dict
+        first spec
+    s2 : dict
+        second spec
+    check_version : bool
+        check the arcana version used to generate the specs
+
+    Returns
+    -------
+    DeepDiff
+        the difference between the specs
+    """
+    def prep(s):
+        dct = {k: v for k, v in s.items()
+                if (not k.startswith('_')
+                    and (v or isinstance(v, bool)))}
+        if check_version:
+            if 'arcana_version' not in dct:
+                dct['arcana_version'] = __version__
+        else:
+            del dct['arcana_version']
+        return dct
+    diff = DeepDiff(prep(s1), prep(s2), ignore_order=True)
+    return diff
 
 DOCKER_HUB = 'docker.io'
 site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]

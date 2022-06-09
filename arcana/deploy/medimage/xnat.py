@@ -69,11 +69,12 @@ def build_xnat_cs_image(image_tag: str,
     """
     # Save a snapshot of the arguments to this function in a dict to save
     # within the built image
+    ARGS_TO_IGNORE = ['kwargs', 'build_dir', 'generate_only']
     spec = copy(kwargs)
     for argname in inspect.signature(build_xnat_cs_image).parameters:
-        if argname != 'kwargs':
+        if argname not in ARGS_TO_IGNORE:
             spec[argname] = locals()[argname]
-    spec['arcana-version'] = __version__
+    spec['arcana_version'] = __version__
 
     if build_dir is None:
         build_dir = tempfile.mkdtemp()

@@ -2,6 +2,7 @@ from tempfile import mkdtemp
 from pathlib import Path
 import shutil
 import pytest
+import docker
 from arcana.data.formats.common import Text, Directory, Json
 from arcana.data.formats.medimage import (
     NiftiGz, NiftiGzX, NiftiX, Nifti, Analyze, MrtrixImage)
@@ -213,3 +214,28 @@ def command_spec():
         'version': '0.1',
         'frequency': 'session',
         'info_url': None}
+
+
+@pytest.fixture(scope='session')
+def docker_registry():
+
+    IMAGE = 'docker.io/registry'
+    PORT = '5557'
+    CONTAINER = 'test-docker-registry'
+
+    dc = docker.from_env()
+    try:
+        image = dc.images.get(IMAGE)
+    except docker.errors.ImageNotFound:
+        image = dc.images.pull(IMAGE)
+
+    try:
+        container = dc.containers.get(CONTAINER)
+    except docker.errors.NotFound:
+        container = dc.containers.run(
+            image.tags[0], detach=True,
+            ports={'5000/tcp': PORT},
+            remove=True, name=CONTAINER)
+        
+    yield f'localhost:{PORT}'
+    container.stop()

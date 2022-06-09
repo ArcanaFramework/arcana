@@ -39,7 +39,7 @@ def run_spec(
             "arcana_install_extras": ["test"]
         }
         spec['dataset'] = make_mutable_dataset(
-            dataset_name="xnat_cs_func",
+            dataset_id="xnat_cs_func",
             blueprint=TEST_XNAT_DATASET_BLUEPRINTS["concatenate_test"],
             xnat_repository=xnat_repository,
             xnat_archive_dir=xnat_archive_dir,
@@ -99,7 +99,7 @@ def run_spec(
             [],
         )
         spec['dataset'] = make_mutable_dataset(
-            dataset_name="xnat_cs_bids_app",
+            dataset_id="xnat_cs_bids_app",
             blueprint=blueprint,
             xnat_repository=xnat_repository,
             xnat_archive_dir=xnat_archive_dir,

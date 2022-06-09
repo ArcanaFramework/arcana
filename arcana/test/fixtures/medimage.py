@@ -109,13 +109,13 @@ MUTABLE_DATASETS = ['basic.api', 'multi.api', 'basic.cs', 'multi.cs']
 
 @pytest.fixture(params=GOOD_DATASETS, scope='session')
 def xnat_dataset(xnat_repository, xnat_archive_dir, request):
-    dataset_name, access_method = request.param.split('.')
-    blueprint = TEST_XNAT_DATASET_BLUEPRINTS[dataset_name]
+    dataset_id, access_method = request.param.split('.')
+    blueprint = TEST_XNAT_DATASET_BLUEPRINTS[dataset_id]
     with xnat4tests.connect() as login:
-        if make_project_id(dataset_name,
+        if make_project_id(dataset_id,
                              xnat_repository.run_prefix) not in login.projects:
-            create_dataset_data_in_repo(dataset_name, blueprint, xnat_repository.run_prefix)    
-    return access_dataset(dataset_name=dataset_name,
+            create_dataset_data_in_repo(dataset_id, blueprint, xnat_repository.run_prefix)    
+    return access_dataset(dataset_id=dataset_id,
                           blueprint=blueprint,
                           xnat_repository=xnat_repository,
                           xnat_archive_dir=xnat_archive_dir,
