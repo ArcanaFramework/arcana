@@ -62,7 +62,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
     DOCKER_ORG = 'testorg'
     PKG_NAME = 'testpkg-rebuild' + run_prefix
 
-    def build_spec(spec):
+    def build_spec(spec, **kwargs):
         work_dir = Path(tempfile.mkdtemp())
         build_dir = work_dir / 'build'
         build_dir.mkdir()
@@ -80,8 +80,8 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
                             '--use-local-packages',
                             '--install_extras', 'test',
                             '--raise-errors',
-                            '--use-test-config'])
-        assert result.exit_code == 0, show_cli_trace(result)
+                            '--use-test-config'],
+                            **kwargs)
         return result
 
     concatenate_spec = {
@@ -95,34 +95,38 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
 
     # Build a basic image
     result = build_spec(concatenate_spec)
+    assert result.exit_code == 0, show_cli_trace(result)
     tag = result.output.strip()
+    try:
+        dc = docker.from_env()
+        dc.api.push(tag)
 
-    dc = docker.from_env()
-    dc.api.push(tag)
+        # FIXME: Need to ensure that logs are captured properly then we can test this
+        # result = build_spec(concatenate_spec)
+        # assert "Skipping" in result.output
 
-    # FIXME: Need to ensure that logs are captured properly
-    # result = build_spec(concatenate_spec)
-    # assert "Skipping" in result.output
+        # Modify the spec so it doesn't match the original that has just been
+        # built (but don't increment the version number -> image tag so there
+        # is a clash)
+        concatenate_spec['system_packages'].append('vim')
 
-    # Modify the spec so it doesn't match the original that has just been
-    # built (but don't increment the version number -> image tag so there
-    # is a clash)
-    concatenate_spec['system_packages'].append('vim')
+        with pytest.raises(ArcanaBuildError) as excinfo:
+            build_spec(concatenate_spec, catch_exceptions=False)
 
-    with pytest.raises(ArcanaBuildError) as excinfo:
-        build_spec(concatenate_spec)
+        assert "doesn't match the one that was used to build the image" in str(excinfo.value)
 
-    assert "doesn't match the one that was used to build the image" in str(excinfo.value)
+        # Increment the version number to avoid the clash
+        concatenate_spec['wrapper_version'] = '2'
 
-    # Increment the version number to avoid the clash
-    concatenate_spec['wrapper_version'] = '2'
-
-    result = build_spec(concatenate_spec) 
-    rebuilt_tag = result.output.strip()
-
-    # Clean up the built images
-    dc.images.remove(tag)
-    dc.images.remove(rebuilt_tag)
+        
+        result = build_spec(concatenate_spec)
+        assert result.exit_code == 0, show_cli_trace(result)
+        rebuilt_tag = result.output.strip()
+        dc.images.remove(rebuilt_tag)
+    finally:
+        # Clean up the built images
+        dc.images.remove(tag)
+    
 
 
 def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir):

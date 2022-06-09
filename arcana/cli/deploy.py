@@ -75,7 +75,7 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               default=None,
               help="Directory containing licences required to build the images")
 @click.option('--check-against-prebuilt/--dont-check-against-prebuilt',
-              type=bool, default=True,
+              type=bool, default=False,
               help=("Check the registry to see if an existing image with the "
                     "same tag is present, and if so whether the specification "
                     "matches (and can be skipped) or not (raise an error)"))

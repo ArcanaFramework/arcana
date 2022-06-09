@@ -45,9 +45,9 @@ else:
 
 @pytest.fixture
 def cli_runner():
-    def invoke(*args, **kwargs):
+    def invoke(*args, catch_exceptions=catch_cli_exceptions, **kwargs):
         runner = CliRunner()
-        result = runner.invoke(*args, catch_exceptions=catch_cli_exceptions,
+        result = runner.invoke(*args, catch_exceptions=catch_exceptions,
                                **kwargs)
         return result
     return invoke
