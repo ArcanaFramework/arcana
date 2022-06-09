@@ -104,7 +104,7 @@ def build_xnat_cs_image(image_tag: str,
 
 
 def generate_xnat_cs_command(name: str,
-                             workflow: str,
+                             pydra_task: str,
                              image_tag: str,
                              inputs,
                              outputs,
@@ -123,9 +123,9 @@ def generate_xnat_cs_command(name: str,
     ----------
     name : str
         Name of the container service pipeline
-    workflow
-        The module path and name (separated by ':') to the Pydra workflow/task
-        to execute, e.g. australianimagingservice.mri.neuro.mriqc:task
+    pydra_task
+        The module path and name (separated by ':') to the Pydra task, or function
+        that returns a Pydra Workflow, to execute, e.g. arcana.tasks.bids:bids_app
     image_tag : str
         Name + version of the Docker image to be created
     inputs : ty.List[ty.Union[InputArg, tuple]]
@@ -223,7 +223,7 @@ def generate_xnat_cs_command(name: str,
             "description": desc,
             "type": input_type,
             "default-value": inpt.path,
-            "required": True,
+            "required": False,
             "user-settable": True,
             "replacement-key": replacement_key})
         input_args.append(
@@ -246,32 +246,6 @@ def generate_xnat_cs_command(name: str,
             "replacement-key": replacement_key})
         param_args.append(
             f"--parameter {param.pydra_field} '{replacement_key}' ")
-
-    other_args = []
-
-    # Add input for dataset name
-    DATASET_NAME_KEY = '#DATASET_NAME#'
-    inputs_json.append({
-        "name": "Dataset_config",
-        "description": "Name of the Arcana dataset configuration to use",
-        "type": "string",
-        "default-value": "default",
-        "required": True,
-        "user-settable": True,
-        "replacement-key": DATASET_NAME_KEY})
-    other_args.append(f"--dataset_name {DATASET_NAME_KEY} ")
-
-    # Add input for dataset name
-    LOGLEVEL_KEY = '#LOGLEVEL#'
-    inputs_json.append({
-        "name": "Log_level",
-        "description": "Name of the Arcana dataset configuration to use",
-        "type": "string",
-        "default-value": "info",
-        "required": True,
-        "user-settable": True,
-        "replacement-key": LOGLEVEL_KEY})
-    other_args.append(f"--loglevel {LOGLEVEL_KEY} ")    
 
     # Set up output handlers and arguments
     outputs_json = []
@@ -305,22 +279,35 @@ def generate_xnat_cs_command(name: str,
         cvalue_json = json.dumps(cvalue)  #.replace('"', '\\"')
         config_args.append(f"--configuration {cname} '{cvalue_json}' ")
 
+    # Add input for dataset name
+    FLAGS_KEY = '#ARCANA_FLAGS#'
+    inputs_json.append({
+        "name": "Arcana_flags",
+        "description": "Flags passed to `run-arcana-pipeline` command",
+        "type": "string",
+        "default-value": (
+            "--plugin cf "  # Use serial processing instead of parallel to simplify outputs
+            f"--work {XnatViaCS.WORK_MOUNT}-local "  #FIXME: work dir moved inside container due to file-locking issue on some mounted volumes (see https://github.com/tox-dev/py-filelock/issues/147)
+            "--dataset_name default "
+            "--loglevel info "
+            f"--export-work {XnatViaCS.WORK_MOUNT}"),
+        "required": False,
+        "user-settable": True,
+        "replacement-key": FLAGS_KEY})
+
     input_args_str = ' '.join(input_args)
     output_args_str = ' '.join(output_args)
     param_args_str = ' '.join(param_args)
     config_args_str = ' '.join(config_args)
-    other_args_str = ' '.join(other_args)
 
     cmdline = (
         f"conda run --no-capture-output -n {CONDA_ENV} "  # activate conda
-        f"run-arcana-pipeline  xnat-cs//[PROJECT_ID] {name} {workflow} "  # run pydra task in Arcana
+        f"run-arcana-pipeline xnat-cs//[PROJECT_ID] {name} {pydra_task} "  # run pydra task in Arcana
         + input_args_str
         + output_args_str
         + param_args_str
         + config_args_str
-        + other_args_str + 
-        f"--plugin serial "  # Use serial processing instead of parallel to simplify outputs
-        f"--work {XnatViaCS.WORK_MOUNT} "  # working directory
+        + FLAGS_KEY + ' ' +
         f"--dataset_space medimage:Clinical "
         f"--dataset_hierarchy subject,session "
         "--single-row [SUBJECT_LABEL],[SESSION_LABEL] "

@@ -13,7 +13,8 @@ import pydra.mark
 from pydra.engine.core import Workflow
 from arcana.exceptions import (
     ArcanaNameError, ArcanaUsageError, ArcanaDesignError,
-    ArcanaPipelinesStackError, ArcanaOutputNotProducedException)
+    ArcanaPipelinesStackError, ArcanaOutputNotProducedException,
+    ArcanaDataMatchError)
 from .data.format import DataItem, FileGroup
 import arcana.core.data.set
 from .data.space import DataSpace
@@ -185,8 +186,9 @@ class Pipeline():
             if not (inpt.required_format is stored_format
                     or issubclass(stored_format, inpt.required_format)):
                 logger.info("Adding implicit conversion for input '%s' "
-                            "from %s to %s", inpt.col_name, stored_format,
-                            inpt.required_format)
+                            "from %s to %s", inpt.col_name,
+                            stored_format.class_name(),
+                            inpt.required_format.class_name())
                 source_name = path2varname(inpt.col_name)
                 converter = inpt.required_format.converter_task(
                     stored_format, name=f"{source_name}_input_converter")
@@ -241,8 +243,9 @@ class Pipeline():
             if not (outpt.produced_format is stored_format
                     or issubclass(outpt.produced_format, stored_format)):
                 logger.info("Adding implicit conversion for output '%s' "
-                    "from %s to %s", outpt.col_name, outpt.produced_format,
-                    stored_format)
+                    "from %s to %s", outpt.col_name,
+                    outpt.produced_format.class_name(),
+                    stored_format.class_name())
                 # Insert converter
                 sink_name = path2varname(outpt.col_name)
                 converter = stored_format.converter_task(
@@ -433,10 +436,17 @@ def source_items(dataset, frequency, id, inputs, parameterisation):
     sourced = []
     data_node = dataset.node(frequency, id)
     with dataset.store:
+        missing_inputs = {}
         for inpt_name in inputs:
-            item = data_node[inpt_name]
-            item.get()  # download to host if required
-            sourced.append(item)
+            try:
+                item = data_node[inpt_name]
+            except ArcanaDataMatchError as e:
+                missing_inputs[inpt_name] = str(e)
+            else:
+                item.get()  # download to host if required
+                sourced.append(item)
+        if missing_inputs:
+            raise ArcanaDataMatchError('\n\n' + '\n\n'.join(missing_inputs.values()))
     return tuple(sourced) + (provenance,)
 
 

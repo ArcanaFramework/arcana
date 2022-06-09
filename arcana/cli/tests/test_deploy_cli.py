@@ -1,6 +1,8 @@
 import yaml
 from functools import reduce
 from operator import mul
+import logging
+import sys
 from arcana.cli.deploy import build, run_pipeline
 from arcana.core.utils import class_location
 from arcana.test.utils import show_cli_trace, make_dataset_id_str
@@ -59,6 +61,7 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
          '--parameter', 'duplicates', str(duplicates),
          '--plugin', 'serial',
          '--work', str(work_dir),
+         '--loglevel', 'debug',
          '--dataset_space', class_location(bp.space),
          '--dataset_hierarchy'] + [str(l) for l in bp.hierarchy])
     assert result.exit_code == 0, show_cli_trace(result)
@@ -74,3 +77,26 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
         with open(item.fs_path) as f:
             contents = f.read()
         assert contents == expected_contents
+
+
+def test_run_pipeline_cli_fail(concatenate_task, saved_dataset, cli_runner, work_dir):
+    # Get CLI name for dataset (i.e. file system path prepended by 'file//')
+    dataset_id_str = make_dataset_id_str(saved_dataset)
+    bp = saved_dataset.blueprint
+    duplicates = 1
+    # Start generating the arguments for the CLI
+    # Add source to loaded dataset
+    result = cli_runner(
+        run_pipeline,
+        [dataset_id_str, 'a_pipeline', 'arcana.test.tasks:' + concatenate_task.__name__,
+        '--input', 'source1', 'common:Text', 'bad-file-path', 'in_file1', 'common:Text',
+        '--input', 'source2', 'common:Directory', 'file2', 'in_file2', 'common:Directory',
+        '--output', 'sink1', 'common:Text', 'concatenated', 'out_file', 'common:Text',
+        '--parameter', 'duplicates', str(duplicates),
+        '--plugin', 'serial',
+        '--loglevel', 'error',
+        '--work', str(work_dir),
+        '--dataset_space', class_location(bp.space),
+        '--dataset_hierarchy'] + [str(l) for l in bp.hierarchy])
+    assert result.exit_code == 1  # fails due to missing path for source1 and incorrect format of source2
+    # TODO: Should try to read logs to check for error message but can't work out how to capture them

@@ -190,7 +190,7 @@ def concatenate_task(request):
 def command_spec():
     return {
         'name': 'conctenate-test',
-        'workflow': 'arcana.test.tasks:concatenate',
+        'pydra_task': 'arcana.test.tasks:concatenate',
         'inputs': [
             {
                 'name': 'first_file',
