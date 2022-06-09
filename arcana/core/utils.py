@@ -884,7 +884,7 @@ def pydra_eq(a: TaskBase, b: TaskBase):
 
 
 def show_workflow_errors(pipeline_cache_dir: Path,
-                         omit_nodes: list[str]=None) -> str:
+                         omit_nodes: ty.List[str]=None) -> str:
     """Extract nodes with errors and display results
 
     Parameters
