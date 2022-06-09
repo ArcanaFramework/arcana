@@ -129,6 +129,17 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
 
         image_build_dir.mkdir(exist_ok=True, parents=True)
 
+        # Update the spec to remove '_' prefixed keys and add in build params
+        spec = {k: v for k, v in spec.items() if not k.startswith('_')}
+        spec.update({
+            'image_tag': image_tag,
+            'docker_registry': docker_registry,
+            'use_local_packages': use_local_packages,
+            'arcana_install_extras': install_extras,
+            'test_config': use_test_config})
+
+        # Check the target registry to see a) if an image with the same tag
+        # already exists and b) whether it was built with the same specs
         if check_against_prebuilt:
             extracted_dir = extract_file_from_docker_image(
                 image_tag, spec_path_in_docker)
@@ -140,7 +151,7 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
                         check_version=check_prebuilt_arcana_version):
                     msg = (
                         f"Spec for '{image_tag}' doesn't match the one that was "
-                        "used to build the image in the registry:\n\n"
+                        "used to build the image already in the registry:\n\n"
                         + str(diff.pretty()))
                     if raise_errors:
                         raise ArcanaBuildError(msg)
@@ -154,15 +165,10 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
 
         try:
             build_xnat_cs_image(
-                image_tag=image_tag,
                 build_dir=image_build_dir,
-                docker_registry=docker_registry,
-                use_local_packages=use_local_packages,
-                arcana_install_extras=install_extras,
                 generate_only=generate_only,
-                test_config=use_test_config,
                 license_dir=license_dir,
-                **{k: v for k, v in spec.items() if not k.startswith('_')})
+                **spec)
         except Exception:
             if raise_errors:
                 raise

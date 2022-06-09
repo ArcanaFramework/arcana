@@ -114,9 +114,9 @@ def construct_dockerfile(
         python_packages = []
     else:
         python_packages = [
-            (PipSpec(**p) if isinstance(p, dict)
-             else (PipSpec(*p) if not isinstance(p, PipSpec)
-                   else p))
+            (PipSpec(p) if isinstance(p, str) else (
+                PipSpec(**p) if isinstance(p, dict)
+                else (PipSpec(*p) if not isinstance(p, PipSpec) else p)))
             for p in python_packages]
 
     if not build_dir.is_dir():
@@ -303,18 +303,7 @@ def install_system_packages(dockerfile: DockerRenderer, packages: ty.Iterable[st
     system_packages : Iterable[str]
         the packages to install on the operating system
     """
-    for pkg in packages:
-        install_properties = {}
-        if isinstance(pkg, str):
-            pkg_name = pkg
-            install_properties['version'] = 'master'
-        else:
-            pkg_name = pkg[0]
-            if len(pkg) > 1 and pkg[1] != '.':
-                install_properties['version'] = pkg[1]
-            if len(pkg) > 2:
-                install_properties['method'] = pkg[2]   
-        getattr(dockerfile, pkg_name)(**install_properties)
+    dockerfile.install(packages)
 
 
 def install_package_templates(dockerfile: DockerRenderer, package_templates: ty.Iterable[ty.Dict[str, str]]):

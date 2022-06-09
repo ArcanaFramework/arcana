@@ -238,4 +238,4 @@ def docker_registry():
             remove=True, name=CONTAINER)
         
     yield f'localhost:{PORT}'
-    container.stop()
+    # container.stop()

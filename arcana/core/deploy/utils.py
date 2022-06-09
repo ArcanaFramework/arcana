@@ -267,7 +267,7 @@ def extract_file_from_docker_image(image_tag: str, file_path: PosixPath,
 
 
 def compare_specs(s1, s2, check_version=True):
-    """Compares to build specs against each other and returns the difference
+    """Compares two build specs against each other and returns the difference
 
     Parameters
     ----------

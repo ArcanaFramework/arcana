@@ -24,8 +24,8 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         'commands': [command_spec],
         'pkg_version': '1.0',
         'wrapper_version': '1',
-        'system_packages': [],
-        'python_packages': [],
+        'system_packages': ['vim'],  # just to test it out
+        'python_packages': ['pytest'],  # just to test it out
         'authors': ['some.one@an.email.org'],
         'info_url': 'http://concatenate.readthefakedocs.io'}
 
@@ -46,7 +46,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
                          '--install_extras', 'test',
                          '--raise-errors',
                          '--use-test-config',
-                         '--dont-check-against_registry'])
+                         '--dont-check-against-prebuilt'])
     assert result.exit_code == 0, show_cli_trace(result)
     tag = result.output.strip()
     assert tag == f'{DOCKER_REGISTRY}/{DOCKER_ORG}/{PKG_NAME}.concatenate:1.0-1'
@@ -100,6 +100,10 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
     dc = docker.from_env()
     dc.api.push(tag)
 
+    # FIXME: Need to ensure that logs are captured properly
+    # result = build_spec(concatenate_spec)
+    # assert "Skipping" in result.output
+
     # Modify the spec so it doesn't match the original that has just been
     # built (but don't increment the version number -> image tag so there
     # is a clash)
@@ -108,7 +112,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
     with pytest.raises(ArcanaBuildError) as excinfo:
         build_spec(concatenate_spec)
 
-    assert "Mismatching specs" in str(excinfo.value)
+    assert "doesn't match the one that was used to build the image" in str(excinfo.value)
 
     # Increment the version number to avoid the clash
     concatenate_spec['wrapper_version'] = '2'
