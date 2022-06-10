@@ -2,7 +2,8 @@ import logging
 import sys
 import shutil
 from pathlib import Path
-import shutil
+import json
+import subprocess
 import click
 import docker.errors
 import tempfile
@@ -83,10 +84,14 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               type=bool, default=True,
               help=("When checking against registry version, whether to also "
                     "check the Arcana version that was used to generate it"))
+@click.option('--scan/--dont-scan', type=bool, default=False,
+              help=("Run `docker scan` over generated dockerfile and image"))
+@click.option('--push/--dont-push', type=bool, default=False,
+              help="push built images to registry")
 def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors, generate_only,
           use_test_config, license_dir, check_against_prebuilt,
-          check_prebuilt_arcana_version):
+          check_prebuilt_arcana_version, scan, push):
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode('utf-8'))  
@@ -147,7 +152,7 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
                 built_spec = load_yaml_spec(
                     extracted_dir / Path(spec_path_in_docker).name)
                 if diff:= compare_specs(
-                        spec, built_spec,
+                        built_spec, spec,
                         check_version=check_prebuilt_arcana_version):
                     msg = (
                         f"Spec for '{image_tag}' doesn't match the one that was "
@@ -176,6 +181,18 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
         else:
             click.echo(image_tag)
             logger.info("Successfully built %s pipeline", image_tag)
+
+            if scan:
+                dockerfile_path = str(build_dir / 'Dockerfile')
+                try:
+                    scan_out = subprocess.check_output(
+                        f'docker scan {image_tag} --json --file {dockerfile_path}')
+                    scan_json = json.loads(scan_out)
+                except Exception as e:
+                    if raise_errors:
+                        raise
+                    logger.error(f"Could not read scan of {image_tag}")
+                    
 
     shutil.rmtree(temp_dir)       
 
