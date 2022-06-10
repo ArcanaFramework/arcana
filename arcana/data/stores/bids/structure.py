@@ -86,16 +86,16 @@ class Bids(FileSystem):
         if is_derivative:= (parts[0] == 'derivatives'):
             if len(parts) < 2:
                 raise ArcanaUsageError(
-                    f"Derivative paths should have at least 3 parts ({file_group.path}")
+                    f"Paths should have another part after 'derivatives'")
             elif len(parts) == 2 and not file_group.is_dir:
                 raise ArcanaUsageError(
-                    "Derivative paths with 2 parts must be of type directory "
-                    f"({file_group.path}")
-            fs_path /= parts[0]
-            fs_path /= parts[1]
+                    "Single-level derivative paths must be of type directory "
+                    f"({file_group.path}: {file_group.format})")
+            # append the first to parts of the path before the row ID (e.g. sub-01/ses-02)
+            fs_path = fs_path.joinpath(*parts[:2])
             parts = parts[2:]
+        fs_path /= self.node_path(dn)
         if parts:  # The whole derivatives directories can be the output for a BIDS app
-            fs_path /= self.node_path(dn)
             for part in parts[:-1]:
                 fs_path /= part
             fname = '_'.join(dn.ids[h] for h in dn.dataset.hierarchy) + '_' + parts[-1]

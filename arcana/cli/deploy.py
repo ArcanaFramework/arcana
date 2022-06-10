@@ -1,19 +1,28 @@
 import logging
+import sys
+import shutil
 from pathlib import Path
+import json
+import subprocess
 import click
+import docker
 import docker.errors
 import tempfile
 from traceback import format_exc
+from arcana import __version__
 from arcana.core.cli import cli
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
-from arcana.core.utils import resolve_class, parse_value
-from arcana.core.deploy.utils import load_yaml_spec, walk_spec_paths, DOCKER_HUB
+from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
+from arcana.core.deploy.utils import (
+    load_yaml_spec, walk_spec_paths, DOCKER_HUB, extract_file_from_docker_image,
+    compare_specs)
 from arcana.core.deploy.docs import create_doc
+from arcana.core.deploy.build import SPEC_PATH as spec_path_in_docker
 from arcana.core.utils import package_from_module, pydra_asdict
 from arcana.deploy.medimage.xnat import build_xnat_cs_image
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
-from arcana.exceptions import ArcanaError
+from arcana.exceptions import ArcanaBuildError, ArcanaError
 
 
 logger = logging.getLogger('arcana')
@@ -41,7 +50,11 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               help="The Docker registry to deploy the pipeline to")
 @click.option('--build_dir', default=None,
               type=click.Path(exists=True, path_type=Path),
-              help="Specify the directory to build the Docker image in")
+              help=("Specify the directory to build the Docker image in. "
+                    "Defaults to `.build` in the directory containing the "
+                    "YAML specification"))
+@click.option('--logfile', default=None, type=click.Path(path_type=Path),
+              help="Log output to file instead of stdout")
 @click.option('--loglevel', default='info',
               help="The level to display logs at")
 @click.option('--use-local-packages/--dont-use-local-packages', type=bool,
@@ -63,9 +76,18 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
 @click.option('--license-dir', type=click.Path(exists=True, path_type=Path),
               default=None,
               help="Directory containing licences required to build the images")
-def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
+@click.option('--check-registry/--dont-check-registry',
+              type=bool, default=False,
+              help=("Check the registry to see if an existing image with the "
+                    "same tag is present, and if so whether the specification "
+                    "matches (and can be skipped) or not (raise an error)"))
+@click.option('--scan/--dont_scan', type=bool, default=False,
+              help=("Run `docker scan` over generated dockerfile and image. "))
+@click.option('--push/--dont-push', type=bool, default=False,
+              help=("push built images to registry"))
+def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors, generate_only,
-          use_test_config, license_dir):
+          use_test_config, license_dir, check_registry, scan, push):
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode('utf-8'))  
@@ -78,8 +100,11 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
         install_extras = install_extras.split(',')
     else:
         install_extras = []
+    
+    logging.basicConfig(filename=logfile,
+                        level=getattr(logging, loglevel.upper()))
 
-    logging.basicConfig(level=getattr(logging, loglevel.upper()))
+    temp_dir = tempfile.mkdtemp()
 
     for spath in walk_spec_paths(spec_path):
 
@@ -95,28 +120,92 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
             image_version += f"-{spec.pop('wrapper_version')}"
 
         image_tag = f"{docker_org}/{tag}:{image_version}"
-
         if docker_registry != DOCKER_HUB:
             image_tag = docker_registry.lower() + '/' + image_tag
 
+        if build_dir is None:
+            image_build_dir = spath.parent / '.build' / spath.stem
+        else:
+            image_build_dir = build_dir / spath.parent.relative_to(spec_path) / spath.stem
+
+        image_build_dir.mkdir(exist_ok=True, parents=True)
+
+        # Update the spec to remove '_' prefixed keys and add in build params
+        spec = {k: v for k, v in spec.items() if not k.startswith('_')}
+        spec.update({
+            'image_tag': image_tag,
+            'docker_registry': docker_registry,
+            'use_local_packages': use_local_packages,
+            'arcana_install_extras': install_extras,
+            'test_config': use_test_config})
+
+        # Check the target registry to see a) if an image with the same tag
+        # already exists and b) whether it was built with the same specs
+        if check_registry:
+            extracted_dir = extract_file_from_docker_image(
+                image_tag, spec_path_in_docker)
+            if extracted_dir is not None:
+                built_spec = load_yaml_spec(
+                    extracted_dir / Path(spec_path_in_docker).name)
+                if diff:= compare_specs(
+                        built_spec, spec, check_version=True):
+                    msg = (
+                        f"Spec for '{image_tag}' doesn't match the one that was "
+                        "used to build the image already in the registry (skipping):\n\n"
+                        + str(diff.pretty()))
+                    if raise_errors:
+                        raise ArcanaBuildError(msg)
+                    else:
+                        logger.errors(msg)
+                    continue
+                else:
+                    logger.info(
+                        "Skipping '%s' build as identical image already "
+                        "exists in registry")
+                    continue
         try:
             build_xnat_cs_image(
-                image_tag=image_tag,
-                build_dir=build_dir,
-                docker_registry=docker_registry,
-                use_local_packages=use_local_packages,
-                arcana_install_extras=install_extras,
+                build_dir=image_build_dir,
                 generate_only=generate_only,
-                test_config=use_test_config,
                 license_dir=license_dir,
-                **{k: v for k, v in spec.items() if not k.startswith('_')})
+                **spec)
         except Exception:
             if raise_errors:
                 raise
             logger.error("Could not build %s pipeline:\n%s", image_tag, format_exc())
+            continue
         else:
             click.echo(image_tag)
             logger.info("Successfully built %s pipeline", image_tag)
+
+        if scan:
+            dockerfile_path = str(build_dir / 'Dockerfile')
+            try:
+                scan_out = subprocess.check_output(
+                    f'docker scan {image_tag} --json --file {dockerfile_path}')
+                scan_json = json.loads(scan_out)
+                # TODO: Need to loop through scan output and detect critical errors
+            except Exception as e:
+                if raise_errors:
+                    raise
+                logger.error(f"Could not scan '%s':\n\n%s",
+                             image_tag, format_exc())
+                continue
+            else:
+                logger.info("Successfully scanned '%s'", image_tag)
+        if push:
+            dc = docker.from_env()
+            try:
+                dc.api.push(image_tag)
+            except Exception as e:
+                if raise_errors:
+                    raise
+                logger.error(f"Could not push '%s':\n\n%s",
+                             image_tag, format_exc())
+            else:
+                logger.info("Successfully pushed '%s' to registry", image_tag)
+
+    shutil.rmtree(temp_dir)       
 
 
 @deploy.command(
@@ -148,7 +237,7 @@ def list_images(spec_path, docker_org, docker_registry):
             image_version += f"-{spec.pop('wrapper_version')}"
         image_tag = f"{docker_org}/{tag}:{image_version}"
         if docker_registry is not None:
-            image_tag = docker_registry.lower() + '/' + image_tag
+            image_tag = docker_registry.lower().rstrip('/') + '/' + image_tag
         else:
             docker_registry = DOCKER_HUB
         click.echo(image_tag)
@@ -205,12 +294,12 @@ def build_docs(spec_path, output, flatten, loglevel):
 @deploy.command(name='required-packages',
                 help="""Detect the Python packages required to run the 
 specified workflows and return them and their versions""")
-@click.argument('workflow_locations', nargs=-1)
-def required_packages(workflow_locations):
+@click.argument('task_locations', nargs=-1)
+def required_packages(task_locations):
 
     required_modules = set()
-    for workflow_location in workflow_locations:
-        workflow = resolve_class(workflow_location)
+    for task_location in task_locations:
+        workflow = resolve_class(task_location)
         pydra_asdict(workflow, required_modules)
 
     for pkg in package_from_module(required_modules):
@@ -243,11 +332,11 @@ IMAGE_TAG is the tag of the Docker image to inspect"""
 @click.command(name='run-arcana-pipeline',
                help="""Defines a new dataset, applies and launches a pipeline
 in a single command. Given the complexity of combining all these steps in one
-CLI, it isn't recommended for manual use, and is typically used when
-deploying a pipeline within a container image.
+CLI, it isn't recommended to use this command manually, it is typically used
+by automatically generated code when deploying a pipeline within a container image.
 
 Not all options are be used when defining datasets, however, the
-'--dataset <NAME>' option can be provided to use an existing dataset
+'--dataset_name <NAME>' option can be provided to use an existing dataset
 definition.
 
 DATASET_ID_STR string containing the nickname of the data store, the ID of the
@@ -261,23 +350,23 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
 """)
 @click.argument("dataset_id_str")
 @click.argument('pipeline_name')
-@click.argument('workflow_location')
+@click.argument('task_location')
 @click.option(
     '--parameter', '-p', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
     help=("free parameters of the workflow to be passed by the pipeline user"))
 @click.option(
     '--input', nargs=5, default=(), metavar='<col-name> <col-format> <match-criteria> <pydra-field> <format>',
     multiple=True, type=str,
-    help=("link an input of the workflow to a column of the dataset, adding a source"
+    help=("link an input of the task/workflow to a column of the dataset, adding a source"
           "column matched by the name/path of the column if it isn't already present. "
           "Automatically generated source columns must be able to be specified by their "
-          "path alone and be already in the format required by the workflow"))
+          "path alone and be already in the format required by the task/workflow"))
 @click.option(
     '--output', nargs=5, default=(), metavar='<col-name> <col-format> <output-path> <pydra-field> <format>',
     multiple=True, type=str,
-    help=("add a sink to the dataset and link it to an output of the workflow "
+    help=("add a sink to the dataset and link it to an output of the task/workflow "
           "in a single step. The sink column be in the same format as produced "
-          "by the workflow"))
+          "by the task/workflow"))
 @click.option(
     '--frequency', '-f', default=None, type=str,
     help=("the frequency of the nodes the pipeline will be executed over, i.e. "
@@ -292,7 +381,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
           "created during the pipeline execution will be stored"))
 @click.option(
     '--plugin', default='cf',
-    help=("The Pydra plugin with which to process the workflow"))
+    help=("The Pydra plugin with which to process the task/workflow"))
 @click.option(
     '--loglevel', type=str, default='info',
     help=("The level of detail logging information is presented"))
@@ -315,19 +404,37 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     help=("Whether to overwrite the saved pipeline with the same name, if present"))
 @click.option(
     '--configuration', nargs=2, default=(), metavar='<name> <value>', multiple=True, type=str,
-    help=("configuration args of the workflow. Differ from parameters in that they is passed to the "
-          "workflow at initialisation (and can therefore help specify its inputs) not as inputs. Values "
+    help=("configuration args of the task/workflow. Differ from parameters in that they is passed to the "
+          "task/workflow at initialisation (and can therefore help specify its inputs) not as inputs. Values "
           "can be any valid JSON (including basic types)."))
-def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
+@click.option(
+    '--export-work', default=None, type=click.Path(exists=False, path_type=Path),
+    help="Export the work directory to another location after the task/workflow exits")
+@click.option(
+    '--raise-errors/--catch-errors', type=bool, default=False,
+    help="raise exceptions instead of capturing them to supress call stack")
+@click.option(
+    '--keep-running-on-errors/--exit-on-errors', type=bool, default=False,
+    help=("Keep the the pipeline running in infinite loop on error (will need "
+          "to be manually killed). Can be useful in situations where the "
+          "enclosing container will be removed on completion and you need to "
+          "be able to 'exec' into the container to debug."))
+def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
                  input, output, frequency, overwrite, work_dir, plugin, loglevel,
                  dataset_name, dataset_space, dataset_hierarchy, ids, configuration,
-                 single_row):
+                 single_row, export_work, raise_errors, keep_running_on_errors):
 
-    logging.basicConfig(level=getattr(logging, loglevel.upper()))
+    if type(export_work) is bytes:
+        export_work = Path(export_work.decode('utf-8'))
+
+    if loglevel != 'none':
+        logging.basicConfig(stream=sys.stdout,
+                            level=getattr(logging, loglevel.upper()))
 
     if work_dir is None:
         work_dir = tempfile.mkdtemp()
     work_dir = Path(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
 
     store_cache_dir = work_dir / 'store-cache'
     pipeline_cache_dir = work_dir / 'pipeline-cache'
@@ -362,6 +469,9 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
 
     pipeline_inputs = []
     for col_name, col_format_name, col_path, pydra_field, format_name in input:
+        if not col_path:
+            logger.warning("Skipping '{col_name}' source column as no input was provided")
+            continue
         col_format = resolve_class(col_format_name, prefixes=['arcana.data.formats'])
         format = resolve_class(format_name, prefixes=['arcana.data.formats'])
         pipeline_inputs.append(PipelineInput(col_name, pydra_field, format))
@@ -373,7 +483,7 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
             dataset.add_source(name=col_name, format=col_format, path=col_path,
                                is_regex=True)
             
-    logger.info("Pipeline inputs: %s", pipeline_inputs)
+    logger.debug("Pipeline inputs: %s", pipeline_inputs)
 
     pipeline_outputs = []
     for col_name, col_format_name, col_path, pydra_field, format_name in output:
@@ -390,37 +500,61 @@ def run_pipeline(dataset_id_str, pipeline_name, workflow_location, parameter,
             logger.info(f"Adding new source column '{col_name}'")
             dataset.add_sink(name=col_name, format=col_format, path=col_path)
 
-    logger.info("Pipeline outputs: %s", pipeline_outputs)
+    logger.debug("Pipeline outputs: %s", pipeline_outputs)
 
-    workflow = resolve_class(workflow_location)(
-        name='workflow',
-        **{n: parse_value(v) for n, v in configuration})
+    kwargs = {n: parse_value(v) for n, v in configuration}
+    if 'name' not in kwargs:
+        kwargs['name'] = 'workflow_to_run'
+
+    task = resolve_class(task_location)(**kwargs)
 
     for pname, pval in parameter:
         if pval != '':
-            setattr(workflow.inputs, pname, parse_value(pval))
+            setattr(task.inputs, pname, parse_value(pval))
 
     if pipeline_name in dataset.pipelines and not overwrite:
         pipeline = dataset.pipelines[pipeline_name]
-        if workflow != pipeline.workflow:
+        if task != pipeline.workflow:
             raise RuntimeError(
                 f"A pipeline named '{pipeline_name}' has already been applied to "
                 "which differs from one specified. Please use '--overwrite' option "
                 "if this is intentional")
     else:
         pipeline = dataset.apply_pipeline(
-            pipeline_name, workflow, inputs=pipeline_inputs,
+            pipeline_name, task, inputs=pipeline_inputs,
             outputs=pipeline_outputs, frequency=frequency, overwrite=overwrite)
 
     # Instantiate the Pydra workflow
-    workflow = pipeline(cache_dir=pipeline_cache_dir)
+    wf = pipeline(cache_dir=pipeline_cache_dir)
     
     if ids is not None:
         ids = ids.split(',')
 
-    # execute the workflow    
-    result = workflow(ids=ids, plugin=plugin)
-
-    logger.info("Pipeline %s ran successfully for the following nodes\n: %s",
-                pipeline_name, '\n'.join(result.output.processed))
-    
+    # execute the workflow
+    try:
+        result = wf(ids=ids, plugin=plugin)
+    except Exception:
+        msg = show_workflow_errors(pipeline_cache_dir,
+                                   omit_nodes=['per_node', wf.name])
+        logger.error("Pipeline failed with errors for the following nodes:\n\n%s", msg)
+        if raise_errors or not msg:
+            raise
+        else:
+            errors = True
+    else:
+        logger.info("Pipeline %s ran successfully for the following data rows:\n%s",
+                    pipeline_name, '\n'.join(result.output.processed))
+        errors = False
+    finally:
+        if export_work:
+            logger.info("Exporting work directory to '%s'", export_work)
+            export_work.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(pipeline_cache_dir, export_work / 'pipeline-cache')
+    # Abort at the end after the working directory can be copied back to the
+    # host so that XNAT knows there was an error
+    if errors:
+        if keep_running_on_errors:
+            while True:
+                pass
+        else:
+            sys.exit(1)

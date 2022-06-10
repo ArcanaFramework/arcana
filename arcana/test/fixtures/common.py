@@ -2,6 +2,7 @@ from tempfile import mkdtemp
 from pathlib import Path
 import shutil
 import pytest
+import docker
 from arcana.data.formats.common import Text, Directory, Json
 from arcana.data.formats.medimage import (
     NiftiGz, NiftiGzX, NiftiX, Nifti, Analyze, MrtrixImage)
@@ -10,7 +11,7 @@ import pytest
 from arcana.test.tasks import (
     add, path_manip, attrs_func, A, B, C, concatenate, concatenate_reverse)
 from arcana.test.datasets import (
-    TestDatasetBlueprint, TestDataSpace as TDS, Xyz, make_dataset)
+    TestDatasetBlueprint, TestDataSpace as TDS, Xyz, make_dataset, save_dataset)
 
 
 TEST_TASKS = {
@@ -156,17 +157,7 @@ def dataset(work_dir, request):
 
 @pytest.fixture
 def saved_dataset(work_dir):
-
-    blueprint = TestDatasetBlueprint(
-        [TDS.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [1, 1, 1, 1],
-        ['file1.txt', 'file2.txt'],
-        {}, {}, [])
-
-    dataset_path = work_dir / 'saved_dataset'
-    dataset = make_dataset(blueprint, dataset_path)
-    dataset.save()
-    return dataset
+    return save_dataset(work_dir)
 
 
 @pytest.fixture
@@ -190,7 +181,7 @@ def concatenate_task(request):
 def command_spec():
     return {
         'name': 'conctenate-test',
-        'workflow': 'arcana.test.tasks:concatenate',
+        'pydra_task': 'arcana.test.tasks:concatenate',
         'inputs': [
             {
                 'name': 'first_file',
@@ -223,3 +214,28 @@ def command_spec():
         'version': '0.1',
         'frequency': 'session',
         'info_url': None}
+
+
+@pytest.fixture(scope='session')
+def docker_registry():
+
+    IMAGE = 'docker.io/registry'
+    PORT = '5557'
+    CONTAINER = 'test-docker-registry'
+
+    dc = docker.from_env()
+    try:
+        image = dc.images.get(IMAGE)
+    except docker.errors.ImageNotFound:
+        image = dc.images.pull(IMAGE)
+
+    try:
+        container = dc.containers.get(CONTAINER)
+    except docker.errors.NotFound:
+        container = dc.containers.run(
+            image.tags[0], detach=True,
+            ports={'5000/tcp': PORT},
+            remove=True, name=CONTAINER)
+        
+    yield f'localhost:{PORT}'
+    # container.stop()

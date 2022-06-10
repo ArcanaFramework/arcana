@@ -179,7 +179,7 @@ class BidsDataset(Dataset):
                     Bids.absolute_node_path(node).mkdir(parents=True)
             else:
                 node = dataset.add_leaf_node([subject_id])
-                Bids.absolute_node_path(node).mkdir(parents=True)
+                Bids.absolute_node_path(node).mkdir(parents=True, exist_ok=True)
         dataset.save_metadata()
         return dataset
 

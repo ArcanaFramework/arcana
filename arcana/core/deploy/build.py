@@ -3,10 +3,12 @@ from pathlib import Path
 import json
 import tempfile
 import logging
+import inspect
 import shutil
-from neurodocker.reproenv import DockerRenderer
 from natsort import natsorted
 import docker
+import yaml
+from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME, PACKAGE_ROOT, python_versions
 from arcana.exceptions import ArcanaBuildError
@@ -19,6 +21,8 @@ DEFAULT_BASE_IMAGE = "ubuntu:kinetic"
 PYTHON_PACKAGE_DIR = 'python-packages'
 
 CONDA_ENV = 'arcana'
+
+SPEC_PATH = '/arcana-spec.json'
 
 
 def build_docker_image(image_tag: str,
@@ -56,7 +60,8 @@ def construct_dockerfile(
         use_local_packages: bool=False,
         pypi_fallback: bool=False,
         license_dir: Path=None,
-        licenses: ty.Iterable[ty.Dict[str, str]]=()) -> DockerRenderer:
+        licenses: ty.Iterable[ty.Dict[str, str]]=(),
+        spec: dict=None) -> DockerRenderer:
     """Constructs a dockerfile that wraps a with dependencies
 
     Parameters
@@ -96,6 +101,9 @@ def construct_dockerfile(
     licenses : list[dict[str, str]], optional
         specification of licenses to install inside docker image. Each dict
         should contain 'source' and 'destination' items.
+    spec : dict, optional
+        the specification used to generate the image to be saved inside it for
+        future reference
 
     Returns
     -------
@@ -106,9 +114,9 @@ def construct_dockerfile(
         python_packages = []
     else:
         python_packages = [
-            (PipSpec(**p) if isinstance(p, dict)
-             else (PipSpec(*p) if not isinstance(p, PipSpec)
-                   else p))
+            (PipSpec(p) if isinstance(p, str) else (
+                PipSpec(**p) if isinstance(p, dict)
+                else (PipSpec(*p) if not isinstance(p, PipSpec) else p)))
             for p in python_packages]
 
     if not build_dir.is_dir():
@@ -136,6 +144,9 @@ def construct_dockerfile(
 
     if readme:
         insert_readme(dockerfile, readme, build_dir)
+
+    if spec:
+        insert_spec(dockerfile, spec, build_dir)
 
     if labels:
         # dockerfile.label(labels)
@@ -292,18 +303,7 @@ def install_system_packages(dockerfile: DockerRenderer, packages: ty.Iterable[st
     system_packages : Iterable[str]
         the packages to install on the operating system
     """
-    for pkg in packages:
-        install_properties = {}
-        if isinstance(pkg, str):
-            pkg_name = pkg
-            install_properties['version'] = 'master'
-        else:
-            pkg_name = pkg[0]
-            if len(pkg) > 1 and pkg[1] != '.':
-                install_properties['version'] = pkg[1]
-            if len(pkg) > 2:
-                install_properties['method'] = pkg[2]   
-        getattr(dockerfile, pkg_name)(**install_properties)
+    dockerfile.install(packages)
 
 
 def install_package_templates(dockerfile: DockerRenderer, package_templates: ty.Iterable[ty.Dict[str, str]]):
@@ -372,6 +372,24 @@ def insert_readme(dockerfile: DockerRenderer, description, build_dir):
             __version__, description))
     dockerfile.copy(source=['./README.md'],
                            destination='/README.md')
+
+
+def insert_spec(dockerfile: DockerRenderer, spec, build_dir):
+    """Generate Neurodocker instructions to install README file inside the docker
+    image
+
+    Parameters
+    ----------
+    dockerfile : DockerRenderer
+        the neurodocker renderer to append the install instructions to
+    spec : dict
+        the specification used to build the image
+    build_dir : Path
+        path to build dir
+    """
+    with open(build_dir / 'arcana-spec.json', 'w') as f:
+        yaml.dump(spec, f)
+    dockerfile.copy(source=['./arcana-spec.json'], destination=SPEC_PATH)    
 
 
 def copy_package_into_build_dir(package_name: str, local_installation: Path,

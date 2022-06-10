@@ -4,12 +4,12 @@ Arcana
    :target: https://github.com/australian-imaging-service/arcana/actions/workflows/tests.yml
 .. image:: https://codecov.io/gh/australian-imaging-service/arcana/branch/main/graph/badge.svg?token=UIS0OGPST7
    :target: https://codecov.io/gh/australian-imaging-service/arcana
-.. image:: https://img.shields.io/pypi/pyversions/arcana.svg
-   :target: https://pypi.python.org/pypi/arcana/
-   :alt: Supported Python versions
-.. image:: https://img.shields.io/pypi/v/arcana.svg
-   :target: https://pypi.python.org/pypi/arcana/
-   :alt: Latest Version
+.. .. image:: https://img.shields.io/pypi/pyversions/arcana.svg
+..    :target: https://pypi.python.org/pypi/arcana/
+..    :alt: Supported Python versions
+.. .. image:: https://img.shields.io/pypi/v/arcana.svg
+..    :target: https://pypi.python.org/pypi/arcana/
+..    :alt: Latest Version
 .. image:: https://readthedocs.org/projects/arcana/badge/?version=latest
   :target: http://arcana.readthedocs.io/en/latest/?badge=latest
   :alt: Documentation Status

@@ -49,19 +49,26 @@ class TestXnatDatasetBlueprint():
     derivatives: ty.List[DerivBlueprint]  # files to insert as derivatives
 
 
-def make_mutable_dataset(dataset_name: str, blueprint: TestXnatDatasetBlueprint, xnat_repository: Xnat,
-                         xnat_archive_dir: Path, access_method: str, source_data: Path=None):
+def make_mutable_dataset(
+        dataset_id: str,
+        blueprint: TestXnatDatasetBlueprint,
+        xnat_repository: Xnat,
+        xnat_archive_dir: Path,
+        access_method: str,
+        dataset_name: str=None,
+        source_data: Path=None):
     """Create a dataset (project) in the test XNAT repository
     """
     test_suffix = 'mutable' + access_method + str(hex(random.getrandbits(16)))[2:]
     # Need to create a new dataset per function so it can be safely modified
     # by the test without messing up other tests.
-    create_dataset_data_in_repo(dataset_name=dataset_name,
+    create_dataset_data_in_repo(dataset_name=dataset_id,
                                 blueprint=blueprint,
                                 run_prefix=xnat_repository.run_prefix,
                                 test_suffix=test_suffix,
                                 source_data=source_data)
     return access_dataset(xnat_repository=xnat_repository,
+                          dataset_id=dataset_id,
                           dataset_name=dataset_name,
                           blueprint=blueprint,
                           access_method=access_method,
@@ -69,13 +76,14 @@ def make_mutable_dataset(dataset_name: str, blueprint: TestXnatDatasetBlueprint,
                           test_suffix=test_suffix)
 
 
-def make_project_name(dataset_name: str, run_prefix: str=None, test_suffix: str=''):
+def make_project_id(dataset_name: str, run_prefix: str=None, test_suffix: str=''):
     return (run_prefix if run_prefix else '') + dataset_name + test_suffix
 
 
-def access_dataset(xnat_repository: Xnat, dataset_name: str, blueprint: TestXnatDatasetBlueprint,
-                   access_method: str, xnat_archive_dir: Path, test_suffix: str=''):
-    proj_name = make_project_name(dataset_name, xnat_repository.run_prefix, test_suffix)
+def access_dataset(xnat_repository: Xnat, dataset_id: str, blueprint: TestXnatDatasetBlueprint,
+                   access_method: str, xnat_archive_dir: Path, dataset_name: str=None,
+                   test_suffix: str=''):
+    proj_name = make_project_id(dataset_id, xnat_repository.run_prefix, test_suffix)
     if access_method == 'cs':
         # Create a new repository access object that accesses data directly
         # via the XNAT archive directory, like 
@@ -91,7 +99,8 @@ def access_dataset(xnat_repository: Xnat, dataset_name: str, blueprint: TestXnat
     elif access_method != 'api':
         assert False
     
-    dataset = xnat_repository.new_dataset(proj_name, id_inference=blueprint.id_inference)
+    dataset = xnat_repository.new_dataset(
+        proj_name, id_inference=blueprint.id_inference, name=dataset_name)
     # Stash the args used to create the dataset in attributes so they can be
     # used by tests
     dataset.blueprint = blueprint
@@ -104,7 +113,7 @@ def create_dataset_data_in_repo(dataset_name: str, blueprint: TestXnatDatasetBlu
     """
     Creates dataset for each entry in dataset_structures
     """
-    proj_name = make_project_name(dataset_name, run_prefix, test_suffix)
+    proj_name = make_project_id(dataset_name, run_prefix, test_suffix)
 
     with xnat4tests.connect() as login:
         login.put(f'/data/archive/projects/{proj_name}')

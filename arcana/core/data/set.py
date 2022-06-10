@@ -149,7 +149,7 @@ class Dataset():
 
     def save(self, name=None):
         """Save metadata in project definition file for future reference"""
-        definition = asdict(self, omit=['store'])
+        definition = asdict(self, omit=['store', 'name'])
         if name is None:
             name = self.name
         self.store.save_dataset_definition(self.id, definition, name=name)

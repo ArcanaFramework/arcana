@@ -339,7 +339,7 @@ class DataStore(metaclass=ABCMeta):
         dct = self.load_dataset_definition(id, name)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}::{name}'")
-        return fromdict(dct, store=self)
+        return fromdict(dct, name=name, store=self)
 
 
     @classmethod

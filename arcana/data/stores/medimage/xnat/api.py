@@ -96,8 +96,9 @@ class Xnat(DataStore):
                     format='json')
             definition_file = Path(tempfile.mkdtemp()) / str(name + '.json')
             with open(definition_file, 'w') as f:
-                json.dump(definition, f)
-            xresource.upload(str(definition_file), name + '.json')
+                json.dump(definition, f, indent='    ')
+            xresource.upload(str(definition_file), name + '.json',
+                             overwrite=True)
 
     def load_dataset_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
         with self:

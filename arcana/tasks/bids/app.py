@@ -1,8 +1,10 @@
 import attr
 import re
 import tempfile
+import logging
 import typing as ty
 import shutil
+import logging
 import shlex
 from argparse import ArgumentParser
 from pathlib import Path
@@ -19,6 +21,7 @@ from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.exceptions import ArcanaUsageError
 from arcana.core.utils import func_task, path2varname, resolve_class
 
+logger = logging.getLogger('arcana')
 
 @dataclass
 class Input():
@@ -29,9 +32,9 @@ class Input():
 
     @classmethod
     def fromdict(cls, dct):
-        return cls(path=dct['path'],
-                   format=dct['format'],
-                   name=dct['name'])
+        return cls(path=dct.get('path'),
+                   format=dct.get('format'),
+                   name=dct.get('name'))
 
     def __post_init__(self):
         if isinstance(self.format, str):
@@ -41,10 +44,27 @@ class Input():
             self.name = path2varname(self.path)
 
 
-# Definition of output is the same as Input but we keep it separate in case we
-# need to change it later
-class Output(Input):  
-    pass
+@dataclass
+class Output():  
+
+    name: str
+    format: type
+    path: str = None
+
+    @classmethod
+    def fromdict(cls, dct):
+        return cls(path=dct.get('path'),
+                   format=dct.get('format'),
+                   name=dct.get('name'))
+
+    def __post_init__(self):
+        if self.path is None:
+            self.path = ''
+        if isinstance(self.format, str):
+            self.format = resolve_class(self.format,
+                                        prefixes=['arcana.data.formats'])
+
+logger = logging.getLogger('arcana')
 
 
 def bids_app(name: str,
@@ -184,8 +204,8 @@ def bids_app(name: str,
           "argstr": "--participant_label ",
           "position": 4}),
         ("flags", str,
-         {"help_string": "Additional flags to pass to the command",
-          "argstr": "%s",
+         {"help_string": "Additional flags to pass to the app",
+          "argstr": "",
           "position": -1}),
         ("setup_completed", bool,
          {"help_string":
@@ -320,8 +340,8 @@ def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
     with dataset.store:
         for inpt_name, inpt_value in input_values.items():
             if inpt_value is attr.NOTHING:
-                raise ArcanaUsageError(
-                    f"No value passed to {inpt_name}")
+                logger.warning("No input provided for '%s' input", inpt_name)
+                continue
             node_item = data_node[inpt_name]
             node_item.put(inpt_value)  # Store value/path in store
     return (dataset, dataset.id)
