@@ -65,7 +65,7 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
 
             tbl_cmd = MarkdownTable(f, "Key", "Value")
             tbl_cmd.write_row("Short description", cmd["description"])
-            if cmd.get("workflow"):
+            if cmd.get("pydra_task"):
                 tbl_cmd.write_row("Workflow", escaped_md(cmd["workflow"]))
             if cmd.get("version"):
                 tbl_cmd.write_row("Version", escaped_md(cmd["version"]))
