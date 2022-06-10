@@ -64,8 +64,21 @@ def build_xnat_cs_image(image_tag: str,
     test_config : bool
         whether to create the container so that it will work with the test
         XNAT configuration (i.e. hard-coding the XNAT server IP)
+    pkg_version : str, optional
+        ignored by function, just included to allow specs to be passed directly
+        as kwargs **specs
+    wrapper_version : str, optional
+        ignored by function, just included to allow specs to be passed directly
+        as kwargs as **specs
     **kwargs:
         Passed on to `construct_dockerfile` method
+
+    Returns
+    -------
+    DockerRenderer
+        the Neurodocker renderer
+    Path
+        path to build directory
     """
     # Save a snapshot of the arguments to this function in a dict to save
     # within the built image
@@ -112,7 +125,7 @@ def build_xnat_cs_image(image_tag: str,
     if not generate_only:
         dockerfile_build(dockerfile, build_dir, image_tag)
 
-    return dockerfile
+    return dockerfile, build_dir
 
 
 def generate_xnat_cs_command(name: str,

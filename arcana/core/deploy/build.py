@@ -178,7 +178,13 @@ def dockerfile_build(dockerfile: DockerRenderer, build_dir: Path, image_tag: str
     logger.info("Dockerfile for '%s' generated at %s", image_tag, str(out_file))
     
     dc = docker.from_env()
-    dc.images.build(path=str(build_dir), tag=image_tag)
+    try:
+        dc.images.build(path=str(build_dir), tag=image_tag)
+    except docker.errors.BuildError as e:
+        build_log = '\n'.join(e.build_log)
+        raise RuntimeError(
+            f"Building '{image_tag}' from '{str(build_dir)}/Dockerfile' "
+            f"failed with the following errors:\n\n{build_log}")
     logging.info("Successfully built docker image %s", image_tag)
 
 

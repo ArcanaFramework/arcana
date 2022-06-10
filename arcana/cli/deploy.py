@@ -179,10 +179,11 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
             logger.info("Successfully built %s pipeline", image_tag)
 
         if scan:
-            dockerfile_path = str(build_dir / 'Dockerfile')
+            dockerfile_path = str(image_build_dir / 'Dockerfile')
             try:
                 scan_out = subprocess.check_output(
-                    f'docker scan {image_tag} --json --file {dockerfile_path}')
+                    f'docker scan {image_tag} --json --file {dockerfile_path}',
+                    shell=True)
                 scan_json = json.loads(scan_out)
                 # TODO: Need to loop through scan output and detect critical errors
             except Exception as e:
