@@ -220,7 +220,7 @@ class DataSink(DataColumn):
         for the sink
     """
     salience: DataSalience = attr.ib(default=DataSalience.supplementary,
-                                     converter=lambda s: DataSalience[str(s)])
+                                     converter=lambda s: DataSalience[str(s)] if s is not None else None)
     pipeline_name: str = attr.ib(default=None)
 
     is_sink = True

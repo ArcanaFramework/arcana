@@ -2,20 +2,27 @@ import logging
 import sys
 import shutil
 from pathlib import Path
+import json
+import subprocess
 import click
+import docker
 import docker.errors
 import tempfile
 from traceback import format_exc
+from arcana import __version__
 from arcana.core.cli import cli
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
 from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
-from arcana.core.deploy.utils import load_yaml_spec, walk_spec_paths, DOCKER_HUB
+from arcana.core.deploy.utils import (
+    load_yaml_spec, walk_spec_paths, DOCKER_HUB, extract_file_from_docker_image,
+    compare_specs)
 from arcana.core.deploy.docs import create_doc
+from arcana.core.deploy.build import SPEC_PATH as spec_path_in_docker
 from arcana.core.utils import package_from_module, pydra_asdict
 from arcana.deploy.medimage.xnat import build_xnat_cs_image
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
-from arcana.exceptions import ArcanaError
+from arcana.exceptions import ArcanaBuildError, ArcanaError
 
 
 logger = logging.getLogger('arcana')
@@ -43,7 +50,11 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               help="The Docker registry to deploy the pipeline to")
 @click.option('--build_dir', default=None,
               type=click.Path(exists=True, path_type=Path),
-              help="Specify the directory to build the Docker image in")
+              help=("Specify the directory to build the Docker image in. "
+                    "Defaults to `.build` in the directory containing the "
+                    "YAML specification"))
+@click.option('--logfile', default=None, type=click.Path(path_type=Path),
+              help="Log output to file instead of stdout")
 @click.option('--loglevel', default='info',
               help="The level to display logs at")
 @click.option('--use-local-packages/--dont-use-local-packages', type=bool,
@@ -65,9 +76,18 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
 @click.option('--license-dir', type=click.Path(exists=True, path_type=Path),
               default=None,
               help="Directory containing licences required to build the images")
-def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
+@click.option('--check-registry/--dont-check-registry',
+              type=bool, default=False,
+              help=("Check the registry to see if an existing image with the "
+                    "same tag is present, and if so whether the specification "
+                    "matches (and can be skipped) or not (raise an error)"))
+@click.option('--scan/--dont_scan', type=bool, default=False,
+              help=("Run `docker scan` over generated dockerfile and image. "))
+@click.option('--push/--dont-push', type=bool, default=False,
+              help=("push built images to registry"))
+def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors, generate_only,
-          use_test_config, license_dir):
+          use_test_config, license_dir, check_registry, scan, push):
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode('utf-8'))  
@@ -80,8 +100,11 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
         install_extras = install_extras.split(',')
     else:
         install_extras = []
+    
+    logging.basicConfig(filename=logfile,
+                        level=getattr(logging, loglevel.upper()))
 
-    logging.basicConfig(level=getattr(logging, loglevel.upper()))
+    temp_dir = tempfile.mkdtemp()
 
     for spath in walk_spec_paths(spec_path):
 
@@ -97,28 +120,92 @@ def build(spec_path, docker_org, docker_registry, loglevel, build_dir,
             image_version += f"-{spec.pop('wrapper_version')}"
 
         image_tag = f"{docker_org}/{tag}:{image_version}"
-
         if docker_registry != DOCKER_HUB:
             image_tag = docker_registry.lower() + '/' + image_tag
 
+        if build_dir is None:
+            image_build_dir = spath.parent / '.build' / spath.stem
+        else:
+            image_build_dir = build_dir / spath.parent.relative_to(spec_path) / spath.stem
+
+        image_build_dir.mkdir(exist_ok=True, parents=True)
+
+        # Update the spec to remove '_' prefixed keys and add in build params
+        spec = {k: v for k, v in spec.items() if not k.startswith('_')}
+        spec.update({
+            'image_tag': image_tag,
+            'docker_registry': docker_registry,
+            'use_local_packages': use_local_packages,
+            'arcana_install_extras': install_extras,
+            'test_config': use_test_config})
+
+        # Check the target registry to see a) if an image with the same tag
+        # already exists and b) whether it was built with the same specs
+        if check_registry:
+            extracted_dir = extract_file_from_docker_image(
+                image_tag, spec_path_in_docker)
+            if extracted_dir is not None:
+                built_spec = load_yaml_spec(
+                    extracted_dir / Path(spec_path_in_docker).name)
+                if diff:= compare_specs(
+                        built_spec, spec, check_version=True):
+                    msg = (
+                        f"Spec for '{image_tag}' doesn't match the one that was "
+                        "used to build the image already in the registry (skipping):\n\n"
+                        + str(diff.pretty()))
+                    if raise_errors:
+                        raise ArcanaBuildError(msg)
+                    else:
+                        logger.errors(msg)
+                    continue
+                else:
+                    logger.info(
+                        "Skipping '%s' build as identical image already "
+                        "exists in registry")
+                    continue
         try:
             build_xnat_cs_image(
-                image_tag=image_tag,
-                build_dir=build_dir,
-                docker_registry=docker_registry,
-                use_local_packages=use_local_packages,
-                arcana_install_extras=install_extras,
+                build_dir=image_build_dir,
                 generate_only=generate_only,
-                test_config=use_test_config,
                 license_dir=license_dir,
-                **{k: v for k, v in spec.items() if not k.startswith('_')})
+                **spec)
         except Exception:
             if raise_errors:
                 raise
             logger.error("Could not build %s pipeline:\n%s", image_tag, format_exc())
+            continue
         else:
             click.echo(image_tag)
             logger.info("Successfully built %s pipeline", image_tag)
+
+        if scan:
+            dockerfile_path = str(build_dir / 'Dockerfile')
+            try:
+                scan_out = subprocess.check_output(
+                    f'docker scan {image_tag} --json --file {dockerfile_path}')
+                scan_json = json.loads(scan_out)
+                # TODO: Need to loop through scan output and detect critical errors
+            except Exception as e:
+                if raise_errors:
+                    raise
+                logger.error(f"Could not scan '%s':\n\n%s",
+                             image_tag, format_exc())
+                continue
+            else:
+                logger.info("Successfully scanned '%s'", image_tag)
+        if push:
+            dc = docker.from_env()
+            try:
+                dc.api.push(image_tag)
+            except Exception as e:
+                if raise_errors:
+                    raise
+                logger.error(f"Could not push '%s':\n\n%s",
+                             image_tag, format_exc())
+            else:
+                logger.info("Successfully pushed '%s' to registry", image_tag)
+
+    shutil.rmtree(temp_dir)       
 
 
 @deploy.command(
@@ -150,7 +237,7 @@ def list_images(spec_path, docker_org, docker_registry):
             image_version += f"-{spec.pop('wrapper_version')}"
         image_tag = f"{docker_org}/{tag}:{image_version}"
         if docker_registry is not None:
-            image_tag = docker_registry.lower() + '/' + image_tag
+            image_tag = docker_registry.lower().rstrip('/') + '/' + image_tag
         else:
             docker_registry = DOCKER_HUB
         click.echo(image_tag)
@@ -470,4 +557,3 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
                 pass
         else:
             sys.exit(1)
-    

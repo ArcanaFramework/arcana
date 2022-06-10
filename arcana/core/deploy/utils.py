@@ -1,13 +1,18 @@
 
 import typing as ty
-from pathlib import Path
+from pathlib import Path, PosixPath
 import json
 import site
+import tempfile
+import tarfile
 import logging
 from itertools import chain
 import pkg_resources
 import os
 from dataclasses import dataclass, field as dataclass_field
+import docker
+from deepdiff import DeepDiff
+from requests.exceptions import HTTPError
 import yaml
 from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME
@@ -215,6 +220,82 @@ def local_package_location(pip_spec: PipSpec, pypi_fallback: bool=False):
     return pip_spec
 
 
+def extract_file_from_docker_image(image_tag: str, file_path: PosixPath,
+                                   out_path: Path=None) -> Path:
+    """Extracts a file from a Docker image onto the local host
+
+    Parameters
+    ----------
+    image_tag : str
+        the name/tag of the image to extract the file from
+    file_path : PosixPath
+        the path to the file inside the image
+
+    Returns
+    -------
+    Path
+        path to the extracted file
+    """
+    tmp_dir = Path(tempfile.mkdtemp())
+    if out_path is None:
+        out_path = tmp_dir / 'extracted-dir'
+    dc = docker.from_env()
+    try:
+        dc.api.pull(image_tag)
+    except docker.errors.APIError as e:
+        if e.response.status_code in (404, 500):
+            return None
+        else:
+            raise
+    else:
+        container = dc.containers.get(dc.api.create_container(image_tag)['Id'])
+        try:
+            tarfile_path = tmp_dir / 'tar-file.tar.gz'
+            with open(tarfile_path, mode='w+b') as f:
+                try:
+                    stream, _ = dc.api.get_archive(container.id, str(file_path))
+                except docker.errors.NotFound:
+                    pass
+                else:
+                    for chunk in stream:
+                        f.write(chunk)
+                    f.flush()
+        finally:
+            container.remove()
+        with tarfile.open(tarfile_path) as f:
+            f.extractall(out_path)
+    return out_path
+
+
+def compare_specs(s1, s2, check_version=True):
+    """Compares two build specs against each other and returns the difference
+
+    Parameters
+    ----------
+    s1 : dict
+        first spec
+    s2 : dict
+        second spec
+    check_version : bool
+        check the arcana version used to generate the specs
+
+    Returns
+    -------
+    DeepDiff
+        the difference between the specs
+    """
+    def prep(s):
+        dct = {k: v for k, v in s.items()
+                if (not k.startswith('_')
+                    and (v or isinstance(v, bool)))}
+        if check_version:
+            if 'arcana_version' not in dct:
+                dct['arcana_version'] = __version__
+        else:
+            del dct['arcana_version']
+        return dct
+    diff = DeepDiff(prep(s1), prep(s2), ignore_order=True)
+    return diff
 
 DOCKER_HUB = 'docker.io'
 site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]
