@@ -87,8 +87,7 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               help=("push built images to registry"))
 def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors, generate_only,
-          use_test_config, license_dir, check_against_prebuilt,
-          check_prebuilt_arcana_version, scan, push):
+          use_test_config, license_dir, check_registry, scan, push):
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode('utf-8'))  
@@ -142,7 +141,7 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
 
         # Check the target registry to see a) if an image with the same tag
         # already exists and b) whether it was built with the same specs
-        if check_against_prebuilt:
+        if check_registry:
             extracted_dir = extract_file_from_docker_image(
                 image_tag, spec_path_in_docker)
             if extracted_dir is not None:

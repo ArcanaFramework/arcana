@@ -242,10 +242,8 @@ def extract_file_from_docker_image(image_tag: str, file_path: PosixPath,
     dc = docker.from_env()
     try:
         dc.api.pull(image_tag)
-    except docker.errors.ImageNotFound:
-        return None
-    except HTTPError as e:
-        if e.response.status_code == 404:
+    except docker.errors.APIError as e:
+        if e.response.status_code in (404, 500):
             return None
         else:
             raise
