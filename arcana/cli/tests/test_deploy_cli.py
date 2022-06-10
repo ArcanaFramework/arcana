@@ -46,7 +46,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
                          '--install_extras', 'test',
                          '--raise-errors',
                          '--use-test-config',
-                         '--dont-check-against-prebuilt'])
+                         '--dont-check-registry'])
     assert result.exit_code == 0, show_cli_trace(result)
     tag = result.output.strip()
     assert tag == f'{DOCKER_REGISTRY}/{DOCKER_ORG}/{PKG_NAME}.concatenate:1.0-1'
@@ -80,7 +80,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
                             '--use-local-packages',
                             '--install_extras', 'test',
                             '--raise-errors',
-                            '--check-against-prebuilt',
+                            '--check-registry',
                             '--use-test-config'],
                             **kwargs)
         return result

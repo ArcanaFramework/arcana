@@ -5,6 +5,7 @@ from pathlib import Path
 import json
 import subprocess
 import click
+import docker
 import docker.errors
 import tempfile
 from traceback import format_exc
@@ -75,19 +76,15 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
 @click.option('--license-dir', type=click.Path(exists=True, path_type=Path),
               default=None,
               help="Directory containing licences required to build the images")
-@click.option('--check-against-prebuilt/--dont-check-against-prebuilt',
+@click.option('--check-registry/--dont-check-registry',
               type=bool, default=False,
               help=("Check the registry to see if an existing image with the "
                     "same tag is present, and if so whether the specification "
                     "matches (and can be skipped) or not (raise an error)"))
-@click.option('--check-prebuilt-arcana-version/--ignore-prebuilt-arcana-version',
-              type=bool, default=True,
-              help=("When checking against registry version, whether to also "
-                    "check the Arcana version that was used to generate it"))
-@click.option('--scan/--dont-scan', type=bool, default=False,
-              help=("Run `docker scan` over generated dockerfile and image"))
+@click.option('--scan/--dont_scan', type=bool, default=False,
+              help=("Run `docker scan` over generated dockerfile and image. "))
 @click.option('--push/--dont-push', type=bool, default=False,
-              help="push built images to registry")
+              help=("push built images to registry"))
 def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors, generate_only,
           use_test_config, license_dir, check_against_prebuilt,
@@ -152,22 +149,21 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
                 built_spec = load_yaml_spec(
                     extracted_dir / Path(spec_path_in_docker).name)
                 if diff:= compare_specs(
-                        built_spec, spec,
-                        check_version=check_prebuilt_arcana_version):
+                        built_spec, spec, check_version=True):
                     msg = (
                         f"Spec for '{image_tag}' doesn't match the one that was "
-                        "used to build the image already in the registry:\n\n"
+                        "used to build the image already in the registry (skipping):\n\n"
                         + str(diff.pretty()))
                     if raise_errors:
                         raise ArcanaBuildError(msg)
                     else:
                         logger.errors(msg)
+                    continue
                 else:
                     logger.info(
                         "Skipping '%s' build as identical image already "
                         "exists in registry")
                     continue
-
         try:
             build_xnat_cs_image(
                 build_dir=image_build_dir,
@@ -178,21 +174,37 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
             if raise_errors:
                 raise
             logger.error("Could not build %s pipeline:\n%s", image_tag, format_exc())
+            continue
         else:
             click.echo(image_tag)
             logger.info("Successfully built %s pipeline", image_tag)
 
-            if scan:
-                dockerfile_path = str(build_dir / 'Dockerfile')
-                try:
-                    scan_out = subprocess.check_output(
-                        f'docker scan {image_tag} --json --file {dockerfile_path}')
-                    scan_json = json.loads(scan_out)
-                except Exception as e:
-                    if raise_errors:
-                        raise
-                    logger.error(f"Could not read scan of {image_tag}")
-                    
+        if scan:
+            dockerfile_path = str(build_dir / 'Dockerfile')
+            try:
+                scan_out = subprocess.check_output(
+                    f'docker scan {image_tag} --json --file {dockerfile_path}')
+                scan_json = json.loads(scan_out)
+                # TODO: Need to loop through scan output and detect critical errors
+            except Exception as e:
+                if raise_errors:
+                    raise
+                logger.error(f"Could not scan '%s':\n\n%s",
+                             image_tag, format_exc())
+                continue
+            else:
+                logger.info("Successfully scanned '%s'", image_tag)
+        if push:
+            dc = docker.from_env()
+            try:
+                dc.api.push(image_tag)
+            except Exception as e:
+                if raise_errors:
+                    raise
+                logger.error(f"Could not push '%s':\n\n%s",
+                             image_tag, format_exc())
+            else:
+                logger.info("Successfully pushed '%s' to registry", image_tag)
 
     shutil.rmtree(temp_dir)       
 
