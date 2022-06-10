@@ -61,7 +61,7 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
             tbl_inputs = MarkdownTable(f, "Path", "Input format", "Stored format")
             if cmd.get('inputs'):
                 for inpt in cmd['inputs']:
-                    tbl_inputs.write_row(escaped_md(inpt['path']), escaped_md(inpt['format']), escaped_md(inpt.get('stored_format', 'format')))
+                    tbl_inputs.write_row(escaped_md(inpt['name']), escaped_md(inpt['format']), escaped_md(inpt.get('stored_format', 'format')))
                 f.write("\n")
 
             f.write("#### Outputs\n")
@@ -69,7 +69,7 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
             if cmd.get('outputs'):
                 # for x in task.outputs:
                 for outpt in cmd.get('outputs', []):
-                    tbl_outputs.write_row(escaped_md(outpt['path']), escaped_md(outpt['format']), escaped_md(outpt.get('stored_format', 'format')))
+                    tbl_outputs.write_row(escaped_md(outpt['name']), escaped_md(outpt['format']), escaped_md(outpt.get('stored_format', 'format')))
                 f.write("\n")
 
             f.write("#### Parameters\n")
