@@ -80,6 +80,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
                             '--use-local-packages',
                             '--install_extras', 'test',
                             '--raise-errors',
+                            '--check-against-prebuilt',
                             '--use-test-config'],
                             **kwargs)
         return result
