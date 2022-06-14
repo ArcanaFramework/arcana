@@ -390,7 +390,7 @@ def parse_json_edits(edit_str: str):
         return []
     parser = ArgumentParser()
     parser.add_argument(
-        '--edit', '-e', nargs=3, action='append',
-        metavar=('FILE_PATH', 'JSON_PATH', 'REPLACE_EXPRESSION'),
+        '--edit', '-e', nargs=2, action='append',
+        metavar=('FILE_PATH', 'JQ_EXPRESSION'),
         help="Edit a field(s) of a JSON file ")
     return parser.parse_args(shlex.split(edit_str)).edit

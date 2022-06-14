@@ -3,10 +3,9 @@ import json
 import re
 import logging
 import attr
+import jq
 from attr.converters import default_if_none
 from pathlib import Path
-import jsonpath_ng
-import numexpr
 from arcana import __version__
 from ..common import FileSystem
 from arcana.core.data.format import FileGroup
@@ -22,15 +21,14 @@ class Bids(FileSystem):
 
     Parameters
     ----------
-    json_edits : list[tuple[str, str, str]], optional
+    json_edits : list[tuple[str, str]], optional
         Specifications to edit JSON files as they are written to the store to
         enable manual modification of fields to correct metadata. List of
         tuples of the form: FILE_PATH - path expression to select the files,
-        JSON_PATH - JSONPath expression to the fields to edit, EDIT_STR -
-        mathematical expression used to edit the field.
+        EDIT_STR - jq filter used to modify the JSON document.
     """
 
-    json_edits: ty.List[ty.Tuple[str, str, str]] = attr.ib(
+    json_edits: ty.List[ty.Tuple[str, str]] = attr.ib(
         factory=list, converter=default_if_none(factory=list))
 
     alias = "bids"
@@ -150,14 +148,9 @@ class Bids(FileSystem):
             dct = lazy_load_json()
             if 'TaskName' not in dct:
                 dct['TaskName'] = match.group(1)
-        for name_path_re, jpath_str, edit_str in self.json_edits:
+        for name_path_re, edit_str in self.json_edits:
             if re.match(name_path_re, name_path):
-                dct = lazy_load_json()
-                jpath = jsonpath_ng.parse(jpath_str)
-                for match in jpath.find(dct):
-                    new_value = numexpr.evaluate(
-                        edit_str.format(value=match.value)).item()
-                    match.full_path.update(dct, new_value)
+                dct = jq.compile(edit_str).input(lazy_load_json()).first()
         # Write dictionary back to file if it has been loaded
         if dct is not None:
             with open(fs_path, 'w') as f:
