@@ -185,6 +185,7 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
                     f'docker scan {image_tag} --json --file {dockerfile_path}',
                     shell=True)
                 scan_json = json.loads(scan_out)
+                print(json.dumps(scan_json, '    '))
                 # TODO: Need to loop through scan output and detect critical errors
             except Exception as e:
                 if raise_errors:
