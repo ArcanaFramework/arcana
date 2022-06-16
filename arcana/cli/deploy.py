@@ -271,7 +271,7 @@ def build_docs(spec_path, output, flatten, loglevel):
     for spath in walk_spec_paths(spec_path):
         spec = load_yaml_spec(spath, base_dir=spec_path)
         mod_name = spec['_module_name']
-        src_file = spath.relative_to(Path.cwd())
+        src_file = spath.absolute().relative_to(Path.cwd())
         create_doc(spec, output, mod_name, src_file=src_file, flatten=flatten)
         logging.info("Successfully created docs for %s", mod_name)
 
