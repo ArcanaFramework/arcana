@@ -181,7 +181,7 @@ def dockerfile_build(dockerfile: DockerRenderer, build_dir: Path, image_tag: str
     try:
         dc.images.build(path=str(build_dir), tag=image_tag)
     except docker.errors.BuildError as e:
-        build_log = '\n'.join(e.build_log)
+        build_log = '\n'.join(l.get('stream', '') for l in e.build_log)
         raise RuntimeError(
             f"Building '{image_tag}' from '{str(build_dir)}/Dockerfile' "
             f"failed with the following errors:\n\n{build_log}")
