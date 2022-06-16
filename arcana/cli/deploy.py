@@ -81,8 +81,6 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               help=("Check the registry to see if an existing image with the "
                     "same tag is present, and if so whether the specification "
                     "matches (and can be skipped) or not (raise an error)"))
-@click.option('--scan/--dont_scan', type=bool, default=False,
-              help=("Run `docker scan` over generated dockerfile and image. "))
 @click.option('--push/--dont-push', type=bool, default=False,
               help=("push built images to registry"))
 def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
@@ -178,23 +176,6 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
             click.echo(image_tag)
             logger.info("Successfully built %s pipeline", image_tag)
 
-        if scan:
-            dockerfile_path = str(image_build_dir / 'Dockerfile')
-            try:
-                scan_out = subprocess.check_output(
-                    f'docker scan {image_tag} --json --file {dockerfile_path}',
-                    shell=True)
-                scan_json = json.loads(scan_out)
-                print(json.dumps(scan_json, '    '))
-                # TODO: Need to loop through scan output and detect critical errors
-            except Exception as e:
-                if raise_errors:
-                    raise
-                logger.error(f"Could not scan '%s':\n\n%s",
-                             image_tag, format_exc())
-                continue
-            else:
-                logger.info("Successfully scanned '%s'", image_tag)
         if push:
             dc = docker.from_env()
             try:
