@@ -21,7 +21,7 @@ def converter(output_format):
         #     from_format=self.from_format,
         #     file_group=wf.lzin.to_convert))
 
-        # # Add the actual converter node
+        # # Add the actual converter row
         # conv_kwargs = copy(self.task_kwargs)
         # conv_kwargs.update(kwargs)
         # # Map 

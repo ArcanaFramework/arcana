@@ -336,14 +336,14 @@ def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
     dataset.store.json_edits = parse_json_edits(json_edits)
     for inpt in inputs:
         dataset.add_sink(inpt.name, inpt.format, path=inpt.path)
-    data_node = dataset.node(frequency, id)
+    data_row = dataset.row(frequency, id)
     with dataset.store:
         for inpt_name, inpt_value in input_values.items():
             if inpt_value is attr.NOTHING:
                 logger.warning("No input provided for '%s' input", inpt_name)
                 continue
-            node_item = data_node[inpt_name]
-            node_item.put(inpt_value)  # Store value/path in store
+            row_item = data_row[inpt_name]
+            row_item.put(inpt_value)  # Store value/path in store
     return (dataset, dataset.id)
 
 
@@ -373,13 +373,13 @@ def extract_bids(dataset: Dataset,
     # Copy output dir into BIDS dataset
     shutil.copytree(output_dir, Path(dataset.id) / 'derivatives' / app_name / id)
     output_paths = []
-    data_node = dataset.node(frequency, id)
+    data_row = dataset.row(frequency, id)
     for output in outputs:
         dataset.add_sink(output.name, output.format,
                          path='derivatives/' + app_name + '/' + output.path)
     with dataset.store:
         for output in outputs:
-            item = data_node[output.name]
+            item = data_row[output.name]
             item.get()  # download to host if required
             output_paths.append(item.value)
     return tuple(output_paths) if len(outputs) > 1 else output_paths[0]

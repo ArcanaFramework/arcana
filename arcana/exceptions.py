@@ -192,7 +192,7 @@ class ArcanaUriAlreadySetException(ArcanaException):
 
 
 class ArcanaDataTreeConstructionError(ArcanaError):
-    "Error in constructing data tree by store find_nodes method"
+    "Error in constructing data tree by store find_rows method"
 
 class ArcanaBadlyFormattedIDError(ArcanaDataTreeConstructionError):
     "Error attempting to extract an ID from a tree path using a user provided regex"
@@ -202,7 +202,7 @@ class ArcanaWrongDataSpaceError(ArcanaError):
 
 
 class ArcanaNoDirectXnatMountException(ArcanaException):
-    "Raised when attemptint to access a file-system mount for a node that hasn't been mounted directly "
+    "Raised when attemptint to access a file-system mount for a row that hasn't been mounted directly "
     pass
 
 

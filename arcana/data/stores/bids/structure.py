@@ -35,9 +35,9 @@ class Bids(FileSystem):
 
     alias = "bids"
 
-    def find_nodes(self, dataset):
+    def find_rows(self, dataset):
         """
-        Find all nodes within the dataset stored in the store and
+        Find all rows within the dataset stored in the store and
         construct the data tree within the dataset
 
         Parameters
@@ -58,27 +58,27 @@ class Bids(FileSystem):
                 explicit_ids = {}
             if dataset.is_multi_session():
                 for sess_id in (dataset.root_dir / subject_id).iterdir():
-                    dataset.add_leaf_node([subject_id, sess_id],
+                    dataset.add_leaf_row([subject_id, sess_id],
                                           explicit_ids=explicit_ids)
             else:
-                dataset.add_leaf_node([subject_id],
+                dataset.add_leaf_row([subject_id],
                                       explicit_ids=explicit_ids)
 
-    def find_items(self, data_node):
-        rel_session_path = self.node_path(data_node)
-        root_dir = data_node.dataset.root_dir
+    def find_items(self, data_row):
+        rel_session_path = self.row_path(data_row)
+        root_dir = data_row.dataset.root_dir
         session_path = (root_dir / rel_session_path)
         session_path.mkdir(exist_ok=True)
         for modality_dir in session_path.iterdir():
-            self.find_items_in_dir(modality_dir, data_node)
+            self.find_items_in_dir(modality_dir, data_row)
         deriv_dir = (root_dir / 'derivatives')
         if deriv_dir.exists():
             for pipeline_dir in deriv_dir.iterdir():
                 self.find_items_in_dir(pipeline_dir / rel_session_path,
-                                       data_node)        
+                                       data_row)        
 
     def file_group_stem_path(self, file_group):
-        dn = file_group.data_node
+        dn = file_group.data_row
         fs_path = self.root_dir(dn)
         parts = file_group.path.split('/')
         if parts[-1] == '':
@@ -94,7 +94,7 @@ class Bids(FileSystem):
             # append the first to parts of the path before the row ID (e.g. sub-01/ses-02)
             fs_path = fs_path.joinpath(*parts[:2])
             parts = parts[2:]
-        fs_path /= self.node_path(dn)
+        fs_path /= self.row_path(dn)
         if parts:  # The whole derivatives directories can be the output for a BIDS app
             for part in parts[:-1]:
                 fs_path /= part
@@ -106,14 +106,14 @@ class Bids(FileSystem):
         parts = field.path.split('/')
         if parts[0] != 'derivatives':
             assert False, "Non-derivative fields should be taken from participants.tsv"
-        return (field.data_node.dataset.root_dir.joinpath(parts[:2])
-                / self.node_path(field.data_node) / self.FIELDS_FNAME)
+        return (field.data_row.dataset.root_dir.joinpath(parts[:2])
+                / self.row_path(field.data_row) / self.FIELDS_FNAME)
 
     def get_field_val(self, field):
-        data_node = field.data_node
-        dataset = data_node.dataset
+        data_row = field.data_row
+        dataset = data_row.dataset
         if field.name in dataset.participant_attrs:
-            val = dataset.participants[data_node.ids['subject']]
+            val = dataset.participants[data_row.ids['subject']]
         else:
             val = super().get_field_val(field)
         return val

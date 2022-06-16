@@ -14,17 +14,17 @@ from .space import DataSpace
 
 
 @attr.s(auto_detect=True)
-class DataNode():
-    """A "node" in a data tree where file-groups and fields can be placed, e.g.
+class DataRow():
+    """A "row" in a data tree where file-groups and fields can be placed, e.g.
     a session or subject.
 
     Parameters
     ----------
     ids : Dict[DataSpace, str]
-        The ids for the frequency of the node and all "parent" frequencies
+        The ids for the frequency of the row and all "parent" frequencies
         within the tree
     frequency : DataSpace
-        The frequency of the node
+        The frequency of the row
     dataset : Dataset
         A reference to the root of the data tree
     """
@@ -39,7 +39,7 @@ class DataNode():
     _items = attr.ib(factory=dict, init=False, repr=False)
 
     def __getitem__(self, column_name):
-        """Gets the item for the current node
+        """Gets the item for the current row
 
         Parameters
         ----------
@@ -66,7 +66,7 @@ class DataNode():
                 return ArcanaWrongFrequencyError(
                     column_name,
                     f"'column_name' ({column_name}) is of {spec.frequency} "
-                    f"frequency and therefore not in nodes of {self.frequency}"
+                    f"frequency and therefore not in rows of {self.frequency}"
                     " frequency")
             item = self._items[column_name] = spec.match(self)
             return item
@@ -101,9 +101,9 @@ class DataNode():
                 if c.frequency == self.frequency)
 
     def column_items(self, column_name):
-        """Get's the item for the current node if item's frequency matches
-        otherwise gets all the items that are related to the current node (
-        i.e. are in child nodes)
+        """Get's the item for the current row if item's frequency matches
+        otherwise gets all the items that are related to the current row (
+        i.e. are in child rows)
 
         Parameters
         ----------
@@ -120,9 +120,9 @@ class DataNode():
         try:
             return [self[column_name]]
         except ArcanaWrongFrequencyError:
-            # If frequency is not a ancestor node then return the
-            # items in the children of the node (if they are child
-            # nodes) or the whole dataset
+            # If frequency is not a ancestor row then return the
+            # items in the children of the row (if they are child
+            # rows) or the whole dataset
             spec = self.dataset.columns[column_name]
             try:
                 return self.children[spec.frequency].values()
@@ -138,7 +138,7 @@ class DataNode():
 
     def resolved(self, format):
         """
-        Items in the node that are able to be resolved to the given format
+        Items in the row that are able to be resolved to the given format
 
         Parameters
         ----------
@@ -161,13 +161,13 @@ class DataNode():
         if self._unresolved is None:
             self._unresolved = []
         self._unresolved.append(UnresolvedFileGroup(
-            path=path, data_node=self, **kwargs))
+            path=path, data_row=self, **kwargs))
 
     def add_field(self, path, value, **kwargs):
         if self._unresolved is None:
             self._unresolved = []
         self._unresolved.append(UnresolvedField(
-            path=path, data_node=self, value=value, **kwargs))
+            path=path, data_row=self, value=value, **kwargs))
 
 
 @attr.s
@@ -180,7 +180,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     ----------
     path : str
         The name_path to the relative location of the file group, i.e. excluding
-        information about which node in the data tree it belongs to
+        information about which row in the data tree it belongs to
     order : int | None
         The ID of the file_group in the session. To be used to
         distinguish multiple file_groups with the same scan type in the
@@ -194,7 +194,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     """
 
     path: str = attr.ib(default=None)
-    data_node: DataNode = attr.ib(default=None)
+    data_row: DataRow = attr.ib(default=None)
     order: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=DataQuality.usable)
     provenance: ty.Dict[str, ty.Any] = attr.ib(default=None)
@@ -205,7 +205,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
         return {
             'path': self.path,
             'order': self.order,
-            'data_node': self.data_node,
+            'data_row': self.data_row,
             'quality': self.quality}
 
 
@@ -226,7 +226,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
     ----------
     name_path : str
         The name_path to the relative location of the file group, i.e. excluding
-        information about which node in the data tree it belongs to
+        information about which row in the data tree it belongs to
     order : int | None
         The ID of the file_group in the session. To be used to
         distinguish multiple file_groups with the same scan type in the
@@ -237,8 +237,8 @@ class UnresolvedFileGroup(UnresolvedDataItem):
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
-    data_node : DataNode
-        The data node that the field belongs to
+    data_row : DataRow
+        The data row that the field belongs to
     file_paths : Sequence[str] | None
         Path to the file-group in the local cache
     uris : Dict[str, str] | None
@@ -275,7 +275,7 @@ class UnresolvedField(UnresolvedDataItem):
     ----------
     path : str
         The name_path to the relative location of the file group, i.e. excluding
-        information about which node in the data tree it belongs to
+        information about which row in the data tree it belongs to
     value : str
         The value assigned to the unresolved data item (for fields instead of 
         file groups)
@@ -289,8 +289,8 @@ class UnresolvedField(UnresolvedDataItem):
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
-    data_node : DataNode
-        The data node that the field belongs to
+    data_row : DataRow
+        The data row that the field belongs to
     """
 
     value: ty.Union[

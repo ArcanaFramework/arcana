@@ -53,9 +53,9 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
           "by the workflow"))
 @click.option(
     '--frequency', '-f', default=None, type=str,
-    help=("the frequency of the nodes the pipeline will be executed over, i.e. "
+    help=("the frequency of the rows the pipeline will be executed over, i.e. "
           "will it be run once per-session, per-subject or per whole dataset, "
-          "by default the highest frequency nodes (e.g. per-session)"))
+          "by default the highest frequency rows (e.g. per-session)"))
 @click.option(
     '--overwrite/--no-overwrite', default=False,
     help=("whether to overwrite previous pipelines"))

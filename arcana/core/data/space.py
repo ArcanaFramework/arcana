@@ -7,12 +7,12 @@ from arcana.core.utils import class_location, resolve_class
 class DataSpace(Enum):
     """
     Base class for all "data space" enums. DataSpace enums specify
-    the relationships between nodes of a dataset.
+    the relationships between rows of a dataset.
 
     For example in imaging studies, scannings sessions are typically organised
     by analysis group (e.g. test & control), membership within the group (i.e
     matched subjects) and time-points (for longitudinal studies). We can
-    visualise the nodes arranged in a 3-D grid along the `group`, `member`, and
+    visualise the rows arranged in a 3-D grid along the `group`, `member`, and
     `timepoint` dimensions. Note that datasets that only contain one group or
     time-point can still be represented in the same space, and just be of
     depth=1 along those dimensions.
@@ -24,21 +24,21 @@ class DataSpace(Enum):
         group = 0b010
         timepoint = 0b100
 
-    In this space, an imaging session node is uniquely defined by its member,
+    In this space, an imaging session row is uniquely defined by its member,
     group and timepoint ID. The most commonly present dimension should be given
     the least frequent bit (e.g. imaging datasets will not always have
     different groups or time-points but will always have different members
     (equivalent to subjects when there is one group).
     
-    In addition to the data items stored in the data nodes for each session,
+    In addition to the data items stored in the data rows for each session,
     some items only vary along a particular dimension of the grid. The
-    "frequency" of these nodes can be specified using the "basis" members
+    "frequency" of these rows can be specified using the "basis" members
     (i.e. member, group, timepoint) in contrast to the `session` frequency,
     which is the combination of all three
 
         session = 0b111
 
-    Additionally, some data is stored in aggregated nodes that across a plane
+    Additionally, some data is stored in aggregated rows that across a plane
     of the grid. These frequencies should also be added to the enum (all
     combinations of the basis frequencies must be included) and given intuitive
     names if possible, e.g.

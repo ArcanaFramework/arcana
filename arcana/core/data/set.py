@@ -15,7 +15,7 @@ from .space import DataSpace
 from .column import DataColumn, DataSink, DataSource
 from . import store as datastore
 
-from .node import DataNode
+from .row import DataRow
 
 
 logger = logging.getLogger('arcana')
@@ -120,7 +120,7 @@ class Dataset():
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     pipelines: ty.Dict[str, ty.Any] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    _root_node: DataNode = attr.ib(default=None, init=False, repr=False,
+    _root_row: DataRow = attr.ib(default=None, init=False, repr=False,
                                    eq=False)
 
     def __attrs_post_init__(self):
@@ -170,7 +170,7 @@ class Dataset():
             is interpreted as an ID string
         name: str, optional
             the name of the dataset within the project/directory
-            (e.g. 'test', 'training'). Used to specify a subset of data nodes
+            (e.g. 'test', 'training'). Used to specify a subset of data rows
             to work with, within a greater project
         **kwargs
             keyword arguments parsed to the data store load
@@ -260,28 +260,28 @@ class Dataset():
         return {
             'id': self.id,
             'store': self.store.prov,
-            'ids': {str(freq): tuple(ids) for freq, ids in self.nodes.items()}}
+            'ids': {str(freq): tuple(ids) for freq, ids in self.rows.items()}}
 
     @property
-    def root_node(self):
+    def root_row(self):
         """Lazily loads the data tree from the store on demand
 
         Returns
         -------
-        DataNode
-            The root node of the data tree
+        DataRow
+            The root row of the data tree
         """
-        if self._root_node is None:
-            self._set_root_node()
-            self.store.find_nodes(self)
-        return self._root_node
+        if self._root_row is None:
+            self._set_root_row()
+            self.store.find_rows(self)
+        return self._root_row
 
-    def _set_root_node(self):
-        self._root_node = DataNode({self.root_freq: None}, self.root_freq, self)
+    def _set_root_row(self):
+        self._root_row = DataRow({self.root_freq: None}, self.root_freq, self)
 
     def refresh(self):
-        """Refresh the dataset nodes"""
-        self._root_node = None
+        """Refresh the dataset rows"""
+        self._root_row = None
 
     def add_source(self, name, format, path=None, frequency=None,
                    overwrite=False, **kwargs):
@@ -353,111 +353,111 @@ class Dataset():
                     "if this is desired")
         self.columns[name] = spec
 
-    def node(self, frequency=None, id=None, **id_kwargs):
-        """Returns the node associated with the given frequency and ids dict
+    def row(self, frequency=None, id=None, **id_kwargs):
+        """Returns the row associated with the given frequency and ids dict
 
         Parameters
         ----------
         frequency : DataSpace or str
-            The frequency of the node
+            The frequency of the row
         id : str or Tuple[str], optional
-            The ID of the node to 
+            The ID of the row to 
         **id_kwargs : Dict[str, str]
-            Alternatively to providing `id`, ID corresponding to the node to
+            Alternatively to providing `id`, ID corresponding to the row to
             return passed as kwargs
 
         Returns
         -------
-        DataNode
-            The selected data node
+        DataRow
+            The selected data row
 
         Raises
         ------
         ArcanaUsageError
             Raised when attemtping to use IDs with the frequency associated
-            with the root node
+            with the root row
         ArcanaNameError
-            If there is no node corresponding to the given ids
+            If there is no row corresponding to the given ids
         """
-        node = self.root_node
+        row = self.root_row
         # Parse str to frequency enums
         if not frequency:
             if id is not None:
                 raise ArcanaUsageError(
-                    f"Root nodes don't have any IDs ({id})")
-            return self.root_node
+                    f"Root rows don't have any IDs ({id})")
+            return self.root_row
         frequency = self._parse_freq(frequency)
         if id_kwargs:
             if id is not None:
                 raise ArcanaUsageError(
                     f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
-                    f"provided to `node` method of {self}")
+                    f"provided to `row` method of {self}")
             # Convert to the DataSpace of the dataset
-            node = self.root_node
+            row = self.root_row
             for freq, id in id_kwargs.items():
                 try:
-                    children_dict = node.children[self.space[freq]]
+                    children_dict = row.children[self.space[freq]]
                 except KeyError as e:
                     raise ArcanaNameError(
-                        freq, f"{freq} is not a child frequency of {node}") from e
+                        freq, f"{freq} is not a child frequency of {row}") from e
                 try:
-                    node = children_dict[id]
+                    row = children_dict[id]
                 except KeyError as e:
                     raise ArcanaNameError(
-                        id, f"{id} ({freq}) not a child node of {node}") from e
-            return node
+                        id, f"{id} ({freq}) not a child row of {row}") from e
+            return row
         else:
             try:
-                return self.root_node.children[frequency][id]
+                return self.root_row.children[frequency][id]
             except KeyError as e:
                 raise ArcanaNameError(
                     id, f"{id} not present in data tree "
-                    f"({list(self.node_ids(frequency))})") from e
+                    f"({list(self.row_ids(frequency))})") from e
 
-    def nodes(self, frequency=None, ids=None):
+    def rows(self, frequency=None, ids=None):
         """Return all the IDs in the dataset for a given frequency
 
         Parameters
         ----------
         frequency : DataSpace or None
-            The "frequency" of the nodes, e.g. per-session, per-subject. If
-            None then all nodes are returned
+            The "frequency" of the rows, e.g. per-session, per-subject. If
+            None then all rows are returned
         ids : Sequence[str or Tuple[str]]
             The i
 
         Returns
         -------
-        Sequence[DataNode]
-            The sequence of the data node within the dataset
+        Sequence[DataRow]
+            The sequence of the data row within the dataset
         """
         if frequency is None:
             return chain(
-                *(d.values() for d in self.root_node.children.values()))
+                *(d.values() for d in self.root_row.children.values()))
         frequency = self._parse_freq(frequency)
         if frequency == self.root_freq:
-            return [self.root_node]
-        nodes = self.root_node.children[frequency].values()
+            return [self.root_row]
+        rows = self.root_row.children[frequency].values()
         if ids is not None:
-            nodes = (n for n in nodes if n.id in set(ids))
-        return nodes
+            rows = (n for n in rows if n.id in set(ids))
+        return rows
         
-    def node_ids(self, frequency):
+    def row_ids(self, frequency):
         """Return all the IDs in the dataset for a given frequency
 
         Parameters
         ----------
         frequency : DataSpace
-            The "frequency" of the nodes, e.g. per-session, per-subject...
+            The "frequency" of the rows, e.g. per-session, per-subject...
 
         Returns
         -------
         Sequence[str]
-            The IDs of the nodes
+            The IDs of the rows
         """
         frequency = self._parse_freq(frequency)
         if frequency == self.root_freq:
             return [None]
-        return self.root_node.children[frequency].keys()
+        return self.root_row.children[frequency].keys()
 
     def __getitem__(self, name):
         """Return all data items across the dataset for a given source or sink
@@ -474,15 +474,15 @@ class Dataset():
         """
         return self.columns[name]
 
-    def add_leaf_node(self, tree_path, explicit_ids=None):
-        """Creates a new node at a the path down the tree of the dataset as
-        well as all "parent" nodes upstream in the data tree
+    def add_leaf_row(self, tree_path, explicit_ids=None):
+        """Creates a new row at a the path down the tree of the dataset as
+        well as all "parent" rows upstream in the data tree
 
         Parameters
         ----------
         tree_path : Sequence[str]
             The sequence of labels for each layer in the hierarchy of the
-            dataset leading to the current node.
+            dataset leading to the current row.
         explicit_ids : dict[DataSpace, str]
             IDs for frequencies not in the dataset hierarchy that are to be
             set explicitly
@@ -496,8 +496,8 @@ class Dataset():
             raised if one of the groups specified in the ID inference reg-ex
             doesn't match a valid frequency in the data dimensions
         """
-        if self._root_node is None:
-            self._set_root_node()
+        if self._root_row is None:
+            self._set_root_row()
         if explicit_ids is None:
             explicit_ids = {}
         # Get basis frequencies covered at the given depth of the
@@ -506,7 +506,7 @@ class Dataset():
                 f"Tree path ({tree_path}) should have the same length as "
                 f"the hierarchy ({self.hierarchy}) of {self}")
         # Set a default ID of None for all parent frequencies that could be
-        # inferred from a node at this depth
+        # inferred from a row at this depth
         ids = {f: None for f in self.space}
         # Calculate the combined freqs after each layer is added
         frequency = self.space(0)
@@ -570,17 +570,17 @@ class Dataset():
                     if len(id) == 1:
                         id = id[0]
                     ids[freq] = id
-        # TODO: filter node based on dataset include & exlcude attrs
-        return self.add_node(ids, frequency)
+        # TODO: filter row based on dataset include & exlcude attrs
+        return self.add_row(ids, frequency)
 
-    def add_node(self, ids, frequency):
-        """Adds a node to the dataset, creating all parent "aggregate" nodes
+    def add_row(self, ids, frequency):
+        """Adds a row to the dataset, creating all parent "aggregate" rows
         (e.g. for each subject, group or timepoint) where required
 
         Parameters
         ----------
-        node: DataNode
-            The node to add into the data tree
+        row: DataRow
+            The row to add into the data tree
 
         Raises
         ------
@@ -588,46 +588,46 @@ class Dataset():
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
-        logger.debug(f'Adding new %s node to %s dataset: %s',
+        logger.debug(f'Adding new %s row to %s dataset: %s',
                      frequency, self.id, ids)
         frequency = self._parse_freq(frequency)
-        node = DataNode(ids, frequency, self)
-        # Create new data node
-        node_dict = self.root_node.children[node.frequency]
-        if node.id in node_dict:
+        row = DataRow(ids, frequency, self)
+        # Create new data row
+        row_dict = self.root_row.children[row.frequency]
+        if row.id in row_dict:
             raise ArcanaDataTreeConstructionError(
-                f"ID clash ({node.id}) between nodes inserted into data "
+                f"ID clash ({row.id}) between rows inserted into data "
                 "tree")
-        node_dict[node.id] = node
-        # Insert root node
-        # Insert parent nodes if not already present and link them with
-        # inserted node
-        for parent_freq, parent_id in node.ids.items():
-            diff_freq = node.frequency - (parent_freq & node.frequency)
-            if diff_freq and parent_freq:  # Don't need to insert root node again
+        row_dict[row.id] = row
+        # Insert root row
+        # Insert parent rows if not already present and link them with
+        # inserted row
+        for parent_freq, parent_id in row.ids.items():
+            diff_freq = row.frequency - (parent_freq & row.frequency)
+            if diff_freq and parent_freq:  # Don't need to insert root row again
                 # logger.debug(f'Linking parent {parent_freq}: {parent_id}')
                 try:
-                    parent_node = self.node(parent_freq, parent_id)
+                    parent_row = self.row(parent_freq, parent_id)
                 except ArcanaNameError:
                     # logger.debug(
                     #     f'Parent {parent_freq}:{parent_id} not found, adding')
-                    parent_ids = {f: i for f, i in node.ids.items()
+                    parent_ids = {f: i for f, i in row.ids.items()
                                   if (f.is_parent(parent_freq)
                                       or f == parent_freq)}
-                    parent_node = self.add_node(parent_ids, parent_freq)
-                # Set reference to level node in new node
-                diff_id = node.ids[diff_freq]
-                children_dict = parent_node.children[frequency]
+                    parent_row = self.add_row(parent_ids, parent_freq)
+                # Set reference to level row in new row
+                diff_id = row.ids[diff_freq]
+                children_dict = parent_row.children[frequency]
                 if diff_id in children_dict:
                     raise ArcanaDataTreeConstructionError(
-                        f"ID clash ({diff_id}) between nodes inserted into "
-                        f"data tree in {diff_freq} children of {parent_node} "
-                        f"({children_dict[diff_id]} and {node}). You may "
+                        f"ID clash ({diff_id}) between rows inserted into "
+                        f"data tree in {diff_freq} children of {parent_row} "
+                        f"({children_dict[diff_id]} and {row}). You may "
                         f"need to set the `id_inference` attr of the dataset "
                         "to disambiguate ID components (e.g. how to extract "
                         "the timepoint ID from a session label)")
-                children_dict[diff_id] = node
-        return node
+                children_dict[diff_id] = row
+        return row
 
     def apply_pipeline(self, name, workflow, inputs, outputs, frequency=None,
                        overwrite=False):
@@ -644,9 +644,9 @@ class Dataset():
         outputs : list[arcana.core.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
             List of outputs of the pipeline (see `arcana.core.pipeline.Pipeline.Output`)
         frequency : str, optional
-            the frequency of the nodes the pipeline will be executed over, i.e.
+            the frequency of the rows the pipeline will be executed over, i.e.
             will it be run once per-session, per-subject or per whole dataset,
-            by default the highest frequency nodes (e.g. per-session)
+            by default the highest frequency rows (e.g. per-session)
         overwrite : bool, optional
             overwrite connections to previously connected sinks, by default False
 
@@ -706,7 +706,7 @@ class Dataset():
         *sink_names : Iterable[str]
             Names of the columns corresponding to the items to derive
         ids : Iterable[str]
-            The IDs of the data nodes in each column to derive
+            The IDs of the data rows in each column to derive
         cache_dir
 
         Returns

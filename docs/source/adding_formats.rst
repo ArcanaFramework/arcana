@@ -233,17 +233,17 @@ data tree, e.g. imaging datasets will not always have different groups or
 time-points but will always have different members (which are equivalent to
 subjects when there is only one group).
 
-The "leaf nodes" of a data tree, imaging sessions in this example, will be the
+The "leaf rows" of a data tree, imaging sessions in this example, will be the
 bitwise-and of the dimension vectors, i.e. an imaging session
 is uniquely defined by its member, group and timepoint ID.::
     
     session = 0b111
     
-In addition to the data items stored in leaf nodes, some data, particularly
+In addition to the data items stored in leaf rows, some data, particularly
 derivatives, may be stored in the dataset along a particular dimension, at
 a lower "frequency" than 'per session'. For example, brain templates are
 sometimes calculated 'per group'. Additionally, data
-can also be stored in aggregated nodes that across a plane
+can also be stored in aggregated rows that across a plane
 of the grid. These frequencies should also be added to the enum, i.e. all
 permutations of the base dimensions must be included and given intuitive
 names if possible::

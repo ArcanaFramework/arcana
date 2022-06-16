@@ -4,7 +4,7 @@ import typing as ty
 import attr
 from operator import attrgetter
 from attr.converters import optional
-# from arcana.core.data.node import DataNode
+# from arcana.core.data.row import DataRow
 from arcana.core.utils import class_location
 from arcana.exceptions import ArcanaDataMatchError
 from ..enum import DataQuality, DataSalience
@@ -23,27 +23,27 @@ class DataColumn(metaclass=ABCMeta):
                       eq=False, hash=False, repr=False)
 
     def __iter__(self):
-        return (n[self.name] for n in self.dataset.nodes(self.frequency))
+        return (n[self.name] for n in self.dataset.rows(self.frequency))
 
     def __getitem__(self, id):
-        return self.dataset.node(id=id, frequency=self.frequency)[self.name]
+        return self.dataset.row(id=id, frequency=self.frequency)[self.name]
 
     def __len__(self):
-        return len(list(self.dataset.nodes(self.frequency)))
+        return len(list(self.dataset.rows(self.frequency)))
 
     @property
     def ids(self):
-        return [n.id for n in self.dataset.nodes(self.frequency)]
+        return [n.id for n in self.dataset.rows(self.frequency)]
 
     @abstractmethod
-    def match(self, node):
-        """Selects a single item from a data node that matches the
+    def match(self, row):
+        """Selects a single item from a data row that matches the
         criteria/path of the column.
 
         Parameters
         ----------
-        node: DataNode
-            the node to match the item from
+        row: DataRow
+            the row to match the item from
 
         Returns
         -------
@@ -54,9 +54,9 @@ class DataColumn(metaclass=ABCMeta):
         ------
         ArcanaDataMatchError
             if none or multiple items match the criteria/path of the column
-            within the node
+            within the row
         ArcanaFileFormatError
-            if there are no files matching the format of the column in the node"""
+            if there are no files matching the format of the column in the row"""
 
     def assume_exists(self):
         # Update local cache of sink paths
@@ -67,7 +67,7 @@ class DataColumn(metaclass=ABCMeta):
 @attr.s
 class DataSource(DataColumn):
     """
-    Specifies the criteria by which an item is selected from a data node to
+    Specifies the criteria by which an item is selected from a data row to
     be a data source.
 
     Parameters
@@ -106,21 +106,21 @@ class DataSource(DataColumn):
 
     is_sink = False
 
-    def match(self, node):
+    def match(self, row):
         criteria = [
             (match_path, self.path if not self.is_regex else None),
             (match_path_regex, self.path if self.is_regex else None),
             (match_quality, self.quality_threshold),
             (match_header_vals, self.header_vals)]
         # Get all items that match the data format of the source
-        matches = node.resolved(self.format)
+        matches = row.resolved(self.format)
         if not matches:
             format_str = class_location(self.format,
                                         strip_prefix='arcana.data.formats.')
             msg = (f"Did not find any items matching data format "
-                   f"{format_str} in '{node.id}' {self.frequency} for the "
+                   f"{format_str} in '{row.id}' {self.frequency} for the "
                    f"'{self.name}' column, found unresolved items:")
-            for item in sorted(node.unresolved, key=attrgetter('path')):
+            for item in sorted(row.unresolved, key=attrgetter('path')):
                 msg += f'\n    {item.path}: paths=' + ','.join(
                     p.name for p in item.file_paths) + (
                         (', uris=' + ','.join(item.uris.keys())) if item.uris else '')
@@ -133,7 +133,7 @@ class DataSource(DataColumn):
                 if not filtered:
                     raise ArcanaDataMatchError(
                         "Did not find any items " + func.__doc__.format(arg)
-                        + self._error_msg(node, matches))
+                        + self._error_msg(row, matches))
                 matches = filtered
         # Select a single item from the ones that match the criteria
         if self.order is not None:
@@ -145,16 +145,16 @@ class DataSource(DataColumn):
                     f"{self.order}, found:" + self._format_matches(matches)) from e
         elif len(matches) > 1:
             raise ArcanaDataMatchError(
-                "Found multiple matches " + self._error_msg(node, matches))
+                "Found multiple matches " + self._error_msg(row, matches))
         else:
             match = matches[0]
         return match
 
-    def _error_msg(self, node, matches):
+    def _error_msg(self, row, matches):
         format_str = class_location(self.format, strip_prefix='arcana.data.formats.')
         return (
-            f" attempting to select a {format_str} item for the '{node.id}' "
-            f"{node.frequency} in the '{self.name}' column, found:"
+            f" attempting to select a {format_str} item for the '{row.id}' "
+            f"{row.frequency} in the '{self.name}' column, found:"
             + self._format_matches(matches) + self._format_criteria())
 
     def _format_criteria(self):
@@ -204,7 +204,7 @@ class DataSink(DataColumn):
     ----------
     path : str
         The path to the relative location the corresponding data items will be
-        stored within the nodes of the data tree.
+        stored within the rows of the data tree.
     format : type
         The file format or data type used to store the corresponding items
         in the store dataset.
@@ -225,16 +225,16 @@ class DataSink(DataColumn):
 
     is_sink = True
 
-    def match(self, node):
-        matches = [i for i in node.resolved(self.format)
+    def match(self, row):
+        matches = [i for i in row.resolved(self.format)
                    if i.path == self.path]
         if not matches:
             # Return a placeholder data item that can be set
-            return self.format(path=self.path, data_node=node,
+            return self.format(path=self.path, data_row=row,
                                exists=False)
         elif len(matches) > 1:
             raise ArcanaDataMatchError(
-                "Found multiple matches " + self._error_msg(node, matches))
+                "Found multiple matches " + self._error_msg(row, matches))
         return matches[0]
 
     def derive(self, ids=None):

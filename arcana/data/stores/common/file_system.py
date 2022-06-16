@@ -21,7 +21,7 @@ from arcana.core.data.format import FileGroup
 logger = logging.getLogger('arcana')
 
 
-# Matches directory names used for summary nodes with dunder beginning and
+# Matches directory names used for summary rows with dunder beginning and
 # end (e.g. '__visit_01__') and hidden directories (i.e. starting with '.' or
 # '~')
 special_dir_re = re.compile(r'(__.*__$|\..*|~.*)')
@@ -86,7 +86,7 @@ class FileSystem(DataStore):
         if not matches:
             raise ArcanaMissingDataException(
                 f"No files/sub-dirs matching '{file_group.path}' path found in "
-                f"{str(self.absolute_node_path(file_group.data_node))} directory")
+                f"{str(self.absolute_row_path(file_group.data_row))} directory")
         return matches
 
     def get_field_value(self, field):
@@ -134,8 +134,8 @@ class FileSystem(DataStore):
         file_group: FileGroup
             the file group stored or to be stored
         """
-        node_path = self.absolute_node_path(file_group.data_node)
-        return node_path.joinpath(*file_group.path.split('/'))
+        row_path = self.absolute_row_path(file_group.data_row)
+        return row_path.joinpath(*file_group.path.split('/'))
 
     def put_field_value(self, field, value):
         """
@@ -170,9 +170,9 @@ class FileSystem(DataStore):
             provenance = json.load(f)
         return provenance
 
-    def find_nodes(self, dataset: Dataset):
+    def find_rows(self, dataset: Dataset):
         """
-        Find all nodes within the dataset stored in the store and
+        Find all rows within the dataset stored in the store and
         construct the data tree within the dataset
 
         Parameters
@@ -183,7 +183,7 @@ class FileSystem(DataStore):
         if not os.path.exists(dataset.id):
             raise ArcanaUsageError(
                 f"Could not find a directory at '{dataset.id}' to be the "
-                "root node of the dataset")
+                "root row of the dataset")
 
         for dpath, _, _ in os.walk(dataset.id):
             tree_path = Path(dpath).relative_to(dataset.id).parts
@@ -191,15 +191,15 @@ class FileSystem(DataStore):
                 continue
             if special_dir_re.match(tree_path[-1]):
                 continue
-            dataset.add_leaf_node(tree_path)
+            dataset.add_leaf_row(tree_path)
 
-    def find_items(self, data_node):
+    def find_items(self, data_row):
         # First ID can be omitted
         self.find_items_in_dir(
-            self.root_dir(data_node) / self.node_path(data_node),
-            data_node)
+            self.root_dir(data_row) / self.row_path(data_row),
+            data_row)
 
-    def find_items_in_dir(self, dpath, data_node):
+    def find_items_in_dir(self, dpath, data_row):
         if not op.exists(dpath):
             return
         # Filter contents of directory to omit fields JSON and provenance
@@ -222,7 +222,7 @@ class FileSystem(DataStore):
                     provenance = json.load(f)
             else:
                 provenance = {}
-            data_node.add_file_group(
+            data_row.add_file_group(
                 path=bname,
                 file_paths=[op.join(dpath, f) for f in fnames],
                 provenance=provenance)
@@ -239,23 +239,23 @@ class FileSystem(DataStore):
                     value = value[self.VALUE_KEY]
                 else:
                     prov = None
-                data_node.add_field(name_path=name, value=value,
+                data_row.add_field(name_path=name, value=value,
                                     provenance=prov)
 
-    def node_path(self, node):
+    def row_path(self, row):
         path = Path()
-        accounted_freq = node.dataset.space(0)
-        for layer in node.dataset.hierarchy:
-            if not (layer.is_parent(node.frequency)
-                    or layer == node.frequency):
+        accounted_freq = row.dataset.space(0)
+        for layer in row.dataset.hierarchy:
+            if not (layer.is_parent(row.frequency)
+                    or layer == row.frequency):
                 break
-            path /= node.ids[layer]
+            path /= row.ids[layer]
             accounted_freq |= layer
-        # If not "leaf node" then 
-        if node.frequency != max(node.dataset.space):
-            unaccounted_freq = node.frequency - (node.frequency
+        # If not "leaf row" then 
+        if row.frequency != max(row.dataset.space):
+            unaccounted_freq = row.frequency - (row.frequency
                                                  & accounted_freq)
-            unaccounted_id = node.ids[unaccounted_freq]
+            unaccounted_id = row.ids[unaccounted_freq]
             if unaccounted_id is None:
                 path /= f'__{unaccounted_freq}__'
             elif isinstance(unaccounted_id, str):
@@ -265,16 +265,16 @@ class FileSystem(DataStore):
                          + '_'.join(unaccounted_id) + '__')
         return path
 
-    def root_dir(self, data_node) -> Path:
-        return Path(data_node.dataset.id)
+    def root_dir(self, data_row) -> Path:
+        return Path(data_row.dataset.id)
 
     @classmethod
-    def absolute_node_path(cls, data_node) -> Path:
-        return cls().root_dir(data_node) / cls().node_path(data_node)
+    def absolute_row_path(cls, data_row) -> Path:
+        return cls().root_dir(data_row) / cls().row_path(data_row)
 
     def fields_json_path(self, field):
-        return (self.root_dir(field.data_node)
-                / self.node_path(field.data_node)
+        return (self.root_dir(field.data_row)
+                / self.row_path(field.data_row)
                 / self.FIELDS_FNAME)
 
     def prov_json_path(self, file_group):

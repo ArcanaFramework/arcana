@@ -121,15 +121,15 @@ decorator is used to mark a method as a pipeline builder and specify the
 columns the workflow it builds derives.
 
 The first argument to a builder method is the :class:`.Pipeline` object
-that is being constructed. The initialisation of the pipeline and nodes to iteract
+that is being constructed. The initialisation of the pipeline and rows to iteract
 with the data store are handled by Arcana, the builder method just needs to add
-the nodes that actually perform the analysis. Pipeline nodes are added using
+the rows that actually perform the analysis. Pipeline rows are added using
 `Pydra's workflow syntax <https://pydra.readthedocs.io/en/latest/components.html#workflows>`_.
-(the only exception being that the newly added node is returned from
+(the only exception being that the newly added row is returned from
 :meth:`.Pipeline.add` for convenience).
 
 The remaining arguments to the builder should be named after any columns
-and parameters that are required for the pipeline nodes to be added. Arcana will
+and parameters that are required for the pipeline rows to be added. Arcana will
 automagically provide ``LazyField`` pointers to the arguments named after
 column specs, and values to the arguments named after parameter specs.
 For file formats with side cars, lazy-field pointers to side car
@@ -260,7 +260,7 @@ Output methods
 
 "Output methods" take derivatives and produce the visualisations or tables to be
 included in publications or reports. Since these methods typically rely on
-graphical libraries, they are executed on the local workstation/node and
+graphical libraries, they are executed on the local workstation/row and
 therefore should not contain any heavy computations. The feature that
 differentiates them from a regular method is that they are accessible from the
 CLI

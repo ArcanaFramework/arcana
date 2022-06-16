@@ -166,7 +166,7 @@ class BidsDataset(Dataset):
             readme=readme,
             authors=authors,
             **kwargs)
-        # Create nodes
+        # Create rows
         for subject_id in subject_ids:
             if not subject_id.startswith('sub-'):
                 subject_id = f'sub-{subject_id}'
@@ -175,11 +175,11 @@ class BidsDataset(Dataset):
                 for session_id in session_ids:
                     if not session_id.startswith('sub-'):
                         session_id = f'ses-{session_id}'
-                    node = dataset.add_leaf_node([subject_id, session_id])
-                    Bids.absolute_node_path(node).mkdir(parents=True)
+                    row = dataset.add_leaf_row([subject_id, session_id])
+                    Bids.absolute_row_path(row).mkdir(parents=True)
             else:
-                node = dataset.add_leaf_node([subject_id])
-                Bids.absolute_node_path(node).mkdir(parents=True, exist_ok=True)
+                row = dataset.add_leaf_row([subject_id])
+                Bids.absolute_row_path(row).mkdir(parents=True, exist_ok=True)
         dataset.save_metadata()
         return dataset
 

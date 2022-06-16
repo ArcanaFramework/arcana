@@ -7,7 +7,7 @@ class Clinical(DataSpace):
     timepoints (in longitudinal studies).
     """
 
-    # Root node of the dataset
+    # Root row of the dataset
     dataset = 0b000  # singular within the dataset
 
     # Axes of the data space

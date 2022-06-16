@@ -116,13 +116,13 @@ class Pipeline():
         ----------
         **kwargs
             passed directly to the Pydra.Workflow init. The `ids` arg can be
-            used to filter the data nodes over which the pipeline is run.
+            used to filter the data rows over which the pipeline is run.
 
         Returns
         -------
         pydra.Workflow
             a Pydra workflow that iterates through the dataset, pulls data to the
-            processing node, executes the analysis workflow on each data node,
+            processing node, executes the analysis workflow on each data row,
             then uploads the outputs back to the data store
 
         Raises
@@ -133,10 +133,10 @@ class Pipeline():
         """
 
         # Create the outer workflow to link the analysis workflow with the
-        # data node iteration and store connection nodes
+        # data row iteration and store connection rows
         wf = Workflow(name=self.name, input_spec=['ids'], **kwargs)
 
-        # Generate list of nodes to process checking existing outputs
+        # Generate list of rows to process checking existing outputs
         wf.add(to_process(
             dataset=self.dataset,
             frequency=self.frequency,
@@ -144,10 +144,10 @@ class Pipeline():
             requested_ids=None,  # FIXME: Needs to be set dynamically
             name='to_process'))
 
-        # Create the workflow that will be split across all nodes for the 
+        # Create the workflow that will be split across all rows for the 
         # given data frequency
         wf.add(Workflow(
-            name='per_node',
+            name='per_row',
             input_spec=['id'],
             id=wf.to_process.lzout.ids).split('id'))
 
@@ -166,7 +166,7 @@ class Pipeline():
             for s in self.input_varnames}
         source_out_dct['provenance_'] = ty.Dict[str, ty.Any]
 
-        wf.per_node.add(func_task(
+        wf.per_row.add(func_task(
             source_items,
             in_fields=source_in,
             out_fields=list(source_out_dct.items()),
@@ -174,10 +174,10 @@ class Pipeline():
             dataset=self.dataset,
             frequency=self.frequency,
             inputs=[i.col_name for i in self.inputs],
-            id=wf.per_node.lzin.id))
+            id=wf.per_row.lzin.id))
 
         # Set the inputs
-        sourced = {i: getattr(wf.per_node.source.lzout, i)
+        sourced = {i: getattr(wf.per_row.source.lzout, i)
                    for i in self.input_varnames}
 
         # Do input format conversions if required
@@ -198,13 +198,13 @@ class Pipeline():
                     # separately
                     converter.split('to_convert')
                 # Insert converter
-                wf.per_node.add(converter)
+                wf.per_row.add(converter)
                 # Map converter output to input_interface
                 sourced[source_name] = converter.lzout.converted
 
-        # Create identity node to accept connections from user-defined nodes
+        # Create identity row to accept connections from user-defined rows
         # via `set_output` method
-        wf.per_node.add(func_task(
+        wf.per_row.add(func_task(
             access_paths_and_values,
             in_fields=[(i, DataItem) for i in self.input_varnames],
             out_fields=[(i, ty.Any) for i in self.input_varnames],
@@ -213,16 +213,16 @@ class Pipeline():
 
         # Add the "inner" workflow of the pipeline that actually performs the
         # analysis/processing
-        wf.per_node.add(deepcopy(self.workflow))
+        wf.per_row.add(deepcopy(self.workflow))
         # Make connections to "inner" workflow
         for inpt in self.inputs:
-            setattr(getattr(wf.per_node, self.workflow.name).inputs,
+            setattr(getattr(wf.per_row, self.workflow.name).inputs,
                     inpt.pydra_field,
-                    getattr(wf.per_node.input_interface.lzout, path2varname(inpt.col_name)))
+                    getattr(wf.per_row.input_interface.lzout, path2varname(inpt.col_name)))
 
-        # Creates a node to accept values from user-defined nodes and
+        # Creates a row to accept values from user-defined rows and
         # encapsulate them into DataItems
-        wf.per_node.add(func_task(
+        wf.per_row.add(func_task(
             encapsulate_paths_and_values,
             in_fields=[('outputs', ty.Dict[str, type])] + [
                 (o, ty.Any) for o in self.output_varnames],
@@ -230,11 +230,11 @@ class Pipeline():
             name='output_interface',
             outputs=self.outputs,
             **{o.col_name: getattr(
-                getattr(wf.per_node, self.workflow.name).lzout, o.pydra_field)
+                getattr(wf.per_row, self.workflow.name).lzout, o.pydra_field)
                for o in self.outputs}))
 
         # Set format converters where required
-        to_sink = {o: getattr(wf.per_node.output_interface.lzout, o)
+        to_sink = {o: getattr(wf.per_row.output_interface.lzout, o)
                    for o in self.output_varnames}
 
         # Do output format conversions if required
@@ -252,13 +252,13 @@ class Pipeline():
                     outpt.produced_format,
                     name=f"{sink_name}_output_converter")
                 converter.inputs.to_convert = to_sink.pop(sink_name)
-                wf.per_node.add(converter)
+                wf.per_row.add(converter)
                 # Map converter output to workflow output
                 to_sink[sink_name] = converter.lzout.converted
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
-        wf.per_node.add(func_task(
+        wf.per_row.add(func_task(
             sink_items,
             in_fields=(
                 [('dataset', arcana.core.data.set.Dataset),
@@ -270,15 +270,15 @@ class Pipeline():
             name='sink',
             dataset=self.dataset,
             frequency=self.frequency,
-            id=wf.per_node.lzin.id,
-            provenance=wf.per_node.source.lzout.provenance_,
+            id=wf.per_row.lzin.id,
+            provenance=wf.per_row.source.lzout.provenance_,
             **to_sink))
 
-        wf.per_node.set_output(
-            [('id', wf.per_node.sink.lzout.id)])
+        wf.per_row.set_output(
+            [('id', wf.per_row.sink.lzout.id)])
 
         wf.set_output(
-            [('processed', wf.per_node.lzout.id),
+            [('processed', wf.per_row.lzout.id),
              ('couldnt_process', wf.to_process.lzout.cant_process)])
 
         return wf
@@ -412,16 +412,16 @@ def split_side_car_suffix(name):
         'cant_process': ty.List[str]}})
 def to_process(dataset, frequency, outputs, requested_ids, parameterisation):
     if requested_ids is None:
-        requested_ids = dataset.node_ids(frequency)
+        requested_ids = dataset.row_ids(frequency)
     ids = []
     cant_process = []
-    for data_node in dataset.nodes(frequency, ids=requested_ids):
-        # TODO: Should check provenance of existing nodes to see if it matches
-        not_exist = [not data_node[o.col_name].exists for o in outputs]
+    for data_row in dataset.rows(frequency, ids=requested_ids):
+        # TODO: Should check provenance of existing rows to see if it matches
+        not_exist = [not data_row[o.col_name].exists for o in outputs]
         if all(not_exist):
-            ids.append(data_node.id)
+            ids.append(data_row.id)
         elif any(not_exist):
-            cant_process.append(data_node.id)
+            cant_process.append(data_row.id)
     logger.debug("Found %s ids to process, and can't process %s",
                  ids, cant_process)
     return ids, cant_process
@@ -434,12 +434,12 @@ def source_items(dataset, frequency, id, inputs, parameterisation):
     logger.debug("Sourcing %s", inputs)
     provenance = copy(parameterisation)
     sourced = []
-    data_node = dataset.node(frequency, id)
+    data_row = dataset.row(frequency, id)
     with dataset.store:
         missing_inputs = {}
         for inpt_name in inputs:
             try:
-                item = data_node[inpt_name]
+                item = data_row[inpt_name]
             except ArcanaDataMatchError as e:
                 missing_inputs[inpt_name] = str(e)
             else:
@@ -453,11 +453,11 @@ def source_items(dataset, frequency, id, inputs, parameterisation):
 def sink_items(dataset, frequency, id, provenance, **to_sink):
     """Stores items generated by the pipeline back into the store"""
     logger.debug("Sinking %s", to_sink)
-    data_node = dataset.node(frequency, id)
+    data_row = dataset.row(frequency, id)
     with dataset.store:
         for outpt_name, output in to_sink.items():
-            node_item = data_node[outpt_name]
-            node_item.put(output.value) # Store value/path
+            row_item = data_row[outpt_name]
+            row_item.put(output.value) # Store value/path
     return id
 
 

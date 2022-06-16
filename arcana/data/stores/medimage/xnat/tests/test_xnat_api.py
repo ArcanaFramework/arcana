@@ -32,18 +32,18 @@ else:
 # logger = logging.getLogger('arcana')
 # logger.setLevel(logging.INFO)
 
-def test_find_nodes(xnat_dataset):
+def test_find_rows(xnat_dataset):
     for freq in Clinical:
         # For all non-zero bases in the frequency, multiply the dim lengths
-        # together to get the combined number of nodes expected for that
+        # together to get the combined number of rows expected for that
         # frequency
-        num_nodes = reduce(
+        num_rows = reduce(
             op.mul,
             (l for l, b in zip(xnat_dataset.blueprint.dim_lengths, freq) if b),
             1)
-        assert len(xnat_dataset.nodes(freq)) == num_nodes, (
-            f"{freq} doesn't match {len(xnat_dataset.nodes(freq))}"
-            f" vs {num_nodes}")
+        assert len(xnat_dataset.rows(freq)) == num_rows, (
+            f"{freq} doesn't match {len(xnat_dataset.rows(freq))}"
+            f" vs {num_rows}")
 
 
 def test_get_items(xnat_dataset, caplog):
@@ -56,9 +56,9 @@ def test_get_items(xnat_dataset, caplog):
                                         format=resource.format)
                 expected_files[source_name] = set(resource.filenames)
     with caplog.at_level(logging.INFO, logger='arcana'):
-        for node in xnat_dataset.nodes(Clinical.session):
+        for row in xnat_dataset.rows(Clinical.session):
             for source_name, files in expected_files.items():
-                item = node[source_name]
+                item = row[source_name]
                 try:
                     item.get()
                 except PermissionError:
@@ -98,17 +98,17 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
                 rel_path = '.'.join(test_file.suffixes)[1:]
             checksums[rel_path] = fhash.hexdigest()
             fs_paths.append(deriv_tmp_dir / test_file.parts[0])
-        # Insert into first node of that frequency in xnat_dataset
-        node = next(iter(mutable_xnat_dataset.nodes(deriv.frequency)))
-        item = node[deriv.name]
+        # Insert into first row of that frequency in xnat_dataset
+        row = next(iter(mutable_xnat_dataset.rows(deriv.frequency)))
+        item = row[deriv.name]
         with caplog.at_level(logging.INFO, logger='arcana'):
             item.put(*fs_paths)
         method_str = 'direct' if mutable_xnat_dataset.access_method == 'cs' else 'api'
         assert f'{method_str} access' in caplog.text.lower()
     def check_inserted():
         for deriv in mutable_xnat_dataset.blueprint.derivatives:
-            node = next(iter(mutable_xnat_dataset.nodes(deriv.frequency)))
-            item = node[deriv.name]
+            row = next(iter(mutable_xnat_dataset.rows(deriv.frequency)))
+            item = row[deriv.name]
             item.get_checksums(force_calculate=(mutable_xnat_dataset.access_method == 'cs'))
             assert isinstance(item, deriv.format)
             assert item.checksums == all_checksums[deriv.name]
