@@ -85,7 +85,7 @@ DOCKER_ORG is the Docker organisation the images should belong to""")
               help=("push built images to registry"))
 def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
           use_local_packages, install_extras, raise_errors, generate_only,
-          use_test_config, license_dir, check_registry, scan, push):
+          use_test_config, license_dir, check_registry, push):
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode('utf-8'))  
