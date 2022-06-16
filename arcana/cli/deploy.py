@@ -2,8 +2,6 @@ import logging
 import sys
 import shutil
 from pathlib import Path
-import json
-import subprocess
 import click
 import docker
 import docker.errors
@@ -104,6 +102,7 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
 
     temp_dir = tempfile.mkdtemp()
 
+    errors = False
     for spath in walk_spec_paths(spec_path):
 
         logging.info("Building '%s' image", spath)
@@ -171,6 +170,7 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
             if raise_errors:
                 raise
             logger.error("Could not build %s pipeline:\n%s", image_tag, format_exc())
+            errors = True
             continue
         else:
             click.echo(image_tag)
@@ -185,10 +185,13 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
                     raise
                 logger.error(f"Could not push '%s':\n\n%s",
                              image_tag, format_exc())
+                errors = True
             else:
                 logger.info("Successfully pushed '%s' to registry", image_tag)
 
-    shutil.rmtree(temp_dir)       
+    shutil.rmtree(temp_dir)
+    if errors:
+        sys.exit(1)
 
 
 @deploy.command(
