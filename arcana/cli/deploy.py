@@ -384,7 +384,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     '--single-row', type=str, default=None,
     help=("Restrict the dataset created to a single row (to avoid issues with "
           "unrelated rows that aren't being processed). Comma-separated list "
-          "of IDs for each layer of the hierarchy (passed to `Dataset.add_leaf_row`)"))
+          "of IDs for each layer of the hierarchy (passed to `Dataset.add_leaf`)"))
 @click.option(
     '--overwrite/--no-overwrite', type=bool,
     help=("Whether to overwrite the saved pipeline with the same name, if present"))
@@ -451,7 +451,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
 
     if single_row is not None:
         # Adds a single row to the dataset (i.e. skips a full scan)
-        dataset.add_leaf_row(single_row.split(','))
+        dataset.add_leaf(single_row.split(','))
 
     pipeline_inputs = []
     for col_name, col_format_name, col_path, pydra_field, format_name in input:

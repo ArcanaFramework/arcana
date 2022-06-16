@@ -191,7 +191,7 @@ class FileSystem(DataStore):
                 continue
             if special_dir_re.match(tree_path[-1]):
                 continue
-            dataset.add_leaf_row(tree_path)
+            dataset.add_leaf(tree_path)
 
     def find_items(self, data_row):
         # First ID can be omitted

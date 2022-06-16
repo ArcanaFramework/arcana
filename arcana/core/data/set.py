@@ -120,7 +120,7 @@ class Dataset():
         factory=dict, converter=default_if_none(factory=dict), repr=False)
     pipelines: ty.Dict[str, ty.Any] = attr.ib(
         factory=dict, converter=default_if_none(factory=dict), repr=False)
-    _root_row: DataRow = attr.ib(default=None, init=False, repr=False,
+    _root: DataRow = attr.ib(default=None, init=False, repr=False,
                                    eq=False)
 
     def __attrs_post_init__(self):
@@ -263,7 +263,7 @@ class Dataset():
             'ids': {str(freq): tuple(ids) for freq, ids in self.rows.items()}}
 
     @property
-    def root_row(self):
+    def root(self):
         """Lazily loads the data tree from the store on demand
 
         Returns
@@ -271,17 +271,17 @@ class Dataset():
         DataRow
             The root row of the data tree
         """
-        if self._root_row is None:
-            self._set_root_row()
+        if self._root is None:
+            self._set_root()
             self.store.find_rows(self)
-        return self._root_row
+        return self._root
 
-    def _set_root_row(self):
-        self._root_row = DataRow({self.root_freq: None}, self.root_freq, self)
+    def _set_root(self):
+        self._root = DataRow({self.root_freq: None}, self.root_freq, self)
 
     def refresh(self):
         """Refresh the dataset rows"""
-        self._root_row = None
+        self._root = None
 
     def add_source(self, name, format, path=None, frequency=None,
                    overwrite=False, **kwargs):
@@ -379,13 +379,13 @@ class Dataset():
         ArcanaNameError
             If there is no row corresponding to the given ids
         """
-        row = self.root_row
+        row = self.root
         # Parse str to frequency enums
         if not frequency:
             if id is not None:
                 raise ArcanaUsageError(
                     f"Root rows don't have any IDs ({id})")
-            return self.root_row
+            return self.root
         frequency = self._parse_freq(frequency)
         if id_kwargs:
             if id is not None:
@@ -393,7 +393,7 @@ class Dataset():
                     f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
                     f"provided to `row` method of {self}")
             # Convert to the DataSpace of the dataset
-            row = self.root_row
+            row = self.root
             for freq, id in id_kwargs.items():
                 try:
                     children_dict = row.children[self.space[freq]]
@@ -408,7 +408,7 @@ class Dataset():
             return row
         else:
             try:
-                return self.root_row.children[frequency][id]
+                return self.root.children[frequency][id]
             except KeyError as e:
                 raise ArcanaNameError(
                     id, f"{id} not present in data tree "
@@ -432,11 +432,11 @@ class Dataset():
         """
         if frequency is None:
             return chain(
-                *(d.values() for d in self.root_row.children.values()))
+                *(d.values() for d in self.root.children.values()))
         frequency = self._parse_freq(frequency)
         if frequency == self.root_freq:
-            return [self.root_row]
-        rows = self.root_row.children[frequency].values()
+            return [self.root]
+        rows = self.root.children[frequency].values()
         if ids is not None:
             rows = (n for n in rows if n.id in set(ids))
         return rows
@@ -457,7 +457,7 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         if frequency == self.root_freq:
             return [None]
-        return self.root_row.children[frequency].keys()
+        return self.root.children[frequency].keys()
 
     def __getitem__(self, name):
         """Return all data items across the dataset for a given source or sink
@@ -474,7 +474,7 @@ class Dataset():
         """
         return self.columns[name]
 
-    def add_leaf_row(self, tree_path, explicit_ids=None):
+    def add_leaf(self, tree_path, explicit_ids=None):
         """Creates a new row at a the path down the tree of the dataset as
         well as all "parent" rows upstream in the data tree
 
@@ -496,8 +496,8 @@ class Dataset():
             raised if one of the groups specified in the ID inference reg-ex
             doesn't match a valid frequency in the data dimensions
         """
-        if self._root_row is None:
-            self._set_root_row()
+        if self._root is None:
+            self._set_root()
         if explicit_ids is None:
             explicit_ids = {}
         # Get basis frequencies covered at the given depth of the
@@ -593,7 +593,7 @@ class Dataset():
         frequency = self._parse_freq(frequency)
         row = DataRow(ids, frequency, self)
         # Create new data row
-        row_dict = self.root_row.children[row.frequency]
+        row_dict = self.root.children[row.frequency]
         if row.id in row_dict:
             raise ArcanaDataTreeConstructionError(
                 f"ID clash ({row.id}) between rows inserted into data "

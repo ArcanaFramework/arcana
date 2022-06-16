@@ -166,7 +166,7 @@ class Xnat(DataStore):
         with self:
             # Get per_dataset level derivatives and fields
             for exp in self.login.projects[dataset.id].experiments.values():
-                dataset.add_leaf_row([exp.subject.label, exp.label])
+                dataset.add_leaf([exp.subject.label, exp.label])
 
     def find_items(self, data_row):
         with self:

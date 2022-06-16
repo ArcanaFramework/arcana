@@ -175,10 +175,10 @@ class BidsDataset(Dataset):
                 for session_id in session_ids:
                     if not session_id.startswith('sub-'):
                         session_id = f'ses-{session_id}'
-                    row = dataset.add_leaf_row([subject_id, session_id])
+                    row = dataset.add_leaf([subject_id, session_id])
                     Bids.absolute_row_path(row).mkdir(parents=True)
             else:
-                row = dataset.add_leaf_row([subject_id])
+                row = dataset.add_leaf([subject_id])
                 Bids.absolute_row_path(row).mkdir(parents=True, exist_ok=True)
         dataset.save_metadata()
         return dataset

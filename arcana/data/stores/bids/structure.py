@@ -58,10 +58,10 @@ class Bids(FileSystem):
                 explicit_ids = {}
             if dataset.is_multi_session():
                 for sess_id in (dataset.root_dir / subject_id).iterdir():
-                    dataset.add_leaf_row([subject_id, sess_id],
+                    dataset.add_leaf([subject_id, sess_id],
                                           explicit_ids=explicit_ids)
             else:
-                dataset.add_leaf_row([subject_id],
+                dataset.add_leaf([subject_id],
                                       explicit_ids=explicit_ids)
 
     def find_items(self, data_row):
