@@ -12,8 +12,8 @@ import os
 from dataclasses import dataclass, field as dataclass_field
 import docker
 from deepdiff import DeepDiff
-from requests.exceptions import HTTPError
 import yaml
+from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME
 from arcana.exceptions import (ArcanaBuildError)
