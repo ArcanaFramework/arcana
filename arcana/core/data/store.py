@@ -39,14 +39,14 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def find_items(self, data_row):
+    def find_items(self, row):
         """
         Find all data items within a data row and populate the DataRow object
         with them using the `add_file_group` and `add_field` methods.
         
         Parameters
         ----------
-        data_row : DataRow
+        row : DataRow
             The data row to populate with items
         """        
 

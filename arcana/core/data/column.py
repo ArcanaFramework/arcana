@@ -230,7 +230,7 @@ class DataSink(DataColumn):
                    if i.path == self.path]
         if not matches:
             # Return a placeholder data item that can be set
-            return self.format(path=self.path, data_row=row,
+            return self.format(path=self.path, row=row,
                                exists=False)
         elif len(matches) > 1:
             raise ArcanaDataMatchError(

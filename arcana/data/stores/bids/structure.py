@@ -64,21 +64,21 @@ class Bids(FileSystem):
                 dataset.add_leaf([subject_id],
                                       explicit_ids=explicit_ids)
 
-    def find_items(self, data_row):
-        rel_session_path = self.row_path(data_row)
-        root_dir = data_row.dataset.root_dir
+    def find_items(self, row):
+        rel_session_path = self.row_path(row)
+        root_dir = row.dataset.root_dir
         session_path = (root_dir / rel_session_path)
         session_path.mkdir(exist_ok=True)
         for modality_dir in session_path.iterdir():
-            self.find_items_in_dir(modality_dir, data_row)
+            self.find_items_in_dir(modality_dir, row)
         deriv_dir = (root_dir / 'derivatives')
         if deriv_dir.exists():
             for pipeline_dir in deriv_dir.iterdir():
                 self.find_items_in_dir(pipeline_dir / rel_session_path,
-                                       data_row)        
+                                       row)        
 
     def file_group_stem_path(self, file_group):
-        dn = file_group.data_row
+        dn = file_group.row
         fs_path = self.root_dir(dn)
         parts = file_group.path.split('/')
         if parts[-1] == '':
@@ -106,14 +106,14 @@ class Bids(FileSystem):
         parts = field.path.split('/')
         if parts[0] != 'derivatives':
             assert False, "Non-derivative fields should be taken from participants.tsv"
-        return (field.data_row.dataset.root_dir.joinpath(parts[:2])
-                / self.row_path(field.data_row) / self.FIELDS_FNAME)
+        return (field.row.dataset.root_dir.joinpath(parts[:2])
+                / self.row_path(field.row) / self.FIELDS_FNAME)
 
     def get_field_val(self, field):
-        data_row = field.data_row
-        dataset = data_row.dataset
+        row = field.row
+        dataset = row.dataset
         if field.name in dataset.participant_attrs:
-            val = dataset.participants[data_row.ids['subject']]
+            val = dataset.participants[row.ids['subject']]
         else:
             val = super().get_field_val(field)
         return val

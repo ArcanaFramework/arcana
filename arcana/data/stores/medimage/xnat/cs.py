@@ -86,8 +86,8 @@ class XnatViaCS(Xnat):
             # Fallback to API access
             return super().get_file_group_paths(file_group)
         logger.info("Getting %s from %s:%s row via direct access to archive directory",
-                    file_group.path, file_group.data_row.frequency,
-                    file_group.data_row.id)
+                    file_group.path, file_group.row.frequency,
+                    file_group.row.id)
         if file_group.uri:
             path = re.match(
                 r'/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/'
@@ -134,11 +134,11 @@ class XnatViaCS(Xnat):
                 shutil.copyfile(fs_path, target_path)
             cache_paths.append(target_path)
         # Update file-group with new values for local paths and XNAT URI
-        file_group.uri = (self._make_uri(file_group.data_row)
+        file_group.uri = (self._make_uri(file_group.row)
                           + '/RESOURCES/' + file_group.path)
         logger.info("Put %s into %s:%s row via direct access to archive directory",
-                    file_group.path, file_group.data_row.frequency,
-                    file_group.data_row.id)
+                    file_group.path, file_group.row.frequency,
+                    file_group.row.id)
         return cache_paths
 
     def file_group_stem_path(self, file_group):
@@ -146,11 +146,11 @@ class XnatViaCS(Xnat):
         return self.output_mount.joinpath(*file_group.path.split('/'))
     
     def get_input_mount(self, file_group):
-        data_row = file_group.data_row
-        if self.frequency == data_row.frequency:
+        row = file_group.row
+        if self.frequency == row.frequency:
             return self.input_mount
-        elif self.frequency == Clinical.dataset and data_row.frequency == Clinical.session:
-            return self.input_mount / data_row.id
+        elif self.frequency == Clinical.dataset and row.frequency == Clinical.session:
+            return self.input_mount / row.id
         else:
             raise ArcanaNoDirectXnatMountException
 

@@ -39,7 +39,7 @@ class DataItem(metaclass=ABCMeta):
         scans) in the same imaging sessions.
     quality : str
         The quality label assigned to the file_group (e.g. as is saved on XNAT)
-    data_row : DataRow
+    row : DataRow
         The data row within a dataset that the file-group belongs to
     exists : bool
         Whether the file_group exists or is just a placeholder for a sink
@@ -54,7 +54,7 @@ class DataItem(metaclass=ABCMeta):
     quality: DataQuality = attr.ib(default=DataQuality.usable)
     exists: bool = attr.ib(default=True)
     provenance: ty.Dict[str, ty.Any] = attr.ib(default=None)
-    data_row = attr.ib(default=None)    
+    row = attr.ib(default=None)    
 
     @abstractmethod
     def get(self, assume_exists=False):
@@ -104,8 +104,8 @@ class DataItem(metaclass=ABCMeta):
                 self.path,
                 f"Cannot access {self} as it hasn't been derived yet")
 
-    def _check_part_of_data_row(self):
-        if self.data_row is None:
+    def _check_part_of_row(self):
+        if self.row is None:
             raise ArcanaUsageError(
                 f"Cannot 'get' {self} as it is not part of a dataset")
 
@@ -146,7 +146,7 @@ class Field(DataItem):
         information about which row in the data tree it belongs to
     derived : bool
         Whether or not the value belongs in the derived session or not
-    data_row : DataRow
+    row : DataRow
         The data row that the field belongs to
     exists : bool
         Whether the field exists or is just a placeholder for a sink
@@ -160,12 +160,12 @@ class Field(DataItem):
     def get(self, assume_exists=False):
         if not assume_exists:
             self._check_exists()
-        self._check_part_of_data_row()
-        self.value = self.data_row.dataset.store.get_field_value(self)
+        self._check_part_of_row()
+        self.value = self.row.dataset.store.get_field_value(self)
 
     def put(self, value):
-        self._check_part_of_data_row()
-        self.data_row.dataset.store.put_field_value(self, self.format(value))
+        self._check_part_of_row()
+        self.row.dataset.store.put_field_value(self, self.format(value))
         self.exists = True
 
     def __int__(self):
@@ -223,7 +223,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         scans) in the same imaging sessions.
     quality : str
         The quality label assigned to the file_group (e.g. as is saved on XNAT)
-    data_row : DataRow
+    row : DataRow
         The data row within a dataset that the file-group belongs to
     exists : bool
         Whether the file_group exists or is just a placeholder for a sink
@@ -264,13 +264,13 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     def get(self, assume_exists=False):
         if assume_exists:
             self.exists = True
-        self._check_part_of_data_row()
-        fs_paths = self.data_row.dataset.store.get_file_group_paths(self)
+        self._check_part_of_row()
+        fs_paths = self.row.dataset.store.get_file_group_paths(self)
         self.set_fs_paths(fs_paths)
         self.validate_file_paths()
 
     def put(self, *fs_paths):
-        self._check_part_of_data_row()
+        self._check_part_of_row()
         fs_paths = [Path(p) for p in fs_paths]
         dir_paths = list(p for p in fs_paths if p.is_dir())
         if len(dir_paths) > 1:
@@ -282,7 +282,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         # any defaults before they are pushed to the store
         cpy = copy(self)
         cpy.set_fs_paths(fs_paths)
-        cache_paths = self.data_row.dataset.store.put_file_group_paths(
+        cache_paths = self.row.dataset.store.put_file_group_paths(
             self, cpy.fs_paths)
         # Set the paths to the cached files
         self.set_fs_paths(cache_paths)
@@ -290,7 +290,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         self.exists = True
         # Save provenance
         if self.provenance:
-            self.data_row.dataset.store.put_provenance(self)
+            self.row.dataset.store.put_provenance(self)
 
     @property
     def fs_paths(self):
@@ -344,8 +344,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     def get_checksums(self, force_calculate=False):
         self._check_exists()
         # Load checksums from store (e.g. via API)
-        if self.data_row is not None and not force_calculate:
-            self._checksums = self.data_row.dataset.store.get_checksums(self)
+        if self.row is not None and not force_calculate:
+            self._checksums = self.row.dataset.store.get_checksums(self)
         # If the store cannot calculate the checksums do them manually
         else:
             self._checksums = self.calculate_checksums()

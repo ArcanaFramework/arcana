@@ -86,7 +86,7 @@ class FileSystem(DataStore):
         if not matches:
             raise ArcanaMissingDataException(
                 f"No files/sub-dirs matching '{file_group.path}' path found in "
-                f"{str(self.absolute_row_path(file_group.data_row))} directory")
+                f"{str(self.absolute_row_path(file_group.row))} directory")
         return matches
 
     def get_field_value(self, field):
@@ -134,7 +134,7 @@ class FileSystem(DataStore):
         file_group: FileGroup
             the file group stored or to be stored
         """
-        row_path = self.absolute_row_path(file_group.data_row)
+        row_path = self.absolute_row_path(file_group.row)
         return row_path.joinpath(*file_group.path.split('/'))
 
     def put_field_value(self, field, value):
@@ -193,13 +193,13 @@ class FileSystem(DataStore):
                 continue
             dataset.add_leaf(tree_path)
 
-    def find_items(self, data_row):
+    def find_items(self, row):
         # First ID can be omitted
         self.find_items_in_dir(
-            self.root_dir(data_row) / self.row_path(data_row),
-            data_row)
+            self.root_dir(row) / self.row_path(row),
+            row)
 
-    def find_items_in_dir(self, dpath, data_row):
+    def find_items_in_dir(self, dpath, row):
         if not op.exists(dpath):
             return
         # Filter contents of directory to omit fields JSON and provenance
@@ -222,7 +222,7 @@ class FileSystem(DataStore):
                     provenance = json.load(f)
             else:
                 provenance = {}
-            data_row.add_file_group(
+            row.add_file_group(
                 path=bname,
                 file_paths=[op.join(dpath, f) for f in fnames],
                 provenance=provenance)
@@ -239,7 +239,7 @@ class FileSystem(DataStore):
                     value = value[self.VALUE_KEY]
                 else:
                     prov = None
-                data_row.add_field(name_path=name, value=value,
+                row.add_field(name_path=name, value=value,
                                     provenance=prov)
 
     def row_path(self, row):
@@ -265,16 +265,16 @@ class FileSystem(DataStore):
                          + '_'.join(unaccounted_id) + '__')
         return path
 
-    def root_dir(self, data_row) -> Path:
-        return Path(data_row.dataset.id)
+    def root_dir(self, row) -> Path:
+        return Path(row.dataset.id)
 
     @classmethod
-    def absolute_row_path(cls, data_row) -> Path:
-        return cls().root_dir(data_row) / cls().row_path(data_row)
+    def absolute_row_path(cls, row) -> Path:
+        return cls().root_dir(row) / cls().row_path(row)
 
     def fields_json_path(self, field):
-        return (self.root_dir(field.data_row)
-                / self.row_path(field.data_row)
+        return (self.root_dir(field.row)
+                / self.row_path(field.row)
                 / self.FIELDS_FNAME)
 
     def prov_json_path(self, file_group):

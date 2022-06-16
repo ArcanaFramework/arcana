@@ -229,7 +229,7 @@ class Dicom(Directory, MedicalImage):
             else:
                 try:
                     # Try to access dicom header details remotely
-                    hdr = self.data_row.dataset.store.dicom_header(self)
+                    hdr = self.row.dataset.store.dicom_header(self)
                 except AttributeError:
                     self.get()  # Fallback to downloading data to read header
                     dct = read_header()

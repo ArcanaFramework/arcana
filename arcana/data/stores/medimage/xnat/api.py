@@ -168,9 +168,9 @@ class Xnat(DataStore):
             for exp in self.login.projects[dataset.id].experiments.values():
                 dataset.add_leaf([exp.subject.label, exp.label])
 
-    def find_items(self, data_row):
+    def find_items(self, row):
         with self:
-            xrow = self.get_xrow(data_row)
+            xrow = self.get_xrow(row)
             # Add scans, fields and resources to data row
             try:
                 xscans = xrow.scans
@@ -178,7 +178,7 @@ class Xnat(DataStore):
                 pass  # A subject or project row
             else:
                 for xscan in xscans.values():
-                    data_row.add_file_group(
+                    row.add_file_group(
                         path=xscan.type,
                         order=xscan.id,
                         quality=xscan.quality,
@@ -187,11 +187,11 @@ class Xnat(DataStore):
                                                 + [r.label])
                               for r in xscan.resources.values()})
             for name, value in xrow.fields.items():
-                data_row.add_field(
+                row.add_field(
                     path=varname2path(name),
                     value=value)
             for xresource in xrow.resources.values():
-                data_row.add_file_group(
+                row.add_file_group(
                     path=varname2path(xresource.label),
                     uris={xresource.format: xresource.uri})               
 
@@ -211,11 +211,11 @@ class Xnat(DataStore):
             The paths to cached files/directories on the local file-system
         """
         logger.info("Getting %s from %s:%s row via API access",
-                    file_group.path, file_group.data_row.frequency,
-                    file_group.data_row.id)        
+                    file_group.path, file_group.row.frequency,
+                    file_group.row.id)        
         self._check_store(file_group)
         with self:  # Connect to the XNAT repository if haven't already
-            xrow = self.get_xrow(file_group.data_row)
+            xrow = self.get_xrow(file_group.row)
             if not file_group.uri:
                 base_uri = self.standard_uri(xrow)
                 # if file_group.derived:
@@ -305,7 +305,7 @@ class Xnat(DataStore):
         # Open XNAT session
         with self:
             # Add session for derived scans if not present
-            xrow = self.get_xrow(file_group.data_row)
+            xrow = self.get_xrow(file_group.row)
             escaped_name = path2varname(file_group.path)
             if not file_group.uri:
                 # Set the uri of the file_group
@@ -360,8 +360,8 @@ class Xnat(DataStore):
                 json.dump(file_group.calculate_checksums(), f,
                           indent=2)
         logger.info("Put %s into %s:%s row via API access",
-                    file_group.path, file_group.data_row.frequency,
-                    file_group.data_row.id)
+                    file_group.path, file_group.row.frequency,
+                    file_group.row.id)
         return cache_paths
 
     def get_field_value(self, field):
@@ -380,7 +380,7 @@ class Xnat(DataStore):
         """
         self._check_store(field)
         with self:
-            xsession = self.get_xrow(field.data_row)
+            xsession = self.get_xrow(field.row)
             val = xsession.fields[path2varname(field)]
             val = val.replace('&quot;', '"')
             val = parse_value(val)
@@ -404,7 +404,7 @@ class Xnat(DataStore):
         if field.format is str:
             value = '"{}"'.format(value)
         with self:
-            xsession = self.get_xrow(field.data_row)
+            xsession = self.get_xrow(field.row)
             xsession.fields[path2varname(field)] = value
 
     def get_checksums(self, file_group):
@@ -526,49 +526,49 @@ class Xnat(DataStore):
             os.mkdir(tmp_dir)
             self.download_file_group(tmp_dir, xresource, file_group, cache_path)
 
-    def get_xrow(self, data_row):
+    def get_xrow(self, row):
         """
         Returns the XNAT session and cache dir corresponding to the provided
-        data_row
+        row
 
         Parameters
         ----------
-        data_row : DataRow
-            The data_row to get the corresponding XNAT row for
+        row : DataRow
+            The row to get the corresponding XNAT row for
         """
         with self:
-            xproject = self.login.projects[data_row.dataset.id]
-            if data_row.frequency == Clinical.dataset:
+            xproject = self.login.projects[row.dataset.id]
+            if row.frequency == Clinical.dataset:
                 xrow = xproject
-            elif data_row.frequency == Clinical.subject:
-                xrow = xproject.subjects[data_row.ids[Clinical.subject]]
-            elif data_row.frequency == Clinical.session:
-                xrow = xproject.experiments[data_row.ids[Clinical.session]]
+            elif row.frequency == Clinical.subject:
+                xrow = xproject.subjects[row.ids[Clinical.subject]]
+            elif row.frequency == Clinical.session:
+                xrow = xproject.experiments[row.ids[Clinical.session]]
             else:
                 xrow = self.login.classes.SubjectData(
-                    label=self._make_row_name(data_row), parent=xproject)
+                    label=self._make_row_name(row), parent=xproject)
             return xrow
 
-    def _make_row_name(self, data_row):
+    def _make_row_name(self, row):
         # Create a "subject" to hold the non-standard row (i.e. not
         # a project, subject or session row)
-        if data_row.id is None:
+        if row.id is None:
             id_str = ''
-        elif isinstance(data_row.id, tuple):
-            id_str = '_' + '_'.join(data_row.id)
+        elif isinstance(row.id, tuple):
+            id_str = '_' + '_'.join(row.id)
         else:
-            id_str = '_' + str(data_row.id)
-        return f'__{data_row.frequency}{id_str}__'
+            id_str = '_' + str(row.id)
+        return f'__{row.frequency}{id_str}__'
 
 
-    def _make_uri(self, data_row: DataRow):
-        uri = '/data/archive/projects/' + data_row.dataset.id
-        if data_row.frequency == Clinical.session:
-            uri += '/experiments/' + data_row.id
-        elif data_row.frequency == Clinical.subject:
-            uri += '/subjects/' + data_row.id
-        elif data_row.frequency != Clinical.dataset:
-            uri += '/subjects/' + self._make_row_name(data_row)
+    def _make_uri(self, row: DataRow):
+        uri = '/data/archive/projects/' + row.dataset.id
+        if row.frequency == Clinical.session:
+            uri += '/experiments/' + row.id
+        elif row.frequency == Clinical.subject:
+            uri += '/subjects/' + row.id
+        elif row.frequency != Clinical.dataset:
+            uri += '/subjects/' + self._make_row_name(row)
         return uri
 
 
@@ -597,7 +597,7 @@ class Xnat(DataStore):
         return self.cache_dir.joinpath(*uri.split('/')[3:])
 
     def _check_store(self, item):
-        if item.data_row.dataset.store is not self:
+        if item.row.dataset.store is not self:
             raise ArcanaWrongRepositoryError(
                 "{} is from {} instead of {}".format(
                     item, item.dataset.store, self))
@@ -656,7 +656,7 @@ class Xnat(DataStore):
         return provenance
 
     def _provenance_location(self, item, create_resource=False):
-        xrow = self.get_xrow(item.data_row)
+        xrow = self.get_xrow(item.row)
         if item.is_field:
             fname = self.FIELD_PROV_PREFIX + fname
         else:

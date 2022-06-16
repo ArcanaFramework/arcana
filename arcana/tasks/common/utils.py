@@ -16,7 +16,7 @@ def identity_task(task_name, fields):
                 (s, DataItem) for s in fields]),
         output_spec=SpecInfo(
             name=f'{task_name}Outputs', bases=(BaseSpec,), fields=[
-                ('data_row', DataRow)]))
+                ('row', DataRow)]))
     return task
 
 

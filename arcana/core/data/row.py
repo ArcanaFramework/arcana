@@ -15,7 +15,7 @@ from .space import DataSpace
 
 @attr.s(auto_detect=True)
 class DataRow():
-    """A "row" in a data tree where file-groups and fields can be placed, e.g.
+    """A "row" in a dataset "frame" where file-groups and fields can be placed, e.g.
     a session or subject.
 
     Parameters
@@ -161,13 +161,13 @@ class DataRow():
         if self._unresolved is None:
             self._unresolved = []
         self._unresolved.append(UnresolvedFileGroup(
-            path=path, data_row=self, **kwargs))
+            path=path, row=self, **kwargs))
 
     def add_field(self, path, value, **kwargs):
         if self._unresolved is None:
             self._unresolved = []
         self._unresolved.append(UnresolvedField(
-            path=path, data_row=self, value=value, **kwargs))
+            path=path, row=self, value=value, **kwargs))
 
 
 @attr.s
@@ -194,7 +194,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     """
 
     path: str = attr.ib(default=None)
-    data_row: DataRow = attr.ib(default=None)
+    row: DataRow = attr.ib(default=None)
     order: int = attr.ib(default=None)
     quality: DataQuality = attr.ib(default=DataQuality.usable)
     provenance: ty.Dict[str, ty.Any] = attr.ib(default=None)
@@ -205,7 +205,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
         return {
             'path': self.path,
             'order': self.order,
-            'data_row': self.data_row,
+            'row': self.row,
             'quality': self.quality}
 
 
@@ -237,7 +237,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
-    data_row : DataRow
+    row : DataRow
         The data row that the field belongs to
     file_paths : Sequence[str] | None
         Path to the file-group in the local cache
@@ -289,7 +289,7 @@ class UnresolvedField(UnresolvedDataItem):
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
-    data_row : DataRow
+    row : DataRow
         The data row that the field belongs to
     """
 
