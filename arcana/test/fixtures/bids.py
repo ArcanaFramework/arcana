@@ -152,7 +152,7 @@ def bids_command_spec(mock_bids_app_executable):
         'outputs': outputs,
         'description': "A pipeline to test wrapping of BIDS apps",
         'version': '0.1',
-        'frequency': 'session',
+        'row_frequency': 'session',
         'info_url': None,
         'configuration': {
             'inputs': inputs,

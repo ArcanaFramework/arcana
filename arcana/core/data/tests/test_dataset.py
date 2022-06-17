@@ -27,7 +27,7 @@ def test_dataset_pickle(dataset: Dataset, tmp_dir: Path):
 def test_dataset_in_workflow_pickle(dataset: Dataset, tmp_dir: Path):
 
     # Create the outer workflow to link the analysis workflow with the
-    # data node iteration and store connection nodes
+    # data row iteration and store connection rows
     wf = Workflow(name='test', input_spec=['a'])
 
     wf.add(func(

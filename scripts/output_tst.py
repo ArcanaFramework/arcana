@@ -10,4 +10,4 @@ col = dataset.add_sink('derivatives/workflow', Directory)
 item = col['sub-DEFAULT']
 
 item.exists
-item.data_node.dataset.store.file_group_stem_path(item)
+item.row.dataset.store.file_group_stem_path(item)

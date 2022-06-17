@@ -27,27 +27,27 @@ class DataStore(metaclass=ABCMeta):
     CONFIG_NAME = 'stores'
 
     @abstractmethod
-    def find_nodes(self, dataset):
+    def find_rows(self, dataset):
         """
-        Find all data nodes for a dataset in the store and populate the
-        Dataset object using its `add_node` method.
+        Find all data rows for a dataset in the store and populate the
+        Dataset object using its `add_row` method.
 
         Parameters
         ----------
         dataset : Dataset
-            The dataset to populate with nodes
+            The dataset to populate with rows
         """
 
     @abstractmethod
-    def find_items(self, data_node):
+    def find_items(self, row):
         """
-        Find all data items within a data node and populate the DataNode object
+        Find all data items within a data row and populate the DataRow object
         with them using the `add_file_group` and `add_field` methods.
         
         Parameters
         ----------
-        data_node : DataNode
-            The data node to populate with items
+        row : DataRow
+            The data row to populate with items
         """        
 
     @abstractmethod

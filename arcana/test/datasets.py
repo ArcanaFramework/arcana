@@ -37,7 +37,7 @@ class TestDataSpace(DataSpace):
     acd = 0b1011
     bcd = 0b0111
 
-    # Leaf nodes
+    # Leaf rows
     abcd = 0b1111
 
 

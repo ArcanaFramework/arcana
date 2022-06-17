@@ -115,10 +115,10 @@ def load_yaml_spec(path: Path, base_dir: Path=None):
     with open(path, 'r') as f:
         data = yaml.load(f, Loader=yaml.SafeLoader)
 
-    # frequency = data.get('frequency', None)
-    # if frequency:
-    #     # TODO: Handle other frequency types, are there any?
-    #     data['frequency'] = Clinical[frequency.split('.')[-1]]
+    # row_frequency = data.get('row_frequency', None)
+    # if row_frequency:
+    #     # TODO: Handle other row_frequency types, are there any?
+    #     data['row_frequency'] = Clinical[row_frequency.split('.')[-1]]
 
     data['_relative_dir'] = os.path.dirname(os.path.relpath(path, base_dir)) if base_dir else ''
     data['_module_name'] = os.path.basename(path).rsplit('.', maxsplit=1)[0]

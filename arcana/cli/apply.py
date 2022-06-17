@@ -52,15 +52,15 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
           "in a single step. The sink column be in the same format as produced "
           "by the workflow"))
 @click.option(
-    '--frequency', '-f', default=None, type=str,
-    help=("the frequency of the nodes the pipeline will be executed over, i.e. "
+    '--row_frequency', '-f', default=None, type=str,
+    help=("the row_frequency of the rows the pipeline will be executed over, i.e. "
           "will it be run once per-session, per-subject or per whole dataset, "
-          "by default the highest frequency nodes (e.g. per-session)"))
+          "by default the highest row_frequency rows (e.g. per-session)"))
 @click.option(
     '--overwrite/--no-overwrite', default=False,
     help=("whether to overwrite previous pipelines"))
 def apply_pipeline(dataset_id_str, pipeline_name, workflow_location, input,
-                   output, parameter, source, sink, frequency, overwrite):
+                   output, parameter, source, sink, row_frequency, overwrite):
 
     dataset = Dataset.load(dataset_id_str)
     workflow = resolve_class(workflow_location)(
@@ -81,7 +81,7 @@ def apply_pipeline(dataset_id_str, pipeline_name, workflow_location, input,
         outputs.append((col_name, pydra_field, format))
     
     dataset.apply_pipeline(
-        pipeline_name, workflow, inputs, outputs, frequency=frequency,
+        pipeline_name, workflow, inputs, outputs, row_frequency=row_frequency,
         overwrite=overwrite)
 
     dataset.save()

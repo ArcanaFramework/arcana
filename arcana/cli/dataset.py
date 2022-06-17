@@ -31,20 +31,20 @@ can be arbitrarily specified. dimensions"""))
 @click.option(
     '--space', type=str, default=None,
     help=("The \"space\" of the dataset, defines the dimensions along the ids "
-          "of node can vary"))
+          "of row can vary"))
 @click.option(
     '--include', nargs=2, default=(), metavar='<freq-id>', multiple=True,
     type=str,
-    help=("The nodes to include in the dataset. First value is the "
-           "frequency of the ID (e.g. 'group', 'subject', 'session') "
+    help=("The rows to include in the dataset. First value is the "
+           "row_frequency of the ID (e.g. 'group', 'subject', 'session') "
            "followed by the IDs to be included in the dataset. "
            "If the second arg contains '/' then it is interpreted as "
            "the path to a text file containing a list of IDs"))
 @click.option(
     '--exclude', nargs=2, default=(), metavar='<freq-id>', multiple=True,
     type=str,
-    help=("The nodes to exclude from the dataset. First value is the "
-          "frequency of the ID (e.g. 'group', 'subject', 'session') "
+    help=("The rows to exclude from the dataset. First value is the "
+          "row_frequency of the ID (e.g. 'group', 'subject', 'session') "
           "followed by the IDs to be included in the dataset. "
           "If the second arg contains '/' then it is interpreted as "
           "the path to a text file containing a list of IDs"))
@@ -56,7 +56,7 @@ can be arbitrarily specified. dimensions"""))
           "data tree used in medimage trials/studies"))
 @click.option(
     '--id_inference', nargs=2, metavar='<source-regex>', multiple=True,
-    help="""Specifies how IDs of node frequencies that not explicitly
+    help="""Specifies how IDs of row frequencies that not explicitly
 provided are inferred from the IDs that are. For example, given a set
 of subject IDs that are a combination of the ID of the group that they belong
 to + their member IDs (i.e. matched test/controls have same member ID), e.g.
@@ -131,8 +131,8 @@ format
 @click.argument('name')
 @click.argument('format')
 @click.option(
-    '--frequency', '-f', metavar='<dimension>',
-    help=("The frequency that items appear in the dataset (e.g. per "
+    '--row_frequency', '-f', metavar='<dimension>',
+    help=("The row_frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
           "medimage:Clinical data dimensions"),
     show_default="highest")
@@ -157,14 +157,14 @@ format
     help=("Match on specific header value. This option is only valid for "
           "select formats that the implement the 'header_val()' method "
           "(e.g. medimage:dicom)."))
-def add_source(dataset_path, name, format, frequency, path, order,
+def add_source(dataset_path, name, format, row_frequency, path, order,
                quality, is_regex, header):
     dataset = Dataset.load(dataset_path)
     dataset.add_source(
         name=name,
         path=path,
         format=resolve_class(format, prefixes=['arcana.data.formats']),
-        frequency=frequency,
+        row_frequency=row_frequency,
         quality_threshold=quality,
         order=order,
         header_vals=dict(header),
@@ -191,8 +191,8 @@ format
 @click.argument('name')
 @click.argument('format')
 @click.option(
-    '--frequency', '-f', metavar='<dimension>',
-    help=("The frequency that items appear in the dataset (e.g. per "
+    '--row_frequency', '-f', metavar='<dimension>',
+    help=("The row_frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
           "medimage:Clinical data dimensions"),
     show_default="highest")
@@ -204,20 +204,20 @@ format
     '--salience', '-s',
     help=("The salience of the column, i.e. whether it will show up on "
           "'arcana derive menu'"))
-def add_sink(dataset_path, name, format, frequency, path, salience):
+def add_sink(dataset_path, name, format, row_frequency, path, salience):
     dataset = Dataset.load(dataset_path)
     dataset.add_sink(
         name=name,
         path=path,
         format=resolve_class(format, prefixes=['arcana.data.formats']),
-        frequency=frequency,
+        row_frequency=row_frequency,
         salience=salience)
     dataset.save()
 
 
 @dataset.command(
     name="missing-items",
-    help="""Finds the IDs of nodes that are missing a valid entry for an item in
+    help="""Finds the IDs of rows that are missing a valid entry for an item in
 the column.
 
 Arguments

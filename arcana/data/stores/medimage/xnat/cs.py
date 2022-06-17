@@ -53,8 +53,8 @@ class XnatViaCS(Xnat):
     WORK_MOUNT = Path('/work')
     CACHE_DIR = Path('/cache')
     
-    frequency: DataSpace = attr.ib(default=Clinical.session)
-    node_id: str = attr.ib(default=None)
+    row_frequency: DataSpace = attr.ib(default=Clinical.session)
+    row_id: str = attr.ib(default=None)
     input_mount: Path = attr.ib(default=INPUT_MOUNT, converter=Path)
     output_mount: Path = attr.ib(default=OUTPUT_MOUNT, converter=Path)
     server: str = attr.ib()
@@ -85,9 +85,9 @@ class XnatViaCS(Xnat):
         except ArcanaNoDirectXnatMountException:
             # Fallback to API access
             return super().get_file_group_paths(file_group)
-        logger.info("Getting %s from %s:%s node via direct access to archive directory",
-                    file_group.path, file_group.data_node.frequency,
-                    file_group.data_node.id)
+        logger.info("Getting %s from %s:%s row via direct access to archive directory",
+                    file_group.path, file_group.row.frequency,
+                    file_group.row.id)
         if file_group.uri:
             path = re.match(
                 r'/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/'
@@ -134,11 +134,11 @@ class XnatViaCS(Xnat):
                 shutil.copyfile(fs_path, target_path)
             cache_paths.append(target_path)
         # Update file-group with new values for local paths and XNAT URI
-        file_group.uri = (self._make_uri(file_group.data_node)
+        file_group.uri = (self._make_uri(file_group.row)
                           + '/RESOURCES/' + file_group.path)
-        logger.info("Put %s into %s:%s node via direct access to archive directory",
-                    file_group.path, file_group.data_node.frequency,
-                    file_group.data_node.id)
+        logger.info("Put %s into %s:%s row via direct access to archive directory",
+                    file_group.path, file_group.row.frequency,
+                    file_group.row.id)
         return cache_paths
 
     def file_group_stem_path(self, file_group):
@@ -146,11 +146,11 @@ class XnatViaCS(Xnat):
         return self.output_mount.joinpath(*file_group.path.split('/'))
     
     def get_input_mount(self, file_group):
-        data_node = file_group.data_node
-        if self.frequency == data_node.frequency:
+        row = file_group.row
+        if self.row_frequency == row.frequency:
             return self.input_mount
-        elif self.frequency == Clinical.dataset and data_node.frequency == Clinical.session:
-            return self.input_mount / data_node.id
+        elif self.row_frequency == Clinical.dataset and row.frequency == Clinical.session:
+            return self.input_mount / row.id
         else:
             raise ArcanaNoDirectXnatMountException
 

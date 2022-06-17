@@ -229,7 +229,7 @@ class Dicom(Directory, MedicalImage):
             else:
                 try:
                     # Try to access dicom header details remotely
-                    hdr = self.data_node.dataset.store.dicom_header(self)
+                    hdr = self.row.dataset.store.dicom_header(self)
                 except AttributeError:
                     self.get()  # Fallback to downloading data to read header
                     dct = read_header()
@@ -534,7 +534,7 @@ class CustomKspace(Kspace):
     B0_dir : 3-tuple(float)
         Direction of the B0 field
     larmor_freq : float
-        The central larmor frequency of the scanner"""
+        The central larmor row_frequency of the scanner"""
         
     ext = 'ks'
     side_cars = ('ref', 'json')

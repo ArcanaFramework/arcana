@@ -7,7 +7,7 @@ class Samples(DataSpace):
     The most basic data space within only one dimension
     """
 
-    # Root node of the dataset
+    # Root row of the dataset
     dataset = 0b0  # singular within the dataset
 
     # Axes of the data space

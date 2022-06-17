@@ -16,7 +16,7 @@ import attr
 import xnat.session
 from arcana.core.utils import JSON_ENCODING
 from arcana.core.data.store import DataStore
-from arcana.core.data.node import DataNode
+from arcana.core.data.row import DataRow
 from arcana.exceptions import (
     ArcanaError, ArcanaUsageError, ArcanaWrongRepositoryError)
 from arcana.core.utils import dir_modtime, parse_value
@@ -153,7 +153,7 @@ class Xnat(DataStore):
         self.login.disconnect()
         self._login = None
 
-    def find_nodes(self, dataset: Dataset, **kwargs):
+    def find_rows(self, dataset: Dataset, **kwargs):
         """
         Find all file_groups, fields and provenance provenances within an XNAT
         project and create data tree within dataset
@@ -166,19 +166,19 @@ class Xnat(DataStore):
         with self:
             # Get per_dataset level derivatives and fields
             for exp in self.login.projects[dataset.id].experiments.values():
-                dataset.add_leaf_node([exp.subject.label, exp.label])
+                dataset.add_leaf([exp.subject.label, exp.label])
 
-    def find_items(self, data_node):
+    def find_items(self, row):
         with self:
-            xnode = self.get_xnode(data_node)
-            # Add scans, fields and resources to data node
+            xrow = self.get_xrow(row)
+            # Add scans, fields and resources to data row
             try:
-                xscans = xnode.scans
+                xscans = xrow.scans
             except AttributeError:
-                pass  # A subject or project node
+                pass  # A subject or project row
             else:
                 for xscan in xscans.values():
-                    data_node.add_file_group(
+                    row.add_file_group(
                         path=xscan.type,
                         order=xscan.id,
                         quality=xscan.quality,
@@ -186,12 +186,12 @@ class Xnat(DataStore):
                         uris={r.label: '/'.join(r.uri.split('/')[:-1]
                                                 + [r.label])
                               for r in xscan.resources.values()})
-            for name, value in xnode.fields.items():
-                data_node.add_field(
+            for name, value in xrow.fields.items():
+                row.add_field(
                     path=varname2path(name),
                     value=value)
-            for xresource in xnode.resources.values():
-                data_node.add_file_group(
+            for xresource in xrow.resources.values():
+                row.add_file_group(
                     path=varname2path(xresource.label),
                     uris={xresource.format: xresource.uri})               
 
@@ -210,21 +210,21 @@ class Xnat(DataStore):
         list[Path]
             The paths to cached files/directories on the local file-system
         """
-        logger.info("Getting %s from %s:%s node via API access",
-                    file_group.path, file_group.data_node.frequency,
-                    file_group.data_node.id)        
+        logger.info("Getting %s from %s:%s row via API access",
+                    file_group.path, file_group.row.frequency,
+                    file_group.row.id)        
         self._check_store(file_group)
         with self:  # Connect to the XNAT repository if haven't already
-            xnode = self.get_xnode(file_group.data_node)
+            xrow = self.get_xrow(file_group.row)
             if not file_group.uri:
-                base_uri = self.standard_uri(xnode)
+                base_uri = self.standard_uri(xrow)
                 # if file_group.derived:
-                xresource = xnode.resources[path2varname(file_group.path)]
+                xresource = xrow.resources[path2varname(file_group.path)]
                 # else:
                 #     # If file_group is a primary 'scan' (rather than a
                 #     # derivative) we need to get the resource of the scan
                 #     # instead of the scan
-                #     xscan = xnode.scans[file_group.name]
+                #     xscan = xrow.scans[file_group.name]
                 #     file_group.id = xscan.id
                 #     base_uri += '/scans/' + xscan.id
                 #     xresource = xscan.resources[file_group.class_name]
@@ -305,15 +305,15 @@ class Xnat(DataStore):
         # Open XNAT session
         with self:
             # Add session for derived scans if not present
-            xnode = self.get_xnode(file_group.data_node)
+            xrow = self.get_xrow(file_group.row)
             escaped_name = path2varname(file_group.path)
             if not file_group.uri:
                 # Set the uri of the file_group
                 file_group.uri = '{}/resources/{}'.format(
-                    self.standard_uri(xnode), escaped_name)
+                    self.standard_uri(xrow), escaped_name)
             # Delete existing resource (if present)
             try:
-                xresource = xnode.resources[escaped_name]
+                xresource = xrow.resources[escaped_name]
             except KeyError:
                 pass
             else:
@@ -323,7 +323,7 @@ class Xnat(DataStore):
                 xresource.delete()
             # Create the new resource for the file_group
             xresource = self.login.classes.ResourceCatalog(
-                parent=xnode, label=escaped_name,
+                parent=xrow, label=escaped_name,
                 format=file_group.class_name())
             # Create cache path
             base_cache_path = self.cache_path(file_group)
@@ -359,9 +359,9 @@ class Xnat(DataStore):
                       **JSON_ENCODING) as f:
                 json.dump(file_group.calculate_checksums(), f,
                           indent=2)
-        logger.info("Put %s into %s:%s node via API access",
-                    file_group.path, file_group.data_node.frequency,
-                    file_group.data_node.id)
+        logger.info("Put %s into %s:%s row via API access",
+                    file_group.path, file_group.row.frequency,
+                    file_group.row.id)
         return cache_paths
 
     def get_field_value(self, field):
@@ -380,7 +380,7 @@ class Xnat(DataStore):
         """
         self._check_store(field)
         with self:
-            xsession = self.get_xnode(field.data_node)
+            xsession = self.get_xrow(field.row)
             val = xsession.fields[path2varname(field)]
             val = val.replace('&quot;', '"')
             val = parse_value(val)
@@ -404,7 +404,7 @@ class Xnat(DataStore):
         if field.format is str:
             value = '"{}"'.format(value)
         with self:
-            xsession = self.get_xnode(field.data_node)
+            xsession = self.get_xrow(field.row)
             xsession.fields[path2varname(field)] = value
 
     def get_checksums(self, file_group):
@@ -526,49 +526,49 @@ class Xnat(DataStore):
             os.mkdir(tmp_dir)
             self.download_file_group(tmp_dir, xresource, file_group, cache_path)
 
-    def get_xnode(self, data_node):
+    def get_xrow(self, row):
         """
         Returns the XNAT session and cache dir corresponding to the provided
-        data_node
+        row
 
         Parameters
         ----------
-        data_node : DataNode
-            The data_node to get the corresponding XNAT node for
+        row : DataRow
+            The row to get the corresponding XNAT row for
         """
         with self:
-            xproject = self.login.projects[data_node.dataset.id]
-            if data_node.frequency == Clinical.dataset:
-                xnode = xproject
-            elif data_node.frequency == Clinical.subject:
-                xnode = xproject.subjects[data_node.ids[Clinical.subject]]
-            elif data_node.frequency == Clinical.session:
-                xnode = xproject.experiments[data_node.ids[Clinical.session]]
+            xproject = self.login.projects[row.dataset.id]
+            if row.frequency == Clinical.dataset:
+                xrow = xproject
+            elif row.frequency == Clinical.subject:
+                xrow = xproject.subjects[row.ids[Clinical.subject]]
+            elif row.frequency == Clinical.session:
+                xrow = xproject.experiments[row.ids[Clinical.session]]
             else:
-                xnode = self.login.classes.SubjectData(
-                    label=self._make_node_name(data_node), parent=xproject)
-            return xnode
+                xrow = self.login.classes.SubjectData(
+                    label=self._make_row_name(row), parent=xproject)
+            return xrow
 
-    def _make_node_name(self, data_node):
-        # Create a "subject" to hold the non-standard node (i.e. not
-        # a project, subject or session node)
-        if data_node.id is None:
+    def _make_row_name(self, row):
+        # Create a "subject" to hold the non-standard row (i.e. not
+        # a project, subject or session row)
+        if row.id is None:
             id_str = ''
-        elif isinstance(data_node.id, tuple):
-            id_str = '_' + '_'.join(data_node.id)
+        elif isinstance(row.id, tuple):
+            id_str = '_' + '_'.join(row.id)
         else:
-            id_str = '_' + str(data_node.id)
-        return f'__{data_node.frequency}{id_str}__'
+            id_str = '_' + str(row.id)
+        return f'__{row.frequency}{id_str}__'
 
 
-    def _make_uri(self, data_node: DataNode):
-        uri = '/data/archive/projects/' + data_node.dataset.id
-        if data_node.frequency == Clinical.session:
-            uri += '/experiments/' + data_node.id
-        elif data_node.frequency == Clinical.subject:
-            uri += '/subjects/' + data_node.id
-        elif data_node.frequency != Clinical.dataset:
-            uri += '/subjects/' + self._make_node_name(data_node)
+    def _make_uri(self, row: DataRow):
+        uri = '/data/archive/projects/' + row.dataset.id
+        if row.frequency == Clinical.session:
+            uri += '/experiments/' + row.id
+        elif row.frequency == Clinical.subject:
+            uri += '/subjects/' + row.id
+        elif row.frequency != Clinical.dataset:
+            uri += '/subjects/' + self._make_row_name(row)
         return uri
 
 
@@ -597,42 +597,42 @@ class Xnat(DataStore):
         return self.cache_dir.joinpath(*uri.split('/')[3:])
 
     def _check_store(self, item):
-        if item.data_node.dataset.store is not self:
+        if item.row.dataset.store is not self:
             raise ArcanaWrongRepositoryError(
                 "{} is from {} instead of {}".format(
                     item, item.dataset.store, self))
 
     @classmethod
-    def standard_uri(cls, xnode):
-        """Get the URI of the XNAT node (ImageSession | Subject | Project)
+    def standard_uri(cls, xrow):
+        """Get the URI of the XNAT row (ImageSession | Subject | Project)
         using labels rather than IDs for subject and sessions, e.g
 
-        >>> xnode = repo.login.experiments['MRH017_100_MR01']
-        >>> repo.standard_uri(xnode)
+        >>> xrow = repo.login.experiments['MRH017_100_MR01']
+        >>> repo.standard_uri(xrow)
 
         '/data/archive/projects/MRH017/subjects/MRH017_100/experiments/MRH017_100_MR01'
 
         Parameters
         ----------
-        xnode : xnat.ImageSession | xnat.Subject | xnat.Project
-            A node of the XNAT data tree
+        xrow : xnat.ImageSession | xnat.Subject | xnat.Project
+            A row of the XNAT data tree
         """
-        uri = xnode.uri
+        uri = xrow.uri
         if 'experiments' in uri:
             # Replace ImageSession ID with label in URI.
-            uri = re.sub(r'(?<=/experiments/)[^/]+', xnode.label, uri)
+            uri = re.sub(r'(?<=/experiments/)[^/]+', xrow.label, uri)
         if 'subjects' in uri:
             try:
-                # If xnode is a ImageSession
-                subject_id = xnode.subject.label
+                # If xrow is a ImageSession
+                subject_id = xrow.subject.label
             except AttributeError:
-                # If xnode is a Subject
-                subject_id = xnode.label
+                # If xrow is a Subject
+                subject_id = xrow.label
             except KeyError:
                 # There is a bug where the subject isn't appeared to be cached
                 # so we use this as a workaround
-                subject_json = xnode.xnat_session.get_json(
-                    xnode.uri.split('/experiments')[0])
+                subject_json = xrow.xnat_session.get_json(
+                    xrow.uri.split('/experiments')[0])
                 subject_id = subject_json['items'][0]['data_fields']['label']
             # Replace subject ID with subject label in URI
             uri = re.sub(r'(?<=/subjects/)[^/]+', subject_id, uri)
@@ -656,20 +656,20 @@ class Xnat(DataStore):
         return provenance
 
     def _provenance_location(self, item, create_resource=False):
-        xnode = self.get_xnode(item.data_node)
+        xrow = self.get_xrow(item.row)
         if item.is_field:
             fname = self.FIELD_PROV_PREFIX + fname
         else:
             fname = path2varname(item) + '.json'
-        uri = f'{self.standard_uri(xnode)}/resources/{self.PROV_RESOURCE}/files/{fname}'
+        uri = f'{self.standard_uri(xrow)}/resources/{self.PROV_RESOURCE}/files/{fname}'
         cache_path = self.cache_path(uri)
         cache_path.parent.mkdir(parent=True, exist_ok=True)
         try:
-            xresource = xnode.resources[self.PROV_RESOURCE]
+            xresource = xrow.resources[self.PROV_RESOURCE]
         except KeyError:
             if create_resource:
                 xresource = self.login.classes.ResourceCatalog(
-                    parent=xnode, label=self.PROV_RESOURCE,
+                    parent=xrow, label=self.PROV_RESOURCE,
                     format='PROVENANCE')
             else:
                 raise

@@ -74,8 +74,8 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
                 # configuration keys are variable depending on the workflow class
                 if config.get("executable"):
                     tbl_cmd.write_row("Executable", escaped_md(config["executable"]))
-            if cmd.get("frequency"):
-                tbl_cmd.write_row("Operates on", cmd["frequency"].title())
+            if cmd.get("row_frequency"):
+                tbl_cmd.write_row("Operates on", cmd["row_frequency"].title())
 
             f.write("#### Inputs\n")
             tbl_inputs = MarkdownTable(f, "Path", "Input format", "Stored format", "Description")

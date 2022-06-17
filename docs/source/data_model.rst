@@ -163,8 +163,8 @@ where *session1* is acquired at Timepoint 1 and *session2* is acquired at
 Timepoint 2. Note that there is only one study group in this example so it does
 not appear in the hierarchy.
 
-While the majority of data items are stored in the "leaf nodes" of the tree (e.g. per-session),
-data can exist at "nodes" of any frequency in the data space (e.g. per-subject, per-timepoint),
+While the majority of data items are stored in the "leaf rows" of the tree (e.g. per-session),
+data can exist at "rows" of any row_frequency in the data space (e.g. per-subject, per-timepoint),
 whether it fits into the hierarchy of the dataset or not. For example, statistics
 derived across all subjects at each longitudinal timepoint in the above example
 will be saved in new sub-directories of the root directory.
@@ -206,7 +206,7 @@ in new Python contexts.
 
 
 For some datasets, especially in stores where the tree hierarchy is fixed (e.g. XNAT),
-you may need to infer the ID(s) for one or more dimensions from the node labels
+you may need to infer the ID(s) for one or more dimensions from the row labels
 following a given naming convention. For example, given an
 XNAT project where all the test subjects are numbered *TEST01*, *TEST02*, *TEST03*,...
 and the matched control subjects are numbered *CON01*, *CON02*, *CON03*,...,
@@ -226,12 +226,12 @@ IDs.
             ('subject', r'(?P<group>[A-Z]+)(?P<member>\d+)')])   
 
 
-Often there are nodes that need to be omitted from a given analysis due to
-missing or corrupted data. Such nodes can be excluded with the
+Often there are rows that need to be omitted from a given analysis due to
+missing or corrupted data. Such rows can be excluded with the
 ``exclude`` argument, which takes a dictionary mapping the data
 dimension to the list of IDs to exclude.
 
-You can exclude nodes at different levels of data tree by provided ``exclude``,
+You can exclude rows at different levels of data tree by provided ``exclude``,
 even within in the same dataset.
 
 .. code-block:: python
@@ -293,7 +293,7 @@ string separated by ':', e.g.
 Formats
 -------
 
-Data items within dataset nodes can be one of three types:
+Data items within dataset rows can be one of three types:
 
 * :class:`.Field` (int, float, str or bool)
 * :class:`.ArrayField` (a sequence of int, float, str or bool)
@@ -344,10 +344,10 @@ using a range of criteria:
 
 * path (can be a regular-expression)
 * data type
-* row frequency
+* row row_frequency
 * quality threshold (only currently implemented for XNAT_ stores)
 * header values (only available for selected formats)
-* order within the data node (e.g. first T1-weighted scan that meets all other criteria in a session)
+* order within the data row (e.g. first T1-weighted scan that meets all other criteria in a session)
 
 Sink columns define how derived data will be written to the dataset.
 
@@ -376,7 +376,7 @@ sources and sinks via the API.
     fs_dataset.add_sink(
         name='brain_template',
         format=NiftiGz,
-        frequency='group'
+        row_frequency='group'
     )
 
 To access the data in the columns once they are defined use the ``Dataset[]``
@@ -407,7 +407,7 @@ to a dataset using the CLI.
       --order 1 --quality usable --regex
 
     $ arcana dataset add-sink 'file///data/imaging/my-project:training' brain_template \
-      medimage:NiftiGz --frequency group
+      medimage:NiftiGz --row_frequency group
 
 
 One of the main benefits of using datasets in BIDS_ format is that the names

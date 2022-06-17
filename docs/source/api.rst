@@ -26,7 +26,7 @@ Core
 
 .. autoclass:: arcana.core.data.space.DataSpace
 
-.. autoclass:: arcana.core.data.node.DataNode
+.. autoclass:: arcana.core.data.row.DataRow
 
 .. autoclass:: arcana.core.data.column.DataSource
 

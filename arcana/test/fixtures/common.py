@@ -187,13 +187,13 @@ def command_spec():
                 'name': 'first_file',
                 'format': 'common:Text',
                 'pydra_field': 'in_file1',
-                'frequency': 'session'
+                'row_frequency': 'session'
             },
             {
                 'name': 'second_file',
                 'format': 'common:Text',
                 'pydra_field': 'in_file2',
-                'frequency': 'session'
+                'row_frequency': 'session'
             },
         ],
         'outputs': [
@@ -212,7 +212,7 @@ def command_spec():
         ],
         'description': "A pipeline to test Arcana's deployment tool",
         'version': '0.1',
-        'frequency': 'session',
+        'row_frequency': 'session',
         'info_url': None}
 
 

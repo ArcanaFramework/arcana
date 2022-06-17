@@ -354,10 +354,10 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
           "in a single step. The sink column be in the same format as produced "
           "by the task/workflow"))
 @click.option(
-    '--frequency', '-f', default=None, type=str,
-    help=("the frequency of the nodes the pipeline will be executed over, i.e. "
+    '--row_frequency', '-f', default=None, type=str,
+    help=("the row_frequency of the rows the pipeline will be executed over, i.e. "
           "will it be run once per-session, per-subject or per whole dataset, "
-          "by default the highest frequency nodes (e.g. per-session)"))
+          "by default the highest row_frequency rows (e.g. per-session)"))
 @click.option(
     '--ids', default=None, type=str,
     help="List of IDs to restrict the pipeline to")
@@ -384,7 +384,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     '--single-row', type=str, default=None,
     help=("Restrict the dataset created to a single row (to avoid issues with "
           "unrelated rows that aren't being processed). Comma-separated list "
-          "of IDs for each layer of the hierarchy (passed to `Dataset.add_leaf_node`)"))
+          "of IDs for each layer of the hierarchy (passed to `Dataset.add_leaf`)"))
 @click.option(
     '--overwrite/--no-overwrite', type=bool,
     help=("Whether to overwrite the saved pipeline with the same name, if present"))
@@ -406,7 +406,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
           "enclosing container will be removed on completion and you need to "
           "be able to 'exec' into the container to debug."))
 def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
-                 input, output, frequency, overwrite, work_dir, plugin, loglevel,
+                 input, output, row_frequency, overwrite, work_dir, plugin, loglevel,
                  dataset_name, dataset_space, dataset_hierarchy, ids, configuration,
                  single_row, export_work, raise_errors, keep_running_on_errors):
 
@@ -451,7 +451,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
 
     if single_row is not None:
         # Adds a single row to the dataset (i.e. skips a full scan)
-        dataset.add_leaf_node(single_row.split(','))
+        dataset.add_leaf(single_row.split(','))
 
     pipeline_inputs = []
     for col_name, col_format_name, col_path, pydra_field, format_name in input:
@@ -508,7 +508,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
     else:
         pipeline = dataset.apply_pipeline(
             pipeline_name, task, inputs=pipeline_inputs,
-            outputs=pipeline_outputs, frequency=frequency, overwrite=overwrite)
+            outputs=pipeline_outputs, row_frequency=row_frequency, overwrite=overwrite)
 
     # Instantiate the Pydra workflow
     wf = pipeline(cache_dir=pipeline_cache_dir)

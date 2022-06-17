@@ -30,17 +30,17 @@ class DataItem(metaclass=ABCMeta):
     ----------
     name_path : str
         The name_path to the relative location of the file group, i.e. excluding
-        information about which node in the data tree it belongs to
+        information about which row in the data tree it belongs to
     order : int | None
-        The order in which the file-group appears in the node it belongs to
+        The order in which the file-group appears in the row it belongs to
         (starting at 0). Typically corresponds to the acquisition order for
         scans within an imaging session. Can be used to distinguish between
         scans with the same series description (e.g. multiple BOLD or T1w
         scans) in the same imaging sessions.
     quality : str
         The quality label assigned to the file_group (e.g. as is saved on XNAT)
-    data_node : DataNode
-        The data node within a dataset that the file-group belongs to
+    row : DataRow
+        The data row within a dataset that the file-group belongs to
     exists : bool
         Whether the file_group exists or is just a placeholder for a sink
     provenance : Provenance | None
@@ -54,7 +54,7 @@ class DataItem(metaclass=ABCMeta):
     quality: DataQuality = attr.ib(default=DataQuality.usable)
     exists: bool = attr.ib(default=True)
     provenance: ty.Dict[str, ty.Any] = attr.ib(default=None)
-    data_node = attr.ib(default=None)    
+    row = attr.ib(default=None)    
 
     @abstractmethod
     def get(self, assume_exists=False):
@@ -104,8 +104,8 @@ class DataItem(metaclass=ABCMeta):
                 self.path,
                 f"Cannot access {self} as it hasn't been derived yet")
 
-    def _check_part_of_data_node(self):
-        if self.data_node is None:
+    def _check_part_of_row(self):
+        if self.row is None:
             raise ArcanaUsageError(
                 f"Cannot 'get' {self} as it is not part of a dataset")
 
@@ -143,11 +143,11 @@ class Field(DataItem):
     ----------
     name_path : str
         The name_path to the relative location of the field, i.e. excluding
-        information about which node in the data tree it belongs to
+        information about which row in the data tree it belongs to
     derived : bool
         Whether or not the value belongs in the derived session or not
-    data_node : DataNode
-        The data node that the field belongs to
+    row : DataRow
+        The data row that the field belongs to
     exists : bool
         Whether the field exists or is just a placeholder for a sink
     provenance : Provenance | None
@@ -160,12 +160,12 @@ class Field(DataItem):
     def get(self, assume_exists=False):
         if not assume_exists:
             self._check_exists()
-        self._check_part_of_data_node()
-        self.value = self.data_node.dataset.store.get_field_value(self)
+        self._check_part_of_row()
+        self.value = self.row.dataset.store.get_field_value(self)
 
     def put(self, value):
-        self._check_part_of_data_node()
-        self.data_node.dataset.store.put_field_value(self, self.format(value))
+        self._check_part_of_row()
+        self.row.dataset.store.put_field_value(self, self.format(value))
         self.exists = True
 
     def __int__(self):
@@ -214,17 +214,17 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     ----------
     name_path : str
         The name_path to the relative location of the file group, i.e. excluding
-        information about which node in the data tree it belongs to
+        information about which row in the data tree it belongs to
     order : int | None
-        The order in which the file-group appears in the node it belongs to
+        The order in which the file-group appears in the row it belongs to
         (starting at 0). Typically corresponds to the acquisition order for
         scans within an imaging session. Can be used to distinguish between
         scans with the same series description (e.g. multiple BOLD or T1w
         scans) in the same imaging sessions.
     quality : str
         The quality label assigned to the file_group (e.g. as is saved on XNAT)
-    data_node : DataNode
-        The data node within a dataset that the file-group belongs to
+    row : DataRow
+        The data row within a dataset that the file-group belongs to
     exists : bool
         Whether the file_group exists or is just a placeholder for a sink
     provenance : Provenance | None
@@ -264,13 +264,13 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     def get(self, assume_exists=False):
         if assume_exists:
             self.exists = True
-        self._check_part_of_data_node()
-        fs_paths = self.data_node.dataset.store.get_file_group_paths(self)
+        self._check_part_of_row()
+        fs_paths = self.row.dataset.store.get_file_group_paths(self)
         self.set_fs_paths(fs_paths)
         self.validate_file_paths()
 
     def put(self, *fs_paths):
-        self._check_part_of_data_node()
+        self._check_part_of_row()
         fs_paths = [Path(p) for p in fs_paths]
         dir_paths = list(p for p in fs_paths if p.is_dir())
         if len(dir_paths) > 1:
@@ -282,7 +282,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         # any defaults before they are pushed to the store
         cpy = copy(self)
         cpy.set_fs_paths(fs_paths)
-        cache_paths = self.data_node.dataset.store.put_file_group_paths(
+        cache_paths = self.row.dataset.store.put_file_group_paths(
             self, cpy.fs_paths)
         # Set the paths to the cached files
         self.set_fs_paths(cache_paths)
@@ -290,7 +290,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         self.exists = True
         # Save provenance
         if self.provenance:
-            self.data_node.dataset.store.put_provenance(self)
+            self.row.dataset.store.put_provenance(self)
 
     @property
     def fs_paths(self):
@@ -344,8 +344,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     def get_checksums(self, force_calculate=False):
         self._check_exists()
         # Load checksums from store (e.g. via API)
-        if self.data_node is not None and not force_calculate:
-            self._checksums = self.data_node.dataset.store.get_checksums(self)
+        if self.row is not None and not force_calculate:
+            self._checksums = self.row.dataset.store.get_checksums(self)
         # If the store cannot calculate the checksums do them manually
         else:
             self._checksums = self.calculate_checksums()
@@ -485,7 +485,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     
     @classmethod
     def converter_task(cls, from_format, name):
-        """Adds a converter node to a workflow
+        """Adds a converter row to a workflow
 
         Parameters
         ----------
@@ -504,7 +504,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
 
         wf = Workflow(name=name, input_spec=['to_convert'])
 
-        # Get node to extract paths from file-group lazy field
+        # Get row to extract paths from file-group lazy field
         wf.add(func_task(
             access_paths,
             in_fields=[('from_format', type), ('file_group', from_format)],
@@ -513,7 +513,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             from_format=from_format,
             file_group=wf.lzin.to_convert))
 
-        # Create converter node
+        # Create converter row
         converter, output_lfs = cls.find_converter(from_format)(**{
             n: getattr(wf.access_paths.lzout, n) for n in from_format.fs_names()})
         # If there is only one output lazy field, place it in a tuple so it can
@@ -553,7 +553,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         Returns
         -------
         function
-            The bound method that adds nodes to a given workflow
+            The bound method that adds rows to a given workflow
 
         Raises
         ------
@@ -934,7 +934,7 @@ class BaseDirectory(FileGroup):
 
     @classmethod
     def contents_match(cls, path: Path):
-        from arcana.core.data.node import UnresolvedFileGroup
+        from arcana.core.data.row import UnresolvedFileGroup
         path = Path(path)  # Ensure a Path object not a string
         contents = UnresolvedFileGroup.from_paths(path, path.iterdir())
         for content_type in cls.content_types:
