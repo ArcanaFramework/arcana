@@ -34,9 +34,9 @@ else:
 
 def test_find_rows(xnat_dataset):
     for freq in Clinical:
-        # For all non-zero bases in the frequency, multiply the dim lengths
+        # For all non-zero bases in the row_frequency, multiply the dim lengths
         # together to get the combined number of rows expected for that
-        # frequency
+        # row_frequency
         num_rows = reduce(
             op.mul,
             (l for l, b in zip(xnat_dataset.blueprint.dim_lengths, freq) if b),
@@ -81,7 +81,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
     tmp_dir = Path(mkdtemp())
     for deriv in mutable_xnat_dataset.blueprint.derivatives:
         mutable_xnat_dataset.add_sink(name=deriv.name, format=deriv.format,
-                                      frequency=deriv.frequency)
+                                      row_frequency=deriv.row_frequency)
         deriv_tmp_dir = tmp_dir / deriv.name
         # Create test files, calculate checkums and recorded expected paths
         # for inserted files
@@ -98,8 +98,8 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
                 rel_path = '.'.join(test_file.suffixes)[1:]
             checksums[rel_path] = fhash.hexdigest()
             fs_paths.append(deriv_tmp_dir / test_file.parts[0])
-        # Insert into first row of that frequency in xnat_dataset
-        row = next(iter(mutable_xnat_dataset.rows(deriv.frequency)))
+        # Insert into first row of that row_frequency in xnat_dataset
+        row = next(iter(mutable_xnat_dataset.rows(deriv.row_frequency)))
         item = row[deriv.name]
         with caplog.at_level(logging.INFO, logger='arcana'):
             item.put(*fs_paths)
@@ -107,7 +107,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
         assert f'{method_str} access' in caplog.text.lower()
     def check_inserted():
         for deriv in mutable_xnat_dataset.blueprint.derivatives:
-            row = next(iter(mutable_xnat_dataset.rows(deriv.frequency)))
+            row = next(iter(mutable_xnat_dataset.rows(deriv.row_frequency)))
             item = row[deriv.name]
             item.get_checksums(force_calculate=(mutable_xnat_dataset.access_method == 'cs'))
             assert isinstance(item, deriv.format)

@@ -41,7 +41,7 @@ source columns to the dataset (see :ref:`data_columns`). They are specified by
 * name of field in the pydra task input interface
 * format required by pydra task
 * description of input that will be exposed to the XNAT UI
-* the row frequency of the column (see :ref:`data_spaces` and :ref:`data_columns`)
+* the row row_frequency of the column (see :ref:`data_spaces` and :ref:`data_columns`)
 
 Parameters are passed directly through the pipeline add method (see :ref:`applying_workflows`) that
 is run in the container, and consist of a 2-tuple with
@@ -90,7 +90,7 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
             ('output_biascorrected', True),
             ('bias_lowpass', 5.0)],
         registry='ghrc.io',
-        frequency='session')
+        row_frequency='session')
 
 When working with the CLI, command configurations are stored in YAML_ format,
 with keys matching the arguments of :meth:`XnatViaCS.generate_xnat_command`.
@@ -123,7 +123,7 @@ For example, the preceding example would be:
         - [output_biasfield, True]
         - [output_biascorrected, True]
         - [bias_lowpass, 5.0]
-    frequency: session
+    row_frequency: session
 
 
 .. note::
@@ -189,7 +189,7 @@ the full configuration required to build an XNAT docker image looks like
             - [output_biasfield, True]
             - [output_biascorrected, True]
             - [bias_lowpass, 5.0]
-        frequency: session
+        row_frequency: session
 
 where fields in the top-level YAML_ are provided as arguments to
 :meth:`.XnatViaCS.generate_dockerfile`, i.e.

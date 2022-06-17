@@ -138,7 +138,7 @@ def generate_xnat_cs_command(name: str,
                              info_url: str,
                              parameters=None,
                              configuration=None,
-                             frequency='session',
+                             row_frequency='session',
                              registry=DOCKER_HUB,
                              long_description: str=None):
     """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
@@ -154,9 +154,9 @@ def generate_xnat_cs_command(name: str,
     image_tag : str
         Name + version of the Docker image to be created
     inputs : ty.List[ty.Union[InputArg, tuple]]
-        Inputs to be provided to the container (pydra_field, format, name, frequency).
+        Inputs to be provided to the container (pydra_field, format, name, row_frequency).
         'pydra_field' and 'format' will be passed to "inputs" arg of the Dataset.pipeline() method,
-        'frequency' to the Dataset.add_source() method and 'name' is displayed in the XNAT
+        'row_frequency' to the Dataset.add_source() method and 'name' is displayed in the XNAT
         UI
     outputs : ty.List[ty.Union[OutputArg, tuple]]
         Outputs to extract from the container (pydra_field, format, output_path).
@@ -170,7 +170,7 @@ def generate_xnat_cs_command(name: str,
         URI explaining in detail what the pipeline does
     parameters : ty.List[str]
         Parameters to be exposed in the CS command    
-    frequency : str
+    row_frequency : str
         Frequency of the pipeline to generate (can be either 'dataset' or 'session' currently)
     registry : str
         URI of the Docker registry to upload the image to
@@ -196,11 +196,11 @@ def generate_xnat_cs_command(name: str,
         parameters = []
     if configuration is None:
         configuration = {}
-    if isinstance(frequency, str):
-        frequency = Clinical[frequency]
-    if frequency not in VALID_FREQUENCIES:
+    if isinstance(row_frequency, str):
+        row_frequency = Clinical[row_frequency]
+    if row_frequency not in VALID_FREQUENCIES:
         raise ArcanaUsageError(
-            f"'{frequency}'' is not a valid option ('"
+            f"'{row_frequency}'' is not a valid option ('"
             + "', '".join(VALID_FREQUENCIES) + "')")
 
     # Convert tuples to appropriate dataclasses for inputs, outputs and parameters
@@ -336,7 +336,7 @@ def generate_xnat_cs_command(name: str,
         f"--dataset_space medimage:Clinical "
         f"--dataset_hierarchy subject,session "
         "--single-row [SUBJECT_LABEL],[SESSION_LABEL] "
-        f"--frequency {frequency} ")  # pass XNAT API details
+        f"--row_frequency {row_frequency} ")  # pass XNAT API details
         # TODO: add option for whether to overwrite existing pipeline
 
     # Create Project input that can be passed to the command line, which will
@@ -352,7 +352,7 @@ def generate_xnat_cs_command(name: str,
         })
 
     # Access session via Container service args and derive 
-    if frequency == Clinical.session:
+    if row_frequency == Clinical.session:
         # Set the object the pipeline is to be run against
         context = ["xnat:imageSessionData"]
         # Create Session input that  can be passed to the command line, which
@@ -535,7 +535,7 @@ class InputArg():
     path: str = None
     format: type = arcana.data.formats.common.File
     pydra_field: str = None  # Must match the name of the Pydra task input    
-    frequency: Clinical = Clinical.session
+    row_frequency: Clinical = Clinical.session
     description: str = ''  # description of the input
     stored_format: type = None  # the format the input is stored in the data store in
 

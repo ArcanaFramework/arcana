@@ -246,14 +246,14 @@ class FileSystem(DataStore):
         path = Path()
         accounted_freq = row.dataset.space(0)
         for layer in row.dataset.hierarchy:
-            if not (layer.is_parent(row.frequency)
-                    or layer == row.frequency):
+            if not (layer.is_parent(row.row_frequency)
+                    or layer == row.row_frequency):
                 break
             path /= row.ids[layer]
             accounted_freq |= layer
         # If not "leaf row" then 
-        if row.frequency != max(row.dataset.space):
-            unaccounted_freq = row.frequency - (row.frequency
+        if row.row_frequency != max(row.dataset.space):
+            unaccounted_freq = row.row_frequency - (row.row_frequency
                                                  & accounted_freq)
             unaccounted_id = row.ids[unaccounted_freq]
             if unaccounted_id is None:

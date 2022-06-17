@@ -43,8 +43,8 @@ class Pipeline():
 
     Parameters
     ----------
-    frequency : DataSpace, optional
-        The frequency of the pipeline, i.e. the frequency of the
+    row_frequency : DataSpace, optional
+        The row_frequency of the pipeline, i.e. the row_frequency of the
         derivatvies within the dataset, e.g. per-session, per-subject, etc,
         by default None
     workflow : Workflow
@@ -61,7 +61,7 @@ class Pipeline():
     """
 
     name: str = attr.ib()
-    frequency: DataSpace = attr.ib()
+    row_frequency: DataSpace = attr.ib()
     workflow: Workflow = attr.ib(
         eq=attr.cmp_using(pydra_eq))
     inputs: ty.List[Input] = attr.ib(
@@ -85,10 +85,10 @@ class Pipeline():
     @outputs.validator
     def outputs_validator(self, _, outpt):
         column = self.dataset.column[outpt.col_name]
-        if column.frequency != self.frequency:
+        if column.row_frequency != self.row_frequency:
             raise ArcanaUsageError(
-                f"Pipeline frequency ('{str(self.frequency)}') doesn't match "
-                f"that of '{outpt.col_name}' output ('{str(self.frequency)}')")
+                f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
+                f"that of '{outpt.col_name}' output ('{str(self.row_frequency)}')")
         column.format.find_converter(outpt.produced_format)
         if outpt.pydra_field not in self.workflow.output_names:
             raise ArcanaNameError(
@@ -139,13 +139,13 @@ class Pipeline():
         # Generate list of rows to process checking existing outputs
         wf.add(to_process(
             dataset=self.dataset,
-            frequency=self.frequency,
+            row_frequency=self.row_frequency,
             outputs=self.outputs,
             requested_ids=None,  # FIXME: Needs to be set dynamically
             name='to_process'))
 
         # Create the workflow that will be split across all rows for the 
-        # given data frequency
+        # given data row_frequency
         wf.add(Workflow(
             name='per_row',
             input_spec=['id'],
@@ -153,15 +153,15 @@ class Pipeline():
 
         source_in = [
             ('dataset', arcana.core.data.set.Dataset),
-            ('frequency', DataSpace),
+            ('row_frequency', DataSpace),
             ('id', str),
             ('inputs', ty.Sequence[str]),
             ('parameterisation', ty.Dict[str, ty.Any])]
 
         source_out_dct = {
             s: (DataItem
-                if self.dataset[varname2path(s)].frequency.is_parent(
-                    self.frequency, if_match=True)
+                if self.dataset[varname2path(s)].row_frequency.is_parent(
+                    self.row_frequency, if_match=True)
                 else ty.Sequence[DataItem])
             for s in self.input_varnames}
         source_out_dct['provenance_'] = ty.Dict[str, ty.Any]
@@ -172,7 +172,7 @@ class Pipeline():
             out_fields=list(source_out_dct.items()),
             name='source',
             dataset=self.dataset,
-            frequency=self.frequency,
+            row_frequency=self.row_frequency,
             inputs=[i.col_name for i in self.inputs],
             id=wf.per_row.lzin.id))
 
@@ -262,14 +262,14 @@ class Pipeline():
             sink_items,
             in_fields=(
                 [('dataset', arcana.core.data.set.Dataset),
-                 ('frequency', DataSpace),
+                 ('row_frequency', DataSpace),
                  ('id', str),
                  ('provenance', ty.Dict[str, ty.Any])]
                 + [(s, DataItem) for s in to_sink]),
             out_fields=[('id', str)],
             name='sink',
             dataset=self.dataset,
-            frequency=self.frequency,
+            row_frequency=self.row_frequency,
             id=wf.per_row.lzin.id,
             provenance=wf.per_row.source.lzout.provenance_,
             **to_sink))
@@ -403,19 +403,19 @@ def split_side_car_suffix(name):
 @pydra.mark.task
 @pydra.mark.annotate({
     'dataset': arcana.core.data.set.Dataset,
-    'frequency': DataSpace,
+    'row_frequency': DataSpace,
     'outputs': ty.Sequence[str],
     'requested_ids': ty.Sequence[str] or None,
     'parameterisation': ty.Dict[str, ty.Any],
     'return': {
         'ids': ty.List[str],
         'cant_process': ty.List[str]}})
-def to_process(dataset, frequency, outputs, requested_ids, parameterisation):
+def to_process(dataset, row_frequency, outputs, requested_ids, parameterisation):
     if requested_ids is None:
-        requested_ids = dataset.row_ids(frequency)
+        requested_ids = dataset.row_ids(row_frequency)
     ids = []
     cant_process = []
-    for row in dataset.rows(frequency, ids=requested_ids):
+    for row in dataset.rows(row_frequency, ids=requested_ids):
         # TODO: Should check provenance of existing rows to see if it matches
         not_exist = [not row[o.col_name].exists for o in outputs]
         if all(not_exist):
@@ -427,14 +427,14 @@ def to_process(dataset, frequency, outputs, requested_ids, parameterisation):
     return ids, cant_process
 
 
-def source_items(dataset, frequency, id, inputs, parameterisation):
+def source_items(dataset, row_frequency, id, inputs, parameterisation):
     """Selects the items from the dataset corresponding to the input 
     sources and retrieves them from the store to a cache on 
     the host"""
     logger.debug("Sourcing %s", inputs)
     provenance = copy(parameterisation)
     sourced = []
-    row = dataset.row(frequency, id)
+    row = dataset.row(row_frequency, id)
     with dataset.store:
         missing_inputs = {}
         for inpt_name in inputs:
@@ -450,10 +450,10 @@ def source_items(dataset, frequency, id, inputs, parameterisation):
     return tuple(sourced) + (provenance,)
 
 
-def sink_items(dataset, frequency, id, provenance, **to_sink):
+def sink_items(dataset, row_frequency, id, provenance, **to_sink):
     """Stores items generated by the pipeline back into the store"""
     logger.debug("Sinking %s", to_sink)
-    row = dataset.row(frequency, id)
+    row = dataset.row(row_frequency, id)
     with dataset.store:
         for outpt_name, output in to_sink.items():
             row_item = row[outpt_name]

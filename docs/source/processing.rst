@@ -112,11 +112,11 @@ can all add the sources and sinks in one step
 
 By default, pipelines will iterate all "leaf rows" of the data tree (e.g. ``session``
 for datasets in the :class:`.Clinical` space). However, pipelines can be run
-at any row frequency of the dataset (see :ref:`data_spaces`), e.g. per subject,
+at any row row_frequency of the dataset (see :ref:`data_spaces`), e.g. per subject,
 per timepoint, or on the dataset as a whole (to create single templates/statistics).
 
-Pipeline outputs must be connected to sinks of the same row frequency. However,
-inputs can be drawn from columns of any row frequency. In this case,
+Pipeline outputs must be connected to sinks of the same row row_frequency. However,
+inputs can be drawn from columns of any row row_frequency. In this case,
 inputs from more frequent rows will be provided to the pipeline as a list
 sorted by their ID. 
 
@@ -133,23 +133,23 @@ back to the dataset.
 
     dataset = Dataset.load('bids///data/openneuro/ds00014')
 
-    # Add sink column with "dataset" row frequency
+    # Add sink column with "dataset" row row_frequency
     dataset.add_sink(
         name='vbm_template',
         format=medimage.NiftiGz
-        frequency='dataset')
+        row_frequency='dataset')
 
     # NB: we don't need to add the T1w source as it is automatically detected
     #     when using BIDS
 
-    # Connect pipeline to a "dataset" row-frequency sink column. Needs to be
-    # of `dataset` frequency itself or Arcana will raise an error
+    # Connect pipeline to a "dataset" row-row_frequency sink column. Needs to be
+    # of `dataset` row_frequency itself or Arcana will raise an error
     dataset.apply_pipeline(
         name='vbm_template',
         workflow=vbm_template(),
         inputs=[('in_file', 'T1w')],
         outputs=[('out_file', 'vbm_template')],
-        frequency='dataset')
+        row_frequency='dataset')
 
 
 .. _analysis_classes:

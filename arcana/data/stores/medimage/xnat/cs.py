@@ -53,7 +53,7 @@ class XnatViaCS(Xnat):
     WORK_MOUNT = Path('/work')
     CACHE_DIR = Path('/cache')
     
-    frequency: DataSpace = attr.ib(default=Clinical.session)
+    row_frequency: DataSpace = attr.ib(default=Clinical.session)
     row_id: str = attr.ib(default=None)
     input_mount: Path = attr.ib(default=INPUT_MOUNT, converter=Path)
     output_mount: Path = attr.ib(default=OUTPUT_MOUNT, converter=Path)
@@ -86,7 +86,7 @@ class XnatViaCS(Xnat):
             # Fallback to API access
             return super().get_file_group_paths(file_group)
         logger.info("Getting %s from %s:%s row via direct access to archive directory",
-                    file_group.path, file_group.row.frequency,
+                    file_group.path, file_group.row.row_frequency,
                     file_group.row.id)
         if file_group.uri:
             path = re.match(
@@ -137,7 +137,7 @@ class XnatViaCS(Xnat):
         file_group.uri = (self._make_uri(file_group.row)
                           + '/RESOURCES/' + file_group.path)
         logger.info("Put %s into %s:%s row via direct access to archive directory",
-                    file_group.path, file_group.row.frequency,
+                    file_group.path, file_group.row.row_frequency,
                     file_group.row.id)
         return cache_paths
 
@@ -147,9 +147,9 @@ class XnatViaCS(Xnat):
     
     def get_input_mount(self, file_group):
         row = file_group.row
-        if self.frequency == row.frequency:
+        if self.row_frequency == row.row_frequency:
             return self.input_mount
-        elif self.frequency == Clinical.dataset and row.frequency == Clinical.session:
+        elif self.row_frequency == Clinical.dataset and row.row_frequency == Clinical.session:
             return self.input_mount / row.id
         else:
             raise ArcanaNoDirectXnatMountException

@@ -164,7 +164,7 @@ Timepoint 2. Note that there is only one study group in this example so it does
 not appear in the hierarchy.
 
 While the majority of data items are stored in the "leaf rows" of the tree (e.g. per-session),
-data can exist at "rows" of any frequency in the data space (e.g. per-subject, per-timepoint),
+data can exist at "rows" of any row_frequency in the data space (e.g. per-subject, per-timepoint),
 whether it fits into the hierarchy of the dataset or not. For example, statistics
 derived across all subjects at each longitudinal timepoint in the above example
 will be saved in new sub-directories of the root directory.
@@ -344,7 +344,7 @@ using a range of criteria:
 
 * path (can be a regular-expression)
 * data type
-* row frequency
+* row row_frequency
 * quality threshold (only currently implemented for XNAT_ stores)
 * header values (only available for selected formats)
 * order within the data row (e.g. first T1-weighted scan that meets all other criteria in a session)
@@ -376,7 +376,7 @@ sources and sinks via the API.
     fs_dataset.add_sink(
         name='brain_template',
         format=NiftiGz,
-        frequency='group'
+        row_frequency='group'
     )
 
 To access the data in the columns once they are defined use the ``Dataset[]``
@@ -407,7 +407,7 @@ to a dataset using the CLI.
       --order 1 --quality usable --regex
 
     $ arcana dataset add-sink 'file///data/imaging/my-project:training' brain_template \
-      medimage:NiftiGz --frequency group
+      medimage:NiftiGz --row_frequency group
 
 
 One of the main benefits of using datasets in BIDS_ format is that the names

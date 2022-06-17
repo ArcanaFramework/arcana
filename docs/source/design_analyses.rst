@@ -58,13 +58,13 @@ in the ``desc`` keyword arg.
             desc="Map of the processed data")
         summary_metric: float = column(
             desc="A summary metric extracted from the derived image",
-            frequency='dataset')
+            row_frequency='dataset')
 
 The column spec descriptions will be shown to the user when they use the :meth:`.Dataset.menu()`
-or ``arcana menu`` CLI command. The row frequency of the column (e.g. per-session,
+or ``arcana menu`` CLI command. The row row_frequency of the column (e.g. per-session,
 per-subject, per-group, once per-dataset etc..., see :ref:`data_spaces` and
-:ref:`data_columns`) is specified by the ``frequency``
-keyword argument. The frequency should be a member of the data space(see :ref:`data_spaces`)
+:ref:`data_columns`) is specified by the ``row_frequency``
+keyword argument. The row_frequency should be a member of the data space(see :ref:`data_spaces`)
 provided to the :func:`arcana.core.mark.analysis` class decorator.
 
 Not all columns specifications are created equal. Some refer to key inputs
@@ -175,13 +175,13 @@ files can be accessed as attributes of the primary ``LazyField``, e.g.
 
             return wf.extract_tr.lzout.out, wf.extract_st.lzout.out
 
-The "frequency" (see :ref:`data_spaces` and :ref:`data_columns`) of a pipeline,
+The "row_frequency" (see :ref:`data_spaces` and :ref:`data_columns`) of a pipeline,
 (whether it is run per-session, per-subject, per-timepoint, etc... for example)
-is determined by the frequency of its output columns. Therefore, all columns
-derived from a single pipeline need to have the same row frequency. If the
-frequency of an input column provided to the builder method is higher than that
+is determined by the row_frequency of its output columns. Therefore, all columns
+derived from a single pipeline need to have the same row row_frequency. If the
+row_frequency of an input column provided to the builder method is higher than that
 of the pipeline then the lazy field provided will point to a list (sorted by the
-axis IDs they are combined over) rather than a single value. If the frequency
+axis IDs they are combined over) rather than a single value. If the row_frequency
 of an input is lower than that of the pipeline then that value is simply
 repeated. For example, an analysis of flood levels using datasets in the ``Weather``
 data space (see :ref:`weather_example`) to calculate the average rainfall per
@@ -213,23 +213,23 @@ station, could look like
 
         record_time: datetime = column(
             desc="The time/date the recording was taken"
-            frequency='recording')
+            row_frequency='recording')
         rain: float = column(
             desc="Daily rain measurements at different locations",
-            frequency='recording')
+            row_frequency='recording')
         avg_rainfall: float  = column(
             desc="Average rainfall for a given location",
-            frequency='station')
+            row_frequency='station')
         delta_rain: float = column(
             desc="Deviation from average rainfall for a given month"
-            frequency='recording')
+            row_frequency='recording')
 
-        # Pipeline is of 'per-station' frequency due to frequency of output column
+        # Pipeline is of 'per-station' row_frequency due to row_frequency of output column
         # 'avg_rainfall'
         @pipeline(avg_rainfall)  
         # 'rain' arg is a lazy-field to a list[float] over all dates since the
-        # frequency of the 'rain' column ('recording') is higher than
-        # the pipeline's frequency ('station')
+        # row_frequency of the 'rain' column ('recording') is higher than
+        # the pipeline's row_frequency ('station')
         def average_rainfall_pipeline(self, wf: pydra.Workflow, rain: list[float]):
 
             wf.add(
@@ -239,7 +239,7 @@ station, could look like
             
             return wf.average_rain.lzout.out
 
-        # Pipeline is of 'per-recording' frequency due to delta_rainfall
+        # Pipeline is of 'per-recording' row_frequency due to delta_rainfall
         # output column
         @pipeline(delta_rain)
         def delta_pipeline(self, wf: pydra.Workflow, rain: float,  avg_rainfall: float):

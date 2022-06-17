@@ -50,7 +50,7 @@ json_config = XnatViaCS.generate_json_config(
     description="Test wrap4xnat function",
     version='0.1',
     registry=args.container_registry,
-    frequency=Clinical.session,
+    row_frequency=Clinical.session,
     info_url=None)
 
 dockerfile, build_dir = XnatViaCS.generate_dockerfile(

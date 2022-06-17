@@ -35,7 +35,7 @@ class ScanBlueprint():
 class DerivBlueprint():
 
     name: str
-    frequency: Clinical
+    row_frequency: Clinical
     format: type
     filenames: ty.List[str]
 
@@ -93,7 +93,7 @@ def access_dataset(xnat_repository: Xnat, dataset_id: str, blueprint: TestXnatDa
             user=xnat_repository.user,
             password=xnat_repository.password,
             cache_dir=xnat_repository.cache_dir,
-            frequency=Clinical.dataset,
+            row_frequency=Clinical.dataset,
             input_mount=proj_dir,
             output_mount=Path(mkdtemp()))
     elif access_method != 'api':

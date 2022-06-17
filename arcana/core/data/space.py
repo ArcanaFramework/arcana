@@ -32,8 +32,8 @@ class DataSpace(Enum):
     
     In addition to the data items stored in the data rows for each session,
     some items only vary along a particular dimension of the grid. The
-    "frequency" of these rows can be specified using the "basis" members
-    (i.e. member, group, timepoint) in contrast to the `session` frequency,
+    "row_frequency" of these rows can be specified using the "basis" members
+    (i.e. member, group, timepoint) in contrast to the `session` row_frequency,
     which is the combination of all three
 
         session = 0b111
@@ -138,7 +138,7 @@ class DataSpace(Enum):
 
     @classmethod
     def union(cls, freqs: ty.Sequence[Enum]):
-        "Returns the union between data frequency values"
+        "Returns the union between data row_frequency values"
         union = cls(0)
         for f in freqs:
             union |= f
@@ -149,14 +149,14 @@ class DataSpace(Enum):
         return max(cls)
 
     def is_parent(self, child, if_match=False):
-        """Checks to see whether the current frequency is a "parent" of the
-        other data frequency, i.e. all the base frequency of self appear in
+        """Checks to see whether the current row_frequency is a "parent" of the
+        other data row_frequency, i.e. all the base row_frequency of self appear in
         the "child".
 
         Parameters
         ----------
         child : DataSpace
-            The data frequency to check parent/child relationship with
+            The data row_frequency to check parent/child relationship with
         if_match : bool
             Treat matching frequencies as "parents" of each other
 

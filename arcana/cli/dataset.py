@@ -36,7 +36,7 @@ can be arbitrarily specified. dimensions"""))
     '--include', nargs=2, default=(), metavar='<freq-id>', multiple=True,
     type=str,
     help=("The rows to include in the dataset. First value is the "
-           "frequency of the ID (e.g. 'group', 'subject', 'session') "
+           "row_frequency of the ID (e.g. 'group', 'subject', 'session') "
            "followed by the IDs to be included in the dataset. "
            "If the second arg contains '/' then it is interpreted as "
            "the path to a text file containing a list of IDs"))
@@ -44,7 +44,7 @@ can be arbitrarily specified. dimensions"""))
     '--exclude', nargs=2, default=(), metavar='<freq-id>', multiple=True,
     type=str,
     help=("The rows to exclude from the dataset. First value is the "
-          "frequency of the ID (e.g. 'group', 'subject', 'session') "
+          "row_frequency of the ID (e.g. 'group', 'subject', 'session') "
           "followed by the IDs to be included in the dataset. "
           "If the second arg contains '/' then it is interpreted as "
           "the path to a text file containing a list of IDs"))
@@ -131,8 +131,8 @@ format
 @click.argument('name')
 @click.argument('format')
 @click.option(
-    '--frequency', '-f', metavar='<dimension>',
-    help=("The frequency that items appear in the dataset (e.g. per "
+    '--row_frequency', '-f', metavar='<dimension>',
+    help=("The row_frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
           "medimage:Clinical data dimensions"),
     show_default="highest")
@@ -157,14 +157,14 @@ format
     help=("Match on specific header value. This option is only valid for "
           "select formats that the implement the 'header_val()' method "
           "(e.g. medimage:dicom)."))
-def add_source(dataset_path, name, format, frequency, path, order,
+def add_source(dataset_path, name, format, row_frequency, path, order,
                quality, is_regex, header):
     dataset = Dataset.load(dataset_path)
     dataset.add_source(
         name=name,
         path=path,
         format=resolve_class(format, prefixes=['arcana.data.formats']),
-        frequency=frequency,
+        row_frequency=row_frequency,
         quality_threshold=quality,
         order=order,
         header_vals=dict(header),
@@ -191,8 +191,8 @@ format
 @click.argument('name')
 @click.argument('format')
 @click.option(
-    '--frequency', '-f', metavar='<dimension>',
-    help=("The frequency that items appear in the dataset (e.g. per "
+    '--row_frequency', '-f', metavar='<dimension>',
+    help=("The row_frequency that items appear in the dataset (e.g. per "
           "'session', 'subject', 'timepoint', 'group', 'dataset' for "
           "medimage:Clinical data dimensions"),
     show_default="highest")
@@ -204,13 +204,13 @@ format
     '--salience', '-s',
     help=("The salience of the column, i.e. whether it will show up on "
           "'arcana derive menu'"))
-def add_sink(dataset_path, name, format, frequency, path, salience):
+def add_sink(dataset_path, name, format, row_frequency, path, salience):
     dataset = Dataset.load(dataset_path)
     dataset.add_sink(
         name=name,
         path=path,
         format=resolve_class(format, prefixes=['arcana.data.formats']),
-        frequency=frequency,
+        row_frequency=row_frequency,
         salience=salience)
     dataset.save()
 

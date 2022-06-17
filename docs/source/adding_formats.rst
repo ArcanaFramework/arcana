@@ -241,7 +241,7 @@ is uniquely defined by its member, group and timepoint ID.::
     
 In addition to the data items stored in leaf rows, some data, particularly
 derivatives, may be stored in the dataset along a particular dimension, at
-a lower "frequency" than 'per session'. For example, brain templates are
+a lower "row_frequency" than 'per session'. For example, brain templates are
 sometimes calculated 'per group'. Additionally, data
 can also be stored in aggregated rows that across a plane
 of the grid. These frequencies should also be added to the enum, i.e. all

@@ -28,7 +28,7 @@ def test_pipeline(work_dir):
         inputs=[('file1', 'in_file1'),
                 ('file2', 'in_file2')],
         outputs=[('deriv', 'out_file')],
-        frequency=TestDataSpace.abcd)
+        row_frequency=TestDataSpace.abcd)
 
     IDS = ['a0b0c0d0', 'a0b0c0d1']
 
@@ -59,7 +59,7 @@ def test_pipeline_with_implicit_conversion(work_dir):
                              name='concatenate'),
         inputs=[('file1', 'in_file1', Text), ('file2', 'in_file2', Text)],
         outputs=[('deriv', 'out_file', Text)],
-        frequency=TestDataSpace.abcd)
+        row_frequency=TestDataSpace.abcd)
 
     IDS = ['a0b0c0d0', 'a0b0c0d1']
 

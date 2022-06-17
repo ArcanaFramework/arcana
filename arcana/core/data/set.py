@@ -85,13 +85,13 @@ class Dataset():
             id_inference=[('subject',
                            r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')}
     include : list[tuple[DataSpace, str or list[str]]]
-        The IDs to be included in the dataset per frequency. E.g. can be
+        The IDs to be included in the dataset per row_frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
-        QC. If a frequency is omitted or its value is None, then all available
+        QC. If a row_frequency is omitted or its value is None, then all available
         will be used
     exclude : list[tuple[DataSpace, str or list[str]]]
-        The IDs to be excluded in the dataset per frequency. E.g. can be
-        used to exclude specific subjects that failed QC. If a frequency is
+        The IDs to be excluded in the dataset per row_frequency. E.g. can be
+        used to exclude specific subjects that failed QC. If a row_frequency is
         omitted or its value is None, then all available will be used
     name : str
         The name of the dataset as saved in the store under
@@ -189,7 +189,7 @@ class Dataset():
     @columns.validator
     def columns_validator(self, _, columns):
         wrong_freq = [m for m in columns.values()
-                    if not isinstance(m.frequency, self.space)]
+                    if not isinstance(m.row_frequency, self.space)]
         if wrong_freq:
             raise ArcanaUsageError(
                 f"Data hierarchy of {wrong_freq} column specs do(es) not match"
@@ -283,7 +283,7 @@ class Dataset():
         """Refresh the dataset rows"""
         self._root = None
 
-    def add_source(self, name, format, path=None, frequency=None,
+    def add_source(self, name, format, path=None, row_frequency=None,
                    overwrite=False, **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -298,21 +298,21 @@ class Dataset():
             that the source will be stored in within the dataset
         path : str, default `name`
             The location of the source within the dataset
-        frequency : DataSpace, default self.leaf_freq
-            The frequency of the source within the dataset            
+        row_frequency : DataSpace, default self.leaf_freq
+            The row_frequency of the source within the dataset            
         overwrite : bool
             Whether to overwrite existing columns
         **kwargs : ty.Dict[str, Any]
             Additional kwargs to pass to DataSource.__init__
         """
-        frequency = self._parse_freq(frequency)
+        row_frequency = self._parse_freq(row_frequency)
         if path is None:
             path = name
-        source = DataSource(name, path, format, frequency, dataset=self, **kwargs)
+        source = DataSource(name, path, format, row_frequency, dataset=self, **kwargs)
         self._add_spec(name, source, overwrite)
         return source
 
-    def add_sink(self, name, format, path=None, frequency=None,
+    def add_sink(self, name, format, path=None, row_frequency=None,
                  overwrite=False, **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -327,15 +327,15 @@ class Dataset():
             that the sink will be stored in within the dataset
         path : str, default `name`
             The location of the sink within the dataset            
-        frequency : DataSpace, default self.leaf_freq
-            The frequency of the sink within the dataset            
+        row_frequency : DataSpace, default self.leaf_freq
+            The row_frequency of the sink within the dataset            
         overwrite : bool
             Whether to overwrite an existing sink
         """
-        frequency = self._parse_freq(frequency)
+        row_frequency = self._parse_freq(row_frequency)
         if path is None:
             path = name
-        sink = DataSink(name, path, format, frequency, dataset=self, **kwargs)
+        sink = DataSink(name, path, format, row_frequency, dataset=self, **kwargs)
         self._add_spec(name, sink, overwrite)
         return sink
 
@@ -353,13 +353,13 @@ class Dataset():
                     "if this is desired")
         self.columns[name] = spec
 
-    def row(self, frequency=None, id=None, **id_kwargs):
-        """Returns the row associated with the given frequency and ids dict
+    def row(self, row_frequency=None, id=None, **id_kwargs):
+        """Returns the row associated with the given row_frequency and ids dict
 
         Parameters
         ----------
-        frequency : DataSpace or str
-            The frequency of the row
+        row_frequency : DataSpace or str
+            The row_frequency of the row
         id : str or Tuple[str], optional
             The ID of the row to 
         **id_kwargs : Dict[str, str]
@@ -374,19 +374,19 @@ class Dataset():
         Raises
         ------
         ArcanaUsageError
-            Raised when attemtping to use IDs with the frequency associated
+            Raised when attemtping to use IDs with the row_frequency associated
             with the root row
         ArcanaNameError
             If there is no row corresponding to the given ids
         """
         row = self.root
-        # Parse str to frequency enums
-        if not frequency:
+        # Parse str to row_frequency enums
+        if not row_frequency:
             if id is not None:
                 raise ArcanaUsageError(
                     f"Root rows don't have any IDs ({id})")
             return self.root
-        frequency = self._parse_freq(frequency)
+        row_frequency = self._parse_freq(row_frequency)
         if id_kwargs:
             if id is not None:
                 raise ArcanaUsageError(
@@ -399,7 +399,7 @@ class Dataset():
                     children_dict = row.children[self.space[freq]]
                 except KeyError as e:
                     raise ArcanaNameError(
-                        freq, f"{freq} is not a child frequency of {row}") from e
+                        freq, f"{freq} is not a child row_frequency of {row}") from e
                 try:
                     row = children_dict[id]
                 except KeyError as e:
@@ -408,19 +408,19 @@ class Dataset():
             return row
         else:
             try:
-                return self.root.children[frequency][id]
+                return self.root.children[row_frequency][id]
             except KeyError as e:
                 raise ArcanaNameError(
                     id, f"{id} not present in data tree "
-                    f"({list(self.row_ids(frequency))})") from e
+                    f"({list(self.row_ids(row_frequency))})") from e
 
-    def rows(self, frequency=None, ids=None):
-        """Return all the IDs in the dataset for a given frequency
+    def rows(self, row_frequency=None, ids=None):
+        """Return all the IDs in the dataset for a given row_frequency
 
         Parameters
         ----------
-        frequency : DataSpace or None
-            The "frequency" of the rows, e.g. per-session, per-subject. If
+        row_frequency : DataSpace or None
+            The "row_frequency" of the rows, e.g. per-session, per-subject. If
             None then all rows are returned
         ids : Sequence[str or Tuple[str]]
             The i
@@ -430,34 +430,34 @@ class Dataset():
         Sequence[DataRow]
             The sequence of the data row within the dataset
         """
-        if frequency is None:
+        if row_frequency is None:
             return chain(
                 *(d.values() for d in self.root.children.values()))
-        frequency = self._parse_freq(frequency)
-        if frequency == self.root_freq:
+        row_frequency = self._parse_freq(row_frequency)
+        if row_frequency == self.root_freq:
             return [self.root]
-        rows = self.root.children[frequency].values()
+        rows = self.root.children[row_frequency].values()
         if ids is not None:
             rows = (n for n in rows if n.id in set(ids))
         return rows
         
-    def row_ids(self, frequency):
-        """Return all the IDs in the dataset for a given frequency
+    def row_ids(self, row_frequency):
+        """Return all the IDs in the dataset for a given row_frequency
 
         Parameters
         ----------
-        frequency : DataSpace
-            The "frequency" of the rows, e.g. per-session, per-subject...
+        row_frequency : DataSpace
+            The "row_frequency" of the rows, e.g. per-session, per-subject...
 
         Returns
         -------
         Sequence[str]
             The IDs of the rows
         """
-        frequency = self._parse_freq(frequency)
-        if frequency == self.root_freq:
+        row_frequency = self._parse_freq(row_frequency)
+        if row_frequency == self.root_freq:
             return [None]
-        return self.root.children[frequency].keys()
+        return self.root.children[row_frequency].keys()
 
     def __getitem__(self, name):
         """Return all data items across the dataset for a given source or sink
@@ -494,7 +494,7 @@ class Dataset():
             `id_inference`
         ArcanaDataTreeConstructionError
             raised if one of the groups specified in the ID inference reg-ex
-            doesn't match a valid frequency in the data dimensions
+            doesn't match a valid row_frequency in the data dimensions
         """
         if self._root is None:
             self._set_root()
@@ -509,7 +509,7 @@ class Dataset():
         # inferred from a row at this depth
         ids = {f: None for f in self.space}
         # Calculate the combined freqs after each layer is added
-        frequency = self.space(0)
+        row_frequency = self.space(0)
         for layer, label in zip(self.hierarchy, tree_path):
             ids[layer] = label
             regexes = [r for l, r in self.id_inference if l == layer]
@@ -534,7 +534,7 @@ class Dataset():
                 #
                 #       id_inference={
                 #           'session': r'.*(?P<timepoint>0-9+)$'}
-                if not (layer & frequency):
+                if not (layer & row_frequency):
                     ids[layer.span()[-1]] = label
             else:
                 for regex in regexes:
@@ -543,27 +543,27 @@ class Dataset():
                         raise ArcanaBadlyFormattedIDError(
                             f"{layer} label '{label}', does not match ID inference"
                             f" pattern '{regex}'")
-                    new_freqs = layer - (layer & frequency)
+                    new_freqs = layer - (layer & row_frequency)
                     for target_freq, target_id in match.groupdict().items():
                         target_freq = self.space[target_freq]
                         if (target_freq & new_freqs) != target_freq:
                             raise ArcanaUsageError(
                                 f"Inferred ID target, {target_freq}, is not a "
-                                f"data frequency added by layer {layer}")
+                                f"data row_frequency added by layer {layer}")
                         if ids[target_freq] is not None:
                             raise ArcanaUsageError(
                                 f"ID '{target_freq}' is specified twice in the ID "
                                 f"inference of {tree_path} ({ids[target_freq]} "
                                 f"and {target_id} from {regex}")
                         ids[target_freq] = target_id
-            frequency |= layer
-        assert(frequency == max(self.space))
+            row_frequency |= layer
+        assert(row_frequency == max(self.space))
         # Set or override any inferred IDs within the ones that have been
         # explicitly provided
         ids.update(explicit_ids)
         # Create composite IDs for non-basis frequencies if they are not
         # explicitly in the layer dimensions
-        for freq in (set(self.space) - set(frequency.span())):
+        for freq in (set(self.space) - set(row_frequency.span())):
             if ids[freq] is None:
                 id = tuple(ids[b] for b in freq.span() if ids[b] is not None)
                 if id:
@@ -571,9 +571,9 @@ class Dataset():
                         id = id[0]
                     ids[freq] = id
         # TODO: filter row based on dataset include & exlcude attrs
-        return self.add_row(ids, frequency)
+        return self.add_row(ids, row_frequency)
 
-    def add_row(self, ids, frequency):
+    def add_row(self, ids, row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows
         (e.g. for each subject, group or timepoint) where required
 
@@ -589,11 +589,11 @@ class Dataset():
             one of their ids is None
         """
         logger.debug(f'Adding new %s row to %s dataset: %s',
-                     frequency, self.id, ids)
-        frequency = self._parse_freq(frequency)
-        row = DataRow(ids, frequency, self)
+                     row_frequency, self.id, ids)
+        row_frequency = self._parse_freq(row_frequency)
+        row = DataRow(ids, row_frequency, self)
         # Create new data row
-        row_dict = self.root.children[row.frequency]
+        row_dict = self.root.children[row.row_frequency]
         if row.id in row_dict:
             raise ArcanaDataTreeConstructionError(
                 f"ID clash ({row.id}) between rows inserted into data "
@@ -603,7 +603,7 @@ class Dataset():
         # Insert parent rows if not already present and link them with
         # inserted row
         for parent_freq, parent_id in row.ids.items():
-            diff_freq = row.frequency - (parent_freq & row.frequency)
+            diff_freq = row.row_frequency - (parent_freq & row.row_frequency)
             if diff_freq and parent_freq:  # Don't need to insert root row again
                 # logger.debug(f'Linking parent {parent_freq}: {parent_id}')
                 try:
@@ -617,7 +617,7 @@ class Dataset():
                     parent_row = self.add_row(parent_ids, parent_freq)
                 # Set reference to level row in new row
                 diff_id = row.ids[diff_freq]
-                children_dict = parent_row.children[frequency]
+                children_dict = parent_row.children[row_frequency]
                 if diff_id in children_dict:
                     raise ArcanaDataTreeConstructionError(
                         f"ID clash ({diff_id}) between rows inserted into "
@@ -629,7 +629,7 @@ class Dataset():
                 children_dict[diff_id] = row
         return row
 
-    def apply_pipeline(self, name, workflow, inputs, outputs, frequency=None,
+    def apply_pipeline(self, name, workflow, inputs, outputs, row_frequency=None,
                        overwrite=False):
         """Connect a Pydra workflow as a pipeline of the dataset
 
@@ -643,10 +643,10 @@ class Dataset():
             List of inputs to the pipeline (see `arcana.core.pipeline.Pipeline.Input`)
         outputs : list[arcana.core.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
             List of outputs of the pipeline (see `arcana.core.pipeline.Pipeline.Output`)
-        frequency : str, optional
-            the frequency of the rows the pipeline will be executed over, i.e.
+        row_frequency : str, optional
+            the row_frequency of the rows the pipeline will be executed over, i.e.
             will it be run once per-session, per-subject or per whole dataset,
-            by default the highest frequency rows (e.g. per-session)
+            by default the highest row_frequency rows (e.g. per-session)
         overwrite : bool, optional
             overwrite connections to previously connected sinks, by default False
 
@@ -661,7 +661,7 @@ class Dataset():
             if overwrite is false and 
         """
         from arcana.core.pipeline import Pipeline, Input, Output
-        frequency = self._parse_freq(frequency)
+        row_frequency = self._parse_freq(row_frequency)
         def parsed_conns(lst, conn_type):
             parsed = []
             for spec in lst:
@@ -677,7 +677,7 @@ class Dataset():
         pipeline = Pipeline(
             name=name,
             dataset=self,
-            frequency=frequency,
+            row_frequency=row_frequency,
             workflow=workflow,
             inputs=parsed_conns(inputs, Input),
             outputs=parsed_conns(outputs, Output))
@@ -727,7 +727,7 @@ class Dataset():
             sink.assume_exists()
 
     def _parse_freq(self, freq):
-        """Parses the data frequency, converting from string if necessary and
+        """Parses the data row_frequency, converting from string if necessary and
         checks it matches the dimensions of the dataset"""
         if freq is None:
             return max(self.space)

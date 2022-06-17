@@ -73,7 +73,7 @@ def bids_app(name: str,
              executable: str='',  # Use entrypoint of container,
              container_image: str= None,
              parameters: ty.Dict[str, type]=None,
-             frequency: Clinical or str=Clinical.session,
+             row_frequency: Clinical or str=Clinical.session,
              container_type: str='docker',
              dataset: ty.Optional[ty.Union[str, Path, Dataset]]=None,
              app_output_dir: Path=None) -> Workflow:
@@ -105,7 +105,7 @@ def bids_app(name: str,
     parameters : dict[str, type], optional
         a list of parameters of the app (i.e. CLI flags) to be exposed to the user
         mapped to their data type.
-    frequency : Clinical, optional
+    row_frequency : Clinical, optional
         Frequency to run the app at, i.e. per-"session" or per-"dataset"
     container_type : str, optional
         The virtualisation method to run the main app task, can be one of
@@ -132,8 +132,8 @@ def bids_app(name: str,
         app_output_dir = Path(app_output_dir)
         app_output_dir.mkdir(parents=True, exist_ok=True)
 
-    if isinstance(frequency, str):
-        frequency = Clinical[frequency]
+    if isinstance(row_frequency, str):
+        row_frequency = Clinical[row_frequency]
 
     # Create BIDS dataset to hold translated data
     if dataset is None:
@@ -164,7 +164,7 @@ def bids_app(name: str,
     wf.add(func_task(
         to_bids,
         in_fields=(
-            [('frequency', Clinical),
+            [('row_frequency', Clinical),
                 ('inputs', ty.List[ty.Tuple[str, type, str]]),
                 ('dataset', Dataset or str),
                 ('id', str),
@@ -173,7 +173,7 @@ def bids_app(name: str,
         out_fields=[('dataset', BidsDataset),
                     ('completed', bool, {'callable': lambda: True})],
         name='to_bids',
-        frequency=frequency,
+        row_frequency=row_frequency,
         inputs=inputs,
         dataset=dataset,
         id=wf.bidsify_id.lzout.out,
@@ -254,7 +254,7 @@ def bids_app(name: str,
                 f"Unrecognised container type {container_type} "
                 "(can be docker or singularity)")
 
-    if frequency == Clinical.session:
+    if row_frequency == Clinical.session:
         analysis_level = 'participant'
         kwargs['participant_label'] = wf.bidsify_id.lzout.no_prefix
     else:
@@ -284,7 +284,7 @@ def bids_app(name: str,
         extract_bids,
         in_fields=[
             ('dataset', Dataset),
-            ('frequency', Clinical),
+            ('row_frequency', Clinical),
             ('app_name', str),
             ('output_dir', Path),
             ('outputs', ty.List[ty.Tuple[str, type, str]]),
@@ -295,7 +295,7 @@ def bids_app(name: str,
         app_name=name,
         dataset=wf.to_bids.lzout.dataset,  # We pass dataset object modified by to_bids rather than initial one passed to the bids_app method
         output_dir=app_output_dir,
-        frequency=frequency,
+        row_frequency=row_frequency,
         outputs=outputs,
         id=wf.bidsify_id.lzout.out,
         app_completed=wf.bids_app.lzout.completed))
@@ -329,14 +329,14 @@ def bidsify_id(id):
     return id, id[len('sub-'):]
 
 
-def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
+def to_bids(row_frequency, inputs, dataset, id, json_edits, **input_values):
     """Takes generic inptus and stores them within a BIDS dataset
     """
     # Update the Bids store with the JSON edits requested by the user
     dataset.store.json_edits = parse_json_edits(json_edits)
     for inpt in inputs:
         dataset.add_sink(inpt.name, inpt.format, path=inpt.path)
-    row = dataset.row(frequency, id)
+    row = dataset.row(row_frequency, id)
     with dataset.store:
         for inpt_name, inpt_value in input_values.items():
             if inpt_value is attr.NOTHING:
@@ -348,7 +348,7 @@ def to_bids(frequency, inputs, dataset, id, json_edits, **input_values):
 
 
 def extract_bids(dataset: Dataset,
-                 frequency: Clinical,
+                 row_frequency: Clinical,
                  app_name: str,
                  output_dir: Path,
                  outputs: ty.List[ty.Tuple[str, type]],
@@ -361,7 +361,7 @@ def extract_bids(dataset: Dataset,
     Parameters
     ----------
     dataset : Dataset
-    frequency : Clinical
+    row_frequency : Clinical
     output_dir : Path
     outputs : ty.List[ty.Tuple[str, type]]
     id : str
@@ -373,7 +373,7 @@ def extract_bids(dataset: Dataset,
     # Copy output dir into BIDS dataset
     shutil.copytree(output_dir, Path(dataset.id) / 'derivatives' / app_name / id)
     output_paths = []
-    row = dataset.row(frequency, id)
+    row = dataset.row(row_frequency, id)
     for output in outputs:
         dataset.add_sink(output.name, output.format,
                          path='derivatives/' + app_name + '/' + output.path)

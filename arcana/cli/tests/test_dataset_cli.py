@@ -29,7 +29,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
         name='a_source',
         path='file1',
         format=Text,
-        frequency=TestDataSpace.d,
+        row_frequency=TestDataSpace.d,
         quality_threshold=DataQuality.questionable,
         order=1,
         header_vals={},
@@ -39,7 +39,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
         add_source,
         [dataset_id_str, 'a_source', 'common:Text',
          '--path', 'file1',
-         '--frequency', 'd',
+         '--row_frequency', 'd',
          '--quality', 'questionable',
          '--order', '1',
          '--no-regex'])
@@ -49,12 +49,12 @@ def test_add_column_cli(saved_dataset, cli_runner):
         name='a_sink',
         path='deriv',
         format=Text,
-        frequency=TestDataSpace.d,
+        row_frequency=TestDataSpace.d,
         salience=DataSalience.qa)
     result = cli_runner(add_sink, [
         dataset_id_str, 'a_sink', 'common:Text',
         '--path', 'deriv',
-        '--frequency', 'd',
+        '--row_frequency', 'd',
         '--salience', 'qa'])
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
@@ -78,7 +78,7 @@ def test_add_source_xnat(mutable_xnat_dataset, cli_runner, work_dir):
             add_source,
             [dataset_id_str, 'a_source', 'common:Text',
             '--path', 'file1',
-            '--frequency', 'session',
+            '--row_frequency', 'session',
             '--quality', 'questionable',
             '--order', '1',
             '--no-regex'])
@@ -99,7 +99,7 @@ def test_add_sink_xnat(mutable_xnat_dataset, work_dir, cli_runner):
         result = cli_runner(add_sink, [
             dataset_id_str, 'a_sink', 'common:Text',
             '--path', 'deriv',
-            '--frequency', 'session',
+            '--row_frequency', 'session',
             '--salience', 'qa'])
         assert result.exit_code == 0, show_cli_trace(result)
 

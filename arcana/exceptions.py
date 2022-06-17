@@ -198,7 +198,7 @@ class ArcanaBadlyFormattedIDError(ArcanaDataTreeConstructionError):
     "Error attempting to extract an ID from a tree path using a user provided regex"
 
 class ArcanaWrongDataSpaceError(ArcanaError):
-    "Provided frequency is not a valid member of the dataset's dimensions"
+    "Provided row_frequency is not a valid member of the dataset's dimensions"
 
 
 class ArcanaNoDirectXnatMountException(ArcanaException):

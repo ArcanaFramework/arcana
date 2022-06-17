@@ -12,9 +12,9 @@ from arcana.test.datasets import create_test_file
 
 def test_find_rows(dataset: Dataset):
     for freq in dataset.space:
-        # For all non-zero bases in the frequency, multiply the dim lengths
+        # For all non-zero bases in the row_frequency, multiply the dim lengths
         # together to get the combined number of rows expected for that
-        # frequency
+        # row_frequency
         num_rows = reduce(
             op.mul, (l for l, b in zip(dataset.blueprint.dim_lengths, freq) if b), 1)
         assert len(dataset.rows(freq)) == num_rows, (
@@ -39,7 +39,7 @@ def test_put_items(dataset: Dataset):
     all_checksums = {}
     all_fs_paths = {}
     for name, freq, format, files in dataset.blueprint.derivatives:
-        dataset.add_sink(name=name, format=format, frequency=freq)
+        dataset.add_sink(name=name, format=format, row_frequency=freq)
         deriv_tmp_dir = Path(mkdtemp())
         # Create test files, calculate checkums and recorded expected paths
         # for inserted files

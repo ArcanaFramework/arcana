@@ -534,7 +534,7 @@ class CustomKspace(Kspace):
     B0_dir : 3-tuple(float)
         Direction of the B0 field
     larmor_freq : float
-        The central larmor frequency of the scanner"""
+        The central larmor row_frequency of the scanner"""
         
     ext = 'ks'
     side_cars = ('ref', 'json')

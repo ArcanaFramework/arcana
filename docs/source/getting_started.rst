@@ -152,7 +152,7 @@ over all subjects at Timepoint 'T3'.
     my_dataset['avg_cortical_thickness'].derive()
 
     # Get all members at the 'T3' timepoint. Indexing of a column can either
-    # be a single arg in order to use the IDs for the frequency of the column
+    # be a single arg in order to use the IDs for the row_frequency of the column
     # ('session') in this case, or the rank of the data space
     plt.histogram(my_dataset['avg_cortical_thickness']['T3', None, :])
 

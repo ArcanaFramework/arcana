@@ -18,22 +18,22 @@ class DataColumn(metaclass=ABCMeta):
     name: str = attr.ib()
     path: str = attr.ib()
     format = attr.ib()
-    frequency: DataSpace = attr.ib()
+    row_frequency: DataSpace = attr.ib()
     dataset = attr.ib(default=None, metadata={'asdict': False},
                       eq=False, hash=False, repr=False)
 
     def __iter__(self):
-        return (n[self.name] for n in self.dataset.rows(self.frequency))
+        return (n[self.name] for n in self.dataset.rows(self.row_frequency))
 
     def __getitem__(self, id):
-        return self.dataset.row(id=id, frequency=self.frequency)[self.name]
+        return self.dataset.row(id=id, row_frequency=self.row_frequency)[self.name]
 
     def __len__(self):
-        return len(list(self.dataset.rows(self.frequency)))
+        return len(list(self.dataset.rows(self.row_frequency)))
 
     @property
     def ids(self):
-        return [n.id for n in self.dataset.rows(self.frequency)]
+        return [n.id for n in self.dataset.rows(self.row_frequency)]
 
     @abstractmethod
     def match(self, row):
@@ -74,12 +74,12 @@ class DataSource(DataColumn):
     ----------
     path : str
         A regex name_path to match the file_group names with. Must match
-        one and only one file_group per <frequency>. If None, the name
+        one and only one file_group per <row_frequency>. If None, the name
         is used instead.
     format : type
         File format that data will be 
-    frequency : DataSpace
-        The frequency of the file-group within the dataset tree, e.g. per
+    row_frequency : DataSpace
+        The row_frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
     quality_threshold : DataQuality
         The acceptable quality (or above) that should be considered. Data items
@@ -118,7 +118,7 @@ class DataSource(DataColumn):
             format_str = class_location(self.format,
                                         strip_prefix='arcana.data.formats.')
             msg = (f"Did not find any items matching data format "
-                   f"{format_str} in '{row.id}' {self.frequency} for the "
+                   f"{format_str} in '{row.id}' {self.row_frequency} for the "
                    f"'{self.name}' column, found unresolved items:")
             for item in sorted(row.unresolved, key=attrgetter('path')):
                 msg += f'\n    {item.path}: paths=' + ','.join(
@@ -154,7 +154,7 @@ class DataSource(DataColumn):
         format_str = class_location(self.format, strip_prefix='arcana.data.formats.')
         return (
             f" attempting to select a {format_str} item for the '{row.id}' "
-            f"{row.frequency} in the '{self.name}' column, found:"
+            f"{row.row_frequency} in the '{self.name}' column, found:"
             + self._format_matches(matches) + self._format_criteria())
 
     def _format_criteria(self):
@@ -208,8 +208,8 @@ class DataSink(DataColumn):
     format : type
         The file format or data type used to store the corresponding items
         in the store dataset.
-    frequency : DataSpace
-        The frequency of the file-group within the dataset tree, e.g. per
+    row_frequency : DataSpace
+        The row_frequency of the file-group within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
     salience : Salience
         The salience of the specified file-group, i.e. whether it would be
