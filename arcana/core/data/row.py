@@ -62,10 +62,10 @@ class DataRow():
                     f"{column_name} is not the name of a column in "
                     f"{self.dataset.id} dataset ('" + "', '".join(
                         self.dataset.columns) + "')") from e
-            if spec.frequency != self.frequency:
+            if spec.row_frequency != self.frequency:
                 return ArcanaWrongFrequencyError(
                     column_name,
-                    f"'column_name' ({column_name}) is of {spec.frequency} "
+                    f"'column_name' ({column_name}) is of {spec.row_frequency} "
                     f"frequency and therefore not in rows of {self.frequency}"
                     " frequency")
             item = self._items[column_name] = spec.match(self)
@@ -125,9 +125,9 @@ class DataRow():
             # rows) or the whole dataset
             spec = self.dataset.columns[column_name]
             try:
-                return self.children[spec.frequency].values()
+                return self.children[spec.row_frequency].values()
             except KeyError:
-                return self.dataset.column(spec.frequency)
+                return self.dataset.column(spec.row_frequency)
 
     @property
     def unresolved(self):

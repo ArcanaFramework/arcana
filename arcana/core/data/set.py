@@ -593,7 +593,7 @@ class Dataset():
         row_frequency = self._parse_freq(row_frequency)
         row = DataRow(ids, row_frequency, self)
         # Create new data row
-        row_dict = self.root.children[row.row_frequency]
+        row_dict = self.root.children[row.frequency]
         if row.id in row_dict:
             raise ArcanaDataTreeConstructionError(
                 f"ID clash ({row.id}) between rows inserted into data "
@@ -603,7 +603,7 @@ class Dataset():
         # Insert parent rows if not already present and link them with
         # inserted row
         for parent_freq, parent_id in row.ids.items():
-            diff_freq = row.row_frequency - (parent_freq & row.row_frequency)
+            diff_freq = row.frequency - (parent_freq & row.frequency)
             if diff_freq and parent_freq:  # Don't need to insert root row again
                 # logger.debug(f'Linking parent {parent_freq}: {parent_id}')
                 try:

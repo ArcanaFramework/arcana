@@ -211,7 +211,7 @@ class Xnat(DataStore):
             The paths to cached files/directories on the local file-system
         """
         logger.info("Getting %s from %s:%s row via API access",
-                    file_group.path, file_group.row.row_frequency,
+                    file_group.path, file_group.row.frequency,
                     file_group.row.id)        
         self._check_store(file_group)
         with self:  # Connect to the XNAT repository if haven't already
@@ -360,7 +360,7 @@ class Xnat(DataStore):
                 json.dump(file_group.calculate_checksums(), f,
                           indent=2)
         logger.info("Put %s into %s:%s row via API access",
-                    file_group.path, file_group.row.row_frequency,
+                    file_group.path, file_group.row.frequency,
                     file_group.row.id)
         return cache_paths
 
@@ -538,11 +538,11 @@ class Xnat(DataStore):
         """
         with self:
             xproject = self.login.projects[row.dataset.id]
-            if row.row_frequency == Clinical.dataset:
+            if row.frequency == Clinical.dataset:
                 xrow = xproject
-            elif row.row_frequency == Clinical.subject:
+            elif row.frequency == Clinical.subject:
                 xrow = xproject.subjects[row.ids[Clinical.subject]]
-            elif row.row_frequency == Clinical.session:
+            elif row.frequency == Clinical.session:
                 xrow = xproject.experiments[row.ids[Clinical.session]]
             else:
                 xrow = self.login.classes.SubjectData(
@@ -558,16 +558,16 @@ class Xnat(DataStore):
             id_str = '_' + '_'.join(row.id)
         else:
             id_str = '_' + str(row.id)
-        return f'__{row.row_frequency}{id_str}__'
+        return f'__{row.frequency}{id_str}__'
 
 
     def _make_uri(self, row: DataRow):
         uri = '/data/archive/projects/' + row.dataset.id
-        if row.row_frequency == Clinical.session:
+        if row.frequency == Clinical.session:
             uri += '/experiments/' + row.id
-        elif row.row_frequency == Clinical.subject:
+        elif row.frequency == Clinical.subject:
             uri += '/subjects/' + row.id
-        elif row.row_frequency != Clinical.dataset:
+        elif row.frequency != Clinical.dataset:
             uri += '/subjects/' + self._make_row_name(row)
         return uri
 

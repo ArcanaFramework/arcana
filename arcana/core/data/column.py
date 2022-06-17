@@ -154,7 +154,7 @@ class DataSource(DataColumn):
         format_str = class_location(self.format, strip_prefix='arcana.data.formats.')
         return (
             f" attempting to select a {format_str} item for the '{row.id}' "
-            f"{row.row_frequency} in the '{self.name}' column, found:"
+            f"{row.frequency} in the '{self.name}' column, found:"
             + self._format_matches(matches) + self._format_criteria())
 
     def _format_criteria(self):
