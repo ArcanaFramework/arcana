@@ -17,10 +17,11 @@ from arcana.core.deploy.utils import (
 from arcana.core.deploy.docs import create_doc
 from arcana.core.deploy.build import SPEC_PATH as spec_path_in_docker
 from arcana.core.utils import package_from_module, pydra_asdict
+from arcana.core.data.row import DataRow
 from arcana.deploy.medimage.xnat import build_xnat_cs_image
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
-from arcana.exceptions import ArcanaBuildError, ArcanaError
+from arcana.exceptions import ArcanaBuildError, ArcanaUsageError
 
 
 logger = logging.getLogger('arcana')
@@ -455,12 +456,22 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
 
     pipeline_inputs = []
     for col_name, col_format_name, col_path, pydra_field, format_name in input:
-        if not col_path:
-            logger.warning("Skipping '{col_name}' source column as no input was provided")
-            continue
         col_format = resolve_class(col_format_name, prefixes=['arcana.data.formats'])
         format = resolve_class(format_name, prefixes=['arcana.data.formats'])
+        if not col_path and format != DataRow:
+            logger.warning(
+                f"Skipping '{col_name}' source column as no input was provided")
+            continue
         pipeline_inputs.append(PipelineInput(col_name, pydra_field, format))
+        if DataRow in (col_format, format):
+            if (col_format, format) != (DataRow, DataRow):
+                raise ArcanaUsageError(
+                    "Cannot convert to/from built-in data type `DataRow`: "
+                    f"col_format={col_format}, format={format}")
+            logger.info(
+                f"No column added for '{col_name}' column as it uses built-in "
+                "type `arcana.core.data.row.DataRow`")
+            continue
         if col_name in dataset.columns:
             column = dataset[col_name]
             logger.info(f"Found existing source column {column}")
@@ -479,7 +490,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
         if col_name in dataset.columns:
             column = dataset[col_name]
             if not column.is_sink:
-                raise ArcanaError(
+                raise ArcanaUsageError(
                     "Output column name '{col_name}' shadows existing source column")
             logger.info(f"Found existing sink column {column}")
         else:

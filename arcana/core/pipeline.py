@@ -15,8 +15,9 @@ from arcana.exceptions import (
     ArcanaNameError, ArcanaUsageError, ArcanaDesignError,
     ArcanaPipelinesStackError, ArcanaOutputNotProducedException,
     ArcanaDataMatchError)
-from .data.format import DataItem, FileGroup
+from .data.format import DataItem, FileGroup, Field
 import arcana.core.data.set
+import arcana.core.data.row
 from .data.space import DataSpace
 from .utils import (
     func_task, asdict, fromdict, pydra_asdict, pydra_fromdict, pydra_eq,
@@ -24,17 +25,20 @@ from .utils import (
 
 logger = logging.getLogger('arcana')
 
+
 @dataclass
 class Input():
     col_name: str
     pydra_field: str
     required_format: type
 
+
 @dataclass
 class Output():
     col_name: str
     pydra_field: str
     produced_format: type
+
 
 @attr.s
 class Pipeline():
@@ -75,6 +79,8 @@ class Pipeline():
 
     @inputs.validator
     def inputs_validator(self, _, inpt):
+        if inpt.format == arcana.core.data.row.DataRow:  # special case
+            return
         column = self.dataset.column[inpt.col_name]
         inpt.required_format.find_converter(column.format)
         if inpt.pydra_field not in self.workflow.input_names:
@@ -151,37 +157,45 @@ class Pipeline():
             input_spec=['id'],
             id=wf.to_process.lzout.ids).split('id'))
 
-        source_in = [
-            ('dataset', arcana.core.data.set.Dataset),
-            ('row_frequency', DataSpace),
-            ('id', str),
-            ('inputs', ty.Sequence[str]),
-            ('parameterisation', ty.Dict[str, ty.Any])]
-
-        source_out_dct = {
-            s: (DataItem
-                if self.dataset[varname2path(s)].row_frequency.is_parent(
-                    self.row_frequency, if_match=True)
-                else ty.Sequence[DataItem])
-            for s in self.input_varnames}
+        # Automatically output interface for source node to include sourced
+        # columns
+        source_out_dct = {}
+        for inpt in self.inputs:
+            # If the row frequency of the column is not a parent of the pipeline
+            # then the input will be a sequence of all the child rows
+            if inpt.required_format is arcana.core.data.row.DataRow:
+                dtype = arcana.core.data.row.DataRow
+            elif self.dataset[inpt.col_name].row_frequency.is_parent(
+                        self.row_frequency, if_match=True):
+                dtype = inpt.required_format
+            else:
+                dtype = ty.Sequence[inpt.required_format]
+            source_out_dct[inpt.col_name] = dtype            
         source_out_dct['provenance_'] = ty.Dict[str, ty.Any]
 
         wf.per_row.add(func_task(
             source_items,
-            in_fields=source_in,
+            in_fields=[
+                ('dataset', arcana.core.data.set.Dataset),
+                ('row_frequency', DataSpace),
+                ('id', str),
+                ('inputs', ty.Sequence[Input]),
+                ('parameterisation', ty.Dict[str, ty.Any])],
             out_fields=list(source_out_dct.items()),
             name='source',
             dataset=self.dataset,
             row_frequency=self.row_frequency,
-            inputs=[i.col_name for i in self.inputs],
+            inputs=self.inputs,
             id=wf.per_row.lzin.id))
 
         # Set the inputs
-        sourced = {i: getattr(wf.per_row.source.lzout, i)
-                   for i in self.input_varnames}
+        sourced = {i.col_name: getattr(wf.per_row.source.lzout, i.col_name)
+                   for i in self.inputs}
 
         # Do input format conversions if required
         for inpt in self.inputs:
+            if inpt.required_format == arcana.core.data.row.DataRow:
+                continue
             stored_format = self.dataset[inpt.col_name].format
             if not (inpt.required_format is stored_format
                     or issubclass(stored_format, inpt.required_format)):
@@ -189,7 +203,7 @@ class Pipeline():
                             "from %s to %s", inpt.col_name,
                             stored_format.class_name(),
                             inpt.required_format.class_name())
-                source_name = path2varname(inpt.col_name)
+                source_name = inpt.col_name
                 converter = inpt.required_format.converter_task(
                     stored_format, name=f"{source_name}_input_converter")
                 converter.inputs.to_convert = sourced.pop(source_name)
@@ -206,8 +220,8 @@ class Pipeline():
         # via `set_output` method
         wf.per_row.add(func_task(
             access_paths_and_values,
-            in_fields=[(i, DataItem) for i in self.input_varnames],
-            out_fields=[(i, ty.Any) for i in self.input_varnames],
+            in_fields=[(i.col_name, DataItem) for i in self.inputs],
+            out_fields=[(i.col_name, ty.Any) for i in self.inputs],
             name='input_interface',
             **sourced))
 
@@ -218,7 +232,7 @@ class Pipeline():
         for inpt in self.inputs:
             setattr(getattr(wf.per_row, self.workflow.name).inputs,
                     inpt.pydra_field,
-                    getattr(wf.per_row.input_interface.lzout, path2varname(inpt.col_name)))
+                    getattr(wf.per_row.input_interface.lzout, inpt.col_name))
 
         # Creates a row to accept values from user-defined rows and
         # encapsulate them into DataItems
@@ -427,21 +441,39 @@ def to_process(dataset, row_frequency, outputs, requested_ids, parameterisation)
     return ids, cant_process
 
 
-def source_items(dataset, row_frequency, id, inputs, parameterisation):
+def source_items(dataset: arcana.core.data.set.Dataset, row_frequency: DataSpace,
+                 id: str, inputs: ty.List[Input], parameterisation: dict):
     """Selects the items from the dataset corresponding to the input 
     sources and retrieves them from the store to a cache on 
-    the host"""
+    the host
+
+    Parameters
+    ----------
+    dataset : Dataset
+        the dataset to source the data from
+    row_frequency : DataSpace
+        the frequency of the row to source the data from
+    id : str
+        the ID of the row to source from
+    parameterisation : dict
+        provenance information... can't remember why this was used here...
+    """
     logger.debug("Sourcing %s", inputs)
     provenance = copy(parameterisation)
     sourced = []
     row = dataset.row(row_frequency, id)
     with dataset.store:
         missing_inputs = {}
-        for inpt_name in inputs:
+        for inpt in inputs:
+            # If the required format is of type DataRow then provide the whole
+            # row to the pipeline input
+            if inpt.required_format == arcana.core.data.row.DataRow:
+                sourced.append(row)
+                continue
             try:
-                item = row[inpt_name]
+                item = row[inpt.col_name]
             except ArcanaDataMatchError as e:
-                missing_inputs[inpt_name] = str(e)
+                missing_inputs[inpt.col_name] = str(e)
             else:
                 item.get()  # download to host if required
                 sourced.append(item)
@@ -451,7 +483,21 @@ def source_items(dataset, row_frequency, id, inputs, parameterisation):
 
 
 def sink_items(dataset, row_frequency, id, provenance, **to_sink):
-    """Stores items generated by the pipeline back into the store"""
+    """Stores items generated by the pipeline back into the store
+
+    Parameters
+    ----------
+    dataset : Dataset
+        the dataset to source the data from
+    row_frequency : DataSpace
+        the frequency of the row to source the data from
+    id : str
+        the ID of the row to source from
+    provenance : dict
+        provenance information to be stored alongside the generated data
+    **to_sink : dict[str, DataItem]
+        data items to be stored in the data store
+    """
     logger.debug("Sinking %s", to_sink)
     row = dataset.row(row_frequency, id)
     with dataset.store:
@@ -459,6 +505,7 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
             row_item = row[outpt_name]
             row_item.put(output.value) # Store value/path
     return id
+
 
 
 def access_paths_and_values(**data_items):
@@ -470,8 +517,10 @@ def access_paths_and_values(**data_items):
         if isinstance(item, FileGroup):
             cpy = item.copy_to(Path.cwd() / name, symlink=True)
             values.append(cpy.fs_path)
-        else:
+        elif isinstance(item, Field):
             values.append(item.value)
+        else:
+            values.append(item)
     return tuple(values) if len(values) > 1 else values[0]
 
 
@@ -487,9 +536,12 @@ def encapsulate_paths_and_values(outputs, **kwargs):
         else:
             obj = outpt.produced_format(val)
         items.append(obj)
-    return tuple(items) if len(items) > 1 else items[0]
-
-
+    if len(items) > 1:
+        return tuple(items)
+    elif items:
+        return items[0]
+    else:
+        return None
 
 
 # Provenance mismatch detection methods salvaged from data.provenance

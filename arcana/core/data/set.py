@@ -644,9 +644,9 @@ class Dataset():
         outputs : list[arcana.core.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
             List of outputs of the pipeline (see `arcana.core.pipeline.Pipeline.Output`)
         row_frequency : str, optional
-            the row_frequency of the rows the pipeline will be executed over, i.e.
+            the frequency of the data rows the pipeline will be executed over, i.e.
             will it be run once per-session, per-subject or per whole dataset,
-            by default the highest row_frequency rows (e.g. per-session)
+            by default the highest row frequency (e.g. per-session for Clinical)
         overwrite : bool, optional
             overwrite connections to previously connected sinks, by default False
 
