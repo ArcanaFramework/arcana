@@ -1,10 +1,9 @@
 from __future__ import annotations
 from pathlib import Path
 import typing as ty
-from itertools import groupby
 import attr
 from collections import defaultdict
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 import arcana.core.data.set
 from arcana.exceptions import (
     ArcanaNameError, ArcanaWrongFrequencyError, ArcanaFileFormatError)

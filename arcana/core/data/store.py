@@ -10,6 +10,7 @@ from arcana.core.utils import (
     asdict, fromdict)
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
+DS = ty.TypeVar('DS', bound='DataStore')
 
 logger = logging.getLogger('arcana')
 
@@ -240,7 +241,7 @@ class DataStore(metaclass=ABCMeta):
         return asdict(self, **kwargs)
 
     @classmethod
-    def load(cls, name: str, config_path: Path=None, **kwargs):
+    def load(cls: ty.Type[DS], name: str, config_path: Path=None, **kwargs) -> DS:
         """Loads a DataStore from that has been saved in the configuration file.
         If no entry is saved under that name, then it searches for DataStore
         sub-classes with aliases matching `name` and checks whether they can
