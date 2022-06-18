@@ -10,6 +10,7 @@ import docker
 from arcana.cli.deploy import build, run_pipeline
 from arcana.core.utils import class_location
 from arcana.test.utils import show_cli_trace, make_dataset_id_str
+from arcana.test.datasets import make_dataset, TestDatasetBlueprint, TestDataSpace
 from arcana.data.formats.common import Text
 from arcana.exceptions import ArcanaBuildError
 
@@ -144,6 +145,7 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
          '--input', 'source2', 'common:Text', 'file2', 'in_file2', 'common:Text',
          '--output', 'sink1', 'common:Text', 'concatenated', 'out_file', 'common:Text',
          '--parameter', 'duplicates', str(duplicates),
+         '--raise-errors',
          '--plugin', 'serial',
          '--work', str(work_dir),
          '--loglevel', 'debug',
@@ -162,7 +164,6 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
         with open(item.fs_path) as f:
             contents = f.read()
         assert contents == expected_contents
-
 
 def test_run_pipeline_cli_fail(concatenate_task, saved_dataset, cli_runner, work_dir):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
@@ -185,3 +186,45 @@ def test_run_pipeline_cli_fail(concatenate_task, saved_dataset, cli_runner, work
         '--dataset_hierarchy'] + [str(l) for l in bp.hierarchy])
     assert result.exit_code == 1  # fails due to missing path for source1 and incorrect format of source2
     # TODO: Should try to read logs to check for error message but can't work out how to capture them
+
+
+def test_run_pipeline_on_row_cli(cli_runner, work_dir):
+
+    # Create test dataset consisting of a single row with a range of filenames
+    # from 0 to 4
+    filenumbers = list(range(5))
+    bp = TestDatasetBlueprint(
+        [TestDataSpace.abcd],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        [1, 1, 1, 1],
+        [f'{i}.txt' for i in filenumbers],
+        {}, {}, [])
+    dataset_path = work_dir / 'numbered_dataset'
+    dataset = make_dataset(bp, dataset_path)
+    dataset.save()
+
+    # Get CLI name for dataset (i.e. file system path prepended by 'file//')
+    dataset_id_str = make_dataset_id_str(dataset)
+
+    def get_dataset_filenumbers():
+        dataset.refresh()
+        row = next(dataset.rows())
+        return sorted(int(i.path) for i in row.unresolved)
+
+    assert get_dataset_filenumbers() == filenumbers
+    
+    # Start generating the arguments for the CLI
+    # Add source to loaded dataset
+    result = cli_runner(
+        run_pipeline,
+        [dataset_id_str, 'a_pipeline', 'arcana.test.tasks:plus_10_to_filenumbers',
+         '--input', 'a_row', 'arcana.core.data.row:DataRow', '', 'filenumber_row', 'arcana.core.data.row:DataRow',
+         '--plugin', 'serial',
+         '--work', str(work_dir),
+         '--loglevel', 'debug',
+         '--raise-errors',
+         '--dataset_space', class_location(bp.space),
+         '--dataset_hierarchy'] + [str(l) for l in bp.hierarchy])
+    assert result.exit_code == 0, show_cli_trace(result)
+
+    assert get_dataset_filenumbers() == [i + 10 for i in filenumbers]     
+
