@@ -21,7 +21,7 @@ PYTHON_PACKAGE_DIR = 'python-packages'
 
 CONDA_ENV = 'arcana'
 
-SPEC_PATH = '/arcana-spec.json'
+SPEC_PATH = '/arcana-spec.yaml'
 
 
 def build_docker_image(image_tag: str,
@@ -377,9 +377,9 @@ def insert_spec(dockerfile: DockerRenderer, spec, build_dir):
     build_dir : Path
         path to build dir
     """
-    with open(build_dir / 'arcana-spec.json', 'w') as f:
+    with open(build_dir / 'arcana-spec.yaml', 'w') as f:
         yaml.dump(spec, f)
-    dockerfile.copy(source=['./arcana-spec.json'], destination=SPEC_PATH)    
+    dockerfile.copy(source=['./arcana-spec.yaml'], destination=SPEC_PATH)    
 
 
 def pip_spec2str(pip_spec: PipSpec,
