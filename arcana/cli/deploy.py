@@ -155,7 +155,7 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
                     if raise_errors:
                         raise ArcanaBuildError(msg)
                     else:
-                        logger.errors(msg)
+                        logger.error(msg)
                     continue
                 else:
                     logger.info(
