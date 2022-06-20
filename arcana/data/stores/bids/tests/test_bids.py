@@ -87,8 +87,7 @@ def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
 class JsonEditBlueprint():
 
     path_re: str  # regular expression for the path
-    json_path: str  # json path to select the field
-    edit_str: str  # String to edict
+    edit_str: str  # jq script
     orig_dict: dict  # Test JSON dictionary to be edited
     edited_dict: dict  # Dictionary after the edits
     # file_paths: ty.List[str]  # 
@@ -97,12 +96,21 @@ class JsonEditBlueprint():
 JSON_EDIT_TESTS = {
     'basic': JsonEditBlueprint(
         path_re='anat/T.*w',
-        json_path='a.b',
-        edit_str='{value} + 4',
+        edit_str='.a.b += 4',
         orig_dict={'a': {
                    'b': 1.0}},
         edited_dict={'a': {
-                   'b': 5.0}})}
+                   'b': 5.0}}),
+    'multiple': JsonEditBlueprint(
+        path_re='anat/T.*w',
+        edit_str='.a.b += 4 | .a.c[] *= 2',
+        orig_dict={'a': {
+                   'b': 1.0,
+                   'c': [2, 4, 6]}},
+        edited_dict={'a': {
+                   'b': 5.0,
+                   'c': [4, 8, 12]}}),
+}
 
 
 @pytest.fixture(params=JSON_EDIT_TESTS)
@@ -125,7 +133,7 @@ def test_bids_json_edit(json_edit_blueprint, work_dir):
         session_ids=['1'],
         readme=MOCK_README,
         authors=MOCK_AUTHORS,
-        json_edits=[(bp.path_re, bp.json_path, bp.edit_str)])
+        json_edits=[(bp.path_re, bp.edit_str)])
 
     dataset.add_generator_metadata(
         name='arcana', version=__version__,

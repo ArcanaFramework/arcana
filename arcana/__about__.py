@@ -21,7 +21,7 @@ install_requires = [
     'deepdiff>=3.3',
     'importlib-metadata>=1.4',
     'PyYAML>=6.0',
-    'jsonpath-ng>=1.5.3',
+    'jq>=1.2.2',
     'numexpr>=1.10.1']
 
 tests_require = [
