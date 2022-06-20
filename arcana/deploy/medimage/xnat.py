@@ -84,7 +84,7 @@ def build_xnat_cs_image(image_tag: str,
     # within the built image
     ARGS_TO_IGNORE = ['kwargs', 'build_dir', 'generate_only', 'license_dir',
                       'pkg_version', 'wrapper_version']
-    spec = copy(kwargs)
+    spec = {k: v for k, v in kwargs.items() if k not in ARGS_TO_IGNORE}
     for argname in inspect.signature(build_xnat_cs_image).parameters:
         if argname not in ARGS_TO_IGNORE:
             spec[argname] = locals()[argname]
