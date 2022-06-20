@@ -143,6 +143,7 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
             extracted_dir = extract_file_from_docker_image(
                 image_tag, spec_path_in_docker)
             if extracted_dir is not None:
+                logger.info(f"Comparing build spec with that of existing image {image_tag}")
                 built_spec = load_yaml_spec(
                     extracted_dir / Path(spec_path_in_docker).name)
                 if diff:= compare_specs(
