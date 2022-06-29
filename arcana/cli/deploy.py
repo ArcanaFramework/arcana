@@ -124,7 +124,10 @@ def build(spec_path, docker_org, docker_registry, logfile, loglevel, build_dir,
         if build_dir is None:
             image_build_dir = spath.parent / '.build' / spath.stem
         else:
-            image_build_dir = build_dir / spath.parent.relative_to(spec_path) / spath.stem
+            image_build_dir = build_dir
+            if spath != spec_path:
+                image_build_dir /= spath.parent.relative_to(spec_path)
+            image_build_dir /= spath.stem
 
         image_build_dir.mkdir(exist_ok=True, parents=True)
 

@@ -2,7 +2,6 @@ import os
 import stat
 import typing as ty
 import json
-import tempfile
 from pathlib import Path
 import nibabel as nb
 import numpy.random
@@ -16,7 +15,6 @@ from arcana.data.stores.bids import BidsDataset
 from arcana.tasks.bids.app import bids_app, Input, Output
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
-from arcana.core.utils import path2varname
 
 
 MOCK_BIDS_APP_NAME = 'mockapp'

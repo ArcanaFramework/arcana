@@ -3,7 +3,6 @@ import re
 import typing as ty
 from pathlib import Path
 import tempfile
-from copy import copy
 import inspect
 import json
 from attr import NOTHING
@@ -14,6 +13,7 @@ from arcana.core.data.format import FileGroup
 import arcana.data.formats.common
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.medimage import XnatViaCS
+import arcana.core.data.row
 from arcana.core.deploy.build import (
     construct_dockerfile, dockerfile_build, CONDA_ENV)
 from arcana.core.deploy.utils import DOCKER_HUB
@@ -214,7 +214,8 @@ def generate_xnat_cs_command(name: str,
                 parsed = klass(**arg)
             else:
                 parsed = klass(*arg)
-            parsed_args.append(parsed)
+            if not parsed.format is arcana.core.data.row.DataRow:
+                parsed_args.append(parsed)
         return parsed_args
     
     inputs = parse_specs(inputs, InputArg)
