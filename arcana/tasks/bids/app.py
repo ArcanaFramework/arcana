@@ -175,7 +175,8 @@ def bids_app(name: str,
                 ('inputs', ty.List[ty.Tuple[str, type, str]]),
                 ('dataset', Dataset or str),
                 ('id', str),
-                ('json_edits', str)]
+                ('json_edits', str),
+                ('fixed_json_edits', ty.List[ty.Tuple[str, str]])]
             + [(i, str) for i in input_names]),
         out_fields=[('dataset', BidsDataset),
                     ('completed', bool, {'callable': lambda: True})],
