@@ -342,7 +342,7 @@ def to_bids(row_frequency, inputs, dataset, id, json_edits, fixed_json_edits,
     """Takes generic inptus and stores them within a BIDS dataset
     """
     # Update the Bids store with the JSON edits requested by the user
-    dataset.store.json_edits = parse_json_edits(json_edits) + fixed_json_edits
+    dataset.store.json_edits = fixed_json_edits + parse_json_edits(json_edits)
     for inpt in inputs:
         dataset.add_sink(inpt.name, inpt.format, path=inpt.path)
     row = dataset.row(row_frequency, id)
