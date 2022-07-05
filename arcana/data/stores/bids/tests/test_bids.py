@@ -80,35 +80,73 @@ def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
 
     assert dataset == reloaded
 
+@dataclass
+class SourceNiftiXBlueprint():
+    """The blueprint for the source nifti files
+    """
+
+    path: str  # BIDS path for Nift
+    orig_side_car: dict
+    edited_side_car: dict
 
 @dataclass
 class JsonEditBlueprint():
 
-    path_re: str  # regular expression for the path
-    edit_str: str  # jq script
-    orig_dict: dict  # Test JSON dictionary to be edited
-    edited_dict: dict  # Dictionary after the edits
-    # file_paths: ty.List[str]  # 
+    source_niftis: ty.Dict[str, SourceNiftiXBlueprint]
+    path_re: str  # regular expression for the paths to edit
+    jq_script: str  # jq script
 
 
 JSON_EDIT_TESTS = {
     'basic': JsonEditBlueprint(
         path_re='anat/T.*w',
-        edit_str='.a.b += 4',
-        orig_dict={'a': {
-                   'b': 1.0}},
-        edited_dict={'a': {
-                   'b': 5.0}}),
+        jq_script='.a.b += 4',
+        source_niftis={
+            't1w': SourceNiftiXBlueprint(
+                path='anat/T1w',
+                orig_side_car={
+                    'a': {
+                    'b': 1.0}},
+                edited_side_car={
+                    'a': {
+                    'b': 5.0}})}),
     'multiple': JsonEditBlueprint(
         path_re='anat/T.*w',
-        edit_str='.a.b += 4 | .a.c[] *= 2',
-        orig_dict={'a': {
+        jq_script='.a.b += 4 | .a.c[] *= 2',
+        source_niftis={
+            't1w': SourceNiftiXBlueprint(
+                path='anat/T1w',
+                orig_side_car={'a': {
                    'b': 1.0,
                    'c': [2, 4, 6]}},
-        edited_dict={'a': {
+                edited_side_car={'a': {
                    'b': 5.0,
-                   'c': [4, 8, 12]}}),
-}
+                   'c': [4, 8, 12]}})}),
+    'fmap': JsonEditBlueprint(
+        path_re='fmap/.*',
+        jq_script='.IntendedFor = "{bold}"',
+        source_niftis={
+            'bold': SourceNiftiXBlueprint(
+                path='func/task-rest_bold',
+                orig_side_car={},
+                edited_side_car={
+                    'TaskName': 'rest'}),
+            'fmap_mag1': SourceNiftiXBlueprint(
+                path='fmap/magnitude1',
+                orig_side_car={},
+                edited_side_car={
+                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii'}),
+            'fmap_mag2': SourceNiftiXBlueprint(
+                path='fmap/magnitude2',
+                orig_side_car={},
+                edited_side_car={
+                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii'}),
+            'fmap_phasediff': SourceNiftiXBlueprint(
+                path='fmap/phasediff',
+                orig_side_car={},
+                edited_side_car={
+                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii'}),
+            })}
 
 
 @pytest.fixture(params=JSON_EDIT_TESTS)
@@ -116,7 +154,7 @@ def json_edit_blueprint(request):
     return JSON_EDIT_TESTS[request.param]
 
 
-def test_bids_json_edit(json_edit_blueprint, work_dir):
+def test_bids_json_edit(json_edit_blueprint: JsonEditBlueprint, work_dir: Path):
 
     bp = json_edit_blueprint  # shorten name
     
@@ -131,7 +169,7 @@ def test_bids_json_edit(json_edit_blueprint, work_dir):
         session_ids=['1'],
         readme=MOCK_README,
         authors=MOCK_AUTHORS,
-        json_edits=[(bp.path_re, bp.edit_str)])
+        json_edits=[(bp.path_re, bp.jq_script)])
 
     dataset.add_generator_metadata(
         name='arcana', version=__version__,
@@ -140,38 +178,43 @@ def test_bids_json_edit(json_edit_blueprint, work_dir):
 
     dataset.save_metadata()
 
-    dataset.add_sink('t1w', format=NiftiX, path='anat/T1w')
+    for sf_name, sf_bp in bp.source_niftis.items():
+        dataset.add_sink(sf_name, format=NiftiX, path=sf_bp.path)
 
-    nifti_fs_path = work_dir / 't1w.nii'
-    # dummy_nifti_gz = dummy_nifti + '.gz'
-    json_fs_path = work_dir / 't1w.json'
+        nifti_fs_path = work_dir / (sf_name + '.nii')
+        # dummy_nifti_gz = dummy_nifti + '.gz'
+        json_fs_path = work_dir / (sf_name + '.json')
 
-    N = 10 ** 6
+        N = 10 ** 6
 
-    # Create a random Nifti file to satisfy BIDS parsers
-    hdr = nb.Nifti1Header()
-    hdr.set_data_shape((10, 10, 10))
-    hdr.set_zooms((1., 1., 1.))  # set voxel size
-    hdr.set_xyzt_units(2)  # millimeters
-    hdr.set_qform(numpy.diag([1, 2, 3, 1]))
-    nb.save(nb.Nifti1Image(
-        numpy.random.randint(0, 1, size=[10, 10, 10]), hdr.get_best_affine(),
-        header=hdr), nifti_fs_path)
+        # Create a random Nifti file to satisfy BIDS parsers
+        hdr = nb.Nifti1Header()
+        hdr.set_data_shape((10, 10, 10))
+        hdr.set_zooms((1., 1., 1.))  # set voxel size
+        hdr.set_xyzt_units(2)  # millimeters
+        hdr.set_qform(numpy.diag([1, 2, 3, 1]))
+        nb.save(nb.Nifti1Image(
+            numpy.random.randint(0, 1, size=[10, 10, 10]), hdr.get_best_affine(),
+            header=hdr), nifti_fs_path)
 
-    with open(json_fs_path, 'w') as f:
-        json.dump(bp.orig_dict, f)
+        with open(json_fs_path, 'w') as f:
+            json.dump(sf_bp.orig_side_car, f)
 
-    # Get single item in dataset
-    item = dataset['t1w'][('ses-1', 'sub-1')]
+        # Get single item in dataset
+        item = dataset[sf_name][('ses-1', 'sub-1')]
 
-    # Put file paths in item
-    item.put(nifti_fs_path, json_fs_path)
+        # Put file paths in item
+        item.put(nifti_fs_path, json_fs_path)
 
-    with open(item.side_car('json')) as f:
-        saved_dict = json.load(f)
+    # Check edited JSON matches reference
+    for sf_name, sf_bp in bp.source_niftis.items():
 
-    assert saved_dict == bp.edited_dict
-    
+        item = dataset[sf_name][('ses-1', 'sub-1')]
+        with open(item.side_car('json')) as f:
+            saved_dict = json.load(f)
+
+        assert saved_dict == sf_bp.edited_side_car
+
 
 BIDS_INPUTS = [Input('anat/T1w', NiftiGzX),
                Input('anat/T2w', NiftiGzX),
