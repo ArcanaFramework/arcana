@@ -25,6 +25,9 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
+### Actual behaviour
+A clear and concise description of what actually happens.
+
 ### Environment
 
  - OS: [e.g. iOS]
