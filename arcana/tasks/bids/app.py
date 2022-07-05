@@ -14,7 +14,7 @@ from pydra import Workflow, mark
 from pydra.engine.task import (
     DockerTask, SingularityTask, ShellCommandTask)
 from pydra.engine.specs import (
-    LazyField, ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
+    ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.bids.dataset import BidsDataset
@@ -76,7 +76,8 @@ def bids_app(name: str,
              row_frequency: Clinical or str=Clinical.session,
              container_type: str='docker',
              dataset: ty.Optional[ty.Union[str, Path, Dataset]]=None,
-             app_output_dir: Path=None) -> Workflow:
+             app_output_dir: Path=None,
+             json_edits: ty.List[ty.Tuple[str, str]]=None) -> Workflow:
     """Creates a Pydra workflow which takes file inputs, maps them to
     a BIDS dataset, executes a BIDS app, and then extracts the
     the derivatives that were stored back in the BIDS dataset by the app
@@ -118,6 +119,10 @@ def bids_app(name: str,
     app_output_dir : Path, optional
         file system path where the app outputs will be written before being
         copied to the dataset directory
+    json_edits: ty.List[ty.Tuple[str, str]]
+        Ad-hoc edits to JSON side-cars that are fixed during the configuration
+        of the app, i.e. not passed as an input. Input JSON edits are appended
+        to these fixed
 
     Returns
     -------
@@ -131,6 +136,8 @@ def bids_app(name: str,
     else:
         app_output_dir = Path(app_output_dir)
         app_output_dir.mkdir(parents=True, exist_ok=True)
+    if json_edits is None:
+        json_edits = []
 
     if isinstance(row_frequency, str):
         row_frequency = Clinical[row_frequency]
@@ -178,6 +185,7 @@ def bids_app(name: str,
         dataset=dataset,
         id=wf.bidsify_id.lzout.out,
         json_edits=wf.lzin.json_edits,
+        fixed_json_edits=json_edits,
         **{i: getattr(wf.lzin, i) for i in input_names}))
 
         # dataset_path=Path(dataset.id),
@@ -329,11 +337,12 @@ def bidsify_id(id):
     return id, id[len('sub-'):]
 
 
-def to_bids(row_frequency, inputs, dataset, id, json_edits, **input_values):
+def to_bids(row_frequency, inputs, dataset, id, json_edits, fixed_json_edits,
+            **input_values):
     """Takes generic inptus and stores them within a BIDS dataset
     """
     # Update the Bids store with the JSON edits requested by the user
-    dataset.store.json_edits = parse_json_edits(json_edits)
+    dataset.store.json_edits = parse_json_edits(json_edits) + fixed_json_edits
     for inpt in inputs:
         dataset.add_sink(inpt.name, inpt.format, path=inpt.path)
     row = dataset.row(row_frequency, id)
