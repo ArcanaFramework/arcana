@@ -96,8 +96,8 @@ class DataRow():
         return (i for _, i in self.items())
 
     def items(self):
-        return ((c, self[c.name]) for c in self.dataset.columns
-                if c.frequency == self.frequency)
+        return ((c.name, self[c.name]) for c in self.dataset.columns.values()
+                if c.row_frequency == self.frequency)
 
     def column_items(self, column_name):
         """Get's the item for the current row if item's frequency matches

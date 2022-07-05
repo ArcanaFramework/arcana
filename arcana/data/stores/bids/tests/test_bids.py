@@ -124,27 +124,28 @@ JSON_EDIT_TESTS = {
                    'c': [4, 8, 12]}})}),
     'fmap': JsonEditBlueprint(
         path_re='fmap/.*',
-        jq_script='IntendedFor = {bold}',
+        jq_script='.IntendedFor = "{bold}"',
         source_niftis={
             'bold': SourceNiftiXBlueprint(
                 path='func/task-rest_bold',
                 orig_side_car={},
-                edited_side_car={}),
+                edited_side_car={
+                    'TaskName': 'rest'}),
             'fmap_mag1': SourceNiftiXBlueprint(
                 path='fmap/magnitude1',
                 orig_side_car={},
                 edited_side_car={
-                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii.gz'}),
+                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii'}),
             'fmap_mag2': SourceNiftiXBlueprint(
                 path='fmap/magnitude2',
                 orig_side_car={},
                 edited_side_car={
-                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii.gz'}),
+                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii'}),
             'fmap_phasediff': SourceNiftiXBlueprint(
                 path='fmap/phasediff',
                 orig_side_car={},
                 edited_side_car={
-                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii.gz'}),
+                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii'}),
             })}
 
 
@@ -178,7 +179,7 @@ def test_bids_json_edit(json_edit_blueprint: JsonEditBlueprint, work_dir: Path):
     dataset.save_metadata()
 
     for sf_name, sf_bp in bp.source_niftis.items():
-        dataset.add_sink(sf_name, format=NiftiX, path=sf_bp)
+        dataset.add_sink(sf_name, format=NiftiX, path=sf_bp.path)
 
         nifti_fs_path = work_dir / (sf_name + '.nii')
         # dummy_nifti_gz = dummy_nifti + '.gz'
