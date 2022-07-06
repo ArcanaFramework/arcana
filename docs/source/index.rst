@@ -57,8 +57,9 @@ different domain please post an issue about it in the
 to let us know!   
 
 Arcana also includes tools for deploying pipelines in Docker images that
-can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_
-or as `BIDS apps <https://bids-apps.neuroimaging.io/>`_. These tools can be used
+can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_  
+.. or as `BIDS apps <https://bids-apps.neuroimaging.io/>`_
+. These tools can be used
 to maintain continuous integration and deployment of pipeline suites (see
 `Australian Imaging Service Pipelines <https://github.com/australian-imaging-service/pipelines-core>`_).
 
