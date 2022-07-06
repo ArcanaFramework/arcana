@@ -343,7 +343,7 @@ def to_bids(row_frequency, inputs, dataset, id, json_edits, fixed_json_edits,
     """Takes generic inptus and stores them within a BIDS dataset
     """
     # Update the Bids store with the JSON edits requested by the user
-    je_args = shlex.split(json_edits)
+    je_args = shlex.split(json_edits) if json_edits else []
     dataset.store.json_edits = fixed_json_edits + list(zip(je_args[::2],
                                                            je_args[1::2]))
     for inpt in inputs:

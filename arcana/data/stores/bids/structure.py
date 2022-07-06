@@ -4,9 +4,7 @@ import re
 import logging
 import attr
 from dataclasses import dataclass
-import shlex
 import jq
-from attr.converters import default_if_none
 from pathlib import Path
 from arcana import __version__
 from ..common import FileSystem
@@ -107,7 +105,7 @@ class Bids(FileSystem):
         parts = file_group.path.split('/')
         if parts[-1] == '':
             parts = parts[:-1]
-        if is_derivative:= (parts[0] == 'derivatives'):
+        if parts[0] == 'derivatives':
             if len(parts) < 2:
                 raise ArcanaUsageError(
                     f"Paths should have another part after 'derivatives'")
