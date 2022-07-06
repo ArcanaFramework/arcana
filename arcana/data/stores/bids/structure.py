@@ -3,6 +3,8 @@ import json
 import re
 import logging
 import attr
+from dataclasses import dataclass
+import shlex
 import jq
 from attr.converters import default_if_none
 from pathlib import Path
@@ -13,6 +15,50 @@ from arcana.exceptions import ArcanaUsageError, ArcanaEmptyDatasetError
 
 
 logger = logging.getLogger('arcana')
+
+@dataclass
+class JsonEdit():
+
+    path: str 
+    # a regular expression matching the paths of files to match (omitting
+    # subject/session IDs and extension)
+    jq_expr: str
+    # a JQ expression (see https://stedolan.github.io/jq/manual/v1.6/) with the
+    # exception that '{a_column_name}' will be substituted by the file path of
+    # the item matching the column ('{' and '}' need to be escaped by duplicating,
+    # i.e. '{{' and '}}').
+
+    # @classmethod
+    # def parse_str(cls, edit_str: str) -> list:
+    #     """Parses a string provided to a UI input box that may contain a series
+    #     of edits
+
+    #     Parameters
+    #     ----------
+    #     edit_str : str
+    #         string provided to a UI input box that potentially containing a
+    #         series of edits. Each edit should be enclosed in double quotes and
+    #         separated by white-space, and should contain the file paths to edit
+    #         and the JQ expression separated by '::', e.g. "fmaps/.*::.SliceTiming /= 1000.0"
+
+    #     Returns
+    #     -------
+    #     list[JsonEdit]
+    #         parsed JsonEdit objects from string representation
+    #     """
+    #     return ['::'.split(a) for a in shlex.split(edit_str)]
+
+
+def json_edits_converter(json_edits: list) -> ty.List[JsonEdit]:
+    if json_edits is None or json_edits is attr.NOTHING:
+        return []
+    parsed = []
+    for x in json_edits:
+        if isinstance(x, dict):
+            parsed.append(JsonEdit(**x))
+        else:
+            parsed.append(JsonEdit(*x))
+    return parsed
 
 
 @attr.s
@@ -28,8 +74,8 @@ class Bids(FileSystem):
         EDIT_STR - jq filter used to modify the JSON document.
     """
 
-    json_edits: ty.List[ty.Tuple[str, str]] = attr.ib(
-        factory=list, converter=default_if_none(factory=list))
+    json_edits: ty.List[JsonEdit] = attr.ib(
+        factory=list, converter=json_edits_converter)
 
     alias = "bids"
 
@@ -76,8 +122,8 @@ class Bids(FileSystem):
                                        row)        
 
     def file_group_stem_path(self, file_group):
-        dn = file_group.row
-        fs_path = self.root_dir(dn)
+        row = file_group.row
+        fs_path = self.root_dir(row)
         parts = file_group.path.split('/')
         if parts[-1] == '':
             parts = parts[:-1]
@@ -92,11 +138,11 @@ class Bids(FileSystem):
             # append the first to parts of the path before the row ID (e.g. sub-01/ses-02)
             fs_path = fs_path.joinpath(*parts[:2])
             parts = parts[2:]
-        fs_path /= self.row_path(dn)
+        fs_path /= self.row_path(row)
         if parts:  # The whole derivatives directories can be the output for a BIDS app
             for part in parts[:-1]:
                 fs_path /= part
-            fname = '_'.join(dn.ids[h] for h in dn.dataset.hierarchy) + '_' + parts[-1]
+            fname = '_'.join(row.ids[h] for h in row.dataset.hierarchy) + '_' + parts[-1]
             fs_path /= fname
         return fs_path
 
@@ -154,13 +200,13 @@ class Bids(FileSystem):
         col_paths = {}
         for col_name, item in file_group.row.items():
             rel_path = self.file_group_stem_path(item).relative_to(
-                file_group.row.dataset.root_dir)
+                self.row_path(file_group.row))
             col_paths[col_name] = str(rel_path) + '.' + file_group.ext
             
-        for name_path_re, edit_str in self.json_edits:
-            edit_str = edit_str.format(**col_paths)
-            if re.match(name_path_re, file_group.path):
-                dct = jq.compile(edit_str).input(lazy_load_json()).first()
+        for jedit in self.json_edits:
+            edit_str = edit_str.format(**col_paths)  # subst col file paths
+            if re.match(jedit.path, file_group.path):
+                dct = jq.compile(jedit.jq_expr).input(lazy_load_json()).first()
         # Write dictionary back to file if it has been loaded
         if dct is not None:
             with open(fs_path, 'w') as f:

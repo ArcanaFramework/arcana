@@ -343,7 +343,9 @@ def to_bids(row_frequency, inputs, dataset, id, json_edits, fixed_json_edits,
     """Takes generic inptus and stores them within a BIDS dataset
     """
     # Update the Bids store with the JSON edits requested by the user
-    dataset.store.json_edits = fixed_json_edits + parse_json_edits(json_edits)
+    je_args = shlex.split(json_edits)
+    dataset.store.json_edits = fixed_json_edits + list(zip(je_args[::2],
+                                                           je_args[1::2]))
     for inpt in inputs:
         dataset.add_sink(inpt.name, inpt.format, path=inpt.path)
     row = dataset.row(row_frequency, id)
@@ -393,14 +395,3 @@ def extract_bids(dataset: Dataset,
             item.get()  # download to host if required
             output_paths.append(item.value)
     return tuple(output_paths) if len(outputs) > 1 else output_paths[0]
-
-
-def parse_json_edits(edit_str: str):
-    if edit_str is None or edit_str == attr.NOTHING:
-        return []
-    parser = ArgumentParser()
-    parser.add_argument(
-        '--edit', '-e', nargs=2, action='append',
-        metavar=('FILE_PATH', 'JQ_EXPRESSION'),
-        help="Edit a field(s) of a JSON file ")
-    return parser.parse_args(shlex.split(edit_str)).edit
