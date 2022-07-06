@@ -630,7 +630,7 @@ class Dataset():
         return row
 
     def apply_pipeline(self, name, workflow, inputs, outputs, row_frequency=None,
-                       overwrite=False):
+                       overwrite=False, converter_args=None):
         """Connect a Pydra workflow as a pipeline of the dataset
 
         Parameters
@@ -649,6 +649,9 @@ class Dataset():
             by default the highest row frequency (e.g. per-session for Clinical)
         overwrite : bool, optional
             overwrite connections to previously connected sinks, by default False
+        converter_args : dict[str, dict]
+            keyword arguments passed on to the converter to control how the
+            conversion is performed.
 
         Returns
         -------
@@ -680,7 +683,8 @@ class Dataset():
             row_frequency=row_frequency,
             workflow=workflow,
             inputs=parsed_conns(inputs, Input),
-            outputs=parsed_conns(outputs, Output))
+            outputs=parsed_conns(outputs, Output),
+            converter_args=converter_args)
         for outpt in pipeline.outputs:
             sink = self[outpt.col_name]
             if sink.pipeline_name is not None:

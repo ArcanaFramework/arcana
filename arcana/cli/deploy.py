@@ -506,17 +506,17 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
                 f"No column added for '{col_name}' column as it uses built-in "
                 "type `arcana.core.data.row.DataRow`")
             continue
+        path, qualifiers = extract_qualifiers_from_path(match_criteria)
+        source_kwargs = qualifiers.pop('criteria', {})
+        converter_args[col_name] = qualifiers.pop('converter', {})
+        if qualifiers:
+            raise ArcanaUsageError(
+                "Unrecognised qualifier namespaces extracted from path for "
+                f"{col_name} (expected ['criteria', 'converter']): {qualifiers}")        
         if col_name in dataset.columns:
             column = dataset[col_name]
             logger.info(f"Found existing source column {column}")
         else:
-            path, qualifiers = extract_qualifiers_from_path(match_criteria)
-            source_kwargs = qualifiers.pop('criteria', {})
-            converter_args[col_name] = qualifiers.pop('converter', {})
-            if qualifiers:
-                raise ArcanaUsageError(
-                    "Unrecognised qualifier namespaces extracted from path for "
-                    f"{col_name} (expected ['criteria', 'converter']): {qualifiers}")
             logger.info(f"Adding new source column '{col_name}'")
             dataset.add_source(name=col_name, format=col_format, path=path,
                                is_regex=True, **source_kwargs)
@@ -528,6 +528,12 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
         format = resolve_class(format_name, prefixes=['arcana.data.formats'])
         col_format = resolve_class(col_format_name, prefixes=['arcana.data.formats'])
         pipeline_outputs.append(PipelineOutput(col_name, pydra_field, format))
+        path, qualifiers = extract_qualifiers_from_path(path_expr)
+        converter_args[col_name] = qualifiers.pop('converter', {})
+        if qualifiers:
+            raise ArcanaUsageError(
+                "Unrecognised qualifier namespaces extracted from path for "
+                f"{col_name} (expected ['criteria', 'converter']): {qualifiers}")            
         if col_name in dataset.columns:
             column = dataset[col_name]
             if not column.is_sink:
@@ -535,12 +541,6 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
                     "Output column name '{col_name}' shadows existing source column")
             logger.info(f"Found existing sink column {column}")
         else:
-            path, qualifiers = extract_qualifiers_from_path(match_criteria)
-            converter_args[col_name] = qualifiers.pop('converter', {})
-            if qualifiers:
-                raise ArcanaUsageError(
-                    "Unrecognised qualifier namespaces extracted from path for "
-                    f"{col_name} (expected ['criteria', 'converter']): {qualifiers}")            
             logger.info(f"Adding new source column '{col_name}'")
             dataset.add_sink(name=col_name, format=col_format, path=path)
 
@@ -566,7 +566,8 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
     else:
         pipeline = dataset.apply_pipeline(
             pipeline_name, task, inputs=pipeline_inputs,
-            outputs=pipeline_outputs, row_frequency=row_frequency, overwrite=overwrite)
+            outputs=pipeline_outputs, row_frequency=row_frequency,
+            overwrite=overwrite, converter_args=converter_args)
 
     # Instantiate the Pydra workflow
     wf = pipeline(cache_dir=pipeline_cache_dir)

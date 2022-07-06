@@ -484,7 +484,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         
     
     @classmethod
-    def converter_task(cls, from_format, name):
+    def converter_task(cls, from_format, name, **kwargs):
         """Adds a converter row to a workflow
 
         Parameters
@@ -493,6 +493,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             the file-group class to convert from
         taks_name: str
             the name for the converter task
+        **kwargs: dict[str, ty.Any]
+            keyword arguments passed through to the converter
 
         Returns
         -------
@@ -513,9 +515,12 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             from_format=from_format,
             file_group=wf.lzin.to_convert))
 
-        # Create converter row
-        converter, output_lfs = cls.find_converter(from_format)(**{
-            n: getattr(wf.access_paths.lzout, n) for n in from_format.fs_names()})
+        # Aggregate converter inputs and combine with fixed keyword args
+        conv_inputs = {n: getattr(wf.access_paths.lzout, n)
+                       for n in from_format.fs_names()}
+        conv_inputs.update(kwargs)
+        # Create converter node
+        converter, output_lfs = cls.find_converter(from_format)(**conv_inputs)
         # If there is only one output lazy field, place it in a tuple so it can
         # be zipped with cls.fs_names()
         if isinstance(output_lfs, LazyField):
