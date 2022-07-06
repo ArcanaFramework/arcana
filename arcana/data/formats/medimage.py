@@ -6,6 +6,7 @@ import json
 import pydicom
 import numpy as np
 import nibabel
+from pydra import Workflow
 from pydra.tasks.dcm2niix import Dcm2Niix
 # Hack to get module to load until pydra-mrtrix is published on PyPI
 from pydra.tasks.mrtrix3.utils import MRConvert
@@ -280,12 +281,31 @@ class Nifti(NeuroImage):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
+    def dcm2niix(cls, fs_path, extract_volume=None):
+        if extract_volume is not None:
+            wf = Workflow(input_spec=['in_dir', 'compress'])
+            in_dir = wf.lzin.in_dir
+            compress = wf.lzin.compress
+        else:
+            in_dir = fs_path
+            compress = 'n'
         node = Dcm2Niix(
-            in_dir=fs_path,
+            in_dir=in_dir,
             out_dir='.',
-            compress='n')
-        return node, node.lzout.out_file
+            name='dcm2niix',
+            compress=compress)
+        if extract_volume is not None:
+            wf.add(node)
+            wf.add(MRConvert(
+                in_file=wf.dcm2niix.lzout.out_file,
+                coord=[3, extract_volume],
+                axes=[0, 1, 2],
+                name='mrconvert'))
+            wf.set_output(('out_file', wf.mrconvert.lzout.out_file))
+            out = wf, wf.lzout.out_file
+        else:
+            out = node, node.lzout.out_file
+        return out
     
 
 class NiftiGz(Nifti):
