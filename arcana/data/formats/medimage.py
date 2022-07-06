@@ -2,11 +2,13 @@ from copy import copy
 from abc import ABCMeta, abstractmethod
 import os
 import os.path as op
+from pathlib import Path
+import jq
 import json
 import pydicom
 import numpy as np
 import nibabel
-from pydra import Workflow
+from pydra import Workflow, mark
 from pydra.tasks.dcm2niix import Dcm2Niix
 # Hack to get module to load until pydra-mrtrix is published on PyPI
 from pydra.tasks.mrtrix3.utils import MRConvert
@@ -281,8 +283,9 @@ class Nifti(NeuroImage):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path, extract_volume=None):
-        if extract_volume is not None:
+    def dcm2niix(cls, fs_path, extract_volume=None, side_car_jq=None):
+        as_workflow = extract_volume is not None or side_car_jq is not None
+        if as_workflow:
             wf = Workflow(input_spec=['in_dir', 'compress'])
             in_dir = wf.lzin.in_dir
             compress = wf.lzin.compress
@@ -294,22 +297,46 @@ class Nifti(NeuroImage):
             out_dir='.',
             name='dcm2niix',
             compress=compress)
-        if extract_volume is not None:
+        if as_workflow:
             wf.add(node)
-            wf.add(MRConvert(
-                in_file=wf.dcm2niix.lzout.out_file,
-                coord=[3, extract_volume],
-                axes=[0, 1, 2],
-                name='mrconvert'))
-            wf.set_output(('out_file', wf.mrconvert.lzout.out_file))
-            wf.set_output(('out_json', wf.dcm2niix.lzout.out_json))
+            out_file = wf.dcm2niix.lzout.out_file
+            out_json = wf.dcm2niix.lzout.out_json
+            if extract_volume is not None:
+                wf.add(MRConvert(
+                    in_file=out_file,
+                    coord=[3, extract_volume],
+                    axes=[0, 1, 2],
+                    name='mrconvert'))
+                out_file = wf.mrconvert.lzout.out_file
+            if side_car_jq is not None:
+                wf.add(
+                    edit_side_car,
+                    in_file=out_json,
+                    jq_expr=side_car_jq,
+                    name='json_edit')
+                out_json = wf.json_edit.lzout.out
+            wf.set_output(('out_file', out_file))
+            wf.set_output(('out_json', out_json))
             wf.set_output(('out_bvec', wf.dcm2niix.lzout.out_bvec))
             wf.set_output(('out_bval', wf.dcm2niix.lzout.out_bval))
             out = wf, wf.lzout.out_file
         else:
             out = node, node.lzout.out_file
         return out
-    
+
+
+@mark.task
+def edit_side_car(in_file: Path, jq_expr: str, out_file=None) -> Path:
+    """"Applys ad-hoc edit of JSON side car with JQ query language"""
+    if out_file is None:
+        out_file = in_file
+    with open(in_file) as f:
+        dct = json.load(f)
+    dct = jq.compile(jq_expr).input(dct).first()
+    with open(out_file, 'w') as f:
+        json.dump(dct, f)
+    return in_file
+
 
 class NiftiGz(Nifti):
 
