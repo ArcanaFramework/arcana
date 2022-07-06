@@ -302,6 +302,9 @@ class Nifti(NeuroImage):
                 axes=[0, 1, 2],
                 name='mrconvert'))
             wf.set_output(('out_file', wf.mrconvert.lzout.out_file))
+            wf.set_output(('out_json', wf.dcm2niix.lzout.out_json))
+            wf.set_output(('out_bvec', wf.dcm2niix.lzout.out_bvec))
+            wf.set_output(('out_bval', wf.dcm2niix.lzout.out_bval))
             out = wf, wf.lzout.out_file
         else:
             out = node, node.lzout.out_file
