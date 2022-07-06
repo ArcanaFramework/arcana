@@ -135,17 +135,17 @@ JSON_EDIT_TESTS = {
                 path='fmap/magnitude1',
                 orig_side_car={},
                 edited_side_car={
-                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii'}),
+                    'IntendedFor': 'func/sub-1_ses-1_task-rest_bold.nii'}),
             'fmap_mag2': SourceNiftiXBlueprint(
                 path='fmap/magnitude2',
                 orig_side_car={},
                 edited_side_car={
-                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii'}),
+                    'IntendedFor': 'func/sub-1_ses-1_task-rest_bold.nii'}),
             'fmap_phasediff': SourceNiftiXBlueprint(
                 path='fmap/phasediff',
                 orig_side_car={},
                 edited_side_car={
-                    'IntendedFor': 'sub-1/ses-1/func/sub-1_ses-1_task-rest_bold.nii'}),
+                    'IntendedFor': 'func/sub-1_ses-1_task-rest_bold.nii'}),
             })}
 
 

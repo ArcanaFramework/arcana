@@ -28,37 +28,17 @@ class JsonEdit():
     # the item matching the column ('{' and '}' need to be escaped by duplicating,
     # i.e. '{{' and '}}').
 
-    # @classmethod
-    # def parse_str(cls, edit_str: str) -> list:
-    #     """Parses a string provided to a UI input box that may contain a series
-    #     of edits
-
-    #     Parameters
-    #     ----------
-    #     edit_str : str
-    #         string provided to a UI input box that potentially containing a
-    #         series of edits. Each edit should be enclosed in double quotes and
-    #         separated by white-space, and should contain the file paths to edit
-    #         and the JQ expression separated by '::', e.g. "fmaps/.*::.SliceTiming /= 1000.0"
-
-    #     Returns
-    #     -------
-    #     list[JsonEdit]
-    #         parsed JsonEdit objects from string representation
-    #     """
-    #     return ['::'.split(a) for a in shlex.split(edit_str)]
-
-
-def json_edits_converter(json_edits: list) -> ty.List[JsonEdit]:
-    if json_edits is None or json_edits is attr.NOTHING:
-        return []
-    parsed = []
-    for x in json_edits:
-        if isinstance(x, dict):
-            parsed.append(JsonEdit(**x))
-        else:
-            parsed.append(JsonEdit(*x))
-    return parsed
+    @classmethod
+    def attr_converter(cls, json_edits: list) -> list:
+        if json_edits is None or json_edits is attr.NOTHING:
+            return []
+        parsed = []
+        for x in json_edits:
+            if isinstance(x, dict):
+                parsed.append(JsonEdit(**x))
+            else:
+                parsed.append(JsonEdit(*x))
+        return parsed
 
 
 @attr.s
@@ -74,8 +54,8 @@ class Bids(FileSystem):
         EDIT_STR - jq filter used to modify the JSON document.
     """
 
-    json_edits: ty.List[JsonEdit] = attr.ib(
-        factory=list, converter=json_edits_converter)
+    json_edits: ty.List[JsonEdit] = attr.ib(factory=list,
+                                            converter=JsonEdit.attr_converter)
 
     alias = "bids"
 
@@ -200,13 +180,13 @@ class Bids(FileSystem):
         col_paths = {}
         for col_name, item in file_group.row.items():
             rel_path = self.file_group_stem_path(item).relative_to(
-                self.row_path(file_group.row))
+                file_group.row.dataset.root_dir / self.row_path(file_group.row))
             col_paths[col_name] = str(rel_path) + '.' + file_group.ext
             
         for jedit in self.json_edits:
-            edit_str = edit_str.format(**col_paths)  # subst col file paths
+            jq_expr = jedit.jq_expr.format(**col_paths)  # subst col file paths
             if re.match(jedit.path, file_group.path):
-                dct = jq.compile(jedit.jq_expr).input(lazy_load_json()).first()
+                dct = jq.compile(jq_expr).input(lazy_load_json()).first()
         # Write dictionary back to file if it has been loaded
         if dct is not None:
             with open(fs_path, 'w') as f:
