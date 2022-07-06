@@ -6,6 +6,8 @@ import click
 import docker
 import docker.errors
 import tempfile
+from collections import defaultdict
+import shlex
 from traceback import format_exc
 from arcana import __version__
 from arcana.core.cli import cli
@@ -458,11 +460,39 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
         # Adds a single row to the dataset (i.e. skips a full scan)
         dataset.add_leaf(single_row.split(','))
 
+    def extract_qualifiers_from_path(user_input: str):
+        """Extracts out "qualifiers" from the user-inputted paths. These are
+        in the form 'path kw1=val1 kw2=val2...
+
+        Parameters
+        ----------
+        col_name : str
+            name of the column the 
+        user_input : str
+            The path expression + qualifying keyword args to extract
+
+        Returns
+        -------
+        path : str
+            the path expression stripped of qualifiers
+        qualifiers : defaultdict[dict]
+            the extracted qualifiers
+        """
+        qualifiers = defaultdict(dict)
+        parts = shlex.split(match_criteria)
+        path = parts[0]
+        for part in parts:
+            full_name, val = part.split('=', maxsplit=1)
+            ns, name = full_name.split('.', maxsplit=1)
+            qualifiers[ns][name] = val
+        return path, qualifiers
+
     pipeline_inputs = []
-    for col_name, col_format_name, col_path, pydra_field, format_name in input:
+    converter_args = {}  # Arguments passed to converter
+    for col_name, col_format_name, match_criteria, pydra_field, format_name in input:
         col_format = resolve_class(col_format_name, prefixes=['arcana.data.formats'])
         format = resolve_class(format_name, prefixes=['arcana.data.formats'])
-        if not col_path and format != DataRow:
+        if not match_criteria and format != DataRow:
             logger.warning(
                 f"Skipping '{col_name}' source column as no input was provided")
             continue
@@ -480,14 +510,21 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
             column = dataset[col_name]
             logger.info(f"Found existing source column {column}")
         else:
+            path, qualifiers = extract_qualifiers_from_path(match_criteria)
+            source_kwargs = qualifiers.pop('criteria', {})
+            converter_args[col_name] = qualifiers.pop('converter', {})
+            if qualifiers:
+                raise ArcanaUsageError(
+                    "Unrecognised qualifier namespaces extracted from path for "
+                    f"{col_name} (expected ['criteria', 'converter']): {qualifiers}")
             logger.info(f"Adding new source column '{col_name}'")
-            dataset.add_source(name=col_name, format=col_format, path=col_path,
-                               is_regex=True)
+            dataset.add_source(name=col_name, format=col_format, path=path,
+                               is_regex=True, **source_kwargs)
             
     logger.debug("Pipeline inputs: %s", pipeline_inputs)
 
     pipeline_outputs = []
-    for col_name, col_format_name, col_path, pydra_field, format_name in output:
+    for col_name, col_format_name, path_expr, pydra_field, format_name in output:
         format = resolve_class(format_name, prefixes=['arcana.data.formats'])
         col_format = resolve_class(col_format_name, prefixes=['arcana.data.formats'])
         pipeline_outputs.append(PipelineOutput(col_name, pydra_field, format))
@@ -498,8 +535,14 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
                     "Output column name '{col_name}' shadows existing source column")
             logger.info(f"Found existing sink column {column}")
         else:
+            path, qualifiers = extract_qualifiers_from_path(match_criteria)
+            converter_args[col_name] = qualifiers.pop('converter', {})
+            if qualifiers:
+                raise ArcanaUsageError(
+                    "Unrecognised qualifier namespaces extracted from path for "
+                    f"{col_name} (expected ['criteria', 'converter']): {qualifiers}")            
             logger.info(f"Adding new source column '{col_name}'")
-            dataset.add_sink(name=col_name, format=col_format, path=col_path)
+            dataset.add_sink(name=col_name, format=col_format, path=path)
 
     logger.debug("Pipeline outputs: %s", pipeline_outputs)
 

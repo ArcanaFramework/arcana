@@ -100,9 +100,9 @@ class DataSource(DataColumn):
 
     quality_threshold: DataQuality = attr.ib(
         default=None, converter=optional(lambda q: DataQuality[str(q)]))
-    order: int = attr.ib(default=None)
+    order: int = attr.ib(default=None, converter=int)
     header_vals: ty.Dict[str, ty.Any] = attr.ib(default=None)
-    is_regex: bool = attr.ib(default=False)
+    is_regex: bool = attr.ib(default=False, converter=lambda x: x.lower() == 'true' if isinstance(x, str)  else x)
 
     is_sink = False
 
