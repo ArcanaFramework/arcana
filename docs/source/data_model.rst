@@ -2,18 +2,18 @@ Data model
 ==========
 
 Arcana's data model sets out to bridge the gap between
-the semi-structured trees that file-based data are typically stored in,
+the semi-structured data trees in which file-based data are typically stored in,
 and the tabular data frames required for statistical analysis. Note that this
-transformation is abstract, with the source data, and artefacts
-derived from them, remaining within original data tree.
+transformation is abstract, with the source data remaining within original data
+tree, and generated derivatives stored alongside them.
 
 The key classes of Arcana's data model are:
 
-* :ref:`Stores` - encapsulate tree-based file storage systems 
-* :ref:`Datasets` - comparable data to be jointly analysed (e.g. XNAT project or BIDS dataset)
-* :ref:`Rows and Spaces` - define tabular structures for classes of datasets
+* :ref:`Stores` - encapsulation of tree-based file storage systems 
+* :ref:`Datasets` - set of comparable measurement events (e.g. XNAT project or BIDS dataset containing MRI sessions)
+* :ref:`Rows and Spaces` - definition of tabular structures for dataset classes
 * :ref:`Columns` - the set of comparable elements across a dataset (e.g. T1-weighted MRI scans across every session, ages across all subjects)
-* :ref:`Formats` - pointers to the atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the data formats they are stored in
+* :ref:`Formats` - pointers to atomic elements of datasets (e.g. T1-weighted MRI scan, subject age), which specify the formats they are stored in
 
 
 Stores
@@ -82,87 +82,95 @@ See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls`
 Datasets
 --------
 
-In Arcana, a *dataset* refers to a collection of comparable data to be jointly
+In Arcana, a *dataset* refers to a collection of comparable data to be
 analysed (e.g. data from a single research study, or large collection such as the
 Human Connectome Project). Arcana datasets consist of both source data and the
 derivatives derived from them. Datasets are organised into a tree with a
 consistent "hierarchy" that classify a series of measurement events
 (e.g. groups, subjects, sessions). For example, the following dataset consisting
-of MR imaging sessions is stored in a directory tree with a hierarchy of
-"subjects" > "sessions"
+of imaging sessions sorted by subject and longintudinal timepoint within a
+directory tree
 
 .. code-block::
 
     my-dataset
     ├── subject1
-    │   ├── session1
+    │   ├── timepoint1
     │   │   ├── t1w_mprage
     │   │   ├── t2w_space
     │   │   └── bold_rest
-    │   └── session2
+    │   └── timepoint2
     │       ├── t1w_mprage
     │       ├── t2w_space
     │       └── bold_rest
     ├── subject2
-    │   ├── session1
+    │   ├── timepoint1
     │   │   ├── t1w_mprage
     │   │   ├── t2w_space
     │   │   └── bold_rest
-    │   └── session2
+    │   └── timepoint2
     │       ├── t1w_mprage
     │       ├── t2w_space
     │       └── bold_rest
-    └── subject1
-        ├── session1
+    └── subject3
+        ├── timepoint1
         │   ├── t1w_mprage
         │   ├── t2w_space
         │   └── bold_rest
-        └── session2
+        └── timepoint2
             ├── t1w_mprage
             ├── t2w_space
             └── bold_rest
 
-where each session is acquired at one of two "timepoints", Timepoint 1 or
-Timepoint 2.
+The leaf directories of the directory tree contain data from "session"
+measurement events, as designated by the combination of one of the three
+subject IDs and the two timepoint IDs.
 
 While the majority of data items are stored in the "leaves" of the tree (e.g. per-session),
 data can exist for any repeating element (e.g. per-subject, per-timepoint),
 whether it fits into the originanl hierarchy of the dataset or not. For example, statistics
 derived across all subjects at each longitudinal timepoint in the above example
-will be saved in new sub-directories of the root directory.
+will be saved in the "TIMEPOINT" of the root directory, and subject-specific
+data will be stored in "SUBJECT" sub-directories under each subject directory.
 
 .. code-block::
 
     my-dataset
-    ├── TIMEPOINTS
+    ├── TIMEPOINT
     │   ├── timepoint1
-    │   │   └── average_connectivity
+    │   │   └── avg_connectivity
     │   └── timepoint2
-    │       └── average_connectivity
-    ├── subject1
-    │   ├── session1
+    │       └── avg_connectivity
+    ├── subject1    
+    │   ├── SUBJECT
+    │   │   └── geneomics.dat
+    │   ├── timepoint1
     │   │   ├── t1w_mprage
     │   │   ├── t2w_space
     │   │   └── bold_rest
-    │   └── session2
+    │   └── timepoint2
     │       ├── t1w_mprage
     │       ├── t2w_space
     │       └── bold_rest
     ├── subject2
-    │   ├── session1
+    │   ├── SUBJECT
+    │   │   └── geneomics.dat    
+    │   ├── timepoint1
     │   │   ├── t1w_mprage
     │   │   ├── t2w_space
     │   │   └── bold_rest
-    │   └── session2
+    │   └── timepoint2
     │       ├── t1w_mprage
     │       ├── t2w_space
     │       └── bold_rest
-    └── subject1
-        ├── session1
+    └── subject3
+        ├── SUBJECT
+        │   └── geneomics.dat
+        ├── timepoint1
         │   ├── t1w_mprage
         │   ├── t2w_space
         │   └── bold_rest
-        └── session2
+        └── timepoint2
             ├── t1w_mprage
             ├── t2w_space
             └── bold_rest
@@ -177,10 +185,8 @@ For example, to define a new dataset corresponding to the XNAT project ID
 
     xnat_dataset = xnat_store.dataset(id='MYXNATPROJECT')
 
-For stores that can store datasets with arbitrary tree structures (e.g. file-system directories),
-the hierarchy of the dataset tree needs to be provided (see :ref:`data_spaces`).
-This is specified by providing a list of data frequencies corresponding to
-layers of the directory tree in descending order.
+For stores that support datasets with arbitrary tree structures (e.g. file-system directories),
+the hierarchy of layers in the data tree needs to be provided (see :ref:`data_spaces`).
 
 .. code-block:: python
 
@@ -211,9 +217,28 @@ XNAT project where all the test subjects are numbered *TEST01*, *TEST02*, *TEST0
 and the matched control subjects are numbered *CON01*, *CON02*, *CON03*,...,
 the IDs for each subject's group and "matched member" need to be inferred from the subject label.
 This can be done by providing an ``id_inference`` argument which takes a list
-of tuples, consisting of the dimension of the ID to infer from and a
+of tuples, consisting of the layer to infer the ID from and a
 regular-expression (Python syntax), with named groups corresponding to inferred
 IDs.
+
+    XNAT-PROJECT
+    ├── TEST01
+    │   └── TEST01_MR01
+    │       ├── t1w_mprage
+    │       └── t2w_space
+    ├── TEST02
+    │   └── TEST02_MR01
+    │       ├── t1w_mprage
+    │       └── t2w_space
+    ├── CON01
+    │   └── CON01_MR01
+    │       ├── t1w_mprage
+    │       └── t2w_space
+    └── CON02
+        └── CON02_MR01
+            ├── t1w_mprage
+            └── t2w_space
+    
 
 .. code-block:: python
 
@@ -222,12 +247,12 @@ IDs.
     xnat_dataset = xnat_store.dataset(
         id='MYXNATPROJECT',
         id_inference=[
-            ('subject', r'(?P<group>[A-Z]+)(?P<member>\d+)')])   
+            ('session', r'(?P<group>[A-Z]+)(?P<member>\d+)_MR(?P<timepoint>\d+)')])   
 
 
-Often there are sections of the tree that need to be omitted from a given analysis due to
-missing or corrupted data. These sections can be excluded with the
-``exclude`` argument, which takes a dictionary mapping the data
+Often there are sections of the tree that need to be omitted from a given
+analysis due to missing or corrupted data. These sections can be excluded with
+the ``exclude`` argument, which takes a dictionary mapping the data
 dimension to the list of IDs to exclude. You can exclude at different levels of
 the tree's hierarchy.
 
@@ -291,22 +316,21 @@ Rows and Spaces
 ---------------
 
 To map data trees onto tabular data frames, the nodes of the tree
-(e.g. imaging sessions, subjects) need to unravelled to form the rows of the
-frame. Most frequently these rows will be from the leaves of the tree (e.g.
-imaging sessions), but for items stored at different levels of the dataset's
-hierarchy, the rows will be of a lower "frequency" (e.g. per-subject or per-timepoint).
+(e.g. imaging sessions, subjects) need to unwrapped to form the rows of the
+frame. The majority of items will be stored at the leaves of the tree (e.g.
+imaging sessions), but items stored at different levels of the tree
+will occur at a lower frequency, e.g. per-subject or per-timepoint.
 Therefore, a single dataset actually maps onto multiple data frames of differing
-"row frequency". 
+"row frequencies". 
 
 The number of possible row frequencies depends on the depth of the hierarchy of
-the data tree. An item can be constant along any layer of the hierarchy,
+the data tree. An item can be singular in any layer of the hierarchy,
 therefore there are 2^N possible row frequencies for a data tree of depth N.
 For example, trees with two layers, 'a' and 'b', have four possible row
-frequencies, 'ab', 'a', 'b' and the dataset as a whole for singular items. 
+frequencies, 'ab', 'a', 'b' and the dataset as a whole. 
 In Arcana, this binary structure is refered as a "data space", drawing a
-loose analogy with a multi-dimensional space where
-each category groups are aligned along different axes and
-measurement events exist at points on a grid.
+loose analogy with a Cartesian space of dimension N in which measurement events
+occur 
 
 Data spaces used to class different types of datasets, such as a collection of imaging
 data collected for a clinical trial, or videos collected to assess
