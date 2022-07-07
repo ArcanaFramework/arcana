@@ -1,25 +1,31 @@
 Data model
 ==========
 
-Arcana contains a rich and flexible object model to access and manipulate data
-within data stores. While the framework hides most of the implementation details
-from the user, it is important to be familiar with the core concepts:
+Arcana's data model sets out to bridge the gap between
+the semi-structured trees that file-based data are typically stored in,
+and the tabular data frames required for statistical analysis. Note that this
+transformation is abstract, with the source data, and artefacts
+derived from them, remaining within original data tree.
 
-* :ref:`Stores` - abstraction of different storage systems and formats
-* :ref:`Spaces` - define the structure for a class of datasets
-* :ref:`Datasets` - sets of comparable data to be analysed (e.g. XNAT project or BIDS dataset)
-* :ref:`Formats` - the atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the file formats they are stored in
-* :ref:`DataColumns` - the set of comparable elements across a dataset (e.g. T1-weighted MRI scans across every session, ages across all subjects)
+The key classes of Arcana's data model are:
+
+* :ref:`Stores` - encapsulate tree-based file storage systems 
+* :ref:`Datasets` - comparable data to be jointly analysed (e.g. XNAT project or BIDS dataset)
+* :ref:`Rows and Spaces` - define tabular structures for classes of datasets
+* :ref:`Columns` - the set of comparable elements across a dataset (e.g. T1-weighted MRI scans across every session, ages across all subjects)
+* :ref:`File Formats` - file-format for atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the file formats they are stored in
+
 
 Stores
 ------
 
-Support for different storage techniques is provided by sub-classes of the
-:class:`.DataStore` class. :class:`.DataStore` classes not only encapsulate where the
-data is stored, e.g. on local disk or remote repository, but also how the data
-is accessed, e.g. whether it is in BIDS format, or whether to access files in
-an XNAT repository directly (i.e. as exposed to the container service) or purely
-using the API.
+Support for different file storage systems (e.g. `XNAT <https://xnat.org>`, `BIDS <https://bids.neuroimaging.io>`)
+is provided by sub-classes of the :class:`.DataStore` class. :class:`.DataStore`
+classes not only encapsulate where the data are stored, e.g. on local disk or
+remote repository, but also how the data are accessed, e.g. whether they are in
+BIDS format, or whether files in an XNAT
+repository can be accessed directly (i.e. as exposed to the container service),
+or purely using the API.
 
 There are four :class:`.DataStore` classes currently implemented (for
 instructions on how to add support for new systems see :ref:`alternative_stores`):
@@ -71,51 +77,7 @@ See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls`
     :class:`.Bids` don't need to be configured and can be accessed via their aliases,
     ``file`` and ``bids`` when defining a dataset.
 
-.. _data_spaces:
-
-Spaces
-------
-
-A key concept in Arcana's data model is that of "data spaces".
-This refers to the structure of measurement events within a given class of datasets,
-where a measurement event could be an MRI session in a clinical trial or a
-football player's performance in a scouting team's analysis for example.
-
-Measurement events in a dataset can typically be categorised in a number of ways. Taking the
-clinical trial example, each MRI session will belong to a particular subject
-and may also belong to a longitudinal timepoint and/or a particular study group.
-In the case of the scouting program, a set of player performance metrics will
-belong to a particular player, competition round, league, season and more.
-In Arcana, these category groups are considered to form the "data space"
-of the dataset, drawing a loose analogy with a multi-dimensional space where
-each category groups are aligned along different axes and
-measurement events exist at points on a grid.
-
-Different data spaces are defined in Arcana by subclassing the
-:class:`.DataSpace` enum. Enum members define both the axes of
-the space and all possible combinations of these axes (subspaces
-to stretch the analogy if you will). For example, the :class:`.Clinical`
-has the axes of **group**, **member** and **timepoint**, corresponding to the
-study group (e.g. 'test' or 'control'), within-group ID (relevant for matched
-control studies and arbitrary otherwise, equivalent to subject ID when there is
-only on study group), and longintudinal timepoint. These dimensions can be
-combined to give all the possible "frequencies" data can exist at within the
-dataset, i.e. (per):
-
-* **group** (group)
-* **member** (member)
-* **timepoint** (timepoint)
-* **session** (member + group + timepoint),
-* **subject** (member + group)
-* **batch** (group + timepoint)
-* **matchedpoint** (member + timepoint)
-* **dataset** ()
-
-Note that a particular dataset can have singleton dimensions
-(e.g. one study group or timepoint) and still exist in the data space.
-Therefore, when creating data spaces it is better to be inclusive of
-all potential dimensions (categories) in order to make them more general.
-
+.. _datasets::
 
 Datasets
 --------
@@ -123,10 +85,10 @@ Datasets
 In Arcana, a *dataset* refers to a collection of comparable data to be jointly
 analysed (e.g. data from a single research study or collection such as the
 Human Connectome Project). Arcana datasets consist of both source data and the
-derivatives generated from them. Datasets are typically organised into a
-tree with a defined "hierarchy" of data frequencies (see :ref:`Spaces`).
-For example, the following dataset stored in a directory tree within in the
-:class:`.Clinical` space, has a hierarchy of "subjects" > "sessions"
+derivatives derived from them. Datasets are organised into a tree with a
+consistent "hierarchy" of repeating elements (e.g. groups, subjects, sessions).
+For example, the following dataset stored in a directory tree,
+has a hierarchy of "subjects" > "sessions"
 
 .. code-block::
 
@@ -160,8 +122,7 @@ For example, the following dataset stored in a directory tree within in the
             └── bold_rest
 
 where *session1* is acquired at Timepoint 1 and *session2* is acquired at
-Timepoint 2. Note that there is only one study group in this example so it does
-not appear in the hierarchy.
+Timepoint 2.
 
 While the majority of data items are stored in the "leaf rows" of the tree (e.g. per-session),
 data can exist at "rows" of any row_frequency in the data space (e.g. per-subject, per-timepoint),
@@ -287,42 +248,57 @@ string separated by ':', e.g.
       medimage:Clinical group subject \
       --include subject 10:20
 
+.. _data_spaces:
 
-.. _data_formats:
+Rows and Spaces
+---------------
 
-Formats
--------
+To map data trees onto tabular data frames, repeating elements of the tree
+(e.g. imaging sessions, subjects) are unravelled to form the rows of the frame.
 
-Data items within dataset rows can be one of three types:
+This refers to the structure of measurement events within a given class of datasets,
+where a measurement event could be an MRI session in a clinical trial or a
+football player's performance in a scouting team's analysis for example.
 
-* :class:`.Field` (int, float, str or bool)
-* :class:`.ArrayField` (a sequence of int, float, str or bool)
-* :class:`.FileGroup` (single files, files + header/side-cars or directories)
+Measurement events in a dataset can typically be categorised in a number of ways. Taking the
+clinical trial example, each MRI session will belong to a particular subject
+and may also belong to a longitudinal timepoint and/or a particular study group.
+In the case of the scouting program, a set of player performance metrics will
+belong to a particular player, competition round, league, season and more.
+In Arcana, these category groups are considered to form the "data space"
+of the dataset, drawing a loose analogy with a multi-dimensional space where
+each category groups are aligned along different axes and
+measurement events exist at points on a grid.
 
-Items act as pointers to the data in the data store. Data in remote stores need to be
-cached locally with :meth:`.DataItem.get` before they can be accessed.
-Modified data is pushed back to the store with :meth:`.DataItem.put`.
+Different data spaces are defined in Arcana by subclassing the
+:class:`.DataSpace` enum. Enum members define both the axes of
+the space and all possible combinations of these axes (subspaces
+to stretch the analogy if you will). For example, the :class:`.Clinical`
+has the axes of **group**, **member** and **timepoint**, corresponding to the
+study group (e.g. 'test' or 'control'), within-group ID (relevant for matched
+control studies and arbitrary otherwise, equivalent to subject ID when there is
+only on study group), and longintudinal timepoint. These dimensions can be
+combined to give all the possible "frequencies" data can exist at within the
+dataset, i.e. (per):
 
-The :class:`.FileGroup` class is typically subclassed to specify the format of the files
-in the group. There are a number common file formats implemented in
-:mod:`arcana.data.formats.common`, including :class:`.Text`,
-:class:`.Zip`, :class:`.Json` and :class:`.Directory`. :class:`.FileGroup` subclasses
-may contain methods for conveniently accessing the file data and header metadata (e.g.
-:class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`) but this
-is not a requirement for usage in workflows.
+* **group** (group)
+* **member** (member)
+* **timepoint** (timepoint)
+* **session** (member + group + timepoint),
+* **subject** (member + group)
+* **batch** (group + timepoint)
+* **matchedpoint** (member + timepoint)
+* **dataset** ()
 
-Arcana will implicily handle conversions between file formats where a
-converter has been specified and is available on the processing machine.
-See :ref:`adding_formats` for detailed instructions on how to specify new file
-formats and conversions between them.
+Note that a particular dataset can have singleton dimensions
+(e.g. one study group or timepoint) and still exist in the data space.
+Therefore, when creating data spaces it is better to be inclusive of
+all potential dimensions (categories) in order to make them more general.
 
-On the command line, the file formats can be specified by *<full-module-path>:<class-name>*,
-e.g. ``arcana.data.formats.common:Text``, although if the format is in a submodule of
-``arcana.data.formats`` then it can be dropped for convenience, e.g. ``common:Text``. 
 
 .. _data_columns:
 
-DataColumns
+Columns
 -------
 
 Before any data can be accessed or appended to a dataset, columns need to be
@@ -426,6 +402,40 @@ initialised.
 
     # Print dimensions of T1-weighted MRI image for Subject 'sub01'
     print(bids_dataset['T1w']['sub01'].header['dim'])
+
+.. _data_formats:
+
+File Formats
+------------
+
+Data items within dataset rows can be one of three types:
+
+* :class:`.Field` (int, float, str or bool)
+* :class:`.ArrayField` (a sequence of int, float, str or bool)
+* :class:`.FileGroup` (single files, files + header/side-cars or directories)
+
+Items act as pointers to the data in the data store. Data in remote stores need to be
+cached locally with :meth:`.DataItem.get` before they can be accessed.
+Modified data is pushed back to the store with :meth:`.DataItem.put`.
+
+The :class:`.FileGroup` class is typically subclassed to specify the format of the files
+in the group. There are a number common file formats implemented in
+:mod:`arcana.data.formats.common`, including :class:`.Text`,
+:class:`.Zip`, :class:`.Json` and :class:`.Directory`. :class:`.FileGroup` subclasses
+may contain methods for conveniently accessing the file data and header metadata (e.g.
+:class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`) but this
+is not a requirement for usage in workflows.
+
+Arcana will implicily handle conversions between file formats where a
+converter has been specified and is available on the processing machine.
+See :ref:`adding_formats` for detailed instructions on how to specify new file
+formats and conversions between them.
+
+On the command line, the file formats can be specified by *<full-module-path>:<class-name>*,
+e.g. ``arcana.data.formats.common:Text``, although if the format is in a submodule of
+``arcana.data.formats`` then it can be dropped for convenience, e.g. ``common:Text``. 
+
+
 
 .. _Arcana: https://arcana.readthedocs.io
 .. _XNAT: https://xnat.org

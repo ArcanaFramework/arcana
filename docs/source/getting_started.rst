@@ -66,7 +66,7 @@ API or via the command-line interface (CLI).
 
 The basic usage pattern is
 
-#. Define a dataset to work with (see :ref:`Datasets`)
+#. Define a dataset to work with (see :ref:`datasets`)
 #. Specify columns in the dataset to access data from and store data to (see :ref:`data_columns`)
 #. Connect a `Pydra task or workflow <https://pydra.readthedocs.io/en/latest/components.html#dataflows-components-task-and-workflow>`_, or an analysis class between columns (see :ref:`Analysis classes`)
 #. Select derivatives to generate (see :ref:`derivatives`)
