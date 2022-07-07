@@ -13,7 +13,7 @@ The key classes of Arcana's data model are:
 * :ref:`Datasets` - comparable data to be jointly analysed (e.g. XNAT project or BIDS dataset)
 * :ref:`Rows and Spaces` - define tabular structures for classes of datasets
 * :ref:`Columns` - the set of comparable elements across a dataset (e.g. T1-weighted MRI scans across every session, ages across all subjects)
-* :ref:`File Formats` - file-format for atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the file formats they are stored in
+* :ref:`Formats` - file-format for atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the file formats they are stored in
 
 
 Stores
@@ -83,52 +83,90 @@ Datasets
 --------
 
 In Arcana, a *dataset* refers to a collection of comparable data to be jointly
-analysed (e.g. data from a single research study or collection such as the
+analysed (e.g. data from a single research study, or large collection such as the
 Human Connectome Project). Arcana datasets consist of both source data and the
 derivatives derived from them. Datasets are organised into a tree with a
-consistent "hierarchy" of repeating elements (e.g. groups, subjects, sessions).
-For example, the following dataset stored in a directory tree,
-has a hierarchy of "subjects" > "sessions"
+consistent "hierarchy" that classify a series of measurement events
+(e.g. groups, subjects, sessions). For example, the following dataset consisting
+of MR imaging sessions is stored in a directory tree with a hierarchy of
+"subjects" > "sessions"
 
 .. code-block::
 
     my-dataset
     ├── subject1
     │   ├── session1
-    │   │   ├── t1_mprage
-    │   │   ├── t2_space
+    │   │   ├── t1w_mprage
+    │   │   ├── t2w_space
     │   │   └── bold_rest
     │   └── session2
-    │       ├── t1_mprage
-    │       ├── t2_space
+    │       ├── t1w_mprage
+    │       ├── t2w_space
     │       └── bold_rest
     ├── subject2
     │   ├── session1
-    │   │   ├── t1_mprage
-    │   │   ├── t2_space
+    │   │   ├── t1w_mprage
+    │   │   ├── t2w_space
     │   │   └── bold_rest
     │   └── session2
-    │       ├── t1_mprage
-    │       ├── t2_space
+    │       ├── t1w_mprage
+    │       ├── t2w_space
     │       └── bold_rest
     └── subject1
         ├── session1
-        │   ├── t1_mprage
-        │   ├── t2_space
+        │   ├── t1w_mprage
+        │   ├── t2w_space
         │   └── bold_rest
         └── session2
-            ├── t1_mprage
-            ├── t2_space
+            ├── t1w_mprage
+            ├── t2w_space
             └── bold_rest
 
-where *session1* is acquired at Timepoint 1 and *session2* is acquired at
+where each session is acquired at one of two "timepoints", Timepoint 1 or
 Timepoint 2.
 
-While the majority of data items are stored in the "leaf rows" of the tree (e.g. per-session),
-data can exist at "rows" of any row_frequency in the data space (e.g. per-subject, per-timepoint),
-whether it fits into the hierarchy of the dataset or not. For example, statistics
+While the majority of data items are stored in the "leaves" of the tree (e.g. per-session),
+data can exist for any repeating element (e.g. per-subject, per-timepoint),
+whether it fits into the originanl hierarchy of the dataset or not. For example, statistics
 derived across all subjects at each longitudinal timepoint in the above example
 will be saved in new sub-directories of the root directory.
+
+.. code-block::
+
+    my-dataset
+    ├── TIMEPOINTS
+    │   ├── timepoint1
+    │   │   └── average_connectivity
+    │   └── timepoint2
+    │       └── average_connectivity
+    ├── subject1
+    │   ├── session1
+    │   │   ├── t1w_mprage
+    │   │   ├── t2w_space
+    │   │   └── bold_rest
+    │   └── session2
+    │       ├── t1w_mprage
+    │       ├── t2w_space
+    │       └── bold_rest
+    ├── subject2
+    │   ├── session1
+    │   │   ├── t1w_mprage
+    │   │   ├── t2w_space
+    │   │   └── bold_rest
+    │   └── session2
+    │       ├── t1w_mprage
+    │       ├── t2w_space
+    │       └── bold_rest
+    └── subject1
+        ├── session1
+        │   ├── t1w_mprage
+        │   ├── t2w_space
+        │   └── bold_rest
+        └── session2
+            ├── t1w_mprage
+            ├── t2w_space
+            └── bold_rest
+
 
 Datasets can be defined via the API using the :meth:`.DataStore.dataset` method.
 For example, to define a new dataset corresponding to the XNAT project ID
@@ -166,12 +204,12 @@ in new Python contexts.
     reloaded = FileSystem().load_dataset('/data/imaging/my-project')
 
 
-For some datasets, especially in stores where the tree hierarchy is fixed (e.g. XNAT),
-you may need to infer the ID(s) for one or more dimensions from the row labels
-following a given naming convention. For example, given an
+For datasets where the fundamental hierarchy of the storage system is fixed
+(e.g. XNAT), you may need to infer abstract layers of the hierarchy from the labels
+of the fixed layers following a naming convention. For example, given an
 XNAT project where all the test subjects are numbered *TEST01*, *TEST02*, *TEST03*,...
 and the matched control subjects are numbered *CON01*, *CON02*, *CON03*,...,
-the group and matched "member" IDs need to be inferred from the subject ID.
+the IDs for each subject's group and "matched member" need to be inferred from the subject label.
 This can be done by providing an ``id_inference`` argument which takes a list
 of tuples, consisting of the dimension of the ID to infer from and a
 regular-expression (Python syntax), with named groups corresponding to inferred
@@ -187,13 +225,11 @@ IDs.
             ('subject', r'(?P<group>[A-Z]+)(?P<member>\d+)')])   
 
 
-Often there are rows that need to be omitted from a given analysis due to
-missing or corrupted data. Such rows can be excluded with the
+Often there are sections of the tree that need to be omitted from a given analysis due to
+missing or corrupted data. These sections can be excluded with the
 ``exclude`` argument, which takes a dictionary mapping the data
-dimension to the list of IDs to exclude.
-
-You can exclude rows at different levels of data tree by provided ``exclude``,
-even within in the same dataset.
+dimension to the list of IDs to exclude. You can exclude at different levels of
+the tree's hierarchy.
 
 .. code-block:: python
 
@@ -248,38 +284,48 @@ string separated by ':', e.g.
       medimage:Clinical group subject \
       --include subject 10:20
 
+
 .. _data_spaces:
 
 Rows and Spaces
 ---------------
 
-To map data trees onto tabular data frames, repeating elements of the tree
-(e.g. imaging sessions, subjects) are unravelled to form the rows of the frame.
+To map data trees onto tabular data frames, the nodes of the tree
+(e.g. imaging sessions, subjects) need to unravelled to form the rows of the
+frame. Most frequently these rows will be from the leaves of the tree (e.g.
+imaging sessions), but for items stored at different levels of the dataset's
+hierarchy, the rows will be of a lower "frequency" (e.g. per-subject or per-timepoint).
+Therefore, a single dataset actually maps onto multiple data frames of differing
+"row frequency". 
 
-This refers to the structure of measurement events within a given class of datasets,
-where a measurement event could be an MRI session in a clinical trial or a
-football player's performance in a scouting team's analysis for example.
-
-Measurement events in a dataset can typically be categorised in a number of ways. Taking the
-clinical trial example, each MRI session will belong to a particular subject
-and may also belong to a longitudinal timepoint and/or a particular study group.
-In the case of the scouting program, a set of player performance metrics will
-belong to a particular player, competition round, league, season and more.
-In Arcana, these category groups are considered to form the "data space"
-of the dataset, drawing a loose analogy with a multi-dimensional space where
+The number of possible row frequencies depends on the depth of the hierarchy of
+the data tree. An item can be constant along any layer of the hierarchy,
+therefore there are 2^N possible row frequencies for a data tree of depth N.
+For example, trees with two layers, 'a' and 'b', have four possible row
+frequencies, 'ab', 'a', 'b' and the dataset as a whole for singular items. 
+In Arcana, this binary structure is refered as a "data space", drawing a
+loose analogy with a multi-dimensional space where
 each category groups are aligned along different axes and
 measurement events exist at points on a grid.
 
-Different data spaces are defined in Arcana by subclassing the
-:class:`.DataSpace` enum. Enum members define both the axes of
-the space and all possible combinations of these axes (subspaces
-to stretch the analogy if you will). For example, the :class:`.Clinical`
+Data spaces used to class different types of datasets, such as a collection of imaging
+data collected for a clinical trial, or videos collected to assess
+player performance for the scouting team of a football club for example.
+In these examples, the measurements are classified in different ways.
+Taking the clinical trial example, each MRI session will belong to a particular subject
+and may also belong to a longitudinal timepoint and/or a particular study group.
+In the case of the scouting program, a set of player performance metrics will
+belong to a particular player, competition round, league, season and more.
+
+
+Data spaces are defined by subclassing the :class:`.DataSpace` enums.
+Enum members define both the axes of the space and all possible combinations
+of these axes (subspaces to stretch the analogy if you will). For example, the :class:`.Clinical`
 has the axes of **group**, **member** and **timepoint**, corresponding to the
 study group (e.g. 'test' or 'control'), within-group ID (relevant for matched
 control studies and arbitrary otherwise, equivalent to subject ID when there is
 only on study group), and longintudinal timepoint. These dimensions can be
-combined to give all the possible "frequencies" data can exist at within the
-dataset, i.e. (per):
+combined to give all the possible row frequencies of the dataset, i.e. (per):
 
 * **group** (group)
 * **member** (member)
@@ -301,18 +347,17 @@ all potential dimensions (categories) in order to make them more general.
 Columns
 -------
 
-Before any data can be accessed or appended to a dataset, columns need to be
-added. Dataset columns are arrays of corresponding data items across the dataset,
-e.g. ages for every subject or T1-weighted MRI images for every session.
+Before data in a dataset can be manipulated, it must be assigned to a data frame.
+This is done by defining the "columns" of the dataset. Dataset columns are slices of corresponding
+data items across each "row" of a data frame, e.g. ages for every subject or
+T1-weighted MRI images for every session.
 
-Referring to them as "columns" is intended to draw a loose analogy with
-`data-frame columns in Pandas <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.columns.html>`_,
-as conceptually they are similar. However, unlike Pandas columns, Arcana
-columns can have different row frequencies (see :ref:`Spaces`).
-For example, age fields occur per subject, whereas T1-weighted images occur per
+When defining a column the "row frequency" of the data frame it belongs to
+(see :ref:`data_spaces`) needs to be specified. For example, age fields occur
+per subject, whereas T1-weighted images occur per
 imaging session. Items in a column do not need to be named consistently
-(although it is a good practice where possible), however,
-they must be of the same data format. 
+(although it makes it easier where possible), however,
+they must be encapsulated by the same data format (see :ref:`Formats`). 
 
 There are two types of columns in Arcana datasets, *sources* and *sinks*.
 Source columns select matching items across the dataset from existing data
@@ -405,10 +450,12 @@ initialised.
 
 .. _data_formats:
 
-File Formats
-------------
+Formats
+-------
 
-Data items within dataset rows can be one of three types:
+Data items within a dataset (i.e. the intersection of a column and a row) are
+encapsulated by :class:`DataFormat` objects, which will be subclasses of one
+three base classes:
 
 * :class:`.Field` (int, float, str or bool)
 * :class:`.ArrayField` (a sequence of int, float, str or bool)
@@ -431,10 +478,9 @@ converter has been specified and is available on the processing machine.
 See :ref:`adding_formats` for detailed instructions on how to specify new file
 formats and conversions between them.
 
-On the command line, the file formats can be specified by *<full-module-path>:<class-name>*,
+On the command line, file formats can be specified by *<full-module-path>:<class-name>*,
 e.g. ``arcana.data.formats.common:Text``, although if the format is in a submodule of
-``arcana.data.formats`` then it can be dropped for convenience, e.g. ``common:Text``. 
-
+``arcana.data.formats`` then that prefix can be dropped for convenience, e.g. ``common:Text``. 
 
 
 .. _Arcana: https://arcana.readthedocs.io
