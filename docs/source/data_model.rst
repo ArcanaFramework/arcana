@@ -13,7 +13,7 @@ The key classes of Arcana's data model are:
 * :ref:`Datasets` - comparable data to be jointly analysed (e.g. XNAT project or BIDS dataset)
 * :ref:`Rows and Spaces` - define tabular structures for classes of datasets
 * :ref:`Columns` - the set of comparable elements across a dataset (e.g. T1-weighted MRI scans across every session, ages across all subjects)
-* :ref:`Formats` - file-format for atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the file formats they are stored in
+* :ref:`Formats` - pointers to the atomic elements of a dataset (e.g. T1-weighted MRI scan, subject age) and the data formats they are stored in
 
 
 Stores
