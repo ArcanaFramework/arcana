@@ -11,9 +11,9 @@ The key classes of Arcana's data model are:
 
 * :ref:`Stores` - encapsulation of tree-based file storage systems 
 * :ref:`Datasets` - set of comparable measurement events (e.g. XNAT project or BIDS dataset containing MRI sessions)
-* :ref:`Rows and Spaces` - definition of tabular structures for dataset classes
-* :ref:`Columns` - the set of comparable elements across a dataset (e.g. T1-weighted MRI scans across every session, ages across all subjects)
-* :ref:`Formats` - pointers to atomic elements of datasets (e.g. T1-weighted MRI scan, subject age), which specify the formats they are stored in
+* :ref:`Items and Formats` - pointers to atomic elements of datasets (e.g. T1-weighted MRI scan, subject age), which specify the formats they are stored in
+* :ref:`Rows and Columns` - definition of tabular structures in a dataset
+* :ref:`Grids and Spaces` - Conceptual link between tree and tabular data structures
 
 
 Stores
@@ -210,6 +210,170 @@ in new Python contexts.
     reloaded = FileSystem().load_dataset('/data/imaging/my-project')
 
 
+.. _data_formats:
+
+Items and Formats
+-----------------
+
+Data items within a dataset (i.e. the intersection of a column and a row) are
+encapsulated by :class:`DataFormat` objects, which will be subclasses of one
+three base classes:
+
+* :class:`.Field` (int, float, str or bool)
+* :class:`.ArrayField` (a sequence of int, float, str or bool)
+* :class:`.FileGroup` (single files, files + header/side-cars or directories)
+
+Items act as pointers to the data in the data store. Data in remote stores need to be
+cached locally with :meth:`.DataItem.get` before they can be accessed.
+Modified data is pushed back to the store with :meth:`.DataItem.put`.
+
+The :class:`.FileGroup` class is typically subclassed to specify the format of the files
+in the group. There are a number common file formats implemented in
+:mod:`arcana.data.formats.common`, including :class:`.Text`,
+:class:`.Zip`, :class:`.Json` and :class:`.Directory`. :class:`.FileGroup` subclasses
+may contain methods for conveniently accessing the file data and header metadata (e.g.
+:class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`) but this
+is not a requirement for usage in workflows.
+
+Arcana will implicily handle conversions between file formats where a
+converter has been specified and is available on the processing machine.
+See :ref:`adding_formats` for detailed instructions on how to specify new file
+formats and conversions between them.
+
+On the command line, file formats can be specified by *<full-module-path>:<class-name>*,
+e.g. ``arcana.data.formats.common:Text``, although if the format is in a submodule of
+``arcana.data.formats`` then that prefix can be dropped for convenience, e.g. ``common:Text``. 
+
+
+.. _data_columns:
+
+Rows and Columns
+----------------
+
+Before data in a dataset can be manipulated, it must be assigned to a data frame.
+This is done by defining the "columns" of the dataset. Dataset columns are slices
+of corresponding data items across each "row" of a data frame, e.g. ages for
+every subject or T1-weighted MRI images for every session.
+
+To map data trees onto tabular data frames, the nodes of the tree
+(e.g. imaging sessions, subjects) need to unwrapped to form the rows of the
+frame. The majority of items will be stored at the leaves of the tree (e.g.
+imaging sessions), but items stored at different levels of the tree
+will occur at a lower frequency, e.g. per-subject or per-timepoint.
+Therefore, a single dataset actually maps onto multiple data frames of differing
+"row frequencies". 
+
+The number of possible row frequencies depends on the depth of the hierarchy of
+the data tree. An item can be singular in any layer of the hierarchy,
+therefore there are 2^N possible row frequencies for a data tree of depth N.
+For example, trees with two layers, 'a' and 'b', have four possible row
+frequencies, 'ab', 'a', 'b' and the dataset as a whole. 
+In Arcana, this binary structure is refered as a "data space", drawing a
+loose analogy with a Cartesian space of dimension N in which measurement events
+occur 
+
+When defining a column the "row frequency" of the data frame it belongs to
+(see :ref:`data_spaces`) needs to be specified. For example, age fields occur
+per subject, whereas T1-weighted images occur per
+imaging session. Items in a column do not need to be named consistently
+(although it makes it easier where possible), however,
+they must be encapsulated by the same data format (see :ref:`Formats`). 
+
+There are two types of columns in Arcana datasets, *sources* and *sinks*.
+Source columns select matching items across the dataset from existing data
+using a range of criteria:
+
+* path (can be a regular-expression)
+* data type
+* row row_frequency
+* quality threshold (only currently implemented for XNAT_ stores)
+* header values (only available for selected formats)
+* order within the data row (e.g. first T1-weighted scan that meets all other criteria in a session)
+
+Sink columns define how derived data will be written to the dataset.
+
+DataColumns are given a name, which is used to map to the inputs/outputs of pipelines.
+By default, this name is used by sinks to name the output fields/files stored
+in the dataset. However, if a specific output path is desired it can be
+specified by the ``path`` argument.
+
+Use the :meth:`.Dataset.add_source` and :meth:`.Dataset.add_sink` methods to add
+sources and sinks via the API.
+
+.. code-block:: python
+
+    from arcana.data.spaces.medimage import Clinical
+    from arcana.data.formats.medimage import Dicom, NiftiGz
+
+    xnat_dataset.add_source(
+        name='T1w',
+        path=r'.*t1_mprage.*'
+        format=Dicom,
+        order=1,
+        quality_threshold='usable',
+        is_regex=True
+    )
+
+    fs_dataset.add_sink(
+        name='brain_template',
+        format=NiftiGz,
+        row_frequency='group'
+    )
+
+To access the data in the columns once they are defined use the ``Dataset[]``
+operator
+
+.. code-block:: python
+
+    import matplotlib.pyplot as plt
+    from arcana.core.data.set import Dataset
+
+    # Get a column containing all T1-weighted MRI images across the dataset
+    xnat_dataset = Dataset.load('xnat-central//MYXNATPROJECT')
+    t1w = xnat_dataset['T1w']
+
+    # Plot a slice of the image data from a Subject sub01's imaging session
+    # at Timepoint T2. (Note: such data access is only available for selected
+    # data formats that have convenient Python readers)
+    plt.imshow(t1w['T2', 'sub01'].data[:, :, 30])
+
+
+Use the ``arcana source add`` and ``arcana sink add`` commands to add sources/sinks
+to a dataset using the CLI.
+
+.. code-block:: console
+
+    $ arcana dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
+      medimage:Dicom --path '.*t1_mprage.*' \
+      --order 1 --quality usable --regex
+
+    $ arcana dataset add-sink 'file///data/imaging/my-project:training' brain_template \
+      medimage:NiftiGz --row_frequency group
+
+
+One of the main benefits of using datasets in BIDS_ format is that the names
+and file formats of the data are strictly defined. This allows the :class:`.Bids`
+data store object to automatically add sources to the dataset when it is
+initialised.
+
+.. code-block:: python
+
+    from arcana.data.stores.bids import Bids
+    from arcana.data.stores.common import FileSystem
+    from arcana.data.spaces.medimage import Clinical
+
+    bids_dataset = Bids().dataset(
+        id='/data/openneuro/ds00014')
+
+    # Print dimensions of T1-weighted MRI image for Subject 'sub01'
+    print(bids_dataset['T1w']['sub01'].header['dim'])
+
+
+.. _data_spaces:
+
+Grids and Spaces
+----------------
+
 For datasets where the fundamental hierarchy of the storage system is fixed
 (e.g. XNAT), you may need to infer abstract layers of the hierarchy from the labels
 of the fixed layers following a naming convention. For example, given an
@@ -310,28 +474,6 @@ string separated by ':', e.g.
       --include subject 10:20
 
 
-.. _data_spaces:
-
-Rows and Spaces
----------------
-
-To map data trees onto tabular data frames, the nodes of the tree
-(e.g. imaging sessions, subjects) need to unwrapped to form the rows of the
-frame. The majority of items will be stored at the leaves of the tree (e.g.
-imaging sessions), but items stored at different levels of the tree
-will occur at a lower frequency, e.g. per-subject or per-timepoint.
-Therefore, a single dataset actually maps onto multiple data frames of differing
-"row frequencies". 
-
-The number of possible row frequencies depends on the depth of the hierarchy of
-the data tree. An item can be singular in any layer of the hierarchy,
-therefore there are 2^N possible row frequencies for a data tree of depth N.
-For example, trees with two layers, 'a' and 'b', have four possible row
-frequencies, 'ab', 'a', 'b' and the dataset as a whole. 
-In Arcana, this binary structure is refered as a "data space", drawing a
-loose analogy with a Cartesian space of dimension N in which measurement events
-occur 
-
 Data spaces used to class different types of datasets, such as a collection of imaging
 data collected for a clinical trial, or videos collected to assess
 player performance for the scouting team of a football club for example.
@@ -364,147 +506,6 @@ Note that a particular dataset can have singleton dimensions
 (e.g. one study group or timepoint) and still exist in the data space.
 Therefore, when creating data spaces it is better to be inclusive of
 all potential dimensions (categories) in order to make them more general.
-
-
-.. _data_columns:
-
-Columns
--------
-
-Before data in a dataset can be manipulated, it must be assigned to a data frame.
-This is done by defining the "columns" of the dataset. Dataset columns are slices of corresponding
-data items across each "row" of a data frame, e.g. ages for every subject or
-T1-weighted MRI images for every session.
-
-When defining a column the "row frequency" of the data frame it belongs to
-(see :ref:`data_spaces`) needs to be specified. For example, age fields occur
-per subject, whereas T1-weighted images occur per
-imaging session. Items in a column do not need to be named consistently
-(although it makes it easier where possible), however,
-they must be encapsulated by the same data format (see :ref:`Formats`). 
-
-There are two types of columns in Arcana datasets, *sources* and *sinks*.
-Source columns select matching items across the dataset from existing data
-using a range of criteria:
-
-* path (can be a regular-expression)
-* data type
-* row row_frequency
-* quality threshold (only currently implemented for XNAT_ stores)
-* header values (only available for selected formats)
-* order within the data row (e.g. first T1-weighted scan that meets all other criteria in a session)
-
-Sink columns define how derived data will be written to the dataset.
-
-DataColumns are given a name, which is used to map to the inputs/outputs of pipelines.
-By default, this name is used by sinks to name the output fields/files stored
-in the dataset. However, if a specific output path is desired it can be
-specified by the ``path`` argument.
-
-Use the :meth:`.Dataset.add_source` and :meth:`.Dataset.add_sink` methods to add
-sources and sinks via the API.
-
-.. code-block:: python
-
-    from arcana.data.spaces.medimage import Clinical
-    from arcana.data.formats.medimage import Dicom, NiftiGz
-
-    xnat_dataset.add_source(
-        name='T1w',
-        path=r'.*t1_mprage.*'
-        format=Dicom,
-        order=1,
-        quality_threshold='usable',
-        is_regex=True
-    )
-
-    fs_dataset.add_sink(
-        name='brain_template',
-        format=NiftiGz,
-        row_frequency='group'
-    )
-
-To access the data in the columns once they are defined use the ``Dataset[]``
-operator
-
-.. code-block:: python
-
-    import matplotlib.pyplot as plt
-    from arcana.core.data.set import Dataset
-
-    # Get a column containing all T1-weighted MRI images across the dataset
-    xnat_dataset = Dataset.load('xnat-central//MYXNATPROJECT')
-    t1w = xnat_dataset['T1w']
-
-    # Plot a slice of the image data from a Subject sub01's imaging session
-    # at Timepoint T2. (Note: such data access is only available for selected
-    # data formats that have convenient Python readers)
-    plt.imshow(t1w['T2', 'sub01'].data[:, :, 30])
-
-
-Use the ``arcana source add`` and ``arcana sink add`` commands to add sources/sinks
-to a dataset using the CLI.
-
-.. code-block:: console
-
-    $ arcana dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
-      medimage:Dicom --path '.*t1_mprage.*' \
-      --order 1 --quality usable --regex
-
-    $ arcana dataset add-sink 'file///data/imaging/my-project:training' brain_template \
-      medimage:NiftiGz --row_frequency group
-
-
-One of the main benefits of using datasets in BIDS_ format is that the names
-and file formats of the data are strictly defined. This allows the :class:`.Bids`
-data store object to automatically add sources to the dataset when it is
-initialised.
-
-.. code-block:: python
-
-    from arcana.data.stores.bids import Bids
-    from arcana.data.stores.common import FileSystem
-    from arcana.data.spaces.medimage import Clinical
-
-    bids_dataset = Bids().dataset(
-        id='/data/openneuro/ds00014')
-
-    # Print dimensions of T1-weighted MRI image for Subject 'sub01'
-    print(bids_dataset['T1w']['sub01'].header['dim'])
-
-.. _data_formats:
-
-Formats
--------
-
-Data items within a dataset (i.e. the intersection of a column and a row) are
-encapsulated by :class:`DataFormat` objects, which will be subclasses of one
-three base classes:
-
-* :class:`.Field` (int, float, str or bool)
-* :class:`.ArrayField` (a sequence of int, float, str or bool)
-* :class:`.FileGroup` (single files, files + header/side-cars or directories)
-
-Items act as pointers to the data in the data store. Data in remote stores need to be
-cached locally with :meth:`.DataItem.get` before they can be accessed.
-Modified data is pushed back to the store with :meth:`.DataItem.put`.
-
-The :class:`.FileGroup` class is typically subclassed to specify the format of the files
-in the group. There are a number common file formats implemented in
-:mod:`arcana.data.formats.common`, including :class:`.Text`,
-:class:`.Zip`, :class:`.Json` and :class:`.Directory`. :class:`.FileGroup` subclasses
-may contain methods for conveniently accessing the file data and header metadata (e.g.
-:class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`) but this
-is not a requirement for usage in workflows.
-
-Arcana will implicily handle conversions between file formats where a
-converter has been specified and is available on the processing machine.
-See :ref:`adding_formats` for detailed instructions on how to specify new file
-formats and conversions between them.
-
-On the command line, file formats can be specified by *<full-module-path>:<class-name>*,
-e.g. ``arcana.data.formats.common:Text``, although if the format is in a submodule of
-``arcana.data.formats`` then that prefix can be dropped for convenience, e.g. ``common:Text``. 
 
 
 .. _Arcana: https://arcana.readthedocs.io
