@@ -203,35 +203,34 @@ for the majority of datasets in the medical imaging field, the
 
 .. _data_formats:
 
-Items and Formats
------------------
+Items
+-----
 
-Data items within a dataset (i.e. the intersection of a column and a row) are
-encapsulated by :class:`DataItem` objects. There are three types of data items:
+Atomic items within a dataset are encapsulated by :class:`DataItem` objects.
+They are typically one of three sub-types:
 
+* :class:`.FileGroup` (single files, files + header/side-cars or directories)
 * :class:`.Field` (int, float, str or bool)
 * :class:`.ArrayField` (a sequence of int, float, str or bool)
-* :class:`.FileGroup` (single files, files + header/side-cars or directories)
 
-DataItems point to files and fields stored in the data store. Data in remote stores
+Data items reference files and fields stored in the data store. Data in remote stores
 is cached locally with :meth:`.DataItem.get` before they are accessed.
-Modified data is pushed back to the store with :meth:`.DataItem.put`.
+Derivative and modified data items are pushed back to the store with :meth:`.DataItem.put`.
 
-The :class:`.FileGroup` class is typically subclassed to specify the format of the files
-in the group. There are a number common file formats implemented in
-:mod:`arcana.data.formats.common`, including :class:`.Text`,
+The :class:`.FileGroup` class is typically subclassed to specify the format of the
+files/directories in the group. For example, there are a number common file
+formats implemented in :mod:`arcana.data.formats.common`, including :class:`.Text`,
 :class:`.Zip`, :class:`.Json` and :class:`.Directory`. :class:`.FileGroup` subclasses
-may contain methods for conveniently accessing the file data and header metadata (e.g.
-:class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`) but this
+may may also contain methods for conveniently accessing the file data and header
+metadata (e.g. :class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`) but this
 is not a requirement for usage in workflows.
 
-Arcana will implicily handle conversions between file formats where a
-converter has been specified and is available on the processing machine.
-See :ref:`adding_formats` for detailed instructions on how to specify new file
-formats and conversions between them.
+Arcana will implicily handle conversions between compatible file formats where a
+converter has been specified. See :ref:`adding_formats` for detailed
+instructions on how to specify new file formats and conversions between them.
 
-On the command line, file formats can be specified by *<full-module-path>:<class-name>*,
-e.g. ``arcana.data.formats.common:Text``, although if the format is in a submodule of
+On the command line, file formats are specified by *<full-module-path>:<class-name>* syntax,
+e.g. ``arcana.data.formats.common:Text``. If the format is in a submodule of
 ``arcana.data.formats`` then that prefix can be dropped for convenience, e.g. ``common:Text``. 
 
 
