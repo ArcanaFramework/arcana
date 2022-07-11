@@ -3,17 +3,19 @@ Data model
 
 Arcana's data model sets out to bridge the gap between
 the semi-structured data trees that file-based data are typically stored in,
-and the tabular data frames required for statistical analysis. Note that this
+and the tabular data frames used in statistical analysis. Note that this
 transformation is abstract, with the source data remaining within original data
 tree and generated derivatives stored alongside them.
 
 The key elements of Arcana's data model are:
 
-* :ref:`Stores` - tree-based file storage systems 
-* :ref:`Datasets` - sets of comparable data within a store (e.g. `XNAT <https://xnat.org>`__ project or `BIDS <https://bids.neuroimaging.io>`__ dataset)
-* :ref:`Items` - references to dataset elements (files, array and scalar fields) and the format they are stored in (e.g. DICOM, NIfTI, JSON, plain-text, etc..)
-* :ref:`Frames (Rows and Columns)` - abstract tables of data items within datasets
-* :ref:`Grids and Spaces` - conceptual link between tree and tabular data structures
+* :ref:`Stores` - tree-based file storage systems
+* :ref:`Datasets` - comparable data to be jointly analysed
+* :ref:`Items` - references to data elements: files, scalars, and arrays.
+    * sub-classes specify the data format, e.g. :class:`.medimage.Dicom`, :class:`.medimage.NiftiGzX`, :class:`.common.Json`
+* :ref:`data_columns` - abstract tables of data items within datasets
+* :ref:`data_spaces` - conceptual link between tree and tabular data structures
+* :ref:`data_grids` - trimming data points to a grid
 
 
 Stores
@@ -21,14 +23,14 @@ Stores
 
 Support for different file storage systems (e.g. `XNAT <https://xnat.org>`__, `BIDS <https://bids.neuroimaging.io>`__)
 is provided by sub-classes of the :class:`.DataStore` class. :class:`.DataStore`
-classes not only encapsulate where the data are stored, e.g. on local disk or
+sub-classes not only encapsulate where the data are stored, e.g. on local disk or
 remote repository, but also how the data are accessed, e.g. whether they are in
-BIDS format, or whether files in an XNAT
-repository can be accessed directly (i.e. as exposed to the container service),
-or purely using the API.
+BIDS format, or whether files in an XNAT repository can be accessed directly
+(i.e. as exposed to the container service), or purely using the API.
 
-There are four :class:`.DataStore` classes currently implemented (for
-instructions on how to add support for new systems see :ref:`alternative_stores`):
+There are four :class:`.DataStore` sub-classes in the common and medimage
+arcana packages (for instructions on how to add support for new systems
+see :ref:`alternative_stores`):
 
 * :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system
 * :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific)
@@ -44,10 +46,10 @@ To configure access to a store via the CLI use the ``arcana store add`` sub-comm
       --user user123 --cache_dir /work/xnat-cache
     Password:
 
+.. note::
+    See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls``.
 
-See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls``.
-
-To configure access to a data store a via the API, initialise the :class:`.DataStore`
+Alternatively, to configure access to a data store a via the Python API, initialise the :class:`.DataStore`
 sub-class corresponding to the required data location/access-method then save
 it to the YAML configuration file stored at `~/.arcana/stores.yaml`.
 
@@ -77,16 +79,16 @@ it to the YAML configuration file stored at `~/.arcana/stores.yaml`.
     :class:`.Bids` don't need to be configured and can be accessed via their aliases,
     ``file`` and ``bids`` when defining a dataset.
 
-.. _datasets::
+.. _datasets:
 
 Datasets
 --------
 
-In Arcana, a *dataset* refers to a collection of comparable data
-(e.g. data from a single research study, or large collection such as the
-Human Connectome Project). Arcana datasets consist of both source data and the
+In Arcana, a *dataset* refers to a collection of comparable data,
+e.g. data from a single research study, or large collection such as the
+Human Connectome Project. Arcana datasets consist of both source data and the
 derivatives derived from them. Datasets are organised into a tree with a
-consistent "hierarchy" that classifies a series of measurement events
+consistent "hierarchy" that classifies a series of data points
 (e.g. groups, subjects, sessions). For example, the following dataset consisting
 of imaging sessions sorted by subject and longintudinal timepoint within a
 directory tree
@@ -123,7 +125,7 @@ directory tree
             └── bold_rest
 
 The leaf sub-directories of the directory tree contain data from "image session"
-measurement events, as designated by the combination of one of the three
+data points, as designated by the combination of one of the three
 subject IDs and one of the two timepoint IDs.
 
 While the majority of data items are stored in the leaves of the tree (e.g. per-session),
@@ -169,16 +171,16 @@ the subject level of the tree
             └── bold_rest
 
 
-Datasets are referenced in the CLI by the nickname of the store it is stored in
-as saved by `arcana store add` (i.e. , see :ref:`Stores`) and the dataset ID,
-separated by '//'. For `FileSystem` an `Bids` stores, the dataset ID is just the
-absolute path to the file-system directory the data is stored in. For `Xnat`
+Datasets are referenced in the CLI by the nickname of the store they are stored in
+(as saved by ``arcana store add``, see :ref:`Stores`) and the dataset ID,
+separated by ``//``. For :class:`.FileSystem` and :class:`.Bids` stores, the dataset ID is just the
+absolute path to the file-system directory the data are stored in. For :class:`.Xnat`
 stores the dataset ID is the project ID. For example, if the login details
-for XNAT Central have been saved under the nickname *xnat-central*, then
-the *MYXNATPROJECT* project on XNAT central can be referenced by
+for XNAT Central have been saved under the nickname "xnat-central", then
+the "MYXNATPROJECT" project on XNAT central can be referenced by
 ``xnat-central//MYXNATPROJECT``.
 
-Alternatively dataset objects can be created via the Python API using the
+Alternatively, dataset objects can be created via the Python API using the
 :meth:`.DataStore.dataset` method. For example, to define a new dataset
 corresponding to *MYXNATPROJECT*
 
@@ -187,10 +189,10 @@ corresponding to *MYXNATPROJECT*
     xnat_dataset = xnat_store.dataset(id='MYXNATPROJECT')
 
 For stores that support datasets with arbitrary tree structures
-(i.e. :ref:`FileSystem`), the "data space" and the hierarchy of layers
+(i.e. :class:`.FileSystem`), the "data space" and the hierarchy of layers
 in the data tree needs to be provided. Data spaces are explained in more
-detail in :ref:`data_spaces`, however, for the majority of datasets in the
-medical imaging field, the `arcana.data.spaces.medimage.Clinical` space is
+detail in :ref:`data_spaces`. However, for the majority of datasets in the
+medical imaging field, the :class:`arcana.data.spaces.medimage.Clinical` space is
 appropriate.
 
 .. code-block:: python
@@ -200,8 +202,9 @@ appropriate.
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
-        # Define hierarchy within Clinical data spacethat defines sessions
-        # separated into sub-dirs by study group (i.e. test & control)
+        # Define the hierarchy of the dataset in which imaging session
+        # sub-directories are separated into directories via their study group
+        # (i.e. test & control)
         space=Clinical,
         hierarchy=['group', 'session'])  
 
@@ -227,62 +230,79 @@ The :class:`.FileGroup` class is typically subclassed to specify the format of t
 files/directories in the group. For example, there are a number common file
 formats implemented in :mod:`arcana.data.formats.common`, including
 
-* :class:`.Text`
-* :class:`.Zip`
-* :class:`.Json`
-* :class:`.Directory`
-* :class:`.FileGroup`
+* :class:`.common.Text`
+* :class:`.common.Zip`
+* :class:`.common.Json`
+* :class:`.common.Directory`
 
-Such sub-classesmay also contain methods for conveniently accessing the file data and header
+Such sub-classes may also contain methods for conveniently accessing the file data and header
 metadata (e.g. :class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`), but this
 is not necessary in general.
 
-Arcana will implicily handle conversions between compatible file formats where a
-converter has been specified. See :ref:`adding_formats` for detailed
+Arcana will implicily handle conversions between compatible file formats where
+there is a mismatch between the format of the item stored in the dataset and
+the format required by a pipeline, and a converter has been specified in the
+format class. See :ref:`adding_formats` for detailed
 instructions on how to specify new file formats and conversions between them.
 
-On the command line, file formats are specified by *<full-module-path>:<class-name>* syntax,
-e.g. ``arcana.data.formats.common:Text``. If the format is in a submodule of
+On the command line, file formats are specified by *<full-module-path>:<class-name>*,
+e.g. ``arcana.data.formats.common:Text``. However, if the format is in a submodule of
 ``arcana.data.formats`` then that prefix can be dropped for convenience, e.g. ``common:Text``. 
 
 
 .. _data_columns:
 
-Frames (Rows and Columns)
+Frames: Rows and Columns
 -------------------------
 
-Before data within a dataset can be manipulated, they must be assigned to a data frame.
-The "rows" of a data frame correspond to nodes across a single layer of the data
-tree, such as imaging sessions, subjects or study groups (e.g. 'test' or 'control'),
-and the "columns" are slices of comparable data items across each row, e.g.
-a T1-weighted MR acquisition for each imaging session, a genetic test for each
-subject, or an fMRI activation map derived for each study group.
+Before data within a dataset can be manipulated by Arcana, they must be
+assigned to a data frame. The "rows" of a data frame correspond to nodes
+across a single layer of the data tree, such as
 
-Defining a data frame in a dataset is done by adding "source" columns, to
-access existing (typically acquired) data, or "sink" columns, to define where
-derivatives will be stored within the data tree. The "row frequency"
-(e.g. per 'session', 'subject', etc...) of the data frame and format of the
-member items (see :ref:`Items`) need to be specified when adding a column
-to a dataset, and must be consistent across the column. 
+* imaging sessions
+* subjects
+* study groups (e.g. 'test' or 'control')
+
+and the "columns" are slices of comparable data items across each row, e.g.
+
+* T1-weighted MR acquisition for each imaging session
+* a genetic test for each subject
+* an fMRI activation map derived for each study group.
+
+A data frame is defined by adding "source" columns to access existing
+(typically acquired) data, and "sink" columns to define where
+derivatives will be stored within the data tree. The "row frequency" argument
+of the column (e.g. per 'session', 'subject', etc...) determines the data frame
+it belongs to. The format of the member items (see :ref:`Items`) also needs to
+be specified when adding a column to a dataset, and must be consistent within
+the column. 
 
 Files and fields containing the data to be accessed by a source column do not need to
-be named consistently across the dataset (although it makes it easier where possible).
-Source columns can be configured to select the matching item in each row of the
-frame via a number of criteria
+be named consistently across the dataset although it makes it easier where possible.
+Source columns are configured to select a single item in each row of the
+frame using several criteria
 
-* "path", either the relative file path for `FileSystem`/`Bids` stores, or scan-type for `Xnat`/`XnatViaCS` stores
-    * the path is treated as a regular-expression if the `is_regex` flag is set.
-* quality threshold (currently only available for XNAT_ stores)
-* header values (available for selected formats such as `arcana.data.formats.medimage.Dicom`)
-* order the item appears the data row (e.g. first T1-weighted scan that meets all other criteria in a session, currently only available for XNAT_ stores)
+* **path** - label for the file-group or field
+    * scan type for XNAT stores
+    * relative file path for file-system/BIDS stores
+    * treated as a regular-expression if the `is_regex` flag is set.
+* **quality threshold** - the minimum quality for the item to be included
+    * only applicable for XNAT_ stores
+* **header values** - header values are sometimes needed to distinguish file
+    * only available for selected item formats such as :class:`.medimage.Dicom`
+* **order** - the order that an item appears the data row
+    * e.g. first T1-weighted scan that meets all other criteria in a session
+    * only applicable for XNAT_ stores
 
-Sink columns define how derived data will be written to the dataset via their
-`path` argument. The provided path is either the relative path to the target location for
-`FileSystem`/`Bids` stores, or resource name for `Xnat`/`XnatViaCS` stores.
+The ``path`` argument provided to sink columns defines where derived data will
+be stored within the dataset
+
+* the resource name for XNAT stores.
+* the relative path to the target location for file-system stores
 
 Each column is assigned a name when it is created, which is used when
-accessing the data and connecting pipeline inputs and outputs to the dataset.
-By default, this name will be used as the path of the of sink columns.
+connecting pipeline inputs and outputs to the dataset and accessing the data directly.
+The column name is used as the default value for the paths of sink columns.
 
 Use the ``arcana source add`` and ``arcana sink add`` commands to add sources/sinks
 to a dataset using the CLI.
@@ -358,36 +378,122 @@ operator
 
 .. _data_spaces:
 
-Grids and Spaces
-----------------
+Spaces
+------
 
-The number of possible row frequencies depends on the depth of the hierarchy of
-the data tree. An item can be singular in any layer of the hierarchy,
-therefore there are 2^N possible row frequencies for a data tree of depth N.
-For example, trees with two layers, 'a' and 'b', have four possible row
-frequencies, 'ab', 'a', 'b' and the dataset as a whole. 
-In Arcana, this binary structure is refered as a "data space", drawing a
-loose analogy with a Cartesian space of dimension N in which measurement events
-occur 
+In addition to data frames corresponding to row frequencies that explicitly
+appear in the hierarchy of the data tree (see :ref:`data_columns`),
+there are a number that are implied, which may be needed to hold
+derivatives of a particular analysis. In the case of clinical imaging research
+studies/trials, imaging sessions are classified by the subject who
+was scanned. For longintudinal studies, the timepoint the session corresponds to
+is also used. The subjects themselves can be classified by which study group they 
+belong to. Therefore, we can factor typical imaging session classifications
+onto three "axes"
 
-whether it fits into the original hierarchy of the dataset or not. For example, statistics
-derived across all subjects at each longitudinal timepoint in the above example
-will be saved in the "TIMEPOINT" of the root directory, and subject-specific
-data will be stored in "SUBJECT" sub-directories under each subject directory.
+* **group** - study group (e.g. 'test' or 'control')
+* **member** - ID relative to group
+    * can be arbitrary or used to signify control-matched pairs
+    * e.g. the '03' in 'TEST03' & 'CONT03' pair of control-matched subject IDs
+* **timepoint** - longintudinal timepoint
+
+Depending on the hierarchy of the data tree, data belonging to these axial
+frequencies may or may not have a corresponding branch to store data
+within. In these cases, new branches are created off the root of the tree to
+hold the derivatives. For example, average trial performance data, calculated
+at each timepoint and the age difference between matched-control pairs, would
+need to be stored in new sub-branches
 
 .. code-block::
 
     my-dataset
     ├── TIMEPOINT
     │   ├── timepoint1
-    │   │   └── avg_connectivity
+    │   │   └── avg_trial_performance
     │   └── timepoint2
-    │       └── avg_connectivity
+    │       └── avg_trial_performance
     ├── MEMBER
     │   ├── member1
     │   │   └── age_diff
     │   └── member2
     │       └── age_diff
+    ├── group1
+    │   ├── member1    
+    │   │   ├── timepoint1
+    │   │   │   ├── t1w_mprage
+    │   │   │   ├── t2w_space
+    │   │   │   └── bold_rest
+    │   │   └── timepoint2
+    │   │       ├── t1w_mprage
+    │   │       ├── t2w_space
+    │   │       └── bold_rest
+    │   └── member2
+    │       ├── timepoint1
+    │       │   ├── t1w_mprage
+    │       │   ├── t2w_space
+    │       │   └── bold_rest
+    │       └── timepoint2
+    │           ├── t1w_mprage
+    │           ├── t2w_space
+    │           └── bold_rest
+    └── group2
+        |── member1    
+        │   ├── timepoint1
+        │   │   ├── t1w_mprage
+        │   │   ├── t2w_space
+        │   │   └── bold_rest
+        │   └── timepoint2
+        │       ├── t1w_mprage
+        │       ├── t2w_space
+        │       └── bold_rest
+        └── member2
+            ├── timepoint1
+            │   ├── t1w_mprage
+            │   ├── t2w_space
+            │   └── bold_rest
+            └── timepoint2
+                ├── t1w_mprage
+                ├── t2w_space
+                └── bold_rest
+
+In this framework, subject labels are equivalent to ``group + member`` labels
+and session labels are equivalent to ``group + member + timepint`` labels.
+Including all possible combinations of the axial frequencies, there are,
+2\ :sup:`N` potential row frequencies, where `N` is the depth of the tree.
+In Arcana, this binary structure is refered as a "data space".
+Note that a particular dataset can have singleton dimensions
+(e.g. one study group or timepoint) and still exist in the data space.
+Therefore, when creating data spaces it is better to be inclusive of
+all potential dimensions (categories) in order to make them more general.
+
+All potential combinations of axial frequencies are expanded in
+:class:`.DataSpace` enums to give each frequency a name. In the case
+of the :class:`.medimage.Clinical` data space the full list of members are
+
+* **group** (group)
+* **member** (member)
+* **timepoint** (timepoint)
+* **session** (member + group + timepoint),
+* **subject** (member + group)
+* **batch** (group + timepoint)
+* **matchedpoint** (member + timepoint)
+* **dataset** ()
+
+If they are not present in the data tree, these alternative frequencies can
+be stored in new branches in the same manner as axial frequencies
+
+.. code-block::
+
+    my-dataset
+    ├── BATCH
+    │   ├── group1_timepoint1
+    │   │   └── avg_connectivity
+    │   ├── group1_timepoint2
+    │   │   └── avg_connectivity    
+    │   ├── group2_timepoint1
+    │   │   └── avg_connectivity    
+    │   └── group2_timepoint2
+    │       └── avg_connectivity
     ├── MATCHEDPOINT
     │   ├── member1_timepoint1
     │   │   └── comparative_trial_performance
@@ -436,18 +542,27 @@ data will be stored in "SUBJECT" sub-directories under each subject directory.
                 ├── t2w_space
                 └── bold_rest
 
-For datasets where the fundamental hierarchy of the storage system is fixed
-(e.g. XNAT), you may need to infer abstract layers of the hierarchy from the labels
-of the fixed layers following a naming convention. For example, given an
-XNAT project where all the test subjects are numbered *TEST01*, *TEST02*, *TEST03*,...
-and the matched control subjects are numbered *CON01*, *CON02*, *CON03*,...,
-the IDs for each subject's group and "matched member" need to be inferred from the subject label.
-This can be done by providing an ``id_inference`` argument which takes a list
-of tuples, consisting of the layer to infer the ID from and a
-regular-expression (Python syntax), with named groups corresponding to inferred
-IDs.
+.. TODO Should include example of weird data hierarchy using these frequencies
+.. and how the layers add to one another
 
-    XNAT-PROJECT
+As mentioned previously, the :class:`.medimage.Clinical` data space is
+likely to be sufficient for most applications in medical imaging research,
+but please see :ref:`adding_formats` for a description on how to create custom
+data spaces if required. For example, in the case of the scouting program,
+a set of player performance metrics could be classified by a particular player,
+competition round, league, season.
+
+For datasets where the fundamental hierarchy of the storage system is fixed
+(e.g. XNAT), you may need to infer labels for axial frequencies by decomposing
+the labels of combined frequencies following a given naming convention.
+This can be done by providing ``id_inference`` arguments
+to the dataset definition. For example, given a an XNAT project with the
+following structure and a naming convention where the subject ID is composed of
+the group and member ID
+
+.. code-block::
+
+    MY_XNAT_PROJECT
     ├── TEST01
     │   └── TEST01_MR01
     │       ├── t1w_mprage
@@ -456,42 +571,44 @@ IDs.
     │   └── TEST02_MR01
     │       ├── t1w_mprage
     │       └── t2w_space
-    ├── CON01
-    │   └── CON01_MR01
+    ├── CONT01
+    │   └── CONT01_MR01
     │       ├── t1w_mprage
     │       └── t2w_space
-    └── CON02
-        └── CON02_MR01
+    └── CONT02
+        └── CONT02_MR01
             ├── t1w_mprage
             └── t2w_space
+
+IDs for group, member and timepoint can be inferred from the subject and session
+labels, by providing the frequency of the label to decompose and a
+regular-expression (in Python syntax) to decompose it with. The regular
+expression should contain named groups that correspond to frequencies of the IDs
+to be inferred. 
+
+.. code-block:: console
+
+    $ arcana dataset define 'xnat-central//MYXNATPROJECT' \
+      --id_inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)'
+      --id_inference session '[A-Z0-9]+_MR(?P<timepoint>\d+)'
     
 
-.. code-block:: python
-
-    # NB: 'subject' instead of Clinical.subject can be used in this
-    # example as the data-space defaults to Clinical for XNAT stores
-    xnat_dataset = xnat_store.dataset(
-        id='MYXNATPROJECT',
-        id_inference=[
-            ('session', r'(?P<group>[A-Z]+)(?P<member>\d+)_MR(?P<timepoint>\d+)')])
-
-These definitions can be saved inside the project directory and then reloaded
-in new Python contexts.
-
-.. code-block:: python
-
-    fs_dataset.save()
-
-    ...
-
-    reloaded = FileSystem().load_dataset('/data/imaging/my-project')            
+.. --exclude subject sub09,sub11 --include timepoint T1 \
 
 
-Often there are sections of the tree that need to be omitted from a given
-analysis due to missing or corrupted data. These sections can be excluded with
-the ``exclude`` argument, which takes a dictionary mapping the data
-dimension to the list of IDs to exclude. You can exclude at different levels of
-the tree's hierarchy.
+.. _data_grids:
+
+Grids
+-----
+
+Often there are data points that need to be removed from a given
+analysis due to missing or corrupted data. Such sections need to be removed
+in a way that the data points still lie on a grid so summary metrics are
+computed with comparable number of data points. Therefore, it is possible
+to exclude data points along any frequency in the dataspace.
+
+Data points can be excluded with the ``exclude`` argument, which takes a
+dictionary mapping the data dimension to the list of IDs to exclude. 
 
 .. code-block:: python
 
@@ -514,71 +631,17 @@ with ``exclude`` but not for the same frequencies.
 
 You may want multiple dataset definitions for a given project/directory,
 for different analyses e.g. with different subsets of IDs depending on which
-scans have passed quality control. To avoid conflicts, you can
+scans have passed quality control, or to define training and test datasets
+for machine learning. To keep these analyses separate, you can
 assign a dataset definition a name, which is used differentiate between multiple
-dataset definitions stored in the same project/directory. To do this simply
-provide the ``name`` parameter to the :meth:`.Dataset.save` and
-:meth:`.DataStore.load_dataset` methods.
-
-.. code-block:: python
-
-    xnat_dataset.save('passed_dwi_qc')
-
-    dwi_dataset = xnat_store.load_dataset('MYXNATPROJECT', 'passed_dwi_qc')
-
-
-Datasets can also be defined and saved via the CLI using the ``arcana dataset define``
-command. The store the dataset belongs to is prepended to the project ID
-separated by '//', e.g.
+definitions stored in the same dataset project/directory. To do this via the 
+CLI, append the name to the dataset's ID string separated by '::', e.g.
 
 .. code-block:: console
 
-    $ arcana dataset define 'xnat-central//MYXNATPROJECT' \
-      --exclude subject sub09,sub11 --include timepoint T1 \
-      --id_inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)'
-
-To give the dataset definition a name, append the name to the dataset's ID
-string separated by ':', e.g.
-
-.. code-block:: console
-
-    $ arcana dataset define 'file///data/imaging/my-project:training' \
+    $ arcana dataset define 'file///data/imaging/my-project::training' \
       medimage:Clinical group subject \
       --include subject 10:20
-
-
-Data spaces used to class different types of datasets, such as a collection of imaging
-data collected for a clinical trial, or videos collected to assess
-player performance for the scouting team of a football club for example.
-In these examples, the measurements are classified in different ways.
-Taking the clinical trial example, each MRI session will belong to a particular subject
-and may also belong to a longitudinal timepoint and/or a particular study group.
-In the case of the scouting program, a set of player performance metrics will
-belong to a particular player, competition round, league, season and more.
-
-
-Data spaces are defined by subclassing the :class:`.DataSpace` enums.
-Enum members define both the axes of the space and all possible combinations
-of these axes (subspaces to stretch the analogy if you will). For example, the :class:`.Clinical`
-has the axes of **group**, **member** and **timepoint**, corresponding to the
-study group (e.g. 'test' or 'control'), within-group ID (relevant for matched
-control studies and arbitrary otherwise, equivalent to subject ID when there is
-only on study group), and longintudinal timepoint. These dimensions can be
-combined to give all the possible row frequencies of the dataset, i.e. (per):
-
-* **group** (group)
-* **member** (member)
-* **timepoint** (timepoint)
-* **session** (member + group + timepoint),
-* **subject** (member + group)
-* **batch** (group + timepoint)
-* **matchedpoint** (member + timepoint)
-* **dataset** ()
-
-Note that a particular dataset can have singleton dimensions
-(e.g. one study group or timepoint) and still exist in the data space.
-Therefore, when creating data spaces it is better to be inclusive of
-all potential dimensions (categories) in order to make them more general.
 
 
 .. _Arcana: https://arcana.readthedocs.io
