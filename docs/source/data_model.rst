@@ -2,24 +2,25 @@ Data model
 ==========
 
 Arcana's data model sets out to bridge the gap between
-the semi-structured data trees in which file-based data are typically stored in,
+the semi-structured data trees in which file-based data are typically stored,
 and the tabular data frames required for statistical analysis. Note that this
 transformation is abstract, with the source data remaining within original data
-tree, and generated derivatives stored alongside them.
+tree and generated derivatives stored alongside them.
 
-The key classes of Arcana's data model are:
+The key elements of Arcana's data model and the resources/concepts
+they encapsulate are:
 
-* :ref:`Stores` - encapsulation of tree-based file storage systems 
-* :ref:`Datasets` - set of comparable measurement events (e.g. XNAT project or BIDS dataset containing MRI sessions)
-* :ref:`Items and Formats` - pointers to atomic elements of datasets (e.g. T1-weighted MRI scan, subject age), which specify the formats they are stored in
-* :ref:`Rows and Columns` - definition of tabular structures in a dataset
-* :ref:`Grids and Spaces` - Conceptual link between tree and tabular data structures
+* :ref:`Stores` - tree-based file storage systems 
+* :ref:`Datasets` - sets of comparable data (e.g. XNAT project or BIDS dataset containing MRI sessions)
+* :ref:`Items` - references to atomic dataset elements (files, array and scalar fields) and the specification of the formats they are stored in
+* :ref:`Rows and Columns` - abstract tables of data items within datasets
+* :ref:`Grids and Spaces` - conceptual link between tree and tabular data structures
 
 
 Stores
 ------
 
-Support for different file storage systems (e.g. `XNAT <https://xnat.org>`, `BIDS <https://bids.neuroimaging.io>`)
+Support for different file storage systems (e.g. `XNAT <https://xnat.org>`__, `BIDS <https://bids.neuroimaging.io>`__)
 is provided by sub-classes of the :class:`.DataStore` class. :class:`.DataStore`
 classes not only encapsulate where the data are stored, e.g. on local disk or
 remote repository, but also how the data are accessed, e.g. whether they are in
@@ -34,6 +35,18 @@ instructions on how to add support for new systems see :ref:`alternative_stores`
 * :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific)
 * :class:`.Xnat` - access data stored in XNAT_ repositories by its REST API
 * :class:`.XnatViaCS` - access data stored in XNAT_ repositories as exposed to integrated pipelines run in `XNAT's container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_ using a combination of direct access to the archive disk and the REST API
+
+
+To configure access to a store via the CLI use the ``arcana store add`` sub-command
+
+.. code-block:: console
+
+    $ arcana store add xnat xnat-central https://central.xnat.org \
+      --user user123 --cache_dir /work/xnat-cache
+    Password:
+
+
+See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls``.
 
 To configure access to a data store a via the API, initialise the :class:`.DataStore`
 sub-class corresponding to the required data location/access-method then save
@@ -59,18 +72,6 @@ it to the YAML configuration file stored at `~/.arcana/stores.yaml`.
     # Reload store from configuration file
     reloaded = DataStore.load('xnat-central')
 
-
-To configure access to a store via the CLI use the ``arcana store add`` sub-command
-
-.. code-block:: console
-
-    $ arcana store add xnat xnat-central https://central.xnat.org \
-      --user user123 --cache_dir /work/xnat-cache
-    Password:
-
-
-See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls``.
-
 .. note::
 
     Data stores that don't require any parameters such as :class:`.FileSystem` and
@@ -82,8 +83,8 @@ See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls`
 Datasets
 --------
 
-In Arcana, a *dataset* refers to a collection of comparable data to be
-analysed (e.g. data from a single research study, or large collection such as the
+In Arcana, a *dataset* refers to a collection of comparable data
+(e.g. data from a single research study, or large collection such as the
 Human Connectome Project). Arcana datasets consist of both source data and the
 derivatives derived from them. Datasets are organised into a tree with a
 consistent "hierarchy" that classify a series of measurement events
@@ -122,25 +123,18 @@ directory tree
             ├── t2w_space
             └── bold_rest
 
-The leaf directories of the directory tree contain data from "session"
+The leaf sub-directories of the directory tree contain data from "image session"
 measurement events, as designated by the combination of one of the three
-subject IDs and the two timepoint IDs.
+subject IDs and one of the two timepoint IDs.
 
-While the majority of data items are stored in the "leaves" of the tree (e.g. per-session),
-data can exist for any repeating element (e.g. per-subject, per-timepoint),
-whether it fits into the originanl hierarchy of the dataset or not. For example, statistics
-derived across all subjects at each longitudinal timepoint in the above example
-will be saved in the "TIMEPOINT" of the root directory, and subject-specific
-data will be stored in "SUBJECT" sub-directories under each subject directory.
+While the majority of data items are stored in the leaves of the tree (e.g. per-session),
+data can exist for any repeating element. For example, an analysis may use
+genomics data, which will be constant for each subject, and therefore sits at
+the subject level of the tree
 
 .. code-block::
 
     my-dataset
-    ├── TIMEPOINT
-    │   ├── timepoint1
-    │   │   └── avg_connectivity
-    │   └── timepoint2
-    │       └── avg_connectivity
     ├── subject1    
     │   ├── SUBJECT
     │   │   └── geneomics.dat
@@ -176,17 +170,23 @@ data will be stored in "SUBJECT" sub-directories under each subject directory.
             └── bold_rest
 
 
-Datasets can be defined via the API using the :meth:`.DataStore.dataset` method.
+Datasets are referenced in the CLI by the nickname of the store the dataset
+belongs to (i.e. as saved by the `arcana store add`, see :ref:`Stores`)
+appened by '//' and then the name of the project ID/path, e.g.
+``xnat-central//MYXNATPROJECT``. Alternatively dataset objects can be created
+via the API using the :meth:`.DataStore.dataset` method.
 For example, to define a new dataset corresponding to the XNAT project ID
 *MYXNATPROJECT*
-
 
 .. code-block:: python
 
     xnat_dataset = xnat_store.dataset(id='MYXNATPROJECT')
 
 For stores that support datasets with arbitrary tree structures (e.g. file-system directories),
-the hierarchy of layers in the data tree needs to be provided (see :ref:`data_spaces`).
+the "data space" and the hierarchy of layers in the data tree needs to be
+provided. Data spaces are explained in more detail in :ref:`data_spaces`, but
+for the majority of datasets in the medical imaging field, the
+`arcana.data.spaces.medimage.Clinical` space will be appropriate.
 
 .. code-block:: python
 
@@ -195,19 +195,10 @@ the hierarchy of layers in the data tree needs to be provided (see :ref:`data_sp
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',
+        # Define hierarchy within Clinical data spacethat defines sessions
+        # separated into sub-dirs by study group (i.e. test & control)
         space=Clinical,
-        hierarchy=['group', 'subject'])  # Members of Clinical data space
-
-These definitions can be saved inside the project directory and then reloaded
-in new Python contexts.
-
-.. code-block:: python
-
-    fs_dataset.save()
-
-    ...
-
-    reloaded = FileSystem().load_dataset('/data/imaging/my-project')
+        hierarchy=['group', 'session'])  
 
 
 .. _data_formats:
@@ -216,15 +207,14 @@ Items and Formats
 -----------------
 
 Data items within a dataset (i.e. the intersection of a column and a row) are
-encapsulated by :class:`DataFormat` objects, which will be subclasses of one
-three base classes:
+encapsulated by :class:`DataItem` objects. There are three types of data items:
 
 * :class:`.Field` (int, float, str or bool)
 * :class:`.ArrayField` (a sequence of int, float, str or bool)
 * :class:`.FileGroup` (single files, files + header/side-cars or directories)
 
-Items act as pointers to the data in the data store. Data in remote stores need to be
-cached locally with :meth:`.DataItem.get` before they can be accessed.
+DataItems point to files and fields stored in the data store. Data in remote stores
+is cached locally with :meth:`.DataItem.get` before they are accessed.
 Modified data is pushed back to the store with :meth:`.DataItem.put`.
 
 The :class:`.FileGroup` class is typically subclassed to specify the format of the files
@@ -374,6 +364,53 @@ initialised.
 Grids and Spaces
 ----------------
 
+whether it fits into the original hierarchy of the dataset or not. For example, statistics
+derived across all subjects at each longitudinal timepoint in the above example
+will be saved in the "TIMEPOINT" of the root directory, and subject-specific
+data will be stored in "SUBJECT" sub-directories under each subject directory.
+
+.. code-block::
+
+    my-dataset
+    ├── TIMEPOINT
+    │   ├── timepoint1
+    │   │   └── avg_connectivity
+    │   └── timepoint2
+    │       └── avg_connectivity
+    ├── subject1    
+    │   ├── SUBJECT
+    │   │   └── geneomics.dat
+    │   ├── timepoint1
+    │   │   ├── t1w_mprage
+    │   │   ├── t2w_space
+    │   │   └── bold_rest
+    │   └── timepoint2
+    │       ├── t1w_mprage
+    │       ├── t2w_space
+    │       └── bold_rest
+    ├── subject2
+    │   ├── SUBJECT
+    │   │   └── geneomics.dat    
+    │   ├── timepoint1
+    │   │   ├── t1w_mprage
+    │   │   ├── t2w_space
+    │   │   └── bold_rest
+    │   └── timepoint2
+    │       ├── t1w_mprage
+    │       ├── t2w_space
+    │       └── bold_rest
+    └── subject3
+        ├── SUBJECT
+        │   └── geneomics.dat
+        ├── timepoint1
+        │   ├── t1w_mprage
+        │   ├── t2w_space
+        │   └── bold_rest
+        └── timepoint2
+            ├── t1w_mprage
+            ├── t2w_space
+            └── bold_rest
+
 For datasets where the fundamental hierarchy of the storage system is fixed
 (e.g. XNAT), you may need to infer abstract layers of the hierarchy from the labels
 of the fixed layers following a naming convention. For example, given an
@@ -411,7 +448,18 @@ IDs.
     xnat_dataset = xnat_store.dataset(
         id='MYXNATPROJECT',
         id_inference=[
-            ('session', r'(?P<group>[A-Z]+)(?P<member>\d+)_MR(?P<timepoint>\d+)')])   
+            ('session', r'(?P<group>[A-Z]+)(?P<member>\d+)_MR(?P<timepoint>\d+)')])
+
+These definitions can be saved inside the project directory and then reloaded
+in new Python contexts.
+
+.. code-block:: python
+
+    fs_dataset.save()
+
+    ...
+
+    reloaded = FileSystem().load_dataset('/data/imaging/my-project')            
 
 
 Often there are sections of the tree that need to be omitted from a given
