@@ -44,10 +44,36 @@ are created to wrap the workflow and prepend and append additional tasks to
 * write provenance metadata
 * check saved provenance metadata to ensure prerequisite derivatives were generated with equivalent parameterisations and software versions (and potentially reprocess them if not)
 
+To connect a workflow via the CLI mapping the inputs and outputs of the Pydra_
+workflow/task (``in_file``, ``peel`` and ``out_file`` in the example below)
+to appropriate columns in the dataset (``T1w``, ``T2w`` and
+``freesurfer/recon-all`` respectively)
+
+.. code-block:: console
+
+    $ arcana dataset add-source 'myuni-xnat//myproject:training' T1w \
+      medimage:Dicom --path '.*mprage.*' --regex
+
+    $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
+      medimage:Dicom --path '.*t2spc.*' --regex
+
+    $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurver/recon-all \
+      common:Zip
+
+    $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
+      pydra.tasks.freesurfer:Freesurfer \
+      --input T1w in_file medimage:NiftiGz \
+      --input T2w peel medimage:NiftiGz \
+      --output freesurfer/recon-all out_file common:Directory \
+      --parameter param1 10 \
+      --parameter param2 20
+
+If there is a mismatch in the data format (see :ref:`data_formats`) between the
+workflow inputs/outputs and the columns they are connected to, a format conversion
+task will be inserted into the pipeline if converter method between the two
+formats exists (see :ref:`file_formats`).
+
 To add a workflow to a dataset via the API use the :meth:`Dataset.apply_pipeline` method
-mapping the inputs and outputs of the Pydra_ workflow/task (``in_file``, ``peel``
-and ``out_file`` in the example below) to appropriate columns in the dataset
-(``T1w``, ``T2w`` and ``freesurfer/recon-all`` respectively)
 
 .. code-block:: python
 
@@ -73,29 +99,6 @@ and ``out_file`` in the example below) to appropriate columns in the dataset
         outputs=[('freesurfer/recon-all', 'out_file', common.Directory)])
 
     dataset.save()
-
-If there is a mismatch in the data format (see :ref:`data_formats`) between the
-workflow inputs/outputs and the columns they are connected to, a format conversion
-task will be inserted into the pipeline if converter method between the two
-formats exists (see :ref:`file_formats`).
-
-To connect a workflow via the CLI
-
-.. code-block:: console
-
-    $ arcana dataset add-source 'myuni-xnat//myproject:training' T1w \
-      medimage:Dicom --path '.*mprage.*' --regex
-    $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
-      medimage:Dicom --path '.*t2spc.*' --regex
-    $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurver/recon-all \
-      common:Zip
-    $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
-      pydra.tasks.freesurfer:Freesurfer \
-      --input T1w in_file medimage:NiftiGz \
-      --input T2w peel medimage:NiftiGz \
-      --output freesurfer/recon-all out_file common:Directory \
-      --parameter param1 10 \
-      --parameter param2 20
 
 If the source can be referenced by its path alone and the formats of the source
 and sink columns match those expected and produced by the workflow, then you
@@ -262,9 +265,20 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 
             return create_image.lzout.out_file, wf.create_image.lzout.summary
 
-Analyses are applied to datasets using the :meth:`.Dataset.apply` method, which
-takes an :class:`.Analysis` object, instantiated with the names of columns in
-the dataset to link placeholders to and any parameters.
+To apply an analysis via the command-line use the ``--column`` flag to connect
+column specs in the class with existing columns in the dataset.
+
+.. code-block:: console
+
+  $ arcana apply analysis 'file///data/a-dataset' example:ExampleAnalysis \
+    --column recorded_datafile datafile \ 
+    --column recorded_metadata metadata \
+    --parameter contrast 0.75
+
+Analyses are applied to datasets using the Python API with the :meth:`.Dataset.apply`
+method. :meth:`.Dataset.apply` takes an :class:`.Analysis` object that is instantiated
+with the names of columns in the dataset to link placeholders to and any
+parameters.
 
 .. code-block:: python
 
@@ -290,15 +304,6 @@ the dataset to link placeholders to and any parameters.
           recorded_metadata='metadata',
           contrast=0.75))
 
-To apply an analysis via the command-line
-
-.. code-block:: console
-
-  $ arcana apply analysis 'file///data/a-dataset' example:ExampleAnalysis \
-    --link recorded_datafile datafile \ 
-    --link recorded_metadata metadata \
-    --parameter contrast 0.75
-
 .. _derivatives:
 
 Generating derivatives
@@ -312,6 +317,12 @@ with available source data. If pipeline inputs are sink columns to be derived
 by prerequisite pipelines, then the prerequisite pipelines will be prepended
 onto the execution stack.
 
+To generate derivatives via the CLI
+
+.. code-block:: console
+
+  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all
+
 To generate derivatives via the API
 
 .. code-block:: python
@@ -322,14 +333,6 @@ To generate derivatives via the API
 
   # Print URI of generated dataset
   print(dataset['fast/gm']['sub11'].uri)
-
-
-To generate derivatives via the CLI
-
-.. code-block:: console
-
-  $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all
-
 
 By default Pydra_ uses the "concurrent-futures" (`'cf'`) plugin, which
 splits workflows over multiple processes. You can specify which plugin, and

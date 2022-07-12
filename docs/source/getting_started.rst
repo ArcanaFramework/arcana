@@ -74,7 +74,35 @@ The basic usage pattern is
 For example, given a dataset stored within the ``/data/my-dataset`` directory,
 which contains two-layers of sub-directories, for subjects and sessions
 respectively, FSL's Brain Extraction Tool (BET) can be executed
-over all sessions with the API
+over all sessions using the command line interface
+
+.. code-block:: console
+
+    # Define dataset
+    $ arcana dataset define 'file///data/my-project' subject session
+
+    # Add source column to select a single T1-weighted image in each session subdirectory
+    $ arcana dataset add-source 'file///data/my-dataset' T1w '.*mprage.*' medimage:Dicom --regex
+
+    # Add sink column to store brain mask
+    $ arcana dataset add-sink 'file///data/my-dataset' brain_mask medimage:NiftiGz
+
+    # Apply BET Pydra task, connecting it between the source and sink
+    $ arcana apply pipeline 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
+      --arg name brain_extraction \
+      --input T1w in_file medimage:NiftiGz \
+      --output brain_mask out_file .
+
+    # Derive brain masks for all imaging sessions in dataset
+    $ arcana derive column 'file///data/my-dataset' brain_maskAPI
+
+This code will iterate over all imaging sessions in the directory tree, find and
+convert T1-weighted images (which contain 'mprage' in their names) from
+DICOM into the required gzipped NIfTI format, and then execute BET on the converted
+files before they are saved back into the directory structure at
+``<subject-id>/<session-id>/derivs/brain_mask.nii.gz``.
+
+Alternatively, the same steps can be performed using the Python API:
 
 .. code-block:: python
 
@@ -84,7 +112,7 @@ over all sessions with the API
     from arcana.data.spaces.medimage import Clinical
     from arcana.data.formats.medimage import Dicom, NiftiGz
 
-    # Load dataset
+    # Define dataset
     my_dataset = Dataset.load('file///data/my-dataset', space=Clinical,
                               hierarchy=['subject', 'session'])
 
@@ -103,40 +131,22 @@ over all sessions with the API
     # Derive brain masks for all imaging sessions in dataset
     my_dataset['brain_mask'].derive()
 
-This code will iterate over all imaging sessions in the directory tree, find and
-convert T1-weighted images (which contain 'mprage' in their names) from
-DICOM into the required gzipped NIfTI format, and then execute BET on the converted
-files before they are saved back into the directory structure at
-``<subject-id>/<session-id>/derivs/brain_mask.nii.gz``.
-
-Alternatively, the same steps can be performed using the command line interface
-
-.. code-block:: console
-
-    $ arcana dataset define 'file///data/my-project' subject session
-    $ arcana column add-source 'file///data/my-dataset' T1w '.*mprage.*' medimage:Dicom --regex
-    $ arcana column add-sink 'file///data/my-dataset' brain_mask medimage:NiftiGz
-    $ arcana apply pipeline 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
-      --arg name brain_extraction \
-      --input T1w in_file medimage:NiftiGz \
-      --output brain_mask out_file .
-    $ arcana derive column 'file///data/my-dataset' brain_mask
-
-.. note::
-
-    When referencing objects within the ``arcana`` package from the CLI such
-    as file-format classes or data spaces (see :ref:`data_spaces`), the
-    standard ``arcana.*.`` prefix can be dropped, e.g. ``medimage:Dicom``
-    instead of the full path ``arcana.data.formats.medimage:Dicom``.
-    Classes installed outside of the Arcana package, should be referred to
-    with their full import path.
 
 Applying an Analysis class instead of a Pydra task/workflow follows the same
 steps up to 'add-source' (sinks are automatically added by the analysis class).
 The following example applies methods for analysing T1-weighted MRI images to the
 dataset, then calls the methods calculates the average cortical thickness for
-each session of each subject, and then plots a histogram of the distribution
-over all subjects at Timepoint 'T3'.
+each session of each subject.
+
+.. code-block:: console
+
+    $ arcana apply analysis 'file///data/my-project' bids.mri:T1wAnalysis
+    $ arcana derive column 'file///data/my-project' avg_cortical_thickness
+
+
+Doing the same steps via the Python API provides convenient access to the
+generated data, which a histogram of the distribution over all subjects at
+Timepoint 'T3' can be plotted.
 
 
 .. code-block:: python
@@ -157,13 +167,14 @@ over all subjects at Timepoint 'T3'.
     plt.histogram(my_dataset['avg_cortical_thickness']['T3', None, :])
 
 
-To apply the Analysis class and derive the metric via the command line you can
-use
+.. note::
 
-.. code-block:: console
-
-    $ arcana apply analysis 'file///data/my-project' bids.mri:T1wAnalysis
-    $ arcana derive column 'file///data/my-project' avg_cortical_thickness
+    When referencing objects within the ``arcana`` package from the CLI such
+    as file-format classes or data spaces (see :ref:`data_spaces`), the
+    standard ``arcana.*.`` prefix can be dropped, e.g. ``medimage:Dicom``
+    instead of the full path ``arcana.data.formats.medimage:Dicom``.
+    Classes installed outside of the Arcana package, should be referred to
+    with their full import path.
 
 
 Licence
