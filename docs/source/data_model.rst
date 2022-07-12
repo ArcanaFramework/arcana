@@ -15,7 +15,7 @@ The key elements of Arcana's data model are:
     * sub-classes specify the data format, e.g. :class:`.medimage.Dicom`, :class:`.medimage.NiftiGzX`, :class:`.common.Json` 
 * :ref:`data_columns` - abstract tables of data items within datasets 
 * :ref:`data_spaces` - conceptual link between tree and tabular data structures 
-* :ref:`data_grids` - trimming data points to a grid 
+* :ref:`data_grids` - selection of data points to be included in an analysis
  
  
 Stores 
@@ -129,9 +129,9 @@ data points, as designated by the combination of one of the three
 subject IDs and one of the two timepoint IDs. 
  
 While the majority of data items are stored in the leaves of the tree (e.g. per-session), 
-data can exist for any repeating element. For example, an analysis may use 
+data can exist for any branch. For example, an analysis may use 
 genomics data, which will be constant for each subject, and therefore sits at 
-the subject level of the tree 
+the subject level of the tree under a special *SUBJECT* sub-directory
  
 .. code-block:: 
  
@@ -215,7 +215,7 @@ Items
 -----
  
 Atomic items within a dataset are encapsulated by :class:`DataItem` objects. 
-Data items are one of three sub-types: 
+:class:`DataItem`` has three sub-types: 
  
 * :class:`.FileGroup` (single files, files + header/side-cars or directories) 
 * :class:`.Field` (int, float, str or bool) 
@@ -223,10 +223,11 @@ Data items are one of three sub-types:
  
 Data item objects reference files and fields stored in the data store, rather 
 than necessarily holding the data themselves. Before data in remote stores 
-are accessed it is cached locally with :meth:`.DataItem.get`. 
-Derivatives and modified data items are placed into the store with :meth:`.DataItem.put`. 
+are accessed they are cached locally with :meth:`.DataItem.get`. 
+Newly created and modified data items are placed into the store with
+:meth:`.DataItem.put`. 
  
-The :class:`.FileGroup` class is typically subclassed to specify the format of the 
+:class:`.FileGroup` is typically subclassed to specify the format of the 
 files/directories in the group. For example, there are a number common file 
 formats implemented in :mod:`arcana.data.formats.common`, including 
  
@@ -235,14 +236,13 @@ formats implemented in :mod:`arcana.data.formats.common`, including
 * :class:`.common.Json` 
 * :class:`.common.Directory` 
  
-Such sub-classes may also contain methods for conveniently accessing the file data and header 
-metadata (e.g. :class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`), but this 
-is not necessary in general. 
- 
-Arcana will implicily handle conversions between compatible file formats where 
-there is a mismatch between the format of the item stored in the dataset and 
-the format required by a pipeline, and a converter has been specified in the 
-format class. See :ref:`adding_formats` for detailed 
+:class:`FileGroup` sub-classes specify the files and directories expected in
+the file group, converters from alternative file formats, and may
+also contain methods for accessing the headers and the contents of files
+(e.g. :class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`). Arcana will
+automatically convert between file formats when there is a mismatch
+between the format of the item stored in the dataset and that required by a
+pipeline when a converter is specified. See :ref:`adding_formats` for detailed
 instructions on how to specify new file formats and conversions between them. 
  
 On the command line, file formats are specified by *<full-module-path>:<class-name>*, 
@@ -268,26 +268,27 @@ and the "columns" are slices of comparable data items across each row, e.g.
 * T1-weighted MR acquisition for each imaging session 
 * a genetic test for each subject 
 * an fMRI activation map derived for each study group. 
- 
+
+.. TODO: visualisation of data frame
+
 A data frame is defined by adding "source" columns to access existing 
 (typically acquired) data, and "sink" columns to define where 
 derivatives will be stored within the data tree. The "row frequency" argument 
-of the column (e.g. per 'session', 'subject', etc...) determines the data frame 
-it belongs to. The format of the member items (see :ref:`Items`) also needs to 
-be specified when adding a column to a dataset, and must be consistent within 
-the column.  
+of the column (e.g. per 'session', 'subject', etc...) determines which data frame 
+the column belongs to. The format of a column's member items (see :ref:`Items`)
+must be consistent and is also specified when the column is created.
  
-Files and fields containing the data to be accessed by a source column do not need to 
-be named consistently across the dataset although it makes it easier where possible. 
-Source columns are configured to select a single item in each row of the 
-frame using several criteria 
+The data items within a source column do not need to have consistent labels
+although it makes it easier where possible. Source columns match single items
+in each row based on several criteria (an error is raised if no, or multiple
+items are matched):
  
 * **path** - label for the file-group or field 
     * scan type for XNAT stores 
-    * relative file path for file-system/BIDS stores 
-    * treated as a regular-expression if the `is_regex` flag is set. 
+    * relative file path from row sub-directory for file-system/BIDS stores 
+    * is treated as a regular-expression if the `is_regex` flag is set. 
 * **quality threshold** - the minimum quality for the item to be included 
-    * only applicable for XNAT_ stores 
+    * only applicable for XNAT_ stores, where the quality 
 * **header values** - header values are sometimes needed to distinguish file 
     * only available for selected item formats such as :class:`.medimage.Dicom` 
 * **order** - the order that an item appears the data row 
@@ -317,8 +318,8 @@ to a dataset using the CLI.
       medimage:NiftiGz --row_frequency group 
  
  
-Alternatively, the :meth:`.Dataset.add_source` and :meth:`.Dataset.add_sink` methods can be used 
-directly to add sources and sinks via the Python API. 
+Alternatively, the :meth:`.Dataset.add_source` and :meth:`.Dataset.add_sink`
+methods can be used directly to add sources and sinks via the Python API. 
  
 .. code-block:: python 
  
@@ -383,13 +384,12 @@ Spaces
  
 In addition to data frames corresponding to row frequencies that explicitly 
 appear in the hierarchy of the data tree (see :ref:`data_columns`), 
-there are a number that are implied, which may be needed to hold 
-derivatives of a particular analysis. In the case of clinical imaging research 
-studies/trials, imaging sessions are classified by the subject who 
-was scanned. For longintudinal studies, the timepoint the session corresponds to 
-is also used. The subjects themselves can be classified by which study group they  
-belong to. Therefore, we can factor typical imaging session classifications 
-onto three "axes" 
+there are a number of frames that are implied and may be needed to store 
+derivatives of a particular analysis. In clinical imaging research studies/trials,
+imaging sessions are classified by the subject who was scanned and, if applicable,
+the longitudinal timepoint. The subjects themselves are often classified by which
+group they belong to. Therefore, we can factor imaging session
+classifications onto three "axes" 
  
 * **group** - study group (e.g. 'test' or 'control') 
 * **member** - ID relative to group 
@@ -398,11 +398,11 @@ onto three "axes"
 * **timepoint** - longintudinal timepoint 
  
 Depending on the hierarchy of the data tree, data belonging to these axial 
-frequencies may or may not have a corresponding branch to store data 
-within. In these cases, new branches are created off the root of the tree to 
+frequencies may or may not have a corresponding branch to be stored in
+In these cases, new branches are created off the root of the tree to 
 hold the derivatives. For example, average trial performance data, calculated 
 at each timepoint and the age difference between matched-control pairs, would 
-need to be stored in new sub-branches 
+need to be stored in new sub-branches for timepoints and members, respectively
  
 .. code-block:: 
  
@@ -456,22 +456,27 @@ need to be stored in new sub-branches
                 ├── t2w_space 
                 └── bold_rest 
  
-In this framework, subject labels are equivalent to ``group | member`` labels 
-and session labels are equivalent to ``group | member | timepint`` labels. 
-Including all possible combinations of the axial frequencies, there are, 
-2\ :sup:`N` potential row frequencies, where `N` is the depth of the tree. 
-In Arcana, this binary structure is refered as a "data space", in which the 
-data points (i.e. imaging sessions in the imaging research example) can be 
-visualised as being laid out on a grid. 
+In this framework, ``subject`` IDs are equivalent to the combination of
+``group + member`` IDs and ``session`` IDs are equivalent to the combination of
+``group + member + timepint`` IDs. Therefore, there are,  2\ :sup:`N`
+row frequencies for a given data tree, where ``N`` is the depth of the tree
+(i.e. ``N=3`` in this case). In Arcana, the set of all possible ID combinations
+is imagined as a "data space", in which data points (e.g. imaging sessions) are
+visualised as being laid out on a grid along the axes (e.g. ``group``, ``member``,
+``timepoint``).
+
+.. TODO: 3D plot of grid
  
 Note that the grid of a particular dataset can have a single point along any 
 given dimension (e.g. one study group or timepoint) and still exist in the data 
 space. Therefore, when creating data spaces it is better to be inclusive of 
-all potential dimensions (categories) in order to make them more general. 
+potential categories to make them more general.
+
+.. TODO: another 3D grid plot
  
-All potential combinations of axial frequencies are expanded in 
-:class:`.DataSpace` enums to give each frequency a name. In the case 
-of the :class:`.medimage.Clinical` data space the full list of members are 
+All combinations of the data spaces axes are given a name within 
+:class:`.DataSpace` enums. In the case of the :class:`.medimage.Clinical`
+data space, the members are
  
 * **group** (group) 
 * **member** (member) 
@@ -482,8 +487,9 @@ of the :class:`.medimage.Clinical` data space the full list of members are
 * **matchedpoint** (member + timepoint) 
 * **dataset** () 
  
-If they are not present in the data tree, these alternative frequencies can 
-be stored in new branches in the same manner as axial frequencies 
+If they are not present in the data tree, alternative row frequencies are 
+stored in new branches under the dataset root, in the same manner as data space
+axes
  
 .. code-block:: 
  
@@ -551,17 +557,16 @@ be stored in new branches in the same manner as axial frequencies
 As mentioned previously, the :class:`.medimage.Clinical` data space is 
 likely to be sufficient for most applications in medical imaging research, 
 but please see :ref:`adding_formats` for a description on how to create custom 
-data spaces if required. For example, in the case of the scouting program, 
-a set of player performance metrics could be classified by a particular player, 
-competition round, league, season. 
+data spaces as required.
  
 For datasets where the fundamental hierarchy of the storage system is fixed 
-(e.g. XNAT), you may need to infer labels for axial frequencies by decomposing 
-the labels of combined frequencies following a given naming convention. 
-This can be done by providing ``id_inference`` arguments 
-to the dataset definition. For example, given a an XNAT project with the 
-following structure and a naming convention where the subject ID is composed of 
-the group and member ID 
+(e.g. XNAT), you may need to infer the data point IDs along an axis
+by decomposing a branch label following a given naming convention. 
+This is specified via the ``id_inference`` argument to the dataset definition.
+For example, given a an XNAT project with the following structure and a naming
+convention where the subject ID is composed of the group and member ID,
+*<GROUPID><MEMBERID>*, and the session ID is composed of the subject ID and timepoint,
+*<SUBJECTID>_MR<TIMEPOINTID>*
  
 .. code-block:: 
  
@@ -584,21 +589,17 @@ the group and member ID
             └── t2w_space 
  
 IDs for group, member and timepoint can be inferred from the subject and session 
-labels, by providing the frequency of the label to decompose and a 
+IDs, by providing the frequency of the ID to decompose and a 
 regular-expression (in Python syntax) to decompose it with. The regular 
-expression should contain named groups that correspond to frequencies of the IDs 
-to be inferred.  
+expression should contain named groups that correspond to row frequencies of
+the IDs to be inferred, e.g.
  
 .. code-block:: console 
  
     $ arcana dataset define 'xnat-central//MYXNATPROJECT' \ 
-      --id_inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)' 
+      --id_inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)' \
       --id_inference session '[A-Z0-9]+_MR(?P<timepoint>\d+)' 
-     
- 
-.. --exclude subject sub09,sub11 --include timepoint T1 \ 
- 
- 
+
 .. _data_grids: 
  
 Grids 
@@ -606,31 +607,36 @@ Grids
  
 Often there are data points that need to be removed from a given 
 analysis due to missing or corrupted data. Such sections need to be removed 
-in a way that the data points still lie on a grid so summary metrics are 
-computed with comparable number of data points. Therefore, it is possible 
-to exclude data points along any frequency in the dataspace. 
+in a way that the data points still lie on a rectangular grid within the
+data space (see :ref:`data_spaces`) so derivatives computed over a given axis
+or axes are drawn from comparable number of data points.
+
+Sections of the data grid can be excluded at any point, or along lines or planes.
+However, it is often advisable to exclude along an axes of data space so the
+grid is rectangular. The ``exclude`` argument is used to 
+in the dataspace which takes a dictionary mapping the data dimension to the
+list of IDs to exclude.
+
+.. TODO image of excluding points in grid
+
+.. code-block:: console 
  
-Data points can be excluded with the ``exclude`` argument, which takes a 
-dictionary mapping the data dimension to the list of IDs to exclude.  
- 
-.. code-block:: python 
- 
-    fs_dataset = FileSystem().dataset( 
-        id='/data/imaging/my-project', 
-        exclude={'subject': ['09', '11']}) 
- 
+    $ arcana dataset define 'file///data/imaging/my-project' \ 
+      medimage:Clinical subject session \ 
+      --exclude member 03,11,27 
+
  
 The ``include`` argument is the inverse of exclude and can be more convenient when 
-you only want to select a small sample. ``include`` can be used in conjunction 
-with ``exclude`` but not for the same frequencies. 
+you only want to select a small sample or split the dataset into sections.
+``include`` can be used in conjunction with ``exclude`` but not for the same
+frequencies. 
  
-.. code-block:: python 
+.. code-block:: console 
  
-    fs_dataset = FileSystem().dataset( 
-        id='/data/imaging/my-project', 
-        exclude={'subject': ['09', '11']}, 
-        include={'timepoint': ['T1']}) 
- 
+    $ arcana dataset define 'file///data/imaging/my-project' \ 
+      medimage:Clinical subject session \ 
+      --exclude member 03,11,27 
+      --include timepoint 1,2
  
 You may want multiple dataset definitions for a given project/directory, 
 for different analyses e.g. with different subsets of IDs depending on which 
@@ -644,7 +650,7 @@ CLI, append the name to the dataset's ID string separated by '::', e.g.
  
     $ arcana dataset define 'file///data/imaging/my-project::training' \ 
       medimage:Clinical group subject \ 
-      --include subject 10:20 
+      --include member 10:20 
  
  
 .. _Arcana: https://arcana.readthedocs.io 
