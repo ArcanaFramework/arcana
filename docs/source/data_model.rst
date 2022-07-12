@@ -456,14 +456,17 @@ need to be stored in new sub-branches
                 ├── t2w_space
                 └── bold_rest
 
-In this framework, subject labels are equivalent to ``group + member`` labels
-and session labels are equivalent to ``group + member + timepint`` labels.
+In this framework, subject labels are equivalent to ``group | member`` labels
+and session labels are equivalent to ``group | member | timepint`` labels.
 Including all possible combinations of the axial frequencies, there are,
 2\ :sup:`N` potential row frequencies, where `N` is the depth of the tree.
-In Arcana, this binary structure is refered as a "data space".
-Note that a particular dataset can have singleton dimensions
-(e.g. one study group or timepoint) and still exist in the data space.
-Therefore, when creating data spaces it is better to be inclusive of
+In Arcana, this binary structure is refered as a "data space", in which the
+data points (i.e. imaging sessions in the imaging research example) can be
+visualised as being laid out on a grid.
+
+Note that the grid of a particular dataset can have a single point along any
+given dimension (e.g. one study group or timepoint) and still exist in the data
+space. Therefore, when creating data spaces it is better to be inclusive of
 all potential dimensions (categories) in order to make them more general.
 
 All potential combinations of axial frequencies are expanded in
