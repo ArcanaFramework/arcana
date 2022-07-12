@@ -120,6 +120,9 @@ def load_yaml_spec(path: Path, base_dir: Path=None):
     #     # TODO: Handle other row_frequency types, are there any?
     #     data['row_frequency'] = Clinical[row_frequency.split('.')[-1]]
 
+    if type(data) is not dict:
+        raise ValueError(f"{path!r} didn't contain a dict!")
+
     data['_relative_dir'] = os.path.dirname(os.path.relpath(path, base_dir)) if base_dir else ''
     data['_module_name'] = os.path.basename(path).rsplit('.', maxsplit=1)[0]
 
