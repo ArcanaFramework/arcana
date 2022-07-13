@@ -24,6 +24,9 @@ Commands used to access remove data stores and save them for further use
 .. click:: arcana.cli.store:refresh
    :prog: arcana store refresh
 
+.. click:: arcana.cli.store:ls
+   :prog: arcana store ls
+
 
 Dataset
 -------
@@ -32,9 +35,6 @@ Commands used to define and work with datasets
 
 .. click:: arcana.cli.dataset:define
    :prog: arcana dataset define
-
-.. click:: arcana.cli.dataset:rename
-   :prog: arcana dataset rename
 
 .. click:: arcana.cli.dataset:add_source
    :prog: arcana dataset add-source
@@ -92,5 +92,5 @@ Commands for deploying arcana pipelines
 .. click:: arcana.cli.deploy:build_docs
    :prog: arcana deploy docs
 
-.. click:: arcana.cli.deploy:inspect_docker
+.. click:: arcana.cli.deploy:inspect_docker_exec
    :prog: arcana deploy inspect-docker

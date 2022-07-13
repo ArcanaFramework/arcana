@@ -9,11 +9,10 @@ tree and generated derivatives stored alongside them.
  
 The key elements of Arcana's data model are: 
  
-* :ref:`Stores` - tree-based file storage systems 
-* :ref:`Datasets` - comparable data to be jointly analysed 
-* :ref:`Items` - references to data elements: files, scalars, and arrays. 
-    * sub-classes specify the data format, e.g. :class:`.medimage.Dicom`, :class:`.medimage.NiftiGzX`, :class:`.common.Json` 
-* :ref:`data_columns` - abstract tables of data items within datasets 
+* :ref:`Stores` - encapsulations of tree-based file storage systems 
+* :ref:`Datasets` - sets of comparable data to be jointly analysed 
+* :ref:`Items` - references to data elements (files, scalars, and arrays) 
+* :ref:`data_columns` - abstract tables within datasets 
 * :ref:`data_spaces` - conceptual link between tree and tabular data structures 
 * :ref:`data_grids` - selection of data points to be included in an analysis
  
@@ -22,36 +21,49 @@ Stores
 ------
  
 Support for different file storage systems (e.g. `XNAT <https://xnat.org>`__, `BIDS <https://bids.neuroimaging.io>`__) 
-is provided by sub-classes of the :class:`.DataStore` class. :class:`.DataStore` 
-sub-classes not only encapsulate where the data are stored, e.g. on local disk or 
-remote repository, but also how the data are accessed, e.g. whether they are in 
-BIDS format, or whether files in an XNAT repository can be accessed directly 
-(i.e. as exposed to the container service), or purely using the API. 
+is provided by sub-classes of :class:`.DataStore`. Data store 
+classes not only encapsulate where the data are stored, e.g. on local disk or 
+remote repository, but also how the data are accessed, e.g. whether to assume that
+they are in BIDS format, or whether files in an XNAT archive mount can be
+accessed directly (i.e. as exposed to the container service), or only via the API. 
  
-There are four :class:`.DataStore` sub-classes in the common and medimage 
-arcana packages (for instructions on how to add support for new systems 
-see :ref:`alternative_stores`): 
+There are four data store classes in the :mod:`arcana.data.stores.common`
+and :mod:`arcana.data.stores.medimage` arcana sub-packages: 
  
 * :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system 
-* :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__ format (neuroimaging-specific) 
-* :class:`.Xnat` - access data stored in XNAT_ repositories by its REST API 
-* :class:`.XnatViaCS` - access data stored in XNAT_ repositories as exposed to integrated pipelines run in `XNAT's container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_ using a combination of direct access to the archive disk and the REST API 
+* :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__
+* :class:`.Xnat` - access data stored in XNAT_ repositories vi its REST API 
+* :class:`.XnatViaCS` - access data stored in XNAT_ via its `container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_
  
- 
-To configure access to a store via the CLI use the ``arcana store add`` sub-command 
+For instructions on how to add support for new systems see :ref:`alternative_stores`.
+
+To configure access to a store via the CLI use the ':ref:`arcana store add`' command.
+The store type is specified by the path to the data store sub-class,
+*<module-path>:<class-name>*,  e.g. ``arcana.data.stores.medimage:Xnat``.
+However, if the format is in a submodule of ``arcana.data.stores`` then that
+prefix can be dropped for convenience, e.g. ``mediamge:Xnat``.  
  
 .. code-block:: console 
  
-    $ arcana store add xnat xnat-central https://central.xnat.org \ 
+    $ arcana store add xnat-central medimage:Xnat https://central.xnat.org \
       --user user123 --cache_dir /work/xnat-cache 
     Password: 
+
+This command will create a YAML configuration file for the store in the
+`~/.arcana/stores/` directory. Authentication tokens are saved in the config
+file instead of usernames and passwords, and will need to be
+refreshed when they expire (see ':ref:`arcana store refresh`').
+
+The CLI also contains commands for working with store entries that have already
+been created
+
+* :ref:`arcana store ls` - list saved stores
+* :ref:`arcana store rename` - rename a store
+* :ref:`arcana store remove` - remove a store
+* :ref:`arcana store refresh` - refreshes authentication tokens saved for the store
  
-.. note:: 
-    See also ``arcana store rename``, ``arcana store remove`` and ``arcana store ls``. 
- 
-Alternatively, to configure access to a data store a via the Python API, initialise the :class:`.DataStore` 
-sub-class corresponding to the required data location/access-method then save 
-it to the YAML configuration file stored at `~/.arcana/stores.yaml`. 
+Alternatively, data stores can be configured via the Python API by initialising the
+data store classes directly. 
  
 .. code-block:: python 
  
@@ -84,14 +96,13 @@ it to the YAML configuration file stored at `~/.arcana/stores.yaml`.
 Datasets 
 --------
  
-In Arcana, a *dataset* refers to a collection of comparable data, 
+In Arcana, a *dataset* refers to a collection of comparable data within a store, 
 e.g. data from a single research study, or large collection such as the 
 Human Connectome Project. Arcana datasets consist of both source data and the 
-derivatives derived from them. Datasets are organised into a tree with a 
-consistent "hierarchy" that classifies a series of data points 
-(e.g. groups, subjects, sessions). For example, the following dataset consisting 
-of imaging sessions sorted by subject and longintudinal timepoint within a 
-directory tree 
+derivatives derived from them. Datasets are organised into trees that classify a
+series of data points (e.g. imaging sessions) by a "hierarchy" of branches
+(e.g. groups > subjects > sessions). For example, the following dataset consisting 
+of imaging sessions is sorted by subjects, then longintudinal timepoints 
  
 .. code-block:: 
  
@@ -124,14 +135,14 @@ directory tree
             ├── t2w_space 
             └── bold_rest 
  
-The leaf sub-directories of the directory tree contain data from "image session" 
-data points, as designated by the combination of one of the three 
-subject IDs and one of the two timepoint IDs. 
+The leaves of the tree contain data from specific "imaging session" data points,
+as designated by the combination of one of the three subject IDs and
+one of the two timepoint IDs. 
  
-While the majority of data items are stored in the leaves of the tree (e.g. per-session), 
+While the majority of data items are stored in the leaves of the tree, 
 data can exist for any branch. For example, an analysis may use 
 genomics data, which will be constant for each subject, and therefore sits at 
-the subject level of the tree under a special *SUBJECT* sub-directory
+the subject level of the tree sit in special *SUBJECT* branches
  
 .. code-block:: 
  
@@ -171,43 +182,24 @@ the subject level of the tree under a special *SUBJECT* sub-directory
             └── bold_rest 
  
  
-Datasets are referenced in the CLI by the nickname of the store they are stored in 
-(as saved by ``arcana store add``, see :ref:`Stores`) and the dataset ID, 
-separated by ``//``. For :class:`.FileSystem` and :class:`.Bids` stores, the dataset ID is just the 
-absolute path to the file-system directory the data are stored in. For :class:`.Xnat` 
-stores the dataset ID is the project ID. For example, if the login details 
-for XNAT Central have been saved under the nickname "xnat-central", then 
-the "MYXNATPROJECT" project on XNAT central can be referenced by 
-``xnat-central//MYXNATPROJECT``. 
+In the CLI, datasets are referred to by ``<STORE-NAME>//<DATASET-ID>``, where
+*STORE-NAME* is the nickname of the store as saved by ':ref:`arcana store add`'
+(see :ref:`Stores`), and *DATASET-ID* is
+
+* the file-system path to the data directory for file-system (and BIDS) stores
+* the project ID for XNAT stores
+
+For example, a project called "MYXNATPROJECT" stored in
+`XNAT Central <https://central.xnat.org>`__ using the *xnat-central* nickname
+created in the :ref:`Stores` Section, would be ``xnat-central//MYXNATPROJECT``.
  
-Alternatively, dataset objects can be created via the Python API using the 
-:meth:`.DataStore.dataset` method. For example, to define a new dataset 
+Alternatively, dataset objects can be created directly via the Python API using
+the :meth:`.DataStore.dataset` method. For example, to define a new dataset 
 corresponding to *MYXNATPROJECT* 
  
 .. code-block:: python 
  
-    xnat_dataset = xnat_store.dataset(id='MYXNATPROJECT') 
- 
-For stores that support datasets with arbitrary tree structures 
-(i.e. :class:`.FileSystem`), the "data space" and the hierarchy of layers 
-in the data tree needs to be provided. Data spaces are explained in more 
-detail in :ref:`data_spaces`. However, for the majority of datasets in the 
-medical imaging field, the :class:`arcana.data.spaces.medimage.Clinical` space is 
-appropriate. 
- 
-.. code-block:: python 
- 
-    from arcana.data.stores.common import FileSystem 
-    from arcana.data.spaces.medimage import Clinical 
- 
-    fs_dataset = FileSystem().dataset( 
-        id='/data/imaging/my-project', 
-        # Define the hierarchy of the dataset in which imaging session 
-        # sub-directories are separated into directories via their study group 
-        # (i.e. test & control) 
-        space=Clinical, 
-        hierarchy=['group', 'session'])   
- 
+    xnat_dataset = xnat_store.dataset(id='MYXNATPROJECT')
  
 .. _data_formats: 
  
@@ -215,15 +207,15 @@ Items
 -----
  
 Atomic items within a dataset are encapsulated by :class:`DataItem` objects. 
-:class:`DataItem`` has three sub-types: 
+There are three types of data items: 
  
 * :class:`.FileGroup` (single files, files + header/side-cars or directories) 
 * :class:`.Field` (int, float, str or bool) 
 * :class:`.ArrayField` (an array of int, float, str or bool) 
  
-Data item objects reference files and fields stored in the data store, rather 
-than necessarily holding the data themselves. Before data in remote stores 
-are accessed they are cached locally with :meth:`.DataItem.get`. 
+Instead of holding the data directly, data items reference files and
+fields stored in the data store. Before data in remote stores 
+are accessed they need to be cached locally with :meth:`.DataItem.get`. 
 Newly created and modified data items are placed into the store with
 :meth:`.DataItem.put`. 
  
@@ -236,18 +228,19 @@ formats implemented in :mod:`arcana.data.formats.common`, including
 * :class:`.common.Json` 
 * :class:`.common.Directory` 
  
-:class:`FileGroup` sub-classes specify the files and directories expected in
-the file group, converters from alternative file formats, and may
+File-group classes specify the extensions of the expected files/directories,
+converters from alternative file formats, and may
 also contain methods for accessing the headers and the contents of files
-(e.g. :class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`). Arcana will
-automatically convert between file formats when there is a mismatch
-between the format of the item stored in the dataset and that required by a
-pipeline when a converter is specified. See :ref:`adding_formats` for detailed
-instructions on how to specify new file formats and conversions between them. 
+where applicable (e.g. :class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`).
+Where a converter is specified from an alternative file format is specified,
+Arcana will automatically run the conversion between the format required by
+a pipeline and that stored in the data store. See :ref:`adding_formats` for detailed
+instructions on how to specify new file formats and converters between them. 
  
-On the command line, file formats are specified by *<full-module-path>:<class-name>*, 
+As with data stores, file formats are specified in the CLI by *<module-path>:<class-name>*, 
 e.g. ``arcana.data.formats.common:Text``. However, if the format is in a submodule of 
-``arcana.data.formats`` then that prefix can be dropped for convenience, e.g. ``common:Text``.  
+``arcana.data.formats`` then that prefix can be dropped for convenience,
+e.g. ``common:Text``.  
  
  
 .. _data_columns: 
@@ -274,39 +267,42 @@ and the "columns" are slices of comparable data items across each row, e.g.
 A data frame is defined by adding "source" columns to access existing 
 (typically acquired) data, and "sink" columns to define where 
 derivatives will be stored within the data tree. The "row frequency" argument 
-of the column (e.g. per 'session', 'subject', etc...) determines which data frame 
+of the column (e.g. per 'session', 'subject', etc...) specifies which data frame 
 the column belongs to. The format of a column's member items (see :ref:`Items`)
 must be consistent and is also specified when the column is created.
  
-The data items within a source column do not need to have consistent labels
-although it makes it easier where possible. Source columns match single items
-in each row based on several criteria (an error is raised if no, or multiple
-items are matched):
+The data items (e.g. files, scans) within a source column do not need to have
+consistent labels throughout the dataset although it makes it easier where possible.
+To handle the case of inconsistent labelling, source columns can match single items
+in each row of the frame based on several criteria:
  
 * **path** - label for the file-group or field 
     * scan type for XNAT stores 
     * relative file path from row sub-directory for file-system/BIDS stores 
     * is treated as a regular-expression if the `is_regex` flag is set. 
 * **quality threshold** - the minimum quality for the item to be included 
-    * only applicable for XNAT_ stores, where the quality 
+    * only applicable for XNAT_ stores, where the quality can be set by UI or API
 * **header values** - header values are sometimes needed to distinguish file 
     * only available for selected item formats such as :class:`.medimage.Dicom` 
 * **order** - the order that an item appears the data row 
     * e.g. first T1-weighted scan that meets all other criteria in a session 
     * only applicable for XNAT_ stores 
  
+If no items, or multiple items are matched, then an error is raised. The *order*
+flag, can be used to select one of muliple valid options.
+
 The ``path`` argument provided to sink columns defines where derived data will 
-be stored within the dataset 
+be stored within the dataset:
  
 * the resource name for XNAT stores. 
 * the relative path to the target location for file-system stores 
  
 Each column is assigned a name when it is created, which is used when 
 connecting pipeline inputs and outputs to the dataset and accessing the data directly. 
-The column name is used as the default value for the paths of sink columns. 
+The column name is used as the default value for the path of sink columns. 
  
-Use the ``arcana source add`` and ``arcana sink add`` commands to add sources/sinks 
-to a dataset using the CLI. 
+Use the ':ref:`arcana dataset add-source`' and ':ref:`arcana dataset add-sink`'
+commands to add columns to a dataset using the CLI. 
  
 .. code-block:: console 
  
@@ -358,11 +354,11 @@ operator
     # data formats that have convenient Python readers) 
     plt.imshow(t1w['T2', 'sub01'].data[:, :, 30]) 
  
-.. note:: 
-    One of the main benefits of using datasets in BIDS_ format is that the names 
-    and file formats of the data are strictly defined. This allows the :class:`.Bids` 
-    data store object to automatically add sources to the dataset when it is 
-    initialised. 
+
+One of the main benefits of using datasets in BIDS_ format is that the names 
+and file formats of the data are strictly defined. This allows the :class:`.Bids` 
+data store object to automatically add sources to the dataset when it is 
+initialised. 
  
 .. code-block:: python 
  
@@ -389,7 +385,7 @@ derivatives of a particular analysis. In clinical imaging research studies/trial
 imaging sessions are classified by the subject who was scanned and, if applicable,
 the longitudinal timepoint. The subjects themselves are often classified by which
 group they belong to. Therefore, we can factor imaging session
-classifications onto three "axes" 
+classifications into
  
 * **group** - study group (e.g. 'test' or 'control') 
 * **member** - ID relative to group 
@@ -397,12 +393,18 @@ classifications onto three "axes"
     * e.g. the '03' in 'TEST03' & 'CONT03' pair of control-matched subject IDs 
 * **timepoint** - longintudinal timepoint 
  
-Depending on the hierarchy of the data tree, data belonging to these axial 
-frequencies may or may not have a corresponding branch to be stored in
+In Arcana, these primary classifiers are conceptualised as "axes" of a
+"data space", in which data points (e.g. imaging sessions) are
+laid out on a grid.
+
+.. TODO: grid image to go here
+
+Depending on the hierarchy of the data tree, data belonging to these
+axial frequencies may or may not have a corresponding branch to be stored in.
 In these cases, new branches are created off the root of the tree to 
 hold the derivatives. For example, average trial performance data, calculated 
 at each timepoint and the age difference between matched-control pairs, would 
-need to be stored in new sub-branches for timepoints and members, respectively
+need to be stored in new sub-branches for timepoints and members, respectively.
  
 .. code-block:: 
  
@@ -458,12 +460,9 @@ need to be stored in new sub-branches for timepoints and members, respectively
  
 In this framework, ``subject`` IDs are equivalent to the combination of
 ``group + member`` IDs and ``session`` IDs are equivalent to the combination of
-``group + member + timepint`` IDs. Therefore, there are,  2\ :sup:`N`
-row frequencies for a given data tree, where ``N`` is the depth of the tree
-(i.e. ``N=3`` in this case). In Arcana, the set of all possible ID combinations
-is imagined as a "data space", in which data points (e.g. imaging sessions) are
-visualised as being laid out on a grid along the axes (e.g. ``group``, ``member``,
-``timepoint``).
+``group + member + timepoint`` IDs. There are,  2\ :sup:`N` combinations of
+the axial frequencies for a given data tree, where ``N`` is the depth of the tree
+(i.e. ``N=3`` in this case).
 
 .. TODO: 3D plot of grid
  
@@ -553,11 +552,26 @@ axes
  
 .. TODO Should include example of weird data hierarchy using these frequencies 
 .. and how the layers add to one another 
+
+For stores that support datasets with arbitrary tree structures 
+(i.e. :class:`.FileSystem`), the "data space" and the hierarchy of layers 
+in the data tree needs to be provided. Data spaces are explained in more 
+detail in :ref:`data_spaces`. However, for the majority of datasets in the 
+medical imaging field, the :class:`arcana.data.spaces.medimage.Clinical` space is 
+appropriate. 
  
-As mentioned previously, the :class:`.medimage.Clinical` data space is 
-likely to be sufficient for most applications in medical imaging research, 
-but please see :ref:`adding_formats` for a description on how to create custom 
-data spaces as required.
+.. code-block:: python 
+ 
+    from arcana.data.stores.common import FileSystem 
+    from arcana.data.spaces.medimage import Clinical 
+ 
+    fs_dataset = FileSystem().dataset( 
+        id='/data/imaging/my-project', 
+        # Define the hierarchy of the dataset in which imaging session 
+        # sub-directories are separated into directories via their study group 
+        # (i.e. test & control) 
+        space=Clinical, 
+        hierarchy=['group', 'session'])
  
 For datasets where the fundamental hierarchy of the storage system is fixed 
 (e.g. XNAT), you may need to infer the data point IDs along an axis
@@ -635,7 +649,7 @@ frequencies.
  
     $ arcana dataset define 'file///data/imaging/my-project' \ 
       medimage:Clinical subject session \ 
-      --exclude member 03,11,27 
+      --exclude member 03,11,27 \
       --include timepoint 1,2
  
 You may want multiple dataset definitions for a given project/directory, 
