@@ -1,10 +1,8 @@
 
-import pytest
 import zipfile
 import tempfile
 from pathlib import Path
 from arcana.data.formats.common import Text, Zip
-from arcana.core.data.set import Dataset
 from arcana.test.datasets import (
     make_dataset, TestDataSpace)
 from arcana.test.fixtures.common import TEST_DATASET_BLUEPRINTS

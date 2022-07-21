@@ -428,7 +428,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
     work_dir.mkdir(parents=True, exist_ok=True)
 
     store_cache_dir = work_dir / 'store-cache'
-    pipeline_cache_dir = work_dir / 'pipeline-cache'
+    pipeline_cache_dir = work_dir / 'pydra'
 
     try:
         dataset = Dataset.load(dataset_id_str)
@@ -550,7 +550,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
         if export_work:
             logger.info("Exporting work directory to '%s'", export_work)
             export_work.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(pipeline_cache_dir, export_work / 'pipeline-cache')
+            shutil.copytree(pipeline_cache_dir, export_work / 'pydra')
     # Abort at the end after the working directory can be copied back to the
     # host so that XNAT knows there was an error
     if errors:

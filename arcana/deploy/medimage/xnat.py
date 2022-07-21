@@ -314,7 +314,7 @@ def generate_xnat_cs_command(name: str,
         "type": "string",
         "default-value": (
             "--plugin cf "  # Use serial processing instead of parallel to simplify outputs
-            f"--work {XnatViaCS.WORK_MOUNT}-local "  #FIXME: work dir moved inside container due to file-locking issue on some mounted volumes (see https://github.com/tox-dev/py-filelock/issues/147)
+            "--work /wl "  #NB: work dir moved inside container due to file-locking issue on some mounted volumes (see https://github.com/tox-dev/py-filelock/issues/147)
             "--dataset_name default "
             "--loglevel info "
             f"--export-work {XnatViaCS.WORK_MOUNT}"),
