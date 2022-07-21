@@ -37,15 +37,16 @@ def generate_test_dicom(num_vols: int, constant_hdr: dict,
         if varying_hdr is not None:
             vol_json.update({k: v[i] for k, v in varying_hdr.items()})
         # Reconstitute large binary fields with dummy data filled with \3 bytes
-        vol_json.update({k: {'vr': v['vr'], 'InlineBinary': b"\3" * v[i]}
+        vol_json.update({k: {'vr': v[i]['vr'], 'InlineBinary': "X" * v[i]['BinaryLength']}
                          for k, v in collated_data.items()})
 
         ds = pydicom.dataset.Dataset.from_json(vol_json)
-
-        print(ds)
+        ds.is_implicit_VR = True
+        ds.is_little_endian = True
 
         ds.save_as(dicom_dir / f"{i + 1}.dcm")
 
+    return dicom_dir
 
 @dataclass
 class ByteData():
@@ -74,7 +75,7 @@ def read_dicom(fpath: Path):
               if not v['vr'].startswith('O')}
     # Replace data byte string with its length, so it can be recreated with
     # dummy data when it is loaded
-    data = {k: {'vr': v['vr'], 'InlineBinary': len(v['InlineBinary'])} 
+    data = {k: {'vr': v['vr'], 'BinaryLength': len(v['InlineBinary'])} 
             for k, v in js.items()
             if v['vr'].startswith('O')}
     return header, data
@@ -122,7 +123,7 @@ def generate_code(dpath: Path, fixture_name: str):
 
 FILE_TEMPLATE = """
 import pytest
-from .base import generate_test_dicom
+from arcana.test.fixtures.medimage.dicom.base import generate_test_dicom
 
 
 @pytest.fixture
@@ -140,6 +141,9 @@ varying_hdr = {varying_hdr}
 
 
 collated_data = {collated_data}
+
+if __name__ == '__main__':
+    print(generate_test_dicom(num_vols, constant_hdr, collated_data, varying_hdr))
 """
 
 if __name__ == '__main__':
