@@ -420,7 +420,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         return item
 
     @abstractmethod
-    def set_fs_paths(self, fs_paths):
+    def set_fs_paths(self, fs_paths: ty.List[Path]):
         """Set the file paths of the file group
 
         Parameters
@@ -435,6 +435,31 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         ArcanaFileFormatError
             is raised if the required the paths cannot be set from the provided
         """
+
+    @classmethod
+    def from_fs_paths(cls, *fs_paths: ty.List[Path], path=None):
+        """Create a FileGroup object from a set of file-system paths
+
+        Parameters
+        ----------
+        fs_paths : list[Path]
+            The candidate paths from which to set the paths of the 
+            file group from. Note that not all paths need to be set if
+            they are not relevant.
+        path : str, optional
+            the location of the file-group relative to the node it (will)
+            belong to. Defaults to 
+
+        Returns
+        -------
+        FileGroup
+            The created file-group
+        """
+        if path is None:
+            path = fs_paths[0].stem
+        obj = cls(path)
+        obj.set_fs_paths(fs_paths)
+        return obj
 
     @classmethod
     def matches_ext(cls, *paths, ext=None):

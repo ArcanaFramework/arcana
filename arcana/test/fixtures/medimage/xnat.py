@@ -1,13 +1,16 @@
 from datetime import datetime
 from pathlib import Path
 from tempfile import mkdtemp
+import json
 import pytest
+import numpy
+import nibabel
 import xnat4tests
 from arcana.data.stores.common import FileSystem
 from arcana.data.stores.medimage.xnat.api import Xnat
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats.common import Text, Directory
-from arcana.data.formats.medimage import NiftiGzX, NiftiGz, Dicom
+from arcana.data.formats.medimage import NiftiGzX, NiftiGz, Dicom, NiftiX
 from arcana.test.stores.medimage.xnat import (
     make_mutable_dataset,
     TestXnatDatasetBlueprint,
@@ -21,21 +24,21 @@ from arcana.test.stores.medimage.xnat import (
 from arcana.test.datasets import save_dataset as save_file_system_dataset
 
 
-@pytest.fixture(scope='session')
-def nifti_sample_dir(pkg_dir):
-    return pkg_dir / 'test-data'/ 'nifti'
+# @pytest.fixture(scope='session')
+# def nifti_sample_dir(pkg_dir):
+#     return pkg_dir / 'test-data'/ 'nifti'
 
 
-@pytest.fixture(scope='session')
-def dicom_dataset(test_dicom_dataset_dir):
-    return FileSystem().dataset(
-        test_dicom_dataset_dir,
-        hierarchy=['session'])
+# @pytest.fixture(scope='session')
+# def dicom_dataset(test_dicom_dataset_dir):
+#     return FileSystem().dataset(
+#         test_dicom_dataset_dir,
+#         hierarchy=['session'])
 
 
-@pytest.fixture(scope='session')
-def test_dicom_dataset_dir(pkg_dir):
-    return pkg_dir / 'test-data' / 'dicom-dataset'
+# @pytest.fixture(scope='session')
+# def test_dicom_dataset_dir(pkg_dir):
+#     return pkg_dir / 'test-data' / 'dicom-dataset'
 
 
 # -----------------------
@@ -190,3 +193,33 @@ def run_prefix():
 @pytest.fixture(scope='session')
 def xnat_respository_uri(xnat_repository):
     return xnat_repository.server
+
+
+@pytest.fixture
+def dummy_niftix(work_dir):
+
+    nifti_path = work_dir / 't1w.nii'
+    json_path = work_dir / 't1w.json'
+
+    N = 10 ** 6
+
+    # Create a random Nifti file to satisfy BIDS parsers
+    hdr = nibabel.Nifti1Header()
+    hdr.set_data_shape((10, 10, 10))
+    hdr.set_zooms((1., 1., 1.))  # set voxel size
+    hdr.set_xyzt_units(2)  # millimeters
+    hdr.set_qform(numpy.diag([1,2,3,1]))
+    nibabel.save(nibabel.Nifti1Image(
+        numpy.random.randint(0, 1, size=[10, 10, 10]), hdr.get_best_affine(),
+        header=hdr), nifti_path)
+
+    with open(json_path, 'w') as f:
+        json.dump({'test': 'json-file'}, f)
+
+    return NiftiX.from_fs_paths(nifti_path, json_path)
+
+
+@pytest.fixture
+def dummy_dicom(work_dir):
+
+    return Dicom.from_fs_paths(*fs_paths)

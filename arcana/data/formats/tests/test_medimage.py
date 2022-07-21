@@ -13,3 +13,7 @@ from arcana.data.formats.medimage import Dicom, NiftiGzX
 #     # result = converter()
 
 #     # print(converter)
+
+
+def test_dicom_to_nifti_conversion():
+    pass
