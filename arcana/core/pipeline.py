@@ -6,9 +6,8 @@ from pathlib import Path
 from dataclasses import dataclass
 import logging
 from copy import copy, deepcopy
-import re
 from collections.abc import Iterable
-import attr
+import attr.converters
 import pydra.mark
 from pydra.engine.core import Workflow
 from arcana.exceptions import (
@@ -21,7 +20,7 @@ import arcana.core.data.row
 from .data.space import DataSpace
 from .utils import (
     func_task, asdict, fromdict, pydra_asdict, pydra_fromdict, pydra_eq,
-    path2varname, varname2path)
+    path2varname)
 
 logger = logging.getLogger('arcana')
 
@@ -79,7 +78,8 @@ class Pipeline():
     outputs: ty.List[Output] = attr.ib(
         converter=lambda lst: [Output(*o) if isinstance(o, Iterable) else o
                                for o in lst])
-    converter_args: ty.Dict[str, dict] = attr.ib(factory=dict)
+    converter_args: ty.Dict[str, dict] = attr.ib(
+        factory=dict, converter=attr.converters.default_if_none(factory=dict))
     dataset: arcana.core.data.set.Dataset = attr.ib(
         metadata={'asdict': False}, default=None, eq=False, hash=False)
 

@@ -479,7 +479,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
             the extracted qualifiers
         """
         qualifiers = defaultdict(dict)
-        parts = shlex.split(match_criteria)
+        parts = shlex.split(user_input)
         path = parts[0]
         for part in parts[1:]:
             full_name, val = part.split('=', maxsplit=1)
