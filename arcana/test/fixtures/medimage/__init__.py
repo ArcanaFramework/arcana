@@ -1,2 +1,2 @@
-from dicom import *
-from xnat import *
+from .dicom import *
+from .xnat import *

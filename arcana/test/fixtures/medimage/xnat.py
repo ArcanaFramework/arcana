@@ -24,9 +24,9 @@ from arcana.test.stores.medimage.xnat import (
 from arcana.test.datasets import save_dataset as save_file_system_dataset
 
 
-# @pytest.fixture(scope='session')
-# def nifti_sample_dir(pkg_dir):
-#     return pkg_dir / 'test-data'/ 'nifti'
+@pytest.fixture(scope='session')
+def nifti_sample_dir(pkg_dir):
+    return pkg_dir / 'test-data'/ 'nifti'
 
 
 # @pytest.fixture(scope='session')
