@@ -506,7 +506,31 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             missing_str = '\n'.join(missing)
             raise ArcanaFileFormatError(
                 f"Provided file system paths do not exist:\n{missing_str}")
-        
+
+    def convert_to(self, to_format, **kwargs):
+        """Convert the FileGroup to a new format
+
+        Parameters
+        ----------
+        to_format : type
+            the file-group format to convert to
+        **kwargs
+            args to pass to the conversion process
+
+        Returns
+        -------
+        FileGroup
+            the converted file-group
+        """
+        converter, output_lfs = to_format.find_converter(type(self))(
+            **dict(zip(self.fs_names(), self.fs_paths)))
+        result = converter()
+        if not isinstance(output_lfs, tuple):
+            output_lfs = (output_lfs,)
+        converted = to_format(self.path)
+        converted.set_fs_paths([getattr(result.output, o.field)
+                                 for o in output_lfs])
+        return converted
     
     @classmethod
     def converter_task(cls, from_format, name, **kwargs):

@@ -6,27 +6,30 @@ import json
 from collections import defaultdict
 from argparse import ArgumentParser
 import pydicom.dataset
+from arcana.data.formats.medimage import Dicom
 
 
-def generate_test_dicom(num_vols: int, constant_hdr: dict,
+def generate_test_dicom(path: str, num_vols: int, constant_hdr: dict,
                         collated_data: dict, varying_hdr: dict):
     """Generates a dummy DICOM dataset for a test fixture
 
     Parameters
     ----------
-    header : dict[str, Any]
+    path : str
+        Path (name) for the generated Dicom object
+    num_vols : int
+        Number of volumes in the set
+    constant_hdr : dict[str, Any]
         constant header values
-    data_fields : dict[str, int]
+    collated_data : dict[str, int]
         data array lengths
-    varying_header : dict[str, list], optional
+    varying_hdr : dict[str, list], optional
         varying header values across a multi-volume set
-    varying_data_fields :  dict[str, list[int]]
-        varying data array lengths across a multi-volume set
 
     Returns
     -------
-    Path
-        path to a generated DICOM dataset
+    Dicom
+        Dicom dataset
     """
 
     dicom_dir = Path(tempfile.mkdtemp())
@@ -46,7 +49,10 @@ def generate_test_dicom(num_vols: int, constant_hdr: dict,
 
         ds.save_as(dicom_dir / f"{i + 1}.dcm")
 
-    return dicom_dir
+    dcm = Dicom(path)
+    dcm.set_fs_paths([dicom_dir])
+    return dcm
+
 
 @dataclass
 class ByteData():
@@ -128,7 +134,7 @@ from arcana.test.fixtures.medimage.dicom.base import generate_test_dicom
 
 @pytest.fixture
 def dummy_{fixture_name}_dicom():
-    return generate_test_dicom(num_vols, constant_hdr, collated_data, varying_hdr)
+    return generate_test_dicom('{fixture_name}', num_vols, constant_hdr, collated_data, varying_hdr)
 
 
 num_vols = {num_vols}

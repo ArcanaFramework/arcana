@@ -5,7 +5,7 @@ from arcana.test.fixtures.medimage.dicom.base import generate_test_dicom
 
 @pytest.fixture
 def dummy_t1w_dicom():
-    return generate_test_dicom(num_vols, constant_hdr, collated_data, varying_hdr)
+    return generate_test_dicom('t1w', num_vols, constant_hdr, collated_data, varying_hdr)
 
 
 num_vols = 192

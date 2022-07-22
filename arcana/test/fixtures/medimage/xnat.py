@@ -184,10 +184,10 @@ def xnat_repository(run_prefix):
     yield repository
 
 
-@pytest.fixture(scope='session')
-def run_prefix():
-    "A datetime string used to avoid stale data left over from previous tests"
-    return datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
+# @pytest.fixture(scope='session')
+# def run_prefix():
+#     "A datetime string used to avoid stale data left over from previous tests"
+#     return datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
 
 
 @pytest.fixture(scope='session')
@@ -217,9 +217,3 @@ def dummy_niftix(work_dir):
         json.dump({'test': 'json-file'}, f)
 
     return NiftiX.from_fs_paths(nifti_path, json_path)
-
-
-@pytest.fixture
-def dummy_dicom(work_dir):
-
-    return Dicom.from_fs_paths(*fs_paths)
