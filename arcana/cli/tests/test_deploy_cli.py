@@ -1,8 +1,6 @@
 import yaml
 from functools import reduce
 from operator import mul
-import logging
-import sys
 import tempfile
 from pathlib import Path
 import pytest
@@ -10,7 +8,7 @@ import docker
 from arcana.cli.deploy import build, run_pipeline
 from arcana.core.utils import class_location
 from arcana.test.utils import show_cli_trace, make_dataset_id_str
-from arcana.test.formats import EncodedText, DecodedText
+from arcana.test.formats import EncodedText
 from arcana.test.datasets import make_dataset, TestDatasetBlueprint, TestDataSpace
 from arcana.data.formats.common import Text
 from arcana.exceptions import ArcanaBuildError
@@ -231,6 +229,10 @@ def test_run_pipeline_on_row_cli(cli_runner, work_dir):
 
 
 def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
+    """Test passing arguments to file format converter tasks via input/output
+    "qualifiers", e.g. 'converter.shift=3' using hte arcana-run-pipeline CLI
+    tool (as used in the XNAT CS commands)
+    """
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     dataset_id_str = make_dataset_id_str(saved_dataset)
     bp = saved_dataset.blueprint

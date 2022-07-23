@@ -522,14 +522,21 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         FileGroup
             the converted file-group
         """
-        converter, output_lfs = to_format.find_converter(type(self))(
-            **dict(zip(self.fs_names(), self.fs_paths)))
-        result = converter()
-        if not isinstance(output_lfs, tuple):
-            output_lfs = (output_lfs,)
+        converter_method = to_format.find_converter(type(self))
+        # Get inputs dictionary containing file-system paths for all
+        # files in the format and any additional args to modify the conversion
+        # process
+        conv_args = dict(zip(self.fs_names(), self.fs_paths))
+        conv_args.update(kwargs)
+        # Create the converter task and receive the LazyField(s) that will
+        # contain the file-system paths for the converted method
+        task, lazy_fields = converter_method(**conv_args)
+        result = task()
+        if not isinstance(lazy_fields, tuple):
+            lazy_fields = (lazy_fields,)
         converted = to_format(self.path)
         converted.set_fs_paths([getattr(result.output, o.field)
-                                 for o in output_lfs])
+                                 for o in lazy_fields])
         return converted
     
     @classmethod

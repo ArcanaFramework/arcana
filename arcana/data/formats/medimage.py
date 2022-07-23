@@ -344,8 +344,8 @@ class NiftiGz(Nifti):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
-        spec = super().dcm2niix(fs_path)
+    def dcm2niix(cls, fs_path, **kwargs):
+        spec = super().dcm2niix(fs_path, **kwargs)
         spec[0].inputs.compress = 'y'
         return spec
 
@@ -362,8 +362,8 @@ class NiftiX(WithSideCars, Nifti):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
-        node, out_file = super().dcm2niix(fs_path)
+    def dcm2niix(cls, fs_path, **kwargs):
+        node, out_file = super().dcm2niix(fs_path, **kwargs)
         return node, (out_file, node.lzout.out_json)
 
     mrconvert = None  # Only dcm2niix produces the required JSON side car
@@ -381,8 +381,8 @@ class NiftiFslgrad(WithSideCars, Nifti):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
-        node, out_file = super().dcm2niix(fs_path)
+    def dcm2niix(cls, fs_path, **kwargs):
+        node, out_file = super().dcm2niix(fs_path, **kwargs)
         return node, (out_file, node.lzout.out_bvec, node.lzout.out_bval)
 
     mrconvert = None  # Technically mrconvert can export fsl grads but dcm2niix will be sufficient 99% of the time
@@ -398,8 +398,8 @@ class NiftiXFslgrad(NiftiX, NiftiFslgrad):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
-        node, out_file = super().dcm2niix(fs_path)
+    def dcm2niix(cls, fs_path, **kwargs):
+        node, out_file = super().dcm2niix(fs_path, **kwargs)
         return node, (out_file,
                       node.lzout.out_json,
                       node.lzout.out_bvec,
@@ -409,8 +409,8 @@ class NiftiGzXFslgrad(NiftiXFslgrad, NiftiGz):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
-        spec = super().dcm2niix(fs_path)
+    def dcm2niix(cls, fs_path, **kwargs):
+        spec = super().dcm2niix(fs_path, **kwargs)
         spec[0].inputs.compress = 'y'
         return spec
 
