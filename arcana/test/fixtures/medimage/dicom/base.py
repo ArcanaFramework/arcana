@@ -148,8 +148,9 @@ varying_hdr = {varying_hdr}
 
 collated_data = {collated_data}
 
+
 if __name__ == '__main__':
-    print(generate_test_dicom(num_vols, constant_hdr, collated_data, varying_hdr))
+    print(generate_test_dicom('{fixture_name}',num_vols, constant_hdr, collated_data, varying_hdr))
 """
 
 if __name__ == '__main__':
