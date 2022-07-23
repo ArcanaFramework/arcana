@@ -3,7 +3,7 @@ import pytest
 from arcana.test.fixtures.medimage.dicom.base import generate_test_dicom
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def dummy_t1w_dicom():
     return generate_test_dicom('t1w', num_vols, constant_hdr, collated_data, varying_hdr)
 

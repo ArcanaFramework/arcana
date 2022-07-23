@@ -132,7 +132,7 @@ import pytest
 from arcana.test.fixtures.medimage.dicom.base import generate_test_dicom
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def dummy_{fixture_name}_dicom():
     return generate_test_dicom('{fixture_name}', num_vols, constant_hdr, collated_data, varying_hdr)
 
