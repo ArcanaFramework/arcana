@@ -414,13 +414,13 @@ class Dataset():
                     id, f"{id} not present in data tree "
                     f"({list(self.row_ids(row_frequency))})") from e
 
-    def rows(self, row_frequency=None, ids=None):
-        """Return all the IDs in the dataset for a given row_frequency
+    def rows(self, frequency=None, ids=None):
+        """Return all the IDs in the dataset for a given frequency
 
         Parameters
         ----------
-        row_frequency : DataSpace or None
-            The "row_frequency" of the rows, e.g. per-session, per-subject. If
+        frequency : DataSpace or None
+            The "frequency" of the rows, e.g. per-session, per-subject. If
             None then all rows are returned
         ids : Sequence[str or Tuple[str]]
             The i
@@ -430,13 +430,13 @@ class Dataset():
         Sequence[DataRow]
             The sequence of the data row within the dataset
         """
-        if row_frequency is None:
+        if frequency is None:
             return chain(
                 *(d.values() for d in self.root.children.values()))
-        row_frequency = self._parse_freq(row_frequency)
-        if row_frequency == self.root_freq:
+        frequency = self._parse_freq(frequency)
+        if frequency == self.root_freq:
             return [self.root]
-        rows = self.root.children[row_frequency].values()
+        rows = self.root.children[frequency].values()
         if ids is not None:
             rows = (n for n in rows if n.id in set(ids))
         return rows

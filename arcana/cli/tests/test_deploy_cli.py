@@ -10,6 +10,7 @@ import docker
 from arcana.cli.deploy import build, run_pipeline
 from arcana.core.utils import class_location
 from arcana.test.utils import show_cli_trace, make_dataset_id_str
+from arcana.test.formats import EncodedText, DecodedText
 from arcana.test.datasets import make_dataset, TestDatasetBlueprint, TestDataSpace
 from arcana.data.formats.common import Text
 from arcana.exceptions import ArcanaBuildError
@@ -228,3 +229,40 @@ def test_run_pipeline_on_row_cli(cli_runner, work_dir):
 
     assert get_dataset_filenumbers() == [i + 10 for i in filenumbers]     
 
+
+def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
+    # Get CLI name for dataset (i.e. file system path prepended by 'file//')
+    dataset_id_str = make_dataset_id_str(saved_dataset)
+    bp = saved_dataset.blueprint
+    duplicates = 1
+    # Start generating the arguments for the CLI
+    # Add source to loaded dataset
+    result = cli_runner(
+        run_pipeline,
+        [dataset_id_str, 'a_pipeline', 'arcana.test.tasks:identity_file',
+         '--input', 'source', 'common:Text', 'file1 converter.shift=3', 'in_file', 'arcana.test.formats:EncodedText',
+         '--output', 'sink1', 'arcana.test.formats:EncodedText', 'encoded', 'out', 'arcana.test.formats:EncodedText',
+         '--output', 'sink2', 'arcana.test.formats:DecodedText', 'decoded converter.shift=3', 'out', 'arcana.test.formats:EncodedText',
+         '--raise-errors',
+         '--plugin', 'serial',
+         '--work', str(work_dir),
+         '--loglevel', 'debug',
+         '--dataset_space', class_location(bp.space),
+         '--dataset_hierarchy'] + [str(l) for l in bp.hierarchy])
+    assert result.exit_code == 0, show_cli_trace(result)
+    # Add source column to saved dataset
+    saved_dataset.add_sink('sink1', EncodedText, path='encoded')
+    saved_dataset.add_sink('sink2', Text, path='decoded')
+    unencoded_contents = 'file1.txt'
+    encoded_contents = 'iloh41w{w'  # 'file1.txt' characters shifted up by 3 in ASCII code
+    for row in saved_dataset.rows(frequency='abcd'):
+        enc_item = row['sink1']
+        dec_item = row['sink2']
+        enc_item.get(assume_exists=True)
+        dec_item.get(assume_exists=True)
+        with open(enc_item.fs_path) as f:
+            enc_contents = f.read()
+        with open(dec_item.fs_path) as f:
+            dec_contents = f.read()
+        assert enc_contents == encoded_contents
+        assert dec_contents == unencoded_contents
