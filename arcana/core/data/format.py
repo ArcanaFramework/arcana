@@ -507,7 +507,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             raise ArcanaFileFormatError(
                 f"Provided file system paths do not exist:\n{missing_str}")
 
-    def convert_to(self, to_format, **kwargs):
+    def convert_to(self, to_format, name, **kwargs):
         """Convert the FileGroup to a new format
 
         Parameters
@@ -530,7 +530,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         conv_args.update(kwargs)
         # Create the converter task and receive the LazyField(s) that will
         # contain the file-system paths for the converted method
-        task, lazy_fields = converter_method(**conv_args)
+        task, lazy_fields = converter_method(name=name, **conv_args)
         result = task()
         if not isinstance(lazy_fields, tuple):
             lazy_fields = (lazy_fields,)

@@ -128,6 +128,9 @@ def generate_code(dpath: Path, fixture_name: str):
                         and all(v[0] == x for x in v.values()))}
     varying_hdr = {k: v for k, v in collated_hdr.items()
                    if k not in constant_hdr}
+
+    constant_hdr.update(ANONYMOUS_TAGS)
+    
     return FILE_TEMPLATE.format(
         num_vols=num_vols,
         fixture_name=fixture_name,
@@ -161,6 +164,40 @@ collated_data = {collated_data}
 if __name__ == '__main__':
     print(generate_test_dicom('{fixture_name}',num_vols, constant_hdr, collated_data, varying_hdr))
 """
+
+ANONYMOUS_TAGS = {
+    "00200010": {
+        "vr": "SH",
+        "Value": ["PROJECT_ID"]
+    },
+    "00104000": {
+        "vr": "LT",
+        "Value": ["Patient comments string"]
+    },
+    "00100020": {
+        "vr": "LO",
+        "Value": ["Session Label"]
+    },
+    "00100010": {
+        "vr": "PN",
+        "Value": [{"Alphabetic": "Session Identifier"}]
+    },
+    "00081048": {
+        "vr": "PN",
+        "Value": [{"Alphabetic": "Some Phenotype"}]
+    },
+    "00081030": {
+        "vr": "LO",
+        "Value": ["Researcher^Project"]
+    },
+    "00080081": {
+        "vr": "ST",
+        "Value": ["Address of said institute"]
+    },
+    "00080080": {
+        "vr": "LO",
+        "Value": ["An institute"]
+    }}
 
 if __name__ == '__main__':
     parser = ArgumentParser(description=(
