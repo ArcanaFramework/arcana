@@ -20,5 +20,6 @@ test.log
 .vscode
 *.egg-info
 /test-data/dicom-dataset/
+/arcana/test/fixtures/medimage/dicom/cache
 /docker-tests
 ~*

@@ -1,5 +1,5 @@
 from pathlib import Path
-import tempfile
+import shutil
 from dataclasses import dataclass
 from copy import copy
 import json
@@ -7,6 +7,9 @@ from collections import defaultdict
 from argparse import ArgumentParser
 import pydicom.dataset
 from arcana.data.formats.medimage import Dicom
+
+
+cache_dir = Path(__file__).parent / 'cache'
 
 
 def generate_test_dicom(path: str, num_vols: int, constant_hdr: dict,
@@ -32,22 +35,30 @@ def generate_test_dicom(path: str, num_vols: int, constant_hdr: dict,
         Dicom dataset
     """
 
-    dicom_dir = Path(tempfile.mkdtemp())
+    dicom_dir = cache_dir / path
 
-    for i in range(num_vols):
+    if not dicom_dir.exists():  # Check for cached version
+        dicom_dir.mkdir(parents=True)
 
-        vol_json = copy(constant_hdr)
-        if varying_hdr is not None:
-            vol_json.update({k: v[i] for k, v in varying_hdr.items()})
-        # Reconstitute large binary fields with dummy data filled with \3 bytes
-        vol_json.update({k: {'vr': v[i]['vr'], 'InlineBinary': "X" * v[i]['BinaryLength']}
-                         for k, v in collated_data.items()})
+        try:
+            for i in range(num_vols):
+                i = str(i)
+                vol_json = copy(constant_hdr)
+                if varying_hdr is not None:
+                    vol_json.update({k: v[i] for k, v in varying_hdr.items() if i in v})
+                # Reconstitute large binary fields with dummy data filled with \3 bytes
+                vol_json.update({k: {'vr': v[i]['vr'],
+                                     'InlineBinary': "X" * v[i]['BinaryLength']}
+                                for k, v in collated_data.items() if i in v})
 
-        ds = pydicom.dataset.Dataset.from_json(vol_json)
-        ds.is_implicit_VR = True
-        ds.is_little_endian = True
+                ds = pydicom.dataset.Dataset.from_json(vol_json)
+                ds.is_implicit_VR = True
+                ds.is_little_endian = True
 
-        ds.save_as(dicom_dir / f"{i + 1}.dcm")
+                ds.save_as(dicom_dir / f"{i}.dcm")
+        except:
+            shutil.rmtree(dicom_dir)  # Remove directory from cache on error
+            raise
 
     dcm = Dicom(path)
     dcm.set_fs_paths([dicom_dir])
@@ -100,31 +111,29 @@ def generate_code(dpath: Path, fixture_name: str):
     _type_
         _description_
     """
-    collated_hdr = defaultdict(list)
-    collated_data = defaultdict(list)
+    collated_hdr = defaultdict(dict)
+    collated_data = defaultdict(dict)
     num_vols = 0
-    for fpath in dpath.iterdir():
+    for i, fpath in enumerate(dpath.iterdir()):
         if fpath.name.startswith('.'):
             continue
         header, data = read_dicom(fpath)
         for k, v in header.items():
-            collated_hdr[k].append(v)
+            collated_hdr[k][i] = v
         for k, v in data.items():            
-            collated_data[k].append(v)
+            collated_data[k][i] = v
         num_vols += 1
     constant_hdr = {k: v[0] for k, v in collated_hdr.items()
-                    if all(v[0] == x for x in v)}
+                    if (len(v) == num_vols
+                        and all(v[0] == x for x in v.values()))}
     varying_hdr = {k: v for k, v in collated_hdr.items()
                    if k not in constant_hdr}
     return FILE_TEMPLATE.format(
         num_vols=num_vols,
         fixture_name=fixture_name,
-        constant_hdr=json.dumps({k: v for k, v in constant_hdr.items()
-                                    if not isinstance(v, ByteData)},
-                                indent='    '),
-        varying_hdr=json.dumps({k: v for k, v in varying_hdr.items()
-                                   if not isinstance(v, ByteData)}),
-        collated_data=json.dumps({k: v for k, v in collated_data.items()}))
+        constant_hdr=json.dumps(constant_hdr, indent='    '),
+        varying_hdr=json.dumps(varying_hdr),
+        collated_data=json.dumps(collated_data))
 
 
 FILE_TEMPLATE = """
