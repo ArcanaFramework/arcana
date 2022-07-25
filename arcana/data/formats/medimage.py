@@ -286,7 +286,8 @@ class Nifti(NeuroImage):
     def dcm2niix(cls, fs_path, extract_volume=None, side_car_jq=None):
         as_workflow = extract_volume is not None or side_car_jq is not None
         if as_workflow:
-            wf = Workflow(input_spec=['in_dir', 'compress'])
+            wf = Workflow(name='multistep_conv',
+                          input_spec=['in_dir', 'compress'])
             in_dir = wf.lzin.in_dir
             compress = wf.lzin.compress
         else:
@@ -309,11 +310,10 @@ class Nifti(NeuroImage):
                     name='mrconvert'))
                 out_file = wf.mrconvert.lzout.out_file
             if side_car_jq is not None:
-                wf.add(
-                    edit_side_car,
+                wf.add(edit_side_car(
                     in_file=out_json,
                     jq_expr=side_car_jq,
-                    name='json_edit')
+                    name='json_edit'))
                 out_json = wf.json_edit.lzout.out
             wf.set_output(('out_file', out_file))
             wf.set_output(('out_json', out_json))
@@ -345,7 +345,7 @@ class NiftiGz(Nifti):
     @classmethod
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
-        spec = super().dcm2niix(fs_path, **kwargs)
+        spec = Nifti.dcm2niix(fs_path, **kwargs)
         spec[0].inputs.compress = 'y'
         return spec
 
@@ -363,7 +363,7 @@ class NiftiX(WithSideCars, Nifti):
     @classmethod
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
-        node, out_file = super().dcm2niix(fs_path, **kwargs)
+        node, out_file = Nifti.dcm2niix(fs_path, **kwargs)
         return node, (out_file, node.lzout.out_json)
 
     mrconvert = None  # Only dcm2niix produces the required JSON side car
@@ -371,7 +371,12 @@ class NiftiX(WithSideCars, Nifti):
 
 class NiftiGzX(NiftiX, NiftiGz):
 
-    pass
+    @classmethod
+    @converter(Dicom)
+    def dcm2niix(cls, fs_path, **kwargs):
+        node, out_files = NiftiX.dcm2niix(fs_path, **kwargs)
+        node.inputs.compress = 'y'
+        return node, out_files
 
 
 # NIfTI file format gzipped with BIDS side car
@@ -382,12 +387,12 @@ class NiftiFslgrad(WithSideCars, Nifti):
     @classmethod
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
-        node, out_file = super().dcm2niix(fs_path, **kwargs)
+        node, out_file = Nifti.dcm2niix(fs_path, **kwargs)
         return node, (out_file, node.lzout.out_bvec, node.lzout.out_bval)
 
     mrconvert = None  # Technically mrconvert can export fsl grads but dcm2niix will be sufficient 99% of the time
 
-class NiftiFslgradGz(NiftiFslgrad, NiftiGz):
+class NiftiGzFslgrad(NiftiFslgrad, NiftiGz):
 
     pass
 
@@ -399,18 +404,17 @@ class NiftiXFslgrad(NiftiX, NiftiFslgrad):
     @classmethod
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
-        node, out_file = super().dcm2niix(fs_path, **kwargs)
-        return node, (out_file,
-                      node.lzout.out_json,
-                      node.lzout.out_bvec,
-                      node.lzout.out_bval)
+        node, out_file = NiftiX.dcm2niix(fs_path, **kwargs)
+        return node, out_file + (node.lzout.out_json,
+                                 node.lzout.out_bvec,
+                                 node.lzout.out_bval)
 
 class NiftiGzXFslgrad(NiftiXFslgrad, NiftiGz):
 
     @classmethod
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
-        spec = super().dcm2niix(fs_path, **kwargs)
+        spec = NiftiXFslgrad.dcm2niix(fs_path, **kwargs)
         spec[0].inputs.compress = 'y'
         return spec
 

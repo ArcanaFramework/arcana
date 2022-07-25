@@ -4,3 +4,4 @@ from .xnat import (
     xnat_respository_uri, dummy_niftix)
 from .dicom.t1w import dummy_t1w_dicom
 from .dicom.magfmap import dummy_magfmap_dicom
+from .dicom.dwi import dummy_dwi_dicom
