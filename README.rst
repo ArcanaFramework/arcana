@@ -30,8 +30,13 @@ output, Arcana determines the required processing steps by querying
 the repository to check for missing intermediate outputs before
 constructing the workflow graph.
 
-Installation
-------------
+Documentation
+-------------
+
+Detailed documentation on Arcana can be found at https://arcana.readthedocs.io
+
+Quick Installation
+------------------
 
 Arcana can be installed for Python 3 using *pip*::
 
