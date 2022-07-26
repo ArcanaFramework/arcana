@@ -1,12 +1,9 @@
-from datetime import datetime
-from pathlib import Path
 from tempfile import mkdtemp
 import json
 import pytest
 import numpy
 import nibabel
 import xnat4tests
-from arcana.data.stores.common import FileSystem
 from arcana.data.stores.medimage.xnat.api import Xnat
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats.common import Text, Directory
@@ -27,18 +24,6 @@ from arcana.test.datasets import save_dataset as save_file_system_dataset
 @pytest.fixture(scope='session')
 def nifti_sample_dir(pkg_dir):
     return pkg_dir / 'test-data'/ 'nifti'
-
-
-# @pytest.fixture(scope='session')
-# def dicom_dataset(test_dicom_dataset_dir):
-#     return FileSystem().dataset(
-#         test_dicom_dataset_dir,
-#         hierarchy=['session'])
-
-
-# @pytest.fixture(scope='session')
-# def test_dicom_dataset_dir(pkg_dir):
-#     return pkg_dir / 'test-data' / 'dicom-dataset'
 
 
 # -----------------------
@@ -182,12 +167,6 @@ def xnat_repository(run_prefix):
     repository.run_prefix = run_prefix
 
     yield repository
-
-
-@pytest.fixture(scope='session')
-def run_prefix():
-    "A datetime string used to avoid stale data left over from previous tests"
-    return datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
 
 
 @pytest.fixture(scope='session')

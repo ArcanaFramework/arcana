@@ -3,6 +3,7 @@ import logging
 import pytest
 from pathlib import Path
 import pkgutil
+from datetime import datetime
 
 # Set DEBUG logging for unittests
 
@@ -23,6 +24,12 @@ PKG_DIR = Path(__file__).parent
 @pytest.fixture(scope='session')
 def pkg_dir():
     return PKG_DIR
+
+
+@pytest.fixture(scope='session')
+def run_prefix():
+    "A datetime string used to avoid stale data left over from previous tests"
+    return datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
 
 
 # For debugging in IDE's don't catch raised exceptions and let the IDE
