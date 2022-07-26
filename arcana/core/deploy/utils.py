@@ -97,20 +97,8 @@ def load_yaml_spec(path: Path, base_dir: Path=None):
         seq = loader.construct_sequence(node)
         return ''.join([str(i) for i in seq])
 
-    def slice(loader, node):
-        list, start, end = loader.construct_sequence(node)
-        return list[start:end]
-
-    def sliceeach(loader, node):
-        _, start, end = loader.construct_sequence(node)
-        return [
-            loader.construct_sequence(x)[start:end] for x in node.value[0].value
-        ]
-
     yaml.SafeLoader.add_constructor(tag='!join', constructor=concat)
     yaml.SafeLoader.add_constructor(tag='!concat', constructor=concat)
-    yaml.SafeLoader.add_constructor(tag='!slice', constructor=slice)
-    yaml.SafeLoader.add_constructor(tag='!sliceeach', constructor=sliceeach)
 
     with open(path, 'r') as f:
         data = yaml.load(f, Loader=yaml.SafeLoader)
@@ -119,6 +107,9 @@ def load_yaml_spec(path: Path, base_dir: Path=None):
     # if row_frequency:
     #     # TODO: Handle other row_frequency types, are there any?
     #     data['row_frequency'] = Clinical[row_frequency.split('.')[-1]]
+
+    if type(data) is not dict:
+        raise ValueError(f"{path!r} didn't contain a dict!")
 
     data['_relative_dir'] = os.path.dirname(os.path.relpath(path, base_dir)) if base_dir else ''
     data['_module_name'] = os.path.basename(path).rsplit('.', maxsplit=1)[0]

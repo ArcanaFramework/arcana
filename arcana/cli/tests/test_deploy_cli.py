@@ -1,3 +1,7 @@
+import shutil
+import traceback
+from typing import Union, Dict, Tuple
+
 import yaml
 from functools import reduce
 from operator import mul
@@ -7,8 +11,9 @@ import tempfile
 from pathlib import Path
 import pytest
 import docker
-from arcana.cli.deploy import build, run_pipeline
+from arcana.cli.deploy import build, build_docs, run_pipeline
 from arcana.core.utils import class_location
+from arcana.test.fixtures.docs import all_docs_fixtures, DocsFixture
 from arcana.test.utils import show_cli_trace, make_dataset_id_str
 from arcana.test.datasets import make_dataset, TestDatasetBlueprint, TestDataSpace
 from arcana.data.formats.common import Text
@@ -129,6 +134,63 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         # Clean up the built images
         dc.images.remove(tag)
     
+
+def _build_docs(
+        cli_runner,
+        work_dir: Path,
+        docs: Union[str, Dict[str, str]],
+        *args,
+        flatten: bool = None,
+) -> Union[str, Dict[str, str]]:
+    out_dir = work_dir / "out"
+    specs_dir = work_dir / "specs"
+    if specs_dir.exists():
+        shutil.rmtree(specs_dir)
+    specs_dir.mkdir()
+
+    if type(docs) is str:
+        (specs_dir / "spec.yaml").write_text(docs)
+    else:
+        for name, content in docs.items():
+            path = specs_dir / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
+
+    result = cli_runner(
+        build_docs,
+        [
+            specs_dir.as_posix(),
+            out_dir.as_posix(),
+            "--root", specs_dir,
+        ] +
+        (["--flatten" if flatten else "--no-flatten"] if flatten is not None else []) +
+        list(args)
+    )
+
+    if result.exit_code != 0:
+        print(result.output)
+        if result.exception:
+            traceback.print_exception(type(result.exception), result.exception, result.exception.__traceback__)
+    assert result.exit_code == 0
+
+    if type(docs) is str:
+        return (out_dir / "spec.md").read_text().strip()
+    else:
+        return {
+            file.relative_to(out_dir).as_posix(): file.read_text().strip()
+            for file in out_dir.glob("*.md")
+        }
+
+
+@pytest.mark.parametrize("fixture", all_docs_fixtures(), ids=lambda x: x[0])
+def test_build_docs_cli(cli_runner, run_prefix, work_dir: Path, fixture: Tuple[str, DocsFixture]):
+    fixture_name, fixture_content = fixture
+
+    # TODO handle multiple 'files' in a fixture
+    print(f"Processing fixture: {fixture_name!r}")
+    output = _build_docs(cli_runner, work_dir, fixture_content.yaml_src)
+
+    assert output == fixture_content.markdown, f"Fixture {fixture_name!r} didn't match output"
 
 
 def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir):

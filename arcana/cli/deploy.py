@@ -259,10 +259,11 @@ The generated documentation will be saved to OUTPUT.
 """)
 @click.argument('spec_path', type=click.Path(exists=True, path_type=Path))
 @click.argument('output', type=click.Path(path_type=Path))
+@click.option('--root', type=click.Path(exists=True, path_type=Path), default=Path.cwd())
 @click.option('--flatten/--no-flatten', default=False)
 @click.option('--loglevel', default='warning',
               help="The level to display logs at")
-def build_docs(spec_path, output, flatten, loglevel):
+def build_docs(spec_path, output, root, flatten, loglevel):
     # FIXME: Workaround for click 7.x, which improperly handles path_type
     if type(spec_path) is bytes:
         spec_path = Path(spec_path.decode('utf-8'))
@@ -276,7 +277,16 @@ def build_docs(spec_path, output, flatten, loglevel):
     for spath in walk_spec_paths(spec_path):
         spec = load_yaml_spec(spath, base_dir=spec_path)
         mod_name = spec['_module_name']
-        src_file = spath.absolute().relative_to(Path.cwd())
+
+        try:
+            src_file = spath.absolute().relative_to(root)
+        except ValueError:
+            logger.warning(
+                f'build_docs: {spath.absolute().as_posix()!r} does not lie '
+                f'within {root.as_posix()!r}, do you need to specify --root?'
+            )
+            src_file = spath.absolute()
+
         create_doc(spec, output, mod_name, src_file=src_file, flatten=flatten)
         logging.info("Successfully created docs for %s", mod_name)
 
