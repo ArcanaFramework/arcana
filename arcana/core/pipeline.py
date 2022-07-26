@@ -437,7 +437,7 @@ def to_process(dataset, row_frequency, outputs, requested_ids, parameterisation)
         requested_ids = dataset.row_ids(row_frequency)
     ids = []
     cant_process = []
-    for row in dataset.rows(row_frequency, ids=requested_ids):
+    for row in dataset.rows(frequency, ids=requested_ids):
         # TODO: Should check provenance of existing rows to see if it matches
         not_exist = [not row[o.col_name].exists for o in outputs]
         if all(not_exist):

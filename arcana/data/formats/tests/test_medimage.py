@@ -12,11 +12,11 @@ def test_dicom_to_nifti_conversion(dummy_t1w_dicom):
     assert js['EchoTime'] == 0.00207
 
 
-def test_dicom_to_nifti_conversion_and_extract_volume(dummy_magfmap_dicom):
+def test_dicom_to_nifti_conversion_and_echo(dummy_magfmap_dicom):
 
-    nifti_gz_x = dummy_magfmap_dicom.convert_to(NiftiGzX, extract_volume=1)
+    nifti_gz_x = dummy_magfmap_dicom.convert_to(NiftiGzX, echo=1)
 
-    assert nifti_gz_x.header()['dim'][2] == 1
+    assert nifti_gz_x.get_header()['EchoNumber'] == 1
 
 
 def test_dicom_to_nifti_conversion_with_jq_edit(dummy_t1w_dicom):

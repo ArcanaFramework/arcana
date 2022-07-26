@@ -14,42 +14,8 @@ from pydra.tasks.dcm2niix import Dcm2Niix
 from pydra.tasks.mrtrix3.utils import MRConvert
 from arcana.core.mark import converter
 from arcana.exceptions import ArcanaUsageError
-from arcana.tasks.common.utils import identity_converter
 from arcana.core.data.format import WithSideCars
 from arcana.data.formats.common import File, Directory
-
-
-# class Dcm2niixConverter(Converter):
-
-#     interface = Dcm2niix(compression='y')
-#     input = 'input_dir'
-#     output = 'converted'
-#     requirements = [dcm2niix_req.v('1.0.20190720')]
-
-
-# class MrtrixConverter(Converter):
-
-#     input = 'in_file'
-#     output = 'out_file'
-#     requirements = [mrtrix_req.v(3)]
-
-#     @property
-#     def interface(self):
-#         return MRConvert(
-#             out_ext=self.output_format.extension,
-#             quiet=True)
-
-
-# class TwixConverter(Converter):
-
-#     input = 'in_file'
-#     output = 'out_file'
-#     output_side_cars = {'ref': 'ref_file', 'json': 'hdr_file'}
-#     requirements = [matlab_req.v('R2018a')]
-#     interface = TwixReader()
-
-
-
 
 
 # =====================================================================
@@ -268,10 +234,10 @@ class Nifti(NeuroImage):
     alternative_names = ('NIFTI',)
 
     def get_header(self):
-        return dict(nibabel.load(self.path).header)
+        return dict(nibabel.load(self.fs_path).header)
 
     def get_array(self):
-        return nibabel.load(self.path).get_data()
+        return nibabel.load(self.fs_path).get_data()
 
     def get_vox_sizes(self):
         # FIXME: This won't work for 4-D files
@@ -293,16 +259,12 @@ class Nifti(NeuroImage):
         else:
             in_dir = fs_path
             compress = 'n'
-        if echo is not None:
-            suffix = f'_e{echo}.nii'
-        else:
-            suffix = '.nii'
         node = Dcm2Niix(
             in_dir=in_dir,
             out_dir='.',
             name='dcm2niix',
             compress=compress,
-            suffix=suffix)
+            echo=echo)
         if side_car_jq is not None:
             wf.add(node)
             out_json = wf.dcm2niix.lzout.out_json
@@ -344,7 +306,6 @@ class NiftiGz(Nifti):
     def dcm2niix(cls, fs_path, **kwargs):
         node, out_file = Nifti.dcm2niix(fs_path, **kwargs)
         node.inputs.compress = 'y'
-        node.inputs.suffix += '.gz'
         return node, out_file
 
 
@@ -353,8 +314,8 @@ class NiftiX(WithSideCars, Nifti):
     side_car_exts = ('json',)
 
     def get_header(self):
-        hdr = super().get_header(self)
-        with open(self.aux_file('json')) as f:
+        hdr = super().get_header()
+        with open(self.side_car('json')) as f:
             hdr.update(json.load(f))
         return hdr
 
@@ -374,7 +335,6 @@ class NiftiGzX(NiftiX, NiftiGz):
     def dcm2niix(cls, fs_path, **kwargs):
         node, out_files = NiftiX.dcm2niix(fs_path, **kwargs)
         node.inputs.compress = 'y'
-        node.inputs.suffix += '.gz'
         return node, out_files
 
 
@@ -415,7 +375,6 @@ class NiftiGzXFslgrad(NiftiXFslgrad, NiftiGz):
     def dcm2niix(cls, fs_path, **kwargs):
         node, out_file = NiftiXFslgrad.dcm2niix(fs_path, **kwargs)
         node.inputs.compress = 'y'
-        node.inputs.suffix += '.gz'
         return node, out_file
 
 
@@ -592,6 +551,16 @@ class CustomKspace(Kspace):
         
     ext = 'ks'
     side_cars = ('ref', 'json')
+
+    @classmethod
+    @converter
+    def from_twix(cls, fs_path):
+        # input = 'in_file'
+        # output = 'out_file'
+        # output_side_cars = {'ref': 'ref_file', 'json': 'hdr_file'}
+        # requirements = [matlab_req.v('R2018a')]
+        # interface = TwixReader()
+        raise NotImplementedError
 
 
 class Rda(File):

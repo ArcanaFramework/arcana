@@ -184,10 +184,10 @@ def xnat_repository(run_prefix):
     yield repository
 
 
-# @pytest.fixture(scope='session')
-# def run_prefix():
-#     "A datetime string used to avoid stale data left over from previous tests"
-#     return datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
+@pytest.fixture(scope='session')
+def run_prefix():
+    "A datetime string used to avoid stale data left over from previous tests"
+    return datetime.strftime(datetime.now(), '%Y%m%d%H%M%S')
 
 
 @pytest.fixture(scope='session')

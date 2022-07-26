@@ -816,7 +816,7 @@ class WithSideCars(BaseFile):
 
     def set_fs_paths(self, paths: ty.List[Path]):
         super().set_fs_paths(paths)
-        to_assign = set(paths)
+        to_assign = set(Path(p) for p in paths)
         to_assign.remove(self.fs_path)
         # Begin with default side_car paths and override if provided
         self.side_cars = self.default_side_car_paths(self.fs_path)

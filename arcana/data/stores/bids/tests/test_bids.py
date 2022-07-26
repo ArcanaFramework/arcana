@@ -63,7 +63,7 @@ def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
     with open(dummy_json, 'w') as f:
         json.dump({'test': 'json-file'}, f)
 
-    for row in dataset.rows(row_frequency='session'):
+    for row in dataset.rows(frequency='session'):
         item = row['t1w']
         item.put(dummy_nifti, dummy_json)
 
