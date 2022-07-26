@@ -526,7 +526,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
                                         name='converter',
                                         **kwargs)
         task.inputs.to_convert = self
-        result = task()
+        result = task(plugin='serial')
         return result.output.converted
     
     @classmethod
