@@ -1,5 +1,9 @@
 import json
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
+from logging import getLogger
+
+
+logger = getLogger('arcana')
 
 
 def test_dicom_to_nifti_conversion(dummy_t1w_dicom):
@@ -31,7 +35,9 @@ def test_dicom_to_nifti_conversion_with_jq_edit(dummy_t1w_dicom):
 
 
 
-def test_dicom_to_niftix_fsgrad_conversion(dummy_dwi_dicom):
+def test_dicom_to_niftix_fslgrad_conversion(dummy_dwi_dicom):
+
+    logger.debug('Performing FSL grad conversion')
 
     nifti_gz_x_fsgrad = dummy_dwi_dicom.convert_to(NiftiGzXFslgrad)
 
