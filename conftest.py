@@ -7,13 +7,13 @@ from datetime import datetime
 
 # Set DEBUG logging for unittests
 
-debug_level = logging.WARNING
+log_level = logging.DEBUG
 
 logger = logging.getLogger('arcana')
-logger.setLevel(debug_level)
+logger.setLevel(log_level)
 
 sch = logging.StreamHandler()
-sch.setLevel(debug_level)
+sch.setLevel(log_level)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 sch.setFormatter(formatter)
 logger.addHandler(sch)

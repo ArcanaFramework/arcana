@@ -578,6 +578,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         wf.add(converter)
 
         # Encapsulate output paths from converter back into a file group object
+        to_encapsulate = dict(zip(cls.fs_names(), output_lfs))
+
         wf.add(func_task(
             encapsulate_paths,
             in_fields=[('to_format', type), ('to_convert', from_format)] + [
@@ -586,7 +588,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             # name='encapsulate',
             to_format=cls,
             to_convert=wf.lzin.to_convert,
-            **dict(zip(cls.fs_names(), output_lfs))))
+            **to_encapsulate))
 
         wf.set_output(('converted', wf.encapsulate_paths.lzout.converted))
 
