@@ -33,10 +33,10 @@ jobs:
         install: true
 
     - name: Install Dcm2niix
-      run: |
-          sudo add-apt-repository universe
-          sudo apt update
-          sudo apt install dcm2niix
+      run: sudo apt install -y dcm2niix
+
+    - name: Install MRtrix3
+      run: sudo apt install -y mrtrix3      
 
     - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
       uses: actions/setup-python@v2
