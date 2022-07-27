@@ -500,12 +500,14 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         attr.validate(self)
         self.exists = True
 
-    @classmethod
-    def _check_paths_exist(cls, fs_paths):
-        if missing := [str(p) for p in fs_paths if not Path(p).exists()]:
+    def _check_paths_exist(self, fs_paths: ty.List[Path]):
+        if missing := [(str(p) if p else p) for p in fs_paths
+                       if not p or not Path(p).exists()]:
             missing_str = '\n'.join(missing)
+            all_str = '\n'.join((str(p) if p else p) for p in fs_paths)
             raise ArcanaFileFormatError(
-                f"Provided file system paths do not exist:\n{missing_str}")
+                f"The following file system paths provided to {self} do not "
+                f"exist:\n{missing_str}\n\nFrom full list:\n{all_str}")
 
     def convert_to(self, to_format, **kwargs):
         """Convert the FileGroup to a new format
@@ -702,7 +704,7 @@ class BaseFile(FileGroup):
 
     is_dir = False
 
-    def set_fs_paths(self, fs_paths):
+    def set_fs_paths(self, fs_paths: ty.List[Path]):
         self._check_paths_exist(fs_paths)
         self.fs_path = absolute_path(self.matches_ext(*fs_paths))
 

@@ -55,7 +55,7 @@ jobs:
       run: python setup.py install
 
     - name: Pytest
-      run: pytest -vvs --cov arcana  --cov-config .coveragerc --cov-report xml
+      run: pytest -xvvs --cov arcana  --cov-config .coveragerc --cov-report xml
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
