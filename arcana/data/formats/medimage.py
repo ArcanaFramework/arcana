@@ -364,8 +364,7 @@ class NiftiXFslgrad(NiftiX, NiftiFslgrad):
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
         node, out_file = NiftiX.dcm2niix(fs_path, **kwargs)
-        return node, out_file + (node.lzout.out_json,
-                                 node.lzout.out_bvec,
+        return node, out_file + (node.lzout.out_bvec,
                                  node.lzout.out_bval)
 
 class NiftiGzXFslgrad(NiftiXFslgrad, NiftiGz):
@@ -373,9 +372,9 @@ class NiftiGzXFslgrad(NiftiXFslgrad, NiftiGz):
     @classmethod
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
-        node, out_file = NiftiXFslgrad.dcm2niix(fs_path, **kwargs)
+        node, out_files = NiftiXFslgrad.dcm2niix(fs_path, **kwargs)
         node.inputs.compress = 'y'
-        return node, out_file
+        return node, out_files
 
 
 

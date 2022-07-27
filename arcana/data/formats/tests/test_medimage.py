@@ -44,4 +44,13 @@ def test_dicom_to_niftix_fslgrad_conversion(dummy_dwi_dicom):
     with open(nifti_gz_x_fsgrad.side_car('bval')) as f:
         bvals = [float(b) for b in f.read().split()]
 
+    with open(nifti_gz_x_fsgrad.side_car('bvec')) as f:
+        bvec_lines = f.read().split('\n')
+
+    bvecs = zip(*([float(v) for v in l.split()] for l in bvec_lines if l))
+    bvec_mags = [(v[0] ** 2 + v[1] ** 2 + v[2] ** 2) for v in bvecs
+                 if any(v)]
+
     assert max(bvals) == 3000.0
+    assert len(bvec_mags) == 60
+    assert all(abs(1 - m) < 1e5 for m in bvec_mags)
