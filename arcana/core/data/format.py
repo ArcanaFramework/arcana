@@ -504,9 +504,15 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         if missing := [str(p) for p in fs_paths if not p or not Path(p).exists()]:
             missing_str = '\n'.join(missing)
             all_str = '\n'.join(str(p) for p in fs_paths)
-            raise ArcanaFileFormatError(
-                f"The following file system paths provided to {self} do not "
-                f"exist:\n{missing_str}\n\nFrom full list:\n{all_str}")
+            msg = (f"The following file system paths provided to {self} do not "
+                   f"exist:\n{missing_str}\n\nFrom full list:\n{all_str}")
+            for fs_path in missing:
+                if fs_path:
+                    if fs_path.parent.exists():
+                        msg += f"\n\nNeighbouring files of {fs_path} are:\n"
+                        msg += '\n'.join(
+                            str(p) for p in fs_path.parent.iterdir())
+            raise ArcanaFileFormatError(msg)
 
     def convert_to(self, to_format, **kwargs):
         """Convert the FileGroup to a new format
@@ -770,7 +776,8 @@ class BaseFile(FileGroup):
     @classmethod
     def all_exts(cls):
         return [cls.ext]
-     
+
+
 @attr.s
 class WithSideCars(BaseFile):
     """Base class for file-groups with a primary file and several header or
@@ -778,7 +785,7 @@ class WithSideCars(BaseFile):
     """
 
     side_cars: ty.Dict[str, str] = attr.ib(
-        converter=optional(absolute_paths_dict))
+        converter=optional(absolute_paths_dict), factory=dict)
 
     @side_cars.default
     def default_side_cars(self):
