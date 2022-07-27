@@ -18,9 +18,10 @@ def test_dicom_to_nifti_conversion(dummy_t1w_dicom):
 
 def test_dicom_to_nifti_conversion_and_echo(dummy_magfmap_dicom):
 
-    nifti_gz_x = dummy_magfmap_dicom.convert_to(NiftiGzX, echo=1)
-
-    assert nifti_gz_x.get_header()['EchoNumber'] == 1
+    nifti_gz_x_e1 = dummy_magfmap_dicom.convert_to(NiftiGzX, echo=1)
+    nifti_gz_x_e2 = dummy_magfmap_dicom.convert_to(NiftiGzX, echo=2)
+    assert nifti_gz_x_e1.get_header()['EchoNumber'] == 1
+    assert nifti_gz_x_e2.get_header()['EchoNumber'] == 2
 
 
 def test_dicom_to_nifti_conversion_with_jq_edit(dummy_t1w_dicom):
@@ -51,6 +52,6 @@ def test_dicom_to_niftix_fslgrad_conversion(dummy_dwi_dicom):
     bvec_mags = [(v[0] ** 2 + v[1] ** 2 + v[2] ** 2) for v in bvecs
                  if any(v)]
 
-    assert max(bvals) == 3000.0
+    assert all(b in (0.0, 3000.0) for b in bvals)
     assert len(bvec_mags) == 60
     assert all(abs(1 - m) < 1e5 for m in bvec_mags)
