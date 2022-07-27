@@ -580,6 +580,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         # Encapsulate output paths from converter back into a file group object
         to_encapsulate = dict(zip(cls.fs_names(), output_lfs))
 
+        logger.debug("Paths to encapsulate are:\n%s", to_encapsulate)
+
         wf.add(func_task(
             encapsulate_paths,
             in_fields=[('to_format', type), ('to_convert', from_format)] + [
