@@ -501,8 +501,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         self.exists = True
 
     def _check_paths_exist(self, fs_paths: ty.List[Path]):
-        if missing := [str(p) for p in fs_paths if not p or not Path(p).exists()]:
-            missing_str = '\n'.join(missing)
+        if missing := [p for p in fs_paths if not p or not Path(p).exists()]:
+            missing_str = '\n'.join(str(p) for p in missing)
             all_str = '\n'.join(str(p) for p in fs_paths)
             msg = (f"The following file system paths provided to {self} do not "
                    f"exist:\n{missing_str}\n\nFrom full list:\n{all_str}")
