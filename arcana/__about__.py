@@ -8,7 +8,7 @@ __authors__ = [
 
 install_requires = [
     'xnat>=0.3.17',
-    'pydra @ git+https://github.com/tclose/pydra.git@rebased-shlex-split',
+    'pydra>=0.19',
     'click==7.1.2',
     'pydra-dcm2niix>=1.0.0rc2',
     'pydra-mrtrix3>=0.1',
