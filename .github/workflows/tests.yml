@@ -32,6 +32,12 @@ jobs:
         version: v0.3.0
         install: true
 
+    - name: Install Dcm2niix
+      run: |
+          add-apt-repository universe
+          apt update
+          apt install dcm2niix
+
     - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
       uses: actions/setup-python@v2
       with:
