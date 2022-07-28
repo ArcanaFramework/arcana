@@ -2,6 +2,7 @@ from enum import unique
 import os
 import os.path as op
 from pathlib import Path
+import tempfile
 import typing as ty
 from itertools import chain
 from copy import copy
@@ -533,6 +534,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
                                         name='converter',
                                         **kwargs)
         task.inputs.to_convert = self
+        tmpdir = tempfile.mkdtemp()
         result = task(plugin='serial')
         return result.output.converted
     
