@@ -2,6 +2,7 @@ from enum import unique
 import os
 import os.path as op
 from pathlib import Path
+import tempfile
 import typing as ty
 from itertools import chain
 from copy import copy
@@ -420,7 +421,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         return item
 
     @abstractmethod
-    def set_fs_paths(self, fs_paths):
+    def set_fs_paths(self, fs_paths: ty.List[Path]):
         """Set the file paths of the file group
 
         Parameters
@@ -435,6 +436,31 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         ArcanaFileFormatError
             is raised if the required the paths cannot be set from the provided
         """
+
+    @classmethod
+    def from_fs_paths(cls, *fs_paths: ty.List[Path], path=None):
+        """Create a FileGroup object from a set of file-system paths
+
+        Parameters
+        ----------
+        fs_paths : list[Path]
+            The candidate paths from which to set the paths of the 
+            file group from. Note that not all paths need to be set if
+            they are not relevant.
+        path : str, optional
+            the location of the file-group relative to the node it (will)
+            belong to. Defaults to 
+
+        Returns
+        -------
+        FileGroup
+            The created file-group
+        """
+        if path is None:
+            path = fs_paths[0].stem
+        obj = cls(path)
+        obj.set_fs_paths(fs_paths)
+        return obj
 
     @classmethod
     def matches_ext(cls, *paths, ext=None):
@@ -475,16 +501,45 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         attr.validate(self)
         self.exists = True
 
-    @classmethod
-    def _check_paths_exist(cls, fs_paths):
-        if missing := [str(p) for p in fs_paths if not Path(p).exists()]:
-            missing_str = '\n'.join(missing)
-            raise ArcanaFileFormatError(
-                f"Provided file system paths do not exist:\n{missing_str}")
-        
+    def _check_paths_exist(self, fs_paths: ty.List[Path]):
+        if missing := [p for p in fs_paths if not p or not Path(p).exists()]:
+            missing_str = '\n'.join(str(p) for p in missing)
+            all_str = '\n'.join(str(p) for p in fs_paths)
+            msg = (f"The following file system paths provided to {self} do not "
+                   f"exist:\n{missing_str}\n\nFrom full list:\n{all_str}")
+            for fs_path in missing:
+                if fs_path:
+                    if fs_path.parent.exists():
+                        msg += f"\n\nNeighbouring files of {fs_path} are:\n"
+                        msg += '\n'.join(
+                            str(p) for p in fs_path.parent.iterdir())
+            raise ArcanaFileFormatError(msg)
+
+    def convert_to(self, to_format, **kwargs):
+        """Convert the FileGroup to a new format
+
+        Parameters
+        ----------
+        to_format : type
+            the file-group format to convert to
+        **kwargs
+            args to pass to the conversion process
+
+        Returns
+        -------
+        FileGroup
+            the converted file-group
+        """
+        task = to_format.converter_task(from_format=type(self),
+                                        name='converter',
+                                        **kwargs)
+        task.inputs.to_convert = self
+        tmpdir = tempfile.mkdtemp()
+        result = task(plugin='serial')
+        return result.output.converted
     
     @classmethod
-    def converter_task(cls, from_format, name):
+    def converter_task(cls, from_format, name, **kwargs):
         """Adds a converter row to a workflow
 
         Parameters
@@ -493,6 +548,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             the file-group class to convert from
         taks_name: str
             the name for the converter task
+        **kwargs: dict[str, ty.Any]
+            keyword arguments passed through to the converter
 
         Returns
         -------
@@ -513,9 +570,12 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             from_format=from_format,
             file_group=wf.lzin.to_convert))
 
-        # Create converter row
-        converter, output_lfs = cls.find_converter(from_format)(**{
-            n: getattr(wf.access_paths.lzout, n) for n in from_format.fs_names()})
+        # Aggregate converter inputs and combine with fixed keyword args
+        conv_inputs = {n: getattr(wf.access_paths.lzout, n)
+                       for n in from_format.fs_names()}
+        conv_inputs.update(kwargs)
+        # Create converter node
+        converter, output_lfs = cls.find_converter(from_format)(**conv_inputs)
         # If there is only one output lazy field, place it in a tuple so it can
         # be zipped with cls.fs_names()
         if isinstance(output_lfs, LazyField):
@@ -526,6 +586,10 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         wf.add(converter)
 
         # Encapsulate output paths from converter back into a file group object
+        to_encapsulate = dict(zip(cls.fs_names(), output_lfs))
+
+        logger.debug("Paths to encapsulate are:\n%s", to_encapsulate)
+
         wf.add(func_task(
             encapsulate_paths,
             in_fields=[('to_format', type), ('to_convert', from_format)] + [
@@ -534,7 +598,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             # name='encapsulate',
             to_format=cls,
             to_convert=wf.lzin.to_convert,
-            **dict(zip(cls.fs_names(), output_lfs))))
+            **to_encapsulate))
 
         wf.set_output(('converted', wf.encapsulate_paths.lzout.converted))
 
@@ -651,7 +715,7 @@ class BaseFile(FileGroup):
 
     is_dir = False
 
-    def set_fs_paths(self, fs_paths):
+    def set_fs_paths(self, fs_paths: ty.List[Path]):
         self._check_paths_exist(fs_paths)
         self.fs_path = absolute_path(self.matches_ext(*fs_paths))
 
@@ -714,7 +778,8 @@ class BaseFile(FileGroup):
     @classmethod
     def all_exts(cls):
         return [cls.ext]
-     
+
+
 @attr.s
 class WithSideCars(BaseFile):
     """Base class for file-groups with a primary file and several header or
@@ -765,7 +830,7 @@ class WithSideCars(BaseFile):
 
     def set_fs_paths(self, paths: ty.List[Path]):
         super().set_fs_paths(paths)
-        to_assign = set(paths)
+        to_assign = set(Path(p) for p in paths)
         to_assign.remove(self.fs_path)
         # Begin with default side_car paths and override if provided
         self.side_cars = self.default_side_car_paths(self.fs_path)

@@ -32,6 +32,12 @@ jobs:
         version: v0.3.0
         install: true
 
+    - name: Install Dcm2niix
+      run: |
+        curl -fLO https://github.com/rordenlab/dcm2niix/releases/latest/download/dcm2niix_lnx.zip
+        unzip dcm2niix_lnx.zip
+        mv dcm2niix /usr/local/bin
+
     - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
       uses: actions/setup-python@v2
       with:

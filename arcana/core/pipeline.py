@@ -6,9 +6,8 @@ from pathlib import Path
 from dataclasses import dataclass
 import logging
 from copy import copy, deepcopy
-import re
 from collections.abc import Iterable
-import attr
+import attr.converters
 import pydra.mark
 from pydra.engine.core import Workflow
 from arcana.exceptions import (
@@ -21,7 +20,7 @@ import arcana.core.data.row
 from .data.space import DataSpace
 from .utils import (
     func_task, asdict, fromdict, pydra_asdict, pydra_fromdict, pydra_eq,
-    path2varname, varname2path)
+    path2varname)
 
 logger = logging.getLogger('arcana')
 
@@ -62,6 +61,11 @@ class Pipeline():
         List of sink names to be connected to the outputs of the pipeline
         If the input to be in a specific format, then it can be provided in
         a tuple (NAME, FORMAT)
+    converter_args : dict[str, dict]
+        keyword arguments passed on to the converter to control how the
+        conversion is performed.
+    dataset : Dataset
+        the dataset the pipeline has been applied to
     """
 
     name: str = attr.ib()
@@ -74,6 +78,8 @@ class Pipeline():
     outputs: ty.List[Output] = attr.ib(
         converter=lambda lst: [Output(*o) if isinstance(o, Iterable) else o
                                for o in lst])
+    converter_args: ty.Dict[str, dict] = attr.ib(
+        factory=dict, converter=attr.converters.default_if_none(factory=dict))
     dataset: arcana.core.data.set.Dataset = attr.ib(
         metadata={'asdict': False}, default=None, eq=False, hash=False)
 
@@ -205,7 +211,8 @@ class Pipeline():
                             inpt.required_format.class_name())
                 source_name = inpt.col_name
                 converter = inpt.required_format.converter_task(
-                    stored_format, name=f"{source_name}_input_converter")
+                    stored_format, name=f"{source_name}_input_converter",
+                    **self.converter_args.get(inpt.col_name, {}))
                 converter.inputs.to_convert = sourced.pop(source_name)
                 if issubclass(source_out_dct[source_name], ty.Sequence):
                     # Iterate over all items in the sequence and convert them
@@ -264,7 +271,8 @@ class Pipeline():
                 sink_name = path2varname(outpt.col_name)
                 converter = stored_format.converter_task(
                     outpt.produced_format,
-                    name=f"{sink_name}_output_converter")
+                    name=f"{sink_name}_output_converter",
+                    **self.converter_args.get(outpt.col_name, {}))
                 converter.inputs.to_convert = to_sink.pop(sink_name)
                 wf.per_row.add(converter)
                 # Map converter output to workflow output

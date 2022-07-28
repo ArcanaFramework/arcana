@@ -1,6 +1,6 @@
 import pytest
 from arcana.deploy.medimage.xnat import build_xnat_cs_image, generate_xnat_cs_command, path2xnatname
-from arcana.test.fixtures.medimage import (
+from arcana.test.fixtures.medimage.xnat import (
     make_mutable_dataset,
     TEST_XNAT_DATASET_BLUEPRINTS,
     TestXnatDatasetBlueprint,

@@ -2,51 +2,20 @@ from copy import copy
 from abc import ABCMeta, abstractmethod
 import os
 import os.path as op
+from pathlib import Path
+import jq
 import json
 import pydicom
 import numpy as np
 import nibabel
+from pydra import Workflow, mark
 from pydra.tasks.dcm2niix import Dcm2Niix
 # Hack to get module to load until pydra-mrtrix is published on PyPI
 from pydra.tasks.mrtrix3.utils import MRConvert
 from arcana.core.mark import converter
 from arcana.exceptions import ArcanaUsageError
-from arcana.tasks.common.utils import identity_converter
 from arcana.core.data.format import WithSideCars
 from arcana.data.formats.common import File, Directory
-
-
-# class Dcm2niixConverter(Converter):
-
-#     interface = Dcm2niix(compression='y')
-#     input = 'input_dir'
-#     output = 'converted'
-#     requirements = [dcm2niix_req.v('1.0.20190720')]
-
-
-# class MrtrixConverter(Converter):
-
-#     input = 'in_file'
-#     output = 'out_file'
-#     requirements = [mrtrix_req.v(3)]
-
-#     @property
-#     def interface(self):
-#         return MRConvert(
-#             out_ext=self.output_format.extension,
-#             quiet=True)
-
-
-# class TwixConverter(Converter):
-
-#     input = 'in_file'
-#     output = 'out_file'
-#     output_side_cars = {'ref': 'ref_file', 'json': 'hdr_file'}
-#     requirements = [matlab_req.v('R2018a')]
-#     interface = TwixReader()
-
-
-
 
 
 # =====================================================================
@@ -265,10 +234,10 @@ class Nifti(NeuroImage):
     alternative_names = ('NIFTI',)
 
     def get_header(self):
-        return dict(nibabel.load(self.path).header)
+        return dict(nibabel.load(self.fs_path).header)
 
     def get_array(self):
-        return nibabel.load(self.path).get_data()
+        return nibabel.load(self.fs_path).get_data()
 
     def get_vox_sizes(self):
         # FIXME: This won't work for 4-D files
@@ -280,13 +249,53 @@ class Nifti(NeuroImage):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
+    def dcm2niix(cls, fs_path, echo=None, side_car_jq=None):
+        if side_car_jq is not None:
+            wf = Workflow(name='multistep_conv',
+                          input_spec=['in_dir', 'compress'],
+                          in_dir=fs_path)
+            in_dir = wf.lzin.in_dir
+            compress = wf.lzin.compress
+        else:
+            in_dir = fs_path
+            compress = 'n'
         node = Dcm2Niix(
-            in_dir=fs_path,
+            in_dir=in_dir,
             out_dir='.',
-            compress='n')
-        return node, node.lzout.out_file
-    
+            name='dcm2niix',
+            compress=compress,
+            echo=echo)
+        if side_car_jq is not None:
+            wf.add(node)
+            out_json = wf.dcm2niix.lzout.out_json
+            if side_car_jq is not None:
+                wf.add(edit_side_car(
+                    in_file=out_json,
+                    jq_expr=side_car_jq,
+                    name='json_edit'))
+                out_json = wf.json_edit.lzout.out
+            wf.set_output(('out_file', wf.dcm2niix.lzout.out_file))
+            wf.set_output(('out_json', out_json))
+            wf.set_output(('out_bvec', wf.dcm2niix.lzout.out_bvec))
+            wf.set_output(('out_bval', wf.dcm2niix.lzout.out_bval))
+            out = wf, wf.lzout.out_file
+        else:
+            out = node, node.lzout.out_file
+        return out
+
+
+@mark.task
+def edit_side_car(in_file: Path, jq_expr: str, out_file=None) -> Path:
+    """"Applys ad-hoc edit of JSON side car with JQ query language"""
+    if out_file is None:
+        out_file = in_file
+    with open(in_file) as f:
+        dct = json.load(f)
+    dct = jq.compile(jq_expr).input(dct).first()
+    with open(out_file, 'w') as f:
+        json.dump(dct, f)
+    return in_file
+
 
 class NiftiGz(Nifti):
 
@@ -294,10 +303,10 @@ class NiftiGz(Nifti):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
-        spec = super().dcm2niix(fs_path)
-        spec[0].inputs.compress = 'y'
-        return spec
+    def dcm2niix(cls, fs_path, **kwargs):
+        node, out_file = Nifti.dcm2niix(fs_path, **kwargs)
+        node.inputs.compress = 'y'
+        return node, out_file
 
 
 class NiftiX(WithSideCars, Nifti):
@@ -305,15 +314,15 @@ class NiftiX(WithSideCars, Nifti):
     side_car_exts = ('json',)
 
     def get_header(self):
-        hdr = super().get_header(self)
-        with open(self.aux_file('json')) as f:
+        hdr = super().get_header()
+        with open(self.side_car('json')) as f:
             hdr.update(json.load(f))
         return hdr
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
-        node, out_file = super().dcm2niix(fs_path)
+    def dcm2niix(cls, fs_path, **kwargs):
+        node, out_file = Nifti.dcm2niix(fs_path, **kwargs)
         return node, (out_file, node.lzout.out_json)
 
     mrconvert = None  # Only dcm2niix produces the required JSON side car
@@ -321,7 +330,12 @@ class NiftiX(WithSideCars, Nifti):
 
 class NiftiGzX(NiftiX, NiftiGz):
 
-    pass
+    @classmethod
+    @converter(Dicom)
+    def dcm2niix(cls, fs_path, **kwargs):
+        node, out_files = NiftiX.dcm2niix(fs_path, **kwargs)
+        node.inputs.compress = 'y'
+        return node, out_files
 
 
 # NIfTI file format gzipped with BIDS side car
@@ -331,13 +345,13 @@ class NiftiFslgrad(WithSideCars, Nifti):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
-        node, out_file = super().dcm2niix(fs_path)
+    def dcm2niix(cls, fs_path, **kwargs):
+        node, out_file = Nifti.dcm2niix(fs_path, **kwargs)
         return node, (out_file, node.lzout.out_bvec, node.lzout.out_bval)
 
     mrconvert = None  # Technically mrconvert can export fsl grads but dcm2niix will be sufficient 99% of the time
 
-class NiftiFslgradGz(NiftiFslgrad, NiftiGz):
+class NiftiGzFslgrad(NiftiFslgrad, NiftiGz):
 
     pass
 
@@ -348,21 +362,19 @@ class NiftiXFslgrad(NiftiX, NiftiFslgrad):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
-        node, out_file = super().dcm2niix(fs_path)
-        return node, (out_file,
-                      node.lzout.out_json,
-                      node.lzout.out_bvec,
-                      node.lzout.out_bval)
+    def dcm2niix(cls, fs_path, **kwargs):
+        node, out_file = NiftiX.dcm2niix(fs_path, **kwargs)
+        return node, out_file + (node.lzout.out_bvec,
+                                 node.lzout.out_bval)
 
 class NiftiGzXFslgrad(NiftiXFslgrad, NiftiGz):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path):
-        spec = super().dcm2niix(fs_path)
-        spec[0].inputs.compress = 'y'
-        return spec
+    def dcm2niix(cls, fs_path, **kwargs):
+        node, out_files = NiftiXFslgrad.dcm2niix(fs_path, **kwargs)
+        node.inputs.compress = 'y'
+        return node, out_files
 
 
 
@@ -538,6 +550,16 @@ class CustomKspace(Kspace):
         
     ext = 'ks'
     side_cars = ('ref', 'json')
+
+    @classmethod
+    @converter
+    def from_twix(cls, fs_path):
+        # input = 'in_file'
+        # output = 'out_file'
+        # output_side_cars = {'ref': 'ref_file', 'json': 'hdr_file'}
+        # requirements = [matlab_req.v('R2018a')]
+        # interface = TwixReader()
+        raise NotImplementedError
 
 
 class Rda(File):

@@ -414,13 +414,13 @@ class Dataset():
                     id, f"{id} not present in data tree "
                     f"({list(self.row_ids(row_frequency))})") from e
 
-    def rows(self, row_frequency=None, ids=None):
-        """Return all the IDs in the dataset for a given row_frequency
+    def rows(self, frequency=None, ids=None):
+        """Return all the IDs in the dataset for a given frequency
 
         Parameters
         ----------
-        row_frequency : DataSpace or None
-            The "row_frequency" of the rows, e.g. per-session, per-subject. If
+        frequency : DataSpace or None
+            The "frequency" of the rows, e.g. per-session, per-subject. If
             None then all rows are returned
         ids : Sequence[str or Tuple[str]]
             The i
@@ -430,13 +430,13 @@ class Dataset():
         Sequence[DataRow]
             The sequence of the data row within the dataset
         """
-        if row_frequency is None:
+        if frequency is None:
             return chain(
                 *(d.values() for d in self.root.children.values()))
-        row_frequency = self._parse_freq(row_frequency)
-        if row_frequency == self.root_freq:
+        frequency = self._parse_freq(frequency)
+        if frequency == self.root_freq:
             return [self.root]
-        rows = self.root.children[row_frequency].values()
+        rows = self.root.children[frequency].values()
         if ids is not None:
             rows = (n for n in rows if n.id in set(ids))
         return rows
@@ -630,7 +630,7 @@ class Dataset():
         return row
 
     def apply_pipeline(self, name, workflow, inputs, outputs, row_frequency=None,
-                       overwrite=False):
+                       overwrite=False, converter_args=None):
         """Connect a Pydra workflow as a pipeline of the dataset
 
         Parameters
@@ -649,6 +649,9 @@ class Dataset():
             by default the highest row frequency (e.g. per-session for Clinical)
         overwrite : bool, optional
             overwrite connections to previously connected sinks, by default False
+        converter_args : dict[str, dict]
+            keyword arguments passed on to the converter to control how the
+            conversion is performed.
 
         Returns
         -------
@@ -680,7 +683,8 @@ class Dataset():
             row_frequency=row_frequency,
             workflow=workflow,
             inputs=parsed_conns(inputs, Input),
-            outputs=parsed_conns(outputs, Output))
+            outputs=parsed_conns(outputs, Output),
+            converter_args=converter_args)
         for outpt in pipeline.outputs:
             sink = self[outpt.col_name]
             if sink.pipeline_name is not None:

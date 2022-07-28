@@ -166,3 +166,8 @@ def plus_10_to_filenumbers(filenumber_row: DataRow) -> None:
         new_path = (fs_path.parent
                     / str(filenumber + 10)).with_suffix(fs_path.suffix)
         shutil.move(fs_path, new_path)
+
+
+@mark.task
+def identity_file(in_file: Path) -> Path:
+    return in_file
