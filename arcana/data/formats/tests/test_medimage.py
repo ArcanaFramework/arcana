@@ -1,4 +1,5 @@
 import json
+import pytest
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 from logging import getLogger
 
@@ -23,10 +24,29 @@ def test_dicom_to_nifti_select_echo(dummy_magfmap_dicom):
     assert nifti_gz_x_e1.get_header()['EchoNumber'] == 1
     assert nifti_gz_x_e2.get_header()['EchoNumber'] == 2
 
+    with pytest.raises(ValueError) as excinfo:
+        dummy_magfmap_dicom.convert_to(NiftiGzX)
 
-def test_dicom_to_nifti_with_extract_volume(dummy_mixedfmap_dicom):
+    assert "DICOM dataset contains multiple echos" in str(excinfo.value)
 
-    nifti_gz_x_e1 = dummy_mixedfmap_dicom.convert_to(NiftiGzX, extract_volume=2)
+
+def test_dicom_to_nifti_select_suffix(dummy_mixedfmap_dicom):
+
+    nifti_gz_x_ph = dummy_mixedfmap_dicom.convert_to(NiftiGzX, suffix='ph')
+    nifti_gz_x_imaginary = dummy_mixedfmap_dicom.convert_to(
+        NiftiGzX, suffix='imaginary')
+    nifti_gz_x_real = dummy_mixedfmap_dicom.convert_to(
+        NiftiGzX, suffix='real')
+
+    assert list(nifti_gz_x_ph.get_dims()) == [256, 256, 60]
+    assert list(nifti_gz_x_imaginary.get_dims()) == [256, 256, 60]
+    assert list(nifti_gz_x_real.get_dims()) == [256, 256, 60]
+
+
+@pytest.mark.skip("Mrtrix isn't installed in test environment yet")
+def test_dicom_to_nifti_with_extract_volume(dummy_dwi_dicom):
+
+    nifti_gz_x_e1 = dummy_dwi_dicom.convert_to(NiftiGzX, extract_volume=30)
 
     assert nifti_gz_x_e1.get_header()['dims'] == 1
 

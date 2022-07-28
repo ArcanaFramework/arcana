@@ -4,6 +4,7 @@ import os
 import os.path as op
 from pathlib import Path
 import jq
+import attr
 import json
 import pydicom
 import numpy as np
@@ -160,11 +161,11 @@ class Dicom(Directory, MedicalImage):
         return pydicom.dcmread(op.join(self.path, dcm_files[index]))
 
     def get_vox_sizes(self):
-        hdr = self.get_header(self)
+        hdr = self.get_header()
         return np.array(hdr.PixelSpacing + [hdr.SliceThickness])
 
     def get_dims(self):
-        hdr = self.get_header(self)
+        hdr = self.get_header()
         return np.array((hdr.Rows, hdr.DataColumns, len(self.dcm_files(self))),
                         format=int)
 
@@ -241,15 +242,16 @@ class Nifti(NeuroImage):
 
     def get_vox_sizes(self):
         # FIXME: This won't work for 4-D files
-        return self.get_header(self)['pixdim'][1:4]
+        return self.get_header()['pixdim'][1:4]
 
     def get_dims(self):
         # FIXME: This won't work for 4-D files
-        return self.get_header(self)['dim'][1:4]
+        return self.get_header()['dim'][1:4]
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path, extract_volume=None, echo=None, side_car_jq=None):
+    def dcm2niix(cls, fs_path, extract_volume=None, echo=None, suffix=None,
+                 side_car_jq=None):
         as_workflow = extract_volume is not None or side_car_jq is not None
         if as_workflow:
             wf = Workflow(name='multistep_conv',
@@ -265,7 +267,8 @@ class Nifti(NeuroImage):
             out_dir='.',
             name='dcm2niix',
             compress=compress,
-            echo=echo)
+            echo=echo if echo else attr.NOTHING,
+            suffix=suffix if suffix else attr.NOTHING)
         if as_workflow:
             wf.add(node)
             out_file = wf.dcm2niix.lzout.out_file
@@ -471,46 +474,6 @@ class Fslgrad(Dwigrad):
 
     ext = 'bvec'
     side_cars = ('bval',)
-
-
-
-# # Set converters between image formats
-
-# NiftiGzX.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
-#                         inputs={'primary': 'in_dir'},
-#                         outputs={'primary': 'out_file',
-#                                  'json': 'out_json'})
-
-# niftix.set_converter(dicom, Dcm2Niix, compress='n', out_dir='.',
-#                      inputs={'primary': 'in_dir'},
-#                      outputs={'primary': 'out_file',
-#                               'json': 'out_json'})
-
-# nifti.set_converter(dicom, Dcm2Niix, out_dir='.',
-#                     inputs={'primary': 'in_dir'})
-# nifti.set_converter(analyze, MRConvert, out_file='file.nii')
-# nifti.set_converter(nifti_gz, MRConvert, out_file='file.nii')
-# nifti.set_converter(mrtrix_image, MRConvert, out_file='file.nii')
-# nifti.set_converter(NiftiGzX, MRConvert, out_file='file.nii')
-
-# nifti_gz.set_converter(dicom, Dcm2Niix, compress='y', out_dir='.',
-#                        inputs={'primary': 'in_dir'})
-# nifti_gz.set_converter(nifti, MRConvert, out_file="file.nii.gz")
-# nifti_gz.set_converter(analyze, MRConvert, out_file="file.nii.gz")
-# nifti_gz.set_converter(mrtrix_image, MRConvert, out_file="file.nii.gz")
-# nifti_gz.set_converter(NiftiGzX, identity_converter)
-
-# analyze.set_converter(dicom, MRConvert, out_file="file.hdr")
-# analyze.set_converter(nifti, MRConvert, out_file="file.hdr")
-# analyze.set_converter(nifti_gz, MRConvert, out_file="file.hdr")
-# analyze.set_converter(mrtrix_image, MRConvert, out_file="file.hdr")
-# analyze.set_converter(NiftiGzX, MRConvert, out_file="file.hdr")
-
-# mrtrix_image.set_converter(dicom, MRConvert, out_file='file.mif')
-# mrtrix_image.set_converter(nifti, MRConvert, out_file='file.mif')
-# mrtrix_image.set_converter(nifti_gz, MRConvert, out_file='file.mif')
-# mrtrix_image.set_converter(analyze, MRConvert, out_file='file.mif')
-# mrtrix_image.set_converter(NiftiGzX, MRConvert, out_file='file.mif')
 
 
 # Raw formats
