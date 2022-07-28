@@ -5,3 +5,4 @@ from .xnat import (
 from .dicom.t1w import dummy_t1w_dicom
 from .dicom.magfmap import dummy_magfmap_dicom
 from .dicom.dwi import dummy_dwi_dicom
+from .dicom.mixedfmap import dummy_mixedfmap_dicom
