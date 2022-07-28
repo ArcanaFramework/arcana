@@ -1,4 +1,5 @@
 import json
+import pytest
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 from logging import getLogger
 
@@ -6,7 +7,7 @@ from logging import getLogger
 logger = getLogger('arcana')
 
 
-def test_dicom_to_nifti_conversion(dummy_t1w_dicom):
+def test_dicom_to_nifti(dummy_t1w_dicom):
 
     nifti_gz_x = dummy_t1w_dicom.convert_to(NiftiGzX)
 
@@ -16,15 +17,41 @@ def test_dicom_to_nifti_conversion(dummy_t1w_dicom):
     assert js['EchoTime'] == 0.00207
 
 
-def test_dicom_to_nifti_conversion_and_echo(dummy_magfmap_dicom):
+def test_dicom_to_nifti_select_echo(dummy_magfmap_dicom):
 
     nifti_gz_x_e1 = dummy_magfmap_dicom.convert_to(NiftiGzX, echo=1)
     nifti_gz_x_e2 = dummy_magfmap_dicom.convert_to(NiftiGzX, echo=2)
     assert nifti_gz_x_e1.get_header()['EchoNumber'] == 1
     assert nifti_gz_x_e2.get_header()['EchoNumber'] == 2
 
+    with pytest.raises(ValueError) as excinfo:
+        dummy_magfmap_dicom.convert_to(NiftiGzX)
 
-def test_dicom_to_nifti_conversion_with_jq_edit(dummy_t1w_dicom):
+    assert "DICOM dataset contains multiple echos" in str(excinfo.value)
+
+
+def test_dicom_to_nifti_select_suffix(dummy_mixedfmap_dicom):
+
+    nifti_gz_x_ph = dummy_mixedfmap_dicom.convert_to(NiftiGzX, suffix='ph')
+    nifti_gz_x_imaginary = dummy_mixedfmap_dicom.convert_to(
+        NiftiGzX, suffix='imaginary')
+    nifti_gz_x_real = dummy_mixedfmap_dicom.convert_to(
+        NiftiGzX, suffix='real')
+
+    assert list(nifti_gz_x_ph.get_dims()) == [256, 256, 60]
+    assert list(nifti_gz_x_imaginary.get_dims()) == [256, 256, 60]
+    assert list(nifti_gz_x_real.get_dims()) == [256, 256, 60]
+
+
+@pytest.mark.skip("Mrtrix isn't installed in test environment yet")
+def test_dicom_to_nifti_with_extract_volume(dummy_dwi_dicom):
+
+    nifti_gz_x_e1 = dummy_dwi_dicom.convert_to(NiftiGzX, extract_volume=30)
+
+    assert nifti_gz_x_e1.get_header()['dims'] == 1
+
+
+def test_dicom_to_nifti_with_jq_edit(dummy_t1w_dicom):
 
     nifti_gz_x = dummy_t1w_dicom.convert_to(NiftiGzX,
                                             side_car_jq='.EchoTime *= 1000')
@@ -36,7 +63,7 @@ def test_dicom_to_nifti_conversion_with_jq_edit(dummy_t1w_dicom):
 
 
 
-def test_dicom_to_niftix_fslgrad_conversion(dummy_dwi_dicom):
+def test_dicom_to_niftix_with_fslgrad(dummy_dwi_dicom):
 
     logger.debug('Performing FSL grad conversion')
 
