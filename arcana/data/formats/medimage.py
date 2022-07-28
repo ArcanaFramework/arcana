@@ -250,7 +250,7 @@ class Nifti(NeuroImage):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path, extract_volume=None, echo=None, suffix=None,
+    def dcm2niix(cls, fs_path, extract_volume=None, echo=None, component=None,
                  side_car_jq=None):
         as_workflow = extract_volume is not None or side_car_jq is not None
         if as_workflow:
@@ -268,7 +268,7 @@ class Nifti(NeuroImage):
             name='dcm2niix',
             compress=compress,
             echo=echo if echo else attr.NOTHING,
-            suffix=suffix if suffix else attr.NOTHING)
+            suffix=component if component else attr.NOTHING)
         if as_workflow:
             wf.add(node)
             out_file = wf.dcm2niix.lzout.out_file
