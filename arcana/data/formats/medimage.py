@@ -249,8 +249,9 @@ class Nifti(NeuroImage):
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path, echo=None, side_car_jq=None):
-        if side_car_jq is not None:
+    def dcm2niix(cls, fs_path, extract_volume=None, echo=None, side_car_jq=None):
+        as_workflow = extract_volume is not None or side_car_jq is not None
+        if as_workflow:
             wf = Workflow(name='multistep_conv',
                           input_spec=['in_dir', 'compress'],
                           in_dir=fs_path)
@@ -265,16 +266,24 @@ class Nifti(NeuroImage):
             name='dcm2niix',
             compress=compress,
             echo=echo)
-        if side_car_jq is not None:
+        if as_workflow:
             wf.add(node)
+            out_file = wf.dcm2niix.lzout.out_file
             out_json = wf.dcm2niix.lzout.out_json
+            if extract_volume is not None:
+                wf.add(MRConvert(
+                    in_file=out_file,
+                    coord=[3, extract_volume],
+                    axes=[0, 1, 2],
+                    name='mrconvert'))
+                out_file = wf.mrconvert.lzout.out_file
             if side_car_jq is not None:
                 wf.add(edit_side_car(
                     in_file=out_json,
                     jq_expr=side_car_jq,
                     name='json_edit'))
                 out_json = wf.json_edit.lzout.out
-            wf.set_output(('out_file', wf.dcm2niix.lzout.out_file))
+            wf.set_output(('out_file', out_file))
             wf.set_output(('out_json', out_json))
             wf.set_output(('out_bvec', wf.dcm2niix.lzout.out_bvec))
             wf.set_output(('out_bval', wf.dcm2niix.lzout.out_bval))
