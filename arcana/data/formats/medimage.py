@@ -271,8 +271,12 @@ class Nifti(NeuroImage):
             out_file = wf.dcm2niix.lzout.out_file
             out_json = wf.dcm2niix.lzout.out_json
             if extract_volume is not None:
+                out_filename = 'out_file.nii'
+                if compress == 'y':
+                    out_filename += '.gz'
                 wf.add(MRConvert(
                     in_file=out_file,
+                    out_filename=out_filename,
                     coord=[3, extract_volume],
                     axes=[0, 1, 2],
                     name='mrconvert'))
