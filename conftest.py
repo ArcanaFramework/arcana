@@ -7,7 +7,7 @@ from datetime import datetime
 
 # Set DEBUG logging for unittests
 
-log_level = logging.DEBUG
+log_level = logging.WARNING
 
 logger = logging.getLogger('arcana')
 logger.setLevel(log_level)
