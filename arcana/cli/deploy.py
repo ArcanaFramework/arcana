@@ -489,12 +489,23 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
             the extracted qualifiers
         """
         qualifiers = defaultdict(dict)
-        parts = shlex.split(user_input)
-        path = parts[0]
-        for part in parts[1:]:
-            full_name, val = part.split('=', maxsplit=1)
-            ns, name = full_name.split('.', maxsplit=1)
-            qualifiers[ns][name] = val
+        if '=' in user_input:  # Treat user input as containing qualifiers
+            parts = shlex.split(user_input)
+            path = parts[0]
+            for part in parts[1:]:
+                try:
+                    full_name, val = part.split('=', maxsplit=1)
+                except ValueError as e:
+                    e.args = (e.args[0] + f" attempting to split '{part}' by '='"),
+                    raise e
+                try:
+                    ns, name = full_name.split('.', maxsplit=1)
+                except ValueError as e:
+                    e.args = (e.args[0] + f" attempting to split '{full_name}' by '.'"),
+                    raise e
+                qualifiers[ns][name] = val
+        else:
+            path = user_input
         return path, qualifiers
 
     pipeline_inputs = []
