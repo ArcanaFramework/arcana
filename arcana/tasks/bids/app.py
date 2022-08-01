@@ -6,7 +6,6 @@ import typing as ty
 import shutil
 import logging
 import shlex
-from argparse import ArgumentParser
 from pathlib import Path
 from dataclasses import dataclass
 from arcana import __version__
@@ -17,6 +16,7 @@ from pydra.engine.specs import (
     ShellSpec, SpecInfo, DockerSpec, SingularitySpec, ShellOutSpec)
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical
+from arcana.data.stores.bids.structure import JsonEdit
 from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.exceptions import ArcanaUsageError
 from arcana.core.utils import func_task, path2varname, resolve_class
@@ -344,8 +344,8 @@ def to_bids(row_frequency, inputs, dataset, id, json_edits, fixed_json_edits,
     """
     # Update the Bids store with the JSON edits requested by the user
     je_args = shlex.split(json_edits) if json_edits else []
-    dataset.store.json_edits = fixed_json_edits + list(zip(je_args[::2],
-                                                           je_args[1::2]))
+    dataset.store.json_edits = JsonEdit.attr_converter(
+        fixed_json_edits + list(zip(je_args[::2], je_args[1::2])))
     for inpt in inputs:
         dataset.add_sink(inpt.name, inpt.format, path=inpt.path)
     row = dataset.row(row_frequency, id)

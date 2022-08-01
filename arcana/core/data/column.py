@@ -138,11 +138,12 @@ class DataSource(DataColumn):
         # Select a single item from the ones that match the criteria
         if self.order is not None:
             try:
-                match = matches[self.order]
+                match = matches[self.order - 1]
             except IndexError as e:
                 raise ArcanaDataMatchError(
                     "Not enough matching items to select one at index "
-                    f"{self.order}, found:" + self._format_matches(matches)) from e
+                    f"{self.order} (starting from 1), found:"
+                    + self._format_matches(matches)) from e
         elif len(matches) > 1:
             raise ArcanaDataMatchError(
                 "Found multiple matches " + self._error_msg(row, matches))
