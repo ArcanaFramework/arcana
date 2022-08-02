@@ -10,7 +10,7 @@ install_requires = [
     'xnat>=0.3.17',
     'pydra>=0.19',
     'click==7.1.2',
-    'pydra-dcm2niix @ git+https://github.com/tclose/pydra-dcm2niix@arbitrary-suffixes',
+    'pydra-dcm2niix>=1.1.0',
     'pydra-mrtrix3>=0.1',
     'pydicom>=1.0.2',
     'nibabel>=3.2.1',
@@ -28,6 +28,7 @@ tests_require = [
     'pytest>=5.4.3',
     'pytest-env>=0.6.2',
     'pytest-cov>=2.12.1',
-    'xnat4tests>=0.1']
+    'xnat4tests>=0.1',
+    'medimages4tests>=0.1']
 
 python_versions = ['3.8', '3.9']
