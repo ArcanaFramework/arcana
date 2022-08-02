@@ -1,5 +1,6 @@
 from arcana.data.spaces.medimage import Clinical
 
+
 def test_is_parent():
     assert not Clinical.session.is_parent(Clinical.session)
     assert not Clinical.session.is_parent(Clinical.subject)
@@ -72,7 +73,3 @@ def test_is_parent():
     assert Clinical.dataset.is_parent(Clinical.batch)
     assert Clinical.dataset.is_parent(Clinical.matchedpoint)
     assert not Clinical.dataset.is_parent(Clinical.dataset)
-
-
-
-

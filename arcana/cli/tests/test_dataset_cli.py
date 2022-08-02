@@ -26,36 +26,56 @@ def test_add_column_cli(saved_dataset, cli_runner):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     # Add source to loaded dataset
     saved_dataset.add_source(
-        name='a_source',
-        path='file1',
+        name="a_source",
+        path="file1",
         format=Text,
         row_frequency=TestDataSpace.d,
         quality_threshold=DataQuality.questionable,
         order=1,
         header_vals={},
-        is_regex=False)
+        is_regex=False,
+    )
     # Add source column to saved dataset
     result = cli_runner(
         add_source,
-        [dataset_id_str, 'a_source', 'common:Text',
-         '--path', 'file1',
-         '--row_frequency', 'd',
-         '--quality', 'questionable',
-         '--order', '1',
-         '--no-regex'])
+        [
+            dataset_id_str,
+            "a_source",
+            "common:Text",
+            "--path",
+            "file1",
+            "--row_frequency",
+            "d",
+            "--quality",
+            "questionable",
+            "--order",
+            "1",
+            "--no-regex",
+        ],
+    )
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source to loaded dataset
     saved_dataset.add_sink(
-        name='a_sink',
-        path='deriv',
+        name="a_sink",
+        path="deriv",
         format=Text,
         row_frequency=TestDataSpace.d,
-        salience=DataSalience.qa)
-    result = cli_runner(add_sink, [
-        dataset_id_str, 'a_sink', 'common:Text',
-        '--path', 'deriv',
-        '--row_frequency', 'd',
-        '--salience', 'qa'])
+        salience=DataSalience.qa,
+    )
+    result = cli_runner(
+        add_sink,
+        [
+            dataset_id_str,
+            "a_sink",
+            "common:Text",
+            "--path",
+            "deriv",
+            "--row_frequency",
+            "d",
+            "--salience",
+            "qa",
+        ],
+    )
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
@@ -65,72 +85,96 @@ def test_add_column_cli(saved_dataset, cli_runner):
 
 def test_add_source_xnat(mutable_xnat_dataset, cli_runner, work_dir):
 
-    test_home_dir = work_dir / 'test-arcana-home'
+    test_home_dir = work_dir / "test-arcana-home"
 
-    with patch.dict(os.environ, {'ARCANA_HOME': str(test_home_dir)}):
-        store_nickname = mutable_xnat_dataset.id + '_store'
-        dataset_name = 'testing123'
+    with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
+        store_nickname = mutable_xnat_dataset.id + "_store"
+        dataset_name = "testing123"
         mutable_xnat_dataset.store.save(store_nickname)
-        dataset_id_str = store_nickname + '//' + mutable_xnat_dataset.id + '::' + dataset_name
+        dataset_id_str = (
+            store_nickname + "//" + mutable_xnat_dataset.id + "::" + dataset_name
+        )
         mutable_xnat_dataset.save(dataset_name)
-        
+
         result = cli_runner(
             add_source,
-            [dataset_id_str, 'a_source', 'common:Text',
-            '--path', 'file1',
-            '--row_frequency', 'session',
-            '--quality', 'questionable',
-            '--order', '1',
-            '--no-regex'])
+            [
+                dataset_id_str,
+                "a_source",
+                "common:Text",
+                "--path",
+                "file1",
+                "--row_frequency",
+                "session",
+                "--quality",
+                "questionable",
+                "--order",
+                "1",
+                "--no-regex",
+            ],
+        )
         assert result.exit_code == 0, show_cli_trace(result)
 
 
 def test_add_sink_xnat(mutable_xnat_dataset, work_dir, cli_runner):
 
-    test_home_dir = work_dir / 'test-arcana-home'
+    test_home_dir = work_dir / "test-arcana-home"
 
-    with patch.dict(os.environ, {'ARCANA_HOME': str(test_home_dir)}):
-        store_nickname = mutable_xnat_dataset.id + '_store'
-        dataset_name = 'testing123'
+    with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
+        store_nickname = mutable_xnat_dataset.id + "_store"
+        dataset_name = "testing123"
         mutable_xnat_dataset.store.save(store_nickname)
-        dataset_id_str = store_nickname + '//' + mutable_xnat_dataset.id + '::' + dataset_name
+        dataset_id_str = (
+            store_nickname + "//" + mutable_xnat_dataset.id + "::" + dataset_name
+        )
         mutable_xnat_dataset.save(dataset_name)
-    
-        result = cli_runner(add_sink, [
-            dataset_id_str, 'a_sink', 'common:Text',
-            '--path', 'deriv',
-            '--row_frequency', 'session',
-            '--salience', 'qa'])
+
+        result = cli_runner(
+            add_sink,
+            [
+                dataset_id_str,
+                "a_sink",
+                "common:Text",
+                "--path",
+                "deriv",
+                "--row_frequency",
+                "session",
+                "--salience",
+                "qa",
+            ],
+        )
         assert result.exit_code == 0, show_cli_trace(result)
+
 
 @pytest.mark.skip("Not implemented")
 def test_add_missing_items_cli(dataset, cli_runner):
-  result = cli_runner(missing_items, [])
-  assert result.exit_code == 0, show_cli_trace(result)
+    result = cli_runner(missing_items, [])
+    assert result.exit_code == 0, show_cli_trace(result)
 
 
 def test_define_cli(dataset, cli_runner):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    path = 'file//' + os.path.abspath(dataset.id)
+    path = "file//" + os.path.abspath(dataset.id)
     # Start generating the arguments for the CLI
     args = [str(h) for h in dataset.blueprint.hierarchy]
     # Generate "arbitrary" values for included and excluded from dim length
     # and index
     included = []
     excluded = []
-    for i, (dim_length, axis) in enumerate(zip(dataset.blueprint.dim_lengths,
-                                               dataset.space)):
+    for i, (dim_length, axis) in enumerate(
+        zip(dataset.blueprint.dim_lengths, dataset.space)
+    ):
         a, b = get_arbitrary_slice(i, dim_length)
         if i % 2:
-            included.append((axis, f'{a}:{b}'))
+            included.append((axis, f"{a}:{b}"))
         elif (b - a) < dim_length:  # Check that we aren't excluding all
-            excluded.append((axis, f'{a}:{b}'))
+            excluded.append((axis, f"{a}:{b}"))
     # Add include and exclude options
     for axis, slce in included:
-        args.extend(['--include', str(axis), slce])
+        args.extend(["--include", str(axis), slce])
     for axis, slce in excluded:
-        args.extend(['--exclude', str(axis), slce])
-    args.extend(['--space', 'arcana.test.datasets:TestDataSpace'])
+        args.extend(["--exclude", str(axis), slce])
+    args.extend(["--space", "arcana.test.datasets:TestDataSpace"])
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully
@@ -141,4 +185,3 @@ def test_define_cli(dataset, cli_runner):
     assert loaded_dataset.hierarchy == dataset.blueprint.hierarchy
     assert loaded_dataset.include == included
     assert loaded_dataset.exclude == excluded
-

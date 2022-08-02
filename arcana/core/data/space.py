@@ -4,6 +4,7 @@ from operator import __or__
 from enum import Enum
 from arcana.core.utils import class_location, resolve_class
 
+
 class DataSpace(Enum):
     """
     Base class for all "data space" enums. DataSpace enums specify
@@ -29,7 +30,7 @@ class DataSpace(Enum):
     the least frequent bit (e.g. imaging datasets will not always have
     different groups or time-points but will always have different members
     (equivalent to subjects when there is one group).
-    
+
     In addition to the data items stored in the data rows for each session,
     some items only vary along a particular dimension of the grid. The
     "row_frequency" of these rows can be specified using the "basis" members
@@ -42,7 +43,7 @@ class DataSpace(Enum):
     of the grid. These frequencies should also be added to the enum (all
     combinations of the basis frequencies must be included) and given intuitive
     names if possible, e.g.
-    
+
         subject = 0b011 - uniquely identified subject within in the dataset.
         batch = 0b110 - separate group+timepoint combinations
         matchedpoint = 0b101 - matched members and time-points aggregated across groups
@@ -168,9 +169,9 @@ class DataSpace(Enum):
         return ((self & child) == self) and (child != self or if_match)
 
     def tostr(self):
-        return f'{class_location(self)}[{str(self)}]'
+        return f"{class_location(self)}[{str(self)}]"
 
     @classmethod
     def fromstr(cls, s):
-        class_loc, val = re.match(r'(.*)\[([^\]]+)\]', s).groups()
+        class_loc, val = re.match(r"(.*)\[([^\]]+)\]", s).groups()
         return resolve_class(class_loc)[val]

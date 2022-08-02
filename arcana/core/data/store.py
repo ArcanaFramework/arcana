@@ -6,13 +6,19 @@ import attr
 import typing as ty
 import yaml
 from arcana.core.utils import (
-    get_config_file_path, list_subclasses, resolve_class, class_location,
-    asdict, fromdict)
+    get_config_file_path,
+    list_subclasses,
+    resolve_class,
+    class_location,
+    asdict,
+    fromdict,
+)
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
-DS = ty.TypeVar('DS', bound='DataStore')
+DS = ty.TypeVar("DS", bound="DataStore")
 
-logger = logging.getLogger('arcana')
+logger = logging.getLogger("arcana")
+
 
 @attr.s
 class DataStore(metaclass=ABCMeta):
@@ -22,10 +28,9 @@ class DataStore(metaclass=ABCMeta):
     # classes should implement.
     # """
 
-    _connection_depth = attr.ib(default=0, init=False, hash=False, repr=False,
-                                eq=False)
+    _connection_depth = attr.ib(default=0, init=False, hash=False, repr=False, eq=False)
 
-    CONFIG_NAME = 'stores'
+    CONFIG_NAME = "stores"
 
     @abstractmethod
     def find_rows(self, dataset):
@@ -44,12 +49,12 @@ class DataStore(metaclass=ABCMeta):
         """
         Find all data items within a data row and populate the DataRow object
         with them using the `add_file_group` and `add_field` methods.
-        
+
         Parameters
         ----------
         row : DataRow
             The data row to populate with items
-        """        
+        """
 
     @abstractmethod
     def get_file_group_paths(self, file_group, cache_only=False):
@@ -121,12 +126,11 @@ class DataStore(metaclass=ABCMeta):
         field : Field
             The field to insert into the store
         """
-        
+
     @abstractmethod
-    def save_dataset_definition(self,
-                                dataset_id: str,
-                                definition: ty.Dict[str, ty.Any],
-                                name: str):
+    def save_dataset_definition(
+        self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
+    ):
         """Save definition of dataset within the store
 
         Parameters
@@ -142,7 +146,9 @@ class DataStore(metaclass=ABCMeta):
             definitions for the same directory/project"""
 
     @abstractmethod
-    def load_dataset_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
+    def load_dataset_definition(
+        self, dataset_id: str, name: str
+    ) -> ty.Dict[str, ty.Any]:
         """Load definition of a dataset saved within the store
 
         Parameters
@@ -183,7 +189,7 @@ class DataStore(metaclass=ABCMeta):
         -------
         provenance: dict[str, Any] or None
             The provenance data stored in the repository for the data item.
-            None if no provenance data has been stored"""            
+            None if no provenance data has been stored"""
 
     def get_checksums(self, file_group):
         """
@@ -217,8 +223,8 @@ class DataStore(metaclass=ABCMeta):
         If a connection session is required to the store manage it here
         """
 
-    def save(self, name: str, config_path: Path=None):
-        """Saves the configuration of a DataStore in 'stores.yaml' 
+    def save(self, name: str, config_path: Path = None):
+        """Saves the configuration of a DataStore in 'stores.yaml'
 
         Parameters
         ----------
@@ -229,11 +235,12 @@ class DataStore(metaclass=ABCMeta):
         """
         if name in self.singletons():
             raise ArcanaNameError(
-                name, f"Name '{name}' clashes with built-in type of store")
+                name, f"Name '{name}' clashes with built-in type of store"
+            )
         entries = self.load_saved_entries()
         # connect to store in case it is needed in the asdict method and to
         # test the connection in general before it is saved
-        with self:  
+        with self:
             entries[name] = self.asdict()
         self.save_entries(entries, config_path=config_path)
 
@@ -241,7 +248,7 @@ class DataStore(metaclass=ABCMeta):
         return asdict(self, **kwargs)
 
     @classmethod
-    def load(cls: ty.Type[DS], name: str, config_path: Path=None, **kwargs) -> DS:
+    def load(cls: ty.Type[DS], name: str, config_path: Path = None, **kwargs) -> DS:
         """Loads a DataStore from that has been saved in the configuration file.
         If no entry is saved under that name, then it searches for DataStore
         sub-classes with aliases matching `name` and checks whether they can
@@ -275,15 +282,15 @@ class DataStore(metaclass=ABCMeta):
                 return cls.singletons()[name]
             except KeyError:
                 raise ArcanaNameError(
-                    name,
-                    f"No saved data store or built-in type matches '{name}'")
+                    name, f"No saved data store or built-in type matches '{name}'"
+                )
         else:
             entry.update(kwargs)
             store = fromdict(entry)
         return store
 
     @classmethod
-    def remove(cls, name: str, config_path: Path=None):
+    def remove(cls, name: str, config_path: Path = None):
         """Removes the entry saved under 'name' in the config file
 
         Parameters
@@ -310,7 +317,7 @@ class DataStore(metaclass=ABCMeta):
             The hierarchy of the dataset
         space : EnumMeta
             The DataSpace enum that defines the frequencies (e.g.
-            per-session, per-subject,...) present in the dataset.                       
+            per-session, per-subject,...) present in the dataset.
         **kwargs:
             Keyword args passed on to the Dataset init method
         """
@@ -320,28 +327,34 @@ class DataStore(metaclass=ABCMeta):
             except AttributeError as e:
                 raise ArcanaUsageError(
                     "'hierarchy' kwarg must be specified for datasets in "
-                    f"{type(self)} stores") from e
+                    f"{type(self)} stores"
+                ) from e
         if not space:
             try:
                 space = self.DEFAULT_SPACE
             except AttributeError as e:
                 raise ArcanaUsageError(
                     "'space' kwarg must be specified for datasets in "
-                    f"{type(self)} stores") from e                
-        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
-        dataset = Dataset(id, store=self, space=space, hierarchy=hierarchy,
-                          **kwargs)           
+                    f"{type(self)} stores"
+                ) from e
+        from arcana.core.data.set import (
+            Dataset,
+        )  # avoid circular imports it is imported here rather than at the top of the file
+
+        dataset = Dataset(id, store=self, space=space, hierarchy=hierarchy, **kwargs)
         return dataset
 
     def load_dataset(self, id, name=None):
-        from arcana.core.data.set import Dataset  # avoid circular imports it is imported here rather than at the top of the file
+        from arcana.core.data.set import (
+            Dataset,
+        )  # avoid circular imports it is imported here rather than at the top of the file
+
         if name is None:
             name = Dataset.DEFAULT_NAME
         dct = self.load_dataset_definition(id, name)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}::{name}'")
         return fromdict(dct, name=name, store=self)
-
 
     @classmethod
     def singletons(cls):
@@ -353,6 +366,7 @@ class DataStore(metaclass=ABCMeta):
         # If not saved in the configuration file search for sub-classes
         # whose alias matches `name` and can be initialised without params
         import arcana.data.stores
+
         cls._singletons = {}
         for store_cls in list_subclasses(arcana.data.stores, DataStore):
             try:
@@ -362,7 +376,7 @@ class DataStore(metaclass=ABCMeta):
         return cls._singletons
 
     @classmethod
-    def load_saved_entries(cls, config_path: Path=None):
+    def load_saved_entries(cls, config_path: Path = None):
         if config_path is None:
             config_path = get_config_file_path(cls.CONFIG_NAME)
         if config_path.exists():
@@ -373,10 +387,10 @@ class DataStore(metaclass=ABCMeta):
         return entries
 
     @classmethod
-    def save_entries(cls, entries, config_path: Path=None):
+    def save_entries(cls, entries, config_path: Path = None):
         if config_path is None:
             config_path = get_config_file_path(cls.CONFIG_NAME)
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(entries, f)
 
     def __enter__(self):

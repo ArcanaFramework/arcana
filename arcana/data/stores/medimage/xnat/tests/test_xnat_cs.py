@@ -1,5 +1,9 @@
 import pytest
-from arcana.deploy.medimage.xnat import build_xnat_cs_image, generate_xnat_cs_command, path2xnatname
+from arcana.deploy.medimage.xnat import (
+    build_xnat_cs_image,
+    generate_xnat_cs_command,
+    path2xnatname,
+)
 from arcana.test.fixtures.medimage.xnat import (
     make_mutable_dataset,
     TEST_XNAT_DATASET_BLUEPRINTS,
@@ -27,7 +31,7 @@ def run_spec(
 ):
     spec = {}
     if request.param == "func":
-        spec['build'] = {
+        spec["build"] = {
             "image_tag": "arcana-tests/concatenate-xnat-cs",
             "commands": [command_spec],
             "authors": ["some.one@an.org"],
@@ -36,19 +40,19 @@ def run_spec(
             "python_packages": [],
             "readme": "This is a test README",
             "docker_registry": "a.docker.registry.io",
-            "arcana_install_extras": ["test"]
+            "arcana_install_extras": ["test"],
         }
-        spec['dataset'] = make_mutable_dataset(
+        spec["dataset"] = make_mutable_dataset(
             dataset_id="xnat_cs_func",
             blueprint=TEST_XNAT_DATASET_BLUEPRINTS["concatenate_test"],
             xnat_repository=xnat_repository,
             xnat_archive_dir=xnat_archive_dir,
             access_method="cs",
         )
-        spec['params'] = {'duplicates': 2}
+        spec["params"] = {"duplicates": 2}
     elif request.param == "bids_app":
-        bids_command_spec['configuration']['executable'] = '/launch.sh'
-        spec['build'] = {
+        bids_command_spec["configuration"]["executable"] = "/launch.sh"
+        spec["build"] = {
             "image_tag": "arcana-tests/bids-app-xnat-cs",
             "base_image": mock_bids_app_image,
             "commands": [bids_command_spec],
@@ -98,7 +102,7 @@ def run_spec(
             {},
             [],
         )
-        spec['dataset'] = make_mutable_dataset(
+        spec["dataset"] = make_mutable_dataset(
             dataset_id="xnat_cs_bids_app",
             blueprint=blueprint,
             xnat_repository=xnat_repository,
@@ -106,15 +110,13 @@ def run_spec(
             access_method="cs",
             source_data=nifti_sample_dir,
         )
-        spec['params'] = {}
+        spec["params"] = {}
     else:
         assert False, f"unrecognised request param '{request.param}'"
     return spec
 
 
-def test_xnat_cs_pipeline(
-    xnat_repository, run_spec, run_prefix, work_dir
-):
+def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     """Tests the complete XNAT deployment pipeline by building and running a
     container"""
 
@@ -127,9 +129,9 @@ def test_xnat_cs_pipeline(
     # Append run_prefix to command name to avoid clash with previous test runs
     command_spec["name"] = "xnat-cs-test" + run_prefix
 
-    build_xnat_cs_image(build_dir=work_dir,
-                        use_local_packages=True,
-                        test_config=True, **build_spec)
+    build_xnat_cs_image(
+        build_dir=work_dir, use_local_packages=True, test_config=True, **build_spec
+    )
 
     # We manually set the command in the test XNAT instance as commands are
     # loaded from images when they are pulled from a registry and we use
@@ -139,9 +141,9 @@ def test_xnat_cs_pipeline(
     xnat_command = generate_xnat_cs_command(
         image_tag=build_spec["image_tag"], **command_spec
     )
-    
+
     launch_inputs = {}
-    
+
     for inpt, scan in zip(xnat_command["inputs"], dataset.blueprint.scans):
         launch_inputs[path2xnatname(inpt["name"])] = scan.name
 
@@ -151,7 +153,7 @@ def test_xnat_cs_pipeline(
     with xnat_repository:
 
         xlogin = xnat_repository.login
-        
+
         test_xsession = next(iter(xlogin.projects[dataset.id].experiments.values()))
 
         workflow_id, status, out_str = install_and_launch_xnat_cs_command(
@@ -159,11 +161,10 @@ def test_xnat_cs_pipeline(
             project_id=dataset.id,
             session_id=test_xsession.id,
             inputs=launch_inputs,
-            xlogin=xlogin)
+            xlogin=xlogin,
+        )
 
-        assert (
-            status == "Complete"
-        ), f"Workflow {workflow_id} failed.\n{out_str}"
+        assert status == "Complete", f"Workflow {workflow_id} failed.\n{out_str}"
 
         for deriv in dataset.blueprint.derivatives:
             assert list(test_xsession.resources[deriv.name].files) == deriv.filenames

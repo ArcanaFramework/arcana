@@ -15,7 +15,7 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
     else:
         assert isinstance(doc_dir, Path)
 
-        out_dir = doc_dir.joinpath(spec['_relative_dir'])
+        out_dir = doc_dir.joinpath(spec["_relative_dir"])
 
         assert doc_dir in out_dir.parents or out_dir == doc_dir
 
@@ -50,13 +50,17 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
 
             tbl_lic = MarkdownTable(f, "Source file", "Mounted at", "Info")
             for lic in spec.get("licenses", []):
-                tbl_lic.write_row(escaped_md(lic.get("source", None)), escaped_md(lic.get("destination", None)), lic.get("description", ""))
+                tbl_lic.write_row(
+                    escaped_md(lic.get("source", None)),
+                    escaped_md(lic.get("destination", None)),
+                    lic.get("description", ""),
+                )
 
             f.write("\n")
-        
-        f.write('## Commands\n')
-        
-        for cmd in spec['commands']:
+
+        f.write("## Commands\n")
+
+        for cmd in spec["commands"]:
 
             f.write(f"### {cmd['name']}\n")
 
@@ -78,9 +82,11 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
                 tbl_cmd.write_row("Operates on", cmd["row_frequency"].title())
 
             f.write("#### Inputs\n")
-            tbl_inputs = MarkdownTable(f, "Path", "Input format", "Stored format", "Description")
-            if cmd.get('inputs'):
-                for inpt in cmd['inputs']:
+            tbl_inputs = MarkdownTable(
+                f, "Path", "Input format", "Stored format", "Description"
+            )
+            if cmd.get("inputs"):
+                for inpt in cmd["inputs"]:
                     tbl_inputs.write_row(
                         escaped_md(inpt["name"]),
                         escaped_md(inpt["format"]),
@@ -90,9 +96,11 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
                 f.write("\n")
 
             f.write("#### Outputs\n")
-            tbl_outputs = MarkdownTable(f, "Name", "Output format", "Stored format", "Description")
-            if cmd.get('outputs'):
-                for outpt in cmd.get('outputs', []):
+            tbl_outputs = MarkdownTable(
+                f, "Name", "Output format", "Stored format", "Description"
+            )
+            if cmd.get("outputs"):
+                for outpt in cmd.get("outputs", []):
                     tbl_outputs.write_row(
                         escaped_md(outpt["name"]),
                         escaped_md(outpt["format"]),
@@ -101,11 +109,13 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
                     )
                 f.write("\n")
 
-            if cmd.get('parameters'):
+            if cmd.get("parameters"):
                 f.write("#### Parameters\n")
                 tbl_params = MarkdownTable(f, "Name", "Data type")
                 for param in cmd.get("parameters", []):
-                    tbl_params.write_row(escaped_md(param["name"]), escaped_md(param["type"]))
+                    tbl_params.write_row(
+                        escaped_md(param["name"]), escaped_md(param["type"])
+                    )
                 f.write("\n")
 
 
@@ -130,10 +140,13 @@ class MarkdownTable:
         cols = list(cols)
         if len(cols) > len(self.headers):
             raise ValueError(
-                f"More entries in row ({len(cols)} than columns ({len(self.headers)})")
+                f"More entries in row ({len(cols)} than columns ({len(self.headers)})"
+            )
 
         # pad empty column entries if there's not enough
         cols += [""] * (len(self.headers) - len(cols))
 
         # TODO handle new lines in col
-        self.f.write("|" + "|".join(str(col).replace("|", "\\|") for col in cols) + "|\n")
+        self.f.write(
+            "|" + "|".join(str(col).replace("|", "\\|") for col in cols) + "|\n"
+        )

@@ -7,16 +7,16 @@ from arcana.core.utils import asdict, fromdict
 
 def test_dataset_asdict_roundtrip(dataset):
 
-    dct = asdict(dataset, omit=['store'])
+    dct = asdict(dataset, omit=["store"])
     undct = fromdict(dct, store=dataset.store)
     assert isinstance(dct, dict)
-    assert 'store' not in dct
+    assert "store" not in dct
     del dataset.blueprint
     assert dataset == undct
 
 
 def test_dataset_pickle(dataset: Dataset, tmp_dir: Path):
-    fpath = tmp_dir / 'dataset.pkl'
+    fpath = tmp_dir / "dataset.pkl"
     with fpath.open("wb") as fp:
         cp.dump(dataset, fp)
     with fpath.open("rb") as fp:
@@ -28,25 +28,16 @@ def test_dataset_in_workflow_pickle(dataset: Dataset, tmp_dir: Path):
 
     # Create the outer workflow to link the analysis workflow with the
     # data row iteration and store connection rows
-    wf = Workflow(name='test', input_spec=['a'])
+    wf = Workflow(name="test", input_spec=["a"])
 
-    wf.add(func(
-        a=wf.lzin.a,
-        b=2,
-        dataset=dataset,
-        name='test_func'))
+    wf.add(func(a=wf.lzin.a, b=2, dataset=dataset, name="test_func"))
 
-    wf.set_output(('c', wf.test_func.lzout.c))
+    wf.set_output(("c", wf.test_func.lzout.c))
 
     wf.pickle_task()
 
 
 @mark.task
-@mark.annotate({
-   'a': int,
-   'b': int,
-   'dataset': Dataset,
-   'return':{
-       'c': int}})
+@mark.annotate({"a": int, "b": int, "dataset": Dataset, "return": {"c": int}})
 def func(a, b, dataset):
-   return a + b
+    return a + b

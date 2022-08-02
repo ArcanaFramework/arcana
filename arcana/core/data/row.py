@@ -6,14 +6,17 @@ from collections import defaultdict
 from abc import ABCMeta
 import arcana.core.data.set
 from arcana.exceptions import (
-    ArcanaNameError, ArcanaWrongFrequencyError, ArcanaFileFormatError)
+    ArcanaNameError,
+    ArcanaWrongFrequencyError,
+    ArcanaFileFormatError,
+)
 from .format import DataItem
 from ..enum import DataQuality
 from .space import DataSpace
 
 
 @attr.s(auto_detect=True)
-class DataRow():
+class DataRow:
     """A "row" in a dataset "frame" where file-groups and fields can be placed, e.g.
     a session or subject.
 
@@ -30,10 +33,10 @@ class DataRow():
 
     ids: ty.Dict[DataSpace, str] = attr.ib()
     frequency: DataSpace = attr.ib()
-    dataset: arcana.core.data.set.Dataset = attr.ib(repr=False)    
-    children: ty.DefaultDict[DataSpace,
-                             ty.Dict[ty.Union[str, ty.Tuple[str]], str]] = attr.ib(
-        factory=lambda: defaultdict(dict), repr=False)
+    dataset: arcana.core.data.set.Dataset = attr.ib(repr=False)
+    children: ty.DefaultDict[
+        DataSpace, ty.Dict[ty.Union[str, ty.Tuple[str]], str]
+    ] = attr.ib(factory=lambda: defaultdict(dict), repr=False)
     _unresolved = attr.ib(default=None, repr=False)
     _items = attr.ib(factory=dict, init=False, repr=False)
 
@@ -59,14 +62,17 @@ class DataRow():
                 raise ArcanaNameError(
                     column_name,
                     f"{column_name} is not the name of a column in "
-                    f"{self.dataset.id} dataset ('" + "', '".join(
-                        self.dataset.columns) + "')") from e
+                    f"{self.dataset.id} dataset ('"
+                    + "', '".join(self.dataset.columns)
+                    + "')",
+                ) from e
             if spec.row_frequency != self.frequency:
                 return ArcanaWrongFrequencyError(
                     column_name,
                     f"'column_name' ({column_name}) is of {spec.row_frequency} "
                     f"frequency and therefore not in rows of {self.frequency}"
-                    " frequency")
+                    " frequency",
+                )
             item = self._items[column_name] = spec.match(self)
             return item
 
@@ -96,8 +102,11 @@ class DataRow():
         return (i for _, i in self.items())
 
     def items(self):
-        return ((c.name, self[c.name]) for c in self.dataset.columns.values()
-                if c.row_frequency == self.frequency)
+        return (
+            (c.name, self[c.name])
+            for c in self.dataset.columns.values()
+            if c.row_frequency == self.frequency
+        )
 
     def column_items(self, column_name):
         """Get's the item for the current row if item's frequency matches
@@ -159,14 +168,14 @@ class DataRow():
     def add_file_group(self, path, **kwargs):
         if self._unresolved is None:
             self._unresolved = []
-        self._unresolved.append(UnresolvedFileGroup(
-            path=path, row=self, **kwargs))
+        self._unresolved.append(UnresolvedFileGroup(path=path, row=self, **kwargs))
 
     def add_field(self, path, value, **kwargs):
         if self._unresolved is None:
             self._unresolved = []
-        self._unresolved.append(UnresolvedField(
-            path=path, row=self, value=value, **kwargs))
+        self._unresolved.append(
+            UnresolvedField(path=path, row=self, value=value, **kwargs)
+        )
 
 
 @attr.s
@@ -202,10 +211,11 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     @property
     def item_kwargs(self):
         return {
-            'path': self.path,
-            'order': self.order,
-            'row': self.row,
-            'quality': self.quality}
+            "path": self.path,
+            "order": self.order,
+            "row": self.row,
+            "quality": self.quality,
+        }
 
 
 def normalise_paths(file_paths):
@@ -244,11 +254,10 @@ class UnresolvedFileGroup(UnresolvedDataItem):
         For stores where the name of the file format is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
         format identification. It is stored here along with URIs corresponding
-        to each resource        
+        to each resource
     """
 
-    file_paths: ty.Sequence[Path] = attr.ib(factory=list,
-                                            converter=normalise_paths)
+    file_paths: ty.Sequence[Path] = attr.ib(factory=list, converter=normalise_paths)
     uris: ty.Dict[str] = attr.ib(default=None)
 
     @classmethod
@@ -256,11 +265,11 @@ class UnresolvedFileGroup(UnresolvedDataItem):
         groups = defaultdict(list)
         for path in paths:
             relpath = path.relative_to(base_dir)
-            path_stem = str(relpath)[:-len(''.join(relpath.suffixes))]
+            path_stem = str(relpath)[: -len("".join(relpath.suffixes))]
             groups[path_stem].append(path)  # No extension case
             # Add all possible stems
             for i in range(len(relpath.suffixes)):
-                groups[''.join([path_stem] + relpath.suffixes[:(i + 1)])].append(path)
+                groups["".join([path_stem] + relpath.suffixes[: (i + 1)])].append(path)
         return [cls(path=p, file_paths=g, **kwargs) for p, g in groups.items()]
 
 
@@ -276,7 +285,7 @@ class UnresolvedField(UnresolvedDataItem):
         The name_path to the relative location of the file group, i.e. excluding
         information about which row in the data tree it belongs to
     value : str
-        The value assigned to the unresolved data item (for fields instead of 
+        The value assigned to the unresolved data item (for fields instead of
         file groups)
     order : int | None
         The ID of the file_group in the session. To be used to

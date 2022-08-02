@@ -28,7 +28,7 @@ weight: 10
 |XNAT wrapper version|1.10|
 
 ## Commands
-    """.strip()
+    """.strip(),
 )
 
 yaml_constructors_join_spec = DocsFixture(
@@ -54,7 +54,7 @@ weight: 10
 |Base image|`abc0.16.1`|
 
 ## Commands
-    """.strip()
+    """.strip(),
 )
 
 yaml_constructors_concat_spec = DocsFixture(
@@ -80,7 +80,7 @@ weight: 10
 |Base image|`abc0.16.1`|
 
 ## Commands
-    """.strip()
+    """.strip(),
 )
 
 complete_doc_spec = DocsFixture(
@@ -171,7 +171,7 @@ a longer description
 |Name|Output format|Stored format|Description|
 |----|-------------|-------------|-----------|
 |`mriqc`|`common:Directory`|`format`||
-    """.strip()
+    """.strip(),
 )
 
 

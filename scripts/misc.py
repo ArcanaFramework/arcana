@@ -2,7 +2,7 @@ import attr
 
 
 @attr.s
-class A():
+class A:
 
     a = attr.ib()
     b = attr.ib()
@@ -10,16 +10,19 @@ class A():
 
 a = A(1, 2)
 
+
 class B(A):
 
     c = 1
 
+
 b = B(3, 5)
 
 
-class C():
+class C:
 
     d = 4
+
 
 c = C()
 

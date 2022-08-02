@@ -17,27 +17,22 @@ import xnat.session
 from arcana.core.utils import JSON_ENCODING
 from arcana.core.data.store import DataStore
 from arcana.core.data.row import DataRow
-from arcana.exceptions import (
-    ArcanaError, ArcanaUsageError, ArcanaWrongRepositoryError)
+from arcana.exceptions import ArcanaError, ArcanaUsageError, ArcanaWrongRepositoryError
 from arcana.core.utils import dir_modtime, parse_value
 from arcana.core.data.set import Dataset
 from arcana.core.utils import path2varname, varname2path, asdict
 from arcana.data.spaces.medimage import Clinical
 
 
-logger = logging.getLogger('arcana')
+logger = logging.getLogger("arcana")
 
-special_char_re = re.compile(r'[^a-zA-Z_0-9]')
-tag_parse_re = re.compile(r'\((\d+),(\d+)\)')
+special_char_re = re.compile(r"[^a-zA-Z_0-9]")
+tag_parse_re = re.compile(r"\((\d+),(\d+)\)")
 
-RELEVANT_DICOM_TAG_TYPES = set(('UI', 'CS', 'DA', 'TM', 'SH', 'LO',
-                                'PN', 'ST', 'AS'))
+RELEVANT_DICOM_TAG_TYPES = set(("UI", "CS", "DA", "TM", "SH", "LO", "PN", "ST", "AS"))
 
-COMMAND_INPUT_TYPES = {
-    bool: 'bool',
-    str: 'string',
-    int: 'number',
-    float: 'number'}
+COMMAND_INPUT_TYPES = {bool: "bool", str: "string", int: "number", float: "number"}
+
 
 @attr.s
 class Xnat(DataStore):
@@ -67,24 +62,25 @@ class Xnat(DataStore):
 
     server: str = attr.ib()
     cache_dir: str = attr.ib(converter=Path)
-    user: str = attr.ib(default=None, metadata={'asdict': False})
-    password: str = attr.ib(default=None, metadata={'asdict': False})
+    user: str = attr.ib(default=None, metadata={"asdict": False})
+    password: str = attr.ib(default=None, metadata={"asdict": False})
     check_md5: bool = attr.ib(default=True)
     race_condition_delay: int = attr.ib(default=30)
-    _cached_datasets: ty.Dict[str, Dataset]= attr.ib(factory=dict, init=False)
+    _cached_datasets: ty.Dict[str, Dataset] = attr.ib(factory=dict, init=False)
     _login: xnat.session.XNATSession = attr.ib(default=None, init=False)
 
-    alias = 'xnat'
-    MD5_SUFFIX = '.md5.json'
-    PROV_SUFFIX = '.__prov__.json'
-    FIELD_PROV_RESOURCE = '__provenance__'
+    alias = "xnat"
+    MD5_SUFFIX = ".md5.json"
+    PROV_SUFFIX = ".__prov__.json"
+    FIELD_PROV_RESOURCE = "__provenance__"
     depth = 2
     DEFAULT_SPACE = Clinical
-    DEFAULT_HIERARCHY = ['subject', 'session']
-    METADATA_RESOURCE = '__arcana__'
+    DEFAULT_HIERARCHY = ["subject", "session"]
+    METADATA_RESOURCE = "__arcana__"
 
-
-    def save_dataset_definition(self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str):
+    def save_dataset_definition(
+        self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
+    ):
         with self:
             xproject = self.login.projects[dataset_id]
             try:
@@ -92,15 +88,16 @@ class Xnat(DataStore):
             except KeyError:
                 # Create the new resource for the file_group
                 xresource = self.login.classes.ResourceCatalog(
-                    parent=xproject, label=self.METADATA_RESOURCE,
-                    format='json')
-            definition_file = Path(tempfile.mkdtemp()) / str(name + '.json')
-            with open(definition_file, 'w') as f:
-                json.dump(definition, f, indent='    ')
-            xresource.upload(str(definition_file), name + '.json',
-                             overwrite=True)
+                    parent=xproject, label=self.METADATA_RESOURCE, format="json"
+                )
+            definition_file = Path(tempfile.mkdtemp()) / str(name + ".json")
+            with open(definition_file, "w") as f:
+                json.dump(definition, f, indent="    ")
+            xresource.upload(str(definition_file), name + ".json", overwrite=True)
 
-    def load_dataset_definition(self, dataset_id: str, name: str) -> ty.Dict[str, ty.Any]:
+    def load_dataset_definition(
+        self, dataset_id: str, name: str
+    ) -> ty.Dict[str, ty.Any]:
         with self:
             xproject = self.login.projects[dataset_id]
             try:
@@ -110,7 +107,14 @@ class Xnat(DataStore):
             else:
                 download_dir = Path(tempfile.mkdtemp())
                 xresource.download_dir(download_dir)
-                fpath = download_dir / dataset_id / 'resources' / '__arcana__' / 'files' / (name + '.json')
+                fpath = (
+                    download_dir
+                    / dataset_id
+                    / "resources"
+                    / "__arcana__"
+                    / "files"
+                    / (name + ".json")
+                )
                 print(fpath)
                 if fpath.exists():
                     with open(fpath) as f:
@@ -122,14 +126,14 @@ class Xnat(DataStore):
     @cache_dir.validator
     def cache_dir_validator(self, _, cache_dir):
         if not cache_dir.exists():
-            raise ValueError(
-                f"Cache dir, '{cache_dir}' does not exist")
+            raise ValueError(f"Cache dir, '{cache_dir}' does not exist")
 
     @property
     def login(self):
         if self._login is None:
-            raise ArcanaError("XNAT repository has been disconnected before "
-                              "exiting outer context")
+            raise ArcanaError(
+                "XNAT repository has been disconnected before " "exiting outer context"
+            )
         return self._login
 
     def connect(self):
@@ -144,9 +148,9 @@ class Xnat(DataStore):
         """
         sess_kwargs = {}
         if self.user is not None:
-            sess_kwargs['user'] = self.user
+            sess_kwargs["user"] = self.user
         if self.password is not None:
-            sess_kwargs['password'] = self.password
+            sess_kwargs["password"] = self.password
         self._login = xnat.connect(server=self.server, **sess_kwargs)
 
     def disconnect(self):
@@ -183,17 +187,18 @@ class Xnat(DataStore):
                         order=xscan.id,
                         quality=xscan.quality,
                         # Ensure uri uses resource label instead of ID
-                        uris={r.label: '/'.join(r.uri.split('/')[:-1]
-                                                + [r.label])
-                              for r in xscan.resources.values()})
+                        uris={
+                            r.label: "/".join(r.uri.split("/")[:-1] + [r.label])
+                            for r in xscan.resources.values()
+                        },
+                    )
             for name, value in xrow.fields.items():
-                row.add_field(
-                    path=varname2path(name),
-                    value=value)
+                row.add_field(path=varname2path(name), value=value)
             for xresource in xrow.resources.values():
                 row.add_file_group(
                     path=varname2path(xresource.label),
-                    uris={xresource.format: xresource.uri})               
+                    uris={xresource.format: xresource.uri},
+                )
 
     def get_file_group_paths(self, file_group):
         """
@@ -210,9 +215,12 @@ class Xnat(DataStore):
         list[Path]
             The paths to cached files/directories on the local file-system
         """
-        logger.info("Getting %s from %s:%s row via API access",
-                    file_group.path, file_group.row.frequency,
-                    file_group.row.id)        
+        logger.info(
+            "Getting %s from %s:%s row via API access",
+            file_group.path,
+            file_group.row.frequency,
+            file_group.row.id,
+        )
         self._check_store(file_group)
         with self:  # Connect to the XNAT repository if haven't already
             xrow = self.get_xrow(file_group.row)
@@ -232,14 +240,14 @@ class Xnat(DataStore):
                 # use the resource name instead of its ID in the URI for
                 # consistency with other locations where it is set and to keep the
                 # cache name_path consistent
-                file_group.uri = base_uri + '/resources/' + xresource.label
+                file_group.uri = base_uri + "/resources/" + xresource.label
             cache_path = self.cache_path(file_group)
             need_to_download = True
             if op.exists(cache_path):
                 if self.check_md5:
                     md5_path = append_suffix(cache_path, self.MD5_SUFFIX)
                     if md5_path.exists():
-                        with open(md5_path, 'r') as f:
+                        with open(md5_path, "r") as f:
                             cached_checksums = json.load(f)
                     if cached_checksums == file_group.checksums:
                         need_to_download = False
@@ -248,9 +256,10 @@ class Xnat(DataStore):
             if need_to_download:
                 # The name_path to the directory which the files will be
                 # downloaded to.
-                tmp_dir = append_suffix(cache_path, '.download')
-                xresource = self.login.classes.Resource(uri=file_group.uri,
-                                                        xnat_session=self.login)
+                tmp_dir = append_suffix(cache_path, ".download")
+                xresource = self.login.classes.Resource(
+                    uri=file_group.uri, xnat_session=self.login
+                )
                 try:
                     # Attempt to make tmp download directory. This will
                     # fail if another process (or previous attempt) has
@@ -270,20 +279,22 @@ class Xnat(DataStore):
                         # user can estimate the download speed for their
                         # store
                         self._delayed_download(
-                            tmp_dir, xresource, file_group, cache_path,
-                            delay=self._race_cond_delay)
+                            tmp_dir,
+                            xresource,
+                            file_group,
+                            cache_path,
+                            delay=self._race_cond_delay,
+                        )
                     else:
                         raise
                 else:
-                    self.download_file_group(tmp_dir, xresource, file_group,
-                                          cache_path)
+                    self.download_file_group(tmp_dir, xresource, file_group, cache_path)
                     shutil.rmtree(tmp_dir)
         if file_group.is_dir:
             cache_paths = [cache_path]
         else:
             cache_paths = list(cache_path.iterdir())
         return cache_paths
-
 
     def put_file_group_paths(self, file_group, fs_paths):
         """
@@ -309,8 +320,9 @@ class Xnat(DataStore):
             escaped_name = path2varname(file_group.path)
             if not file_group.uri:
                 # Set the uri of the file_group
-                file_group.uri = '{}/resources/{}'.format(
-                    self.standard_uri(xrow), escaped_name)
+                file_group.uri = "{}/resources/{}".format(
+                    self.standard_uri(xrow), escaped_name
+                )
             # Delete existing resource (if present)
             try:
                 xresource = xrow.resources[escaped_name]
@@ -323,8 +335,8 @@ class Xnat(DataStore):
                 xresource.delete()
             # Create the new resource for the file_group
             xresource = self.login.classes.ResourceCatalog(
-                parent=xrow, label=escaped_name,
-                format=file_group.class_name())
+                parent=xrow, label=escaped_name, format=file_group.class_name()
+            )
             # Create cache path
             base_cache_path = self.cache_path(file_group)
             if base_cache_path.exists():
@@ -334,7 +346,7 @@ class Xnat(DataStore):
             for fs_path in fs_paths:
                 if fs_path.is_dir():
                     # Upload directory to XNAT and add to cache
-                    for dpath, _, fnames  in os.walk(fs_path):
+                    for dpath, _, fnames in os.walk(fs_path):
                         dpath = Path(dpath)
                         for fname in fnames:
                             fpath = dpath / fname
@@ -346,8 +358,9 @@ class Xnat(DataStore):
                     # Upload file path to XNAT and add to cache
                     fname = file_group.copy_ext(fs_path, escaped_name)
                     xresource.upload(str(fs_path), str(fname))
-                    base_cache_path.mkdir(exist_ok=True, parents=True,
-                                          mode=stat.S_IRWXU | stat.S_IRWXG)
+                    base_cache_path.mkdir(
+                        exist_ok=True, parents=True, mode=stat.S_IRWXU | stat.S_IRWXG
+                    )
                     cache_path = base_cache_path / fname
                     shutil.copyfile(fs_path, cache_path)
                 cache_paths.append(cache_path)
@@ -355,13 +368,16 @@ class Xnat(DataStore):
             # checksums (instead of waiting until after the 'put' is finished)
             file_group.set_fs_paths(cache_paths)
             file_group.exists = True
-            with open(append_suffix(base_cache_path, self.MD5_SUFFIX), 'w',
-                      **JSON_ENCODING) as f:
-                json.dump(file_group.calculate_checksums(), f,
-                          indent=2)
-        logger.info("Put %s into %s:%s row via API access",
-                    file_group.path, file_group.row.frequency,
-                    file_group.row.id)
+            with open(
+                append_suffix(base_cache_path, self.MD5_SUFFIX), "w", **JSON_ENCODING
+            ) as f:
+                json.dump(file_group.calculate_checksums(), f, indent=2)
+        logger.info(
+            "Put %s into %s:%s row via API access",
+            file_group.path,
+            file_group.row.frequency,
+            file_group.row.id,
+        )
         return cache_paths
 
     def get_field_value(self, field):
@@ -382,7 +398,7 @@ class Xnat(DataStore):
         with self:
             xsession = self.get_xrow(field.row)
             val = xsession.fields[path2varname(field)]
-            val = val.replace('&quot;', '"')
+            val = val.replace("&quot;", '"')
             val = parse_value(val)
         return val
 
@@ -400,7 +416,7 @@ class Xnat(DataStore):
         if field.array:
             if field.format is str:
                 value = ['"{}"'.format(v) for v in value]
-            value = '[' + ','.join(str(v) for v in value) + ']'
+            value = "[" + ",".join(str(v) for v in value) + "]"
         if field.format is str:
             value = '"{}"'.format(value)
         with self:
@@ -423,15 +439,22 @@ class Xnat(DataStore):
         """
         if file_group.uri is None:
             raise ArcanaUsageError(
-                "Can't retrieve checksums as URI has not been set for {}"
-                .format(file_group))
+                "Can't retrieve checksums as URI has not been set for {}".format(
+                    file_group
+                )
+            )
         with self:
-            checksums = {r['URI']: r['digest']
-                         for r in self.login.get_json(file_group.uri + '/files')[
-                             'ResultSet']['Result']}
+            checksums = {
+                r["URI"]: r["digest"]
+                for r in self.login.get_json(file_group.uri + "/files")["ResultSet"][
+                    "Result"
+                ]
+            }
         # strip base URI to get relative paths of files within the resource
-        checksums = {re.match(r'.*/resources/\w+/files/(.*)$', u).group(1): c
-                     for u, c in sorted(checksums.items())}
+        checksums = {
+            re.match(r".*/resources/\w+/files/(.*)$", u).group(1): c
+            for u, c in sorted(checksums.items())
+        }
         # if not self.is_dir:
         #     # Replace the paths of the primary file with primary file with '.'
         #     checksums['.'] = checksums.pop(primary)
@@ -447,47 +470,51 @@ class Xnat(DataStore):
         #             checksums[ext] = checksums.pop(path)
         if not file_group.is_dir:
             checksums = file_group.generalise_checksum_keys(
-                checksums, base_path=file_group.matches_ext(*checksums.keys()))
+                checksums, base_path=file_group.matches_ext(*checksums.keys())
+            )
         return checksums
 
     def dicom_header(self, file_group):
         def convert(val, code):
-            if code == 'TM':
+            if code == "TM":
                 try:
                     val = float(val)
                 except ValueError:
                     pass
-            elif code == 'CS':
-                val = val.split('\\')
+            elif code == "CS":
+                val = val.split("\\")
             return val
+
         with self:
-            scan_uri = '/' + '/'.join(file_group.uri.split('/')[2:-2])
+            scan_uri = "/" + "/".join(file_group.uri.split("/")[2:-2])
             response = self.login.get(
-                '/REST/services/dicomdump?src='
-                + scan_uri).json()['ResultSet']['Result']
-        hdr = {tag_parse_re.match(t['tag1']).groups(): convert(t['value'],
-                                                               t['vr'])
-               for t in response if (tag_parse_re.match(t['tag1'])
-                                     and t['vr'] in RELEVANT_DICOM_TAG_TYPES)}
+                "/REST/services/dicomdump?src=" + scan_uri
+            ).json()["ResultSet"]["Result"]
+        hdr = {
+            tag_parse_re.match(t["tag1"]).groups(): convert(t["value"], t["vr"])
+            for t in response
+            if (tag_parse_re.match(t["tag1"]) and t["vr"] in RELEVANT_DICOM_TAG_TYPES)
+        }
         return hdr
 
     def download_file_group(self, tmp_dir, xresource, file_group, cache_path):
         # Download resource to zip file
-        zip_path = op.join(tmp_dir, 'download.zip')
-        with open(zip_path, 'wb') as f:
+        zip_path = op.join(tmp_dir, "download.zip")
+        with open(zip_path, "wb") as f:
             xresource.xnat_session.download_stream(
-                xresource.uri + '/files', f, format='zip', verbose=True)
+                xresource.uri + "/files", f, format="zip", verbose=True
+            )
         checksums = self.get_checksums(file_group)
         # Extract downloaded zip file
-        expanded_dir = op.join(tmp_dir, 'expanded')
+        expanded_dir = op.join(tmp_dir, "expanded")
         try:
             with ZipFile(zip_path) as zip_file:
                 zip_file.extractall(expanded_dir)
         except BadZipfile as e:
             raise ArcanaError(
-                "Could not unzip file '{}' ({})"
-                .format(xresource.id, e)) from e
-        data_path = glob(expanded_dir + '/**/files', recursive=True)[0]
+                "Could not unzip file '{}' ({})".format(xresource.id, e)
+            ) from e
+        data_path = glob(expanded_dir + "/**/files", recursive=True)[0]
         # Remove existing cache if present
         try:
             shutil.rmtree(cache_path)
@@ -495,33 +522,42 @@ class Xnat(DataStore):
             if e.errno != errno.ENOENT:
                 raise e
         shutil.move(data_path, cache_path)
-        with open(str(cache_path) + self.MD5_SUFFIX, 'w',
-                  **JSON_ENCODING) as f:
+        with open(str(cache_path) + self.MD5_SUFFIX, "w", **JSON_ENCODING) as f:
             json.dump(checksums, f, indent=2)
 
-    def _delayed_download(self, tmp_dir, xresource, file_group, cache_path,
-                          delay):
-        logger.info("Waiting %s seconds for incomplete download of '%s' "
-                    "initiated another process to finish", delay, cache_path)
+    def _delayed_download(self, tmp_dir, xresource, file_group, cache_path, delay):
+        logger.info(
+            "Waiting %s seconds for incomplete download of '%s' "
+            "initiated another process to finish",
+            delay,
+            cache_path,
+        )
         initial_mod_time = dir_modtime(tmp_dir)
         time.sleep(delay)
         if op.exists(cache_path):
-            logger.info("The download of '%s' has completed "
-                        "successfully in the other process, continuing",
-                        cache_path)
+            logger.info(
+                "The download of '%s' has completed "
+                "successfully in the other process, continuing",
+                cache_path,
+            )
             return
         elif initial_mod_time != dir_modtime(tmp_dir):
             logger.info(
                 "The download of '%s' hasn't completed yet, but it has"
                 " been updated.  Waiting another %s seconds before "
-                "checking again.", cache_path, delay)
-            self._delayed_download(tmp_dir, xresource, file_group, cache_path,
-                                   delay)
+                "checking again.",
+                cache_path,
+                delay,
+            )
+            self._delayed_download(tmp_dir, xresource, file_group, cache_path, delay)
         else:
             logger.warning(
                 "The download of '%s' hasn't updated in %s "
                 "seconds, assuming that it was interrupted and "
-                "restarting download", cache_path, delay)
+                "restarting download",
+                cache_path,
+                delay,
+            )
             shutil.rmtree(tmp_dir)
             os.mkdir(tmp_dir)
             self.download_file_group(tmp_dir, xresource, file_group, cache_path)
@@ -546,31 +582,30 @@ class Xnat(DataStore):
                 xrow = xproject.experiments[row.ids[Clinical.session]]
             else:
                 xrow = self.login.classes.SubjectData(
-                    label=self._make_row_name(row), parent=xproject)
+                    label=self._make_row_name(row), parent=xproject
+                )
             return xrow
 
     def _make_row_name(self, row):
         # Create a "subject" to hold the non-standard row (i.e. not
         # a project, subject or session row)
         if row.id is None:
-            id_str = ''
+            id_str = ""
         elif isinstance(row.id, tuple):
-            id_str = '_' + '_'.join(row.id)
+            id_str = "_" + "_".join(row.id)
         else:
-            id_str = '_' + str(row.id)
-        return f'__{row.frequency}{id_str}__'
-
+            id_str = "_" + str(row.id)
+        return f"__{row.frequency}{id_str}__"
 
     def _make_uri(self, row: DataRow):
-        uri = '/data/archive/projects/' + row.dataset.id
+        uri = "/data/archive/projects/" + row.dataset.id
         if row.frequency == Clinical.session:
-            uri += '/experiments/' + row.id
+            uri += "/experiments/" + row.id
         elif row.frequency == Clinical.subject:
-            uri += '/subjects/' + row.id
+            uri += "/subjects/" + row.id
         elif row.frequency != Clinical.dataset:
-            uri += '/subjects/' + self._make_row_name(row)
+            uri += "/subjects/" + self._make_row_name(row)
         return uri
-
 
     def cache_path(self, item):
         """Path to the directory where the item is/should be cached. Note that
@@ -594,13 +629,13 @@ class Xnat(DataStore):
             uri = item
         if uri is None:
             raise ArcanaError("URI of item needs to be set before cache path")
-        return self.cache_dir.joinpath(*uri.split('/')[3:])
+        return self.cache_dir.joinpath(*uri.split("/")[3:])
 
     def _check_store(self, item):
         if item.row.dataset.store is not self:
             raise ArcanaWrongRepositoryError(
-                "{} is from {} instead of {}".format(
-                    item, item.dataset.store, self))
+                "{} is from {} instead of {}".format(item, item.dataset.store, self)
+            )
 
     @classmethod
     def standard_uri(cls, xrow):
@@ -618,10 +653,10 @@ class Xnat(DataStore):
             A row of the XNAT data tree
         """
         uri = xrow.uri
-        if 'experiments' in uri:
+        if "experiments" in uri:
             # Replace ImageSession ID with label in URI.
-            uri = re.sub(r'(?<=/experiments/)[^/]+', xrow.label, uri)
-        if 'subjects' in uri:
+            uri = re.sub(r"(?<=/experiments/)[^/]+", xrow.label, uri)
+        if "subjects" in uri:
             try:
                 # If xrow is a ImageSession
                 subject_id = xrow.subject.label
@@ -632,17 +667,17 @@ class Xnat(DataStore):
                 # There is a bug where the subject isn't appeared to be cached
                 # so we use this as a workaround
                 subject_json = xrow.xnat_session.get_json(
-                    xrow.uri.split('/experiments')[0])
-                subject_id = subject_json['items'][0]['data_fields']['label']
+                    xrow.uri.split("/experiments")[0]
+                )
+                subject_id = subject_json["items"][0]["data_fields"]["label"]
             # Replace subject ID with subject label in URI
-            uri = re.sub(r'(?<=/subjects/)[^/]+', subject_id, uri)
+            uri = re.sub(r"(?<=/subjects/)[^/]+", subject_id, uri)
         return uri
 
     def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
-        xresource, _, cache_path  = self._provenance_location(
-            item, create_resource=True)
-        with open(cache_path, 'w') as f:
-            json.dump(provenance, f, indent='  ')
+        xresource, _, cache_path = self._provenance_location(item, create_resource=True)
+        with open(cache_path, "w") as f:
+            json.dump(provenance, f, indent="  ")
         xresource.upload(cache_path, cache_path.name)
 
     def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
@@ -650,7 +685,7 @@ class Xnat(DataStore):
             xresource, uri, cache_path = self._provenance_location(item)
         except KeyError:
             return {}  # Provenance doesn't exist on server
-        with open(cache_path, 'w') as f:
+        with open(cache_path, "w") as f:
             xresource.xnat_session.download_stream(uri, f)
             provenance = json.load(f)
         return provenance
@@ -660,8 +695,8 @@ class Xnat(DataStore):
         if item.is_field:
             fname = self.FIELD_PROV_PREFIX + fname
         else:
-            fname = path2varname(item) + '.json'
-        uri = f'{self.standard_uri(xrow)}/resources/{self.PROV_RESOURCE}/files/{fname}'
+            fname = path2varname(item) + ".json"
+        uri = f"{self.standard_uri(xrow)}/resources/{self.PROV_RESOURCE}/files/{fname}"
         cache_path = self.cache_path(uri)
         cache_path.parent.mkdir(parent=True, exist_ok=True)
         try:
@@ -669,15 +704,18 @@ class Xnat(DataStore):
         except KeyError:
             if create_resource:
                 xresource = self.login.classes.ResourceCatalog(
-                    parent=xrow, label=self.PROV_RESOURCE,
-                    format='PROVENANCE')
+                    parent=xrow, label=self.PROV_RESOURCE, format="PROVENANCE"
+                )
             else:
                 raise
         return xresource, uri, cache_path
 
     def _encrypt_credentials(self, serialised):
         with self:
-            serialised['user'], serialised['password'] = self.login.services.issue_token()
+            (
+                serialised["user"],
+                serialised["password"],
+            ) = self.login.services.issue_token()
 
     def asdict(self, **kwargs):
         # Call asdict utility method with 'ignore_instance_method' to avoid
@@ -685,6 +723,7 @@ class Xnat(DataStore):
         dct = asdict(self, **kwargs)
         self._encrypt_credentials(dct)
         return dct
+
 
 def append_suffix(path, suffix):
     "Appends a string suffix to a Path object"

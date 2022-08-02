@@ -17,7 +17,7 @@ from arcana.core.data.format import FileGroup
 from arcana.exceptions import ArcanaNoDirectXnatMountException
 from .api import Xnat
 
-logger = logging.getLogger('arcana')
+logger = logging.getLogger("arcana")
 
 
 @attr.s
@@ -50,9 +50,9 @@ class XnatViaCS(Xnat):
 
     INPUT_MOUNT = Path("/input")
     OUTPUT_MOUNT = Path("/output")
-    WORK_MOUNT = Path('/work')
-    CACHE_DIR = Path('/cache')
-    
+    WORK_MOUNT = Path("/work")
+    CACHE_DIR = Path("/cache")
+
     row_frequency: DataSpace = attr.ib(default=Clinical.session)
     row_id: str = attr.ib(default=None)
     input_mount: Path = attr.ib(default=INPUT_MOUNT, converter=Path)
@@ -62,22 +62,21 @@ class XnatViaCS(Xnat):
     password: str = attr.ib()
     cache_dir: str = attr.ib(default=CACHE_DIR, converter=Path)
 
-
-    alias = 'xnat_via_cs'
+    alias = "xnat_via_cs"
 
     @server.default
     def server_default(self):
-        server = os.environ['XNAT_HOST']
+        server = os.environ["XNAT_HOST"]
         logger.debug("XNAT (via CS) server found %s", server)
         return server
 
     @user.default
     def user_default(self):
-        return os.environ['XNAT_USER']
+        return os.environ["XNAT_USER"]
 
     @password.default
     def password_default(self):
-        return os.environ['XNAT_PASS']
+        return os.environ["XNAT_PASS"]
 
     def get_file_group_paths(self, file_group: FileGroup) -> ty.List[Path]:
         try:
@@ -85,18 +84,22 @@ class XnatViaCS(Xnat):
         except ArcanaNoDirectXnatMountException:
             # Fallback to API access
             return super().get_file_group_paths(file_group)
-        logger.info("Getting %s from %s:%s row via direct access to archive directory",
-                    file_group.path, file_group.row.frequency,
-                    file_group.row.id)
+        logger.info(
+            "Getting %s from %s:%s row via direct access to archive directory",
+            file_group.path,
+            file_group.row.frequency,
+            file_group.row.id,
+        )
         if file_group.uri:
             path = re.match(
-                r'/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/'
-                r'(?:subjects/[a-zA-Z0-9\-_]+/)?'
-                r'(?:experiments/[a-zA-Z0-9\-_]+/)?(?P<path>.*)$',
-                file_group.uri).group('path')
-            if 'scans' in path:
-                path = path.replace('scans', 'SCANS').replace('resources/', '')
-            path = path.replace('resources', 'RESOURCES')
+                r"/data/(?:archive/)?projects/[a-zA-Z0-9\-_]+/"
+                r"(?:subjects/[a-zA-Z0-9\-_]+/)?"
+                r"(?:experiments/[a-zA-Z0-9\-_]+/)?(?P<path>.*)$",
+                file_group.uri,
+            ).group("path")
+            if "scans" in path:
+                path = path.replace("scans", "SCANS").replace("resources/", "")
+            path = path.replace("resources", "RESOURCES")
             resource_path = input_mount / path
             if file_group.is_dir:
                 # Link files from resource dir into temp dir to avoid catalog XML
@@ -104,7 +107,7 @@ class XnatViaCS(Xnat):
                 shutil.rmtree(dir_path, ignore_errors=True)
                 os.makedirs(dir_path, exist_ok=True)
                 for item in resource_path.iterdir():
-                    if not item.name.endswith('_catalog.xml'):
+                    if not item.name.endswith("_catalog.xml"):
                         os.symlink(item, dir_path / item.name)
                 fs_paths = [dir_path]
             else:
@@ -112,7 +115,9 @@ class XnatViaCS(Xnat):
         else:
             logger.debug(
                 "No URI set for file_group %s, assuming it is a newly created "
-                "derivative on the output mount", file_group)
+                "derivative on the output mount",
+                file_group,
+            )
             stem_path = self.file_group_stem_path(file_group)
             if file_group.is_dir:
                 fs_paths = [stem_path]
@@ -120,7 +125,9 @@ class XnatViaCS(Xnat):
                 fs_paths = list(stem_path.iterdir())
         return fs_paths
 
-    def put_file_group_paths(self, file_group: FileGroup, fs_paths: ty.List[Path]) -> ty.List[Path]:
+    def put_file_group_paths(
+        self, file_group: FileGroup, fs_paths: ty.List[Path]
+    ) -> ty.List[Path]:
         stem_path = self.file_group_stem_path(file_group)
         os.makedirs(stem_path.parent, exist_ok=True)
         cache_paths = []
@@ -134,22 +141,28 @@ class XnatViaCS(Xnat):
                 shutil.copyfile(fs_path, target_path)
             cache_paths.append(target_path)
         # Update file-group with new values for local paths and XNAT URI
-        file_group.uri = (self._make_uri(file_group.row)
-                          + '/RESOURCES/' + file_group.path)
-        logger.info("Put %s into %s:%s row via direct access to archive directory",
-                    file_group.path, file_group.row.frequency,
-                    file_group.row.id)
+        file_group.uri = (
+            self._make_uri(file_group.row) + "/RESOURCES/" + file_group.path
+        )
+        logger.info(
+            "Put %s into %s:%s row via direct access to archive directory",
+            file_group.path,
+            file_group.row.frequency,
+            file_group.row.id,
+        )
         return cache_paths
 
     def file_group_stem_path(self, file_group):
         """Determine the paths that derivatives will be saved at"""
-        return self.output_mount.joinpath(*file_group.path.split('/'))
-    
+        return self.output_mount.joinpath(*file_group.path.split("/"))
+
     def get_input_mount(self, file_group):
         row = file_group.row
         if self.row_frequency == row.frequency:
             return self.input_mount
-        elif self.row_frequency == Clinical.dataset and row.frequency == Clinical.session:
+        elif (
+            self.row_frequency == Clinical.dataset and row.frequency == Clinical.session
+        ):
             return self.input_mount / row.id
         else:
             raise ArcanaNoDirectXnatMountException

@@ -11,36 +11,46 @@ import attr.converters
 import pydra.mark
 from pydra.engine.core import Workflow
 from arcana.exceptions import (
-    ArcanaNameError, ArcanaUsageError, ArcanaDesignError,
-    ArcanaPipelinesStackError, ArcanaOutputNotProducedException,
-    ArcanaDataMatchError)
+    ArcanaNameError,
+    ArcanaUsageError,
+    ArcanaDesignError,
+    ArcanaPipelinesStackError,
+    ArcanaOutputNotProducedException,
+    ArcanaDataMatchError,
+)
 from .data.format import DataItem, FileGroup, Field
 import arcana.core.data.set
 import arcana.core.data.row
 from .data.space import DataSpace
 from .utils import (
-    func_task, asdict, fromdict, pydra_asdict, pydra_fromdict, pydra_eq,
-    path2varname)
+    func_task,
+    asdict,
+    fromdict,
+    pydra_asdict,
+    pydra_fromdict,
+    pydra_eq,
+    path2varname,
+)
 
-logger = logging.getLogger('arcana')
+logger = logging.getLogger("arcana")
 
 
 @dataclass
-class Input():
+class Input:
     col_name: str
     pydra_field: str
     required_format: type
 
 
 @dataclass
-class Output():
+class Output:
     col_name: str
     pydra_field: str
     produced_format: type
 
 
 @attr.s
-class Pipeline():
+class Pipeline:
     """A thin wrapper around a Pydra workflow to link it to sources and sinks
     within a dataset
 
@@ -51,7 +61,7 @@ class Pipeline():
         derivatvies within the dataset, e.g. per-session, per-subject, etc,
         by default None
     workflow : Workflow
-        The pydra workflow that performs the actual analysis      
+        The pydra workflow that performs the actual analysis
     inputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
         List of column names (i.e. either data sources or sinks) to be
         connected to the inputs of the pipeline. If the pipelines requires
@@ -70,18 +80,21 @@ class Pipeline():
 
     name: str = attr.ib()
     row_frequency: DataSpace = attr.ib()
-    workflow: Workflow = attr.ib(
-        eq=attr.cmp_using(pydra_eq))
+    workflow: Workflow = attr.ib(eq=attr.cmp_using(pydra_eq))
     inputs: ty.List[Input] = attr.ib(
-        converter=lambda lst: [Input(*i) if isinstance(i, Iterable) else i
-                               for i in lst])
+        converter=lambda lst: [Input(*i) if isinstance(i, Iterable) else i for i in lst]
+    )
     outputs: ty.List[Output] = attr.ib(
-        converter=lambda lst: [Output(*o) if isinstance(o, Iterable) else o
-                               for o in lst])
+        converter=lambda lst: [
+            Output(*o) if isinstance(o, Iterable) else o for o in lst
+        ]
+    )
     converter_args: ty.Dict[str, dict] = attr.ib(
-        factory=dict, converter=attr.converters.default_if_none(factory=dict))
+        factory=dict, converter=attr.converters.default_if_none(factory=dict)
+    )
     dataset: arcana.core.data.set.Dataset = attr.ib(
-        metadata={'asdict': False}, default=None, eq=False, hash=False)
+        metadata={"asdict": False}, default=None, eq=False, hash=False
+    )
 
     @inputs.validator
     def inputs_validator(self, _, inpt):
@@ -92,7 +105,8 @@ class Pipeline():
         if inpt.pydra_field not in self.workflow.input_names:
             raise ArcanaNameError(
                 f"{inpt.pydra_field} is not in the input spec of '{self.name}' "
-                f"pipeline: " + "', '".join(self.workflow.input_names))
+                f"pipeline: " + "', '".join(self.workflow.input_names)
+            )
 
     @outputs.validator
     def outputs_validator(self, _, outpt):
@@ -100,12 +114,14 @@ class Pipeline():
         if column.row_frequency != self.row_frequency:
             raise ArcanaUsageError(
                 f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
-                f"that of '{outpt.col_name}' output ('{str(self.row_frequency)}')")
+                f"that of '{outpt.col_name}' output ('{str(self.row_frequency)}')"
+            )
         column.format.find_converter(outpt.produced_format)
         if outpt.pydra_field not in self.workflow.output_names:
             raise ArcanaNameError(
                 f"{outpt.pydra_field} is not in the output spec of '{self.name}' "
-                f"pipeline: " + "', '".join(self.workflow.output_names))            
+                f"pipeline: " + "', '".join(self.workflow.output_names)
+            )
 
     @property
     def input_varnames(self):
@@ -123,7 +139,7 @@ class Pipeline():
         """
         Create an "outer" workflow that interacts with the dataset to pull input
         data, process it and then push the derivatives back to the store.
-        
+
         Parameters
         ----------
         **kwargs
@@ -146,22 +162,26 @@ class Pipeline():
 
         # Create the outer workflow to link the analysis workflow with the
         # data row iteration and store connection rows
-        wf = Workflow(name=self.name, input_spec=['ids'], **kwargs)
+        wf = Workflow(name=self.name, input_spec=["ids"], **kwargs)
 
         # Generate list of rows to process checking existing outputs
-        wf.add(to_process(
-            dataset=self.dataset,
-            row_frequency=self.row_frequency,
-            outputs=self.outputs,
-            requested_ids=None,  # FIXME: Needs to be set dynamically
-            name='to_process'))
+        wf.add(
+            to_process(
+                dataset=self.dataset,
+                row_frequency=self.row_frequency,
+                outputs=self.outputs,
+                requested_ids=None,  # FIXME: Needs to be set dynamically
+                name="to_process",
+            )
+        )
 
-        # Create the workflow that will be split across all rows for the 
+        # Create the workflow that will be split across all rows for the
         # given data row_frequency
-        wf.add(Workflow(
-            name='per_row',
-            input_spec=['id'],
-            id=wf.to_process.lzout.ids).split('id'))
+        wf.add(
+            Workflow(
+                name="per_row", input_spec=["id"], id=wf.to_process.lzout.ids
+            ).split("id")
+        )
 
         # Automatically output interface for source node to include sourced
         # columns
@@ -172,52 +192,65 @@ class Pipeline():
             if inpt.required_format is arcana.core.data.row.DataRow:
                 dtype = arcana.core.data.row.DataRow
             elif self.dataset[inpt.col_name].row_frequency.is_parent(
-                        self.row_frequency, if_match=True):
+                self.row_frequency, if_match=True
+            ):
                 dtype = inpt.required_format
             else:
                 dtype = ty.Sequence[inpt.required_format]
-            source_out_dct[inpt.col_name] = dtype            
-        source_out_dct['provenance_'] = ty.Dict[str, ty.Any]
+            source_out_dct[inpt.col_name] = dtype
+        source_out_dct["provenance_"] = ty.Dict[str, ty.Any]
 
-        wf.per_row.add(func_task(
-            source_items,
-            in_fields=[
-                ('dataset', arcana.core.data.set.Dataset),
-                ('row_frequency', DataSpace),
-                ('id', str),
-                ('inputs', ty.Sequence[Input]),
-                ('parameterisation', ty.Dict[str, ty.Any])],
-            out_fields=list(source_out_dct.items()),
-            name='source',
-            dataset=self.dataset,
-            row_frequency=self.row_frequency,
-            inputs=self.inputs,
-            id=wf.per_row.lzin.id))
+        wf.per_row.add(
+            func_task(
+                source_items,
+                in_fields=[
+                    ("dataset", arcana.core.data.set.Dataset),
+                    ("row_frequency", DataSpace),
+                    ("id", str),
+                    ("inputs", ty.Sequence[Input]),
+                    ("parameterisation", ty.Dict[str, ty.Any]),
+                ],
+                out_fields=list(source_out_dct.items()),
+                name="source",
+                dataset=self.dataset,
+                row_frequency=self.row_frequency,
+                inputs=self.inputs,
+                id=wf.per_row.lzin.id,
+            )
+        )
 
         # Set the inputs
-        sourced = {i.col_name: getattr(wf.per_row.source.lzout, i.col_name)
-                   for i in self.inputs}
+        sourced = {
+            i.col_name: getattr(wf.per_row.source.lzout, i.col_name)
+            for i in self.inputs
+        }
 
         # Do input format conversions if required
         for inpt in self.inputs:
             if inpt.required_format == arcana.core.data.row.DataRow:
                 continue
             stored_format = self.dataset[inpt.col_name].format
-            if not (inpt.required_format is stored_format
-                    or issubclass(stored_format, inpt.required_format)):
-                logger.info("Adding implicit conversion for input '%s' "
-                            "from %s to %s", inpt.col_name,
-                            stored_format.class_name(),
-                            inpt.required_format.class_name())
+            if not (
+                inpt.required_format is stored_format
+                or issubclass(stored_format, inpt.required_format)
+            ):
+                logger.info(
+                    "Adding implicit conversion for input '%s' " "from %s to %s",
+                    inpt.col_name,
+                    stored_format.class_name(),
+                    inpt.required_format.class_name(),
+                )
                 source_name = inpt.col_name
                 converter = inpt.required_format.converter_task(
-                    stored_format, name=f"{source_name}_input_converter",
-                    **self.converter_args.get(inpt.col_name, {}))
+                    stored_format,
+                    name=f"{source_name}_input_converter",
+                    **self.converter_args.get(inpt.col_name, {}),
+                )
                 converter.inputs.to_convert = sourced.pop(source_name)
                 if issubclass(source_out_dct[source_name], ty.Sequence):
                     # Iterate over all items in the sequence and convert them
                     # separately
-                    converter.split('to_convert')
+                    converter.split("to_convert")
                 # Insert converter
                 wf.per_row.add(converter)
                 # Map converter output to input_interface
@@ -225,54 +258,72 @@ class Pipeline():
 
         # Create identity row to accept connections from user-defined rows
         # via `set_output` method
-        wf.per_row.add(func_task(
-            access_paths_and_values,
-            in_fields=[(i.col_name, DataItem) for i in self.inputs],
-            out_fields=[(i.col_name, ty.Any) for i in self.inputs],
-            name='input_interface',
-            **sourced))
+        wf.per_row.add(
+            func_task(
+                access_paths_and_values,
+                in_fields=[(i.col_name, DataItem) for i in self.inputs],
+                out_fields=[(i.col_name, ty.Any) for i in self.inputs],
+                name="input_interface",
+                **sourced,
+            )
+        )
 
         # Add the "inner" workflow of the pipeline that actually performs the
         # analysis/processing
         wf.per_row.add(deepcopy(self.workflow))
         # Make connections to "inner" workflow
         for inpt in self.inputs:
-            setattr(getattr(wf.per_row, self.workflow.name).inputs,
-                    inpt.pydra_field,
-                    getattr(wf.per_row.input_interface.lzout, inpt.col_name))
+            setattr(
+                getattr(wf.per_row, self.workflow.name).inputs,
+                inpt.pydra_field,
+                getattr(wf.per_row.input_interface.lzout, inpt.col_name),
+            )
 
         # Creates a row to accept values from user-defined rows and
         # encapsulate them into DataItems
-        wf.per_row.add(func_task(
-            encapsulate_paths_and_values,
-            in_fields=[('outputs', ty.Dict[str, type])] + [
-                (o, ty.Any) for o in self.output_varnames],
-            out_fields=[(o, DataItem) for o in self.output_varnames],
-            name='output_interface',
-            outputs=self.outputs,
-            **{o.col_name: getattr(
-                getattr(wf.per_row, self.workflow.name).lzout, o.pydra_field)
-               for o in self.outputs}))
+        wf.per_row.add(
+            func_task(
+                encapsulate_paths_and_values,
+                in_fields=[("outputs", ty.Dict[str, type])]
+                + [(o, ty.Any) for o in self.output_varnames],
+                out_fields=[(o, DataItem) for o in self.output_varnames],
+                name="output_interface",
+                outputs=self.outputs,
+                **{
+                    o.col_name: getattr(
+                        getattr(wf.per_row, self.workflow.name).lzout, o.pydra_field
+                    )
+                    for o in self.outputs
+                },
+            )
+        )
 
         # Set format converters where required
-        to_sink = {o: getattr(wf.per_row.output_interface.lzout, o)
-                   for o in self.output_varnames}
+        to_sink = {
+            o: getattr(wf.per_row.output_interface.lzout, o)
+            for o in self.output_varnames
+        }
 
         # Do output format conversions if required
         for outpt in self.outputs:
             stored_format = self.dataset[outpt.col_name].format
-            if not (outpt.produced_format is stored_format
-                    or issubclass(outpt.produced_format, stored_format)):
-                logger.info("Adding implicit conversion for output '%s' "
-                    "from %s to %s", outpt.col_name,
+            if not (
+                outpt.produced_format is stored_format
+                or issubclass(outpt.produced_format, stored_format)
+            ):
+                logger.info(
+                    "Adding implicit conversion for output '%s' " "from %s to %s",
+                    outpt.col_name,
                     outpt.produced_format.class_name(),
-                    stored_format.class_name())
+                    stored_format.class_name(),
+                )
                 # Insert converter
                 sink_name = path2varname(outpt.col_name)
                 converter = stored_format.converter_task(
                     outpt.produced_format,
                     name=f"{sink_name}_output_converter",
-                    **self.converter_args.get(outpt.col_name, {}))
+                    **self.converter_args.get(outpt.col_name, {}),
+                )
                 converter.inputs.to_convert = to_sink.pop(sink_name)
                 wf.per_row.add(converter)
                 # Map converter output to workflow output
@@ -280,54 +331,56 @@ class Pipeline():
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
-        wf.per_row.add(func_task(
-            sink_items,
-            in_fields=(
-                [('dataset', arcana.core.data.set.Dataset),
-                 ('row_frequency', DataSpace),
-                 ('id', str),
-                 ('provenance', ty.Dict[str, ty.Any])]
-                + [(s, DataItem) for s in to_sink]),
-            out_fields=[('id', str)],
-            name='sink',
-            dataset=self.dataset,
-            row_frequency=self.row_frequency,
-            id=wf.per_row.lzin.id,
-            provenance=wf.per_row.source.lzout.provenance_,
-            **to_sink))
+        wf.per_row.add(
+            func_task(
+                sink_items,
+                in_fields=(
+                    [
+                        ("dataset", arcana.core.data.set.Dataset),
+                        ("row_frequency", DataSpace),
+                        ("id", str),
+                        ("provenance", ty.Dict[str, ty.Any]),
+                    ]
+                    + [(s, DataItem) for s in to_sink]
+                ),
+                out_fields=[("id", str)],
+                name="sink",
+                dataset=self.dataset,
+                row_frequency=self.row_frequency,
+                id=wf.per_row.lzin.id,
+                provenance=wf.per_row.source.lzout.provenance_,
+                **to_sink,
+            )
+        )
 
-        wf.per_row.set_output(
-            [('id', wf.per_row.sink.lzout.id)])
+        wf.per_row.set_output([("id", wf.per_row.sink.lzout.id)])
 
         wf.set_output(
-            [('processed', wf.per_row.lzout.id),
-             ('couldnt_process', wf.to_process.lzout.cant_process)])
+            [
+                ("processed", wf.per_row.lzout.id),
+                ("couldnt_process", wf.to_process.lzout.cant_process),
+            ]
+        )
 
         return wf
 
-    PROVENANCE_VERSION = '1.0'
-    WORKFLOW_NAME = 'processing'
+    PROVENANCE_VERSION = "1.0"
+    WORKFLOW_NAME = "processing"
 
     def asdict(self, required_modules=None):
-        dct = asdict(self, omit=['workflow'],
-                      required_modules=required_modules)
-        dct['workflow'] = pydra_asdict(
-            self.workflow,
-            required_modules=required_modules)
+        dct = asdict(self, omit=["workflow"], required_modules=required_modules)
+        dct["workflow"] = pydra_asdict(self.workflow, required_modules=required_modules)
         return dct
 
     @classmethod
     def fromdict(cls, dct, **kwargs):
-        return fromdict(
-            dct,
-            workflow=pydra_fromdict(dct['workflow']),
-            **kwargs)
+        return fromdict(dct, workflow=pydra_fromdict(dct["workflow"]), **kwargs)
 
     @classmethod
     def stack(cls, *sinks):
         """Determines the pipelines stack, in order of execution,
         required to generate the specified sink columns.
-    
+
         Parameters
         ----------
         sinks : Iterable[DataSink or str]
@@ -344,11 +397,11 @@ class Pipeline():
         ArcanaDesignError
             when there are circular references in the pipelines stack
         """
-                
+
         # Stack of pipelines to process in reverse order of required execution
         stack = OrderedDict()
 
-        def push_pipeline_on_stack(sink, downstream: ty.Tuple[Pipeline]=None):
+        def push_pipeline_on_stack(sink, downstream: ty.Tuple[Pipeline] = None):
             """
             Push a pipeline onto the stack of pipelines to be processed,
             detecting common upstream pipelines and resolving them to a single
@@ -366,20 +419,26 @@ class Pipeline():
                 downstream = []
             if sink.pipeline_name is None:
                 raise ArcanaDesignError(
-                    f"{sink} hasn't been connected to a pipeline yet")
+                    f"{sink} hasn't been connected to a pipeline yet"
+                )
             pipeline = sink.dataset.pipelines[sink.pipeline_name]
             if sink.name not in pipeline.output_varnames:
                 raise ArcanaOutputNotProducedException(
-                    f"{pipeline.name} does not produce {sink.name}")
+                    f"{pipeline.name} does not produce {sink.name}"
+                )
             # Check downstream piplines for circular dependencies
             downstream_pipelines = [p for p, _ in downstream]
             if pipeline in downstream_pipelines:
                 recur_index = downstream_pipelines.index(pipeline)
                 raise ArcanaDesignError(
                     f"{pipeline} cannot be a dependency of itself. Call-stack:\n"
-                    + '\n'.join('{} ({})'.format(p, ', '.join(ro))
-                                for p, ro in ([[pipeline, sink.name]]
-                                              + downstream[:(recur_index + 1)])))
+                    + "\n".join(
+                        "{} ({})".format(p, ", ".join(ro))
+                        for p, ro in (
+                            [[pipeline, sink.name]] + downstream[: (recur_index + 1)]
+                        )
+                    )
+                )
             if pipeline.name in stack:
                 # Pop pipeline from stack in order to add it to the end of the
                 # stack and ensure it is run before all downstream pipelines
@@ -398,12 +457,15 @@ class Pipeline():
                     try:
                         push_pipeline_on_stack(
                             inpt_column,
-                            downstream=[(pipeline, to_produce)] + downstream)
+                            downstream=[(pipeline, to_produce)] + downstream,
+                        )
                     except ArcanaPipelinesStackError as e:
-                        e.msg += ("\nwhich are required as inputs to the '{}' "
-                                  "pipeline to produce '{}'".format(
-                                      pipeline.name,
-                                      "', '".join(s.name for s in to_produce)))
+                        e.msg += (
+                            "\nwhich are required as inputs to the '{}' "
+                            "pipeline to produce '{}'".format(
+                                pipeline.name, "', '".join(s.name for s in to_produce)
+                            )
+                        )
                         raise e
 
         # Add all pipelines
@@ -412,26 +474,28 @@ class Pipeline():
 
         return reversed(stack.values())
 
+
 def append_side_car_suffix(name, suffix):
     """Creates a new combined field name out of a basename and a side car"""
-    return f'{name}__o__{suffix}'
+    return f"{name}__o__{suffix}"
 
 
 def split_side_car_suffix(name):
     """Splits the basename from a side car sufix (as combined by `append_side_car_suffix`"""
-    return name.split('__o__')
+    return name.split("__o__")
 
 
 @pydra.mark.task
-@pydra.mark.annotate({
-    'dataset': arcana.core.data.set.Dataset,
-    'row_frequency': DataSpace,
-    'outputs': ty.Sequence[str],
-    'requested_ids': ty.Sequence[str] or None,
-    'parameterisation': ty.Dict[str, ty.Any],
-    'return': {
-        'ids': ty.List[str],
-        'cant_process': ty.List[str]}})
+@pydra.mark.annotate(
+    {
+        "dataset": arcana.core.data.set.Dataset,
+        "row_frequency": DataSpace,
+        "outputs": ty.Sequence[str],
+        "requested_ids": ty.Sequence[str] or None,
+        "parameterisation": ty.Dict[str, ty.Any],
+        "return": {"ids": ty.List[str], "cant_process": ty.List[str]},
+    }
+)
 def to_process(dataset, row_frequency, outputs, requested_ids, parameterisation):
     if requested_ids is None:
         requested_ids = dataset.row_ids(row_frequency)
@@ -444,15 +508,19 @@ def to_process(dataset, row_frequency, outputs, requested_ids, parameterisation)
             ids.append(row.id)
         elif any(not_exist):
             cant_process.append(row.id)
-    logger.debug("Found %s ids to process, and can't process %s",
-                 ids, cant_process)
+    logger.debug("Found %s ids to process, and can't process %s", ids, cant_process)
     return ids, cant_process
 
 
-def source_items(dataset: arcana.core.data.set.Dataset, row_frequency: DataSpace,
-                 id: str, inputs: ty.List[Input], parameterisation: dict):
-    """Selects the items from the dataset corresponding to the input 
-    sources and retrieves them from the store to a cache on 
+def source_items(
+    dataset: arcana.core.data.set.Dataset,
+    row_frequency: DataSpace,
+    id: str,
+    inputs: ty.List[Input],
+    parameterisation: dict,
+):
+    """Selects the items from the dataset corresponding to the input
+    sources and retrieves them from the store to a cache on
     the host
 
     Parameters
@@ -486,7 +554,7 @@ def source_items(dataset: arcana.core.data.set.Dataset, row_frequency: DataSpace
                 item.get()  # download to host if required
                 sourced.append(item)
         if missing_inputs:
-            raise ArcanaDataMatchError('\n\n' + '\n\n'.join(missing_inputs.values()))
+            raise ArcanaDataMatchError("\n\n" + "\n\n".join(missing_inputs.values()))
     return tuple(sourced) + (provenance,)
 
 
@@ -511,9 +579,8 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
     with dataset.store:
         for outpt_name, output in to_sink.items():
             row_item = row[outpt_name]
-            row_item.put(output.value) # Store value/path
+            row_item.put(output.value)  # Store value/path
     return id
-
 
 
 def access_paths_and_values(**data_items):

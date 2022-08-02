@@ -9,16 +9,17 @@ from arcana.core.data.set import Dataset
 from arcana.test.datasets import create_test_file
 
 
-
 def test_find_rows(dataset: Dataset):
     for freq in dataset.space:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
         # together to get the combined number of rows expected for that
         # row_frequency
         num_rows = reduce(
-            op.mul, (l for l, b in zip(dataset.blueprint.dim_lengths, freq) if b), 1)
-        assert len(dataset.rows(freq)) == num_rows, (
-            f"{freq} doesn't match {len(dataset.rows(freq))} vs {num_rows}")
+            op.mul, (l for l, b in zip(dataset.blueprint.dim_lengths, freq) if b), 1
+        )
+        assert (
+            len(dataset.rows(freq)) == num_rows
+        ), f"{freq} doesn't match {len(dataset.rows(freq))} vs {num_rows}"
 
 
 def test_get_items(dataset: Dataset):
@@ -48,18 +49,19 @@ def test_put_items(dataset: Dataset):
         for fname in files:
             test_file = create_test_file(fname, deriv_tmp_dir)
             fhash = hashlib.md5()
-            with open(deriv_tmp_dir / test_file, 'rb') as f:
+            with open(deriv_tmp_dir / test_file, "rb") as f:
                 fhash.update(f.read())
             try:
                 rel_path = str(test_file.relative_to(files[0]))
             except ValueError:
-                rel_path = '.'.join(test_file.suffixes)[1:]
+                rel_path = ".".join(test_file.suffixes)[1:]
             checksums[rel_path] = fhash.hexdigest()
             fs_paths.append(deriv_tmp_dir / test_file.parts[0])
         # Test inserting the new item into the store
         for row in dataset.rows(freq):
             item = row[name]
             item.put(*fs_paths)
+
     def check_inserted():
         """Check that the inserted items are present in the dataset"""
         for name, freq, format, _ in dataset.blueprint.derivatives:
@@ -70,6 +72,7 @@ def test_put_items(dataset: Dataset):
                 assert item.checksums == all_checksums[name]
                 item.get()
                 assert all(p.exists() for p in item.fs_paths)
+
     check_inserted()  # Check that cached objects have been updated
     dataset.refresh()  # Clear object cache
     check_inserted()  # Check that objects can be recreated from store

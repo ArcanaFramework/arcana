@@ -11,6 +11,7 @@ import numpy as np
 import nibabel
 from pydra import Workflow, mark
 from pydra.tasks.dcm2niix import Dcm2Niix
+
 # Hack to get module to load until pydra-mrtrix is published on PyPI
 from pydra.tasks.mrtrix3.utils import MRConvert
 from arcana.core.mark import converter
@@ -22,6 +23,7 @@ from arcana.data.formats.common import File, Directory
 # =====================================================================
 # Custom loader functions for different image types
 # =====================================================================
+
 
 class MedicalImage(File, metaclass=ABCMeta):
 
@@ -61,13 +63,11 @@ class MedicalImage(File, metaclass=ABCMeta):
             return False
         if rms_tol:
             rms_diff = self.rms_diff(self, other_image)
-            return (rms_diff < rms_tol)
+            return rms_diff < rms_tol
         else:
-            return np.array_equiv(self.get_array(),
-                                  other_image.get_array())
+            return np.array_equiv(self.get_array(), other_image.get_array())
 
-    def headers_diff(self, other_image, include_keys=None,
-                     ignore_keys=None, **kwargs):
+    def headers_diff(self, other_image, include_keys=None, ignore_keys=None, **kwargs):
         """
         Check headers to see if all values
         """
@@ -79,8 +79,10 @@ class MedicalImage(File, metaclass=ABCMeta):
             if ignore_keys is not None:
                 raise ArcanaUsageError(
                     "Doesn't make sense to provide both 'include_keys' ({}) "
-                    "and ignore_keys ({}) to headers_equal method"
-                    .format(include_keys, ignore_keys))
+                    "and ignore_keys ({}) to headers_equal method".format(
+                        include_keys, ignore_keys
+                    )
+                )
             include_keys &= hdr_keys
         elif ignore_keys is not None:
             include_keys = hdr_keys - set(ignore_keys)
@@ -89,8 +91,10 @@ class MedicalImage(File, metaclass=ABCMeta):
                 if self.IGNORE_HDR_KEYS is not None:
                     raise ArcanaUsageError(
                         "Doesn't make sense to have both 'INCLUDE_HDR_FIELDS'"
-                        "and 'IGNORE_HDR_FIELDS' class attributes of class {}"
-                        .format(type(self).__name__))
+                        "and 'IGNORE_HDR_FIELDS' class attributes of class {}".format(
+                            type(self).__name__
+                        )
+                    )
                 include_keys = self.INCLUDE_HDR_KEYS  # noqa pylint: disable=no-member
             elif self.IGNORE_HDR_KEYS is not None:
                 include_keys = hdr_keys - set(self.IGNORE_HDR_KEYS)
@@ -108,8 +112,7 @@ class MedicalImage(File, metaclass=ABCMeta):
                         diff.append(key)
                     else:
                         try:
-                            if not np.allclose(value, other_value,
-                                               equal_nan=True):
+                            if not np.allclose(value, other_value, equal_nan=True):
                                 diff.append(key)
                         except TypeError:
                             # Fallback to a straight comparison for some formats
@@ -123,39 +126,39 @@ class MedicalImage(File, metaclass=ABCMeta):
         """
         Return the RMS difference between the image arrays
         """
-        return np.sqrt(np.sum((self.get_array()
-                               - other_image.get_array()) ** 2))
+        return np.sqrt(np.sum((self.get_array() - other_image.get_array()) ** 2))
 
 
-class DicomFile(File):  # FIXME: Should extend from MedicalImage, but need to implement header and array
+class DicomFile(
+    File
+):  # FIXME: Should extend from MedicalImage, but need to implement header and array
 
-    ext = 'dcm'
+    ext = "dcm"
 
 
 class SiemensDicomFile(DicomFile):
 
-    ext = 'IMA'
+    ext = "IMA"
 
 
 class Dicom(Directory, MedicalImage):
 
     content_types = (DicomFile,)
-    alternate_names = ('secondary',)
+    alternate_names = ("secondary",)
 
-    SERIES_NUMBER_TAG = ('0020', '0011')
+    SERIES_NUMBER_TAG = ("0020", "0011")
 
     def dcm_files(self):
-        return [f for f in os.listdir(self.path) if f.endswith('.dcm')]
+        return [f for f in os.listdir(self.path) if f.endswith(".dcm")]
 
     def get_array(self):
         image_stack = []
         for fname in self.dcm_files(self):
-            image_stack.append(
-                pydicom.dcmread(op.join(self.path, fname)).pixel_array)
+            image_stack.append(pydicom.dcmread(op.join(self.path, fname)).pixel_array)
         return np.asarray(image_stack)
 
     def get_header(self, index=0):
-        dcm_files = [f for f in os.listdir(self.path) if f.endswith('.dcm')]
+        dcm_files = [f for f in os.listdir(self.path) if f.endswith(".dcm")]
         # TODO: Probably should collate fields that vary across the set of
         #       files in the set into lists
         return pydicom.dcmread(op.join(self.path, dcm_files[index]))
@@ -166,8 +169,9 @@ class Dicom(Directory, MedicalImage):
 
     def get_dims(self):
         hdr = self.get_header()
-        return np.array((hdr.Rows, hdr.DataColumns, len(self.dcm_files(self))),
-                        format=int)
+        return np.array(
+            (hdr.Rows, hdr.DataColumns, len(self.dcm_files(self))), format=int
+        )
 
     def extract_id(self):
         return int(self.dicom_values([self.SERIES_NUMBER_TAG])[0])
@@ -189,9 +193,11 @@ class Dicom(Directory, MedicalImage):
         -------
         dct : Dict[Tuple[str, str], str|int|float]
         """
+
         def read_header():
             dcm = self.get_header(0)
             return [dcm[t].value for t in tags]
+
         try:
             if self.fs_path:
                 # Get the DICOM object for the first file in the self
@@ -206,15 +212,15 @@ class Dicom(Directory, MedicalImage):
                 else:
                     dct = [hdr[t] for t in tags]
         except KeyError as e:
-            e.msg = ("{} does not have dicom tag {}".format(
-                     self, str(e)))
+            e.msg = "{} does not have dicom tag {}".format(self, str(e))
             raise e
         return dct
+
 
 class SiemensDicom(Dicom):
 
     content_types = (SiemensDicomFile,)
-    alternative_names = ('dicom',)
+    alternative_names = ("dicom",)
 
 
 class NeuroImage(MedicalImage):
@@ -223,16 +229,14 @@ class NeuroImage(MedicalImage):
     @classmethod
     @converter(MedicalImage)
     def mrconvert(cls, fs_path):
-        node = MRConvert(
-            in_file=fs_path,
-            out_file='out.' + cls.ext)
+        node = MRConvert(in_file=fs_path, out_file="out." + cls.ext)
         return node, node.lzout.out_file
 
 
 class Nifti(NeuroImage):
 
-    ext = 'nii'
-    alternative_names = ('NIFTI',)
+    ext = "nii"
+    alternative_names = ("NIFTI",)
 
     def get_header(self):
         return dict(nibabel.load(self.fs_path).header)
@@ -242,58 +246,64 @@ class Nifti(NeuroImage):
 
     def get_vox_sizes(self):
         # FIXME: This won't work for 4-D files
-        return self.get_header()['pixdim'][1:4]
+        return self.get_header()["pixdim"][1:4]
 
     def get_dims(self):
         # FIXME: This won't work for 4-D files
-        return self.get_header()['dim'][1:4]
+        return self.get_header()["dim"][1:4]
 
     @classmethod
     @converter(Dicom)
-    def dcm2niix(cls, fs_path, extract_volume=None, echo=None, component=None,
-                 side_car_jq=None):
+    def dcm2niix(
+        cls, fs_path, extract_volume=None, echo=None, component=None, side_car_jq=None
+    ):
         as_workflow = extract_volume is not None or side_car_jq is not None
         if as_workflow:
-            wf = Workflow(name='multistep_conv',
-                          input_spec=['in_dir', 'compress'],
-                          in_dir=fs_path)
+            wf = Workflow(
+                name="multistep_conv", input_spec=["in_dir", "compress"], in_dir=fs_path
+            )
             in_dir = wf.lzin.in_dir
             compress = wf.lzin.compress
         else:
             in_dir = fs_path
-            compress = 'n'
+            compress = "n"
         node = Dcm2Niix(
             in_dir=in_dir,
-            out_dir='.',
-            name='dcm2niix',
+            out_dir=".",
+            name="dcm2niix",
             compress=compress,
             echo=echo if echo else attr.NOTHING,
-            suffix=component if component else attr.NOTHING)
+            suffix=component if component else attr.NOTHING,
+        )
         if as_workflow:
             wf.add(node)
             out_file = wf.dcm2niix.lzout.out_file
             out_json = wf.dcm2niix.lzout.out_json
             if extract_volume is not None:
-                out_filename = 'out_file.nii'
-                if compress == 'y':
-                    out_filename += '.gz'
-                wf.add(MRConvert(
-                    in_file=out_file,
-                    out_filename=out_filename,
-                    coord=[3, extract_volume],
-                    axes=[0, 1, 2],
-                    name='mrconvert'))
+                out_filename = "out_file.nii"
+                if compress == "y":
+                    out_filename += ".gz"
+                wf.add(
+                    MRConvert(
+                        in_file=out_file,
+                        out_filename=out_filename,
+                        coord=[3, extract_volume],
+                        axes=[0, 1, 2],
+                        name="mrconvert",
+                    )
+                )
                 out_file = wf.mrconvert.lzout.out_file
             if side_car_jq is not None:
-                wf.add(edit_side_car(
-                    in_file=out_json,
-                    jq_expr=side_car_jq,
-                    name='json_edit'))
+                wf.add(
+                    edit_side_car(
+                        in_file=out_json, jq_expr=side_car_jq, name="json_edit"
+                    )
+                )
                 out_json = wf.json_edit.lzout.out
-            wf.set_output(('out_file', out_file))
-            wf.set_output(('out_json', out_json))
-            wf.set_output(('out_bvec', wf.dcm2niix.lzout.out_bvec))
-            wf.set_output(('out_bval', wf.dcm2niix.lzout.out_bval))
+            wf.set_output(("out_file", out_file))
+            wf.set_output(("out_json", out_json))
+            wf.set_output(("out_bvec", wf.dcm2niix.lzout.out_bvec))
+            wf.set_output(("out_bval", wf.dcm2niix.lzout.out_bval))
             out = wf, wf.lzout.out_file
         else:
             out = node, node.lzout.out_file
@@ -302,36 +312,36 @@ class Nifti(NeuroImage):
 
 @mark.task
 def edit_side_car(in_file: Path, jq_expr: str, out_file=None) -> Path:
-    """"Applys ad-hoc edit of JSON side car with JQ query language"""
+    """ "Applys ad-hoc edit of JSON side car with JQ query language"""
     if out_file is None:
         out_file = in_file
     with open(in_file) as f:
         dct = json.load(f)
     dct = jq.compile(jq_expr).input(dct).first()
-    with open(out_file, 'w') as f:
+    with open(out_file, "w") as f:
         json.dump(dct, f)
     return in_file
 
 
 class NiftiGz(Nifti):
 
-    ext = 'nii.gz'
+    ext = "nii.gz"
 
     @classmethod
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
         node, out_file = Nifti.dcm2niix(fs_path, **kwargs)
-        node.inputs.compress = 'y'
+        node.inputs.compress = "y"
         return node, out_file
 
 
 class NiftiX(WithSideCars, Nifti):
 
-    side_car_exts = ('json',)
+    side_car_exts = ("json",)
 
     def get_header(self):
         hdr = super().get_header()
-        with open(self.side_car('json')) as f:
+        with open(self.side_car("json")) as f:
             hdr.update(json.load(f))
         return hdr
 
@@ -345,19 +355,18 @@ class NiftiX(WithSideCars, Nifti):
 
 
 class NiftiGzX(NiftiX, NiftiGz):
-
     @classmethod
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
         node, out_files = NiftiX.dcm2niix(fs_path, **kwargs)
-        node.inputs.compress = 'y'
+        node.inputs.compress = "y"
         return node, out_files
 
 
 # NIfTI file format gzipped with BIDS side car
 class NiftiFslgrad(WithSideCars, Nifti):
 
-    side_car_exts = ('bvec', 'bval')
+    side_car_exts = ("bvec", "bval")
 
     @classmethod
     @converter(Dicom)
@@ -366,6 +375,7 @@ class NiftiFslgrad(WithSideCars, Nifti):
         return node, (out_file, node.lzout.out_bvec, node.lzout.out_bval)
 
     mrconvert = None  # Technically mrconvert can export fsl grads but dcm2niix will be sufficient 99% of the time
+
 
 class NiftiGzFslgrad(NiftiFslgrad, NiftiGz):
 
@@ -380,37 +390,35 @@ class NiftiXFslgrad(NiftiX, NiftiFslgrad):
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
         node, out_file = NiftiX.dcm2niix(fs_path, **kwargs)
-        return node, out_file + (node.lzout.out_bvec,
-                                 node.lzout.out_bval)
+        return node, out_file + (node.lzout.out_bvec, node.lzout.out_bval)
+
 
 class NiftiGzXFslgrad(NiftiXFslgrad, NiftiGz):
-
     @classmethod
     @converter(Dicom)
     def dcm2niix(cls, fs_path, **kwargs):
         node, out_files = NiftiXFslgrad.dcm2niix(fs_path, **kwargs)
-        node.inputs.compress = 'y'
+        node.inputs.compress = "y"
         return node, out_files
-
 
 
 class MrtrixImage(NeuroImage):
 
-    ext = 'mif'
+    ext = "mif"
 
     def _load_header_and_array(self):
-        with open(self.path, 'rb') as f:
+        with open(self.path, "rb") as f:
             contents = f.read()
-        hdr_end = contents.find(b'\nEND\n')
-        hdr_contents = contents[:hdr_end].decode('utf-8')
-        hdr = dict(l.split(': ', maxsplit=1) for l in hdr_contents.split('\n'))
+        hdr_end = contents.find(b"\nEND\n")
+        hdr_contents = contents[:hdr_end].decode("utf-8")
+        hdr = dict(l.split(": ", maxsplit=1) for l in hdr_contents.split("\n"))
         for key, value in list(hdr.items()):
-            if ',' in value:
+            if "," in value:
                 try:
-                    hdr[key] = np.array(value.split(','), format=int)
+                    hdr[key] = np.array(value.split(","), format=int)
                 except ValueError:
                     try:
-                        hdr[key] = np.array(value.split(','), format=float)
+                        hdr[key] = np.array(value.split(","), format=float)
                     except ValueError:
                         pass
             else:
@@ -421,10 +429,10 @@ class MrtrixImage(NeuroImage):
                         hdr[key] = float(value)
                     except ValueError:
                         pass
-        del hdr['mrtrix image']  # Delete "magic line" at start of header
-        array_start = int(hdr['file'].split()[1])
+        del hdr["mrtrix image"]  # Delete "magic line" at start of header
+        array_start = int(hdr["file"].split()[1])
         array = np.asarray(contents[array_start:])
-        dim = [hdr['dim'][int(l[1])] for l in hdr['layout']]
+        dim = [hdr["dim"][int(l[1])] for l in hdr["layout"]]
         array = array.reshape(dim)
         return hdr, array
 
@@ -435,10 +443,10 @@ class MrtrixImage(NeuroImage):
         return self._load_header_and_array(self)[1]
 
     def get_vox_sizes(self):
-        return self.get_header(self)['vox']
+        return self.get_header(self)["vox"]
 
     def get_dims(self):
-        return self.get_header(self)['dim']
+        return self.get_header(self)["dim"]
 
 
 # =====================================================================
@@ -448,8 +456,8 @@ class MrtrixImage(NeuroImage):
 
 class Analyze(WithSideCars, NeuroImage):
 
-    ext = 'img'
-    side_car_exts = ('hdr',)
+    ext = "img"
+    side_car_exts = ("hdr",)
 
     def get_array(self):
         raise NotImplementedError
@@ -457,41 +465,47 @@ class Analyze(WithSideCars, NeuroImage):
     def get_header(self):
         raise NotImplementedError
 
+
 class MrtrixTrack(File):
 
-    ext = 'tck'
+    ext = "tck"
 
 
 class Dwigrad(File):
 
     pass
 
+
 class MtrixGrad(Dwigrad):
 
-    ext = 'b'
+    ext = "b"
+
 
 class Fslgrad(Dwigrad):
 
-    ext = 'bvec'
-    side_cars = ('bval',)
+    ext = "bvec"
+    side_cars = ("bval",)
 
 
 # Raw formats
 
+
 class ListMode(File):
 
-    ext = 'bf'
+    ext = "bf"
 
 
 class Kspace(File):
 
     pass
 
+
 class TwixVb(Kspace):
-    """The format that k-space data is saved in from Siemens scanners 
+    """The format that k-space data is saved in from Siemens scanners
     with system version vB to (at least) vE"""
 
-    ext = 'dat'
+    ext = "dat"
+
 
 class CustomKspace(Kspace):
     """A custom format for saving k-space data in binary amd JSON files.
@@ -523,9 +537,9 @@ class CustomKspace(Kspace):
         Direction of the B0 field
     larmor_freq : float
         The central larmor row_frequency of the scanner"""
-        
-    ext = 'ks'
-    side_cars = ('ref', 'json')
+
+    ext = "ks"
+    side_cars = ("ref", "json")
 
     @classmethod
     @converter
@@ -541,4 +555,4 @@ class CustomKspace(Kspace):
 class Rda(File):
     """MRS format"""
 
-    ext = 'rda'
+    ext = "rda"

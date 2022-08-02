@@ -26,7 +26,7 @@ def cli():
 # class BaseCmd(metaclass=ABCMeta):
 #     """Abstract base class for new Arcana entrypoints
 #     """
-    
+
 #     @abstractclassmethod
 #     def construct_parser(cls, parser):
 #         pass
@@ -51,7 +51,6 @@ def cli():
 #     @classmethod
 #     def run(cls, args):
 #         MainCmd.get_parser(args.command).print_help()
-
 
 
 # class MainCmd():
@@ -107,7 +106,7 @@ def cli():
 
 #     @classproperty
 #     def commands(cls):
-#         if cls._commands is None:    
+#         if cls._commands is None:
 #             import arcana.entrypoints
 #             cls._commands = {
 #                 c.cmd_name: c

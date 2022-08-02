@@ -1,5 +1,4 @@
 class ArcanaException(Exception):
-
     @property
     def msg(self):
         return self.args[0]
@@ -15,6 +14,7 @@ class ArcanaError(ArcanaException):
 
 class ArcanaRuntimeError(ArcanaError):
     pass
+
 
 class ArcanaNotBoundToAnalysisError(ArcanaError):
     pass
@@ -59,12 +59,12 @@ class ArcanaUsageError(ArcanaError):
 class ArcanaCacheError(ArcanaError):
     pass
 
+
 class ArcanaDesignError(ArcanaError):
     pass
 
 
 class NamedArcanaError(ArcanaError):
-
     def __init__(self, name, msg):
         super(NamedArcanaError, self).__init__(msg)
         self.name = name
@@ -73,17 +73,15 @@ class NamedArcanaError(ArcanaError):
 class ArcanaNameError(NamedArcanaError):
     pass
 
+
 class ArcanaWrongFrequencyError(NamedArcanaError):
     pass
 
 
 class ArcanaIndexError(ArcanaError):
-
     def __init__(self, index, msg):
         super(ArcanaIndexError, self).__init__(msg)
         self.index = index
-
-
 
 
 class ArcanaDataNotDerivedYetError(NamedArcanaError, ArcanaDesignError):
@@ -97,8 +95,10 @@ class ArcanaDataMatchError(ArcanaUsageError):
 class ArcanaPipelinesStackError(ArcanaError):
     pass
 
+
 class ArcanaMissingDataException(ArcanaPipelinesStackError):
     pass
+
 
 class ArcanaOutputNotProducedException(ArcanaPipelinesStackError):
     """
@@ -161,7 +161,7 @@ class ArcanaFormatConversionError(ArcanaError):
 
 
 class ArcanaConverterNotAvailableError(ArcanaError):
-    "The converter required to convert between formats is not "
+    "The converter required to convert between formats is not"
     "available"
 
 
@@ -187,6 +187,7 @@ class ArcanaXnatCSCommandError(ArcanaRepositoryError):
     container service.
     """
 
+
 class ArcanaUriAlreadySetException(ArcanaException):
     """Raised when attempting to set the URI of an item is already set"""
 
@@ -194,15 +195,17 @@ class ArcanaUriAlreadySetException(ArcanaException):
 class ArcanaDataTreeConstructionError(ArcanaError):
     "Error in constructing data tree by store find_rows method"
 
+
 class ArcanaBadlyFormattedIDError(ArcanaDataTreeConstructionError):
     "Error attempting to extract an ID from a tree path using a user provided regex"
+
 
 class ArcanaWrongDataSpaceError(ArcanaError):
     "Provided row_frequency is not a valid member of the dataset's dimensions"
 
 
 class ArcanaNoDirectXnatMountException(ArcanaException):
-    "Raised when attemptint to access a file-system mount for a row that hasn't been mounted directly "
+    "Raised when attemptint to access a file-system mount for a row that hasn't been mounted directly"
     pass
 
 
