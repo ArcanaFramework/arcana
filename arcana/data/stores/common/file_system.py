@@ -18,13 +18,14 @@ from arcana.core.data.store import DataStore
 from arcana.core.data.format import FileGroup
 
 
-logger = logging.getLogger('arcana')
+logger = logging.getLogger("arcana")
 
 
 # Matches directory names used for summary rows with dunder beginning and
 # end (e.g. '__visit_01__') and hidden directories (i.e. starting with '.' or
 # '~')
-special_dir_re = re.compile(r'(__.*__$|\..*|~.*)')
+special_dir_re = re.compile(r"(__.*__$|\..*|~.*)")
+
 
 @attr.s
 class FileSystem(DataStore):
@@ -41,24 +42,23 @@ class FileSystem(DataStore):
 
     """
 
-    alias = 'file'
-    PROV_SUFFIX = '.prov'
-    FIELDS_FNAME = '__fields__.json'
-    LOCK_SUFFIX = '.lock'
-    PROV_KEY = '__provenance__'
-    VALUE_KEY = '__value__'
-    METADATA_DIR = '.arcana'
-    
+    alias = "file"
+    PROV_SUFFIX = ".prov"
+    FIELDS_FNAME = "__fields__.json"
+    LOCK_SUFFIX = ".lock"
+    PROV_KEY = "__provenance__"
+    VALUE_KEY = "__value__"
+    METADATA_DIR = ".arcana"
+
     def new_dataset(self, id, *args, **kwargs):
         if not Path(id).exists():
-            raise ArcanaUsageError(
-                f"Path to dataset root '{id}'' does not exist")
+            raise ArcanaUsageError(f"Path to dataset root '{id}'' does not exist")
         return super().new_dataset(id, *args, **kwargs)
 
     def save_dataset_definition(self, dataset_id, definition, name):
         definition_path = self.definition_save_path(dataset_id, name)
         definition_path.parent.mkdir(exist_ok=True)
-        with open(definition_path, 'w') as f:
+        with open(definition_path, "w") as f:
             yaml.dump(definition, f)
 
     def load_dataset_definition(self, dataset_id, name):
@@ -71,7 +71,7 @@ class FileSystem(DataStore):
         return definition
 
     def definition_save_path(self, dataset_id, name):
-        return Path(dataset_id) / self.METADATA_DIR / (name + '.yml')
+        return Path(dataset_id) / self.METADATA_DIR / (name + ".yml")
 
     def get_file_group_paths(self, file_group: FileGroup):
         """
@@ -81,12 +81,14 @@ class FileSystem(DataStore):
         # as the path is set
         stem_path = self.file_group_stem_path(file_group)
         # Get all paths that match the stem path (but with different extensions)
-        matches = [p for p in stem_path.parent.iterdir()
-                   if str(p).startswith(str(stem_path))]
+        matches = [
+            p for p in stem_path.parent.iterdir() if str(p).startswith(str(stem_path))
+        ]
         if not matches:
             raise ArcanaMissingDataException(
                 f"No files/sub-dirs matching '{file_group.path}' path found in "
-                f"{str(self.absolute_row_path(file_group.row))} directory")
+                f"{str(self.absolute_row_path(file_group.row))} directory"
+            )
         return matches
 
     def get_field_value(self, field):
@@ -135,7 +137,7 @@ class FileSystem(DataStore):
             the file group stored or to be stored
         """
         row_path = self.absolute_row_path(file_group.row)
-        return row_path.joinpath(*file_group.path.split('/'))
+        return row_path.joinpath(*file_group.path.split("/"))
 
     def put_field_value(self, field, value):
         """
@@ -146,7 +148,7 @@ class FileSystem(DataStore):
         # reading or writing
         with InterProcessLock(fpath + self.LOCK_SUFFIX, logger=logger):
             try:
-                with open(fpath, 'r') as f:
+                with open(fpath, "r") as f:
                     dct = json.load(f)
             except IOError as e:
                 if e.errno == errno.ENOENT:
@@ -157,12 +159,13 @@ class FileSystem(DataStore):
                 value = list(value)
             dct[field.path] = {
                 self.VALUE_KEY: value,
-                self.PROV_KEY: field.provenance.dct}
-            with open(fpath, 'w') as f:
+                self.PROV_KEY: field.provenance.dct,
+            }
+            with open(fpath, "w") as f:
                 json.dump(dct, f, indent=2)
 
     def put_provenance(self, item, provenance):
-        with open(self.prov_json_path(item), 'w') as f:
+        with open(self.prov_json_path(item), "w") as f:
             json.dump(provenance, f)
 
     def get_provenance(self, item):
@@ -183,7 +186,8 @@ class FileSystem(DataStore):
         if not os.path.exists(dataset.id):
             raise ArcanaUsageError(
                 f"Could not find a directory at '{dataset.id}' to be the "
-                "root row of the dataset")
+                "root row of the dataset"
+            )
 
         for dpath, _, _ in os.walk(dataset.id):
             tree_path = Path(dpath).relative_to(dataset.id).parts
@@ -195,9 +199,7 @@ class FileSystem(DataStore):
 
     def find_items(self, row):
         # First ID can be omitted
-        self.find_items_in_dir(
-            self.root_dir(row) / self.row_path(row),
-            row)
+        self.find_items_in_dir(self.root_dir(row) / self.row_path(row), row)
 
     def find_items_in_dir(self, dpath, row):
         if not op.exists(dpath):
@@ -205,14 +207,16 @@ class FileSystem(DataStore):
         # Filter contents of directory to omit fields JSON and provenance
         filtered = []
         for subpath in dpath.iterdir():
-            if not (subpath.name.startswith('.')
-                    or subpath.name == self.FIELDS_FNAME
-                    or subpath.name.endswith(self.PROV_SUFFIX)):
+            if not (
+                subpath.name.startswith(".")
+                or subpath.name == self.FIELDS_FNAME
+                or subpath.name.endswith(self.PROV_SUFFIX)
+            ):
                 filtered.append(subpath.name)
         # Group files and sub-dirs that match except for extensions
         matching = defaultdict(set)
         for fname in filtered:
-            basename = fname.split('.')[0]
+            basename = fname.split(".")[0]
             matching[basename].add(fname)
         # Add file groups
         for bname, fnames in matching.items():
@@ -225,10 +229,11 @@ class FileSystem(DataStore):
             row.add_file_group(
                 path=bname,
                 file_paths=[op.join(dpath, f) for f in fnames],
-                provenance=provenance)
+                provenance=provenance,
+            )
         # Add fields
         try:
-            with open(op.join(dpath, self.FIELDS_FNAME), 'r') as f:
+            with open(op.join(dpath, self.FIELDS_FNAME), "r") as f:
                 dct = json.load(f)
         except FileNotFoundError:
             pass
@@ -239,30 +244,26 @@ class FileSystem(DataStore):
                     value = value[self.VALUE_KEY]
                 else:
                     prov = None
-                row.add_field(name_path=name, value=value,
-                                    provenance=prov)
+                row.add_field(name_path=name, value=value, provenance=prov)
 
     def row_path(self, row):
         path = Path()
         accounted_freq = row.dataset.space(0)
         for layer in row.dataset.hierarchy:
-            if not (layer.is_parent(row.frequency)
-                    or layer == row.frequency):
+            if not (layer.is_parent(row.frequency) or layer == row.frequency):
                 break
             path /= row.ids[layer]
             accounted_freq |= layer
-        # If not "leaf row" then 
+        # If not "leaf row" then
         if row.frequency != max(row.dataset.space):
-            unaccounted_freq = row.frequency - (row.frequency
-                                                 & accounted_freq)
+            unaccounted_freq = row.frequency - (row.frequency & accounted_freq)
             unaccounted_id = row.ids[unaccounted_freq]
             if unaccounted_id is None:
-                path /= f'__{unaccounted_freq}__'
+                path /= f"__{unaccounted_freq}__"
             elif isinstance(unaccounted_id, str):
-                path /= f'__{unaccounted_freq}_{unaccounted_id}__'
+                path /= f"__{unaccounted_freq}_{unaccounted_id}__"
             else:
-                path /= (f'__{unaccounted_freq}_'
-                         + '_'.join(unaccounted_id) + '__')
+                path /= f"__{unaccounted_freq}_" + "_".join(unaccounted_id) + "__"
         return path
 
     def root_dir(self, row) -> Path:
@@ -273,9 +274,7 @@ class FileSystem(DataStore):
         return cls().root_dir(row) / cls().row_path(row)
 
     def fields_json_path(self, field):
-        return (self.root_dir(field.row)
-                / self.row_path(field.row)
-                / self.FIELDS_FNAME)
+        return self.root_dir(field.row) / self.row_path(field.row) / self.FIELDS_FNAME
 
     def prov_json_path(self, file_group):
         return self.file_group_path(file_group) + self.PROV_SUFFX
@@ -319,8 +318,9 @@ class FileSystem(DataStore):
         """
         json_path = self.fields_json_path(field)
         try:
-            with InterProcessLock(json_path + self.LOCK_SUFFIX,
-                                  logger=logger), open(json_path, 'r') as f:
+            with InterProcessLock(json_path + self.LOCK_SUFFIX, logger=logger), open(
+                json_path, "r"
+            ) as f:
                 dct = json.load(f)
             val_dct = dct[field.name]
             return val_dct
@@ -333,13 +333,13 @@ class FileSystem(DataStore):
             except AttributeError:
                 pass
             raise ArcanaMissingDataException(
-                "{} does not exist in the local store {}"
-                .format(field.name, self))
-                                 
+                "{} does not exist in the local store {}".format(field.name, self)
+            )
 
 
-def single_dataset(path: str, tree_dimensions: DataSpace=Clinical,
-                   **kwargs) -> Dataset:
+def single_dataset(
+    path: str, tree_dimensions: DataSpace = Clinical, **kwargs
+) -> Dataset:
     """
     Creates a Dataset from a file system path to a directory
 
@@ -352,5 +352,6 @@ def single_dataset(path: str, tree_dimensions: DataSpace=Clinical,
         stores
     """
 
-    return FileSystem(op.join(path, '..'), **kwargs).dataset(
-        op.basename(path), tree_dimensions)
+    return FileSystem(op.join(path, ".."), **kwargs).dataset(
+        op.basename(path), tree_dimensions
+    )

@@ -196,7 +196,7 @@ While not necessary, it can be convenient to add methods for accessing
 file-group data within Python. This makes it possible to write generic methods
 to generate publication outputs. Some suggested methods are
 
-* ``data`` - access data array, particuarly relevant for imaging data
+* ``data`` - access data array, particularly relevant for imaging data
 * ``metadata`` - access a dictionary containing metadata extracted from a header or side-car
 
 

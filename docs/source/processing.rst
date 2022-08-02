@@ -371,7 +371,7 @@ overwhelming, so when designing an analysis class it is good practice to set the
 "salience" of columns and parameters (see :ref:`column_param_specs`). The menu
 can then be filtered to show only the more salient columns (the default is to
 only show "supplementary" and above).
-Parameters can similarily be filtered by their salience (see :class:`.ParamSalience`),
+Parameters can similarly be filtered by their salience (see :class:`.ParamSalience`),
 by default only showing parameters "check" and above.
 For example, the following menu call will show all columns and parameters with 
 salience >= 'qa' and 'recommended', respectively.
@@ -538,7 +538,7 @@ or
   $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all  --reprocess
 
 
-To ingore differences between pipeline configurations you can use the :meth:`.Dataset.ignore`
+To ignore differences between pipeline configurations you can use the :meth:`.Dataset.ignore`
 method
 
 .. code-block:: python

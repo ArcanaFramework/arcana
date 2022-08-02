@@ -14,19 +14,17 @@ from arcana.exceptions import ArcanaBuildError
 from .utils import PipSpec, local_package_location
 
 
-logger = logging.getLogger('arcana')
+logger = logging.getLogger("arcana")
 
 DEFAULT_BASE_IMAGE = "ubuntu:kinetic"
-PYTHON_PACKAGE_DIR = 'python-packages'
+PYTHON_PACKAGE_DIR = "python-packages"
 
-CONDA_ENV = 'arcana'
+CONDA_ENV = "arcana"
 
-SPEC_PATH = '/arcana-spec.yaml'
+SPEC_PATH = "/arcana-spec.yaml"
 
 
-def build_docker_image(image_tag: str,
-                       build_dir: Path=None,
-                       **kwargs):
+def build_docker_image(image_tag: str, build_dir: Path = None, **kwargs):
     """Executes the full build workflow, from generating the Dockerfile to
     calling Docker to build it
 
@@ -47,20 +45,23 @@ def build_docker_image(image_tag: str,
 
 
 def construct_dockerfile(
-        build_dir: Path,
-        base_image: str=DEFAULT_BASE_IMAGE,
-        python_packages: ty.Iterable[PipSpec or ty.Dict[str, str] or ty.Tuple[str, str]]=None,
-        system_packages: ty.Iterable[ty.Iterable[ty.Tuple[str, str]]]=None,
-        package_templates: ty.Iterable[ty.Dict[str, str]]=None,
-        labels: ty.Dict[str, str]=None,
-        package_manager: str='apt',
-        arcana_install_extras: ty.Iterable[str]=(),
-        readme: str=None,
-        use_local_packages: bool=False,
-        pypi_fallback: bool=False,
-        license_dir: Path=None,
-        licenses: ty.Iterable[ty.Dict[str, str]]=(),
-        spec: dict=None) -> DockerRenderer:
+    build_dir: Path,
+    base_image: str = DEFAULT_BASE_IMAGE,
+    python_packages: ty.Iterable[
+        PipSpec or ty.Dict[str, str] or ty.Tuple[str, str]
+    ] = None,
+    system_packages: ty.Iterable[ty.Iterable[ty.Tuple[str, str]]] = None,
+    package_templates: ty.Iterable[ty.Dict[str, str]] = None,
+    labels: ty.Dict[str, str] = None,
+    package_manager: str = "apt",
+    arcana_install_extras: ty.Iterable[str] = (),
+    readme: str = None,
+    use_local_packages: bool = False,
+    pypi_fallback: bool = False,
+    license_dir: Path = None,
+    licenses: ty.Iterable[ty.Dict[str, str]] = (),
+    spec: dict = None,
+) -> DockerRenderer:
     """Constructs a dockerfile that wraps a with dependencies
 
     Parameters
@@ -113,10 +114,17 @@ def construct_dockerfile(
         python_packages = []
     else:
         python_packages = [
-            (PipSpec(p) if isinstance(p, str) else (
-                PipSpec(**p) if isinstance(p, dict)
-                else (PipSpec(*p) if not isinstance(p, PipSpec) else p)))
-            for p in python_packages]
+            (
+                PipSpec(p)
+                if isinstance(p, str)
+                else (
+                    PipSpec(**p)
+                    if isinstance(p, dict)
+                    else (PipSpec(*p) if not isinstance(p, PipSpec) else p)
+                )
+            )
+            for p in python_packages
+        ]
 
     if not build_dir.is_dir():
         raise ArcanaBuildError(f"Build dir '{str(build_dir)}' is not a valid directory")
@@ -126,28 +134,33 @@ def construct_dockerfile(
 
     if system_packages is not None:
         install_system_packages(dockerfile, system_packages)
-    
+
     if package_templates is not None:
         install_package_templates(dockerfile, package_templates)
 
-    install_python(dockerfile,
-                   python_packages,
-                   build_dir,
-                   use_local_packages=use_local_packages,
-                   pypi_fallback=pypi_fallback)
+    install_python(
+        dockerfile,
+        python_packages,
+        build_dir,
+        use_local_packages=use_local_packages,
+        pypi_fallback=pypi_fallback,
+    )
 
     # Arcana is installed separately from the other Python packages, partly so
     # the dependency Docker layer can be cached in dev and partly so it can be
     # treated differently if required in the future
-    install_arcana(dockerfile,
-                   build_dir,
-                   install_extras=arcana_install_extras,
-                   use_local_package=use_local_packages)
+    install_arcana(
+        dockerfile,
+        build_dir,
+        install_extras=arcana_install_extras,
+        use_local_package=use_local_packages,
+    )
 
     if licenses and license_dir is None:
         raise ArcanaBuildError(
             "'--license_dir' input must be provided for specifications "
-            f"including 'licenses' items ({licenses})")
+            f"including 'licenses' items ({licenses})"
+        )
 
     install_licenses(dockerfile, licenses, license_dir, build_dir)
 
@@ -160,8 +173,9 @@ def construct_dockerfile(
     if labels:
         # dockerfile.label(labels)
         dockerfile._parts.append(
-            "LABEL " + " \\\n      ".join(
-                f'{k}={json.dumps(v)}' for k, v in labels.items()))
+            "LABEL "
+            + " \\\n      ".join(f"{k}={json.dumps(v)}" for k, v in labels.items())
+        )
 
     return dockerfile
 
@@ -180,27 +194,31 @@ def dockerfile_build(dockerfile: DockerRenderer, build_dir: Path, image_tag: str
     """
 
     # Save generated dockerfile to file
-    out_file = build_dir / 'Dockerfile'
+    out_file = build_dir / "Dockerfile"
     out_file.parent.mkdir(exist_ok=True, parents=True)
-    with open(str(out_file), 'w') as f:
+    with open(str(out_file), "w") as f:
         f.write(dockerfile.render())
     logger.info("Dockerfile for '%s' generated at %s", image_tag, str(out_file))
-    
+
     dc = docker.from_env()
     try:
         dc.images.build(path=str(build_dir), tag=image_tag)
     except docker.errors.BuildError as e:
-        build_log = '\n'.join(l.get('stream', '') for l in e.build_log)
+        build_log = "\n".join(l.get("stream", "") for l in e.build_log)
         raise RuntimeError(
             f"Building '{image_tag}' from '{str(build_dir)}/Dockerfile' "
-            f"failed with the following errors:\n\n{build_log}")
+            f"failed with the following errors:\n\n{build_log}"
+        )
     logging.info("Successfully built docker image %s", image_tag)
 
 
-def install_python(dockerfile: DockerRenderer,
-                   packages: ty.Iterable[PipSpec], build_dir: Path,
-                   use_local_packages: bool=False,
-                   pypi_fallback: bool=False):
+def install_python(
+    dockerfile: DockerRenderer,
+    packages: ty.Iterable[PipSpec],
+    build_dir: Path,
+    use_local_packages: bool = False,
+    pypi_fallback: bool = False,
+):
     """Generate Neurodocker instructions to install an appropriate version of
     Python and the required Python packages
 
@@ -231,31 +249,30 @@ def install_python(dockerfile: DockerRenderer,
 
     # # Split out and merge any extras specifications (e.g. "arcana[test]")
     # between dependencies of the same package
-    # Add arcana dependency   
+    # Add arcana dependency
     packages = PipSpec.unique(packages, remove_arcana=True)
 
     dockerfile.add_registered_template(
-        'miniconda',
+        "miniconda",
         version="latest",
         env_name=CONDA_ENV,
         env_exists=False,
-        conda_install=' '.join([
-            "python=" + natsorted(python_versions)[-1],
-            "numpy",
-            "traits"]),
-        pip_install=' '.join(
-            pip_spec2str(p,
-                         dockerfile,
-                         build_dir,
-                         use_local_packages,
-                         pypi_fallback)
-            for p in packages))
+        conda_install=" ".join(
+            ["python=" + natsorted(python_versions)[-1], "numpy", "traits"]
+        ),
+        pip_install=" ".join(
+            pip_spec2str(p, dockerfile, build_dir, use_local_packages, pypi_fallback)
+            for p in packages
+        ),
+    )
 
 
-def install_arcana(dockerfile: DockerRenderer,
-                   build_dir: Path,
-                   install_extras: ty.Iterable=(),
-                   use_local_package: bool=False):
+def install_arcana(
+    dockerfile: DockerRenderer,
+    build_dir: Path,
+    install_extras: ty.Iterable = (),
+    use_local_package: bool = False,
+):
     """Install the Arcana Python package into the Dockerfile
 
     Parameters
@@ -270,14 +287,17 @@ def install_arcana(dockerfile: DockerRenderer,
     use_local_package : bool
         Use local installation of arcana
     """
-    pip_str = pip_spec2str(PipSpec(PACKAGE_NAME, extras=install_extras),
-                           dockerfile,
-                           build_dir,
-                           use_local_packages=use_local_package,
-                           pypi_fallback=False)
+    pip_str = pip_spec2str(
+        PipSpec(PACKAGE_NAME, extras=install_extras),
+        dockerfile,
+        build_dir,
+        use_local_packages=use_local_package,
+        pypi_fallback=False,
+    )
     dockerfile.run(
         f'bash -c "source activate {CONDA_ENV} \\\n'
-        f'&& python -m pip install --no-cache-dir {pip_str}"')
+        f'&& python -m pip install --no-cache-dir {pip_str}"'
+    )
 
 
 def install_system_packages(dockerfile: DockerRenderer, packages: ty.Iterable[str]):
@@ -293,10 +313,11 @@ def install_system_packages(dockerfile: DockerRenderer, packages: ty.Iterable[st
     dockerfile.install(packages)
 
 
-def install_package_templates(dockerfile: DockerRenderer,
-                              package_templates: ty.Iterable[ty.Dict[str, str]]):
+def install_package_templates(
+    dockerfile: DockerRenderer, package_templates: ty.Iterable[ty.Dict[str, str]]
+):
     """Install custom packages from Neurodocker package_templates
-    
+
     Parameters
     ----------
     dockerfile : DockerRenderer
@@ -306,15 +327,17 @@ def install_package_templates(dockerfile: DockerRenderer,
         dictionary containing the 'name' and 'version' of the template along
         with any additional keyword arguments required by the template
     """
-    
+
     for kwds in package_templates:
-        dockerfile.add_registered_template(kwds.pop('name'), **kwds)
+        dockerfile.add_registered_template(kwds.pop("name"), **kwds)
 
 
-def install_licenses(dockerfile: DockerRenderer,
-                     licenses: ty.List[ty.Dict[str, str]],
-                     license_dir: Path,
-                     build_dir: Path):
+def install_licenses(
+    dockerfile: DockerRenderer,
+    licenses: ty.List[ty.Dict[str, str]],
+    license_dir: Path,
+    build_dir: Path,
+):
     """Generate Neurodocker instructions to install README file inside the docker
     image
 
@@ -331,12 +354,13 @@ def install_licenses(dockerfile: DockerRenderer,
     if not licenses:
         return
     # Copy licenses into build directory
-    license_build_dir = build_dir / 'licenses'
+    license_build_dir = build_dir / "licenses"
     shutil.copytree(license_dir, license_build_dir, dirs_exist_ok=True)
     for spec in licenses:
-        src = license_build_dir / spec['source']
-        dockerfile.copy(source=[str(src.relative_to(build_dir))],
-                        destination=spec['destination'])
+        src = license_build_dir / spec["source"]
+        dockerfile.copy(
+            source=[str(src.relative_to(build_dir))], destination=spec["destination"]
+        )
 
 
 def insert_readme(dockerfile: DockerRenderer, description, build_dir):
@@ -354,14 +378,12 @@ def insert_readme(dockerfile: DockerRenderer, description, build_dir):
         path to build dir
     """
     if description is None:
-        description = ''
+        description = ""
     else:
-        description = '\n' + description + '\n'
-    with open(build_dir / 'README.md', 'w') as f:
-        f.write(DOCKERFILE_README_TEMPLATE.format(
-            __version__, description))
-    dockerfile.copy(source=['./README.md'],
-                           destination='/README.md')
+        description = "\n" + description + "\n"
+    with open(build_dir / "README.md", "w") as f:
+        f.write(DOCKERFILE_README_TEMPLATE.format(__version__, description))
+    dockerfile.copy(source=["./README.md"], destination="/README.md")
 
 
 def insert_spec(dockerfile: DockerRenderer, spec, build_dir):
@@ -377,16 +399,18 @@ def insert_spec(dockerfile: DockerRenderer, spec, build_dir):
     build_dir : Path
         path to build dir
     """
-    with open(build_dir / 'arcana-spec.yaml', 'w') as f:
+    with open(build_dir / "arcana-spec.yaml", "w") as f:
         yaml.dump(spec, f)
-    dockerfile.copy(source=['./arcana-spec.yaml'], destination=SPEC_PATH)    
+    dockerfile.copy(source=["./arcana-spec.yaml"], destination=SPEC_PATH)
 
 
-def pip_spec2str(pip_spec: PipSpec,
-                 dockerfile: DockerRenderer,
-                 build_dir: Path,
-                 use_local_packages: bool,
-                 pypi_fallback: bool) -> str:
+def pip_spec2str(
+    pip_spec: PipSpec,
+    dockerfile: DockerRenderer,
+    build_dir: Path,
+    use_local_packages: bool,
+    pypi_fallback: bool,
+) -> str:
     """Generates a string to be passed to `pip` in order to install a package
     from a "pip specification" object
 
@@ -408,36 +432,37 @@ def pip_spec2str(pip_spec: PipSpec,
     """
     # Copy the local development versions of Python dependencies into the
     # docker image if present, instead of relying on the PyPI version,
-    # which might be missing local changes and bugfixes (particularly in testing)    
+    # which might be missing local changes and bugfixes (particularly in testing)
     if use_local_packages:
-        pip_spec = local_package_location(pip_spec,
-                                          pypi_fallback=pypi_fallback)
+        pip_spec = local_package_location(pip_spec, pypi_fallback=pypi_fallback)
     if pip_spec.file_path:
         if pip_spec.version or pip_spec.url:
             raise ArcanaBuildError(
-                "Cannot specify a package by `file_path`, `version` and/or "
-                "`url`")
+                "Cannot specify a package by `file_path`, `version` and/or " "`url`"
+            )
         pkg_build_path = copy_package_into_build_dir(
-            pip_spec.name, pip_spec.file_path, build_dir)
-        pip_str = '/' + PYTHON_PACKAGE_DIR + '/' + pip_spec.name
-        dockerfile.copy(source=[str(pkg_build_path.relative_to(build_dir))],
-                        destination=pip_str)
+            pip_spec.name, pip_spec.file_path, build_dir
+        )
+        pip_str = "/" + PYTHON_PACKAGE_DIR + "/" + pip_spec.name
+        dockerfile.copy(
+            source=[str(pkg_build_path.relative_to(build_dir))], destination=pip_str
+        )
     elif pip_spec.url:
         if pip_spec.version:
-            raise ArcanaBuildError(
-                "Cannot specify a package by `url` and `version`")
+            raise ArcanaBuildError("Cannot specify a package by `url` and `version`")
         pip_str = pip_spec.url
     else:
         pip_str = pip_spec.name
     if pip_spec.extras:
-        pip_str += '[' + ','.join(pip_spec.extras) + ']'
+        pip_str += "[" + ",".join(pip_spec.extras) + "]"
     if pip_spec.version:
-        pip_str += '==' + pip_spec.version
+        pip_str += "==" + pip_spec.version
     return pip_str
 
 
-def copy_package_into_build_dir(package_name: str, local_installation: Path,
-                                build_dir: Path):
+def copy_package_into_build_dir(
+    package_name: str, local_installation: Path, build_dir: Path
+):
     """Copies a local installation of a package into the build directory
 
     Parameters
@@ -456,22 +481,24 @@ def copy_package_into_build_dir(package_name: str, local_installation: Path,
     # included in the gitignore
     patterns_to_ignore = list(PATTERNS_TO_NOT_COPY_INTO_BUILD)
     ignore_paths = [Path(p) for p in PATHS_TO_NOT_COPY_INTO_BUILD]
-    if (local_installation / '.gitignore').exists():
-        with open(local_installation / '.gitignore') as f:
+    if (local_installation / ".gitignore").exists():
+        with open(local_installation / ".gitignore") as f:
             gitignore = f.read().splitlines()
-        patterns_to_ignore.extend(
-            p for p in gitignore if not p.startswith('/'))
-        ignore_paths.extend(
-            Path(p[1:]) for p in gitignore if p.startswith('/'))
-    patterns_to_ignore.append('conftest.py')  # confuses pytest if nested within build dirs
+        patterns_to_ignore.extend(p for p in gitignore if not p.startswith("/"))
+        ignore_paths.extend(Path(p[1:]) for p in gitignore if p.startswith("/"))
+    patterns_to_ignore.append(
+        "conftest.py"
+    )  # confuses pytest if nested within build dirs
     ignore_patterns = shutil.ignore_patterns(*patterns_to_ignore)
+
     def ignore_paths_and_patterns(directory, contents):
         to_ignore = ignore_patterns(directory, contents)
-        to_ignore.update(
-            c for c in contents if Path(directory) / c in ignore_paths)
+        to_ignore.update(c for c in contents if Path(directory) / c in ignore_paths)
         return to_ignore
-    shutil.copytree(local_installation, pkg_build_path,
-                    ignore=ignore_paths_and_patterns)
+
+    shutil.copytree(
+        local_installation, pkg_build_path, ignore=ignore_paths_and_patterns
+    )
     return pkg_build_path
 
 
@@ -485,6 +512,11 @@ DOCKERFILE_README_TEMPLATE = """
     
     """
 
-PATHS_TO_NOT_COPY_INTO_BUILD = ('debug-build')
+PATHS_TO_NOT_COPY_INTO_BUILD = "debug-build"
 PATTERNS_TO_NOT_COPY_INTO_BUILD = (
-    'conftest.py', '*.pyc', '__pycache__', '.pytest_cache', 'tests')
+    "conftest.py",
+    "*.pyc",
+    "__pycache__",
+    ".pytest_cache",
+    "tests",
+)

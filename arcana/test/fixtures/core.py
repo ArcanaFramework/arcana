@@ -16,7 +16,7 @@ def work_dir():
     # shutil.rmtree(work_dir)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def build_cache_dir():
     # build_cache_dir = Path.home() / '.arcana-test-build-cache'
     # if build_cache_dir.exists():
@@ -30,7 +30,7 @@ def build_cache_dir():
 def cli_runner(catch_cli_exceptions):
     def invoke(*args, catch_exceptions=catch_cli_exceptions, **kwargs):
         runner = CliRunner()
-        result = runner.invoke(*args, catch_exceptions=catch_exceptions,
-                               **kwargs)
+        result = runner.invoke(*args, catch_exceptions=catch_exceptions, **kwargs)
         return result
+
     return invoke
