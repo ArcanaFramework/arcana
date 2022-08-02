@@ -34,7 +34,7 @@ class Dataset:
     Parameters
     ----------
     id : str
-        The dataset id/path that uniquely identifies the datset within the
+        The dataset id/path that uniquely identifies the dataset within the
         store it is stored (e.g. FS directory path or project ID)
     store : Repository
         The store the dataset is stored into. Can be the local file
@@ -74,7 +74,7 @@ class Dataset:
     id_inference : list[tuple[DataSpace, str]]
         Not all IDs will appear explicitly within the hierarchy of the data
         tree, and some will need to be inferred by extracting components of
-        more specific lables.
+        more specific labels.
 
         For example, given a set of subject IDs that combination of the ID of
         the group that they belong to and the member ID within that group
@@ -173,7 +173,7 @@ class Dataset:
         Parameters
         ----------
         id: str
-            either the ID of a dataset if `store` keyword arg is provied or a
+            either the ID of a dataset if `store` keyword arg is provided or a
             "dataset ID string" in the format
             <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
         store: DataStore, optional
@@ -396,7 +396,7 @@ class Dataset:
         Raises
         ------
         ArcanaUsageError
-            Raised when attemtping to use IDs with the row_frequency associated
+            Raised when attempting to use IDs with the row_frequency associated
             with the root row
         ArcanaNameError
             If there is no row corresponding to the given ids
@@ -599,7 +599,7 @@ class Dataset:
                     if len(id) == 1:
                         id = id[0]
                     ids[freq] = id
-        # TODO: filter row based on dataset include & exlcude attrs
+        # TODO: filter row based on dataset include & exclude attrs
         return self.add_row(ids, row_frequency)
 
     def add_row(self, ids, row_frequency):
@@ -770,9 +770,9 @@ class Dataset:
 
         sinks = [self[s] for s in set(sink_names)]
         for pipeline, _ in Pipeline.stack(*sinks):
-            # Excecute pipelines in stack
+            # Execute pipelines in stack
             # FIXME: Should combine the pipelines into a single workflow and
-            # dialate the IDs that need to be run when summarising over different
+            # dilate the IDs that need to be run when summarising over different
             # data axes
             pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
         # Update local cache of sink paths

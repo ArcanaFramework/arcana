@@ -33,4 +33,18 @@ tests_require = [
     "medimages4tests>=0.1",
 ]
 
+docs_require = [
+    "docutils>=0.10",
+    "mock>1.0",
+    "numpydoc>=0.6.0",
+    "sphinx-argparse>=0.2.0",
+    "sphinx-click>=3.1",
+    "furo>=2022.2.14.1]"]
+
+dev_requires = [
+    "black>=21.4b2",
+    "pre-commit>=2.19.0"]
+
+all_requires = install_requires + tests_require + docs_require + dev_requires
+
 python_versions = ["3.8", "3.9"]

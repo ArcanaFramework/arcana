@@ -244,7 +244,7 @@ def add_source(
 @dataset.command(
     name="add-sink",
     help="""Adds a sink column to a dataset. A sink column
-specifies how data should be writen into the dataset.
+specifies how data should be written into the dataset.
 
 Arguments
 ---------

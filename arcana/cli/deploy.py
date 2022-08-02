@@ -559,7 +559,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     "--raise-errors/--catch-errors",
     type=bool,
     default=False,
-    help="raise exceptions instead of capturing them to supress call stack",
+    help="raise exceptions instead of capturing them to suppress call stack",
 )
 @click.option(
     "--keep-running-on-errors/--exit-on-errors",

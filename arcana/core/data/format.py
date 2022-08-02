@@ -326,7 +326,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         """Checks to see whether the provided name is a valid name for the
         file format. Alternative names can be provided for format-specific
         subclasses, or this method can be overridden. Matches are case
-        insensitve.
+        insensitive.
 
         Parameters
         ----------
@@ -689,7 +689,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
 
         Parameters
         ----------
-        checkums: dict[str, str]
+        checksums: dict[str, str]
             The checksum dict mapping relative file paths to checksums
 
         Returns
@@ -985,7 +985,7 @@ class WithSideCars(BaseFile):
 
         Parameters
         ----------
-        checkums: dict[str, str]
+        checksums: dict[str, str]
             The checksum dict mapping relative file paths to checksums
 
         Returns

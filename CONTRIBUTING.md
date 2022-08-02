@@ -11,6 +11,10 @@ Before you start you'll need to set up a free GitHub account and sign in, here a
 If you are not familiar with version control systems such as git,
   introductions and tutorials may be found [here](http://www.reproducibleimaging.org/module-reproducible-basics/02-vcs/).
 
+## Acknowledgements
+
+If you contribute any modifications to the code please remember to add yourself
+to the AUTHORS file and the `__authors__` list in `arcana/__about__.py`.
 
 ## How can you contribute
 

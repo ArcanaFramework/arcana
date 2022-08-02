@@ -42,7 +42,7 @@ def test_put_items(dataset: Dataset):
     for name, freq, format, files in dataset.blueprint.derivatives:
         dataset.add_sink(name=name, format=format, row_frequency=freq)
         deriv_tmp_dir = Path(mkdtemp())
-        # Create test files, calculate checkums and recorded expected paths
+        # Create test files, calculate checksums and recorded expected paths
         # for inserted files
         all_checksums[name] = checksums = {}
         all_fs_paths[name] = fs_paths = []

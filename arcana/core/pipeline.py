@@ -644,7 +644,7 @@ def encapsulate_paths_and_values(outputs, **kwargs):
 #     if exclude is not None:
 #         exclude_res = [self._gen_prov_path_regex(p) for p in exclude]
 #     diff = DeepDiff(self._prov, other._prov, ignore_order=True)
-#     # Create regular expresssions for the include and exclude name_paths in
+#     # Create regular expressions for the include and exclude name_paths in
 #     # the format that deepdiff uses for nested dictionary/lists
 
 #     def include_change(change):

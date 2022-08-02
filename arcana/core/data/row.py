@@ -109,7 +109,7 @@ class DataRow:
         )
 
     def column_items(self, column_name):
-        """Get's the item for the current row if item's frequency matches
+        """Gets the item for the current row if item's frequency matches
         otherwise gets all the items that are related to the current row (
         i.e. are in child rows)
 

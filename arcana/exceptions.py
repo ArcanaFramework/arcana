@@ -152,7 +152,7 @@ class ArcanaNoRunRequiredException(ArcanaException):
 class ArcanaFileFormatClashError(ArcanaError):
     """
     Used when two mismatching data formats are registered with the same
-    name or extention
+    name or extension
     """
 
 

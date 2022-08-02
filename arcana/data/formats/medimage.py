@@ -46,7 +46,7 @@ class MedicalImage(File, metaclass=ABCMeta):
 
     def contents_equal(self, other_image, rms_tol=None, **kwargs):
         """
-        Test whether the (relevant) contents of two image selfs are equal
+        Test whether the (relevant) contents of two image self are equal
         given specific criteria
 
         Parameters
@@ -312,7 +312,7 @@ class Nifti(NeuroImage):
 
 @mark.task
 def edit_side_car(in_file: Path, jq_expr: str, out_file=None) -> Path:
-    """ "Applys ad-hoc edit of JSON side car with JQ query language"""
+    """ "Applies ad-hoc edit of JSON side car with JQ query language"""
     if out_file is None:
         out_file = in_file
     with open(in_file) as f:
@@ -532,7 +532,7 @@ class CustomKspace(Kspace):
     TE : tuple(float)
         The echo times
     B0_strength : float
-        Stength of the B0 field
+        Strength of the B0 field
     B0_dir : 3-tuple(float)
         Direction of the B0 field
     larmor_freq : float

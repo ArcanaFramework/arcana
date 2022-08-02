@@ -141,7 +141,7 @@ def concatenate_reverse(name="concatenate_reverse", **kwargs):
 @mark.task
 def plus_10_to_filenumbers(filenumber_row: DataRow) -> None:
     """Renames all the files it finds in the data row (unresolved), assumes their
-    stems are convertable to an integer, and renames the file so this integer
+    stems are convertible to an integer, and renames the file so this integer
     is +10. Used in the test_run_pipeline_on_row_cli test.
 
     Parameters

@@ -92,7 +92,7 @@ saliences are drawn from :class:`arcana.core.enum.ParamSalience` enum.
 * **required** - no sensible default value, the parameter should be set manually
 
 With the exception of required parameters, default values should be provided
-to the parameter specificiation via the ``default`` keyword. The default
+to the parameter specification via the ``default`` keyword. The default
 value should match the type of the parameter specification. Parameters can
 be any of the following types:
 

@@ -166,7 +166,7 @@ def create_dataset_data_in_repo(
 
 
 # List of intermediatary states can pass through
-# before completing successully
+# before completing successfully
 INCOMPLETE_CS_STATES = (
     "Pending",
     "Running",

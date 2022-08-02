@@ -51,7 +51,7 @@ class DataColumn(metaclass=ABCMeta):
         DataItem
             the data item that matches the criteria/path
 
-        Rasies
+        Raises
         ------
         ArcanaDataMatchError
             if none or multiple items match the criteria/path of the column
@@ -240,7 +240,7 @@ class DataSink(DataColumn):
         typically of interest for publication outputs or whether it is just
         a temporary file in a workflow, and stages in between
     pipeline_name : str
-        The nane of the workflow applied to the dataset to generates the data
+        The name of the workflow applied to the dataset to generates the data
         for the sink
     """
 

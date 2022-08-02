@@ -157,7 +157,7 @@ def apply_analysis():
     raise NotImplementedError
 
 
-@apply.command(name="bids-app", help="Apply a BIDS app to a dataset as a pipleine")
+@apply.command(name="bids-app", help="Apply a BIDS app to a dataset as a pipeline")
 @click.option(
     "--container",
     nargs=2,

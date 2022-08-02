@@ -10,6 +10,9 @@ from __about__ import (
     CODE_URL,
     install_requires,
     tests_require,
+    dev_requires,
+    docs_require,
+    all_requires,
     python_versions,
 )  # noqa pylint: disable=no-name-in-module
 
@@ -34,7 +37,8 @@ setup(
             "run-arcana-pipeline=arcana.cli.deploy:run_pipeline",
         ]
     },
-    extras_require={"test": tests_require},
+    extras_require={"test": tests_require,
+                    "dev": dev_requires},
     cmdclass=versioneer.get_cmdclass(),
     classifiers=(
         [

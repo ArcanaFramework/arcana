@@ -94,7 +94,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
             name=deriv.name, format=deriv.format, row_frequency=deriv.row_frequency
         )
         deriv_tmp_dir = tmp_dir / deriv.name
-        # Create test files, calculate checkums and recorded expected paths
+        # Create test files, calculate checksums and recorded expected paths
         # for inserted files
         all_checksums[deriv.name] = checksums = {}
         fs_paths = []
