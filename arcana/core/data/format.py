@@ -510,7 +510,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             for fs_path in missing:
                 if fs_path:
                     if fs_path.parent.exists():
-                        msg += f"\n\nNeighbouring files of {fs_path} are:\n"
+                        msg += f"\n\nFiles in the directory '{str(fs_path.parent)}' are:\n"
                         msg += '\n'.join(
                             str(p) for p in fs_path.parent.iterdir())
             raise ArcanaFileFormatError(msg)

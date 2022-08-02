@@ -65,12 +65,6 @@ def generate_test_dicom(path: str, num_vols: int, constant_hdr: dict,
     return dcm
 
 
-@dataclass
-class ByteData():
-
-    length: int
-    
-
 def read_dicom(fpath: Path):
     """Reads a DICOM file and returns as dictionary stripped from large binary
     fields
