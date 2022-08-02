@@ -7,22 +7,22 @@ __authors__ = [
     ("Thomas G. Close", "tom.g.close@gmail.com")]
 
 install_requires = [
-    'xnat>=0.3.17',
-    'pydra>=0.19',
+    'docker>=5.0.2',
+    'jq>=1.2.2',
     'click==7.1.2',
-    'pydra-dcm2niix>=1.1.0',
-    'pydra-mrtrix3>=0.1',
-    'pydicom>=1.0.2',
-    'nibabel>=3.2.1',
+    'PyYAML>=6.0',
     'natsort>=7.1.1',
     'fasteners>=0.7.0',
-    'docker>=5.0.2',
-    'neurodocker @ git+https://github.com/ReproNim/neurodocker.git@master',
-    'deepdiff>=3.3',
+    'numexpr>=1.10.1',
     'importlib-metadata>=1.4',
-    'PyYAML>=6.0',
-    'jq>=1.2.2',
-    'numexpr>=1.10.1']
+    'deepdiff>=3.3',
+    'pydicom>=1.0.2',
+    'nibabel>=3.2.1',
+    'neurodocker @ git+https://github.com/ReproNim/neurodocker.git@master',
+    'xnat>=0.3.17',
+    'pydra>=0.19',
+    'pydra-dcm2niix>=1.1.0',
+    'pydra-mrtrix3>=0.1',]
 
 tests_require = [
     'pytest>=5.4.3',
