@@ -371,7 +371,7 @@ def dir_modtime(dpath):
 def parse_value(value):
     """Parses values from string representations"""
     try:
-        value = json.loads(value.replace('\\"', '"'))  #FIXME: Is this value replace really necessary, need to investigate where it is used again
+        value = json.loads(value)  #FIXME: Is this value replace really necessary, need to investigate where it is used again
     except (TypeError, json.decoder.JSONDecodeError):
         pass
     return value

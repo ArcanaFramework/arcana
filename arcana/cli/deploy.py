@@ -568,7 +568,7 @@ def run_pipeline(dataset_id_str, pipeline_name, task_location, parameter,
 
     logger.debug("Pipeline outputs: %s", pipeline_outputs)
 
-    kwargs = {n: json.loads(v) for n, v in configuration}
+    kwargs = {n: parse_value(v) for n, v in configuration}
     if 'name' not in kwargs:
         kwargs['name'] = 'workflow_to_run'
 
