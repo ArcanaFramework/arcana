@@ -211,11 +211,16 @@ def local_package_location(pip_spec: PipSpec, pypi_fallback: bool = False):
                 url_spec = json.load(f)
             url = url_spec["url"]
             vcs_info = url_spec.get('vcs_info', url_spec)  # Fallback to trying to find VCS info in the base url-spec dict
-            if 'vcs' in vcs_info:
-                url = vcs_info['vcs'] + '+' + url
-            if 'commit_id' in vcs_info:
-                url += '@' + vcs_info['commit_id']
-            pip_spec = PipSpec(name=pip_spec.name, url=url, extras=pip_spec.extras)
+            if url.startswith('file://'):
+                pip_spec = PipSpec(
+                    name=pip_spec.name, file_path=url[len('file://'):], extras=pip_spec.extras)
+            else:
+                vcs_info = url_spec.get('vcs_info', url_spec)
+                if 'vcs' in vcs_info:
+                    url = vcs_info['vcs'] + '+' + url
+                if 'commit_id' in vcs_info:
+                    url += '@' + vcs_info['commit_id']
+                pip_spec = PipSpec(name=pip_spec.name, url=url, extras=pip_spec.extras)
         else:
             pip_spec = PipSpec(
                 name=pip_spec.name, version=pkg.version, extras=pip_spec.extras
