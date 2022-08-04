@@ -4,7 +4,7 @@ import os
 import os.path as op
 from pathlib import Path
 import jq
-import attr
+import attrs
 import json
 import pydicom
 import numpy as np

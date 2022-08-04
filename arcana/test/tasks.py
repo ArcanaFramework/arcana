@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-import attr
+import attrs
 from pydra import mark, Workflow
 from arcana.core.data.row import DataRow
 
@@ -17,19 +17,19 @@ def path_manip(dpath, fname):
     return str(path), path.suffix
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class A:
     x: int
     y: int
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class B:
     u: float
     v: float
 
 
-@attr.s(auto_attribs=True)
+@attrs.define(auto_attribs=True)
 class C:
     z: float
 

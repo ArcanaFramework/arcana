@@ -2,7 +2,7 @@ import typing as ty
 import json
 import re
 import logging
-import attr
+import attrs
 from dataclasses import dataclass
 import jq
 from pathlib import Path
@@ -40,7 +40,7 @@ class JsonEdit:
         return parsed
 
 
-@attr.s
+@attrs.define
 class Bids(FileSystem):
     """Repository for working with data stored on the file-system in BIDS format
 
@@ -53,7 +53,7 @@ class Bids(FileSystem):
         EDIT_STR - jq filter used to modify the JSON document.
     """
 
-    json_edits: ty.List[JsonEdit] = attr.ib(
+    json_edits: ty.List[JsonEdit] = attrs.field(
         factory=list, converter=JsonEdit.attr_converter
     )
 

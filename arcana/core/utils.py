@@ -24,7 +24,7 @@ import os.path
 from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
-import attr
+import attrs
 from pydra import Workflow
 from pydra.engine.task import TaskBase
 from pydra.engine.task import FunctionTask, TaskBase

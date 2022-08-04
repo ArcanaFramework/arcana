@@ -1,4 +1,4 @@
-import attr
+import attrs
 import re
 import tempfile
 import logging

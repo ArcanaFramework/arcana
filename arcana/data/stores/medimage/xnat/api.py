@@ -12,7 +12,7 @@ import json
 import re
 from zipfile import ZipFile, BadZipfile
 import shutil
-import attr
+import attrs
 import xnat.session
 from arcana.core.utils import JSON_ENCODING
 from arcana.core.data.store import DataStore
@@ -34,7 +34,7 @@ RELEVANT_DICOM_TAG_TYPES = set(("UI", "CS", "DA", "TM", "SH", "LO", "PN", "ST", 
 COMMAND_INPUT_TYPES = {bool: "bool", str: "string", int: "number", float: "number"}
 
 
-@attr.s
+@attrs.define
 class Xnat(DataStore):
     """
     Access class for XNAT data repositories
@@ -60,14 +60,14 @@ class Xnat(DataStore):
         completed if they are attempting to download the same file_group
     """
 
-    server: str = attr.ib()
-    cache_dir: str = attr.ib(converter=Path)
-    user: str = attr.ib(default=None, metadata={"asdict": False})
-    password: str = attr.ib(default=None, metadata={"asdict": False})
-    check_md5: bool = attr.ib(default=True)
-    race_condition_delay: int = attr.ib(default=30)
-    _cached_datasets: ty.Dict[str, Dataset] = attr.ib(factory=dict, init=False)
-    _login: xnat.session.XNATSession = attr.ib(default=None, init=False)
+    server: str = attrs.field()
+    cache_dir: str = attrs.field(converter=Path)
+    user: str = attrs.field(default=None, metadata={"asdict": False})
+    password: str = attrs.field(default=None, metadata={"asdict": False})
+    check_md5: bool = attrs.field(default=True)
+    race_condition_delay: int = attrs.field(default=30)
+    _cached_datasets: ty.Dict[str, Dataset] = attrs.field(factory=dict, init=False)
+    _login: xnat.session.XNATSession = attrs.field(default=None, init=False)
 
     alias = "xnat"
     MD5_SUFFIX = ".md5.json"

@@ -4,8 +4,8 @@ import typing as ty
 from pathlib import Path
 from itertools import chain
 import re
-import attr
-import attr.filters
+import attrs
+import attrs.filters
 from attr.converters import default_if_none
 from arcana.exceptions import (
     ArcanaNameError,
@@ -25,7 +25,7 @@ from .row import DataRow
 logger = logging.getLogger("arcana")
 
 
-@attr.s
+@attrs.define
 class Dataset:
     """
     A representation of a "dataset", the complete collection of data
@@ -110,27 +110,27 @@ class Dataset:
 
     DEFAULT_NAME = "default"
 
-    id: str = attr.ib(converter=str)
-    store: datastore.DataStore = attr.ib()
-    hierarchy: ty.List[DataSpace] = attr.ib()
-    space: DataSpace = attr.ib(default=None)
-    id_inference: ty.List[ty.Tuple[DataSpace, str]] = attr.ib(
+    id: str = attrs.field(converter=str)
+    store: datastore.DataStore = attrs.field()
+    hierarchy: ty.List[DataSpace] = attrs.field()
+    space: DataSpace = attrs.field(default=None)
+    id_inference: ty.List[ty.Tuple[DataSpace, str]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
-    include: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attr.ib(
+    include: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    exclude: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attr.ib(
+    exclude: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    name: str = attr.ib(default=DEFAULT_NAME)
-    columns: ty.Optional[ty.Dict[str, DataColumn]] = attr.ib(
+    name: str = attrs.field(default=DEFAULT_NAME)
+    columns: ty.Optional[ty.Dict[str, DataColumn]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    pipelines: ty.Dict[str, ty.Any] = attr.ib(
+    pipelines: ty.Dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    _root: DataRow = attr.ib(default=None, init=False, repr=False, eq=False)
+    _root: DataRow = attrs.field(default=None, init=False, repr=False, eq=False)
 
     def __attrs_post_init__(self):
         # Ensure that hierarchy items are in the DataSpace enums not strings
@@ -814,7 +814,7 @@ class Dataset:
         return store_name, id, name
 
 
-@attr.s
+@attrs.define
 class SplitDataset:
     """A dataset created by combining multiple datasets into a conglomerate
 
@@ -822,5 +822,5 @@ class SplitDataset:
     ----------
     """
 
-    source_dataset: Dataset = attr.ib()
-    sink_dataset: Dataset = attr.ib()
+    source_dataset: Dataset = attrs.field()
+    sink_dataset: Dataset = attrs.field()

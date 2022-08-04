@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 import re
 import typing as ty
-import attr
+import attrs
 from operator import attrgetter
 from attr.converters import optional
 
@@ -12,14 +12,14 @@ from ..enum import DataQuality, DataSalience
 from .space import DataSpace
 
 
-@attr.s
+@attrs.define
 class DataColumn(metaclass=ABCMeta):
 
-    name: str = attr.ib()
-    path: str = attr.ib()
-    format = attr.ib()
-    row_frequency: DataSpace = attr.ib()
-    dataset = attr.ib(
+    name: str = attrs.field()
+    path: str = attrs.field()
+    format = attrs.field()
+    row_frequency: DataSpace = attrs.field()
+    dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
     )
 
@@ -65,7 +65,7 @@ class DataColumn(metaclass=ABCMeta):
             item.get(assume_exists=True)
 
 
-@attr.s
+@attrs.define
 class DataSource(DataColumn):
     """
     Specifies the criteria by which an item is selected from a data row to
@@ -99,14 +99,14 @@ class DataSource(DataColumn):
         Flags whether the name_path is a regular expression or not
     """
 
-    quality_threshold: DataQuality = attr.ib(
+    quality_threshold: DataQuality = attrs.field(
         default=None, converter=optional(lambda q: DataQuality[str(q)])
     )
-    order: int = attr.ib(
+    order: int = attrs.field(
         default=None, converter=lambda x: int(x) if x is not None else None
     )
-    header_vals: ty.Dict[str, ty.Any] = attr.ib(default=None)
-    is_regex: bool = attr.ib(
+    header_vals: ty.Dict[str, ty.Any] = attrs.field(default=None)
+    is_regex: bool = attrs.field(
         default=False,
         converter=lambda x: x.lower() == "true" if isinstance(x, str) else x,
     )
@@ -218,7 +218,7 @@ def match_header_vals(item, header_vals):
     return all(item.header(k) == v for k, v in header_vals.items())
 
 
-@attr.s
+@attrs.define
 class DataSink(DataColumn):
     """
     A specification for a file group within a analysis to be derived from a
@@ -244,11 +244,11 @@ class DataSink(DataColumn):
         for the sink
     """
 
-    salience: DataSalience = attr.ib(
+    salience: DataSalience = attrs.field(
         default=DataSalience.supplementary,
         converter=lambda s: DataSalience[str(s)] if s is not None else None,
     )
-    pipeline_name: str = attr.ib(default=None)
+    pipeline_name: str = attrs.field(default=None)
 
     is_sink = True
 

@@ -4,7 +4,7 @@ import tempfile
 import tarfile
 import zipfile
 from pathlib import Path
-import attr
+import attrs
 from pydra import mark
 from pydra.engine.specs import MultiInputObj, MultiOutputObj, File, Directory
 from arcana.core.utils import set_cwd
