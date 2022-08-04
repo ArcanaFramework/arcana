@@ -2,7 +2,7 @@
 name: 'Request a new feature '
 about: Suggest an idea for this project
 title: "[REQUEST FEATURE] "
-labels: feature-request, pipelines-stream
+labels: feature-request, pipelines
 assignees: ''
 
 ---
