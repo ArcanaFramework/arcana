@@ -9,27 +9,21 @@ from enum import Enum
 from copy import copy
 import re
 import inspect
-import cloudpickle as cp
-from pydra.engine.core import Workflow, LazyField, TaskBase
-from pydra.engine.task import FunctionTask
 from pathlib import Path
-import packaging
 from importlib import import_module
 from inspect import isclass
 from itertools import zip_longest
 import pkg_resources
 import os.path
-
-# from nipype.interfaces.matlab import MatlabCommand
 from contextlib import contextmanager
 from collections.abc import Iterable
 import logging
+import cloudpickle as cp
 import attrs
-from pydra import Workflow
-from pydra.engine.task import TaskBase
-from pydra.engine.task import FunctionTask, TaskBase
+from pydra.engine.core import Workflow, LazyField, TaskBase
+from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
-from arcana.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaVersionError
+from arcana.exceptions import ArcanaUsageError
 
 # Avoid arcana.__version__ causing a circular import
 from arcana._version import get_versions
@@ -628,9 +622,9 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: set = None):
             value = serialise_class(value)
         elif hasattr(value, "asdict"):
             value = value.asdict(required_modules=required_modules)
-        elif attr.has(value):  # is class with attrs
+        elif attrs.has(value):  # is class with attrs
             value_class = serialise_class(type(value))
-            value = attr.asdict(
+            value = attrs.asdict(
                 value,
                 recurse=False,
                 filter=filter,
@@ -651,7 +645,7 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: set = None):
             ]
         return value
 
-    dct = attr.asdict(
+    dct = attrs.asdict(
         obj,
         recurse=False,
         filter=lambda a, v: filter(a, v) and a.name not in omit,
@@ -678,10 +672,10 @@ def fromdict(dct: dict, **kwargs):
     **kwargs : dict[str, Any]
         Additional initialisation arguments for the object when it is reinitialised.
         Overrides those stored"""
-    try:
-        arcana_version = dct["pkg_versions"]["arcana"]
-    except (TypeError, KeyError):
-        pass
+    # try:
+    #     arcana_version = dct["pkg_versions"]["arcana"]
+    # except (TypeError, KeyError):
+    #     pass
     #     else:
     #         if packaging.version.parse(arcana_version) < packaging.version.parse(MIN_SERIAL_VERSION):
     #             raise ArcanaVersionError(
@@ -690,8 +684,8 @@ def fromdict(dct: dict, **kwargs):
     #                 f"version is {MIN_SERIAL_VERSION}")
 
     def field_filter(klass, field_name):
-        if attr.has(klass):
-            return field_name in (f.name for f in attr.fields(klass))
+        if attrs.has(klass):
+            return field_name in (f.name for f in attrs.fields(klass))
         else:
             return field_name != "class"
 
@@ -793,7 +787,7 @@ def pydra_asdict(
                 # the "pydra_task" item
                 if workflow is None or inpt_value.name != workflow.name:
                     inputs[inpt_name]["pydra_task"] = inpt_value.name
-            elif inpt_value == attr.NOTHING:
+            elif inpt_value == attrs.NOTHING:
                 inputs[inpt_name] = NOTHING_STR
             else:
                 inputs[inpt_name] = inpt_value
@@ -920,7 +914,7 @@ def show_workflow_errors(
     str
         a string displaying the error messages
     """
-    PKL_FILES = ["_task.pklz", "_result.pklz", "_error.pklz"]
+    # PKL_FILES = ["_task.pklz", "_result.pklz", "_error.pklz"]
     out_str = ""
 
     def load_contents(fpath):
@@ -939,26 +933,26 @@ def show_workflow_errors(
                 continue
             if task:
                 out_str += f"{task.name} ({type(task)}):\n"
-                out_str += f"    inputs:"
+                out_str += "    inputs:"
                 for inpt_name in task.input_names:
                     out_str += (
                         f"\n        {inpt_name}: {getattr(task.inputs, inpt_name)}"
                     )
                 try:
                     out_str += "\n\n    cmdline: " + task.cmdline
-                except:
+                except Exception:
                     pass
             else:
-                out_str += f"Anonymous task:\n"
+                out_str += "Anonymous task:\n"
             error = load_contents(path / "_error.pklz")
             out_str += "\n\n    errors:\n"
             for k, v in error.items():
                 if k == "error message":
                     indent = "            "
                     out_str += (
-                        f"        message:\n"
+                        "        message:\n"
                         + indent
-                        + "".join(l.replace("\n", "\n" + indent) for l in v)
+                        + "".join(ln.replace("\n", "\n" + indent) for ln in v)
                     )
                 else:
                     out_str += f"        {k}: {v}\n"

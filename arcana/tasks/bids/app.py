@@ -4,11 +4,9 @@ import tempfile
 import logging
 import typing as ty
 import shutil
-import logging
 import shlex
 from pathlib import Path
 from dataclasses import dataclass
-from arcana import __version__
 from pydra import Workflow, mark
 from pydra.engine.task import DockerTask, SingularityTask, ShellCommandTask
 from pydra.engine.specs import (
@@ -380,7 +378,7 @@ DEFAULT_BIDS_ID = "sub-DEFAULT"
 @mark.task
 @mark.annotate({"return": {"out": str, "no_prefix": str}})
 def bidsify_id(id):
-    if id == attr.NOTHING:
+    if id == attrs.NOTHING:
         id = DEFAULT_BIDS_ID
     else:
         id = re.sub(r"[^a-zA-Z0-9]", "", id)
@@ -403,7 +401,7 @@ def to_bids(
     row = dataset.row(row_frequency, id)
     with dataset.store:
         for inpt_name, inpt_value in input_values.items():
-            if inpt_value is attr.NOTHING:
+            if inpt_value is attrs.NOTHING:
                 logger.warning("No input provided for '%s' input", inpt_name)
                 continue
             row_item = row[inpt_name]

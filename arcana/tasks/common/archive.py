@@ -24,7 +24,7 @@ TAR_COMPRESSION_TYPES = ["", "gz", "bz2", "xz"]
             str,
             {
                 "help_string": (
-                    f"The type of compression applied to tar file, "
+                    "The type of compression applied to tar file, "
                     "', '".join(TAR_COMPRESSION_TYPES)
                 ),
                 "allowed_values": list(TAR_COMPRESSION_TYPES),
@@ -79,7 +79,7 @@ def extract_tar(
     compression_type: str = "*",
 ):
 
-    if extract_dir == attr.NOTHING:
+    if extract_dir == attrs.NOTHING:
         extract_dir = tempfile.mkdtemp()
     else:
         extract_dir = os.path.abspath(extract_dir)
@@ -103,7 +103,7 @@ def extract_tar(
             int,
             {
                 "help_string": (
-                    f"The type of compression applied to zip file, "
+                    "The type of compression applied to zip file, "
                     "see https://docs.python.org/3/library/zipfile.html#zipfile.ZIP_DEFLATED "
                     "for valid compression types"
                 ),
@@ -129,10 +129,10 @@ def create_zip(
     strict_timestamps=True,
 ):
 
-    if out_file == attr.NOTHING:
+    if out_file == attrs.NOTHING:
         out_file = Path(in_file[0]).name + ".zip"
 
-    if base_dir == attr.NOTHING:
+    if base_dir == attrs.NOTHING:
         base_dir = Path(in_file[0]).parent
 
     out_file = os.path.abspath(out_file)
@@ -172,7 +172,7 @@ def create_zip(
 @mark.annotate({"return": {"out_file": MultiOutputObj}})
 def extract_zip(in_file: File, extract_dir: Directory):
 
-    if extract_dir == attr.NOTHING:
+    if extract_dir == attrs.NOTHING:
         extract_dir = tempfile.mkdtemp()
     else:
         extract_dir = os.path.abspath(extract_dir)

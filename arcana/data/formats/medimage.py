@@ -1,4 +1,3 @@
-from copy import copy
 from abc import ABCMeta, abstractmethod
 import os
 import os.path as op
@@ -272,8 +271,8 @@ class Nifti(NeuroImage):
             out_dir=".",
             name="dcm2niix",
             compress=compress,
-            echo=echo if echo else attr.NOTHING,
-            suffix=component if component else attr.NOTHING,
+            echo=echo if echo else attrs.NOTHING,
+            suffix=component if component else attrs.NOTHING,
         )
         if as_workflow:
             wf.add(node)
@@ -411,7 +410,7 @@ class MrtrixImage(NeuroImage):
             contents = f.read()
         hdr_end = contents.find(b"\nEND\n")
         hdr_contents = contents[:hdr_end].decode("utf-8")
-        hdr = dict(l.split(": ", maxsplit=1) for l in hdr_contents.split("\n"))
+        hdr = dict(ln.split(": ", maxsplit=1) for ln in hdr_contents.split("\n"))
         for key, value in list(hdr.items()):
             if "," in value:
                 try:
@@ -432,7 +431,7 @@ class MrtrixImage(NeuroImage):
         del hdr["mrtrix image"]  # Delete "magic line" at start of header
         array_start = int(hdr["file"].split()[1])
         array = np.asarray(contents[array_start:])
-        dim = [hdr["dim"][int(l[1])] for l in hdr["layout"]]
+        dim = [hdr["dim"][int(ln[1])] for ln in hdr["layout"]]
         array = array.reshape(dim)
         return hdr, array
 

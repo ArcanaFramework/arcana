@@ -6,7 +6,7 @@ from itertools import chain
 import re
 import attrs
 import attrs.filters
-from attr.converters import default_if_none
+from attrs.converters import default_if_none
 from arcana.exceptions import (
     ArcanaNameError,
     ArcanaDataTreeConstructionError,
@@ -538,7 +538,7 @@ class Dataset:
         row_frequency = self.space(0)
         for layer, label in zip(self.hierarchy, tree_path):
             ids[layer] = label
-            regexes = [r for l, r in self.id_inference if l == layer]
+            regexes = [r for ln, r in self.id_inference if ln == layer]
             if not regexes:
                 # If the layer introduces completely new axes then the axis
                 # with the least significant bit (the order of the bits in the
@@ -617,9 +617,7 @@ class Dataset:
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
-        logger.debug(
-            f"Adding new %s row to %s dataset: %s", row_frequency, self.id, ids
-        )
+        logger.debug("Adding new %s row to %s dataset: %s", row_frequency, self.id, ids)
         row_frequency = self._parse_freq(row_frequency)
         row = DataRow(ids, row_frequency, self)
         # Create new data row

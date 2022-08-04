@@ -80,7 +80,7 @@ class Pipeline:
 
     name: str = attrs.field()
     row_frequency: DataSpace = attrs.field()
-    workflow: Workflow = attrs.field(eq=attr.cmp_using(pydra_eq))
+    workflow: Workflow = attrs.field(eq=attrs.cmp_using(pydra_eq))
     inputs: ty.List[Input] = attrs.field(
         converter=lambda lst: [Input(*i) if isinstance(i, Iterable) else i for i in lst]
     )
@@ -90,7 +90,7 @@ class Pipeline:
         ]
     )
     converter_args: ty.Dict[str, dict] = attrs.field(
-        factory=dict, converter=attr.converters.default_if_none(factory=dict)
+        factory=dict, converter=attrs.converters.default_if_none(factory=dict)
     )
     dataset: arcana.core.data.set.Dataset = attrs.field(
         metadata={"asdict": False}, default=None, eq=False, hash=False

@@ -3,7 +3,7 @@ import re
 import typing as ty
 import attrs
 from operator import attrgetter
-from attr.converters import optional
+from attrs.converters import optional
 
 # from arcana.core.data.row import DataRow
 from arcana.core.utils import class_location
@@ -188,7 +188,7 @@ class DataSource(DataColumn):
     def _format_matches(self, matches):
         out_str = ""
         for match in sorted(matches, key=attrgetter("path")):
-            out_str += f"\n    "
+            out_str += "\n    "
             if match.order:
                 out_str += match.order + ": "
             out_str += match.path

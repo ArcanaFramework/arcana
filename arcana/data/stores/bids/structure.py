@@ -6,7 +6,6 @@ import attrs
 from dataclasses import dataclass
 import jq
 from pathlib import Path
-from arcana import __version__
 from ..common import FileSystem
 from arcana.core.data.format import FileGroup
 from arcana.exceptions import ArcanaUsageError, ArcanaEmptyDatasetError
@@ -29,7 +28,7 @@ class JsonEdit:
 
     @classmethod
     def attr_converter(cls, json_edits: list) -> list:
-        if json_edits is None or json_edits is attr.NOTHING:
+        if json_edits is None or json_edits is attrs.NOTHING:
             return []
         parsed = []
         for x in json_edits:
@@ -107,7 +106,7 @@ class Bids(FileSystem):
         if parts[0] == "derivatives":
             if len(parts) < 2:
                 raise ArcanaUsageError(
-                    f"Paths should have another part after 'derivatives'"
+                    "Paths should have another part after 'derivatives'"
                 )
             elif len(parts) == 2 and not file_group.is_dir:
                 raise ArcanaUsageError(

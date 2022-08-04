@@ -1,8 +1,6 @@
-from enum import unique
 import os
 import os.path as op
 from pathlib import Path
-import tempfile
 import typing as ty
 from itertools import chain
 from copy import copy
@@ -11,14 +9,12 @@ import logging
 import shutil
 from abc import ABCMeta, abstractmethod
 import attrs
-from attr.converters import optional
+from attrs.converters import optional
 from pydra.engine.core import LazyField, Workflow
 from arcana.core.utils import class_location, parse_value, func_task, path2varname
 from arcana.exceptions import (
-    ArcanaUnresolvableFormatException,
     ArcanaUsageError,
     ArcanaNameError,
-    ArcanaUsageError,
     ArcanaDataNotDerivedYetError,
     ArcanaFileFormatError,
     ArcanaFormatConversionError,
@@ -511,7 +507,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         return matches[0]
 
     def validate_file_paths(self):
-        attr.validate(self)
+        attrs.validate(self)
         self.exists = True
 
     def _check_paths_exist(self, fs_paths: ty.List[Path]):
@@ -550,7 +546,6 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             from_format=type(self), name="converter", **kwargs
         )
         task.inputs.to_convert = self
-        tmpdir = tempfile.mkdtemp()
         result = task(plugin="serial")
         return result.output.converted
 
