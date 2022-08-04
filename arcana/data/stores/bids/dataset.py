@@ -265,7 +265,7 @@ class BidsDataset(Dataset):
         if self.bids_type == "derivative":
             if "GeneratedBy" not in dct:
                 raise ArcanaError(
-                    "'GeneratedBy' field required for 'derivative' type datasets"
+                    "'GeneratedBy' field required for 'derivative' type " " datasets"
                 )
             self.generated_by = [
                 GeneratorMetadata.fromdict(d) for d in dct["GeneratedBy"]
