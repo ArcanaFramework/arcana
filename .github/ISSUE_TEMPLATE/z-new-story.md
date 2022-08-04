@@ -3,7 +3,7 @@ name: "[INTERNAL] New story"
 about: A Story is a short, simple description of functionality, usually part of a
   feature
 title: "[STORY] "
-labels: pipelines-stream, story
+labels: pipelines, story
 assignees: ''
 
 ---
