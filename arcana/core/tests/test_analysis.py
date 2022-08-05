@@ -1,9 +1,11 @@
+import pytest
 from arcana.data.spaces.medimage import Clinical
 from arcana.test.tasks import concatenate
 from arcana.core.mark import analysis, pipeline, parameter, column
 from arcana.data.formats.common import Zip, Text
 
 
+@pytest.skip
 def test_analysis_validation():
     @analysis(Clinical)
     class AnAnalysis:
