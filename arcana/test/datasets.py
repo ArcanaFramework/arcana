@@ -115,7 +115,7 @@ def access_dataset(blueprint, dataset_path):
         hierarchy=blueprint.hierarchy,
         id_inference=blueprint.id_inference,
     )
-    dataset.blueprint = blueprint  # Stashed in here for future reference by tests
+    dataset.__annotations__["blueprint"] = blueprint
     return dataset
 
 

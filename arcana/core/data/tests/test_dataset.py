@@ -11,7 +11,7 @@ def test_dataset_asdict_roundtrip(dataset):
     undct = fromdict(dct, store=dataset.store)
     assert isinstance(dct, dict)
     assert "store" not in dct
-    del dataset.blueprint
+    del dataset.__annotations__["blueprint"]
     assert dataset == undct
 
 

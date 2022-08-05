@@ -13,7 +13,6 @@ from arcana.test.fixtures.medimage.xnat import (
 )
 from arcana.test.stores.medimage.xnat import install_and_launch_xnat_cs_command
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
-from arcana.core.utils import path2varname
 
 
 PIPELINE_NAME = "test-concatenate"
@@ -125,6 +124,7 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     dataset = run_spec["dataset"]
     params = run_spec["params"]
     command_spec = build_spec["commands"][0]
+    blueprint = dataset.__annotations__["blueprint"]
 
     # Append run_prefix to command name to avoid clash with previous test runs
     command_spec["name"] = "xnat-cs-test" + run_prefix
@@ -144,7 +144,7 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
 
     launch_inputs = {}
 
-    for inpt, scan in zip(xnat_command["inputs"], dataset.blueprint.scans):
+    for inpt, scan in zip(xnat_command["inputs"], blueprint.scans):
         launch_inputs[path2xnatname(inpt["name"])] = scan.name
 
     for pname, pval in params.items():
@@ -166,5 +166,5 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
 
         assert status == "Complete", f"Workflow {workflow_id} failed.\n{out_str}"
 
-        for deriv in dataset.blueprint.derivatives:
+        for deriv in blueprint.derivatives:
             assert list(test_xsession.resources[deriv.name].files) == deriv.filenames

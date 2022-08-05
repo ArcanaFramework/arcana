@@ -5,7 +5,6 @@ import random
 from dataclasses import dataclass
 from tempfile import mkdtemp
 from itertools import product
-import typing as ty
 import xnat
 import xnat4tests
 from arcana.data.stores.medimage.xnat.api import Xnat
@@ -114,7 +113,7 @@ def access_dataset(
     )
     # Stash the args used to create the dataset in attributes so they can be
     # used by tests
-    dataset.blueprint = blueprint
+    dataset.__annotations__["blueprint"] = blueprint
     dataset.access_method = access_method
     return dataset
 

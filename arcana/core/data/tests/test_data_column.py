@@ -1,4 +1,3 @@
-from pathlib import Path
 from operator import mul
 from functools import reduce
 from arcana.core.data.format import FileGroup
@@ -6,7 +5,7 @@ from arcana.core.data.format import FileGroup
 
 def test_column_api_access(dataset):
 
-    bp = dataset.blueprint
+    bp = dataset.__annotations__["blueprint"]
 
     for col_name, formats in bp.expected_formats.items():
         data_format, files = formats[0]
