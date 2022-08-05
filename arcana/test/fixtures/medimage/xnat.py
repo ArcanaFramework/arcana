@@ -120,14 +120,10 @@ MUTABLE_DATASETS = ["basic.api", "multi.api", "basic.cs", "multi.cs"]
 def xnat_dataset(xnat_repository, xnat_archive_dir, request):
     dataset_id, access_method = request.param.split(".")
     blueprint = TEST_XNAT_DATASET_BLUEPRINTS[dataset_id]
+    run_prefix = xnat_repository.__annotations__["run_prefix"]
     with xnat4tests.connect() as login:
-        if (
-            make_project_id(dataset_id, xnat_repository.run_prefix)
-            not in login.projects
-        ):
-            create_dataset_data_in_repo(
-                dataset_id, blueprint, xnat_repository.run_prefix
-            )
+        if make_project_id(dataset_id, run_prefix) not in login.projects:
+            create_dataset_data_in_repo(dataset_id, blueprint, run_prefix)
     return access_dataset(
         dataset_id=dataset_id,
         blueprint=blueprint,
@@ -201,7 +197,7 @@ def xnat_repository(run_prefix):
     )
 
     # Stash a project prefix in the repository object
-    repository.run_prefix = run_prefix
+    repository.__annotations__["run_prefix"] = run_prefix
 
     yield repository
 
@@ -216,8 +212,6 @@ def dummy_niftix(work_dir):
 
     nifti_path = work_dir / "t1w.nii"
     json_path = work_dir / "t1w.json"
-
-    N = 10**6
 
     # Create a random Nifti file to satisfy BIDS parsers
     hdr = nibabel.Nifti1Header()

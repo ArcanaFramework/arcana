@@ -58,12 +58,13 @@ def make_mutable_dataset(
 ):
     """Create a dataset (project) in the test XNAT repository"""
     test_suffix = "mutable" + access_method + str(hex(random.getrandbits(16)))[2:]
+    run_prefix = xnat_repository.__annotations__["run_prefix"]
     # Need to create a new dataset per function so it can be safely modified
     # by the test without messing up other tests.
     create_dataset_data_in_repo(
         dataset_name=dataset_id,
         blueprint=blueprint,
-        run_prefix=xnat_repository.run_prefix,
+        run_prefix=run_prefix,
         test_suffix=test_suffix,
         source_data=source_data,
     )
@@ -91,7 +92,9 @@ def access_dataset(
     dataset_name: str = None,
     test_suffix: str = "",
 ):
-    proj_name = make_project_id(dataset_id, xnat_repository.run_prefix, test_suffix)
+
+    run_prefix = xnat_repository.__annotations__["run_prefix"]
+    proj_name = make_project_id(dataset_id, run_prefix, test_suffix)
     if access_method == "cs":
         # Create a new repository access object that accesses data directly
         # via the XNAT archive directory, like
