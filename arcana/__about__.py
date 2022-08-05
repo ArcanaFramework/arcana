@@ -18,7 +18,7 @@ install_requires = [
     "deepdiff>=3.3",
     "pydicom>=1.0.2",
     "nibabel>=3.2.1",
-    "neurodocker @ git+https://github.com/ReproNim/neurodocker.git@master",
+    "neurodocker>=0.9.1",
     "xnat>=0.3.17",
     "pydra>=0.19",
     "pydra-dcm2niix>=1.1.0",
@@ -39,11 +39,10 @@ docs_require = [
     "numpydoc>=0.6.0",
     "sphinx-argparse>=0.2.0",
     "sphinx-click>=3.1",
-    "furo>=2022.2.14.1]"]
+    "furo>=2022.2.14.1]",
+]
 
-dev_requires = [
-    "black>=21.4b2",
-    "pre-commit>=2.19.0"]
+dev_requires = ["black>=21.4b2", "pre-commit>=2.19.0"]
 
 all_requires = install_requires + tests_require + docs_require + dev_requires
 
