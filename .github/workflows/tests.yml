@@ -31,6 +31,9 @@ jobs:
       with:
         version: v0.3.0
         install: true
+        
+    - name: Install System Packages
+      run: apt install libopenjp2-7
 
     - name: Install Dcm2niix
       run: |
