@@ -18,6 +18,7 @@ def analysis(space: DataSpace):
         cls = attrs.define(cls)
         cls.__annotations__["arcana_dataspace"] = space
         validate_analysis(cls)
+        return cls
 
     return decorator
 

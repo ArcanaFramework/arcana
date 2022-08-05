@@ -8,16 +8,22 @@ def test_analysis_validation():
     @analysis(Clinical)
     class AnAnalysis:
 
-        file1: Zip
-        file2: Text
-        unzipped: Text = column()
+        file1: Zip = column("an arbitrary text file")
+        file2: Text = column("another arbitrary text file")
+        concatenated: Text = column("the output of concatenating file1 and file2")
 
-        a_param: int = parameter()
+        duplicates: int = parameter(
+            "the number of times to duplicate the concatenation"
+        )
 
-        @pipeline(unzipped)
+        @pipeline(concatenated)
         def a_pipeline(self, wf, file1: Text, file2: Text, a_param: int):
 
-            wf.add(concatenate(name="a_node", in_file1=file1, in_file2=file2))
+            wf.add(
+                concatenate(
+                    name="a_node", in_file1=file1, in_file2=file2, duplicates=a_param
+                )
+            )
 
             return wf.a_node.lzout.out
 
