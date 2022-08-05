@@ -117,7 +117,7 @@ def access_dataset(
     # Stash the args used to create the dataset in attributes so they can be
     # used by tests
     dataset.__annotations__["blueprint"] = blueprint
-    dataset.access_method = access_method
+    dataset.__annotations__["access_method"] = access_method
     return dataset
 
 

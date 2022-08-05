@@ -52,6 +52,7 @@ def test_find_rows(xnat_dataset):
 
 def test_get_items(xnat_dataset, caplog):
     blueprint = xnat_dataset.__annotations__["blueprint"]
+    access_method = xnat_dataset.__annotations__["access_method"]
     expected_files = {}
     for scan in blueprint.scans:
         for resource in scan.resources:
@@ -87,12 +88,13 @@ def test_get_items(xnat_dataset, caplog):
                 else:
                     item_files = set(p.name for p in item.fs_paths)
                 assert item_files == files
-    method_str = "direct" if xnat_dataset.access_method == "cs" else "api"
+    method_str = "direct" if access_method == "cs" else "api"
     assert f"{method_str} access" in caplog.text.lower()
 
 
 def test_put_items(mutable_xnat_dataset: Dataset, caplog):
     blueprint = mutable_xnat_dataset.__annotations__["blueprint"]
+    access_method = mutable_xnat_dataset.__annotations__["access_method"]
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
     for deriv in blueprint.derivatives:
@@ -120,22 +122,20 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
         item = row[deriv.name]
         with caplog.at_level(logging.INFO, logger="arcana"):
             item.put(*fs_paths)
-        method_str = "direct" if mutable_xnat_dataset.access_method == "cs" else "api"
+        method_str = "direct" if access_method == "cs" else "api"
         assert f"{method_str} access" in caplog.text.lower()
 
     def check_inserted():
         for deriv in blueprint.derivatives:
             row = next(iter(mutable_xnat_dataset.rows(deriv.row_frequency)))
             item = row[deriv.name]
-            item.get_checksums(
-                force_calculate=(mutable_xnat_dataset.access_method == "cs")
-            )
+            item.get_checksums(force_calculate=(access_method == "cs"))
             assert isinstance(item, deriv.format)
             assert item.checksums == all_checksums[deriv.name]
             item.get()
             assert all(p.exists() for p in item.fs_paths)
 
-    if mutable_xnat_dataset.access_method == "api":
+    if access_method == "api":
         check_inserted()
         # Check read from cached files
         mutable_xnat_dataset.refresh()
