@@ -22,6 +22,7 @@ For further information, please refer to: [SAFe Story](https://www.scaledagilefr
 
 Epic:
 Feature:
+
 ### Description
 
 **User Stories** are the primary means of expressing needed functionality. Since they focus on the user as the subject of interest, and not the system, user stories are value and customer-centric. Recommended form is the "user-voice form":
