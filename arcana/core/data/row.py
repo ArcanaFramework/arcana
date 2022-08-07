@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import typing as ty
-import attr
+import attrs
 from collections import defaultdict
 from abc import ABCMeta
 import arcana.core.data.set
@@ -15,7 +15,7 @@ from ..enum import DataQuality
 from .space import DataSpace
 
 
-@attr.s(auto_detect=True)
+@attrs.define(auto_detect=True)
 class DataRow:
     """A "row" in a dataset "frame" where file-groups and fields can be placed, e.g.
     a session or subject.
@@ -31,14 +31,14 @@ class DataRow:
         A reference to the root of the data tree
     """
 
-    ids: ty.Dict[DataSpace, str] = attr.ib()
-    frequency: DataSpace = attr.ib()
-    dataset: arcana.core.data.set.Dataset = attr.ib(repr=False)
+    ids: ty.Dict[DataSpace, str] = attrs.field()
+    frequency: DataSpace = attrs.field()
+    dataset: arcana.core.data.set.Dataset = attrs.field(repr=False)
     children: ty.DefaultDict[
         DataSpace, ty.Dict[ty.Union[str, ty.Tuple[str]], str]
-    ] = attr.ib(factory=lambda: defaultdict(dict), repr=False)
-    _unresolved = attr.ib(default=None, repr=False)
-    _items = attr.ib(factory=dict, init=False, repr=False)
+    ] = attrs.field(factory=lambda: defaultdict(dict), repr=False)
+    _unresolved = attrs.field(default=None, repr=False)
+    _items = attrs.field(factory=dict, init=False, repr=False)
 
     def __getitem__(self, column_name):
         """Gets the item for the current row
@@ -178,7 +178,7 @@ class DataRow:
         )
 
 
-@attr.s
+@attrs.define
 class UnresolvedDataItem(metaclass=ABCMeta):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
@@ -201,12 +201,12 @@ class UnresolvedDataItem(metaclass=ABCMeta):
         if applicable
     """
 
-    path: str = attr.ib(default=None)
-    row: DataRow = attr.ib(default=None)
-    order: int = attr.ib(default=None)
-    quality: DataQuality = attr.ib(default=DataQuality.usable)
-    provenance: ty.Dict[str, ty.Any] = attr.ib(default=None)
-    _matched: ty.Dict[str, DataItem] = attr.ib(factory=dict, init=False)
+    path: str = attrs.field(default=None)
+    row: DataRow = attrs.field(default=None)
+    order: int = attrs.field(default=None)
+    quality: DataQuality = attrs.field(default=DataQuality.usable)
+    provenance: ty.Dict[str, ty.Any] = attrs.field(default=None)
+    _matched: ty.Dict[str, DataItem] = attrs.field(factory=dict, init=False)
 
     @property
     def item_kwargs(self):
@@ -225,7 +225,7 @@ def normalise_paths(file_paths):
     return file_paths
 
 
-@attr.s
+@attrs.define
 class UnresolvedFileGroup(UnresolvedDataItem):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
@@ -257,8 +257,8 @@ class UnresolvedFileGroup(UnresolvedDataItem):
         to each resource
     """
 
-    file_paths: ty.Sequence[Path] = attr.ib(factory=list, converter=normalise_paths)
-    uris: ty.Dict[str] = attr.ib(default=None)
+    file_paths: ty.Sequence[Path] = attrs.field(factory=list, converter=normalise_paths)
+    uris: ty.Dict[str] = attrs.field(default=None)
 
     @classmethod
     def from_paths(cls, base_dir: Path, paths: ty.List[Path], **kwargs):
@@ -273,7 +273,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
         return [cls(path=p, file_paths=g, **kwargs) for p, g in groups.items()]
 
 
-@attr.s
+@attrs.define
 class UnresolvedField(UnresolvedDataItem):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
@@ -303,7 +303,7 @@ class UnresolvedField(UnresolvedDataItem):
 
     value: ty.Union[
         float, int, str, ty.List[float], ty.List[int], ty.List[str]
-    ] = attr.ib(default=None)
+    ] = attrs.field(default=None)
 
     # def _resolve(self, format):
     #     try:

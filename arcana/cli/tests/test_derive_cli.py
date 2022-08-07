@@ -9,6 +9,7 @@ from arcana.data.formats.common import Text
 def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     dataset_id_str = make_dataset_id_str(saved_dataset)
+    bp = saved_dataset.__annotations__["blueprint"]
     duplicates = 3
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
@@ -42,7 +43,7 @@ def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
     )
     assert result.exit_code == 0, show_cli_trace(result)
     sink = saved_dataset.add_sink("concatenated", Text)
-    assert len(sink) == reduce(mul, saved_dataset.blueprint.dim_lengths)
+    assert len(sink) == reduce(mul, bp.dim_lengths)
     fnames = ["file1.txt", "file2.txt"]
     if concatenate_task.__name__.endswith("reverse"):
         fnames = [f[::-1] for f in fnames]

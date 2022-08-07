@@ -44,6 +44,8 @@ def test_run_bids_pipeline(
         dataset_path=dataset_path, blueprint=blueprint, source_data=nifti_sample_dir
     )
 
+    blueprint = dataset.__annotations__["blueprint"]
+
     dataset_id_str = f"file//{dataset_path}"
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
@@ -61,7 +63,7 @@ def test_run_bids_pipeline(
         "--dataset_space",
         class_location(blueprint.space),
         "--dataset_hierarchy",
-        ",".join([str(l) for l in blueprint.hierarchy]),
+        ",".join([str(ln) for ln in blueprint.hierarchy]),
     ]
     inputs_config = []
     for path, (format, _) in blueprint.expected_formats.items():
@@ -87,7 +89,7 @@ def test_run_bids_pipeline(
     # Add source column to saved dataset
     for fname in ["file1", "file2"]:
         sink = dataset.add_sink(fname, Text)
-        assert len(sink) == reduce(mul, dataset.blueprint.dim_lengths)
+        assert len(sink) == reduce(mul, blueprint.dim_lengths)
         for item in sink:
             item.get(assume_exists=True)
             with open(item.fs_path) as f:

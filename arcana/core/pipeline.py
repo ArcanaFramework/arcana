@@ -1,5 +1,5 @@
 from __future__ import annotations
-import attr
+import attrs
 import typing as ty
 from collections import OrderedDict
 from pathlib import Path
@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import logging
 from copy import copy, deepcopy
 from collections.abc import Iterable
-import attr.converters
+import attrs.converters
 import pydra.mark
 from pydra.engine.core import Workflow
 from arcana.exceptions import (
@@ -49,7 +49,7 @@ class Output:
     produced_format: type
 
 
-@attr.s
+@attrs.define
 class Pipeline:
     """A thin wrapper around a Pydra workflow to link it to sources and sinks
     within a dataset
@@ -78,21 +78,21 @@ class Pipeline:
         the dataset the pipeline has been applied to
     """
 
-    name: str = attr.ib()
-    row_frequency: DataSpace = attr.ib()
-    workflow: Workflow = attr.ib(eq=attr.cmp_using(pydra_eq))
-    inputs: ty.List[Input] = attr.ib(
+    name: str = attrs.field()
+    row_frequency: DataSpace = attrs.field()
+    workflow: Workflow = attrs.field(eq=attrs.cmp_using(pydra_eq))
+    inputs: ty.List[Input] = attrs.field(
         converter=lambda lst: [Input(*i) if isinstance(i, Iterable) else i for i in lst]
     )
-    outputs: ty.List[Output] = attr.ib(
+    outputs: ty.List[Output] = attrs.field(
         converter=lambda lst: [
             Output(*o) if isinstance(o, Iterable) else o for o in lst
         ]
     )
-    converter_args: ty.Dict[str, dict] = attr.ib(
-        factory=dict, converter=attr.converters.default_if_none(factory=dict)
+    converter_args: ty.Dict[str, dict] = attrs.field(
+        factory=dict, converter=attrs.converters.default_if_none(factory=dict)
     )
-    dataset: arcana.core.data.set.Dataset = attr.ib(
+    dataset: arcana.core.data.set.Dataset = attrs.field(
         metadata={"asdict": False}, default=None, eq=False, hash=False
     )
 

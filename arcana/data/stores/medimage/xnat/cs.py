@@ -9,7 +9,7 @@ import logging
 import typing as ty
 from pathlib import Path
 import shutil
-import attr
+import attrs
 from arcana import __version__
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
@@ -20,7 +20,7 @@ from .api import Xnat
 logger = logging.getLogger("arcana")
 
 
-@attr.s
+@attrs.define
 class XnatViaCS(Xnat):
     """
     Access class for XNAT repositories via the XNAT container service plugin.
@@ -53,14 +53,14 @@ class XnatViaCS(Xnat):
     WORK_MOUNT = Path("/work")
     CACHE_DIR = Path("/cache")
 
-    row_frequency: DataSpace = attr.ib(default=Clinical.session)
-    row_id: str = attr.ib(default=None)
-    input_mount: Path = attr.ib(default=INPUT_MOUNT, converter=Path)
-    output_mount: Path = attr.ib(default=OUTPUT_MOUNT, converter=Path)
-    server: str = attr.ib()
-    user: str = attr.ib()
-    password: str = attr.ib()
-    cache_dir: str = attr.ib(default=CACHE_DIR, converter=Path)
+    row_frequency: DataSpace = attrs.field(default=Clinical.session)
+    row_id: str = attrs.field(default=None)
+    input_mount: Path = attrs.field(default=INPUT_MOUNT, converter=Path)
+    output_mount: Path = attrs.field(default=OUTPUT_MOUNT, converter=Path)
+    server: str = attrs.field()
+    user: str = attrs.field()
+    password: str = attrs.field()
+    cache_dir: str = attrs.field(default=CACHE_DIR, converter=Path)
 
     alias = "xnat_via_cs"
 

@@ -18,6 +18,11 @@ Stories are short, simple descriptions of functionality. Stories provide just en
 
 For further information, please refer to: [SAFe Story](https://www.scaledagileframework.com/story/)
 
+### Links
+
+Epic:
+Feature:
+
 ### Description
 
 **User Stories** are the primary means of expressing needed functionality. Since they focus on the user as the subject of interest, and not the system, user stories are value and customer-centric. Recommended form is the "user-voice form":
@@ -36,4 +41,4 @@ Acceptance criteria is used to confirm that the story was completed correctly. C
 
 ### Blocked by
 
-- [ ] 
+- [ ]

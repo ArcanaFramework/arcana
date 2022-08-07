@@ -1,5 +1,7 @@
-from pydra.engine.task import FunctionTask
+import typing as ty
+import json
 from pydra import mark
+from pydra.engine.core import File
 from pydra.engine.specs import BaseSpec, SpecInfo
 from pydra.engine.task import FunctionTask
 from arcana.core.data.format import DataItem, FileGroup
@@ -29,3 +31,10 @@ def identity_task(task_name, fields):
 @mark.annotate({"in_file": FileGroup, "return": {"out_file": FileGroup}})
 def identity_converter(in_file):
     return in_file
+
+
+@mark.task
+def extract_from_json(in_file: File, field_name: str) -> ty.Any:
+    with open(in_file) as f:
+        dct = json.load(f)
+    return dct[field_name]  # FIXME: Should use JSONpath syntax

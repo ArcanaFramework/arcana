@@ -10,12 +10,13 @@ from arcana.test.datasets import create_test_file
 
 
 def test_find_rows(dataset: Dataset):
+    blueprint = dataset.__annotations__["blueprint"]
     for freq in dataset.space:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
         # together to get the combined number of rows expected for that
         # row_frequency
         num_rows = reduce(
-            op.mul, (l for l, b in zip(dataset.blueprint.dim_lengths, freq) if b), 1
+            op.mul, (ln for ln, b in zip(blueprint.dim_lengths, freq) if b), 1
         )
         assert (
             len(dataset.rows(freq)) == num_rows
@@ -23,8 +24,9 @@ def test_find_rows(dataset: Dataset):
 
 
 def test_get_items(dataset: Dataset):
+    blueprint = dataset.__annotations__["blueprint"]
     source_files = {}
-    for fg_name, formats in dataset.blueprint.expected_formats.items():
+    for fg_name, formats in blueprint.expected_formats.items():
         for format, files in formats:
             source_name = fg_name + format.class_name()
             dataset.add_source(source_name, path=fg_name, format=format)
@@ -37,9 +39,10 @@ def test_get_items(dataset: Dataset):
 
 
 def test_put_items(dataset: Dataset):
+    blueprint = dataset.__annotations__["blueprint"]
     all_checksums = {}
     all_fs_paths = {}
-    for name, freq, format, files in dataset.blueprint.derivatives:
+    for name, freq, format, files in blueprint.derivatives:
         dataset.add_sink(name=name, format=format, row_frequency=freq)
         deriv_tmp_dir = Path(mkdtemp())
         # Create test files, calculate checksums and recorded expected paths
@@ -64,7 +67,7 @@ def test_put_items(dataset: Dataset):
 
     def check_inserted():
         """Check that the inserted items are present in the dataset"""
-        for name, freq, format, _ in dataset.blueprint.derivatives:
+        for name, freq, format, _ in blueprint.derivatives:
             for row in dataset.rows(freq):
                 item = row[name]
                 item.get_checksums()

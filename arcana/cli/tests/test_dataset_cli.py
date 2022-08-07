@@ -153,17 +153,16 @@ def test_add_missing_items_cli(dataset, cli_runner):
 
 
 def test_define_cli(dataset, cli_runner):
+    blueprint = dataset.__annotations__["blueprint"]
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     path = "file//" + os.path.abspath(dataset.id)
     # Start generating the arguments for the CLI
-    args = [str(h) for h in dataset.blueprint.hierarchy]
+    args = [str(h) for h in blueprint.hierarchy]
     # Generate "arbitrary" values for included and excluded from dim length
     # and index
     included = []
     excluded = []
-    for i, (dim_length, axis) in enumerate(
-        zip(dataset.blueprint.dim_lengths, dataset.space)
-    ):
+    for i, (dim_length, axis) in enumerate(zip(blueprint.dim_lengths, dataset.space)):
         a, b = get_arbitrary_slice(i, dim_length)
         if i % 2:
             included.append((axis, f"{a}:{b}"))
@@ -182,6 +181,6 @@ def test_define_cli(dataset, cli_runner):
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
     loaded_dataset = Dataset.load(path)
-    assert loaded_dataset.hierarchy == dataset.blueprint.hierarchy
+    assert loaded_dataset.hierarchy == blueprint.hierarchy
     assert loaded_dataset.include == included
     assert loaded_dataset.exclude == excluded

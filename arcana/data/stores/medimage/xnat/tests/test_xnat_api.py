@@ -35,13 +35,14 @@ else:
 
 
 def test_find_rows(xnat_dataset):
+    blueprint = xnat_dataset.__annotations__["blueprint"]
     for freq in Clinical:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
         # together to get the combined number of rows expected for that
         # row_frequency
         num_rows = reduce(
             op.mul,
-            (l for l, b in zip(xnat_dataset.blueprint.dim_lengths, freq) if b),
+            (ln for ln, b in zip(blueprint.dim_lengths, freq) if b),
             1,
         )
         assert len(xnat_dataset.rows(freq)) == num_rows, (
@@ -50,8 +51,10 @@ def test_find_rows(xnat_dataset):
 
 
 def test_get_items(xnat_dataset, caplog):
+    blueprint = xnat_dataset.__annotations__["blueprint"]
+    access_method = xnat_dataset.__annotations__["access_method"]
     expected_files = {}
-    for scan in xnat_dataset.blueprint.scans:
+    for scan in blueprint.scans:
         for resource in scan.resources:
             if resource.format is not None:
                 source_name = scan.name + resource.name
@@ -75,21 +78,26 @@ def test_get_items(xnat_dataset, caplog):
                     )
                     archive_perms = get_perms(archive_dir)
                     current_user = os.getlogin()
-                    msg = f"Error accessing {item} as '{current_user}' when '{archive_dir}' has {archive_perms} permissions"
+                    msg = (
+                        f"Error accessing {item} as '{current_user}' when "
+                        f"'{archive_dir}' has {archive_perms} permissions"
+                    )
                     raise PermissionError(msg)
                 if item.is_dir:
                     item_files = set(os.listdir(item.fs_path))
                 else:
                     item_files = set(p.name for p in item.fs_paths)
                 assert item_files == files
-    method_str = "direct" if xnat_dataset.access_method == "cs" else "api"
+    method_str = "direct" if access_method == "cs" else "api"
     assert f"{method_str} access" in caplog.text.lower()
 
 
 def test_put_items(mutable_xnat_dataset: Dataset, caplog):
+    blueprint = mutable_xnat_dataset.__annotations__["blueprint"]
+    access_method = mutable_xnat_dataset.__annotations__["access_method"]
     all_checksums = {}
     tmp_dir = Path(mkdtemp())
-    for deriv in mutable_xnat_dataset.blueprint.derivatives:
+    for deriv in blueprint.derivatives:
         mutable_xnat_dataset.add_sink(
             name=deriv.name, format=deriv.format, row_frequency=deriv.row_frequency
         )
@@ -114,22 +122,20 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
         item = row[deriv.name]
         with caplog.at_level(logging.INFO, logger="arcana"):
             item.put(*fs_paths)
-        method_str = "direct" if mutable_xnat_dataset.access_method == "cs" else "api"
+        method_str = "direct" if access_method == "cs" else "api"
         assert f"{method_str} access" in caplog.text.lower()
 
     def check_inserted():
-        for deriv in mutable_xnat_dataset.blueprint.derivatives:
+        for deriv in blueprint.derivatives:
             row = next(iter(mutable_xnat_dataset.rows(deriv.row_frequency)))
             item = row[deriv.name]
-            item.get_checksums(
-                force_calculate=(mutable_xnat_dataset.access_method == "cs")
-            )
+            item.get_checksums(force_calculate=(access_method == "cs"))
             assert isinstance(item, deriv.format)
             assert item.checksums == all_checksums[deriv.name]
             item.get()
             assert all(p.exists() for p in item.fs_paths)
 
-    if mutable_xnat_dataset.access_method == "api":
+    if access_method == "api":
         check_inserted()
         # Check read from cached files
         mutable_xnat_dataset.refresh()

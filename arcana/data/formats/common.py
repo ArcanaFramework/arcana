@@ -133,6 +133,7 @@ class Yaml(HierarchicalText):
 
 standard_formats = [Text, Directory, Zip, Tar, TarGz]
 
+
 # General image formats
 class ImageFile(File, metaclass=ABCMeta):
     pass

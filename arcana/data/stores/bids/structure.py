@@ -2,11 +2,10 @@ import typing as ty
 import json
 import re
 import logging
-import attr
+import attrs
 from dataclasses import dataclass
 import jq
 from pathlib import Path
-from arcana import __version__
 from ..common import FileSystem
 from arcana.core.data.format import FileGroup
 from arcana.exceptions import ArcanaUsageError, ArcanaEmptyDatasetError
@@ -29,7 +28,7 @@ class JsonEdit:
 
     @classmethod
     def attr_converter(cls, json_edits: list) -> list:
-        if json_edits is None or json_edits is attr.NOTHING:
+        if json_edits is None or json_edits is attrs.NOTHING:
             return []
         parsed = []
         for x in json_edits:
@@ -40,7 +39,7 @@ class JsonEdit:
         return parsed
 
 
-@attr.s
+@attrs.define
 class Bids(FileSystem):
     """Repository for working with data stored on the file-system in BIDS format
 
@@ -53,7 +52,7 @@ class Bids(FileSystem):
         EDIT_STR - jq filter used to modify the JSON document.
     """
 
-    json_edits: ty.List[JsonEdit] = attr.ib(
+    json_edits: ty.List[JsonEdit] = attrs.field(
         factory=list, converter=JsonEdit.attr_converter
     )
 
@@ -107,7 +106,7 @@ class Bids(FileSystem):
         if parts[0] == "derivatives":
             if len(parts) < 2:
                 raise ArcanaUsageError(
-                    f"Paths should have another part after 'derivatives'"
+                    "Paths should have another part after 'derivatives'"
                 )
             elif len(parts) == 2 and not file_group.is_dir:
                 raise ArcanaUsageError(

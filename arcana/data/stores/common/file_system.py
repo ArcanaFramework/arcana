@@ -8,7 +8,7 @@ import shutil
 import typing as ty
 import logging
 import json
-import attr
+import attrs
 import yaml
 from fasteners import InterProcessLock
 from arcana.exceptions import ArcanaMissingDataException, ArcanaUsageError
@@ -27,7 +27,7 @@ logger = logging.getLogger("arcana")
 special_dir_re = re.compile(r"(__.*__$|\..*|~.*)")
 
 
-@attr.s
+@attrs.define
 class FileSystem(DataStore):
     """
     A Repository class for data stored hierarchically within sub-directories

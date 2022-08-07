@@ -2,7 +2,7 @@ import logging
 from abc import abstractmethod, ABCMeta
 import inspect
 from pathlib import Path
-import attr
+import attrs
 import typing as ty
 import yaml
 from arcana.core.utils import (
@@ -20,7 +20,7 @@ DS = ty.TypeVar("DS", bound="DataStore")
 logger = logging.getLogger("arcana")
 
 
-@attr.s
+@attrs.define
 class DataStore(metaclass=ABCMeta):
     # """
     # Abstract base class for all Repository systems, DaRIS, XNAT and
@@ -28,7 +28,9 @@ class DataStore(metaclass=ABCMeta):
     # classes should implement.
     # """
 
-    _connection_depth = attr.ib(default=0, init=False, hash=False, repr=False, eq=False)
+    _connection_depth = attrs.field(
+        default=0, init=False, hash=False, repr=False, eq=False
+    )
 
     CONFIG_NAME = "stores"
 

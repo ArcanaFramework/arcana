@@ -223,7 +223,7 @@ def test_build_docs_cli(
 def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     dataset_id_str = make_dataset_id_str(saved_dataset)
-    bp = saved_dataset.blueprint
+    bp = saved_dataset.__annotations__["blueprint"]
     duplicates = 1
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
@@ -265,12 +265,12 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
             class_location(bp.space),
             "--dataset_hierarchy",
         ]
-        + [str(l) for l in bp.hierarchy],
+        + [str(ln) for ln in bp.hierarchy],
     )
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source column to saved dataset
     sink = saved_dataset.add_sink("concatenated", Text)
-    assert len(sink) == reduce(mul, saved_dataset.blueprint.dim_lengths)
+    assert len(sink) == reduce(mul, bp.dim_lengths)
     fnames = ["file1.txt", "file2.txt"]
     if concatenate_task.__name__.endswith("reverse"):
         fnames = [f[::-1] for f in fnames]
@@ -285,7 +285,7 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
 def test_run_pipeline_cli_fail(concatenate_task, saved_dataset, cli_runner, work_dir):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     dataset_id_str = make_dataset_id_str(saved_dataset)
-    bp = saved_dataset.blueprint
+    bp = saved_dataset.__annotations__["blueprint"]
     duplicates = 1
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
@@ -326,7 +326,7 @@ def test_run_pipeline_cli_fail(concatenate_task, saved_dataset, cli_runner, work
             class_location(bp.space),
             "--dataset_hierarchy",
         ]
-        + [str(l) for l in bp.hierarchy],
+        + [str(ln) for ln in bp.hierarchy],
     )
     assert (
         result.exit_code == 1
@@ -388,7 +388,7 @@ def test_run_pipeline_on_row_cli(cli_runner, work_dir):
             class_location(bp.space),
             "--dataset_hierarchy",
         ]
-        + [str(l) for l in bp.hierarchy],
+        + [str(ln) for ln in bp.hierarchy],
     )
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -402,8 +402,7 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
     """
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     dataset_id_str = make_dataset_id_str(saved_dataset)
-    bp = saved_dataset.blueprint
-    duplicates = 1
+    bp = saved_dataset.__annotations__["blueprint"]
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     result = cli_runner(
@@ -441,7 +440,7 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
             class_location(bp.space),
             "--dataset_hierarchy",
         ]
-        + [str(l) for l in bp.hierarchy],
+        + [str(ln) for ln in bp.hierarchy],
     )
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source column to saved dataset

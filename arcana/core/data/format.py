@@ -1,8 +1,6 @@
-from enum import unique
 import os
 import os.path as op
 from pathlib import Path
-import tempfile
 import typing as ty
 from itertools import chain
 from copy import copy
@@ -10,15 +8,13 @@ import hashlib
 import logging
 import shutil
 from abc import ABCMeta, abstractmethod
-import attr
-from attr.converters import optional
+import attrs
+from attrs.converters import optional
 from pydra.engine.core import LazyField, Workflow
 from arcana.core.utils import class_location, parse_value, func_task, path2varname
 from arcana.exceptions import (
-    ArcanaUnresolvableFormatException,
     ArcanaUsageError,
     ArcanaNameError,
-    ArcanaUsageError,
     ArcanaDataNotDerivedYetError,
     ArcanaFileFormatError,
     ArcanaFormatConversionError,
@@ -29,7 +25,7 @@ from ..enum import DataQuality
 logger = logging.getLogger("arcana")
 
 
-@attr.s
+@attrs.define
 class DataItem(metaclass=ABCMeta):
     """
     A representation of a file_group within the dataset.
@@ -56,13 +52,13 @@ class DataItem(metaclass=ABCMeta):
         if applicable
     """
 
-    path: str = attr.ib()
-    uri: str = attr.ib(default=None)
-    order: int = attr.ib(default=None)
-    quality: DataQuality = attr.ib(default=DataQuality.usable)
-    exists: bool = attr.ib(default=True)
-    provenance: ty.Dict[str, ty.Any] = attr.ib(default=None)
-    row = attr.ib(default=None)
+    path: str = attrs.field()
+    uri: str = attrs.field(default=None)
+    order: int = attrs.field(default=None)
+    quality: DataQuality = attrs.field(default=DataQuality.usable)
+    exists: bool = attrs.field(default=True)
+    provenance: ty.Dict[str, ty.Any] = attrs.field(default=None)
+    row = attrs.field(default=None)
 
     @abstractmethod
     def get(self, assume_exists=False):
@@ -144,7 +140,7 @@ class DataItem(metaclass=ABCMeta):
         return loc
 
 
-@attr.s
+@attrs.define
 class Field(DataItem):
     """
     A representation of a value field in the dataset.
@@ -165,7 +161,7 @@ class Field(DataItem):
         if applicable
     """
 
-    value: int or float or str = attr.ib(converter=parse_value, default=None)
+    value: int or float or str = attrs.field(converter=parse_value, default=None)
 
     def get(self, assume_exists=False):
         if not assume_exists:
@@ -214,7 +210,7 @@ def absolute_paths_dict(dct):
     return {n: absolute_path(p) for n, p in dict(dct).items()}
 
 
-@attr.s
+@attrs.define
 class FileGroup(DataItem, metaclass=ABCMeta):
     """
     A representation of a file_group within the dataset.
@@ -249,8 +245,8 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         bys relative file name_paths
     """
 
-    fs_path: str = attr.ib(default=None, converter=optional(absolute_path))
-    _checksums: ty.Dict[str, str] = attr.ib(default=None, repr=False, init=False)
+    fs_path: str = attrs.field(default=None, converter=optional(absolute_path))
+    _checksums: ty.Dict[str, str] = attrs.field(default=None, repr=False, init=False)
     # Alternative names for the file format, empty by default overridden in
     # sub-classes where necessary
     alternative_names = ()
@@ -511,7 +507,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         return matches[0]
 
     def validate_file_paths(self):
-        attr.validate(self)
+        attrs.validate(self)
         self.exists = True
 
     def _check_paths_exist(self, fs_paths: ty.List[Path]):
@@ -550,7 +546,6 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             from_format=type(self), name="converter", **kwargs
         )
         task.inputs.to_convert = self
-        tmpdir = tempfile.mkdtemp()
         result = task(plugin="serial")
         return result.output.converted
 
@@ -746,7 +741,7 @@ def encapsulate_paths(
     return file_group
 
 
-@attr.s
+@attrs.define
 class BaseFile(FileGroup):
 
     is_dir = False
@@ -818,13 +813,13 @@ class BaseFile(FileGroup):
         return [cls.ext]
 
 
-@attr.s
+@attrs.define
 class WithSideCars(BaseFile):
     """Base class for file-groups with a primary file and several header or
     side car files
     """
 
-    side_cars: ty.Dict[str, str] = attr.ib(converter=optional(absolute_paths_dict))
+    side_cars: ty.Dict[str, str] = attrs.field(converter=optional(absolute_paths_dict))
 
     @side_cars.default
     def default_side_cars(self):
@@ -1021,7 +1016,7 @@ class WithSideCars(BaseFile):
         return [cls.ext] + list(cls.side_car_exts)
 
 
-@attr.s
+@attrs.define
 class BaseDirectory(FileGroup):
 
     is_dir = True
