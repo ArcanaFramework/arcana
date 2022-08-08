@@ -12,13 +12,17 @@ repos:
     rev: 22.3.0
     hooks:
     -   id: black
+        exclude: ^(arcana/_version\.py|versioneer\.py)$
+        args:
+          - -l 88
 -   repo: https://github.com/codespell-project/codespell
     rev: v2.1.0
     hooks:
     -   id: codespell
-        exclude: ^(pydra/_version\.py|versioneer\.py)$
-        args: [--ignore-words=.codespell-ignorewords]
+        exclude: ^(arcana/_version\.py|versioneer\.py)$
+        args:
+        -   --ignore-words=.codespell-ignorewords
 -   repo: https://github.com/PyCQA/flake8
     rev: 4.0.1
     hooks:
-      - id: flake8
+    -   id: flake8
