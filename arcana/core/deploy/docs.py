@@ -1,6 +1,5 @@
 from pathlib import Path
 import yaml
-from arcana import __version__
 
 
 def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):

@@ -1,7 +1,6 @@
 from tempfile import mkdtemp
 from pathlib import Path
 import shutil
-import pytest
 import docker
 from arcana.data.formats.common import Text, Directory, Json
 from arcana.data.formats.medimage import (
@@ -12,7 +11,6 @@ from arcana.data.formats.medimage import (
     Analyze,
     MrtrixImage,
 )
-from pathlib import Path
 import pytest
 from arcana.test.tasks import (
     add,

@@ -152,17 +152,12 @@ def optional_args(names, args):
 selects comparable items along a dimension of the dataset to serve as
 an input to pipelines and analyses.
 
-Arguments
----------
-dataset_path
-    The path to the dataset including store and dataset name (where
-    applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
-name
-    The name the source will be referenced by
-format
-    The data type of the column. Can be a field (int|float|str|bool),
-    field array (list[int|float|str|bool]) or "file-group"
-    (file, file+header/side-cars or directory)
+DATASET_PATH: The path to the dataset including store and dataset name
+(where applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
+
+NAME: The name the source will be referenced by
+
+FORMAT: The data type of the column. Can be a field (int|float|str|bool), field array (list[int|float|str|bool]) or "file-group" (file, file+header/side-cars or directory)
 """,
 )
 @click.argument("dataset_path")

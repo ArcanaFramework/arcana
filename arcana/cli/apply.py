@@ -1,4 +1,3 @@
-from inspect import Arguments
 import click
 from arcana.core.data.set import Dataset
 from arcana.core.cli import cli
