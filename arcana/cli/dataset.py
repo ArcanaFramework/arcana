@@ -50,7 +50,7 @@ can be arbitrarily specified. dimensions"""
     type=str,
     help=(
         "The rows to include in the dataset. First value is the "
-        "row_frequency of the ID (e.g. 'group', 'subject', 'session') "
+        "row-frequency of the ID (e.g. 'group', 'subject', 'session') "
         "followed by the IDs to be included in the dataset. "
         "If the second arg contains '/' then it is interpreted as "
         "the path to a text file containing a list of IDs"
@@ -65,7 +65,7 @@ can be arbitrarily specified. dimensions"""
     type=str,
     help=(
         "The rows to exclude from the dataset. First value is the "
-        "row_frequency of the ID (e.g. 'group', 'subject', 'session') "
+        "row-frequency of the ID (e.g. 'group', 'subject', 'session') "
         "followed by the IDs to be included in the dataset. "
         "If the second arg contains '/' then it is interpreted as "
         "the path to a text file containing a list of IDs"
@@ -82,7 +82,7 @@ can be arbitrarily specified. dimensions"""
     ),
 )
 @click.option(
-    "--id_inference",
+    "--id-inference",
     nargs=2,
     metavar="<source-regex>",
     multiple=True,
@@ -98,7 +98,7 @@ the group ID can be extracted by providing the ID to source it from
 https://docs.python.org/3/library/re.html) with a named
 groups corresponding to the inferred IDs
 
---id_inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
+--id-inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
 
 """,
 )
@@ -169,11 +169,11 @@ format
 @click.argument("name")
 @click.argument("format")
 @click.option(
-    "--row_frequency",
+    "--row-frequency",
     "-f",
     metavar="<dimension>",
     help=(
-        "The row_frequency that items appear in the dataset (e.g. per "
+        "The row-frequency that items appear in the dataset (e.g. per "
         "'session', 'subject', 'timepoint', 'group', 'dataset' for "
         "medimage:Clinical data dimensions"
     ),
@@ -263,11 +263,11 @@ format
 @click.argument("name")
 @click.argument("format")
 @click.option(
-    "--row_frequency",
+    "--row-frequency",
     "-f",
     metavar="<dimension>",
     help=(
-        "The row_frequency that items appear in the dataset (e.g. per "
+        "The row-frequency that items appear in the dataset (e.g. per "
         "'session', 'subject', 'timepoint', 'group', 'dataset' for "
         "medimage:Clinical data dimensions"
     ),

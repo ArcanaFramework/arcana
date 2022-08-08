@@ -46,7 +46,7 @@ prefix can be dropped for convenience, e.g. ``mediamge:Xnat``.
 .. code-block:: console
 
     $ arcana store add xnat-central medimage:Xnat https://central.xnat.org \
-      --user user123 --cache_dir /work/xnat-cache
+      --user user123 --cache /work/xnat-cache
     Password:
 
 This command will create a YAML configuration file for the store in the
@@ -311,7 +311,7 @@ commands to add columns to a dataset using the CLI.
       --order 1 --quality usable --regex
 
     $ arcana dataset add-sink 'file///data/imaging/my-project' fmri_activation_map \
-      medimage:NiftiGz --row_frequency group
+      medimage:NiftiGz --row-frequency group
 
 
 Alternatively, the :meth:`.Dataset.add_source` and :meth:`.Dataset.add_sink`
@@ -576,7 +576,7 @@ appropriate.
 For datasets where the fundamental hierarchy of the storage system is fixed
 (e.g. XNAT), you may need to infer the data point IDs along an axis
 by decomposing a branch label following a given naming convention.
-This is specified via the ``id_inference`` argument to the dataset definition.
+This is specified via the ``id-inference`` argument to the dataset definition.
 For example, given a an XNAT project with the following structure and a naming
 convention where the subject ID is composed of the group and member ID,
 *<GROUPID><MEMBERID>*, and the session ID is composed of the subject ID and timepoint,
@@ -611,8 +611,8 @@ the IDs to be inferred, e.g.
 .. code-block:: console
 
     $ arcana dataset define 'xnat-central//MYXNATPROJECT' \
-      --id_inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)' \
-      --id_inference session '[A-Z0-9]+_MR(?P<timepoint>\d+)'
+      --id-inference subject '(?P<group>[A-Z]+)_(?P<member>\d+)' \
+      --id-inference session '[A-Z0-9]+_MR(?P<timepoint>\d+)'
 
 .. _data_grids:
 
