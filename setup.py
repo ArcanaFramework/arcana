@@ -37,8 +37,7 @@ setup(
             "run-arcana-pipeline=arcana.cli.deploy:run_pipeline",
         ]
     },
-    extras_require={"test": tests_require,
-                    "dev": dev_requires},
+    extras_require={"test": tests_require, "dev": dev_requires},
     cmdclass=versioneer.get_cmdclass(),
     classifiers=(
         [

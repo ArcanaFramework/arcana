@@ -41,7 +41,7 @@ To configure access to a store via the CLI use the ':ref:`arcana store add`' com
 The store type is specified by the path to the data store sub-class,
 *<module-path>:<class-name>*,  e.g. ``arcana.data.stores.medimage:Xnat``.
 However, if the format is in a submodule of ``arcana.data.stores`` then that
-prefix can be dropped for convenience, e.g. ``mediamge:Xnat``. 
+prefix can be dropped for convenience, e.g. ``mediamge:Xnat``.
 
 .. code-block:: console
 
@@ -147,7 +147,7 @@ the subject level of the tree sit in special *SUBJECT* branches
 .. code-block::
 
     my-dataset
-    ├── subject1    
+    ├── subject1
     │   ├── SUBJECT
     │   │   └── geneomics.dat
     │   ├── timepoint1
@@ -160,7 +160,7 @@ the subject level of the tree sit in special *SUBJECT* branches
     │       └── bold_rest
     ├── subject2
     │   ├── SUBJECT
-    │   │   └── geneomics.dat    
+    │   │   └── geneomics.dat
     │   ├── timepoint1
     │   │   ├── t1w_mprage
     │   │   ├── t2w_space
@@ -240,7 +240,7 @@ instructions on how to specify new file formats and converters between them.
 As with data stores, file formats are specified in the CLI by *<module-path>:<class-name>*,
 e.g. ``arcana.data.formats.common:Text``. However, if the format is in a submodule of
 ``arcana.data.formats`` then that prefix can be dropped for convenience,
-e.g. ``common:Text``. 
+e.g. ``common:Text``.
 
 
 .. _data_columns:
@@ -420,7 +420,7 @@ need to be stored in new sub-branches for timepoints and members, respectively.
     │   └── member2
     │       └── age_diff
     ├── group1
-    │   ├── member1    
+    │   ├── member1
     │   │   ├── timepoint1
     │   │   │   ├── t1w_mprage
     │   │   │   ├── t2w_space
@@ -439,7 +439,7 @@ need to be stored in new sub-branches for timepoints and members, respectively.
     │           ├── t2w_space
     │           └── bold_rest
     └── group2
-        |── member1    
+        |── member1
         │   ├── timepoint1
         │   │   ├── t1w_mprage
         │   │   ├── t2w_space
@@ -497,9 +497,9 @@ axes
     │   ├── group1_timepoint1
     │   │   └── avg_connectivity
     │   ├── group1_timepoint2
-    │   │   └── avg_connectivity    
+    │   │   └── avg_connectivity
     │   ├── group2_timepoint1
-    │   │   └── avg_connectivity    
+    │   │   └── avg_connectivity
     │   └── group2_timepoint2
     │       └── avg_connectivity
     ├── MATCHEDPOINT
@@ -512,7 +512,7 @@ axes
     │   └── member2_timepoint2
     │       └── comparative_trial_performance
     ├── group1
-    │   ├── member1    
+    │   ├── member1
     │   │   ├── timepoint1
     │   │   │   ├── t1w_mprage
     │   │   │   ├── t2w_space
@@ -531,7 +531,7 @@ axes
     │           ├── t2w_space
     │           └── bold_rest
     └── group2
-        |── member1    
+        |── member1
         │   ├── timepoint1
         │   │   ├── t1w_mprage
         │   │   ├── t2w_space
@@ -657,7 +657,7 @@ for different analyses e.g. with different subsets of IDs depending on which
 scans have passed quality control, or to define training and test datasets
 for machine learning. To keep these analyses separate, you can
 assign a dataset definition a name, which is used differentiate between multiple
-definitions stored in the same dataset project/directory. To do this via the 
+definitions stored in the same dataset project/directory. To do this via the
 CLI, append the name to the dataset's ID string separated by '::', e.g.
 
 .. code-block:: console

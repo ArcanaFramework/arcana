@@ -101,9 +101,9 @@ For example, the preceding example would be:
     pipeline_name: fast
     pydra_task: pydra.tasks.fsl.preprocess.fast:FAST
     description:
-        FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of 
-        the brain into different tissue types (Grey Matter, White Matter, 
-        CSF, etc.), whilst also correcting for spatial intensity variations 
+        FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of
+        the brain into different tissue types (Grey Matter, White Matter,
+        CSF, etc.), whilst also correcting for spatial intensity variations
         (also known as bias field or RF inhomogeneities).
     version: 1
     info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
@@ -288,7 +288,7 @@ To run a test via the CLI point the test command to the YAML_ configuration
 file and the data directory containing the test data, e.g.
 
 .. code-block:: console
-    
+
     $ arcana deploy test ./fast.yml ./fast-data
     Pipeline test 'test1' ran successfully and outputs matched saved
     Pipeline test 'test2' ran successfully and outputs matched saved
@@ -348,7 +348,7 @@ Like in the case of a single YAML_ configuration file, the CLI command to test
 a suite of image/command configurations is.
 
 .. code-block:: console
-    
+
     $ arcana deploy test ./mri ./mri-data --output test-results.json
     ...E..F..
 
@@ -369,7 +369,7 @@ Documentation can be automatically generated using from the
 pipeline configuration YAML_ files (see :ref:`Building`) using
 
 .. code-block:: console
-    
+
     $ arcana deploy docs <path-to-yaml-or-directory> <docs-output-dir>
 
 Generated HTML documents will be placed in the output dir, with pipelines

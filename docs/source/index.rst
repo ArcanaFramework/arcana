@@ -54,10 +54,10 @@ tools), at its core, Arcana is a general framework, which could be
 used to design analyses in any field. If you do end up using Arcana in a
 different domain please post an issue about it in the
 `issue tracker <https://github.com/Australian-Imaging-Service/arcana/issues>`_
-to let us know!   
+to let us know!
 
 Arcana also includes tools for deploying pipelines in Docker images that
-can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_  
+can be run in `XNAT's container service <https://wiki.xnat.org/container-service/>`_
 (`BIDS apps <https://bids-apps.neuroimaging.io/>`_ support is planned in the future)
 . These tools can be used
 to maintain continuous integration and deployment of pipeline suites (see
@@ -81,7 +81,7 @@ to maintain continuous integration and deployment of pipeline suites (see
    design_analyses
    adding_formats
    Alternative storage <alternative_stores.rst>
-  
+
 .. toctree::
    :maxdepth: 2
    :caption: Reference
@@ -89,7 +89,7 @@ to maintain continuous integration and deployment of pipeline suites (see
 
    CLI <cli.rst>
    API <api.rst>
-   
+
 
 |
 
