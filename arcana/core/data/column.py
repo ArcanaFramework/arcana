@@ -8,7 +8,7 @@ from attrs.converters import optional
 # from arcana.core.data.row import DataRow
 from arcana.core.utils import class_location
 from arcana.exceptions import ArcanaDataMatchError
-from ..enum import DataQuality, DataSalience
+from ..enum import DataQuality, ColumnSalience
 from .space import DataSpace
 
 
@@ -244,9 +244,9 @@ class DataSink(DataColumn):
         for the sink
     """
 
-    salience: DataSalience = attrs.field(
-        default=DataSalience.supplementary,
-        converter=lambda s: DataSalience[str(s)] if s is not None else None,
+    salience: ColumnSalience = attrs.field(
+        default=ColumnSalience.supplementary,
+        converter=lambda s: ColumnSalience[str(s)] if s is not None else None,
     )
     pipeline_name: str = attrs.field(default=None)
 

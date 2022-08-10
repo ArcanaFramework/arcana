@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class DataSalience(Enum):
+class ColumnSalience(Enum):
     """An enum that holds the salience levels options that can be used when
     specifying data columns. Salience is used to indicate whether it would be best to
     store the data in the data store or whether it can be just stored in
@@ -52,7 +52,7 @@ class DataSalience(Enum):
         return self.name
 
 
-class ParamSalience(Enum):
+class ParameterSalience(Enum):
     """An enum that holds the salience levels options that can be used when
     specifying class parameters. Salience is used to indicate whether the
     parameter should show up by default when listing the available parameters

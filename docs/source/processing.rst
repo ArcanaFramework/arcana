@@ -121,7 +121,7 @@ per timepoint, or on the dataset as a whole (to create single templates/statisti
 Pipeline outputs must be connected to sinks of the same row row_frequency. However,
 inputs can be drawn from columns of any row row_frequency. In this case,
 inputs from more frequent rows will be provided to the pipeline as a list
-sorted by their ID. 
+sorted by their ID.
 
 For example, when the pipeline in the following code-block runs, it will receive
 a list of T1w filenames, run one workflow row, and then sink a single template
@@ -271,7 +271,7 @@ column specs in the class with existing columns in the dataset.
 .. code-block:: console
 
   $ arcana apply analysis 'file///data/a-dataset' example:ExampleAnalysis \
-    --column recorded_datafile datafile \ 
+    --column recorded_datafile datafile \
     --column recorded_metadata metadata \
     --parameter contrast 0.75
 
@@ -371,9 +371,9 @@ overwhelming, so when designing an analysis class it is good practice to set the
 "salience" of columns and parameters (see :ref:`column_param_specs`). The menu
 can then be filtered to show only the more salient columns (the default is to
 only show "supplementary" and above).
-Parameters can similarly be filtered by their salience (see :class:`.ParamSalience`),
+Parameters can similarly be filtered by their salience (see :class:`.ParameterSalience`),
 by default only showing parameters "check" and above.
-For example, the following menu call will show all columns and parameters with 
+For example, the following menu call will show all columns and parameters with
 salience >= 'qa' and 'recommended', respectively.
 
 .. code-block:: console
@@ -390,7 +390,7 @@ remaining only in local cache.
 .. code-block:: console
 
   $ arcana apply analysis 'my-unis-xnat//MYPROJECT:test' example:ExampleAnalysis \
-    --link recorded_datafile datafile \ 
+    --link recorded_datafile datafile \
     --link recorded_metadata metadata \
     --parameter contrast 0.75 \
     --salience_threshold qa
@@ -511,7 +511,7 @@ would look like
           "processor": "intel9999",
           "python-packages": {
             "pydra-mrtrix3": "0.1.0",
-            "arcana-medimage": "0.1.0" 
+            "arcana-medimage": "0.1.0"
           }
         },
       },
@@ -531,7 +531,7 @@ and reprocesse the derivatives, set the ``reprocess`` flag when calling
 
   dataset.derive('fast/gm', reprocess=True)
 
-or 
+or
 
 .. code-block:: console
 

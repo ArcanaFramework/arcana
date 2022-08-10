@@ -72,21 +72,21 @@ Not all columns specifications are created equal. Some refer to key inputs
 to be sanity checked or useful in debugging. Therefore, to avoid the menu being
 cluttered up with non-salient specifications, the "salience" of the columns can
 be specified in addition to a description via the ``salience`` keyword arg.
-Values for ``salience`` must be drawn from the :class:`arcana.core.enum.DataSalience` enum:
+Values for ``salience`` must be drawn from the :class:`arcana.core.enum.ColumnSalience` enum:
 
-* **primary** - Primary input data, e.g. raw data or data reconstructed on the scanner 
-* **output** - Results that would typically be used as main outputs in publications 
-* **supplementary** - Derivatives that would typically only be provided in supplementary material 
-* **qa** - Derivatives that would typically be only kept for quality assurance of analysis workflows 
-* **debug** - Derivatives that would typically only need to be checked when debugging analysis workflows 
-* **temp** - Data only temporarily stored to pass between pipelines 
+* **primary** - Primary input data, e.g. raw data or data reconstructed on the scanner
+* **output** - Results that would typically be used as main outputs in publications
+* **supplementary** - Derivatives that would typically only be provided in supplementary material
+* **qa** - Derivatives that would typically be only kept for quality assurance of analysis workflows
+* **debug** - Derivatives that would typically only need to be checked when debugging analysis workflows
+* **temp** - Data only temporarily stored to pass between pipelines
 
 Descriptions and saliences can also be set for parameter attributes, where the
-saliences are drawn from :class:`arcana.core.enum.ParamSalience` enum.
+saliences are drawn from :class:`arcana.core.enum.ParameterSalience` enum.
 
-* **debug** - typically only needs to be altered for debugging  
+* **debug** - typically only needs to be altered for debugging
 * **recommended** - recommended to keep default value
-* **dependent** - can be dependent on the context of the analysis but default should work for most cases  
+* **dependent** - can be dependent on the context of the analysis but default should work for most cases
 * **check** - the default should be at checked for validity for particular use case
 * **arbitrary** - a default is provided, but it is not clear which value is best
 * **required** - no sensible default value, the parameter should be set manually
@@ -139,7 +139,7 @@ files can be accessed as attributes of the primary ``LazyField``, e.g.
 
     from arcana.data.spaces.medimage import Clinical
     from arcana.tasks.misc import ExtractFromJson
-    from arcana.data.salience import DataSalience as ds
+    from arcana.data.salience import ColumnSalience as ds
 
 
     @analysis(Clinical)
@@ -162,15 +162,15 @@ files can be accessed as attributes of the primary ``LazyField``, e.g.
                 ExtractFromJson(
                     name='extract_tr',
                     # JSON side car is accessed by an attribute of the primary image
-                    in_file=primary_image.json,  
+                    in_file=primary_image.json,
                     field='tr'))
-            
+
             wf.add(
                 ExtractFromJson(
                     name='extract_st',
                     # JSON side car is accessed by an attribute of the primary image
                     in_file=primary_image.json,
-                    x=wf.extract_tr.lzout.out,  
+                    x=wf.extract_tr.lzout.out,
                     field='SliceTiming'))
 
             return wf.extract_tr.lzout.out, wf.extract_st.lzout.out
@@ -226,7 +226,7 @@ station, could look like
 
         # Pipeline is of 'per-station' row_frequency due to row_frequency of output column
         # 'avg_rainfall'
-        @pipeline(avg_rainfall)  
+        @pipeline(avg_rainfall)
         # 'rain' arg is a lazy-field to a list[float] over all dates since the
         # row_frequency of the 'rain' column ('recording') is higher than
         # the pipeline's row_frequency ('station')
@@ -236,7 +236,7 @@ station, could look like
                 average(
                     name='average_rain',
                     measurements=rainfall))
-            
+
             return wf.average_rain.lzout.out
 
         # Pipeline is of 'per-recording' row_frequency due to delta_rainfall
@@ -383,6 +383,4 @@ isn't provided.
 ..             default=[0.5, 0.3, 0.1],
 ..             desc=("Kernel full-width-at-half-maxium values for iterative "
 ..                   "smoothing in preprocessing"),
-..             salience='dependent')    
-
-        
+..             salience='dependent')

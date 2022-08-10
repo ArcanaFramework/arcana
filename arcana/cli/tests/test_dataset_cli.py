@@ -2,7 +2,7 @@ import pytest
 import os.path
 from unittest.mock import patch
 from arcana.core.data.set import Dataset
-from arcana.core.enum import DataQuality, DataSalience
+from arcana.core.enum import DataQuality, ColumnSalience
 from arcana.test.datasets import TestDataSpace
 from arcana.cli.dataset import define, add_source, add_sink, missing_items
 from arcana.data.formats.common import Text
@@ -60,7 +60,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
         path="deriv",
         format=Text,
         row_frequency=TestDataSpace.d,
-        salience=DataSalience.qa,
+        salience=ColumnSalience.qa,
     )
     result = cli_runner(
         add_sink,

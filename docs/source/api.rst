@@ -68,17 +68,17 @@ Processing
 Enums
 ~~~~~
 
-.. autoclass:: arcana.core.enum.DataSalience
+.. autoclass:: arcana.core.enum.ColumnSalience
     :members:
-    :undoc-members:                                  
-    :member-order: bysource  
+    :undoc-members:
+    :member-order: bysource
 
-.. autoclass:: arcana.core.enum.ParamSalience
+.. autoclass:: arcana.core.enum.ParameterSalience
     :members:
-    :undoc-members:                                  
-    :member-order: bysource  
+    :undoc-members:
+    :member-order: bysource
 
 .. autoclass:: arcana.core.enum.DataQuality
     :members:
-    :undoc-members:                                  
-    :member-order: bysource  
+    :undoc-members:
+    :member-order: bysource

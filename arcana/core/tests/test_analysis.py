@@ -29,9 +29,9 @@ def test_analysis_validation():
 
             return wf.a_node.lzout.out
 
-    assert list(AnAnalysis.__annotations__["columns"]) == [
+    assert list(AnAnalysis.__columns__) == [
         "file1",
         "file2",
         "concatenated",
     ]
-    assert list(AnAnalysis.__annotations__["parameters"]) == ["duplicates"]
+    assert list(AnAnalysis.__parameters__) == ["duplicates"]

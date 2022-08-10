@@ -1,7 +1,7 @@
 import attrs
-from .analysis import make_analysis
+from .analysis import make_analysis_class
 from .data.space import DataSpace
-from .enum import DataSalience, ParamSalience
+from .enum import ColumnSalience, ParameterSalience
 
 
 def converter(output_format):
@@ -15,12 +15,12 @@ def converter(output_format):
 
 def analysis(space: DataSpace):
     def decorator(cls):
-        return make_analysis(cls, space)
+        return make_analysis_class(cls, space)
 
     return decorator
 
 
-def column(desc, row_frequency=None, salience=DataSalience.supplementary):
+def column(desc, row_frequency=None, salience=ColumnSalience.supplementary):
     return attrs.field(
         metadata={
             "type": "column",
@@ -31,7 +31,7 @@ def column(desc, row_frequency=None, salience=DataSalience.supplementary):
     )
 
 
-def parameter(desc, salience=ParamSalience.recommended):
+def parameter(desc, salience=ParameterSalience.recommended):
     return attrs.field(
         metadata={"type": "parameter", "desc": desc, "salience": salience}
     )
