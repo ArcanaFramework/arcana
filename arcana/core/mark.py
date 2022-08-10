@@ -1,5 +1,5 @@
 import attrs
-from .analysis import validate_analysis
+from .analysis import make_analysis
 from .data.space import DataSpace
 from .enum import DataSalience, ParamSalience
 
@@ -15,10 +15,7 @@ def converter(output_format):
 
 def analysis(space: DataSpace):
     def decorator(cls):
-        cls = attrs.define(cls)
-        cls.__annotations__["arcana_dataspace"] = space
-        validate_analysis(cls)
-        return cls
+        return make_analysis(cls, space)
 
     return decorator
 

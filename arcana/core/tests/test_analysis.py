@@ -1,11 +1,11 @@
-import pytest
+# import pytest
 from arcana.data.spaces.medimage import Clinical
 from arcana.test.tasks import concatenate
 from arcana.core.mark import analysis, pipeline, parameter, column
 from arcana.data.formats.common import Zip, Text
 
 
-@pytest.mark.skip("Analysis decorators are not fully implemented yet")
+# @pytest.mark.skip("Analysis decorators are not fully implemented yet")
 def test_analysis_validation():
     @analysis(Clinical)
     class AnAnalysis:
@@ -29,4 +29,9 @@ def test_analysis_validation():
 
             return wf.a_node.lzout.out
 
-    assert [p.name for p in AnAnalysis.parameters] == ["a_param"]
+    assert list(AnAnalysis.__annotations__["columns"]) == [
+        "file1",
+        "file2",
+        "concatenated",
+    ]
+    assert list(AnAnalysis.__annotations__["parameters"]) == ["duplicates"]
