@@ -29,7 +29,7 @@ def test_analysis_validation():
 
             return wf.a_node.lzout.out
 
-    assert list(AnAnalysis.__columns__) == [
+    assert list(AnAnalysis.__column_specs__) == [
         "file1",
         "file2",
         "concatenated",

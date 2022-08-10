@@ -46,14 +46,18 @@ def make_analysis_class(cls, space: DataSpace):
             row_freq = attr.metadata["row_frequency"]
             if row_freq is None:
                 row_freq = max(space)  # "Leaf" frequency of the data tree
-            attrs_cls.__columns__[attr.name] = ColumnSpec(
+            attrs_cls.__column_specs__[attr.name] = ColumnSpec(
                 name=attr.name,
                 desc=attr.metadata["desc"],
                 row_frequency=row_freq,
                 salience=attr.metadata["salience"],
             )
         elif attr_type == "parameter":
-            attrs_cls.__parameters__[attr.name] = Parameter(name=attr.name)
+            attrs_cls.__parameters__[attr.name] = Parameter(
+                name=attr.name,
+                desc=attr.metadata["desc"],
+                salience=attr.metadata["salience"],
+            )
         else:
             raise ValueError(f"Unrecognised attrs type '{attr_type}'")
     return attrs_cls
