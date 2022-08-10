@@ -18,12 +18,12 @@ def test_analysis_validation():
             "the number of times to duplicate the concatenation"
         )
 
-        @pipeline(concatenated)
-        def a_pipeline(self, wf, file1: Text, file2: Text, a_param: int):
+        @pipeline("concatenated")
+        def a_pipeline(self, wf, file1: Text, file2: Text, duplicates: int):
 
             wf.add(
                 concatenate(
-                    name="a_node", in_file1=file1, in_file2=file2, duplicates=a_param
+                    name="a_node", in_file1=file1, in_file2=file2, duplicates=duplicates
                 )
             )
 

@@ -37,10 +37,20 @@ def parameter(desc, salience=ParameterSalience.recommended):
     )
 
 
-def pipeline(*outputs):
+def pipeline(*outputs, row_frequency=None, condition=None):
     def decorator(meth):
-        anot = meth.__annotations__
-        anot["arcana_outputs"] = outputs
+        anots = meth.__annotations__["pipeline"] = {}
+        anots["outputs"] = outputs
+        anots["row_frequency"] = row_frequency
+        anots["condition"] = condition
         return meth
 
     return decorator
+
+
+def inherit(attr):
+    """Used to explicitly inherit a column or attribute from a base class so it can be used in a
+    sub class. This is enforced in order to make the code more readable (so other developers
+    can track where columns/parameters are defined
+    """
+    raise NotImplementedError
