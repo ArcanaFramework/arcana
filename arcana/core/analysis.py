@@ -7,6 +7,7 @@ from .enum import ColumnSalience, ParameterSalience
 class ColumnSpec:
 
     name: str
+    format: type
     desc: str
     row_frequency: DataSpace
     salience: ColumnSalience
