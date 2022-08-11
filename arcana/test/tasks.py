@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+import typing as ty
 import attrs
 from pydra import mark, Workflow
 from arcana.core.data.row import DataRow
@@ -159,3 +160,40 @@ def plus_10_to_filenumbers(filenumber_row: DataRow) -> None:
 @mark.task
 def identity_file(in_file: Path) -> Path:
     return in_file
+
+
+@mark.task
+def multiply_contents(
+    in_file: Path,
+    multiplier: ty.Union[int, float],
+    out_file: Path = None,
+    dtype: type = float,
+) -> Path:
+    """Multiplies the contents of the file, assuming that it contains numeric
+    values on separate lines
+
+    Parameters
+    ----------
+    in_file : Path
+        path to input file to multiply the contents of
+    multiplier : int or float
+        the multiplier to apply to the file values
+    out_file : Path
+        the path to write the output file to
+    dtype : type
+        the type to cast the file contents to"""
+
+    if out_file is None:
+        out_file = Path("out_file.txt").absolute()
+
+    with open(in_file) as f:
+        contents = f.read()
+
+    multiplied = []
+    for line in contents.splitlines():
+        multiplied.append(str(dtype(line.strip()) * multiplier))
+
+    with open(out_file, "w") as f:
+        f.write("\n".join(multiplied))
+
+    return out_file

@@ -1,3 +1,4 @@
+import typing as ty
 import attrs
 from .analysis import make_analysis_class
 from .data.space import DataSpace
@@ -54,3 +55,19 @@ def inherit(attr):
     can track where columns/parameters are defined
     """
     raise NotImplementedError
+
+
+@attrs.define
+class Equals:
+
+    parameter: ty.Any
+    value: ty.Any
+
+
+def switch(meth):
+    def decorator(meth):
+        anot = meth.__annotations__
+        anot["arcana_switch"] = True
+        return meth
+
+    return decorator

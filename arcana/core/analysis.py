@@ -52,6 +52,7 @@ def make_analysis_class(cls, space: DataSpace):
     cls.__space__ = space
     cls.__column_specs__ = {}
     cls.__parameters__ = {}
+    cls.__switches__ = {}
 
     attrs_cls = attrs.define(cls)
 
