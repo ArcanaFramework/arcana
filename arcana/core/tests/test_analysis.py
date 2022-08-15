@@ -126,9 +126,11 @@ def test_analysis_override(concat_cls):
 
         @pipeline(
             concatenated,
-            condition=value_of(order) == "reversed"
-            and is_provided(file1)
-            and value_of(multiplier) < 10,
+            condition=(
+                value_of(order) == "reversed"
+                and is_provided(file1)
+                and value_of(multiplier) < 10
+            ),
         )
         def reverse_concat_pipeline(
             self, wf, file1: Text, file2: Text, duplicates: int
