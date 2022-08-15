@@ -19,6 +19,7 @@ class ColumnSpec:
     salience: ColumnSalience
     inherited: bool
     pipelines: ty.Dict = attrs.Factory(dict)
+    checks: ty.List = attrs.Factory(list)
 
 
 @attrs.define
@@ -32,24 +33,35 @@ class Parameter:
 
 
 @attrs.define
-class Switch:
-
-    name: str
-    desc: str
-    inherited: bool
-    method: ty.Callable = None
-    expr: type = None
-
-
-@attrs.define
 class PipelineSpec:
 
     name: str
     desc: str
-    parameters: ty.Tuple[str]
+    parameters: ty.Tuple[Parameter]
     inputs: ty.Tuple[ColumnSpec]
     outputs: ty.Tuple[ColumnSpec]
-    builder: ty.Callable
+    method: ty.Callable
+
+
+@attrs.define
+class CheckSpec:
+
+    name: str
+    column: ColumnSpec
+    desc: str
+    inputs: ty.Tuple[str]
+    parameters: ty.Tuple[ColumnSpec]
+    method: ty.Callable
+
+
+@attrs.define
+class Switch:
+
+    name: str
+    desc: str
+    inputs: ty.Tuple[str]
+    parameters: ty.Tuple[ColumnSpec]
+    method: ty.Callable
 
 
 def menu(cls):
@@ -67,7 +79,6 @@ def make_analysis_class(cls, space: DataSpace):
     cls.__column_specs__ = {}
     cls.__parameters__ = {}
     cls.__switches__ = {}
-    cls.__conditions__ = {}
 
     attrs_cls = attrs.define(cls)
 
@@ -100,14 +111,6 @@ def make_analysis_class(cls, space: DataSpace):
                 salience=attr.metadata["salience"],
                 inherited=attr.inherited,
             )
-        elif attr_type == "switch":
-            switch_specs[attr.name] = Switch(
-                name=attr.name,
-                type=attr.type,
-                desc=attr.metadata["desc"],
-                salience=attr.metadata["salience"],
-                inherited=attr.inherited,
-            )
         else:
             raise ValueError(f"Unrecognised attrs type '{attr_type}'")
 
@@ -118,38 +121,61 @@ def make_analysis_class(cls, space: DataSpace):
             attr_anots = attr.__annotations__
         except AttributeError:
             continue
-        try:
+
+        if arcana.core.mark.PIPELINE_ANNOT in attr_anots:
             anots = attr_anots[arcana.core.mark.PIPELINE_ANNOT]
-        except KeyError:
-            continue
-        outputs = [column_specs[_attr_name(cls, o)] for o in anots["outputs"]]
-        inputs, parameters = get_args_automagically(
-            analysis=attrs_cls, method=attr, index_start=2
-        )
-        pipeline = PipelineSpec(
-            name=attr.__name__,
-            desc=attr.__doc__,
-            inputs=inputs,
-            outputs=outputs,
-            parameters=parameters,
-            builder=attr,
-        )
-        pipelines.append(pipeline)
-        for output in outputs:
-            try:
-                switch = _attr(anots["condition"])
-            except AttributeError:
-                condition = anots["condition"].resolve(attrs_cls)
-            else:
-                condition = _Op("call", (switch,))
-            if condition in output.pipelines:
-                existing = output.pipelines[condition]
-                raise ValueError(
-                    f"Two pipeline builders, '{pipeline.name}' and '{existing.name}', "
-                    f"provide outputs for '{output.name}' "
-                    f"column under the same condition '{condition}'"
-                )
-            output.pipelines[condition] = pipeline
+            outputs = [column_specs[_attr_name(cls, o)] for o in anots["outputs"]]
+            inputs, parameters = get_args_automagically(analysis=attrs_cls, method=attr)
+            pipeline = PipelineSpec(
+                name=attr.__name__,
+                desc=attr.__doc__,
+                inputs=inputs,
+                outputs=outputs,
+                parameters=parameters,
+                method=attr,
+            )
+            pipelines.append(pipeline)
+            for output in outputs:
+                unresolved_condition = anots["condition"]
+                if unresolved_condition is not None:
+                    try:
+                        switch_name = _attr_name(cls, unresolved_condition)
+                    except AttributeError:
+                        condition = unresolved_condition.resolve(cls, attrs_cls)
+                    else:
+                        condition = switch_specs[switch_name]
+                else:
+                    condition = None
+                if condition in output.pipelines:
+                    existing = output.pipelines[condition]
+                    raise ValueError(
+                        f"Two pipeline methods, '{pipeline.name}' and '{existing.name}', "
+                        f"provide outputs for '{output.name}' "
+                        f"column under the same condition '{condition}'"
+                    )
+                output.pipelines[condition] = pipeline
+        elif arcana.core.mark.SWICTH_ANNOT in attr_anots:
+            inputs, parameters = get_args_automagically(
+                analysis=attrs_cls, method=attr, index_start=2
+            )
+            switch_specs[attr.name] = Switch(
+                name=attr.__name__, desc=__doc__, inputs=inputs, parameters=parameters
+            )
+        elif arcana.core.mark.CHECK_ANNOT in attr_anots:
+            column = _attr(cls, attr_anots[arcana.core.mark.CHECK_ANNOT])
+            inputs, parameters = get_args_automagically(
+                analysis=attrs_cls, method=attr, index_start=2
+            )
+            check = CheckSpec(
+                name=attr.__name__,
+                column=column,
+                desc=attr.__doc__,
+                inputs=inputs,
+                parameters=parameters,
+                method=attr,
+            )
+            column.checks.append(check)
+
     return attrs_cls
 
 
@@ -165,7 +191,7 @@ def _attr(cls, counting_attr):
     return cls.__dict__[cls._attr_name(counting_attr)]
 
 
-def get_args_automagically(analysis, method, index_start=1):
+def get_args_automagically(analysis, method):
     """Automagically determine inputs to pipeline or switched by matching
     a methods argument names with columns and parameters of the class
 
@@ -189,7 +215,9 @@ def get_args_automagically(analysis, method, index_start=1):
     inputs = []
     parameters = []
     signature = inspect.signature(method)
-    for arg in list(signature.parameters)[index_start:]:
+    for arg in list(signature.parameters)[
+        2:
+    ]:  # First arg is self and second is the workflow object to add to
         required_type = method.__annotations__.get(arg)
         if arg in analysis.__column_specs__:
             spec = analysis.__column_specs__[arg]
@@ -232,7 +260,7 @@ class _UnresolvedOp:
     operator: str
     operands: ty.Tuple[str]
 
-    def resolve(self, klass):
+    def resolve(self, cls, attrs_cls):
         """Resolves counting attribute operands to the names of attributes in the class
 
         Parameters
@@ -248,16 +276,16 @@ class _UnresolvedOp:
         resolved = []
         for operand in self.operands:
             if isinstance(operand, _UnresolvedOp):
-                operand = operand.resolve(klass)
+                operand = operand.resolve(cls)
             else:
                 try:
-                    operand = _attr_name(klass, operand)
+                    operand = _attr_name(cls, operand)
                 except AttributeError:
                     pass
                 else:
                     if (
                         self.operator == "value_of"
-                        and operand not in klass.__parameters__
+                        and operand not in attrs_cls.__parameters__
                     ):
                         raise ValueError(
                             "'value_of' can only be used on parameter attributes not "
@@ -265,11 +293,16 @@ class _UnresolvedOp:
                         )
                     elif (
                         self.operator == "is_provided"
-                        and operand not in klass.__column_specs__
+                        and operand not in attrs_cls.__column_specs__
                     ):
                         raise ValueError(
                             "'is_provided' can only be used on column specs not "
                             f"'{operand}'"
+                        )
+                    else:
+                        raise ValueError(
+                            f"Cannot apply '{self.operator}' operator to '{operand}' "
+                            "attribute"
                         )
             resolved.append(operand)
         return _Op(self.operator, resolved)

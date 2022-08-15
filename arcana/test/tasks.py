@@ -197,3 +197,27 @@ def multiply_contents(
         f.write("\n".join(multiplied))
 
     return out_file
+
+
+@mark.task
+def check_contents_are_numeric(in_file: Path) -> bool:
+    """Checks the contents of a file to see whether each line can be cast to a numeric
+    value
+
+    Parameters
+    ----------
+    in_file : Path
+        the path to a text file
+
+    Returns
+    -------
+    bool
+        if all the lines are numeric return True
+    """
+    with open(in_file) as f:
+        contents = f.read()
+    try:
+        float(contents.strip())
+    except ValueError:
+        return False
+    return True

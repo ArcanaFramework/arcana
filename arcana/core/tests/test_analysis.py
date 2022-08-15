@@ -1,6 +1,12 @@
 import pytest
+import pydra
 from arcana.data.spaces.common import Samples
-from arcana.test.tasks import concatenate, concatenate_reverse, multiply_contents
+from arcana.test.tasks import (
+    concatenate,
+    concatenate_reverse,
+    multiply_contents,
+    check_contents_are_numeric,
+)
 from arcana.core.mark import (
     analysis,
     pipeline,
@@ -10,6 +16,7 @@ from arcana.core.mark import (
     value_of,
     switch,
     is_provided,
+    check,
 )
 from arcana.data.formats.common import Zip, Text
 from arcana.core.enum import ParameterSalience as ps
@@ -61,6 +68,7 @@ def test_analysis_extend(concat_cls):
 
         doubly_concatenated: Text = column("The doubly concatenated file")
 
+        duplicates = inherit(concat_cls.duplicates)
         second_duplicates: int = parameter(
             "The number of times to duplicate the second concatenation", default=1
         )
@@ -80,6 +88,22 @@ def test_analysis_extend(concat_cls):
             )
 
             return wf.concat.lzout.out
+
+        @check(file3)
+        def check_file3(self, wf, file3: Text, duplicates: int):
+            @pydra.mark.task
+            def num_lines_equals(in_file, num_lines):
+                with open(in_file) as f:
+                    contents = f.read()
+                return len(contents.splitlines()) == num_lines
+
+            wf.add(
+                num_lines_equals(
+                    in_file=file3, num_lines=2 * duplicates, name="num_lines_check"
+                )
+            )
+
+            return wf.num_lines_check.out
 
     assert list(ExtendedConcat.__column_specs__) == [
         "file1",
@@ -113,16 +137,24 @@ def test_analysis_override(concat_cls):
             default="forward",
         )
 
-        @switch()
-        def inputs_are_numeric(self, file1: Text, file2: Text):
-            for file in (file1, file2):
-                with open(file.fs_path) as f:
-                    contents = f.read()
-                try:
-                    float(contents.strip())
-                except ValueError:
-                    return False
-            return True
+        @switch
+        def inputs_are_numeric(self, wf, file1: Text, file2: Text):
+
+            wf.add(check_contents_are_numeric(in_file=file1, name="check_file1"))
+
+            wf.add(check_contents_are_numeric(in_file=file2, name="check_file2"))
+
+            @pydra.mark.task
+            def boolean_and(val1, val2) -> bool:
+                return val1 and val2
+
+            wf.add(
+                boolean_and(
+                    val1=wf.check_file1.out, val2=wf.check_file2.out, name="bool_and"
+                )
+            )
+
+            return wf.bool_and.out
 
         @pipeline(
             concatenated,

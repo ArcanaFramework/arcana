@@ -6,8 +6,9 @@ from .enum import ColumnSalience, ParameterSalience
 PIPELINE_ANNOT = "__arcana_pipeline__"
 CONVERTER_ANNOT = "__arcana_converter__"
 SWICTH_ANNOT = "__arcana_switch__"
+CHECK_ANNOT = "__arcana_check__"
+
 ATTR_TYPE = "__arcana_type__"
-QC_ANNOT = "__arcana_qc__"
 
 
 def converter(output_format):
@@ -77,7 +78,7 @@ def is_provided(column):
     return _UnresolvedOp((("is_provided", column),))
 
 
-def switch(in_task=True):
+def switch(meth):
     """Designates a method as being a "switch" that is used to determine which version
     of a pipeline is run
 
@@ -86,23 +87,17 @@ def switch(in_task=True):
     in_task : bool
         whether to wrap the switch in its own task or whether it adds its own nodes
         explicitly"""
-    if not in_task:
-        raise NotImplementedError
-
-    def decorator(meth):
-        anot = meth.__annotations__
-        anot[SWICTH_ANNOT] = True
-        return meth
-
+    anot = meth.__annotations__
+    anot[SWICTH_ANNOT] = True
     raise NotImplementedError
-    return decorator
+    return meth
 
 
-def qc(column):
+def check(column):
     """Decorate a method, which adds a quality control check to be run against a column"""
 
     def decorator(meth):
-        meth.__annotations__[QC_ANNOT] = column
+        meth.__annotations__[CHECK_ANNOT] = column
         return meth
 
     return decorator
