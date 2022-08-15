@@ -7,8 +7,9 @@ from arcana.core.mark import (
     parameter,
     column,
     inherit,
-    Equals,
+    value_of,
     switch,
+    is_provided,
 )
 from arcana.data.formats.common import Zip, Text
 from arcana.core.enum import ParameterSalience as ps
@@ -27,7 +28,7 @@ def concat_cls():
             "the number of times to duplicate the concatenation", default=1
         )
 
-        @pipeline("concatenated")
+        @pipeline(concatenated)
         def a_pipeline(self, wf, file1: Text, file2: Text, duplicates: int):
 
             wf.add(
@@ -123,7 +124,12 @@ def test_analysis_override(concat_cls):
                     return False
             return True
 
-        @pipeline(concatenated, condition=Equals(order, "reversed"))
+        @pipeline(
+            concatenated,
+            condition=value_of(order) == "reversed"
+            and is_provided(file1)
+            and value_of(multiplier) < 10,
+        )
         def reverse_concat_pipeline(
             self, wf, file1: Text, file2: Text, duplicates: int
         ):

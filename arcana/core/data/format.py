@@ -12,6 +12,7 @@ import attrs
 from attrs.converters import optional
 from pydra.engine.core import LazyField, Workflow
 from arcana.core.utils import class_location, parse_value, func_task, path2varname
+from arcana.core.mark import CONVERTER_ANNOT
 from arcana.exceptions import (
     ArcanaUsageError,
     ArcanaNameError,
@@ -646,7 +647,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         for attr_name in dir(cls):
             meth = getattr(cls, attr_name)
             try:
-                converts_from = meth.__annotations__["arcana_converter"]
+                converts_from = meth.__annotations__[CONVERTER_ANNOT]
             except (AttributeError, KeyError):
                 pass
             else:
@@ -654,9 +655,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
                     from_format, converts_from
                 ):
                     if converter:
-                        prev_converts_from = converter.__annotations__[
-                            "arcana_converter"
-                        ]
+                        prev_converts_from = converter.__annotations__[CONVERTER_ANNOT]
                         if issubclass(converts_from, prev_converts_from):
                             converter = meth
                         elif not issubclass(prev_converts_from, converts_from):

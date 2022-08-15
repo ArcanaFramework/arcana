@@ -1,14 +1,19 @@
-import typing as ty
 import attrs
-from .analysis import make_analysis_class
+from .analysis import _UnresolvedOp, make_analysis_class
 from .data.space import DataSpace
 from .enum import ColumnSalience, ParameterSalience
+
+PIPELINE_ANNOT = "__arcana_pipeline__"
+CONVERTER_ANNOT = "__arcana_converter__"
+SWICTH_ANNOT = "__arcana_switch__"
+ATTR_TYPE = "__arcana_type__"
+QC_ANNOT = "__arcana_qc__"
 
 
 def converter(output_format):
     def decorator(meth):
         anot = meth.__annotations__
-        anot["arcana_converter"] = output_format
+        anot[CONVERTER_ANNOT] = output_format
         return meth
 
     return decorator
@@ -24,7 +29,7 @@ def analysis(space: DataSpace):
 def column(desc, row_frequency=None, salience=ColumnSalience.supplementary):
     return attrs.field(
         metadata={
-            "type": "column",
+            ATTR_TYPE: "column",
             "desc": desc,
             "row_frequency": row_frequency,
             "salience": salience,
@@ -32,17 +37,24 @@ def column(desc, row_frequency=None, salience=ColumnSalience.supplementary):
     )
 
 
-def parameter(desc, salience=ParameterSalience.recommended):
+def parameter(desc, default=None, salience=ParameterSalience.recommended):
+    if default is None and salience != ParameterSalience.arbitrary:
+        raise ValueError(
+            "Default value must be provided unless parameter salience is '"
+            + str(ParameterSalience.arbitrary)
+            + "'"
+        )
     return attrs.field(
-        metadata={"type": "parameter", "desc": desc, "salience": salience}
+        metadata={ATTR_TYPE: "parameter", "desc": desc, "salience": salience}
     )
 
 
-def pipeline(*outputs, row_frequency=None, condition=None):
+def pipeline(*outputs, condition=None):
+    """Decorate a instance method that adds nodes to an existing Pydra workflow"""
+
     def decorator(meth):
-        anots = meth.__annotations__["pipeline"] = {}
+        anots = meth.__annotations__[PIPELINE_ANNOT] = {}
         anots["outputs"] = outputs
-        anots["row_frequency"] = row_frequency
         anots["condition"] = condition
         return meth
 
@@ -57,17 +69,28 @@ def inherit(attr):
     raise NotImplementedError
 
 
-@attrs.define
-class Equals:
+def value_of(param):
+    return _UnresolvedOp((("value_of", param),))
 
-    parameter: ty.Any
-    value: ty.Any
+
+def is_provided(column):
+    return _UnresolvedOp((("is_provided", column),))
 
 
 def switch(meth):
+    """Designates a method as being a "switch" that is used to determine which version
+    of a pipeline is run"""
+    anot = meth.__annotations__
+    anot[SWICTH_ANNOT] = True
+    raise NotImplementedError
+    return meth
+
+
+def qc(column):
+    """Decorate a method, which adds a quality control check to be run against a column"""
+
     def decorator(meth):
-        anot = meth.__annotations__
-        anot["arcana_switch"] = True
+        meth.__annotations__[QC_ANNOT] = column
         return meth
 
     return decorator
