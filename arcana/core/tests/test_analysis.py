@@ -113,7 +113,7 @@ def test_analysis_override(concat_cls):
             default="forward",
         )
 
-        @switch
+        @switch()
         def inputs_are_numeric(self, file1: Text, file2: Text):
             for file in (file1, file2):
                 with open(file.fs_path) as f:

@@ -77,13 +77,25 @@ def is_provided(column):
     return _UnresolvedOp((("is_provided", column),))
 
 
-def switch(meth):
+def switch(in_task=True):
     """Designates a method as being a "switch" that is used to determine which version
-    of a pipeline is run"""
-    anot = meth.__annotations__
-    anot[SWICTH_ANNOT] = True
+    of a pipeline is run
+
+    Parameters
+    ----------
+    in_task : bool
+        whether to wrap the switch in its own task or whether it adds its own nodes
+        explicitly"""
+    if not in_task:
+        raise NotImplementedError
+
+    def decorator(meth):
+        anot = meth.__annotations__
+        anot[SWICTH_ANNOT] = True
+        return meth
+
     raise NotImplementedError
-    return meth
+    return decorator
 
 
 def qc(column):

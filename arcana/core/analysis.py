@@ -123,7 +123,7 @@ def make_analysis_class(cls, space: DataSpace):
         except KeyError:
             continue
         outputs = [column_specs[_attr_name(cls, o)] for o in anots["outputs"]]
-        inputs, parameters = _automagic_args(
+        inputs, parameters = get_args_automagically(
             analysis=attrs_cls, method=attr, index_start=2
         )
         pipeline = PipelineSpec(
@@ -141,9 +141,14 @@ def make_analysis_class(cls, space: DataSpace):
             except AttributeError:
                 condition = anots["condition"].resolve(attrs_cls)
             else:
-                condition = _Op([("call", switch)])
-            if condition in pipelines:
-                raise ValueError()
+                condition = _Op("call", (switch,))
+            if condition in output.pipelines:
+                existing = output.pipelines[condition]
+                raise ValueError(
+                    f"Two pipeline builders, '{pipeline.name}' and '{existing.name}', "
+                    f"provide outputs for '{output.name}' "
+                    f"column under the same condition '{condition}'"
+                )
             output.pipelines[condition] = pipeline
     return attrs_cls
 
@@ -160,7 +165,7 @@ def _attr(cls, counting_attr):
     return cls.__dict__[cls._attr_name(counting_attr)]
 
 
-def _automagic_args(analysis, method, index_start=1):
+def get_args_automagically(analysis, method, index_start=1):
     """Automagically determine inputs to pipeline or switched by matching
     a methods argument names with columns and parameters of the class
 
@@ -209,14 +214,15 @@ class _Op:
     operands: ty.Tuple[str]
 
     def evaluate(self, analysis):
+        operands = [o.evaluate(analysis) for o in self.operands]
         if self.operator == "value_of":
-            assert len(self.operands) == 1
-            val = getattr(analysis, self.operands[0])
+            assert len(operands) == 1
+            val = getattr(analysis, operands[0])
         elif self.operator == "is_provided":
-            assert len(self.operands) == 1
-            val = getattr(analysis, self.operand) is not None
+            assert len(operands) == 1
+            val = getattr(analysis, operands[0]) is not None
         else:
-            val = getattr(operator_module, self.operator)(*self.operands)
+            val = getattr(operator_module, self.operator)(*operands)
         return val
 
 
