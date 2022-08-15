@@ -12,7 +12,7 @@ from arcana.core.mark import (
     pipeline,
     parameter,
     column,
-    inherit,
+    inherit_from,
     value_of,
     switch,
     is_provided,
@@ -63,12 +63,12 @@ def test_analysis_extend(concat_cls):
     @analysis(Samples)
     class ExtendedConcat(concat_cls):
 
-        concatenated = inherit(concat_cls.concatenated)
+        concatenated = inherit_from(concat_cls)
         file3: Text = column("Another file to concatenate")
 
         doubly_concatenated: Text = column("The doubly concatenated file")
 
-        duplicates = inherit(concat_cls.duplicates)
+        duplicates = inherit_from(concat_cls)
         second_duplicates: int = parameter(
             "The number of times to duplicate the second concatenation", default=1
         )
@@ -122,12 +122,12 @@ def test_analysis_override(concat_cls):
     @analysis(Samples)
     class OverridenConcat(concat_cls):
 
-        file1: Zip = inherit(concat_cls.file1)
-        file2: Text = inherit(concat_cls.file2)
-        concatenated: Text = inherit(concat_cls.concatenated)
+        file1: Zip = inherit_from(concat_cls)
+        file2: Text = inherit_from(concat_cls)
+        concatenated: Text = inherit_from(concat_cls)
         multiplied: Text = column("contents of the concatenated files are multiplied")
 
-        duplicates = inherit(concat_cls.duplicates, default=2)
+        duplicates = inherit_from(concat_cls, default=2)
         multiplier: int = parameter(
             "the multiplier used to apply", salience=ps.arbitrary
         )

@@ -62,7 +62,7 @@ def pipeline(*outputs, condition=None):
     return decorator
 
 
-def inherit(attr):
+def inherit_from(base):
     """Used to explicitly inherit a column or attribute from a base class so it can be used in a
     sub class. This is enforced in order to make the code more readable (so other developers
     can track where columns/parameters are defined
