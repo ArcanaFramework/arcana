@@ -36,7 +36,7 @@ def concat_cls():
         )
 
         @pipeline(concatenated)
-        def a_pipeline(self, wf, file1: Text, file2: Text, duplicates: int):
+        def concat_pipeline(self, wf, file1: Text, file2: Text, duplicates: int):
 
             wf.add(
                 concatenate(
@@ -51,32 +51,48 @@ def concat_cls():
 
 def test_analysis_basic(concat_cls):
 
+    assert list(concat_cls.__parameters__) == ["duplicates"]
+
     assert sorted(concat_cls.__column_specs__) == [
         "concatenated",
         "file1",
         "file2",
     ]
-    assert list(concat_cls.__parameters__) == ["duplicates"]
-
-    file1 = concat_cls.__column_specs__["file1"]
-    assert file1.type is Zip
-    assert file1.row_frequency == Samples.sample
-    assert file1.salience == cs.primary
-
-    file2 = concat_cls.__column_specs__["file2"]
-    assert file2.type is Text
-    assert file2.row_frequency == Samples.sample
-    assert file2.salience == cs.primary
-
-    concatenated = concat_cls.__column_specs__["concatenated"]
-    assert concatenated.type is Text
-    assert concatenated.row_frequency == Samples.sample
-    assert concatenated.salience == cs.supplementary
 
     duplicates = concat_cls.__parameters__["duplicates"]
     assert duplicates.type is int
     assert duplicates.default == 1
     assert duplicates.salience == ps.recommended
+    assert not duplicates.inherited
+
+    file1 = concat_cls.__column_specs__["file1"]
+    assert file1.type is Zip
+    assert file1.row_frequency == Samples.sample
+    assert file1.salience == cs.primary
+    assert not file1.inherited
+    assert not file1.checks
+
+    file2 = concat_cls.__column_specs__["file2"]
+    assert file2.type is Text
+    assert file2.row_frequency == Samples.sample
+    assert file2.salience == cs.primary
+    assert not file2.inherited
+    assert not file2.checks
+
+    concatenated = concat_cls.__column_specs__["concatenated"]
+    assert concatenated.type is Text
+    assert concatenated.row_frequency == Samples.sample
+    assert concatenated.salience == cs.supplementary
+    assert not concatenated.inherited
+    assert sorted(concatenated.pipelines) == [None]
+    assert not concatenated.checks
+
+    concat_pipeline = concatenated.pipelines[None]
+    assert concat_pipeline.name == "concat_pipeline"
+    assert concat_pipeline.parameters == [duplicates]
+    assert concat_pipeline.inputs == [file1, file2]
+    assert concat_pipeline.outputs == [concatenated]
+    assert concat_pipeline.method is concat_cls.concat_pipeline
 
 
 def test_analysis_extend(concat_cls):
@@ -110,7 +126,7 @@ def test_analysis_extend(concat_cls):
             return wf.concat.lzout.out
 
         @check(file3)
-        def check_file3(self, wf, file3: Text, duplicates: int):
+        def num_lines_check(self, wf, file3: Text, duplicates: int):
             """Checks the number of lines in the concatenated file to see whether they
             match what is expected for the number of duplicates specified"""
 
@@ -128,6 +144,8 @@ def test_analysis_extend(concat_cls):
 
             return wf.num_lines_check.out
 
+    assert sorted(ExtendedConcat.__parameters__) == ["duplicates", "second_duplicates"]
+
     assert sorted(ExtendedConcat.__column_specs__) == [
         "concatenated",
         "doubly_concatenated",
@@ -135,42 +153,64 @@ def test_analysis_extend(concat_cls):
         "file2",
         "file3",
     ]
-    assert sorted(ExtendedConcat.__parameters__) == ["duplicates", "second_duplicates"]
-
-    file1 = ExtendedConcat.__column_specs__["file1"]
-    assert file1.type is Zip
-    assert file1.row_frequency == Samples.sample
-    assert file1.salience == cs.primary
-
-    file2 = ExtendedConcat.__column_specs__["file2"]
-    assert file2.type is Text
-    assert file2.row_frequency == Samples.sample
-    assert file2.salience == cs.primary
-
-    file3 = ExtendedConcat.__column_specs__["file3"]
-    assert file3.type is Text
-    assert file3.row_frequency == Samples.sample
-    assert file3.salience == cs.primary
-
-    concatenated = ExtendedConcat.__column_specs__["concatenated"]
-    assert concatenated.type is Text
-    assert concatenated.row_frequency == Samples.sample
-    assert concatenated.salience == cs.supplementary
-
-    doubly_concatenated = ExtendedConcat.__column_specs__["doubly_concatenated"]
-    assert doubly_concatenated.type is Text
-    assert doubly_concatenated.row_frequency == Samples.sample
-    assert doubly_concatenated.salience == cs.supplementary
 
     duplicates = ExtendedConcat.__parameters__["duplicates"]
     assert duplicates.type is int
     assert duplicates.default == 1
     assert duplicates.salience == ps.recommended
+    assert duplicates.inherited
 
     second_duplicates = ExtendedConcat.__parameters__["second_duplicates"]
     assert second_duplicates.type is int
     assert second_duplicates.default == 1
     assert second_duplicates.salience == ps.recommended
+    assert not second_duplicates.inherited
+
+    file1 = ExtendedConcat.__column_specs__["file1"]
+    assert file1.type is Zip
+    assert file1.row_frequency == Samples.sample
+    assert file1.salience == cs.primary
+    assert file1.inherited
+    assert not file1.checks
+
+    file2 = ExtendedConcat.__column_specs__["file2"]
+    assert file2.type is Text
+    assert file2.row_frequency == Samples.sample
+    assert file2.salience == cs.primary
+    assert file2.inherited
+    assert not file2.checks
+
+    file3 = ExtendedConcat.__column_specs__["file3"]
+    assert file3.type is Text
+    assert file3.row_frequency == Samples.sample
+    assert file3.salience == cs.primary
+    assert not file3.inherited
+    assert len(file3.checks) == 1
+
+    file3_check = file3.checks[0]
+    assert file3_check.name == "num_lines_check"
+
+    concatenated = ExtendedConcat.__column_specs__["concatenated"]
+    assert concatenated.type is Text
+    assert concatenated.row_frequency == Samples.sample
+    assert concatenated.salience == cs.supplementary
+    assert concatenated.inherited
+    assert not concatenated.checks
+    assert sorted(concatenated.pipelines) == [None]
+
+    doubly_concatenated = ExtendedConcat.__column_specs__["doubly_concatenated"]
+    assert doubly_concatenated.type is Text
+    assert doubly_concatenated.row_frequency == Samples.sample
+    assert not doubly_concatenated.inherited
+    assert not doubly_concatenated.checks
+    assert doubly_concatenated.salience == cs.supplementary
+
+    concat_pipeline = concatenated.pipelines[None]
+    assert concat_pipeline.name == "concat_pipeline"
+    assert concat_pipeline.parameters == [duplicates]
+    assert concat_pipeline.inputs == [file1, file2]
+    assert concat_pipeline.outputs == [concatenated]
+    assert concat_pipeline.method is concat_cls.concat_pipeline
 
 
 def test_analysis_override(concat_cls):
@@ -261,33 +301,44 @@ def test_analysis_override(concat_cls):
     assert file1.type is Zip
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
+    assert file1.inherited
+    assert not file1.checks
 
     file2 = OverridenConcat.__column_specs__["file2"]
     assert file2.type is Text
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
+    assert file2.inherited
+    assert not file2.checks
 
     concatenated = OverridenConcat.__column_specs__["concatenated"]
     assert concatenated.type is Text
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
+    assert concatenated.inherited
+    assert not concatenated.checks
 
     multiplied = OverridenConcat.__column_specs__["multiplied"]
     assert multiplied.type is Text
     assert multiplied.row_frequency == Samples.sample
     assert multiplied.salience == cs.supplementary
+    assert not multiplied.inherited
+    assert not multiplied.checks
 
     duplicates = OverridenConcat.__parameters__["duplicates"]
     assert duplicates.type is int
     assert duplicates.default == 2
     assert duplicates.salience == ps.recommended
+    assert multiplied.inherited
 
     multiplier = OverridenConcat.__parameters__["multiplier"]
     assert multiplier.type is int
     assert multiplier.default is None
     assert multiplier.salience == ps.arbitrary
+    assert not multiplied.inherited
 
     order = OverridenConcat.__parameters__["order"]
     assert order.type is str
     assert order.default == "forward"
     assert order.salience == ps.recommended
+    assert not multiplied.inherited

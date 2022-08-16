@@ -18,8 +18,6 @@ class ColumnSpec:
     row_frequency: DataSpace
     salience: ColumnSalience
     inherited: bool
-    pipelines: ty.Dict = attrs.Factory(dict)
-    checks: ty.List = attrs.Factory(list)
 
 
 @attrs.define
@@ -95,7 +93,9 @@ def make_analysis_class(cls, space: DataSpace):
     cls.__space__ = space
     cls.__column_specs__ = {}
     cls.__parameters__ = {}
+    cls.__pipelines__ = {}
     cls.__switches__ = {}
+    cls.__checks__ = {}
 
     # Resolve inherited attributes
     for name, inherited in list(cls.__dict__.items()):
@@ -133,7 +133,9 @@ def make_analysis_class(cls, space: DataSpace):
                     f"Unrecognised keyword args {unrecognised} for {attr_type} attr"
                 )
             kwargs.update(inherited.to_overwrite)
-            setattr(cls, name, getattr(arcana.core.mark, attr_type)(**kwargs))
+            counting_attr = getattr(arcana.core.mark, attr_type)(**kwargs)
+            counting_attr.metadata["inherited"] = True
+            setattr(cls, name, counting_attr)
             inherited.resolved_to = name
 
     attrs_cls = attrs.define(cls)
@@ -157,7 +159,7 @@ def make_analysis_class(cls, space: DataSpace):
                 desc=attr.metadata["desc"],
                 row_frequency=row_freq,
                 salience=attr.metadata["salience"],
-                inherited=attr.inherited,
+                inherited=attr.inherited or attr.metadata.get("inherited"),
             )
         elif attr_type == "parameter":
             param_specs[attr.name] = Parameter(
@@ -167,7 +169,7 @@ def make_analysis_class(cls, space: DataSpace):
                 choices=attr.metadata["choices"],
                 desc=attr.metadata["desc"],
                 salience=attr.metadata["salience"],
-                inherited=attr.inherited,
+                inherited=attr.inherited or attr.metadata.get("inherited"),
             )
         else:
             raise ValueError(f"Unrecognised attrs type '{attr_type}'")
