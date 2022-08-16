@@ -19,7 +19,7 @@ from arcana.core.mark import (
     check,
 )
 from arcana.data.formats.common import Zip, Text
-from arcana.core.enum import ParameterSalience as ps
+from arcana.core.enum import ColumnSalience as cs, ParameterSalience as ps
 
 
 @pytest.fixture
@@ -27,8 +27,8 @@ def concat_cls():
     @analysis(Samples)
     class Concat:
 
-        file1: Zip = column("an arbitrary text file")
-        file2: Text = column("another arbitrary text file")
+        file1: Zip = column("an arbitrary text file", salience=cs.primary)
+        file2: Text = column("another arbitrary text file", salience=cs.primary)
         concatenated: Text = column("the output of concatenating file1 and file2")
 
         duplicates: int = parameter(
@@ -51,12 +51,32 @@ def concat_cls():
 
 def test_analysis_basic(concat_cls):
 
-    assert list(concat_cls.__column_specs__) == [
+    assert sorted(concat_cls.__column_specs__) == [
+        "concatenated",
         "file1",
         "file2",
-        "concatenated",
     ]
     assert list(concat_cls.__parameters__) == ["duplicates"]
+
+    file1 = concat_cls.__column_specs__["file1"]
+    assert file1.type is Zip
+    assert file1.row_frequency == Samples.sample
+    assert file1.salience == cs.primary
+
+    file2 = concat_cls.__column_specs__["file2"]
+    assert file2.type is Text
+    assert file2.row_frequency == Samples.sample
+    assert file2.salience == cs.primary
+
+    concatenated = concat_cls.__column_specs__["concatenated"]
+    assert concatenated.type is Text
+    assert concatenated.row_frequency == Samples.sample
+    assert concatenated.salience == cs.supplementary
+
+    duplicates = concat_cls.__parameters__["duplicates"]
+    assert duplicates.type is int
+    assert duplicates.default == 1
+    assert duplicates.salience == ps.recommended
 
 
 def test_analysis_extend(concat_cls):
@@ -91,6 +111,9 @@ def test_analysis_extend(concat_cls):
 
         @check(file3)
         def check_file3(self, wf, file3: Text, duplicates: int):
+            """Checks the number of lines in the concatenated file to see whether they
+            match what is expected for the number of duplicates specified"""
+
             @pydra.mark.task
             def num_lines_equals(in_file, num_lines):
                 with open(in_file) as f:
@@ -105,14 +128,14 @@ def test_analysis_extend(concat_cls):
 
             return wf.num_lines_check.out
 
-    assert list(ExtendedConcat.__column_specs__) == [
+    assert sorted(ExtendedConcat.__column_specs__) == [
+        "concatenated",
+        "doubly_concatenated",
         "file1",
         "file2",
-        "concatenated",
         "file3",
-        "doubly_concatenated",
     ]
-    assert list(ExtendedConcat.__parameters__) == ["duplicates", "second_duplicates"]
+    assert sorted(ExtendedConcat.__parameters__) == ["duplicates", "second_duplicates"]
 
 
 def test_analysis_override(concat_cls):
@@ -187,10 +210,15 @@ def test_analysis_override(concat_cls):
 
             return wf.concat.lzout.out
 
-    assert list(OverridenConcat.__column_specs__) == [
+    assert sorted(OverridenConcat.__column_specs__) == [
+        "concatenated",
         "file1",
         "file2",
-        "concatenated",
         "multiplied",
     ]
-    assert list(OverridenConcat.__parameters__) == ["duplicates", "multiplier", "order"]
+    assert sorted(OverridenConcat.__parameters__) == [
+        "duplicates",
+        "multiplier",
+        "order",
+    ]
+    assert OverridenConcat.__parameters__["duplicates"].default == 2

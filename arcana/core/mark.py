@@ -1,5 +1,5 @@
 import attrs
-from .analysis import _UnresolvedOp, make_analysis_class
+from .analysis import _UnresolvedOp, make_analysis_class, Inherited
 from .data.space import DataSpace
 from .enum import ColumnSalience, ParameterSalience
 
@@ -29,16 +29,17 @@ def analysis(space: DataSpace):
 
 def column(desc, row_frequency=None, salience=ColumnSalience.supplementary):
     return attrs.field(
+        default=None,
         metadata={
             ATTR_TYPE: "column",
             "desc": desc,
             "row_frequency": row_frequency,
             "salience": salience,
-        }
+        },
     )
 
 
-def parameter(desc, default=None, salience=ParameterSalience.recommended):
+def parameter(desc, default=None, choices=None, salience=ParameterSalience.recommended):
     if default is None and salience != ParameterSalience.arbitrary:
         raise ValueError(
             "Default value must be provided unless parameter salience is '"
@@ -46,7 +47,13 @@ def parameter(desc, default=None, salience=ParameterSalience.recommended):
             + "'"
         )
     return attrs.field(
-        metadata={ATTR_TYPE: "parameter", "desc": desc, "salience": salience}
+        default=default,
+        metadata={
+            ATTR_TYPE: "parameter",
+            "desc": desc,
+            "salience": salience,
+            "choices": choices,
+        },
     )
 
 
@@ -62,20 +69,26 @@ def pipeline(*outputs, condition=None):
     return decorator
 
 
-def inherit_from(base):
+def inherit_from(base, **kwargs):
     """Used to explicitly inherit a column or attribute from a base class so it can be used in a
     sub class. This is enforced in order to make the code more readable (so other developers
     can track where columns/parameters are defined
     """
-    raise NotImplementedError
+    return Inherited(base, kwargs)
 
 
 def value_of(param):
-    return _UnresolvedOp((("value_of", param),))
+    return _UnresolvedOp("value_of", (param,))
 
 
-def is_provided(column):
-    return _UnresolvedOp((("is_provided", column),))
+def is_provided(column, in_format: type = None):
+    return _UnresolvedOp(
+        "is_provided",
+        (
+            column,
+            in_format,
+        ),
+    )
 
 
 def switch(meth):
@@ -89,7 +102,6 @@ def switch(meth):
         explicitly"""
     anot = meth.__annotations__
     anot[SWICTH_ANNOT] = True
-    raise NotImplementedError
     return meth
 
 
@@ -101,3 +113,8 @@ def check(column):
         return meth
 
     return decorator
+
+
+def subanalysis(analysis):
+
+    raise NotImplementedError

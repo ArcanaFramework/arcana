@@ -28,6 +28,8 @@ class Parameter:
     name: str
     type: type
     desc: str
+    default: int or float or str or ty.List[int] or ty.List[float] or ty.List[str]
+    choices: ty.List[int] or ty.List[float] or ty.List[str]
     salience: ParameterSalience
     inherited: bool
 
@@ -54,7 +56,7 @@ class CheckSpec:
     method: ty.Callable
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class Switch:
 
     name: str
@@ -62,6 +64,21 @@ class Switch:
     inputs: ty.Tuple[str]
     parameters: ty.Tuple[ColumnSpec]
     method: ty.Callable
+
+
+@attrs.define
+class Subanalysis:
+
+    name: str
+    analysis: type
+
+
+@attrs.define
+class Inherited:
+
+    base_class: type
+    to_overwrite: ty.Dict[str, ty.Any]
+    resolved_to: str = None
 
 
 def menu(cls):
@@ -79,6 +96,45 @@ def make_analysis_class(cls, space: DataSpace):
     cls.__column_specs__ = {}
     cls.__parameters__ = {}
     cls.__switches__ = {}
+
+    # Resolve inherited attributes
+    for name, inherited in list(cls.__dict__.items()):
+        if isinstance(inherited, Inherited):
+            # Validate inheritance
+            if not issubclass(cls, inherited.base_class):
+                raise ValueError(
+                    f"Trying to inherit '{name}' from class that is not a base "
+                    f"{inherited.base_class}"
+                )
+            try:
+                inherit_from = next(
+                    a for a in inherited.base_class.__attrs_attrs__ if a.name == name
+                )
+            except StopIteration:
+                raise ValueError(
+                    f"No attribute named {name} in base class {inherited.base_class}"
+                )
+            if inherit_from.inherited:
+                raise ValueError(
+                    "Must inheritedify inherit from a column that is explicitly defined in "
+                    f"the base class {inherited.base_class} (not {name})"
+                )
+
+            # Copy type annotation across to new class
+            cls.__annotations__[name] = inherited.base_class.__annotations__[name]
+
+            attr_type = inherit_from.metadata[arcana.core.mark.ATTR_TYPE]
+            kwargs = dict(inherit_from.metadata)
+            kwargs.pop(arcana.core.mark.ATTR_TYPE)
+            if attr_type == "parameter":
+                kwargs["default"] = inherit_from.default
+            if unrecognised := [k for k in inherited.to_overwrite if k not in kwargs]:
+                raise TypeError(
+                    f"Unrecognised keyword args {unrecognised} for {attr_type} attr"
+                )
+            kwargs.update(inherited.to_overwrite)
+            setattr(cls, name, getattr(arcana.core.mark, attr_type)(**kwargs))
+            inherited.resolved_to = name
 
     attrs_cls = attrs.define(cls)
 
@@ -107,6 +163,8 @@ def make_analysis_class(cls, space: DataSpace):
             param_specs[attr.name] = Parameter(
                 name=attr.name,
                 type=attr.type,
+                default=attr.default,
+                choices=attr.metadata["choices"],
                 desc=attr.metadata["desc"],
                 salience=attr.metadata["salience"],
                 inherited=attr.inherited,
@@ -139,11 +197,9 @@ def make_analysis_class(cls, space: DataSpace):
                 unresolved_condition = anots["condition"]
                 if unresolved_condition is not None:
                     try:
-                        switch_name = _attr_name(cls, unresolved_condition)
+                        condition = _attr_name(cls, unresolved_condition)
                     except AttributeError:
                         condition = unresolved_condition.resolve(cls, attrs_cls)
-                    else:
-                        condition = switch_specs[switch_name]
                 else:
                     condition = None
                 if condition in output.pipelines:
@@ -155,17 +211,19 @@ def make_analysis_class(cls, space: DataSpace):
                     )
                 output.pipelines[condition] = pipeline
         elif arcana.core.mark.SWICTH_ANNOT in attr_anots:
-            inputs, parameters = get_args_automagically(
-                analysis=attrs_cls, method=attr, index_start=2
-            )
-            switch_specs[attr.name] = Switch(
-                name=attr.__name__, desc=__doc__, inputs=inputs, parameters=parameters
+            inputs, parameters = get_args_automagically(analysis=attrs_cls, method=attr)
+            switch_specs[attr.__name__] = Switch(
+                name=attr.__name__,
+                desc=__doc__,
+                inputs=tuple(inputs),
+                parameters=tuple(parameters),
+                method=attr,
             )
         elif arcana.core.mark.CHECK_ANNOT in attr_anots:
-            column = _attr(cls, attr_anots[arcana.core.mark.CHECK_ANNOT])
-            inputs, parameters = get_args_automagically(
-                analysis=attrs_cls, method=attr, index_start=2
-            )
+            column = column_specs[
+                _attr_name(cls, attr_anots[arcana.core.mark.CHECK_ANNOT])
+            ]
+            inputs, parameters = get_args_automagically(analysis=attrs_cls, method=attr)
             check = CheckSpec(
                 name=attr.__name__,
                 column=column,
@@ -181,6 +239,9 @@ def make_analysis_class(cls, space: DataSpace):
 
 def _attr_name(cls, counting_attr):
     """Get the name of a counting attribute by reading the original class dict"""
+    if isinstance(counting_attr, Inherited):
+        assert counting_attr.resolved_to is not None
+        return counting_attr.resolved_to
     try:
         return next(n for n, v in cls.__dict__.items() if v is counting_attr)
     except StopIteration:
@@ -188,10 +249,10 @@ def _attr_name(cls, counting_attr):
 
 
 def _attr(cls, counting_attr):
-    return cls.__dict__[cls._attr_name(counting_attr)]
+    return cls.__dict__[_attr_name(cls, counting_attr)]
 
 
-def get_args_automagically(analysis, method):
+def get_args_automagically(analysis, method, index_start=2):
     """Automagically determine inputs to pipeline or switched by matching
     a methods argument names with columns and parameters of the class
 
@@ -216,7 +277,7 @@ def get_args_automagically(analysis, method):
     parameters = []
     signature = inspect.signature(method)
     for arg in list(signature.parameters)[
-        2:
+        index_start:
     ]:  # First arg is self and second is the workflow object to add to
         required_type = method.__annotations__.get(arg)
         if arg in analysis.__column_specs__:
@@ -241,14 +302,25 @@ class _Op:
     operator: str
     operands: ty.Tuple[str]
 
-    def evaluate(self, analysis):
+    def evaluate(self, analysis, dataset):
         operands = [o.evaluate(analysis) for o in self.operands]
         if self.operator == "value_of":
             assert len(operands) == 1
             val = getattr(analysis, operands[0])
         elif self.operator == "is_provided":
-            assert len(operands) == 1
-            val = getattr(analysis, operands[0]) is not None
+            assert len(operands) <= 2
+            column_name = getattr(analysis, operands[0])
+            if column_name is None:
+                val = False
+            else:
+                column = dataset[column_name]
+                if len(operands) == 2:
+                    in_format = operands[1]
+                    val = column.format is in_format or issubclass(
+                        column.format, in_format
+                    )
+                else:
+                    val = True
         else:
             val = getattr(operator_module, self.operator)(*operands)
         return val
@@ -256,6 +328,7 @@ class _Op:
 
 @attrs.define
 class _UnresolvedOp:
+    """An operation within a conditional expression that hasn't been resolved"""
 
     operator: str
     operands: ty.Tuple[str]
@@ -282,45 +355,35 @@ class _UnresolvedOp:
                     operand = _attr_name(cls, operand)
                 except AttributeError:
                     pass
-                else:
-                    if (
-                        self.operator == "value_of"
-                        and operand not in attrs_cls.__parameters__
-                    ):
-                        raise ValueError(
-                            "'value_of' can only be used on parameter attributes not "
-                            f"'{operand}'"
-                        )
-                    elif (
-                        self.operator == "is_provided"
-                        and operand not in attrs_cls.__column_specs__
-                    ):
-                        raise ValueError(
-                            "'is_provided' can only be used on column specs not "
-                            f"'{operand}'"
-                        )
-                    else:
-                        raise ValueError(
-                            f"Cannot apply '{self.operator}' operator to '{operand}' "
-                            "attribute"
-                        )
             resolved.append(operand)
-        return _Op(self.operator, resolved)
+        if self.operator == "value_of":
+            assert len(resolved) == 1
+            if resolved[0] not in attrs_cls.__parameters__:
+                raise ValueError(
+                    f"'value_of' can only be used on parameter attributes not '{operand}'"
+                )
+        elif self.operator == "is_provided":
+            assert len(resolved) <= 2
+            if resolved[0] not in attrs_cls.__column_specs__:
+                raise ValueError(
+                    f"'is_provided' can only be used on column specs not '{operand}'"
+                )
+        return _Op(self.operator, tuple(resolved))
 
     def __eq__(self, o):
-        return _UnresolvedOp("eq", o)
+        return _UnresolvedOp("eq", (o,))
 
     def __ne__(self, o):
-        return _UnresolvedOp("ne", o)
+        return _UnresolvedOp("ne", (o,))
 
     def __lt__(self, o):
-        return _UnresolvedOp("lt", o)
+        return _UnresolvedOp("lt", (o,))
 
     def __le__(self, o):
-        return _UnresolvedOp("le", o)
+        return _UnresolvedOp("le", (o,))
 
     def __gt__(self, o):
-        return _UnresolvedOp("gt", o)
+        return _UnresolvedOp("gt", (o,))
 
     def __ge__(self, o):
-        return _UnresolvedOp("ge", o)
+        return _UnresolvedOp("ge", (o,))
