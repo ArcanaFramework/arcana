@@ -40,10 +40,10 @@ def column(desc, row_frequency=None, salience=ColumnSalience.supplementary):
 
 
 def parameter(desc, default=None, choices=None, salience=ParameterSalience.recommended):
-    if default is None and salience != ParameterSalience.arbitrary:
+    if default is None and salience != ParameterSalience.required:
         raise ValueError(
             "Default value must be provided unless parameter salience is '"
-            + str(ParameterSalience.arbitrary)
+            + str(ParameterSalience.required)
             + "'"
         )
     return attrs.field(

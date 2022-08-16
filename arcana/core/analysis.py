@@ -1,6 +1,7 @@
 import attrs
 import typing as ty
 import inspect
+from collections import defaultdict
 import operator as operator_module
 from .data.space import DataSpace
 from .enum import ColumnSalience, ParameterSalience
@@ -9,7 +10,7 @@ import arcana.core.mark
 # from arcana.exceptions import ArcanaFormatConversionError
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class ColumnSpec:
 
     name: str
@@ -20,19 +21,21 @@ class ColumnSpec:
     inherited: bool
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class Parameter:
 
     name: str
     type: type
     desc: str
-    default: int or float or str or ty.List[int] or ty.List[float] or ty.List[str]
-    choices: ty.List[int] or ty.List[float] or ty.List[str]
+    default: int or float or str or ty.Tuple[int] or ty.Tuple[float] or ty.Tuple[str]
     salience: ParameterSalience
     inherited: bool
+    choices: ty.Tuple[int] or ty.Tuple[float] or ty.Tuple[str] = attrs.field(
+        default=None, converter=tuple
+    )
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class PipelineSpec:
 
     name: str
@@ -41,9 +44,10 @@ class PipelineSpec:
     inputs: ty.Tuple[ColumnSpec]
     outputs: ty.Tuple[ColumnSpec]
     method: ty.Callable
+    inherited: bool
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class CheckSpec:
 
     name: str
@@ -52,6 +56,7 @@ class CheckSpec:
     inputs: ty.Tuple[str]
     parameters: ty.Tuple[ColumnSpec]
     method: ty.Callable
+    inherited: bool
 
 
 @attrs.define(frozen=True)
@@ -62,6 +67,7 @@ class Switch:
     inputs: ty.Tuple[str]
     parameters: ty.Tuple[ColumnSpec]
     method: ty.Callable
+    inherited: bool
 
 
 @attrs.define
@@ -69,6 +75,7 @@ class Subanalysis:
 
     name: str
     analysis: type
+    inherited: bool
 
 
 @attrs.define
@@ -93,9 +100,9 @@ def make_analysis_class(cls, space: DataSpace):
     cls.__space__ = space
     cls.__column_specs__ = {}
     cls.__parameters__ = {}
-    cls.__pipelines__ = {}
+    cls.__pipelines__ = defaultdict(dict)
     cls.__switches__ = {}
-    cls.__checks__ = {}
+    cls.__checks__ = defaultdict(list)
 
     # Resolve inherited attributes
     for name, inherited in list(cls.__dict__.items()):
@@ -143,6 +150,8 @@ def make_analysis_class(cls, space: DataSpace):
     column_specs = attrs_cls.__column_specs__
     param_specs = attrs_cls.__parameters__
     switch_specs = attrs_cls.__switches__
+    pipelines = attrs_cls.__pipelines__
+    checks = attrs_cls.__checks__
 
     for attr in attrs_cls.__attrs_attrs__:
         try:
@@ -174,8 +183,6 @@ def make_analysis_class(cls, space: DataSpace):
         else:
             raise ValueError(f"Unrecognised attrs type '{attr_type}'")
 
-    pipelines = []
-
     for attr in attrs_cls.__dict__.values():
         try:
             attr_anots = attr.__annotations__
@@ -194,24 +201,28 @@ def make_analysis_class(cls, space: DataSpace):
                 parameters=parameters,
                 method=attr,
             )
-            pipelines.append(pipeline)
+            unresolved_condition = anots["condition"]
+            if unresolved_condition is not None:
+                try:
+                    condition = _attr_name(cls, unresolved_condition)
+                except AttributeError:
+                    condition = unresolved_condition.resolve(cls, attrs_cls)
+            else:
+                condition = None
             for output in outputs:
-                unresolved_condition = anots["condition"]
-                if unresolved_condition is not None:
-                    try:
-                        condition = _attr_name(cls, unresolved_condition)
-                    except AttributeError:
-                        condition = unresolved_condition.resolve(cls, attrs_cls)
+                try:
+                    existing = pipelines[output.name][condition]
+                except KeyError:
+                    pass
                 else:
-                    condition = None
-                if condition in output.pipelines:
-                    existing = output.pipelines[condition]
-                    raise ValueError(
-                        f"Two pipeline methods, '{pipeline.name}' and '{existing.name}', "
-                        f"provide outputs for '{output.name}' "
-                        f"column under the same condition '{condition}'"
-                    )
-                output.pipelines[condition] = pipeline
+                    if not pipeline.inherited:
+                        raise ValueError(
+                            f"Two pipeline methods, '{pipeline.name}' and '{existing.name}', "
+                            f"provide outputs for '{output.name}' "
+                            f"column under the same condition '{condition}'"
+                        )
+                pipelines[output.name][condition] = pipeline
+
         elif arcana.core.mark.SWICTH_ANNOT in attr_anots:
             inputs, parameters = get_args_automagically(analysis=attrs_cls, method=attr)
             switch_specs[attr.__name__] = Switch(
@@ -234,7 +245,7 @@ def make_analysis_class(cls, space: DataSpace):
                 parameters=parameters,
                 method=attr,
             )
-            column.checks.append(check)
+            checks[column.name].append(check)
 
     return attrs_cls
 
