@@ -18,8 +18,8 @@ via class inheritance where required (see :ref:`inheritance`).
 .. :ref:`analysis_examples`.
 
 
-.. Basics
-.. ------
+Basics
+------
 
 There are two main components of analysis classes, column specifications
 (:ref:`column_param_specs`), which define the data to be provided to and
@@ -34,7 +34,7 @@ analyses (e.g. plotting figures) all in the one place.
 .. _column_param_specs:
 
 DataColumn and parameter specification
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 While columns in an :class:`.Analysis` class can be specified using the
 dataclass-like syntax of ``column_name: Format``, in most cases you will want to
@@ -349,9 +349,230 @@ isn't provided.
 
 .. _analysis_examples:
 
-.. Examples
-.. --------
+Examples
+--------
 
+Toy example
+~~~~~~~~~~~
+
+A toy example analysis class, that has two text-file source columns, ``file1`` and ``file2``,
+and one text-file sink column ``concatenated``. The ``concatenated`` column is considered a
+sink because the ``concat_pipeline`` method is marked with a ``pipeline`` decorator specifying
+it as an output.
+
+Pydra LazyFields linked to the source columns of ``file1`` and ``file2``, and the
+value provided to the ``duplicates`` parameter, will be automagically
+provided to the ``concat_pipeline`` method during the construction of the workflow that
+will be used generate ``concatenated``.
+
+.. code-block:: python
+
+    @analysis(Samples)
+    class Concat:
+
+        # Source columns
+        file1: Text = column("an arbitrary text file")
+        file2: Text = column("another arbitrary text file")
+
+        # Sink columns
+        concatenated: Text = column("the output of concatenating file1 and file2")
+
+        # Parameters
+        duplicates: int = parameter(
+            "the number of times to duplicate the concatenation", default=1
+        )
+
+        @pipeline(concatenated)
+        def concat_pipeline(self, wf, file1: Text, file2: Text, duplicates: int):
+            """Concatenates the contents of `file1` with the contents of `file2` to produce
+            a new text file. The concatenation can be repeated multiple times within
+            the produced text file by specifying the number of repeats to the `duplicates`
+            parameter
+            """
+
+            wf.add(
+                concatenate(
+                    name="concat", in_file1=file1, in_file2=file2, duplicates=duplicates
+                )
+            )
+
+            return wf.concat.lzout.out  # Output Pydra LazyField for concatenated file
+
+
+Extending via subclasses
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``Concat`` class extended to add two additional columns: another source column ``file3``
+and another sink column ``doubly_concatenated``.
+
+.. code-block:: python
+
+    @analysis(Samples)
+    class ExtendedConcat(Concat):
+
+        # Source columns
+        file3: Text = column("Another file to concatenate")
+
+        # Sink columns
+        concatenated = inherit_from(Concat)
+        doubly_concatenated: Text = column("The doubly concatenated file")
+
+        # Parameters
+        duplicates = inherit_from(Concat)
+
+        @pipeline(doubly_concatenated)
+        def doubly_concat_pipeline(
+            self, wf, concatenated: Text, file3: Text, duplicates: int
+        ):
+
+            wf.add(
+                concatenate(
+                    name="concat",
+                    in_file1=concatenated,
+                    in_file2=file3,
+                    duplicates=duplicates,
+                )
+            )
+
+            return wf.concat.lzout.out
+
+
+Adding quality-control checks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This extended class adds in a QC check to make sure the number of lines produced by the
+concatenation step matches what is expected.
+
+.. code-block:: python
+
+    @analysis(Samples)
+    class ConcatWithCheck(Concat):
+
+        # Sink columns
+        concatenated = inherit_from(Concat)
+
+        # Parameters
+        duplicates = inherit_from(Concat)
+
+        @check(concatenated)
+        def check_file3(self, wf, concatenated: Text, duplicates: int):
+            """Checks the number of lines in the concatenated file to see whether they
+            match what is expected for the number of duplicates specified"""
+            @pydra.mark.task
+            def num_lines_equals(in_file, num_lines):
+                with open(in_file) as f:
+                    contents = f.read()
+                return len(contents.splitlines()) == num_lines
+
+            wf.add(
+                num_lines_equals(
+                    in_file=concatenated, num_lines=2 * duplicates, name="num_lines_check"
+                )
+            )
+
+            return wf.num_lines_check.out
+
+
+Optionally overriding pipelines
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Another subclass of ``Concat``, but this time the concatenation is reversed
+if "reversed" is provided to the ``order`` parameter by optionally overriding the
+pipeline that produces ``concatenated``
+
+
+.. code-block:: python
+
+    @analysis(Samples)
+    class OverridenConcat(Concat):
+
+        # Source columns
+        file1: Zip = inherit_from(Concat)
+        file2: Text = inherit_from(Concat)
+
+        # Sinks columns
+        concatenated: Text = inherit_from(Concat)
+
+        # Parameters
+        duplicates = inherit_from(Concat, default=2)  # default value changed because we can
+        order: str = parameter(
+            "perform the concatenation in reverse order, i.e. file2 and then file1",
+            choices=["forward", "reversed"],
+            default="forward",
+        )
+
+        @pipeline(
+            concatenated,
+            condition=value_of(order) == "reversed",
+        )
+        def reverse_concat_pipeline(
+            self, wf, file1: Text, file2: Text, duplicates: int
+        ):
+
+            wf.add(
+                concatenate_reverse(
+                    name="concat", in_file1=file1, in_file2=file2, duplicates=duplicates
+                )
+            )
+
+            return wf.concat.lzout.out
+
+
+Using switches for dependent steps
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The contents of the files in the ``concatenated`` column are multiplied the value
+passed to the arbitrary ``multiplier`` parameter if the contents of the input
+files ``file1`` and ``file2`` are numeric for the corresponding row as determined by the
+``inputs_are_numeric`` switch.
+
+.. code-block:: python
+
+    @analysis(Samples)
+    class ConcatWithSwitch(Concat):
+
+        # Source columns
+        file1: Zip = inherit_from(Concat)
+        file2: Text = inherit_from(Concat)
+
+        # Sink columns
+        concatenated: Text = inherit_from(Concat)
+        multiplied: Text = column("contents of the concatenated files are multiplied")
+
+        # Parameters
+        multiplier: int = parameter(
+            "the multiplier used to apply", salience=ps.arbitrary
+        )
+
+        @switch
+        def inputs_are_numeric(self, wf, file1: Text, file2: Text):
+
+            wf.add(check_contents_are_numeric(in_file=file1, name="check_file1"))
+
+            wf.add(check_contents_are_numeric(in_file=file2, name="check_file2"))
+
+            @pydra.mark.task
+            def boolean_and(val1, val2) -> bool:
+                return val1 and val2
+
+            wf.add(
+                boolean_and(
+                    val1=wf.check_file1.out, val2=wf.check_file2.out, name="bool_and"
+                )
+            )
+
+            return wf.bool_and.out
+
+        @pipeline(multiplied, condition=inputs_are_numeric)
+        def multiply_pipeline(self, wf, concatenated, multiplier):
+
+            wf.add(
+                multiply_contents(
+                    name="concat", in_file=concatenated, multiplier=multiplier
+                )
+            )
+
+            return wf.concat.lzout.out
 
 .. .. code-block:: python
 ..     :linenos:
