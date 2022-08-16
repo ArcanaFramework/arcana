@@ -84,7 +84,7 @@ def test_analysis_extend(concat_cls):
     class ExtendedConcat(concat_cls):
 
         concatenated = inherit_from(concat_cls)
-        file3: Text = column("Another file to concatenate")
+        file3: Text = column("Another file to concatenate", salience=cs.primary)
 
         doubly_concatenated: Text = column("The doubly concatenated file")
 
@@ -136,6 +136,41 @@ def test_analysis_extend(concat_cls):
         "file3",
     ]
     assert sorted(ExtendedConcat.__parameters__) == ["duplicates", "second_duplicates"]
+
+    file1 = ExtendedConcat.__column_specs__["file1"]
+    assert file1.type is Zip
+    assert file1.row_frequency == Samples.sample
+    assert file1.salience == cs.primary
+
+    file2 = ExtendedConcat.__column_specs__["file2"]
+    assert file2.type is Text
+    assert file2.row_frequency == Samples.sample
+    assert file2.salience == cs.primary
+
+    file3 = ExtendedConcat.__column_specs__["file3"]
+    assert file3.type is Text
+    assert file3.row_frequency == Samples.sample
+    assert file3.salience == cs.primary
+
+    concatenated = ExtendedConcat.__column_specs__["concatenated"]
+    assert concatenated.type is Text
+    assert concatenated.row_frequency == Samples.sample
+    assert concatenated.salience == cs.supplementary
+
+    doubly_concatenated = ExtendedConcat.__column_specs__["doubly_concatenated"]
+    assert doubly_concatenated.type is Text
+    assert doubly_concatenated.row_frequency == Samples.sample
+    assert doubly_concatenated.salience == cs.supplementary
+
+    duplicates = ExtendedConcat.__parameters__["duplicates"]
+    assert duplicates.type is int
+    assert duplicates.default == 1
+    assert duplicates.salience == ps.recommended
+
+    second_duplicates = ExtendedConcat.__parameters__["second_duplicates"]
+    assert second_duplicates.type is int
+    assert second_duplicates.default == 1
+    assert second_duplicates.salience == ps.recommended
 
 
 def test_analysis_override(concat_cls):
@@ -221,4 +256,38 @@ def test_analysis_override(concat_cls):
         "multiplier",
         "order",
     ]
-    assert OverridenConcat.__parameters__["duplicates"].default == 2
+
+    file1 = OverridenConcat.__column_specs__["file1"]
+    assert file1.type is Zip
+    assert file1.row_frequency == Samples.sample
+    assert file1.salience == cs.primary
+
+    file2 = OverridenConcat.__column_specs__["file2"]
+    assert file2.type is Text
+    assert file2.row_frequency == Samples.sample
+    assert file2.salience == cs.primary
+
+    concatenated = OverridenConcat.__column_specs__["concatenated"]
+    assert concatenated.type is Text
+    assert concatenated.row_frequency == Samples.sample
+    assert concatenated.salience == cs.supplementary
+
+    multiplied = OverridenConcat.__column_specs__["multiplied"]
+    assert multiplied.type is Text
+    assert multiplied.row_frequency == Samples.sample
+    assert multiplied.salience == cs.supplementary
+
+    duplicates = OverridenConcat.__parameters__["duplicates"]
+    assert duplicates.type is int
+    assert duplicates.default == 2
+    assert duplicates.salience == ps.recommended
+
+    multiplier = OverridenConcat.__parameters__["multiplier"]
+    assert multiplier.type is int
+    assert multiplier.default is None
+    assert multiplier.salience == ps.arbitrary
+
+    order = OverridenConcat.__parameters__["order"]
+    assert order.type is str
+    assert order.default == "forward"
+    assert order.salience == ps.recommended
