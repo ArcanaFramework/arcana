@@ -83,7 +83,7 @@ def pipeline(*outputs, condition=None, switch=None):
         anots = meth.__annotations__[PIPELINE_ANNOT] = {}
         anots["outputs"] = outputs
         anots["condition"] = condition
-        anots["switch"] = switch
+        anots["switch"] = switch.__name__ if switch is not None else None
         return meth
 
     return decorator

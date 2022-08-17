@@ -18,6 +18,7 @@ from arcana.core.mark import (
     is_provided,
     check,
 )
+from arcana.core.analysis import Operation
 from arcana.data.formats.common import Zip, Text
 from arcana.core.enum import (
     CheckStatus,
@@ -101,6 +102,8 @@ def test_analysis_basic(concat_cls):
     assert concat_pipeline.inputs == ("file1", "file2")
     assert concat_pipeline.outputs == ("concatenated",)
     assert concat_pipeline.method is concat_cls.concat_pipeline
+    assert concat_pipeline.condition is None
+    assert concat_pipeline.switch is None
 
 
 def test_analysis_extended(concat_cls):
@@ -198,6 +201,8 @@ def test_analysis_extended(concat_cls):
     assert concat_pipeline.outputs == ("concatenated",)
     assert concat_pipeline.method is concat_cls.concat_pipeline
     assert concat_pipeline.defined_in is concat_cls
+    assert concat_pipeline.condition is None
+    assert concat_pipeline.switch is None
 
     doubly_concat_pipeline = analysis_spec.pipeline_spec("doubly_concat_pipeline")
     assert doubly_concat_pipeline.name == "doubly_concat_pipeline"
@@ -206,6 +211,8 @@ def test_analysis_extended(concat_cls):
     assert doubly_concat_pipeline.outputs == ("doubly_concatenated",)
     assert doubly_concat_pipeline.method is ExtendedConcat.doubly_concat_pipeline
     assert doubly_concat_pipeline.defined_in is ExtendedConcat
+    assert doubly_concat_pipeline.condition is None
+    assert doubly_concat_pipeline.switch is None
 
 
 def test_analysis_with_check(concat_cls):
@@ -288,7 +295,9 @@ def test_analysis_with_check(concat_cls):
     assert concat_pipeline.inputs == ("file1", "file2")
     assert concat_pipeline.outputs == ("concatenated",)
     assert concat_pipeline.method is concat_cls.concat_pipeline
-    assert concatenated.defined_in is concat_cls
+    assert concat_pipeline.condition is None
+    assert concat_pipeline.switch is None
+    assert concat_pipeline.defined_in is concat_cls
 
     num_lines_check = analysis_spec.check("num_lines_check")
     assert num_lines_check.name == "num_lines_check"
@@ -383,6 +392,26 @@ def test_analysis_override(concat_cls):
     assert order.default == "forward"
     assert order.salience == ps.recommended
     assert order.defined_in is OverridenConcat
+
+    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    assert concat_pipeline.name == "concat_pipeline"
+    assert concat_pipeline.parameters == ("duplicates",)
+    assert concat_pipeline.inputs == ("file1", "file2")
+    assert concat_pipeline.outputs == ("concatenated",)
+    assert concat_pipeline.method is concat_cls.concat_pipeline
+    assert concat_pipeline.defined_in is concat_cls
+    assert concat_pipeline.condition is None
+    assert concat_pipeline.switch is None
+
+    reverse_concat_pipeline = analysis_spec.pipeline_spec("reverse_concat_pipeline")
+    assert reverse_concat_pipeline.name == "reverse_concat_pipeline"
+    assert reverse_concat_pipeline.parameters == ("duplicates",)
+    assert reverse_concat_pipeline.inputs == ("file1", "file2")
+    assert reverse_concat_pipeline.outputs == ("concatenated",)
+    assert reverse_concat_pipeline.method is OverridenConcat.reverse_concat_pipeline
+    assert reverse_concat_pipeline.defined_in is OverridenConcat
+    assert isinstance(reverse_concat_pipeline.condition, Operation)
+    assert reverse_concat_pipeline.switch is None
 
 
 def test_analysis_switch(concat_cls):
@@ -487,3 +516,30 @@ def test_analysis_switch(concat_cls):
     assert multiplier.default is None
     assert multiplier.salience == ps.arbitrary
     assert multiplier.defined_in is ConcatWithSwitch
+
+    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    assert concat_pipeline.name == "concat_pipeline"
+    assert concat_pipeline.parameters == ("duplicates",)
+    assert concat_pipeline.inputs == ("file1", "file2")
+    assert concat_pipeline.outputs == ("concatenated",)
+    assert concat_pipeline.method is concat_cls.concat_pipeline
+    assert concat_pipeline.defined_in is concat_cls
+    assert concat_pipeline.condition is None
+    assert concat_pipeline.switch is None
+
+    multiply_pipeline = analysis_spec.pipeline_spec("multiply_pipeline")
+    assert multiply_pipeline.name == "multiply_pipeline"
+    assert multiply_pipeline.parameters == ("multiplier",)
+    assert multiply_pipeline.inputs == ("concatenated",)
+    assert multiply_pipeline.outputs == ("multiplied",)
+    assert multiply_pipeline.method is ConcatWithSwitch.multiply_pipeline
+    assert multiply_pipeline.defined_in is ConcatWithSwitch
+    assert multiply_pipeline.condition is None
+    assert multiply_pipeline.switch == "inputs_are_numeric"
+
+    inputs_are_numeric = analysis_spec.switch("inputs_are_numeric")
+    assert inputs_are_numeric.name == "inputs_are_numeric"
+    assert inputs_are_numeric.parameters == ()
+    assert inputs_are_numeric.inputs == ("file1", "file2")
+    assert inputs_are_numeric.method is ConcatWithSwitch.inputs_are_numeric
+    assert inputs_are_numeric.defined_in is ConcatWithSwitch
