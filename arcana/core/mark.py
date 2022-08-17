@@ -37,12 +37,6 @@ def column(desc, row_frequency=None, salience=ColumnSalience.supplementary):
 
 
 def parameter(desc, default=None, choices=None, salience=ParameterSalience.recommended):
-    if default is None and salience != ParameterSalience.required:
-        raise ValueError(
-            "Default value must be provided unless parameter salience is '"
-            + str(ParameterSalience.required)
-            + "'"
-        )
     return attrs.field(
         default=default,
         metadata={
@@ -68,13 +62,28 @@ def subanalysis(analysis, columns, parameters, desc=None):
     )
 
 
-def pipeline(*outputs, condition=None):
-    """Decorate a instance method that adds nodes to an existing Pydra workflow"""
+def pipeline(*outputs, condition=None, switch=None):
+    """Decorate a instance method that adds nodes to an existing Pydra workflow
+
+    Parameters
+    ----------
+    *outputs : list[column]
+        outputs produced by the pipeline
+    condition : Operation, optional
+        condition on which the pipeline will be used instead of the default (the pipeline
+        with condition is None)
+    switch : str or tuple[str, Any], optional
+        name of a "switch" method in the analysis class, which selects nodes to be run
+        with this pipeline instead of the default. If a tuple, then the first element
+        is the switch name and the second is the return value it should match (the
+        return value should be boolean otherwise)
+    """
 
     def decorator(meth):
         anots = meth.__annotations__[PIPELINE_ANNOT] = {}
         anots["outputs"] = outputs
         anots["condition"] = condition
+        anots["switch"] = switch
         return meth
 
     return decorator

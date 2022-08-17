@@ -56,47 +56,50 @@ def concat_cls():
 
 def test_analysis_basic(concat_cls):
 
-    assert list(concat_cls.__parameters__) == ["duplicates"]
+    analysis_spec = concat_cls.__analysis_spec__
 
-    assert sorted(concat_cls.__column_specs__) == [
+    assert list(analysis_spec.parameter_names) == ["duplicates"]
+
+    assert list(analysis_spec.column_names) == [
         "concatenated",
         "file1",
         "file2",
     ]
 
-    duplicates = concat_cls.__parameters__["duplicates"]
+    assert list(analysis_spec.pipeline_names) == ["concat_pipeline"]
+    assert list(analysis_spec.check_names) == []
+    assert list(analysis_spec.switch_names) == []
+    assert list(analysis_spec.subanalysis_names) == []
+
+    duplicates = analysis_spec.parameter("duplicates")
     assert duplicates.type is int
     assert duplicates.default == 1
     assert duplicates.salience == ps.recommended
-    assert not duplicates.inherited
+    assert duplicates.defined_in is concat_cls
 
-    file1 = concat_cls.__column_specs__["file1"]
+    file1 = analysis_spec.column_spec("file1")
     assert file1.type is Zip
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
-    assert not file1.inherited
-    assert not file1.checks
+    assert file1.defined_in is concat_cls
 
-    file2 = concat_cls.__column_specs__["file2"]
+    file2 = analysis_spec.column_spec("file2")
     assert file2.type is Text
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
-    assert not file2.inherited
-    assert not file2.checks
+    assert file2.defined_in is concat_cls
 
-    concatenated = concat_cls.__column_specs__["concatenated"]
+    concatenated = analysis_spec.column_spec("concatenated")
     assert concatenated.type is Text
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
-    assert not concatenated.inherited
-    assert sorted(concatenated.pipelines) == [None]
-    assert not concatenated.checks
+    assert concatenated.defined_in is concat_cls
 
-    concat_pipeline = concatenated.pipelines[None]
+    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
-    assert concat_pipeline.parameters == [duplicates]
-    assert concat_pipeline.inputs == [file1, file2]
-    assert concat_pipeline.outputs == [concatenated]
+    assert concat_pipeline.parameters == ("duplicates",)
+    assert concat_pipeline.inputs == ("file1", "file2")
+    assert concat_pipeline.outputs == ("concatenated",)
     assert concat_pipeline.method is concat_cls.concat_pipeline
 
 
@@ -153,9 +156,11 @@ def test_analysis_extend(concat_cls):
 
             return wf.num_lines_check.out
 
-    assert sorted(ExtendedConcat.__parameters__) == ["duplicates", "second_duplicates"]
+    analysis_spec = ExtendedConcat.__analysis_spec__
 
-    assert sorted(ExtendedConcat.__column_specs__) == [
+    assert sorted(analysis_spec.parameter_names) == ["duplicates", "second_duplicates"]
+
+    assert sorted(analysis_spec.column_names) == [
         "concatenated",
         "doubly_concatenated",
         "file1",
@@ -163,63 +168,65 @@ def test_analysis_extend(concat_cls):
         "file3",
     ]
 
-    duplicates = ExtendedConcat.__parameters__["duplicates"]
+    assert list(analysis_spec.pipeline_names) == [
+        "concat_pipeline",
+        "doubly_concat_pipeline",
+    ]
+    assert list(analysis_spec.check_names) == ["num_lines_check"]
+    assert list(analysis_spec.switch_names) == []
+    assert list(analysis_spec.subanalysis_names) == []
+
+    duplicates = analysis_spec.parameter("duplicates")
     assert duplicates.type is int
     assert duplicates.default == 1
     assert duplicates.salience == ps.recommended
-    assert duplicates.inherited
+    assert duplicates.defined_in is concat_cls
 
-    second_duplicates = ExtendedConcat.__parameters__["second_duplicates"]
+    second_duplicates = analysis_spec.parameter("second_duplicates")
     assert second_duplicates.type is int
     assert second_duplicates.default == 1
     assert second_duplicates.salience == ps.recommended
-    assert not second_duplicates.inherited
+    assert second_duplicates.defined_in is ExtendedConcat
 
-    file1 = ExtendedConcat.__column_specs__["file1"]
+    file1 = analysis_spec.column_spec("file1")
     assert file1.type is Zip
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
-    assert file1.inherited
-    assert not file1.checks
+    assert file1.defined_in is concat_cls
 
-    file2 = ExtendedConcat.__column_specs__["file2"]
+    file2 = analysis_spec.column_spec("file2")
     assert file2.type is Text
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
-    assert file2.inherited
-    assert not file2.checks
+    assert file2.defined_in is concat_cls
 
-    file3 = ExtendedConcat.__column_specs__["file3"]
+    file3 = analysis_spec.column_spec("file3")
     assert file3.type is Text
     assert file3.row_frequency == Samples.sample
     assert file3.salience == cs.primary
-    assert not file3.inherited
-    assert len(file3.checks) == 1
+    assert file3.defined_in is ExtendedConcat
 
-    file3_check = file3.checks[0]
-    assert file3_check.name == "num_lines_check"
-
-    concatenated = ExtendedConcat.__column_specs__["concatenated"]
+    concatenated = analysis_spec.column_spec("concatenated")
     assert concatenated.type is Text
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
-    assert concatenated.inherited
-    assert not concatenated.checks
-    assert sorted(concatenated.pipelines) == [None]
+    assert concatenated.defined_in is concat_cls
 
-    doubly_concatenated = ExtendedConcat.__column_specs__["doubly_concatenated"]
+    doubly_concatenated = analysis_spec.column_spec("doubly_concatenated")
     assert doubly_concatenated.type is Text
     assert doubly_concatenated.row_frequency == Samples.sample
-    assert not doubly_concatenated.inherited
-    assert not doubly_concatenated.checks
+    assert doubly_concatenated.defined_in is ExtendedConcat
     assert doubly_concatenated.salience == cs.supplementary
 
-    concat_pipeline = concatenated.pipelines[None]
+    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
-    assert concat_pipeline.parameters == [duplicates]
-    assert concat_pipeline.inputs == [file1, file2]
-    assert concat_pipeline.outputs == [concatenated]
+    assert concat_pipeline.parameters == ("duplicates",)
+    assert concat_pipeline.inputs == ("file1", "file2")
+    assert concat_pipeline.outputs == ("concatenated",)
     assert concat_pipeline.method is concat_cls.concat_pipeline
+
+    num_lines_check = analysis_spec.check("num_lines_check")
+    assert num_lines_check.name == "num_lines_check"
 
 
 def test_analysis_override(concat_cls):
@@ -266,9 +273,9 @@ def test_analysis_override(concat_cls):
         @pipeline(
             concatenated,
             condition=(
-                value_of(order)
-                == "reversed" & is_provided(file1) & value_of(multiplier)
-                < 10
+                (value_of(order) == "reversed")
+                & is_provided(file1)
+                & (value_of(multiplier) < 10)
             ),
         )
         def reverse_concat_pipeline(
@@ -283,7 +290,7 @@ def test_analysis_override(concat_cls):
 
             return wf.concat.lzout.out
 
-        @pipeline(multiplied, condition=inputs_are_numeric)
+        @pipeline(multiplied, switch=inputs_are_numeric)
         def multiply_pipeline(self, wf, concatenated, multiplier):
 
             wf.add(
@@ -294,60 +301,67 @@ def test_analysis_override(concat_cls):
 
             return wf.concat.lzout.out
 
-    assert sorted(OverridenConcat.__column_specs__) == [
+    analysis_spec = OverridenConcat.__analysis_spec__
+
+    assert list(analysis_spec.column_names) == [
         "concatenated",
         "file1",
         "file2",
         "multiplied",
     ]
-    assert sorted(OverridenConcat.__parameters__) == [
+    assert list(analysis_spec.parameter_names) == [
         "duplicates",
         "multiplier",
         "order",
     ]
 
-    file1 = OverridenConcat.__column_specs__["file1"]
+    assert list(analysis_spec.pipeline_names) == [
+        "concat_pipeline",
+        "multiply_pipeline",
+        "reverse_concat_pipeline",
+    ]
+    assert list(analysis_spec.check_names) == []
+    assert list(analysis_spec.switch_names) == ["inputs_are_numeric"]
+    assert list(analysis_spec.subanalysis_names) == []
+
+    file1 = analysis_spec.column_spec("file1")
     assert file1.type is Zip
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
-    assert file1.inherited
-    assert not file1.checks
+    assert file1.defined_in is concat_cls
 
-    file2 = OverridenConcat.__column_specs__["file2"]
+    file2 = analysis_spec.column_spec("file2")
     assert file2.type is Text
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
-    assert file2.inherited
-    assert not file2.checks
+    assert file2.defined_in is concat_cls
 
-    concatenated = OverridenConcat.__column_specs__["concatenated"]
+    concatenated = analysis_spec.column_spec("concatenated")
     assert concatenated.type is Text
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
-    assert concatenated.inherited
-    assert not concatenated.checks
+    assert concatenated.defined_in is concat_cls
 
-    multiplied = OverridenConcat.__column_specs__["multiplied"]
+    multiplied = analysis_spec.column_spec("multiplied")
     assert multiplied.type is Text
     assert multiplied.row_frequency == Samples.sample
     assert multiplied.salience == cs.supplementary
-    assert not multiplied.inherited
-    assert not multiplied.checks
+    assert multiplied.defined_in is OverridenConcat
 
-    duplicates = OverridenConcat.__parameters__["duplicates"]
+    duplicates = analysis_spec.parameter("duplicates")
     assert duplicates.type is int
     assert duplicates.default == 2
     assert duplicates.salience == ps.recommended
-    assert multiplied.inherited
+    assert duplicates.defined_in is concat_cls
 
-    multiplier = OverridenConcat.__parameters__["multiplier"]
+    multiplier = analysis_spec.parameter("multiplier")
     assert multiplier.type is int
     assert multiplier.default is None
     assert multiplier.salience == ps.arbitrary
-    assert not multiplied.inherited
+    assert multiplier.defined_in is OverridenConcat
 
-    order = OverridenConcat.__parameters__["order"]
+    order = analysis_spec.parameter("order")
     assert order.type is str
     assert order.default == "forward"
     assert order.salience == ps.recommended
-    assert not multiplied.inherited
+    assert order.defined_in is OverridenConcat

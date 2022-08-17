@@ -15,11 +15,17 @@ class ColumnSalience(Enum):
 
     primary = (
         100,
-        "Primary input data, e.g. raw data or data reconstructed on " "the scanner",
+        "Primary input data, typically reconstructed by the instrument that "
+        "collects them",
+    )
+    raw = (
+        90,
+        "Raw data from the scanner that haven't been reconstructed and are "
+        "only typically used in advanced analyses",
     )
     publication = (
         80,
-        "Results that would typically be used as main outputs " "in publications",
+        "Results that would typically be used as main outputs in publications",
     )
     supplementary = (
         60,
@@ -36,7 +42,11 @@ class ColumnSalience(Enum):
         "Derivatives that would typically only need to be checked "
         "when debugging analysis workflows",
     )
-    temp = (0, "Data only temporarily stored to pass between pipelines")
+    temp = (
+        0,
+        "Data only temporarily stored to pass between pipelines, e.g. that "
+        "operate on different row frequencies",
+    )
 
     def __init__(self, level, desc):
         self.level = level
