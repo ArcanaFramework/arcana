@@ -98,7 +98,7 @@ class DataQuality(Enum):
         return self.value <= other.value
 
 
-class CheckCriticality(Enum):
+class CheckSalience(Enum):
     """An enum that holds the potential values for signifying how critical a check is to
     run.
     """
@@ -123,7 +123,7 @@ class CheckCriticality(Enum):
     required = (100, "Pipeline will often fail, checking the results is required")
 
 
-class CheckResults(Enum):
+class CheckStatus(Enum):
     """An enum that holds the potential values that signify how likely a pipeline has "
     "failed"""
 

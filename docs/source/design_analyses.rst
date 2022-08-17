@@ -414,11 +414,11 @@ and another sink column ``doubly_concatenated``.
         file3: Text = column("Another file to concatenate")
 
         # Sink columns
-        concatenated = inherit_from(Concat)
+        concatenated = inherited_from(Concat)
         doubly_concatenated: Text = column("The doubly concatenated file")
 
         # Parameters
-        duplicates = inherit_from(Concat)
+        duplicates = inherited_from(Concat)
 
         @pipeline(doubly_concatenated)
         def doubly_concat_pipeline(
@@ -449,12 +449,12 @@ concatenation step matches what is expected.
     class ConcatWithCheck(Concat):
 
         # Sink columns
-        concatenated = inherit_from(Concat)
+        concatenated = inherited_from(Concat)
 
         # Parameters
-        duplicates = inherit_from(Concat)
+        duplicates = inherited_from(Concat)
 
-        @check(concatenated)
+        @check(concatenated, salience=CheckSalience.recommended)
         def check_file3(self, wf, concatenated: Text, duplicates: int):
             """Checks the number of lines in the concatenated file to see whether they
             match what is expected for the number of duplicates specified"""
@@ -462,7 +462,11 @@ concatenation step matches what is expected.
             def num_lines_equals(in_file, num_lines):
                 with open(in_file) as f:
                     contents = f.read()
-                return len(contents.splitlines()) == num_lines
+                if len(contents.splitlines()) == num_lines:
+                    status = CheckStatus.probable_pass
+                else:
+                    status = CheckStatus.failed
+                return status
 
             wf.add(
                 num_lines_equals(
@@ -487,14 +491,14 @@ pipeline that produces ``concatenated``
     class OverridenConcat(Concat):
 
         # Source columns
-        file1: Zip = inherit_from(Concat)
-        file2: Text = inherit_from(Concat)
+        file1: Zip = inherited_from(Concat)
+        file2: Text = inherited_from(Concat)
 
         # Sinks columns
-        concatenated: Text = inherit_from(Concat)
+        concatenated: Text = inherited_from(Concat)
 
         # Parameters
-        duplicates = inherit_from(Concat, default=2)  # default value changed because we can
+        duplicates = inherited_from(Concat, default=2)  # default value changed because we can
         order: str = parameter(
             "perform the concatenation in reverse order, i.e. file2 and then file1",
             choices=["forward", "reversed"],
@@ -532,11 +536,11 @@ files ``file1`` and ``file2`` are numeric for the corresponding row as determine
     class ConcatWithSwitch(Concat):
 
         # Source columns
-        file1: Zip = inherit_from(Concat)
-        file2: Text = inherit_from(Concat)
+        file1: Zip = inherited_from(Concat)
+        file2: Text = inherited_from(Concat)
 
         # Sink columns
-        concatenated: Text = inherit_from(Concat)
+        concatenated: Text = inherited_from(Concat)
         multiplied: Text = column("contents of the concatenated files are multiplied")
 
         # Parameters
@@ -547,9 +551,9 @@ files ``file1`` and ``file2`` are numeric for the corresponding row as determine
         @switch
         def inputs_are_numeric(self, wf, file1: Text, file2: Text):
 
-            wf.add(check_contents_are_numeric(in_file=file1, name="check_file1"))
+            wf.add(contents_are_numeric(in_file=file1, name="check_file1"))
 
-            wf.add(check_contents_are_numeric(in_file=file2, name="check_file2"))
+            wf.add(contents_are_numeric(in_file=file2, name="check_file2"))
 
             @pydra.mark.task
             def boolean_and(val1, val2) -> bool:

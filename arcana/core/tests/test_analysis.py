@@ -5,21 +5,26 @@ from arcana.test.tasks import (
     concatenate,
     concatenate_reverse,
     multiply_contents,
-    check_contents_are_numeric,
+    contents_are_numeric,
 )
 from arcana.core.mark import (
     analysis,
     pipeline,
     parameter,
     column,
-    inherit_from,
+    inherited_from,
     value_of,
     switch,
     is_provided,
     check,
 )
 from arcana.data.formats.common import Zip, Text
-from arcana.core.enum import ColumnSalience as cs, ParameterSalience as ps
+from arcana.core.enum import (
+    CheckStatus,
+    ColumnSalience as cs,
+    ParameterSalience as ps,
+    CheckSalience as chs,
+)
 
 
 @pytest.fixture
@@ -99,12 +104,12 @@ def test_analysis_extend(concat_cls):
     @analysis(Samples)
     class ExtendedConcat(concat_cls):
 
-        concatenated = inherit_from(concat_cls)
+        concatenated = inherited_from(concat_cls)
         file3: Text = column("Another file to concatenate", salience=cs.primary)
 
         doubly_concatenated: Text = column("The doubly concatenated file")
 
-        duplicates = inherit_from(concat_cls)
+        duplicates = inherited_from(concat_cls)
         second_duplicates: int = parameter(
             "The number of times to duplicate the second concatenation", default=1
         )
@@ -125,7 +130,7 @@ def test_analysis_extend(concat_cls):
 
             return wf.concat.lzout.out
 
-        @check(file3)
+        @check(file3, salience=chs.recommended)
         def num_lines_check(self, wf, file3: Text, duplicates: int):
             """Checks the number of lines in the concatenated file to see whether they
             match what is expected for the number of duplicates specified"""
@@ -134,7 +139,11 @@ def test_analysis_extend(concat_cls):
             def num_lines_equals(in_file, num_lines):
                 with open(in_file) as f:
                     contents = f.read()
-                return len(contents.splitlines()) == num_lines
+                if len(contents.splitlines()) == num_lines:
+                    status = CheckStatus.probable_pass
+                else:
+                    status = CheckStatus.failed
+                return status
 
             wf.add(
                 num_lines_equals(
@@ -220,12 +229,12 @@ def test_analysis_override(concat_cls):
     @analysis(Samples)
     class OverridenConcat(concat_cls):
 
-        file1: Zip = inherit_from(concat_cls)
-        file2: Text = inherit_from(concat_cls)
-        concatenated: Text = inherit_from(concat_cls)
+        file1: Zip = inherited_from(concat_cls)
+        file2: Text = inherited_from(concat_cls)
+        concatenated: Text = inherited_from(concat_cls)
         multiplied: Text = column("contents of the concatenated files are multiplied")
 
-        duplicates = inherit_from(concat_cls, default=2)
+        duplicates = inherited_from(concat_cls, default=2)
         multiplier: int = parameter(
             "the multiplier used to apply", salience=ps.arbitrary
         )
@@ -238,9 +247,9 @@ def test_analysis_override(concat_cls):
         @switch
         def inputs_are_numeric(self, wf, file1: Text, file2: Text):
 
-            wf.add(check_contents_are_numeric(in_file=file1, name="check_file1"))
+            wf.add(contents_are_numeric(in_file=file1, name="check_file1"))
 
-            wf.add(check_contents_are_numeric(in_file=file2, name="check_file2"))
+            wf.add(contents_are_numeric(in_file=file2, name="check_file2"))
 
             @pydra.mark.task
             def boolean_and(val1, val2) -> bool:
@@ -257,9 +266,9 @@ def test_analysis_override(concat_cls):
         @pipeline(
             concatenated,
             condition=(
-                value_of(order) == "reversed"
-                and is_provided(file1)
-                and value_of(multiplier) < 10
+                value_of(order)
+                == "reversed" & is_provided(file1) & value_of(multiplier)
+                < 10
             ),
         )
         def reverse_concat_pipeline(

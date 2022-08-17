@@ -200,7 +200,7 @@ def multiply_contents(
 
 
 @mark.task
-def check_contents_are_numeric(in_file: Path) -> bool:
+def contents_are_numeric(in_file: Path) -> bool:
     """Checks the contents of a file to see whether each line can be cast to a numeric
     value
 
