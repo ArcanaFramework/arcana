@@ -4,22 +4,20 @@ Designing Analyses
 ==================
 
 An great way to contribute to the development of Arcana is to implement new
-:class:`.Analysis` classes or extend existing ones. Analysis
-classes are designed to be able generic enough to be used widely, but able to
-be tailored to meet specific requirements of particular use cases/research studies
-via class inheritance where required (see :ref:`inheritance`).
+analysis classes or extend existing ones. The architecture of analysis
+classes is intended to facilitate the implementation of generic analysis suites
+for wide-spread use, which can then be tailored to meet the specific requirements
+of particular research studies via class inheritance (see :ref:`inheritance`).
 
-.. This page builds upon the description of analysis-class design
-.. introduced in :ref:`analysis_classes`. The basic building blocks of the design
-.. are described in detail in the :ref:`Basics` section, while more advanced
-.. concepts involved in extending existing classes and merging multiple classes
-.. into large analsyes are covered in the :ref:`Advanced` section.
-.. Finally, examples showing all features in action are given in
-.. :ref:`analysis_examples`.
+This page builds upon the description of analysis-class design
+introduced in :ref:`analysis_classes`. The basic building blocks of the design
+are described in detail in the :ref:`Basics` section, while more advanced
+concepts involved in extending existing classes are covered in the :ref:`Advanced`
+section.
 
 
-.. Basics
-.. ------
+Basics
+------
 
 There are two main components of analysis classes, column specifications
 (:ref:`column_param_specs`), which define the data to be provided to and
@@ -34,7 +32,7 @@ analyses (e.g. plotting figures) all in the one place.
 .. _column_param_specs:
 
 DataColumn and parameter specification
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 While columns in an :class:`.Analysis` class can be specified using the
 dataclass-like syntax of ``column_name: Format``, in most cases you will want to
@@ -301,86 +299,362 @@ isn't provided.
                 plt.show()
 
 
-.. Advanced
-.. --------
+Advanced
+--------
 
-.. .. warning::
-..     Under construction
-
-.. In every software framework, there are always corner cases that are
-.. more complicated than the basic logic can handle. In designing
-.. informatics frameworks, these challenges often arise when attempting to write
-.. portable workflows, due to slight differences in the data and and end goals of
-.. the application. This is particularly true in academia, where novelty is a key
-.. criteria. To address these requirements, this section introduces some more
-.. complex concepts, which can be used to customise and combine analysis methods
-.. into powerful new classes: conditional pipelines (:ref:`conditional_pipelines`),
-.. class inheritance (:ref:`inheritance`) and sub-analyses (:ref:`subanalyses`).
+In every software framework, there are always corner cases that are
+more complicated than the basic logic can handle. In designing
+informatics frameworks, these challenges often arise when attempting to write
+portable workflows, due to slight differences in the data and and end goals of
+the application. This is particularly true in academia, where novelty is a key
+criteria. To address these requirements, this section introduces some more
+complex concepts, which can be used to customise and combine analysis methods
+into powerful new classes: class inheritance (:ref:`inheritance`),
+conditional pipelines (:ref:`conditional_pipelines`),
+quality-control checks (:ref:`quality_control`) and sub-analyses (:ref:`subanalyses`).
 
 
-.. .. _conditional_pipelines:
+.. _inheritance:
 
-.. Conditionals
-.. ~~~~~~~~~~~~
+Inheritance
+~~~~~~~~~~~
 
-
-.. * conditions + symbolic logic
-.. * resolution order
-
-.. .. _inheritance:
-
-.. Inheritance
-.. ~~~~~~~~~~~
+Given a toy example analysis class that has two text-file source columns, ``file1`` and
+``file2``. The ``concat_pipeline`` builds a workflow that generates data for the sink
+column ``concatenated`` and can be modified by the ``duplicates`` parameter.
 
 
-.. * overriding methods
-.. * accessing columns from base classes
-.. * mixins
+.. code-block:: python
 
-.. .. _subanalyses:
+    @analysis(Samples)
+    class Concat:
 
-.. Sub-analyses
-.. ~~~~~~~~~~~~
+        # Source columns
+        file1: Text = column("an arbitrary text file")
+        file2: Text = column("another arbitrary text file")
+
+        # Sink columns
+        concatenated: Text = column("the output of concatenating file1 and file2")
+
+        # Parameters
+        duplicates: int = parameter(
+            "the number of times to duplicate the concatenation", default=1
+        )
+
+        @pipeline(concatenated)
+        def concat_pipeline(self, wf, file1: Text, file2: Text, duplicates: int):
+            """Concatenates the contents of `file1` with the contents of `file2` to produce
+            a new text file. The concatenation can be repeated multiple times within
+            the produced text file by specifying the number of repeats to the `duplicates`
+            parameter
+            """
+
+            wf.add(
+                concatenate(
+                    name="concat", in_file1=file1, in_file2=file2, duplicates=duplicates
+                )
+            )
+
+            return wf.concat.lzout.out  # Output Pydra LazyField for concatenated file
 
 
-.. * How to define sub-analyses
+The ``Concat`` class can be subclassed to create the ``ExtendedConcat`` class, which adds
+one additional source column ``file3`` and another sink column ``doubly_concatenated``.
+Data for ``doubly_concatenated`` is generated by the ``doubly_concat_pipeline``.
+
+.. code-block:: python
+
+    @analysis(Samples)
+    class ExtendedConcat(Concat):
+
+        # Source columns
+        file3: Text = column("Another file to concatenate")
+
+        # Sink columns
+        concatenated = inherited_from(Concat)
+        doubly_concatenated: Text = column("The doubly concatenated file")
+
+        # Parameters
+        duplicates = inherited_from(Concat, default=3)
+
+        @pipeline(doubly_concatenated)
+        def doubly_concat_pipeline(
+            self, wf, concatenated: Text, file3: Text, duplicates: int
+        ):
+
+            wf.add(
+                concatenate(
+                    name="concat",
+                    in_file1=concatenated,
+                    in_file2=file3,
+                    duplicates=duplicates,
+                )
+            )
+
+            return wf.concat.lzout.out
+
+Because the ``concatenated`` column and ``duplicates`` parameter are used in the
+``doubly_concat_pipeline``, they are explicitly referenced in the subclass using the
+``inherit_from`` function. Note, that this is enforced due a design decision to make it
+clear where columns and parameters are defined when reading the code. Columns that
+aren't explicitly referenced in the class (e.g. ``file1`` and ``file2``) can be omitted
+from the subclass definition (but will still be present in the subclass). When
+explicitly inheriting columns and parameters it is possible to override their attributes,
+such as the default value for a given parameter (see ``duplicates`` in above example).
+
+
+.. _conditional_pipelines:
+
+Conditionals and switches
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are cases where different analysis methods need to be applied depending on the
+requirements of a particular study or to deal with idiosyncrasies of a particular
+dataset. There are two mechanisms for handling such cases in Arcana: "condition
+expressions" and "switches".
+
+Both condition expressions and switches are referenced within the ``@pipeline`` decorator.
+When a condition expression or switch is set on a pipeline builder, that pipeline will
+be used to generate data for a sink column only when certain criteria are met. If the criteria
+aren't met, then either the default pipeline builder (one without either a switch or
+condition expression) will be used if it is present or an "not produced" error will be
+raised instead.
+
+The difference between a condition expression and a switch is that a condition
+expression is true or false over a whole dataset given a specific parameterisation,
+whereas a switch can be true or false for different rows of the dataset depending on
+the nature of the input data.
+
+Condition expressions are specified as using the functions ``value_of(parameter)``
+and ``is_provided(column)`` as placeholders for parameter values or whether a column
+specification in the analysis is linked to a column in the dataset or not. In the
+following example, a condition is used to enable the user whether ``concatenated``
+should be generated by the ``concat_pipeline`` method (default) or
+the ``reverse_concat_pipeline`` by setting the value of the ``order`` parameter.
+
+
+.. code-block:: python
+
+    @analysis(Samples)
+    class OverridenConcat(Concat):
+
+        # Source columns
+        file1: Zip = inherited_from(Concat)
+        file2: Text = inherited_from(Concat)
+
+        # Sinks columns
+        concatenated: Text = inherited_from(Concat)
+
+        # Parameters
+        duplicates = inherited_from(Concat, default=2)  # default value changed because we can
+        order: str = parameter(
+            "perform the concatenation in reverse order, i.e. file2 and then file1",
+            choices=["forward", "reversed"],
+            default="forward",
+        )
+
+        @pipeline(
+            concatenated,
+            condition=(value_of(order) == "reversed"),
+        )
+        def reverse_concat_pipeline(
+            self, wf, file1: Text, file2: Text, duplicates: int
+        ):
+
+            wf.add(
+                concatenate_reverse(
+                    name="concat", in_file1=file1, in_file2=file2, duplicates=duplicates
+                )
+            )
+
+            return wf.concat.lzout.out
+
+
+Switches are defined in methods of the analysis class using the ``@switch`` decorator
+and are similar pipeline builders in that they add nodes to a Pydra workflow passed to the
+first argument. The sole output field of a switch must contain either be a boolean or
+string, which specifies which branch of processing is to be performed. The switch
+method is then passed to the ``@pipeline`` decorator via the ``switch`` keyword. If
+the switch returns a string then the value passed to the ``switch`` keyword must be
+tuple, with the first element the switch method and the second the value of the string
+that will activate that branch of the pipeline to be run.
+
+In the following example, the contents of the files in the ``concatenated`` column are
+multiplied the value passed to the arbitrary ``multiplier`` parameter if the contents of
+the input files ``file1`` and ``file2`` are numeric for the corresponding row as
+determined by the ``inputs_are_numeric`` switch.
+
+.. code-block:: python
+
+    @analysis(Samples)
+    class ConcatWithSwitch(Concat):
+
+        # Source columns
+        file1: Zip = inherited_from(Concat)
+        file2: Text = inherited_from(Concat)
+
+        # Sink columns
+        concatenated: Text = inherited_from(Concat)
+        multiplied: Text = column("contents of the concatenated files are multiplied")
+
+        # Parameters
+        multiplier: int = parameter(
+            "the multiplier used to apply", salience=ps.arbitrary
+        )
+
+        @switch
+        def inputs_are_numeric(self, wf, file1: Text, file2: Text):
+
+            wf.add(contents_are_numeric(in_file=file1, name="check_file1"))
+
+            wf.add(contents_are_numeric(in_file=file2, name="check_file2"))
+
+            @pydra.mark.task
+            def boolean_and(val1, val2) -> bool:
+                return val1 and val2
+
+            wf.add(
+                boolean_and(
+                    val1=wf.check_file1.out, val2=wf.check_file2.out, name="bool_and"
+                )
+            )
+
+            return wf.bool_and.out
+
+        @pipeline(multiplied, switch=inputs_are_numeric)
+        def multiply_pipeline(self, wf, concatenated, multiplier):
+
+            wf.add(
+                multiply_contents(
+                    name="concat", in_file=concatenated, multiplier=multiplier
+                )
+            )
+
+            return wf.concat.lzout.out
+
+
+.. _quality_control:
+
+Quality-control checks
+~~~~~~~~~~~~~~~~~~~~~~
+
+When running complex analyses it is important to inspect generated derivatives
+to make sure the workflows completed properly. In Arcana, it is possible to semi-automate
+this process by adding quality-control "checks" to an analysis class.
+
+In the following example the number of lines produced by the concatation step is checked
+to see if it matches the number expected given the value of the ``duplicates`` parameter.
+
+.. code-block:: python
+
+    @analysis(Samples)
+    class ConcatWithCheck(Concat):
+
+        # Sink columns
+        concatenated = inherited_from(Concat)
+
+        # Parameters
+        duplicates = inherited_from(Concat)
+
+        @check(concatenated, salience=CheckSalience.recommended)
+        def check_file3(self, wf, concatenated: Text, duplicates: int):
+            """Checks the number of lines in the concatenated file to see whether they
+            match what is expected for the number of duplicates specified"""
+            @pydra.mark.task
+            def num_lines_equals(in_file, num_lines):
+                with open(in_file) as f:
+                    contents = f.read()
+                if len(contents.splitlines()) == num_lines:
+                    status = CheckStatus.probable_pass
+                else:
+                    status = CheckStatus.failed
+                return status
+
+            wf.add(
+                num_lines_equals(
+                    in_file=concatenated, num_lines=2 * duplicates, name="num_lines_check"
+                )
+            )
+
+            return wf.num_lines_check.out
+
+
+.. _subanalyses:
+
+Sub-analyses
+~~~~~~~~~~~~
+
+When dealing with separate data streams that can be largely analysed in parallel
+(e.g. multiple MRI contrasts), it can be convenient to combine multiple analyses tailored
+to each stream into a single conglomerate analysis. This pattern can implemented in
+Arcana using ``subanalysis`` attributes.
+
+The type annotation of the ``subanalysis`` attribute specifies the analysis to be performed,
+and the keyword arguments of specify mappings from the column specs and parameters
+in the global namespace of the outer class to the namespace of the subanalysis. With these
+mappings, source columns linked to specs in the global namespace can be passed to
+the subanalysis, and sink columns generated by pipelines in the global namespace
+can be linked to any column within the subanalysis.
+
+The ``mapped_from`` function is used to map columns and parameters from subanalyses into
+the global namespace, and takes two arguments, the name of the subanalysis and the name
+of the column/parameter to map. By mapping a column/parameter into the global namespace
+from one subanalysis and then mapping it back into another subanalysis the designer
+can be stitched together. For example, the cortical surface reconstruction column from
+a subanalysis for analysing anatomical MRI images could be mapped to a source column
+in another subanalysis for analysing white matter tracts diffusion-weighted contrast
+MRI images in order to constrain the potential endpoints of the tracts.
+
+In the following example, two of the classes defined above, ``ExtendedConcat`` and
+``ConcatWithSwitch`` are stitched together, so that the ``multiplied`` output column of
+``ConcatWithSwitch`` is passed to the ``file3`` input column of ``ExtendedConcat``.
+The ``duplicates`` parameter in each subanalysis are linked together so they are always
+consistent by mapping it from the ``ExtendedConcat`` subanalysis to the global namespace
+and then back into the ``ConcatWithSwitch``.
+
+.. code-block:: python
+
+    @analysis(Samples)
+    class _ConcatWithSubanalyses:
+
+        # Source columns mapped from "sub1" subanalysis so they can be shared across
+        # both sub-analyses. Note that they could just as easily have been mapped from
+        # "sub1" or recreated from scratch and mapped into both
+        file1 = mapped_from("sub1", "file1")
+        file2 = mapped_from("sub1", "file2")
+
+        # Sink columns generated within the subanalyses mapped back out to the global
+        # namespace so they can be mapped into the other subanalysis
+        concat_and_multiplied = mapped_from("sub2", "multiplied")
+
+        # Link the duplicates parameter across both subanalyses so it is always the same
+        # by mapping a global parameter into both subanalyses
+        common_duplicates = mapped_from(
+            "sub1", "duplicates", default=5, salience=ps.check
+        )
+
+        # Additional parameters such as "multiplier" can be accessed within the subanalysis
+        # class after the analysis class has been initialised using the 'sub2.multiplier'
+
+        sub1: ExtendedConcat = subanalysis(
+            "sub-analysis to add the 'doubly_concat' pipeline",
+            # Feed the multiplied sink column from sub2 into the source column file3 of
+            # the extended class
+            file3=concat_and_multiplied,
+        )
+        sub2: ConcatWithSwitch = subanalysis(
+            "sub-analysis to add the 'multiply' pipeline",
+            file1=file1,
+            file2=file2,
+            # Use the concatenated generated by sub1 to avoid running it twice
+            duplicates=common_duplicates,
+        )
+
+
 .. * sub-analysis arrays (e.g. for fMRI tasks)
 
 
-.. _analysis_examples:
+.. .. _analysis_examples:
 
 .. Examples
 .. --------
-
-
-.. .. code-block:: python
-..     :linenos:
-
-..     @analysis(ExampleDataSpace)
-..     class ExampleAnalysis():
-
-..         recorded_datafile: ZippedDir  = column(
-..             desc=("Datafile acquired from an example scanner. Contains key "
-..                   "data to analyse"),
-..             salience='primary')
-..         recorded_metadata: Json = column(
-..             desc="Metadata accompanying the recorded data",
-..             salience='primary')
-..         preprocessed: ZippedDir = column(
-..             desc="Preprocessed data file, corrected for distortions",
-..             salience='qa')
-..         derived_image: Png = column(
-..             desc="Map of the processed data",
-..             salience='supplementary')
-..         summary_metric: float = column(
-..             desc="A summary metric extracted from the derived image",
-..             salience='output')
-..         contrast: float = parameter(
-..             default=0.5,
-..             desc="Contrast of derived image",
-..             salience='arbitrary')
-..         kernel_fwhms: list[float] = parameter(
-..             default=[0.5, 0.3, 0.1],
-..             desc=("Kernel full-width-at-half-maxium values for iterative "
-..                   "smoothing in preprocessing"),
-..             salience='dependent')
