@@ -297,7 +297,7 @@ def test_analysis_basic(Concat):
     assert concatenated.defined_in is Concat
     assert concatenated.mapped_from is None
 
-    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -370,7 +370,7 @@ def test_analysis_extended(Concat, ExtendedConcat):
     assert doubly_concatenated.salience == cs.supplementary
     assert doubly_concatenated.defined_in is ExtendedConcat
 
-    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -380,7 +380,7 @@ def test_analysis_extended(Concat, ExtendedConcat):
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
-    doubly_concat_pipeline = analysis_spec.pipeline_spec("doubly_concat_pipeline")
+    doubly_concat_pipeline = analysis_spec.pipeline_builder("doubly_concat_pipeline")
     assert doubly_concat_pipeline.name == "doubly_concat_pipeline"
     assert doubly_concat_pipeline.parameters == ("duplicates",)
     assert doubly_concat_pipeline.inputs == ("concatenated", "file3")
@@ -437,7 +437,7 @@ def test_analysis_with_check(Concat, ConcatWithCheck):
     assert concatenated.defined_in is Concat
     assert concatenated.mapped_from is None
 
-    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -514,7 +514,7 @@ def test_analysis_override(Concat, OverridenConcat):
     assert order.salience == ps.recommended
     assert order.defined_in is OverridenConcat
 
-    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -524,7 +524,7 @@ def test_analysis_override(Concat, OverridenConcat):
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
-    reverse_concat_pipeline = analysis_spec.pipeline_spec("reverse_concat_pipeline")
+    reverse_concat_pipeline = analysis_spec.pipeline_builder("reverse_concat_pipeline")
     assert reverse_concat_pipeline.name == "reverse_concat_pipeline"
     assert reverse_concat_pipeline.parameters == ("duplicates",)
     assert reverse_concat_pipeline.inputs == ("file1", "file2")
@@ -600,7 +600,7 @@ def test_analysis_switch(Concat, ConcatWithSwitch):
     assert multiplier.salience == ps.arbitrary
     assert multiplier.defined_in is ConcatWithSwitch
 
-    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -610,7 +610,7 @@ def test_analysis_switch(Concat, ConcatWithSwitch):
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
-    multiply_pipeline = analysis_spec.pipeline_spec("multiply_pipeline")
+    multiply_pipeline = analysis_spec.pipeline_builder("multiply_pipeline")
     assert multiply_pipeline.name == "multiply_pipeline"
     assert multiply_pipeline.parameters == ("multiplier",)
     assert multiply_pipeline.inputs == ("concatenated",)

@@ -101,7 +101,7 @@ class Switch:
 
 
 @attrs.define(frozen=True)
-class PipelineSpec:
+class PipelineBuilder:
     """Specifies a pipeline that is able to generate data for sink columns under
     certain conditions"""
 
@@ -155,7 +155,7 @@ class AnalysisSpec:
 
     space: type
     column_specs: ty.Tuple[ColumnSpec] = attrs.field(validator=unique_names)
-    pipeline_specs: ty.Tuple[PipelineSpec] = attrs.field(validator=unique_names)
+    pipeline_builders: ty.Tuple[PipelineBuilder] = attrs.field(validator=unique_names)
     parameters: ty.Tuple[Parameter] = attrs.field(validator=unique_names)
     switches: ty.Tuple[Switch] = attrs.field(validator=unique_names)
     checks: ty.Tuple[Check] = attrs.field(validator=unique_names)
@@ -171,7 +171,7 @@ class AnalysisSpec:
 
     @property
     def pipeline_names(self):
-        return (p.name for p in self.pipeline_specs)
+        return (p.name for p in self.pipeline_builders)
 
     @property
     def switch_names(self):
@@ -191,8 +191,8 @@ class AnalysisSpec:
     def parameter(self, name):
         return next(p for p in self.parameters if p.name == name)
 
-    def pipeline_spec(self, name):
-        return next(p for p in self.pipeline_specs if p.name == name)
+    def pipeline_builder(self, name):
+        return next(p for p in self.pipeline_builders if p.name == name)
 
     def switch(self, name):
         return next(s for s in self.switches if s.name == name)
@@ -208,7 +208,7 @@ class AnalysisSpec:
         return (c for c in self.checks if c.column == column_name)
 
     def select_pipeline(self, column_name, analysis, dataset):
-        candidates = [p for p in self.pipeline_specs if column_name in p.outputs]
+        candidates = [p for p in self.pipeline_builders if column_name in p.outputs]
         matching = [
             m
             for m in candidates
@@ -233,7 +233,7 @@ class AnalysisSpec:
     def column_specs_validator(self, _, column_specs):
         for column_spec in column_specs:
             sorted_by_cond = defaultdict(list)
-            for pipe_spec in self.pipeline_specs:
+            for pipe_spec in self.pipeline_builders:
                 if pipe_spec.output.name == column_spec.name:
                     sorted_by_cond[(pipe_spec.condition, pipe_spec.switch)] = pipe_spec
             if (None, None) not in sorted_by_cond:
@@ -253,7 +253,7 @@ class AnalysisSpec:
                 )
             if not sorted_by_cond:
                 inputs_to = [
-                    p for p in self.pipeline_specs if column_spec.name in p.inputs
+                    p for p in self.pipeline_builders if column_spec.name in p.inputs
                 ]
                 if not inputs_to:
                     raise ArcanaDesignError(
@@ -265,14 +265,14 @@ class AnalysisSpec:
                         f"is not specified as 'raw' or 'primary'"
                     )
 
-    @pipeline_specs.validator
-    def pipeline_specs_validator(self, _, pipeline_specs):
-        for pipeline_spec in pipeline_specs:
+    @pipeline_builders.validator
+    def pipeline_builders_validator(self, _, pipeline_builders):
+        for pipeline_builder in pipeline_builders:
             if missing_outputs := [
-                o for o in pipeline_spec.outputs if o not in self.column_names
+                o for o in pipeline_builder.outputs if o not in self.column_names
             ]:
                 raise ArcanaDesignError(
-                    f"{pipeline_spec} outputs to unknown columns: {missing_outputs}"
+                    f"{pipeline_builder} outputs to unknown columns: {missing_outputs}"
                 )
 
 
@@ -323,7 +323,7 @@ def make_analysis_class(cls, space: DataSpace):
 
     # Initialise lists to hold all the different components of an analysis
     column_specs = []
-    pipeline_specs = []
+    pipeline_builders = []
     parameters = []
     switches = []
     checks = []
@@ -428,8 +428,8 @@ def make_analysis_class(cls, space: DataSpace):
                     )
             else:
                 condition = None
-            pipeline_specs.append(
-                PipelineSpec(
+            pipeline_builders.append(
+                PipelineBuilder(
                     name=attr.__name__,
                     desc=attr.__doc__,
                     inputs=input_columns,
@@ -507,7 +507,7 @@ def make_analysis_class(cls, space: DataSpace):
         # Append pipeline specs, switches and checks that were inherited from base
         # classes
         for lst, base_lst in (
-            (pipeline_specs, base_spec.pipeline_specs),
+            (pipeline_builders, base_spec.pipeline_builders),
             (switches, base_spec.switches),
             (checks, base_spec.checks),
         ):
@@ -516,7 +516,7 @@ def make_analysis_class(cls, space: DataSpace):
     analysis_cls.__analysis_spec__ = AnalysisSpec(
         space=space,
         column_specs=tuple(sorted(column_specs, key=attrgetter("name"))),
-        pipeline_specs=tuple(sorted(pipeline_specs, key=attrgetter("name"))),
+        pipeline_builders=tuple(sorted(pipeline_builders, key=attrgetter("name"))),
         parameters=tuple(sorted(parameters, key=attrgetter("name"))),
         switches=tuple(sorted(switches, key=attrgetter("name"))),
         checks=tuple(sorted(checks, key=attrgetter("name"))),
