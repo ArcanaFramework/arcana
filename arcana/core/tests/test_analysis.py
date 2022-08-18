@@ -678,7 +678,12 @@ def test_analysis_with_subanalyses(
     sub1 = analysis_spec.subanalysis("sub1")
     assert sub1.name == "sub1"
     assert sub1.analysis_class is ExtendedConcat
-    assert sub1.mappings == (("file3", "concat_and_multiplied"),)
+    assert sub1.mappings == (
+        ("duplicates", "common_duplicates"),
+        ("file1", "file1"),
+        ("file2", "file2"),
+        ("file3", "concat_and_multiplied"),
+    )
     assert sub1.defined_in is ConcatWithSubanalyses
 
     sub2 = analysis_spec.subanalysis("sub2")
@@ -688,5 +693,6 @@ def test_analysis_with_subanalyses(
         ("duplicates", "common_duplicates"),
         ("file1", "file1"),
         ("file2", "file2"),
+        ("multiplied", "concat_and_multiplied"),
     )
     assert sub2.defined_in is ConcatWithSubanalyses

@@ -3,6 +3,7 @@ import typing as ty
 import inspect
 from copy import copy
 from collections import defaultdict
+from itertools import chain
 import operator as operator_module
 from operator import attrgetter
 from .data.space import DataSpace
@@ -369,10 +370,30 @@ def make_analysis_class(cls, space: DataSpace):
                     mapped_from=attr.metadata.get("mapped_from"),
                 )
             )
-        elif attr_type == "subanalysis":
+        elif attr_type != "subanalysis":
+            raise ValueError(f"Unrecognised attrs type '{attr_type}'")
+
+    # Do another loop and collect all the sub-analyses after we have build the
+    # column specs and parameters so we can implicitly add any mappings to the
+    for attr in analysis_cls.__attrs_attrs__:
+        try:
+            attr_type = attr.metadata[arcana.core.mark.ATTR_TYPE]
+        except KeyError:
+            continue
+        if attr_type == "subanalysis" and not attr.inherited:
             resolved_mappings = []
             for (from_, to) in attr.metadata["mappings"]:
                 resolved_mappings.append((from_, _attr_name(cls, to)))
+            # Add in implicit mappings, where a column from the subanalysis has been
+            # mapped into the global namespace of the analysis class
+            for col_or_param in chain(column_specs, parameters):
+                if (
+                    col_or_param.mapped_from
+                    and col_or_param.mapped_from[0] == attr.name
+                ):
+                    resolved_mappings.append(
+                        (col_or_param.mapped_from[1], col_or_param.name)
+                    )
             subanalyses.append(
                 Subanalysis(
                     name=attr.name,
@@ -382,8 +403,6 @@ def make_analysis_class(cls, space: DataSpace):
                     defined_in=attr.metadata.get("defined_in", analysis_cls),
                 )
             )
-        else:
-            raise ValueError(f"Unrecognised attrs type '{attr_type}'")
 
     # Loop through all attributes to pick up decorated methods for pipelines, checks
     # and switches
