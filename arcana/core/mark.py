@@ -1,6 +1,9 @@
+from copy import copy
 import attrs
-from .analysis import _UnresolvedOp, make_analysis_class, _Inherited
+from .analysis import _UnresolvedOp, make_analysis_class, _InheritedFrom, _MappedFrom
 from .enum import ColumnSalience, ParameterSalience, CheckSalience
+from arcana.exceptions import ArcanaDesignError
+
 
 PIPELINE_ANNOT = "__arcana_pipeline__"
 CONVERTER_ANNOT = "__arcana_converter__"
@@ -24,40 +27,71 @@ def analysis(space: type):
     return decorator
 
 
-def column(desc, row_frequency=None, salience=ColumnSalience.supplementary):
-    return attrs.field(
-        default=None,
-        metadata={
+def column(
+    desc, row_frequency=None, salience=ColumnSalience.supplementary, metadata=None
+):
+    if metadata is None:
+        metadata = {}
+    else:
+        metadata = copy(metadata)
+    metadata.update(
+        {
             ATTR_TYPE: "column",
             "desc": desc,
             "row_frequency": row_frequency,
             "salience": salience,
-        },
+        }
+    )
+    return attrs.field(
+        default=None,
+        metadata=metadata,
     )
 
 
-def parameter(desc, default=None, choices=None, salience=ParameterSalience.recommended):
-    return attrs.field(
-        default=default,
-        metadata={
+def parameter(
+    desc,
+    default=None,
+    choices=None,
+    lower_bound=None,
+    upper_bound=None,
+    salience=ParameterSalience.recommended,
+    metadata=None,
+):
+    if choices is not None:
+        if upper_bound is not None or lower_bound is not None:
+            raise ArcanaDesignError(
+                f"Cannot specify lower ({lower_bound}) or upper ({lower_bound}) bound "
+                f"in conjunction with 'choices' arg ({choices})"
+            )
+    if metadata is None:
+        metadata = {}
+    else:
+        metadata = copy(metadata)
+    metadata.update(
+        {
             ATTR_TYPE: "parameter",
             "desc": desc,
             "salience": salience,
             "choices": choices,
-        },
+            "lower_bound": lower_bound,
+            "upper_bound": upper_bound,
+        }
+    )
+    return attrs.field(
+        default=default,
+        validator=_parameter_validator,
+        metadata=metadata,
     )
 
 
-def subanalysis(analysis, columns, parameters, desc=None):
+def subanalysis(desc, **mappings):
 
     return attrs.field(
         default=None,
         metadata={
             ATTR_TYPE: "subanalysis",
-            "analysis": analysis,
             "desc": desc,
-            "columns": columns,
-            "parameters": parameters,
+            "mappings": tuple(mappings.items()),
         },
     )
 
@@ -122,7 +156,7 @@ def converter(output_format):
     return decorator
 
 
-def inherited_from(base_class, **kwargs):
+def inherited_from(base_class, **to_overwrite):
     """Used to explicitly inherit a column or attribute from a base class so it can be
     used in a sub class. This explicit inheritance is enforced when the column/parameter
     is referenced in the base class in order to make the code more readable (i.e. so
@@ -133,10 +167,31 @@ def inherited_from(base_class, **kwargs):
     base_class : type
         the base class to inherit the column/parameter from. The name will be matched
         to the name of the column/parameter in the base class
-    **kwargs:
+    **to_overwrite:
         any attributes to override from the inherited column/parameter
     """
-    return _Inherited(base_class, kwargs)
+    if "row_frequency" in to_overwrite:
+        raise ValueError("Cannot overwrite row_frequency when inheriting")
+    return _InheritedFrom(base_class, to_overwrite)
+
+
+def mapped_from(subanalysis_name, column_name, **to_overwrite):
+    """Used to explicitly inherit a column or attribute from a base class so it can be
+    used in a sub class. This explicit inheritance is enforced when the column/parameter
+    is referenced in the base class in order to make the code more readable (i.e. so
+    other developers can track where columns/parameters are defined)
+
+    Parameters
+    ----------
+    base_class : type
+        the base class to inherit the column/parameter from. The name will be matched
+        to the name of the column/parameter in the base class
+    **to_overwrite:
+        any attributes to override from the inherited column/parameter
+    """
+    if "row_frequency" in to_overwrite:
+        raise ValueError("Cannot overwrite row_frequency when mapping")
+    return _MappedFrom(subanalysis_name, column_name, to_overwrite)
 
 
 def value_of(param):
@@ -155,3 +210,23 @@ def is_provided(column, in_format: type = None):
             in_format,
         ),
     )
+
+
+def _parameter_validator(_, attr, val):
+    if attr.metadata["choices"] is not None:
+        choices = attr.metadata["choices"]
+        if val not in choices:
+            raise ValueError(
+                f"{val} is not a valid value for '{attr.name}' parameter: {choices}"
+            )
+    else:
+        lower_bound = attr.metadata.get("lower_bound")
+        upper_bound = attr.metadata.get("upper_bound")
+        if not (
+            (lower_bound is None or val >= lower_bound)
+            and (upper_bound is None or val <= upper_bound)
+        ):
+            raise ValueError(
+                f"Value of '{attr.name}' ({val}) is not within the specified bounds: "
+                f"{lower_bound} - {upper_bound}"
+            )

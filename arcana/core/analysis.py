@@ -56,6 +56,7 @@ class ColumnSpec:
     salience: ColumnSalience
     defined_in: type
     modified: ty.Tuple[ty.Tuple[str, ty.Any]]
+    mapped_from: ty.Tuple[str, str] or None = None  # sub-analysis name, column name
 
 
 @attrs.define(frozen=True)
@@ -66,12 +67,15 @@ class Parameter:
     type: type
     desc: str
     salience: ParameterSalience
-    choices: ty.Tuple[int] or ty.Tuple[float] or ty.Tuple[str]
+    choices: ty.Tuple[int] or ty.Tuple[float] or ty.Tuple[str] or None
+    lower_bound: int or float or None
+    upper_bound: int or float or None
     defined_in: type
     modified: ty.Tuple[ty.Tuple[str, ty.Any]]
     default: int or float or str or ty.Tuple[int] or ty.Tuple[float] or ty.Tuple[
         str
     ] = attrs.field()
+    mapped_from: ty.Tuple[str, str] or None = None  # sub-analysis name, column name
 
     @default.validator
     def default_validator(self, _, default):
@@ -132,9 +136,9 @@ class Subanalysis:
     predefined analyses"""
 
     name: str
-    analysis: type
-    columns: ty.Tuple[str or ty.Tuple[str, str]]
-    parameters: ty.Tuple[str or ty.Tuple[str, str]]
+    desc: str
+    analysis_class: type
+    mappings: ty.Tuple[str, str]  # to name in subanalysis, from name in analysis class
     defined_in: type
 
 
@@ -291,13 +295,26 @@ def make_analysis_class(cls, space: DataSpace):
     except KeyError:
         pass
 
-    for name, inherited in list(cls.__dict__.items()):
-        if isinstance(inherited, _Inherited):
-            resolved, resolved_type = inherited.resolve(name, cls)
+    # Resolve 'inherited_from' and 'mapped_from' attributes to a form that `attrs` can
+    # recognise so the attributes are created
+    for name, attr in list(cls.__dict__.items()):
+        if isinstance(attr, (_InheritedFrom, _MappedFrom)):
+            resolved, resolved_type = attr.resolve(name, cls)
             setattr(cls, name, resolved)
-            # Copy type annotation across to new class
-            cls.__annotations__[name] = resolved_type
-            inherited.resolved_to = name
+            try:
+                new_type = cls.__annotations__[name]
+            except KeyError:
+                # Copy type annotation across to new class if it isn't present
+                cls.__annotations__[name] = resolved_type
+            else:
+                if new_type is not resolved_type or not issubclass(
+                    new_type, resolved_type
+                ):
+                    raise ArcanaDesignError(
+                        f"Cannot change format of {name} from {resolved_type} to "
+                        f"{new_type} as it is not a sub-class"
+                    )
+            attr.resolved_to = name
 
     # Create class using attrs package, will create attributes for all columns and
     # parameters
@@ -333,6 +350,7 @@ def make_analysis_class(cls, space: DataSpace):
                     salience=attr.metadata["salience"],
                     defined_in=attr.metadata.get("defined_in", analysis_cls),
                     modified=attr.metadata.get("modified"),
+                    mapped_from=attr.metadata.get("mapped_from"),
                 )
             )
         elif attr_type == "parameter":
@@ -342,14 +360,28 @@ def make_analysis_class(cls, space: DataSpace):
                     type=attr.type,
                     default=attr.default,
                     choices=attr.metadata["choices"],
+                    lower_bound=attr.metadata["lower_bound"],
+                    upper_bound=attr.metadata["upper_bound"],
                     desc=attr.metadata["desc"],
                     salience=attr.metadata["salience"],
                     defined_in=attr.metadata.get("defined_in", analysis_cls),
                     modified=attr.metadata.get("modified"),
+                    mapped_from=attr.metadata.get("mapped_from"),
                 )
             )
         elif attr_type == "subanalysis":
-            raise NotImplementedError
+            resolved_mappings = []
+            for (from_, to) in attr.metadata["mappings"]:
+                resolved_mappings.append((from_, _attr_name(cls, to)))
+            subanalyses.append(
+                Subanalysis(
+                    name=attr.name,
+                    analysis_class=attr.type,
+                    desc=attr.metadata["desc"],
+                    mappings=resolved_mappings,
+                    defined_in=attr.metadata.get("defined_in", analysis_cls),
+                )
+            )
         else:
             raise ValueError(f"Unrecognised attrs type '{attr_type}'")
 
@@ -364,7 +396,7 @@ def make_analysis_class(cls, space: DataSpace):
         if arcana.core.mark.PIPELINE_ANNOT in attr_anots:
             anots = attr_anots[arcana.core.mark.PIPELINE_ANNOT]
             outputs = tuple(_attr_name(cls, o) for o in anots["outputs"])
-            input_columns, used_parameters = get_args_automagically(
+            input_columns, used_parameters = _get_args_automagically(
                 column_specs=column_specs, parameters=parameters, method=attr
             )
             unresolved_condition = anots["condition"]
@@ -391,7 +423,7 @@ def make_analysis_class(cls, space: DataSpace):
                 )
             )
         elif arcana.core.mark.SWICTH_ANNOT in attr_anots:
-            input_columns, used_parameters = get_args_automagically(
+            input_columns, used_parameters = _get_args_automagically(
                 column_specs=column_specs, parameters=parameters, method=attr
             )
             switches.append(
@@ -407,7 +439,7 @@ def make_analysis_class(cls, space: DataSpace):
         elif arcana.core.mark.CHECK_ANNOT in attr_anots:
             anots = attr_anots[arcana.core.mark.CHECK_ANNOT]
             column_name = _attr_name(cls, anots["column"])
-            input_columns, used_parameters = get_args_automagically(
+            input_columns, used_parameters = _get_args_automagically(
                 column_specs=column_specs, parameters=parameters, method=attr
             )
             checks.append(
@@ -434,33 +466,33 @@ def make_analysis_class(cls, space: DataSpace):
                 "Cannot redefine the space that an analysis operates on from "
                 f"{base_spec.space} to {space}"
             )
-        # Prepend column and parameter specs that were inherited from base
-        column_specs.extend(
-            b
-            for b in base_spec.column_specs
-            if b.name not in (x.name for x in column_specs)
-        )
-        pipeline_specs.extend(
-            b
-            for b in base_spec.pipeline_specs
-            if b.name not in (x.name for x in pipeline_specs)
-        )
-        parameters.extend(
-            b
-            for b in base_spec.parameters
-            if b.name not in (x.name for x in parameters)
-        )
-        switches.extend(
-            b for b in base_spec.switches if b.name not in (x.name for x in switches)
-        )
-        checks.extend(
-            b for b in base_spec.checks if b.name not in (x.name for x in checks)
-        )
-        subanalyses.extend(
-            b
-            for b in base_spec.subanalyses
-            if b.name not in (x.name for x in subanalyses)
-        )
+        # Append column specs, parameters and subanalyses that were inherited from base
+        # classes
+        for lst, base_lst in (
+            (column_specs, base_spec.column_specs),
+            (parameters, base_spec.parameters),
+            (subanalyses, base_spec.subanalyses),
+        ):
+            lst.extend(b for b in base_lst if b.name not in (x.name for x in lst))
+            if overwritten := [
+                nme
+                for nme, atr in cls.__dict__.items()
+                if nme in (b.name for b in base_lst)
+                and (not hasattr(atr, "metadata") or "defined_in" not in atr.metadata)
+            ]:
+                raise ArcanaDesignError(
+                    f"{overwritten} columns/parameters/subanalyses attributes in base "
+                    f"class {base} were overwritten in {analysis_cls} without using "
+                    "explicit 'inherited_from' function"
+                )
+        # Append pipeline specs, switches and checks that were inherited from base
+        # classes
+        for lst, base_lst in (
+            (pipeline_specs, base_spec.pipeline_specs),
+            (switches, base_spec.switches),
+            (checks, base_spec.checks),
+        ):
+            lst.extend(b for b in base_lst if b.name not in (x.name for x in lst))
 
     analysis_cls.__analysis_spec__ = AnalysisSpec(
         space=space,
@@ -477,75 +509,11 @@ def make_analysis_class(cls, space: DataSpace):
     return analysis_cls
 
 
-def _attr_name(cls, counting_attr):
-    """Get the name of a counting attribute by reading the original class dict"""
-    if isinstance(counting_attr, _Inherited):
-        assert counting_attr.resolved_to is not None
-        return counting_attr.resolved_to
-    try:
-        return next(n for n, v in cls.__dict__.items() if v is counting_attr)
-    except StopIteration:
-        raise AttributeError(f"Attribute {counting_attr} not found in cls {cls}")
-
-
-# def _attr(cls, counting_attr):
-#     return cls.__dict__[_attr_name(cls, counting_attr)]
-
-
-def get_args_automagically(column_specs, parameters, method, index_start=2):
-    """Automagically determine inputs to pipeline or switched by matching
-    a methods argument names with columns and parameters of the class
-
-    Parameters
-    ----------
-    column_specs : list[ColumnSpec]
-        the column specs to match the inputs against
-    parameters : list[Parameter]
-        the parameters to match the inputs against
-    method : bound-method
-        the method to automagically determine the inputs for
-    index_start : int
-        the argument index to start from (i.e. can be used to skip the workflow
-        arg passed to pipelines classes)
-
-    Returns
-    -------
-    list[str]
-        the names of the input columns to automagically provide to the method
-    list[str]
-        the names of the parameters to automagically provide to the method
-    """
-    inputs = []
-    used_parameters = []
-    column_names = [c.name for c in column_specs]
-    param_names = [p.name for p in parameters]
-    signature = inspect.signature(method)
-    for arg in list(signature.parameters)[
-        index_start:
-    ]:  # First arg is self and second is the workflow object to add to
-        required_type = method.__annotations__.get(arg)
-        if arg in column_names:
-            column_spec = next(c for c in column_specs if c.name == arg)
-            if required_type is not None and required_type is not column_spec.type:
-                # Check to see whether conversion is possible
-                required_type.find_converter(column_spec.type)
-            inputs.append(arg)
-        elif arg in param_names:
-            used_parameters.append(arg)
-        else:
-            raise ValueError(
-                f"Unrecognised argument '{arg}'. If it is from a base class, "
-                "make sure that it is explicitly inherited using the `inherited_from` "
-                "function."
-            )
-    return tuple(inputs), tuple(used_parameters)
-
-
 @attrs.define
-class _Inherited:
+class _InheritedFrom:
 
     base_class: type
-    to_modify: ty.Dict[str, ty.Any]
+    to_overwrite: ty.Dict[str, ty.Any]
     resolved_to: str = None
 
     def resolve(self, name, klass):
@@ -578,27 +546,47 @@ class _Inherited:
                 f"the base class {self.base_class} (not {name})"
             )
 
-        attr_type = inherited_from.metadata[arcana.core.mark.ATTR_TYPE]
-        kwargs = dict(inherited_from.metadata)
-        kwargs.pop(arcana.core.mark.ATTR_TYPE)
-        if attr_type == "parameter":
-            kwargs["default"] = inherited_from.default
-        if unrecognised := [k for k in self.to_modify if k not in kwargs]:
-            raise TypeError(
-                f"Unrecognised keyword args {unrecognised} for {attr_type} attr"
-            )
-        kwargs.update(self.to_modify)
-        resolved = getattr(arcana.core.mark, attr_type)(**kwargs)
+        resolved = _attr_to_counting_attr(inherited_from, self.to_overwrite)
         resolved.metadata["defined_in"] = self.base_class
-        resolved.metadata["modified"] = tuple(self.to_modify.items())
+        # Return the resolved attribute and its type annotation
         return resolved, self.base_class.__annotations__[name]
 
 
 @attrs.define
-class _MappedColumn:
+class _MappedFrom:
 
-    subanalysis: str
-    name: str
+    subanalysis_name: str
+    column_name: str
+    to_overwrite: ty.Dict[str, ty.Any]
+    resolved_to: str = None
+
+    def resolve(self, name, klass):
+        """Resolve to a column "counting attribute" to be transformed into a attribute
+        of the analysis class
+
+        Parameters
+        ----------
+        name : str
+            the name of the attribute in the class to resolve the inherited attribute to
+        klass : type
+            the initial class to be transformed into an analysis class
+        """
+        analysis_class = klass.__annotations__[self.subanalysis_name]
+        # Get the Attribute in the subanalysis class
+        try:
+            attr_in_sub = next(
+                a for a in analysis_class.__attrs_attrs__ if a.name == self.column_name
+            )
+        except StopIteration:
+            raise ValueError(
+                f"No attribute named '{self.column_name}' in subanalysis "
+                f"'{self.subanalysis_name}' ({analysis_class}): "
+                + str([a.name for a in analysis_class.__attrs_attrs__])
+            )
+
+        resolved = _attr_to_counting_attr(attr_in_sub, self.to_overwrite)
+        resolved.metadata["mapped_from"] = (self.subanalysis_name, self.column_name)
+        return resolved, attr_in_sub.type
 
 
 @attrs.define
@@ -677,6 +665,103 @@ class _UnresolvedOp:
 
     def __invert__(self):
         return _UnresolvedOp("invert_", (self,))
+
+
+def _attr_to_counting_attr(attr, to_overwrite):
+    """Reverts an Attribute as found in the __attrs_attrs__ of another class back into
+    a _CountingAttribute (as returned by attrs.field) so it can be used to specify to
+    the `attrs` package to make a new attribute in the new class
+
+    Parameters
+    ----------
+    attr : Attribute
+        the attribute to replicate in the new class
+    to_overwrite : dict[str, Any]
+        a dictionary of attributes to overwrite when adding the new attribute
+    """
+    # Get metadata dictionary from attribute in base class
+    metadata = dict(attr.metadata)
+    attr_func = getattr(arcana.core.mark, metadata.pop(arcana.core.mark.ATTR_TYPE))
+    kwargs = {
+        a: metadata.pop(a)
+        for a in list(inspect.signature(attr_func).parameters)
+        if a not in ("metadata", "default")
+    }
+    if attr_func is arcana.core.mark.parameter:
+        kwargs["default"] = attr.default
+    kwargs.update(to_overwrite)
+    # Use the 'parameter' or 'column' methods in arcana.core.mark to create a
+    # new _CountingAttribute (as returned by attrs.field) to replace the Attribute
+    # from __attrs_attrs__ so that it can be used to create an attribute in a new class
+    metadata["modified"] = tuple(to_overwrite.items())
+    resolved = attr_func(metadata=metadata, **kwargs)
+    # Set additional metadata fields to record where the column was inherited from
+    # and which fields were modified in the process
+    return resolved
+
+
+def _attr_name(cls, counting_attr):
+    """Get the name of a counting attribute by reading the original class dict"""
+    if isinstance(counting_attr, (_InheritedFrom, _MappedFrom)):
+        assert counting_attr.resolved_to is not None
+        return counting_attr.resolved_to
+    try:
+        return next(n for n, v in cls.__dict__.items() if v is counting_attr)
+    except StopIteration:
+        raise AttributeError(f"Attribute {counting_attr} not found in cls {cls}")
+
+
+# def _attr(cls, counting_attr):
+#     return cls.__dict__[_attr_name(cls, counting_attr)]
+
+
+def _get_args_automagically(column_specs, parameters, method, index_start=2):
+    """Automagically determine inputs to pipeline or switched by matching
+    a methods argument names with columns and parameters of the class
+
+    Parameters
+    ----------
+    column_specs : list[ColumnSpec]
+        the column specs to match the inputs against
+    parameters : list[Parameter]
+        the parameters to match the inputs against
+    method : bound-method
+        the method to automagically determine the inputs for
+    index_start : int
+        the argument index to start from (i.e. can be used to skip the workflow
+        arg passed to pipelines classes)
+
+    Returns
+    -------
+    list[str]
+        the names of the input columns to automagically provide to the method
+    list[str]
+        the names of the parameters to automagically provide to the method
+    """
+    inputs = []
+    used_parameters = []
+    column_names = [c.name for c in column_specs]
+    param_names = [p.name for p in parameters]
+    signature = inspect.signature(method)
+    for arg in list(signature.parameters)[
+        index_start:
+    ]:  # First arg is self and second is the workflow object to add to
+        required_type = method.__annotations__.get(arg)
+        if arg in column_names:
+            column_spec = next(c for c in column_specs if c.name == arg)
+            if required_type is not None and required_type is not column_spec.type:
+                # Check to see whether conversion is possible
+                required_type.find_converter(column_spec.type)
+            inputs.append(arg)
+        elif arg in param_names:
+            used_parameters.append(arg)
+        else:
+            raise ValueError(
+                f"Unrecognised argument '{arg}'. If it is from a base class, "
+                "make sure that it is explicitly inherited using the `inherited_from` "
+                "function."
+            )
+    return tuple(inputs), tuple(used_parameters)
 
 
 def menu(cls):
