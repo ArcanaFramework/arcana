@@ -378,7 +378,7 @@ def make_analysis_class(cls, space: DataSpace):
                     name=attr.name,
                     analysis_class=attr.type,
                     desc=attr.metadata["desc"],
-                    mappings=resolved_mappings,
+                    mappings=tuple(sorted(resolved_mappings)),
                     defined_in=attr.metadata.get("defined_in", analysis_cls),
                 )
             )
