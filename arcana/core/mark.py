@@ -87,12 +87,12 @@ def parameter(
 def subanalysis(desc, **mappings):
 
     return attrs.field(
-        default=None,
         metadata={
             ATTR_TYPE: "subanalysis",
             "desc": desc,
             "mappings": tuple(mappings.items()),
         },
+        init=False,
     )
 
 
