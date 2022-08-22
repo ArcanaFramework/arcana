@@ -1,3 +1,5 @@
+import os.path
+import tempfile
 import pytest
 import pydra
 from arcana.data.spaces.common import Samples
@@ -30,6 +32,56 @@ from arcana.core.enum import (
 )
 
 
+def get_contents(fpath):
+    with open(fpath) as f:
+        return f.read().splitlines()
+
+
+@pytest.fixture(scope="session")
+def source_dir():
+    return tempfile.mkdtemp()
+
+
+@pytest.fixture(scope="session")
+def test_file1(source_dir):
+    fpath = os.path.join(source_dir, "file1.txt")
+    with open(fpath, "w") as f:
+        f.write("file1")
+    return fpath
+
+
+@pytest.fixture(scope="session")
+def test_file2(source_dir):
+    fpath = os.path.join(source_dir, "file2.txt")
+    with open(fpath, "w") as f:
+        f.write("file2")
+    return fpath
+
+
+@pytest.fixture(scope="session")
+def test_file3(source_dir):
+    fpath = os.path.join(source_dir, "file3.txt")
+    with open(fpath, "w") as f:
+        f.write("file3")
+    return fpath
+
+
+@pytest.fixture(scope="session")
+def test_numeric_file1(source_dir):
+    file1_path = os.path.join(source_dir, "file1.txt")
+    with open(file1_path, "w") as f:
+        f.write("1")
+    return file1_path
+
+
+@pytest.fixture(scope="session")
+def test_numeric_file2(source_dir):
+    file2_path = os.path.join(source_dir, "file2.txt")
+    with open(file2_path, "w") as f:
+        f.write("2")
+    return file2_path
+
+
 @pytest.fixture(scope="session")
 def Concat():
     @analysis(Samples)
@@ -52,7 +104,7 @@ def Concat():
                 )
             )
 
-            return wf.a_node.lzout.out
+            return wf.a_node.lzout.out_file
 
     return _Concat
 
@@ -88,9 +140,46 @@ def ExtendedConcat(Concat):
                 )
             )
 
-            return wf.concat.lzout.out
+            return wf.concat.lzout.out_file
 
     return _ExtendedConcat
+
+
+@pytest.fixture(scope="session")
+def ConcatWithCheck(Concat):
+    @analysis(Samples)
+    class _ConcatWithCheck(Concat):
+
+        concatenated = inherited_from(Concat)
+
+        duplicates = inherited_from(Concat)
+
+        @check(concatenated, salience=chs.recommended)
+        def num_lines_check(self, wf, concatenated: Text, duplicates: int):
+            """Checks the number of lines in the concatenated file to see whether they
+            match what is expected for the number of duplicates specified"""
+
+            @pydra.mark.task
+            def num_lines_equals(in_file: str, num_lines: int) -> bool:
+                with open(in_file) as f:
+                    contents = f.read()
+                if len(contents.splitlines()) == num_lines:
+                    status = CheckStatus.probable_pass
+                else:
+                    status = CheckStatus.failed
+                return status
+
+            wf.add(
+                num_lines_equals(
+                    in_file=concatenated,
+                    num_lines=2 * duplicates,
+                    name="num_lines_check",
+                )
+            )
+
+            return wf.num_lines_check.lzout.out
+
+    return _ConcatWithCheck
 
 
 @pytest.fixture(scope="session")
@@ -123,7 +212,7 @@ def OverridenConcat(Concat):
                 )
             )
 
-            return wf.concat.lzout.out
+            return wf.concat.lzout.out_file
 
     return _OverridenConcat
 
@@ -155,61 +244,26 @@ def ConcatWithSwitch(Concat):
 
             wf.add(
                 boolean_and(
-                    val1=wf.check_file1.out, val2=wf.check_file2.out, name="bool_and"
+                    val1=wf.check_file1.lzout.out,
+                    val2=wf.check_file2.lzout.out,
+                    name="bool_and",
                 )
             )
 
-            return wf.bool_and.out
+            return wf.bool_and.lzout.out
 
         @pipeline(multiplied, switch=inputs_are_numeric)
         def multiply_pipeline(self, wf, concatenated, multiplier):
 
             wf.add(
                 multiply_contents(
-                    name="concat", in_file=concatenated, multiplier=multiplier
+                    name="multiply", in_file=concatenated, multiplier=multiplier
                 )
             )
 
-            return wf.concat.lzout.out
+            return wf.multiply.lzout.out
 
     return _ConcatWithSwitch
-
-
-@pytest.fixture(scope="session")
-def ConcatWithCheck(Concat):
-    @analysis(Samples)
-    class _ConcatWithCheck(Concat):
-
-        concatenated = inherited_from(Concat)
-
-        duplicates = inherited_from(Concat)
-
-        @check(concatenated, salience=chs.recommended)
-        def num_lines_check(self, wf, concatenated: Text, duplicates: int):
-            """Checks the number of lines in the concatenated file to see whether they
-            match what is expected for the number of duplicates specified"""
-
-            @pydra.mark.task
-            def num_lines_equals(in_file, num_lines):
-                with open(in_file) as f:
-                    contents = f.read()
-                if len(contents.splitlines()) == num_lines:
-                    status = CheckStatus.probable_pass
-                else:
-                    status = CheckStatus.failed
-                return status
-
-            wf.add(
-                num_lines_equals(
-                    in_file=concatenated,
-                    num_lines=2 * duplicates,
-                    name="num_lines_check",
-                )
-            )
-
-            return wf.num_lines_check.out
-
-    return _ConcatWithCheck
 
 
 @pytest.fixture(scope="session")
@@ -225,6 +279,7 @@ def ConcatWithSubanalyses(ExtendedConcat, ConcatWithSwitch):
 
         # Sink columns generated within the subanalyses mapped back out to the global
         # namespace so they can be mapped into the other subanalysis
+        concatenated = mapped_from("sub2", "concatenated")
         concat_and_multiplied = mapped_from("sub2", "multiplied")
 
         # Link the duplicates parameter across both subanalyses so it is always the same
@@ -240,6 +295,7 @@ def ConcatWithSubanalyses(ExtendedConcat, ConcatWithSwitch):
             "sub-analysis to add the 'doubly_concat' pipeline",
             # Feed the multiplied sink column from sub2 into the source column file3 of
             # the extended class
+            concatenated=concatenated,  # Saves calculating concatenated twice in both sub-analyses
             file3=concat_and_multiplied,
         )
         sub2: ConcatWithSwitch = subanalysis(
@@ -253,9 +309,9 @@ def ConcatWithSubanalyses(ExtendedConcat, ConcatWithSwitch):
     return _ConcatWithSubanalyses
 
 
-def test_analysis_basic(Concat):
+def test_analysis_basic(Concat, test_file1, test_file2):
 
-    analysis_spec = Concat.__analysis_spec__
+    analysis_spec = Concat.__analysis__
 
     assert list(analysis_spec.parameter_names) == ["duplicates"]
 
@@ -297,7 +353,7 @@ def test_analysis_basic(Concat):
     assert concatenated.defined_in is Concat
     assert concatenated.mapped_from is None
 
-    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -306,10 +362,36 @@ def test_analysis_basic(Concat):
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
+    # Initialise class
+    analysis = Concat(file1="a_column", file2="another_column", duplicates=3)
+    assert analysis.file1 == "a_column"
+    assert analysis.file2 == "another_column"
+    assert analysis.concatenated is None
+    assert analysis.duplicates == 3
+    wf = pydra.Workflow(
+        name="test_analysis",
+        input_spec=["file1", "file2"],
+        file1=test_file1,
+        file2=test_file2,
+    )
+    concatenated = analysis.concat_pipeline(
+        wf, file1=wf.lzin.file1, file2=wf.lzin.file2, duplicates=analysis.duplicates
+    )
+    wf.set_output(("concatenated", concatenated))
+    result = wf(plugin="serial")
+    assert get_contents(result.output.concatenated) == [
+        "file1",
+        "file2",
+        "file1",
+        "file2",
+        "file1",
+        "file2",
+    ]
 
-def test_analysis_extended(Concat, ExtendedConcat):
 
-    analysis_spec = ExtendedConcat.__analysis_spec__
+def test_analysis_extended(Concat, ExtendedConcat, test_file1, test_file2, test_file3):
+
+    analysis_spec = ExtendedConcat.__analysis__
 
     assert sorted(analysis_spec.parameter_names) == ["duplicates"]
 
@@ -370,7 +452,7 @@ def test_analysis_extended(Concat, ExtendedConcat):
     assert doubly_concatenated.salience == cs.supplementary
     assert doubly_concatenated.defined_in is ExtendedConcat
 
-    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -380,7 +462,7 @@ def test_analysis_extended(Concat, ExtendedConcat):
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
-    doubly_concat_pipeline = analysis_spec.pipeline_spec("doubly_concat_pipeline")
+    doubly_concat_pipeline = analysis_spec.pipeline_builder("doubly_concat_pipeline")
     assert doubly_concat_pipeline.name == "doubly_concat_pipeline"
     assert doubly_concat_pipeline.parameters == ("duplicates",)
     assert doubly_concat_pipeline.inputs == ("concatenated", "file3")
@@ -390,10 +472,47 @@ def test_analysis_extended(Concat, ExtendedConcat):
     assert doubly_concat_pipeline.condition is None
     assert doubly_concat_pipeline.switch is None
 
+    # Initialise class
+    analysis = ExtendedConcat(
+        file1="a_column",
+        file2="another_column",
+        file3="yet_another_column",
+        duplicates=1,
+    )
+    assert analysis.file1 == "a_column"
+    assert analysis.file2 == "another_column"
+    assert analysis.file3 == "yet_another_column"
+    assert analysis.concatenated is None
+    assert analysis.doubly_concatenated is None
+    assert analysis.duplicates == 1
+    wf = pydra.Workflow(
+        name="test_analysis",
+        input_spec=["file1", "file2", "file3"],
+        file1=test_file1,
+        file2=test_file2,
+        file3=test_file3,
+    )
+    concatenated = analysis.concat_pipeline(
+        wf, file1=wf.lzin.file1, file2=wf.lzin.file2, duplicates=analysis.duplicates
+    )
+    doubly_concatenated = analysis.doubly_concat_pipeline(
+        wf,
+        concatenated=concatenated,
+        file3=wf.lzin.file3,
+        duplicates=analysis.duplicates,
+    )
+    wf.set_output(("doubly_concatenated", doubly_concatenated))
+    result = wf(plugin="serial")
+    assert get_contents(result.output.doubly_concatenated) == [
+        "file1",
+        "file2",
+        "file3",
+    ]
 
-def test_analysis_with_check(Concat, ConcatWithCheck):
 
-    analysis_spec = ConcatWithCheck.__analysis_spec__
+def test_analysis_with_check(Concat, ConcatWithCheck, test_file1, test_file2):
+
+    analysis_spec = ConcatWithCheck.__analysis__
 
     assert sorted(analysis_spec.parameter_names) == ["duplicates"]
 
@@ -437,7 +556,7 @@ def test_analysis_with_check(Concat, ConcatWithCheck):
     assert concatenated.defined_in is Concat
     assert concatenated.mapped_from is None
 
-    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -456,12 +575,34 @@ def test_analysis_with_check(Concat, ConcatWithCheck):
     assert num_lines_check.column == "concatenated"
     assert num_lines_check.defined_in is ConcatWithCheck
 
+    # Initialise class
+    analysis = ConcatWithCheck(file1="a_column", file2="another_column", duplicates=7)
+    assert analysis.file1 == "a_column"
+    assert analysis.file2 == "another_column"
+    assert analysis.concatenated is None
+    assert analysis.duplicates == 7
+    wf = pydra.Workflow(
+        name="test_analysis",
+        input_spec=["file1", "file2"],
+        file1=test_file1,
+        file2=test_file2,
+    )
+    concatenated = analysis.concat_pipeline(
+        wf, file1=wf.lzin.file1, file2=wf.lzin.file2, duplicates=analysis.duplicates
+    )
+    num_lines_check = analysis.num_lines_check(
+        wf, concatenated=concatenated, duplicates=analysis.duplicates
+    )
+    wf.set_output(("num_lines_check", num_lines_check))
+    result = wf(plugin="serial")
+    assert result.output.num_lines_check == CheckStatus.probable_pass
 
-def test_analysis_override(Concat, OverridenConcat):
+
+def test_analysis_override(Concat, OverridenConcat, test_file1, test_file2):
     """Tests overriding methods in the base class with optional switches based on
     parameters and properties of the inputs"""
 
-    analysis_spec = OverridenConcat.__analysis_spec__
+    analysis_spec = OverridenConcat.__analysis__
 
     assert list(analysis_spec.column_names) == [
         "concatenated",
@@ -514,7 +655,7 @@ def test_analysis_override(Concat, OverridenConcat):
     assert order.salience == ps.recommended
     assert order.defined_in is OverridenConcat
 
-    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -524,7 +665,7 @@ def test_analysis_override(Concat, OverridenConcat):
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
-    reverse_concat_pipeline = analysis_spec.pipeline_spec("reverse_concat_pipeline")
+    reverse_concat_pipeline = analysis_spec.pipeline_builder("reverse_concat_pipeline")
     assert reverse_concat_pipeline.name == "reverse_concat_pipeline"
     assert reverse_concat_pipeline.parameters == ("duplicates",)
     assert reverse_concat_pipeline.inputs == ("file1", "file2")
@@ -534,12 +675,36 @@ def test_analysis_override(Concat, OverridenConcat):
     assert isinstance(reverse_concat_pipeline.condition, Operation)
     assert reverse_concat_pipeline.switch is None
 
+    # Initialise class
+    analysis = OverridenConcat(
+        file1="a_column", file2="another_column", duplicates=1, order="reversed"
+    )
+    assert analysis.file1 == "a_column"
+    assert analysis.file2 == "another_column"
+    assert analysis.concatenated is None
+    assert analysis.duplicates == 1
+    assert analysis.order == "reversed"
+    wf = pydra.Workflow(
+        name="test_analysis",
+        input_spec=["file1", "file2"],
+        file1=test_file1,
+        file2=test_file2,
+    )
+    concatenated = analysis.reverse_concat_pipeline(
+        wf, file1=wf.lzin.file1, file2=wf.lzin.file2, duplicates=analysis.duplicates
+    )
+    wf.set_output(("concatenated", concatenated))
+    result = wf(plugin="serial")
+    assert get_contents(result.output.concatenated) == ["1elif", "2elif"]
 
-def test_analysis_switch(Concat, ConcatWithSwitch):
+
+def test_analysis_switch(
+    Concat, ConcatWithSwitch, test_numeric_file1, test_numeric_file2
+):
     """Tests overriding methods in the base class with optional switches based on
     parameters and properties of the inputs"""
 
-    analysis_spec = ConcatWithSwitch.__analysis_spec__
+    analysis_spec = ConcatWithSwitch.__analysis__
 
     assert list(analysis_spec.column_names) == [
         "concatenated",
@@ -600,7 +765,7 @@ def test_analysis_switch(Concat, ConcatWithSwitch):
     assert multiplier.salience == ps.arbitrary
     assert multiplier.defined_in is ConcatWithSwitch
 
-    concat_pipeline = analysis_spec.pipeline_spec("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -610,7 +775,7 @@ def test_analysis_switch(Concat, ConcatWithSwitch):
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
-    multiply_pipeline = analysis_spec.pipeline_spec("multiply_pipeline")
+    multiply_pipeline = analysis_spec.pipeline_builder("multiply_pipeline")
     assert multiply_pipeline.name == "multiply_pipeline"
     assert multiply_pipeline.parameters == ("multiplier",)
     assert multiply_pipeline.inputs == ("concatenated",)
@@ -627,17 +792,54 @@ def test_analysis_switch(Concat, ConcatWithSwitch):
     assert inputs_are_numeric.method is ConcatWithSwitch.inputs_are_numeric
     assert inputs_are_numeric.defined_in is ConcatWithSwitch
 
+    # Initialise class
+    analysis = ConcatWithSwitch(
+        file1="a_column", file2="another_column", duplicates=1, multiplier=10
+    )
+    assert analysis.file1 == "a_column"
+    assert analysis.file2 == "another_column"
+    assert analysis.concatenated is None
+    assert analysis.duplicates == 1
+    assert analysis.multiplier == 10
+
+    wf = pydra.Workflow(
+        name="test_analysis",
+        input_spec=["file1", "file2"],
+        file1=test_numeric_file1,
+        file2=test_numeric_file2,
+    )
+    inputs_are_numeric = analysis.inputs_are_numeric(
+        wf, file1=wf.lzin.file1, file2=wf.lzin.file2
+    )
+    concatenated = analysis.concat_pipeline(
+        wf, file1=wf.lzin.file1, file2=wf.lzin.file2, duplicates=analysis.duplicates
+    )
+    multiplied = analysis.multiply_pipeline(
+        wf, concatenated=concatenated, multiplier=analysis.multiplier
+    )
+    wf.set_output(
+        [("inputs_are_numeric", inputs_are_numeric), ("multiplied", multiplied)]
+    )
+    result = wf(plugin="serial")
+    assert result.output.inputs_are_numeric is True
+    assert get_contents(result.output.multiplied) == ["10.0", "20.0"]
+
 
 def test_analysis_with_subanalyses(
-    ConcatWithSubanalyses, ExtendedConcat, ConcatWithSwitch
+    ConcatWithSubanalyses,
+    ExtendedConcat,
+    ConcatWithSwitch,
+    test_numeric_file1,
+    test_numeric_file2,
 ):
 
-    analysis_spec = ConcatWithSubanalyses.__analysis_spec__
+    analysis_spec = ConcatWithSubanalyses.__analysis__
 
     assert list(analysis_spec.parameter_names) == ["common_duplicates"]
 
     assert list(analysis_spec.column_names) == [
         "concat_and_multiplied",
+        "concatenated",
         "file1",
         "file2",
     ]
@@ -677,8 +879,9 @@ def test_analysis_with_subanalyses(
 
     sub1 = analysis_spec.subanalysis("sub1")
     assert sub1.name == "sub1"
-    assert sub1.analysis_class is ExtendedConcat
+    assert sub1.type is ExtendedConcat
     assert sub1.mappings == (
+        ("concatenated", "concatenated"),
         ("duplicates", "common_duplicates"),
         ("file1", "file1"),
         ("file2", "file2"),
@@ -688,11 +891,62 @@ def test_analysis_with_subanalyses(
 
     sub2 = analysis_spec.subanalysis("sub2")
     assert sub2.name == "sub2"
-    assert sub2.analysis_class is ConcatWithSwitch
+    assert sub2.type is ConcatWithSwitch
     assert sub2.mappings == (
+        ("concatenated", "concatenated"),
         ("duplicates", "common_duplicates"),
         ("file1", "file1"),
         ("file2", "file2"),
         ("multiplied", "concat_and_multiplied"),
     )
     assert sub2.defined_in is ConcatWithSubanalyses
+
+    # Initialise class
+    analysis = ConcatWithSubanalyses(
+        file1="a_column", file2="another_column", common_duplicates=1
+    )
+    analysis.sub2.multiplier = 100
+    assert analysis.file1 == "a_column"
+    assert analysis.file2 == "another_column"
+    assert analysis.common_duplicates == 1
+    assert analysis.sub1.file1 == "a_column"
+    assert analysis.sub1.file2 == "another_column"
+    assert analysis.sub2.duplicates == 1
+    assert analysis.sub1.concatenated is None
+    assert analysis.sub1.doubly_concatenated is None
+    assert analysis.sub2.file1 == "a_column"
+    assert analysis.sub2.file2 == "another_column"
+    assert analysis.sub2.duplicates == 1
+    assert analysis.sub2.multiplier == 100
+    assert analysis.sub2.concatenated is None
+    assert analysis.sub2.multiplied is None
+
+    wf = pydra.Workflow(
+        name="test_analysis",
+        input_spec=["file1", "file2"],
+        file1=test_numeric_file1,
+        file2=test_numeric_file2,
+    )
+    concatenated = analysis.sub2.concat_pipeline(
+        wf,
+        file1=wf.lzin.file1,
+        file2=wf.lzin.file2,
+        duplicates=analysis.sub2.duplicates,
+    )
+    concat_and_multiplied = analysis.sub2.multiply_pipeline(
+        wf, concatenated=concatenated, multiplier=analysis.sub2.multiplier
+    )
+    doubly_concatenated = analysis.sub1.doubly_concat_pipeline(
+        wf,
+        concatenated=concatenated,
+        file3=concat_and_multiplied,
+        duplicates=analysis.common_duplicates,
+    )
+    wf.set_output(("doubly_concatenated", doubly_concatenated))
+    result = wf(plugin="serial")
+    assert get_contents(result.output.doubly_concatenated) == [
+        "1",
+        "2",
+        "100.0",
+        "200.0",
+    ]

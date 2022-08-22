@@ -59,6 +59,44 @@ class ColumnSpec:
     modified: ty.Tuple[ty.Tuple[str, ty.Any]]
     mapped_from: ty.Tuple[str, str] or None = None  # sub-analysis name, column name
 
+    def select_pipeline_builders(self, analysis, dataset):
+        candidates = [
+            p for p in analysis.__analysis__.pipeline_builders if self.name in p.outputs
+        ]
+        selected = [
+            m
+            for m in candidates
+            if (
+                m.condition is not None
+                and m.condition.evaluate(self, analysis, dataset)
+            )
+        ]
+        # Check for defaults
+        if not selected:
+            selected = [p for p in candidates if p.condition is None]
+        # Select pipeline builders from subanalysis if present
+        if not selected and self.mapped_from is not None:
+            subanalysis = getattr(analysis, self.mapped_from[0])
+            sub_column_spec = subanalysis.__analysis__.column(self.mapped_from[1])
+            selected = sub_column_spec.select_pipeline_builders(subanalysis, dataset)
+
+        if not selected:
+            raise ArcanaDesignError(
+                "Could not find any potential pipeline builders with conditions that "
+                "match the current analysis parameterisation and provided dataset. "
+                f"All candidates are: {candidates}"
+            )
+        # Check to see whether there are pipelines with the same switch
+        all_switches = [p.switch for p in selected]
+        if with_duplicate_switches := [
+            p for p in selected if all_switches.count(p.switch)
+        ]:
+            raise ArcanaDesignError(
+                "Multiple potential pipelines match criteria for the given analysis "
+                f"configuration and provided dataset: {with_duplicate_switches}"
+            )
+        return selected
+
 
 @attrs.define(frozen=True)
 class Parameter:
@@ -101,9 +139,9 @@ class Switch:
 
 
 @attrs.define(frozen=True)
-class PipelineSpec:
-    """Specifies a pipeline that is able to generate data for sink columns under
-    certain conditions"""
+class PipelineBuilder:
+    """Specifies a method that is used to add nodes in the construction of a pipeline
+    that is able to generate data for sink columns under certain conditions"""
 
     name: str
     desc: str
@@ -132,15 +170,77 @@ class Check:
 
 
 @attrs.define(frozen=True)
-class Subanalysis:
+class SubanalysisSpec:
     """Specifies a "sub-analysis" component, when composing an analysis of several
     predefined analyses"""
 
     name: str
     desc: str
-    analysis_class: type
+    type: type
     mappings: ty.Tuple[str, str]  # to name in subanalysis, from name in analysis class
     defined_in: type
+
+    def mapping(self, name):
+        try:
+            mapped_name = next(m[1] for m in self.mappings if name == m[0])
+        except StopIteration:
+            raise KeyError(f"No mapping from '{name}' in sub-analysis: {self.mappings}")
+        return mapped_name
+
+
+@attrs.define
+class Subanalysis:
+    """Wrapper around the actual analysis class of the subanalysis, which performs the
+    mapping of attributes"""
+
+    _spec: SubanalysisSpec
+    _analysis: ty.Any  # initialised analysis class for the subanalysis
+    _parent: ty.Any  # reference back to the parent analysis class
+
+    def __getattr__(self, name: str) -> ty.Any:
+        try:
+            return object.__getattr__(self, name)
+        except AttributeError:
+            pass
+        try:
+            mapped_name = self._spec.mapping(name)
+        except KeyError:
+            value = getattr(self._analysis, name)
+        else:
+            value = getattr(self._parent, mapped_name)
+        return value
+
+    def __setattr__(self, name, value):
+        if name in ("_spec", "_analysis", "_parent"):
+            object.__setattr__(self, name, value)
+        else:
+            try:
+                mapped_name = self._spec.mapping(name)
+            except KeyError:
+                pass
+            else:
+                raise AttributeError(
+                    f"Cannot set value of attribute '{name}' in '{self._spec.name}' "
+                    f"sub-analysis as it is mapped to '{mapped_name}' in the parent "
+                    f"analysis {self._parent}"
+                )
+            setattr(self._analysis, name, value)
+
+
+@attrs.define(frozen=True)
+class SubanalysisDefault:
+    """A callable class (substitutable for a function but with a state) that is used to
+    automatically create the subanalysis objects when the parent analysis class is created"""
+
+    name: str
+
+    def __call__(self, parent):
+        spec = parent.__analysis__.subanalysis(self.name)
+        return Subanalysis(
+            spec=spec,
+            analysis=spec.type(**{m[0]: attrs.NOTHING for m in spec.mappings}),
+            parent=parent,
+        )
 
 
 def unique_names(inst, attr, val):
@@ -155,11 +255,11 @@ class AnalysisSpec:
 
     space: type
     column_specs: ty.Tuple[ColumnSpec] = attrs.field(validator=unique_names)
-    pipeline_specs: ty.Tuple[PipelineSpec] = attrs.field(validator=unique_names)
+    pipeline_builders: ty.Tuple[PipelineBuilder] = attrs.field(validator=unique_names)
     parameters: ty.Tuple[Parameter] = attrs.field(validator=unique_names)
     switches: ty.Tuple[Switch] = attrs.field(validator=unique_names)
     checks: ty.Tuple[Check] = attrs.field(validator=unique_names)
-    subanalyses: ty.Tuple[Subanalysis] = attrs.field(validator=unique_names)
+    subanalyses: ty.Tuple[SubanalysisSpec] = attrs.field(validator=unique_names)
 
     @property
     def column_names(self):
@@ -171,7 +271,7 @@ class AnalysisSpec:
 
     @property
     def pipeline_names(self):
-        return (p.name for p in self.pipeline_specs)
+        return (p.name for p in self.pipeline_builders)
 
     @property
     def switch_names(self):
@@ -191,8 +291,8 @@ class AnalysisSpec:
     def parameter(self, name):
         return next(p for p in self.parameters if p.name == name)
 
-    def pipeline_spec(self, name):
-        return next(p for p in self.pipeline_specs if p.name == name)
+    def pipeline_builder(self, name):
+        return next(p for p in self.pipeline_builders if p.name == name)
 
     def switch(self, name):
         return next(s for s in self.switches if s.name == name)
@@ -207,33 +307,11 @@ class AnalysisSpec:
         "Return all checks for a given column"
         return (c for c in self.checks if c.column == column_name)
 
-    def select_pipeline(self, column_name, analysis, dataset):
-        candidates = [p for p in self.pipeline_specs if column_name in p.outputs]
-        matching = [
-            m
-            for m in candidates
-            if (
-                m.condition is not None
-                and m.condition.evaluate(self, analysis, dataset)
-            )
-        ]
-        if len(matching) == 1:
-            selected = matching[0]
-        elif not matching:
-            # Use default
-            selected = [p for p in candidates if p.condition is None]
-        else:
-            raise ArcanaDesignError(
-                "Multiple potential pipelines match criteria for the given analysis "
-                f"configuration and provided dataset: {matching}"
-            )
-        return selected
-
     @column_specs.validator
     def column_specs_validator(self, _, column_specs):
         for column_spec in column_specs:
             sorted_by_cond = defaultdict(list)
-            for pipe_spec in self.pipeline_specs:
+            for pipe_spec in self.pipeline_builders:
                 if pipe_spec.output.name == column_spec.name:
                     sorted_by_cond[(pipe_spec.condition, pipe_spec.switch)] = pipe_spec
             if (None, None) not in sorted_by_cond:
@@ -253,7 +331,7 @@ class AnalysisSpec:
                 )
             if not sorted_by_cond:
                 inputs_to = [
-                    p for p in self.pipeline_specs if column_spec.name in p.inputs
+                    p for p in self.pipeline_builders if column_spec.name in p.inputs
                 ]
                 if not inputs_to:
                     raise ArcanaDesignError(
@@ -265,14 +343,14 @@ class AnalysisSpec:
                         f"is not specified as 'raw' or 'primary'"
                     )
 
-    @pipeline_specs.validator
-    def pipeline_specs_validator(self, _, pipeline_specs):
-        for pipeline_spec in pipeline_specs:
+    @pipeline_builders.validator
+    def pipeline_builders_validator(self, _, pipeline_builders):
+        for pipeline_builder in pipeline_builders:
             if missing_outputs := [
-                o for o in pipeline_spec.outputs if o not in self.column_names
+                o for o in pipeline_builder.outputs if o not in self.column_names
             ]:
                 raise ArcanaDesignError(
-                    f"{pipeline_spec} outputs to unknown columns: {missing_outputs}"
+                    f"{pipeline_builder} outputs to unknown columns: {missing_outputs}"
                 )
 
 
@@ -281,18 +359,18 @@ def make_analysis_class(cls, space: DataSpace):
     Construct an analysis class and validate all the components fit together
     """
 
-    # Ensure slot gets created for the __analysis_spec__ attr in the class generated by
+    # Ensure slot gets created for the __analysis__ attr in the class generated by
     # attrs.define, if it doesn't already exist (which will be the case when subclassing
     # another analysis class)
-    if not hasattr(cls, "__analysis_spec__"):
-        cls.__analysis_spec__ = None
+    if not hasattr(cls, "__analysis__"):
+        cls.__analysis__ = None
 
     # Ensure that the class has it's own annotaitons dict so we can modify it
     cls.__annotations__ = copy(cls.__annotations__)
     # Remove this type annotation for now so it doesn't get interpreted as an attribute
     # Will add it in later
     try:
-        del cls.__annotations__["__analysis_spec__"]
+        del cls.__annotations__["__analysis__"]
     except KeyError:
         pass
 
@@ -316,6 +394,15 @@ def make_analysis_class(cls, space: DataSpace):
                         f"{new_type} as it is not a sub-class"
                     )
             attr.resolved_to = name
+        # This is a bit magic (even compared to the rest of this module), I'm sorry!
+        # Setting a default method to initialise the of subanalysis attributes
+        try:
+            attr_type = attr.metadata[arcana.core.mark.ATTR_TYPE]
+        except (AttributeError, KeyError):
+            pass
+        else:
+            if attr_type == "subanalysis":
+                setattr(cls, f"_{name}_default", attr.default(SubanalysisDefault(name)))
 
     # Create class using attrs package, will create attributes for all columns and
     # parameters
@@ -323,14 +410,14 @@ def make_analysis_class(cls, space: DataSpace):
 
     # Initialise lists to hold all the different components of an analysis
     column_specs = []
-    pipeline_specs = []
+    pipeline_builders = []
     parameters = []
     switches = []
     checks = []
     subanalyses = []
 
     # Loop through all attributes created by attrs.define and create specs for columns,
-    # parameters and sub-analyses to be stored in the __analysis_spec__ attribute
+    # parameters and sub-analyses to be stored in the __analysis__ attribute
     for attr in analysis_cls.__attrs_attrs__:
         try:
             attr_type = attr.metadata[arcana.core.mark.ATTR_TYPE]
@@ -395,9 +482,9 @@ def make_analysis_class(cls, space: DataSpace):
                         (col_or_param.mapped_from[1], col_or_param.name)
                     )
             subanalyses.append(
-                Subanalysis(
+                SubanalysisSpec(
                     name=attr.name,
-                    analysis_class=attr.type,
+                    type=attr.type,
                     desc=attr.metadata["desc"],
                     mappings=tuple(sorted(resolved_mappings)),
                     defined_in=attr.metadata.get("defined_in", analysis_cls),
@@ -428,8 +515,8 @@ def make_analysis_class(cls, space: DataSpace):
                     )
             else:
                 condition = None
-            pipeline_specs.append(
-                PipelineSpec(
+            pipeline_builders.append(
+                PipelineBuilder(
                     name=attr.__name__,
                     desc=attr.__doc__,
                     inputs=input_columns,
@@ -477,7 +564,7 @@ def make_analysis_class(cls, space: DataSpace):
     # Combine with specs from base classes
     for base in analysis_cls.__mro__[1:]:
         try:
-            base_spec = base.__analysis_spec__
+            base_spec = base.__analysis__
         except AttributeError:
             continue  # skip classes that aren't decorated analyses
         if base_spec.space is not space:
@@ -507,23 +594,23 @@ def make_analysis_class(cls, space: DataSpace):
         # Append pipeline specs, switches and checks that were inherited from base
         # classes
         for lst, base_lst in (
-            (pipeline_specs, base_spec.pipeline_specs),
+            (pipeline_builders, base_spec.pipeline_builders),
             (switches, base_spec.switches),
             (checks, base_spec.checks),
         ):
             lst.extend(b for b in base_lst if b.name not in (x.name for x in lst))
 
-    analysis_cls.__analysis_spec__ = AnalysisSpec(
+    analysis_cls.__analysis__ = AnalysisSpec(
         space=space,
         column_specs=tuple(sorted(column_specs, key=attrgetter("name"))),
-        pipeline_specs=tuple(sorted(pipeline_specs, key=attrgetter("name"))),
+        pipeline_builders=tuple(sorted(pipeline_builders, key=attrgetter("name"))),
         parameters=tuple(sorted(parameters, key=attrgetter("name"))),
         switches=tuple(sorted(switches, key=attrgetter("name"))),
         checks=tuple(sorted(checks, key=attrgetter("name"))),
         subanalyses=tuple(sorted(subanalyses, key=attrgetter("name"))),
     )
 
-    analysis_cls.__annotations__["__analysis_spec__"] = AnalysisSpec
+    analysis_cls.__annotations__["__analysis__"] = AnalysisSpec
 
     return analysis_cls
 
