@@ -9,7 +9,7 @@ import docker
 import yaml
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
-from arcana.__about__ import PACKAGE_NAME, PACKAGE_ROOT, python_versions
+from arcana.__about__ import PACKAGE_NAME, python_versions
 from arcana.exceptions import ArcanaBuildError
 from .utils import PipSpec, local_package_location
 
@@ -204,7 +204,7 @@ def dockerfile_build(dockerfile: DockerRenderer, build_dir: Path, image_tag: str
     try:
         dc.images.build(path=str(build_dir), tag=image_tag)
     except docker.errors.BuildError as e:
-        build_log = "\n".join(l.get("stream", "") for l in e.build_log)
+        build_log = "\n".join(ln.get("stream", "") for ln in e.build_log)
         raise RuntimeError(
             f"Building '{image_tag}' from '{str(build_dir)}/Dockerfile' "
             f"failed with the following errors:\n\n{build_log}"
@@ -296,7 +296,7 @@ def install_arcana(
     )
     dockerfile.run(
         f'bash -c "source activate {CONDA_ENV} \\\n'
-        f'&& python -m pip install --no-cache-dir {pip_str}"'
+        f'&& python -m pip install --pre --no-cache-dir {pip_str}"'
     )
 
 
@@ -509,7 +509,7 @@ DOCKERFILE_README_TEMPLATE = """
     for licence.
 
     {}
-    
+
     """
 
 PATHS_TO_NOT_COPY_INTO_BUILD = "debug-build"
