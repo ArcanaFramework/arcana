@@ -46,4 +46,4 @@ dev_requires = ["black>=21.4b2", "pre-commit>=2.19.0"]
 
 all_requires = install_requires + tests_require + docs_require + dev_requires
 
-python_versions = ["3.8", "3.9"]
+python_versions = ["3.8", "3.9", "3.10"]
