@@ -5,7 +5,7 @@ from pathlib import Path
 import tempfile
 import inspect
 import json
-from attr import NOTHING
+from copy import copy
 from dataclasses import dataclass
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
@@ -107,6 +107,7 @@ def build_xnat_cs_image(
     for cmd_spec in commands:
 
         if "info_url" not in cmd_spec:
+            cmd_spec = copy(cmd_spec)
             cmd_spec["info_url"] = info_url
 
         xnat_cmd = generate_xnat_cs_command(
@@ -226,7 +227,7 @@ def generate_xnat_cs_command(
                 parsed = klass(**arg)
             else:
                 parsed = klass(*arg)
-            if not parsed.format is arcana.core.data.row.DataRow:
+            if parsed.format is not arcana.core.data.row.DataRow:
                 parsed_args.append(parsed)
         return parsed_args
 

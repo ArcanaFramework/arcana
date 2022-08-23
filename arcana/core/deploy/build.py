@@ -3,6 +3,7 @@ from pathlib import Path
 import json
 import tempfile
 import logging
+from copy import copy
 import shutil
 from natsort import natsorted
 import docker
@@ -327,8 +328,10 @@ def install_package_templates(
         dictionary containing the 'name' and 'version' of the template along
         with any additional keyword arguments required by the template
     """
-
     for kwds in package_templates:
+        kwds = copy(
+            kwds
+        )  # so we can pop the name and leave the original dictionary intact
         dockerfile.add_registered_template(kwds.pop("name"), **kwds)
 
 
