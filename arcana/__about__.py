@@ -9,7 +9,7 @@ __authors__ = [("Thomas G. Close", "tom.g.close@gmail.com")]
 install_requires = [
     "docker>=5.0.2",
     "jq>=1.2.2",
-    "click==7.1.2",
+    "click>=8.1.3",
     "PyYAML>=6.0",
     "natsort>=7.1.1",
     "fasteners>=0.7.0",
