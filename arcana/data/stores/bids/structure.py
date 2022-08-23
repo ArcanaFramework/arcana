@@ -32,7 +32,9 @@ class JsonEdit:
             return []
         parsed = []
         for x in json_edits:
-            if isinstance(x, dict):
+            if isinstance(x, JsonEdit):
+                parsed.append(x)
+            elif isinstance(x, dict):
                 parsed.append(JsonEdit(**x))
             else:
                 parsed.append(JsonEdit(*x))
