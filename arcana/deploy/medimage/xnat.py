@@ -151,7 +151,7 @@ def generate_xnat_cs_command(
     configuration=None,
     row_frequency="session",
     registry=DOCKER_HUB,
-    long_description: str = None,
+    long_description: str = None,  # Ignored here, just part of the specs for the docs
 ):
     """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
     should handle the containerised pipeline
@@ -342,7 +342,7 @@ def generate_xnat_cs_command(
             "description": "Flags passed to `run-arcana-pipeline` command",
             "type": "string",
             "default-value": (
-                "--plugin cf "
+                "--plugin serial "
                 "--work /wl "  # NB: work dir moved inside container due to file-locking issue on some mounted volumes (see https://github.com/tox-dev/py-filelock/issues/147)
                 "--dataset_name default "
                 "--loglevel info "
