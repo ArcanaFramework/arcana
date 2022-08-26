@@ -1,5 +1,6 @@
 import attrs
 import re
+from copy import copy
 import tempfile
 import logging
 import typing as ty
@@ -76,6 +77,7 @@ def bids_app(
     container_type: str = "docker",
     dataset: ty.Optional[ty.Union[str, Path, Dataset]] = None,
     app_output_dir: Path = None,
+    app_work_dir: Path = None,
     json_edits: ty.List[ty.Tuple[str, str]] = None,
 ) -> Workflow:
     """Creates a Pydra workflow which takes file inputs, maps them to
@@ -201,72 +203,7 @@ def bids_app(
     # parameters={p: type(p) for p in parameters},
     # id=wf.bidsify_id.lzout.no_prefix,
 
-    input_fields = [
-        (
-            "dataset_path",
-            str,
-            {
-                "help_string": "Path to BIDS dataset in the container",
-                "position": 1,
-                "mandatory": True,
-                "argstr": "'{dataset_path}'",
-            },
-        ),
-        (
-            "output_path",
-            str,
-            {
-                "help_string": "Directory where outputs will be written in the container",
-                "position": 2,
-                "argstr": "'{output_path}'",
-            },
-        ),
-        (
-            "analysis_level",
-            str,
-            {
-                "help_string": "The analysis level the app will be run at",
-                "position": 3,
-                "argstr": "",
-            },
-        ),
-        (
-            "participant_label",
-            ty.List[str],
-            {
-                "help_string": "The IDs to include in the analysis",
-                "argstr": "--participant_label ",
-                "position": 4,
-            },
-        ),
-        (
-            "flags",
-            str,
-            {
-                "help_string": "Additional flags to pass to the app",
-                "argstr": "",
-                "position": -1,
-            },
-        ),
-        (
-            "setup_completed",
-            bool,
-            {
-                "help_string": "Dummy field to ensure that the BIDS dataset construction completes first"
-            },
-        ),
-    ]
-
-    output_fields = [
-        (
-            "completed",
-            bool,
-            {
-                "help_string": "a simple flag to indicate app has completed",
-                "callable": lambda: True,
-            },
-        )
-    ]
+    input_fields = copy(BIDS_APP_INPUTS)
 
     for param in parameters.items():
         argstr = f"--{param}"
@@ -320,10 +257,11 @@ def bids_app(
         name="bids_app",
         input_spec=SpecInfo(name="Input", fields=input_fields, bases=(base_spec_cls,)),
         output_spec=SpecInfo(
-            name="Output", fields=output_fields, bases=(ShellOutSpec,)
+            name="Output", fields=BIDS_APP_OUTPUTS, bases=(ShellOutSpec,)
         ),
         dataset_path=app_dataset_path,
         output_path=app_output_path,
+        work_dir=app_work_dir,
         analysis_level=analysis_level,
         flags=wf.lzin.flags,
         setup_completed=wf.to_bids.lzout.completed,
@@ -450,3 +388,79 @@ def extract_bids(
             item.get()  # download to host if required
             output_paths.append(item.value)
     return tuple(output_paths) if len(outputs) > 1 else output_paths[0]
+
+
+BIDS_APP_INPUTS = [
+    (
+        "dataset_path",
+        str,
+        {
+            "help_string": "Path to BIDS dataset in the container",
+            "position": 1,
+            "mandatory": True,
+            "argstr": "'{dataset_path}'",
+        },
+    ),
+    (
+        "output_path",
+        str,
+        {
+            "help_string": "Directory where outputs will be written in the container",
+            "position": 2,
+            "argstr": "'{output_path}'",
+        },
+    ),
+    (
+        "analysis_level",
+        str,
+        {
+            "help_string": "The analysis level the app will be run at",
+            "position": 3,
+            "argstr": "",
+        },
+    ),
+    (
+        "participant_label",
+        ty.List[str],
+        {
+            "help_string": "The IDs to include in the analysis",
+            "argstr": "--participant_label ",
+            "position": 4,
+        },
+    ),
+    (
+        "flags",
+        str,
+        {
+            "help_string": "Additional flags to pass to the app",
+            "argstr": "",
+            "position": -1,
+        },
+    ),
+    (
+        "work_dir",
+        str,
+        {
+            "help_string": "Directory where the nipype temporary working directories will be stored",
+            "argstr": "--work-dir '{work_dir}'",
+        },
+    ),
+    (
+        "setup_completed",
+        bool,
+        {
+            "help_string": "Dummy field to ensure that the BIDS dataset construction completes first"
+        },
+    ),
+]
+
+BIDS_APP_OUTPUTS = [
+    (
+        "completed",
+        bool,
+        {
+            "help_string": "a simple flag to indicate app has completed",
+            "callable": lambda: True,
+        },
+    )
+]
