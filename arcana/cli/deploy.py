@@ -1,7 +1,6 @@
 import logging
 import sys
 import shutil
-import json
 from pathlib import Path
 import click
 import docker
@@ -10,7 +9,6 @@ import tempfile
 from collections import defaultdict
 import shlex
 from traceback import format_exc
-from arcana import __version__
 from arcana.core.cli import cli
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
 from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
@@ -263,10 +261,10 @@ def build(
             dc = docker.from_env()
             try:
                 dc.api.push(image_tag)
-            except Exception as e:
+            except Exception:
                 if raise_errors:
                     raise
-                logger.error(f"Could not push '%s':\n\n%s", image_tag, format_exc())
+                logger.error("Could not push '%s':\n\n%s", image_tag, format_exc())
                 errors = True
             else:
                 logger.info("Successfully pushed '%s' to registry", image_tag)
@@ -381,7 +379,7 @@ def build_docs(spec_path, output, root, flatten, loglevel):
 
 @deploy.command(
     name="required-packages",
-    help="""Detect the Python packages required to run the 
+    help="""Detect the Python packages required to run the
 specified workflows and return them and their versions""",
 )
 @click.argument("task_locations", nargs=-1)
@@ -629,7 +627,10 @@ def run_pipeline(
         space = resolve_class(dataset_space, ["arcana.data.spaces"])
         hierarchy = dataset_hierarchy.split(",")
 
-        dataset = store.new_dataset(id, hierarchy=hierarchy, space=space)
+        try:
+            dataset = store.load_dataset(id, name)
+        except KeyError:
+            dataset = store.new_dataset(id, hierarchy=hierarchy, space=space)
 
     if single_row is not None:
         # Adds a single row to the dataset (i.e. skips a full scan)
@@ -810,3 +811,7 @@ def run_pipeline(
                 pass
         else:
             sys.exit(1)
+
+
+if __name__ == "__main__":
+    run_pipeline()
