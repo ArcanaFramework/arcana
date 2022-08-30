@@ -20,7 +20,7 @@ install_requires = [
     "nibabel>=3.2.1",
     "neurodocker>=0.9.1",
     "xnat>=0.3.17",
-    "pydra>=0.19",
+    "pydra @ git+https://github.com/tclose/pydra.git@inputs-checksum-fix",
     "pydra-dcm2niix>=1.1.0",
     "pydra-mrtrix3>=0.1",
 ]
