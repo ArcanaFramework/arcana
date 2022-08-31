@@ -515,11 +515,12 @@ DOCKERFILE_README_TEMPLATE = """
 
     """
 
-PATHS_TO_NOT_COPY_INTO_BUILD = "debug-build"
+PATHS_TO_NOT_COPY_INTO_BUILD = ["debug-build", ".git"]
 PATTERNS_TO_NOT_COPY_INTO_BUILD = (
     "conftest.py",
     "*.pyc",
     "__pycache__",
     ".pytest_cache",
     "tests",
+    ".*",
 )
