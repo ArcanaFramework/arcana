@@ -1,3 +1,4 @@
+from importlib import import_module
 import typing as ty
 from pathlib import Path
 import json
@@ -502,6 +503,19 @@ def copy_package_into_build_dir(
     shutil.copytree(
         local_installation, pkg_build_path, ignore=ignore_paths_and_patterns
     )
+
+    # Check to see if using versioneer and if so replace auto-generated version number
+    # as we are not copying the .git repo
+    if (local_installation / package_name / "_version.py").exists():
+        pkg_version = import_module(package_name).__version__
+        with open(pkg_build_path / package_name / "_version.py", "w") as f:
+            f.write(
+                f"""
+def get_versions():
+    return {{"version": {pkg_version} }}
+"""
+            )
+
     return pkg_build_path
 
 
