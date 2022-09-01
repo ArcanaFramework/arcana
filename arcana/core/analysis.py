@@ -657,7 +657,7 @@ class _InheritedFrom:
         """
         # Validate inheritance
         if not issubclass(klass, self.base_class):
-            raise ValueError(
+            raise ArcanaDesignError(
                 f"Trying to inherit '{name}' from class that is not a base "
                 f"{self.base_class}"
             )
@@ -666,13 +666,13 @@ class _InheritedFrom:
                 a for a in self.base_class.__attrs_attrs__ if a.name == name
             )
         except StopIteration:
-            raise ValueError(
-                f"No attribute named {name} in base class {self.base_class}"
+            raise ArcanaDesignError(
+                f"No attribute named '{name}' in base class {self.base_class}"
             )
         if inherited_from.inherited:
-            raise ValueError(
-                "Must inherit from a column that is explicitly defined in "
-                f"the base class {self.base_class} (not {name})"
+            raise ArcanaDesignError(
+                "'{name}' must inherit from a column that is explicitly defined in "
+                f"the base class it references {self.base_class}"
             )
 
         resolved = _attr_to_counting_attr(inherited_from, self.to_overwrite)
@@ -707,7 +707,7 @@ class _MappedFrom:
                 a for a in analysis_class.__attrs_attrs__ if a.name == self.column_name
             )
         except StopIteration:
-            raise ValueError(
+            raise ArcanaDesignError(
                 f"No attribute named '{self.column_name}' in subanalysis "
                 f"'{self.subanalysis_name}' ({analysis_class}): "
                 + str([a.name for a in analysis_class.__attrs_attrs__])
@@ -885,7 +885,7 @@ def _get_args_automagically(column_specs, parameters, method, index_start=2):
         elif arg in param_names:
             used_parameters.append(arg)
         else:
-            raise ValueError(
+            raise ArcanaDesignError(
                 f"Unrecognised argument '{arg}'. If it is from a base class, "
                 "make sure that it is explicitly inherited using the `inherited_from` "
                 "function."

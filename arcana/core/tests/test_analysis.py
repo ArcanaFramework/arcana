@@ -954,7 +954,7 @@ def test_analysis_with_subanalyses(
     ]
 
 
-def test_reserved_names():
+def test_reserved_name_errors():
 
     with pytest.raises(ArcanaDesignError):
 
@@ -975,7 +975,7 @@ def test_reserved_names():
             stack: Text = column("yet another reserved attribute")
 
 
-def test_change_of_type():
+def test_change_of_type_errors():
     @analysis(Samples)
     class A:
         x: Text = column("a reserved attribute", salience=cs.primary)
@@ -995,7 +995,7 @@ def test_change_of_type():
     assert "Cannot change format" in e.value.msg
 
 
-def test_multiple_pipeline_builders():
+def test_multiple_pipeline_builder_errors():
 
     with pytest.raises(ArcanaDesignError) as e:
 
@@ -1017,7 +1017,7 @@ def test_multiple_pipeline_builders():
     assert "Multiple pipelines provide outputs for 'y'" in e.value.msg
 
 
-def test_unconnected_columns():
+def test_unconnected_column_errors():
 
     # Should work
     @analysis(Samples)
@@ -1056,12 +1056,12 @@ def test_unconnected_columns():
     )
 
 
-def test_unknown_columns():
+def test_unknown_column_errors():
 
     with pytest.raises(ArcanaDesignError) as e:
 
         @analysis(Samples)
-        class B:
+        class A:
             k: int = parameter("a parameter", default=1)
 
             @pipeline(k)
@@ -1069,3 +1069,54 @@ def test_unknown_columns():
                 pass
 
     assert "'a_pipeline' pipeline outputs to unknown columns" in e.value.msg
+
+
+def test_automagic_arg_errors():
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class A:
+            y: Text = column("another column")
+
+            @pipeline(y)
+            def a_pipeline(self, wf, x: Text):
+                wf.add(identity_file(name="identity", in_file=x))
+                return wf.identity.lzout.out_file
+
+    assert "Unrecognised argument 'x'" in e.value.msg
+
+
+def test_inherited_from_errors():
+    @analysis(Samples)
+    class A:
+        x: Text = column("a reserved attribute", salience=cs.primary)
+        y: Text = column("another column")
+
+        @pipeline(y)
+        def a_pipeline(self, wf, x: Text):
+            wf.add(identity_file(name="identity", in_file=x))
+            return wf.identity.lzout.out_file
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class B(A):
+            z: Text = inherited_from(A)
+
+    assert "No attribute named 'z' in base class" in e.value.msg
+
+    @analysis(Samples)
+    class C(A):
+        pass
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class D(C):
+            x: Text = inherited_from(C)
+
+    assert (
+        "'x' must inherit from a column that is explicitly defined in the base class it references"
+        in e.value.msg
+    )
