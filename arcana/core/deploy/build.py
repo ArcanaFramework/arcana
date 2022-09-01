@@ -1,9 +1,10 @@
-from importlib import import_module
+import setuptools.sandbox
 import typing as ty
 from pathlib import Path
 import json
 import tempfile
 import logging
+from datetime import datetime
 from copy import copy
 import shutil
 from natsort import natsorted
@@ -11,6 +12,7 @@ import docker
 import yaml
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
+from arcana.core.utils import set_cwd
 from arcana.__about__ import PACKAGE_NAME, python_versions
 from arcana.exceptions import ArcanaBuildError
 from .utils import PipSpec, local_package_location
@@ -444,10 +446,10 @@ def pip_spec2str(
             raise ArcanaBuildError(
                 "Cannot specify a package by `file_path`, `version` and/or " "`url`"
             )
-        pkg_build_path = copy_package_into_build_dir(
+        pkg_build_path = copy_sdist_into_build_dir(
             pip_spec.name, pip_spec.file_path, build_dir
         )
-        pip_str = "/" + PYTHON_PACKAGE_DIR + "/" + pip_spec.name
+        pip_str = "/" + PYTHON_PACKAGE_DIR + "/" + pkg_build_path.name
         dockerfile.copy(
             source=[str(pkg_build_path.relative_to(build_dir))], destination=pip_str
         )
@@ -464,10 +466,11 @@ def pip_spec2str(
     return pip_str
 
 
-def copy_package_into_build_dir(
+def copy_sdist_into_build_dir(
     package_name: str, local_installation: Path, build_dir: Path
 ):
-    """Copies a local installation of a package into the build directory
+    """Create a source distribution from a locally installed "editable" python package
+    and copy it into the build dir so it can be installed in the Docker image
 
     Parameters
     ----------
@@ -477,44 +480,35 @@ def copy_package_into_build_dir(
         path to the local installation
     build_dir : Path
         path to the build directory
+
+    Returns
+    -------
+    Path
+        the path to the source distribution within the build directory
     """
-    pkg_build_path = build_dir / PYTHON_PACKAGE_DIR / package_name
-    if pkg_build_path.exists():
-        shutil.rmtree(pkg_build_path)
-    # Copy source tree into build dir minus any cache files and paths
-    # included in the gitignore
-    patterns_to_ignore = list(PATTERNS_TO_NOT_COPY_INTO_BUILD)
-    ignore_paths = [Path(p) for p in PATHS_TO_NOT_COPY_INTO_BUILD]
-    if (local_installation / ".gitignore").exists():
-        with open(local_installation / ".gitignore") as f:
-            gitignore = f.read().splitlines()
-        patterns_to_ignore.extend(p for p in gitignore if not p.startswith("/"))
-        ignore_paths.extend(Path(p[1:]) for p in gitignore if p.startswith("/"))
-    patterns_to_ignore.append(
-        "conftest.py"
-    )  # confuses pytest if nested within build dirs
-    ignore_patterns = shutil.ignore_patterns(*patterns_to_ignore)
-
-    def ignore_paths_and_patterns(directory, contents):
-        to_ignore = ignore_patterns(directory, contents)
-        to_ignore.update(c for c in contents if Path(directory) / c in ignore_paths)
-        return to_ignore
-
-    shutil.copytree(
-        local_installation, pkg_build_path, ignore=ignore_paths_and_patterns
+    pkg_build_path = (build_dir / PYTHON_PACKAGE_DIR / package_name).with_suffix(
+        ".tar.gz"
     )
+    if not (local_installation / "setup.py").exists():
+        raise ArcanaBuildError(
+            "Can only copy local copy of Python packages that contain a 'setup.py' "
+            f"not {local_installation}"
+        )
 
-    # Check to see if using versioneer and if so replace auto-generated version number
-    # as we are not copying the .git repo
-    if (local_installation / package_name / "_version.py").exists():
-        pkg_version = import_module(package_name).__version__
-        with open(pkg_build_path / package_name / "_version.py", "w") as f:
-            f.write(
-                f"""
-def get_versions():
-    return {{"version": {pkg_version} }}
-"""
-            )
+    # Move existing 'dist' directory out of the way
+    orig_dist = local_installation / datetime.strftime(datetime.now(), "%Y%m%d%H%M%S")
+    shutil.move(local_installation / "dist", orig_dist)
+    try:
+        # Generate source distribution using setuptools
+        with set_cwd(local_installation):
+            setuptools.sandbox.run_setup("setup.py", ["sdist", "--formats", "gztar"])
+        # Copy generated source distribution into build directory
+        sdist_path = next((local_installation / "dist").iterdir())
+        shutil.copy(sdist_path, pkg_build_path)
+    finally:
+        # Put original 'dist' directory back in its place
+        shutil.rmtree(local_installation / "dist", ignore_errors=True)
+        shutil.move(orig_dist, local_installation / "dist")
 
     return pkg_build_path
 
