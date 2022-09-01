@@ -661,17 +661,13 @@ class _InheritedFrom:
                 f"Trying to inherit '{name}' from class that is not a base "
                 f"{self.base_class}"
             )
-        try:
-            inherited_from = next(
-                a for a in self.base_class.__attrs_attrs__ if a.name == name
-            )
-        except StopIteration:
+        inherited_from = getattr(attrs.fields(self.base_class), name)
+        # !!WARNING potentially weak code!!
+        # Not quite sure "inherited" isn't set properly sometimes, but the metadata
+        # doesn't seem to be set in this case either so using it to check
+        if inherited_from.inherited or not inherited_from.metadata:
             raise ArcanaDesignError(
-                f"No attribute named '{name}' in base class {self.base_class}"
-            )
-        if inherited_from.inherited:
-            raise ArcanaDesignError(
-                "'{name}' must inherit from a column that is explicitly defined in "
+                f"'{name}' must inherit from a column that is explicitly defined in "
                 f"the base class it references {self.base_class}"
             )
 

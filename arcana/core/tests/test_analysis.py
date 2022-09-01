@@ -1098,13 +1098,13 @@ def test_inherited_from_errors():
             wf.add(identity_file(name="identity", in_file=x))
             return wf.identity.lzout.out_file
 
-    with pytest.raises(ArcanaDesignError) as e:
+    with pytest.raises(AttributeError) as e:
 
         @analysis(Samples)
         class B(A):
             z: Text = inherited_from(A)
 
-    assert "No attribute named 'z' in base class" in e.value.msg
+    assert "object has no attribute 'z'" in str(e.value)
 
     @analysis(Samples)
     class C(A):
