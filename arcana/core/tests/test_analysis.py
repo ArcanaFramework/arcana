@@ -8,6 +8,7 @@ from arcana.test.tasks import (
     concatenate_reverse,
     multiply_contents,
     contents_are_numeric,
+    identity_file,
 )
 from arcana.core.mark import (
     analysis,
@@ -30,6 +31,7 @@ from arcana.core.enum import (
     ParameterSalience as ps,
     CheckSalience as chs,
 )
+from arcana.exceptions import ArcanaDesignError
 
 
 def get_contents(fpath):
@@ -950,3 +952,96 @@ def test_analysis_with_subanalyses(
         "100.0",
         "200.0",
     ]
+
+
+def test_reserved_names():
+
+    with pytest.raises(ArcanaDesignError):
+
+        @analysis(Samples)
+        class ReservedAttrColumn:
+            dataset: Text = column("a reserved attribute")
+
+    with pytest.raises(ArcanaDesignError):
+
+        @analysis(Samples)
+        class ReservedAttrField:
+            menu: Text = column("another reserved attribute")
+
+    with pytest.raises(ArcanaDesignError):
+
+        @analysis(Samples)
+        class AnotherReservedAttrField:
+            stack: Text = column("yet another reserved attribute")
+
+
+def test_change_of_type():
+    @analysis(Samples)
+    class A:
+        x: Text = column("a reserved attribute")
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class B(A):
+            x: Zip = inherited_from(A)
+
+    assert "Cannot change format" in e.value.msg
+
+
+def test_multiple_pipeline_builders():
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class A:
+            x: Text = column("a column", salience=cs.primary)
+            y: Text = column("another column")
+
+            @pipeline(y)
+            def a_pipeline(wf, x: Text):
+                wf.add(identity_file(name="identity", in_file=x))
+                return wf.identity.lzout.out_file
+
+            @pipeline(y)
+            def another_pipeline(wf, x: Text):
+                wf.add(identity_file(name="identity", in_file=x))
+                return wf.identity.lzout.out_file
+
+    assert "Multiple pipelines provide outputs for 'y'" in e.value.msg
+
+
+def test_unconnected_columns():
+
+    # Should work
+    @analysis(Samples)
+    class A:
+        x: Text = column("a column", salience=cs.primary)
+        y: Text = column("another column")
+
+        @pipeline(y)
+        def a_pipeline(wf, x: Text):
+            wf.add(identity_file(name="identity", in_file=x))
+            return wf.identity.lzout.out_file
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class B:
+            x: Text = column("a column", salience=cs.primary)
+
+    assert "is neither an input nor output to any pipeline" in e.value.msg
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class C:
+            x: Text = column("a column")
+            y: Text = column("another column")
+
+            @pipeline(y)
+            def a_pipeline(wf, x: Text):
+                wf.add(identity_file(name="identity", in_file=x))
+                return wf.identity.lzout.out_file
+
+    assert "salience is not specified as 'raw' or 'primary'" in e.value.msg
