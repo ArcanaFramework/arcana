@@ -288,12 +288,13 @@ class FileGroup(DataItem, metaclass=ABCMeta):
         # Make a copy of the file-group to validate the local paths and auto-gen
         # any defaults before they are pushed to the store
         cpy = copy(self)
+        cpy.exists = True
         cpy.set_fs_paths(fs_paths)
         cache_paths = self.row.dataset.store.put_file_group_paths(self, cpy.fs_paths)
         # Set the paths to the cached files
+        self.exists = True
         self.set_fs_paths(cache_paths)
         self.validate_file_paths()
-        self.exists = True
         # Save provenance
         if self.provenance:
             self.row.dataset.store.put_provenance(self)
@@ -578,7 +579,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             func_task(
                 access_paths,
                 in_fields=[("from_format", type), ("file_group", from_format)],
-                out_fields=[(i, str) for i in from_format.fs_names()],
+                out_fields=[(i, Path) for i in from_format.fs_names()],
                 # name='extract',
                 from_format=from_format,
                 file_group=wf.lzin.to_convert,

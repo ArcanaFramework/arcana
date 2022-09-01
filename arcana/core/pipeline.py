@@ -97,39 +97,47 @@ class Pipeline:
     )
 
     @inputs.validator
-    def inputs_validator(self, _, inpt):
-        if inpt.format == arcana.core.data.row.DataRow:  # special case
-            return
-        column = self.dataset.column[inpt.col_name]
-        inpt.required_format.find_converter(column.format)
-        if inpt.pydra_field not in self.workflow.input_names:
-            raise ArcanaNameError(
-                f"{inpt.pydra_field} is not in the input spec of '{self.name}' "
-                f"pipeline: " + "', '".join(self.workflow.input_names)
-            )
+    def inputs_validator(self, _, inputs: ty.List[DataItem]):
+        for inpt in inputs:
+            if inpt.required_format is arcana.core.data.row.DataRow:  # special case
+                continue
+            column = self.dataset[inpt.col_name]
+            if inpt.required_format is not column.format:
+                inpt.required_format.find_converter(column.format)
+            if inpt.pydra_field not in self.workflow.input_names:
+                raise ArcanaNameError(
+                    f"{inpt.pydra_field} is not in the input spec of '{self.name}' "
+                    f"pipeline: " + "', '".join(self.workflow.input_names)
+                )
 
     @outputs.validator
-    def outputs_validator(self, _, outpt):
-        column = self.dataset.column[outpt.col_name]
-        if column.row_frequency != self.row_frequency:
-            raise ArcanaUsageError(
-                f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
-                f"that of '{outpt.col_name}' output ('{str(self.row_frequency)}')"
-            )
-        column.format.find_converter(outpt.produced_format)
-        if outpt.pydra_field not in self.workflow.output_names:
-            raise ArcanaNameError(
-                f"{outpt.pydra_field} is not in the output spec of '{self.name}' "
-                f"pipeline: " + "', '".join(self.workflow.output_names)
-            )
+    def outputs_validator(self, _, outputs):
+        for outpt in outputs:
+            column = self.dataset[outpt.col_name]
+            if column.row_frequency != self.row_frequency:
+                raise ArcanaUsageError(
+                    f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
+                    f"that of '{outpt.col_name}' output ('{str(self.row_frequency)}')"
+                )
+            if outpt.produced_format is not column.format:
+                column.format.find_converter(outpt.produced_format)
+            if outpt.pydra_field not in self.workflow.output_names:
+                raise ArcanaNameError(
+                    f"{outpt.pydra_field} is not in the output spec of '{self.name}' "
+                    f"pipeline: " + "', '".join(self.workflow.output_names)
+                )
 
     @property
     def input_varnames(self):
-        return [path2varname(i.col_name) for i in self.inputs]
+        return [
+            i.col_name for i in self.inputs
+        ]  # [path2varname(i.col_name) for i in self.inputs]
 
     @property
     def output_varnames(self):
-        return [path2varname(o.col_name) for o in self.outputs]
+        return [
+            o.col_name for o in self.outputs
+        ]  # [path2varname(o.col_name) for o in self.outputs]
 
     # parameterisation = self.get_parameterisation(kwargs)
     # self.wf.to_process.inputs.parameterisation = parameterisation
@@ -191,12 +199,15 @@ class Pipeline:
             # then the input will be a sequence of all the child rows
             if inpt.required_format is arcana.core.data.row.DataRow:
                 dtype = arcana.core.data.row.DataRow
-            elif self.dataset[inpt.col_name].row_frequency.is_parent(
-                self.row_frequency, if_match=True
-            ):
-                dtype = inpt.required_format
             else:
-                dtype = ty.Sequence[inpt.required_format]
+                dtype = self.dataset[inpt.col_name].format
+                # If the row frequency of the source column is higher than the frequency
+                # of the pipeline, then the related elements of the source column are
+                # collected into a list and passed to the pipeline
+                if not self.dataset[inpt.col_name].row_frequency.is_parent(
+                    self.row_frequency, if_match=True
+                ):
+                    dtype = ty.List[dtype]
             source_out_dct[inpt.col_name] = dtype
         source_out_dct["provenance_"] = ty.Dict[str, ty.Any]
 
@@ -207,7 +218,7 @@ class Pipeline:
                     ("dataset", arcana.core.data.set.Dataset),
                     ("row_frequency", DataSpace),
                     ("id", str),
-                    ("inputs", ty.Sequence[Input]),
+                    ("inputs", ty.List[Input]),
                     ("parameterisation", ty.Dict[str, ty.Any]),
                 ],
                 out_fields=list(source_out_dct.items()),
@@ -284,9 +295,9 @@ class Pipeline:
         wf.per_row.add(
             func_task(
                 encapsulate_paths_and_values,
-                in_fields=[("outputs", ty.Dict[str, type])]
-                + [(o, ty.Any) for o in self.output_varnames],
-                out_fields=[(o, DataItem) for o in self.output_varnames],
+                in_fields=[("outputs", ty.List[Output])]
+                + [(o.col_name, ty.Union[str, Path]) for o in self.outputs],
+                out_fields=[(o.col_name, DataItem) for o in self.outputs],
                 name="output_interface",
                 outputs=self.outputs,
                 **{
@@ -490,7 +501,7 @@ def split_side_car_suffix(name):
     {
         "dataset": arcana.core.data.set.Dataset,
         "row_frequency": DataSpace,
-        "outputs": ty.Sequence[str],
+        "outputs": ty.List[Output],
         "requested_ids": ty.Sequence[str] or None,
         "parameterisation": ty.Dict[str, ty.Any],
         "return": {"ids": ty.List[str], "cant_process": ty.List[str]},
