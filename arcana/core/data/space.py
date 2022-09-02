@@ -1,6 +1,5 @@
 import typing as ty
 import re
-from operator import __or__
 from enum import Enum
 from arcana.core.utils import class_location, resolve_class
 
@@ -125,17 +124,14 @@ class DataSpace(Enum):
     def __invert__(self):
         return type(self)(~self.value)
 
-    def __add__(self, other):
-        return type(self)(self.value + other.value)
-
-    def __sub__(self, other):
-        return type(self)(self.value - other.value)
-
     def __hash__(self):
         return self.value
 
     def __bool__(self):
         return bool(self.value)
+
+    def bin(self):
+        return bin(self.value)
 
     @classmethod
     def union(cls, freqs: ty.Sequence[Enum]):

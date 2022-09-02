@@ -829,7 +829,7 @@ class WithSideCars(BaseFile):
 
     @side_cars.validator
     def validate_side_cars(self, _, side_cars):
-        if side_cars is not None:
+        if side_cars:
             if self.fs_path is None:
                 raise ArcanaUsageError(
                     "Auxiliary files can only be provided to a FileGroup "
