@@ -272,6 +272,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             self.exists = True
         self._check_part_of_row()
         fs_paths = self.row.dataset.store.get_file_group_paths(self)
+        self.exists = True
         self.set_fs_paths(fs_paths)
         self.validate_file_paths()
 

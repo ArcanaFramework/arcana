@@ -210,11 +210,9 @@ class Dataset:
 
     @exclude.validator
     def exclude_validator(self, _, exclude):
-        both = [
-            f
-            for f in self.include
-            if (self.include[f] is not None and exclude[f] is not None)
-        ]
+        include_freqs = set(f for f, i in self.include if i is not None)
+        exclude_freqs = set(f for f, i in exclude if i is not None)
+        both = include_freqs & exclude_freqs
         if both:
             raise ArcanaUsageError(
                 "Cannot provide both 'include' and 'exclude' arguments "

@@ -181,11 +181,11 @@ def bids_app(
                     ("json_edits", str),
                     ("fixed_json_edits", ty.List[ty.Tuple[str, str]]),
                 ]
-                + [(i, str) for i in input_names]
+                + [(i, ty.Union[str, Path]) for i in input_names]
             ),
             out_fields=[
                 ("dataset", BidsDataset),
-                ("completed", bool, {"callable": lambda: True}),
+                ("completed", bool),
             ],
             name="to_bids",
             row_frequency=row_frequency,
@@ -259,8 +259,8 @@ def bids_app(
         output_spec=SpecInfo(
             name="Output", fields=BIDS_APP_OUTPUTS, bases=(ShellOutSpec,)
         ),
-        dataset_path=app_dataset_path,
-        output_path=app_output_path,
+        dataset_path=str(app_dataset_path),
+        output_path=str(app_output_path),
         work_dir=app_work_dir,
         analysis_level=analysis_level,
         flags=wf.lzin.flags,
@@ -344,7 +344,7 @@ def to_bids(
                 continue
             row_item = row[inpt_name]
             row_item.put(inpt_value)  # Store value/path in store
-    return (dataset, dataset.id)
+    return (dataset, True)
 
 
 def extract_bids(

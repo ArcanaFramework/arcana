@@ -101,9 +101,10 @@ class Pipeline:
         for inpt in inputs:
             if inpt.required_format is arcana.core.data.row.DataRow:  # special case
                 continue
-            column = self.dataset[inpt.col_name]
-            if inpt.required_format is not column.format:
-                inpt.required_format.find_converter(column.format)
+            if self.dataset:
+                column = self.dataset[inpt.col_name]
+                if inpt.required_format is not column.format:
+                    inpt.required_format.find_converter(column.format)
             if inpt.pydra_field not in self.workflow.input_names:
                 raise ArcanaNameError(
                     f"{inpt.pydra_field} is not in the input spec of '{self.name}' "
@@ -113,14 +114,15 @@ class Pipeline:
     @outputs.validator
     def outputs_validator(self, _, outputs):
         for outpt in outputs:
-            column = self.dataset[outpt.col_name]
-            if column.row_frequency != self.row_frequency:
-                raise ArcanaUsageError(
-                    f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
-                    f"that of '{outpt.col_name}' output ('{str(self.row_frequency)}')"
-                )
-            if outpt.produced_format is not column.format:
-                column.format.find_converter(outpt.produced_format)
+            if self.dataset:
+                column = self.dataset[outpt.col_name]
+                if column.row_frequency != self.row_frequency:
+                    raise ArcanaUsageError(
+                        f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
+                        f"that of '{outpt.col_name}' output ('{str(self.row_frequency)}')"
+                    )
+                if outpt.produced_format is not column.format:
+                    column.format.find_converter(outpt.produced_format)
             if outpt.pydra_field not in self.workflow.output_names:
                 raise ArcanaNameError(
                     f"{outpt.pydra_field} is not in the output spec of '{self.name}' "
