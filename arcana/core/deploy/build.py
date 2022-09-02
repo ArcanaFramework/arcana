@@ -486,9 +486,6 @@ def copy_sdist_into_build_dir(
     Path
         the path to the source distribution within the build directory
     """
-    pkg_build_path = (build_dir / PYTHON_PACKAGE_DIR / package_name).with_suffix(
-        ".tar.gz"
-    )
     if not (local_installation / "setup.py").exists():
         raise ArcanaBuildError(
             "Can only copy local copy of Python packages that contain a 'setup.py' "
@@ -504,13 +501,15 @@ def copy_sdist_into_build_dir(
             setuptools.sandbox.run_setup("setup.py", ["sdist", "--formats", "gztar"])
         # Copy generated source distribution into build directory
         sdist_path = next((local_installation / "dist").iterdir())
-        shutil.copy(sdist_path, pkg_build_path)
+        build_dir_pkg_path = build_dir / PYTHON_PACKAGE_DIR / sdist_path.name
+        build_dir_pkg_path.parent.mkdir(exist_ok=True)
+        shutil.copy(sdist_path, build_dir_pkg_path)
     finally:
         # Put original 'dist' directory back in its place
         shutil.rmtree(local_installation / "dist", ignore_errors=True)
         shutil.move(orig_dist, local_installation / "dist")
 
-    return pkg_build_path
+    return build_dir_pkg_path
 
 
 DOCKERFILE_README_TEMPLATE = """

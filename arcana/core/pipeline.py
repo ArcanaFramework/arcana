@@ -274,7 +274,10 @@ class Pipeline:
         wf.per_row.add(
             func_task(
                 access_paths_and_values,
-                in_fields=[(i.col_name, DataItem) for i in self.inputs],
+                in_fields=[
+                    (i.col_name, ty.Union[DataItem, arcana.core.data.row.DataRow])
+                    for i in self.inputs
+                ],
                 out_fields=[(i.col_name, ty.Any) for i in self.inputs],
                 name="input_interface",
                 **sourced,

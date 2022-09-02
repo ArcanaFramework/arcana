@@ -1,4 +1,3 @@
-from inspect import Arguments
 from operator import itemgetter
 import click
 from arcana.core.utils import resolve_class
@@ -52,6 +51,7 @@ location
 def add(nickname, type, location, varargs, cache, user, password):
     if cache is None:
         cache = get_home_dir() / "cache" / nickname
+        cache.mkdir(parents=True, exist_ok=True)
     store_cls = resolve_class(type, ["arcana.data.stores"])
     store = store_cls(location, *varargs, cache_dir=cache, user=user, password=password)
     store.save(nickname)

@@ -1,5 +1,4 @@
 import os
-import os.path as op
 from pathlib import Path
 import typing as ty
 from itertools import chain
@@ -612,7 +611,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             func_task(
                 encapsulate_paths,
                 in_fields=[("to_format", type), ("to_convert", from_format)]
-                + [(o, str) for o in cls.fs_names()],
+                + [(o, ty.Union[str, Path]) for o in cls.fs_names()],
                 out_fields=[("converted", cls)],
                 # name='encapsulate',
                 to_format=cls,
@@ -749,7 +748,9 @@ class BaseFile(FileGroup):
 
     def set_fs_paths(self, fs_paths: ty.List[Path]):
         self._check_paths_exist(fs_paths)
-        self.fs_path = absolute_path(self.matches_ext(*fs_paths))
+        fs_path = absolute_path(self.matches_ext(*fs_paths))
+        self.exists = True
+        self.fs_path = fs_path
 
     def all_file_paths(self):
         """The paths of all nested files within the file-group"""
@@ -844,12 +845,21 @@ class WithSideCars(BaseFile):
                         "', '".join(side_cars.keys()), "', '".join(self.side_car_exts)
                     )
                 )
-            missing_side_cars = [f for f in side_cars.values() if not op.exists(f)]
+            missing_side_cars = [(n, f) for n, f in side_cars.items() if not f.exists()]
             if missing_side_cars:
-                raise ArcanaUsageError(
+                msg = (
                     f"Attempting to set paths of auxiliary files for {self} "
-                    "that don't exist ('{}')".format("', '".join(missing_side_cars))
+                    "that don't exist: "
                 )
+                for name, fpath in missing_side_cars:
+                    if fpath.parent.exists():
+                        info = "neighbouring files: " + ", ".join(
+                            p.name for p in fpath.parent.iterdir()
+                        )
+                    else:
+                        info = "parent directory doesn't exist"
+                    msg += f"\n    {name}: {str(fpath)} - {info}"
+                raise ArcanaUsageError(msg)
 
     @classmethod
     def fs_names(cls):
@@ -867,14 +877,14 @@ class WithSideCars(BaseFile):
         to_assign = set(Path(p) for p in paths)
         to_assign.remove(self.fs_path)
         # Begin with default side_car paths and override if provided
-        self.side_cars = self.default_side_car_paths(self.fs_path)
+        default_side_cars = self.default_side_car_paths(self.fs_path)
         for sc_ext in self.side_car_exts:
             try:
                 matched = self.side_cars[sc_ext] = absolute_path(
                     self.matches_ext(*paths, ext=sc_ext)
                 )
             except ArcanaFileFormatError:
-                pass  # fallback to default
+                self.side_cars[sc_ext] = default_side_cars[sc_ext]
             else:
                 to_assign.remove(matched)
 
@@ -1037,6 +1047,7 @@ class BaseDirectory(FileGroup):
                 f"Multiple directories with contents matching {types_str}: "
                 f"{matches_str}"
             )
+        self.exists = True
         self.fs_path = absolute_path(matches[0])
 
     @classmethod
