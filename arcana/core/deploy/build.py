@@ -493,8 +493,8 @@ def copy_sdist_into_build_dir(
         )
 
     # Move existing 'dist' directory out of the way
-    orig_dist = local_installation / "dist." + datetime.strftime(
-        datetime.now(), "%Y%m%d%H%M%S"
+    orig_dist = local_installation / (
+        "dist." + datetime.strftime(datetime.now(), "%Y%m%d%H%M%S")
     )
     shutil.move(local_installation / "dist", orig_dist)
     try:
