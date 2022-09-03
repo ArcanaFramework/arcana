@@ -176,7 +176,7 @@ def saved_dataset_multi_store(xnat_archive_dir, xnat_repository, work_dir, reque
 
 @pytest.fixture(scope="session")
 def xnat_root_dir():
-    return xnat4tests.config["xnat_root_dir"]
+    return xnat4tests.config.XNAT_ROOT_DIR
 
 
 @pytest.fixture(scope="session")
@@ -190,9 +190,9 @@ def xnat_repository(run_prefix):
     xnat4tests.launch_xnat()
 
     repository = Xnat(
-        server=xnat4tests.config["xnat_uri"],
-        user=xnat4tests.config["xnat_user"],
-        password=xnat4tests.config["xnat_password"],
+        server=xnat4tests.config.XNAT_URI,
+        user=xnat4tests.config.XNAT_USER,
+        password=xnat4tests.config.XNAT_PASSWORD,
         cache_dir=mkdtemp(),
     )
 
