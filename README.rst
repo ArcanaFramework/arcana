@@ -17,7 +17,7 @@ Arcana
 
 Abstraction of Repository-Centric ANAlysis (Arcana_) is Python framework
 for "repository-centric" analyses of study groups (e.g. NeuroImaging
-studies) built on Pydra_.
+studies) built on the Pydra_ dataflow engine.
 
 Arcana_ interacts closely with a data store (e.g. XNAT repository or BIDS dataset),
 storing intermediate outputs, along with the parameters used to derive them,

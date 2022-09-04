@@ -20,7 +20,7 @@ install_requires = [
     "nibabel>=3.2.1",
     "neurodocker>=0.9.1",
     "xnat>=0.3.17",
-    "pydra>=0.19",
+    "pydra @ git+https://github.com/tclose/pydra.git@allowed-values-validator-lazy-fields",
     "pydra-dcm2niix>=1.1.0",
     "pydra-mrtrix3>=0.1",
 ]
@@ -29,7 +29,7 @@ tests_require = [
     "pytest>=5.4.3",
     "pytest-env>=0.6.2",
     "pytest-cov>=2.12.1",
-    "xnat4tests>=0.1",
+    "xnat4tests>=0.2",
     "medimages4tests>=0.1",
 ]
 

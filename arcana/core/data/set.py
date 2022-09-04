@@ -210,11 +210,9 @@ class Dataset:
 
     @exclude.validator
     def exclude_validator(self, _, exclude):
-        both = [
-            f
-            for f in self.include
-            if (self.include[f] is not None and exclude[f] is not None)
-        ]
+        include_freqs = set(f for f, i in self.include if i is not None)
+        exclude_freqs = set(f for f, i in exclude if i is not None)
+        both = include_freqs & exclude_freqs
         if both:
             raise ArcanaUsageError(
                 "Cannot provide both 'include' and 'exclude' arguments "
@@ -246,7 +244,7 @@ class Dataset:
         # each subsequent
         covered = self.space(0)
         for i, layer in enumerate(hierarchy):
-            diff = layer - covered
+            diff = (layer ^ covered) & layer
             if not diff:
                 raise ArcanaUsageError(
                     f"{layer} does not add any additional basis layers to "
@@ -570,7 +568,7 @@ class Dataset:
                             f"{layer} label '{label}', does not match ID inference"
                             f" pattern '{regex}'"
                         )
-                    new_freqs = layer - (layer & row_frequency)
+                    new_freqs = (layer ^ row_frequency) & layer
                     for target_freq, target_id in match.groupdict().items():
                         target_freq = self.space[target_freq]
                         if (target_freq & new_freqs) != target_freq:
@@ -631,8 +629,10 @@ class Dataset:
         # Insert parent rows if not already present and link them with
         # inserted row
         for parent_freq, parent_id in row.ids.items():
-            diff_freq = row.frequency - (parent_freq & row.frequency)
-            if diff_freq and parent_freq:  # Don't need to insert root row again
+            if not parent_freq:
+                continue  # Don't need to insert root row again
+            diff_freq = (row.frequency ^ parent_freq) & row.frequency
+            if diff_freq:
                 # logger.debug(f'Linking parent {parent_freq}: {parent_id}')
                 try:
                     parent_row = self.row(parent_freq, parent_id)

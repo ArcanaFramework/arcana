@@ -1,4 +1,4 @@
-import os.path
+from pathlib import Path
 import tempfile
 import pytest
 import pydra
@@ -8,6 +8,7 @@ from arcana.test.tasks import (
     concatenate_reverse,
     multiply_contents,
     contents_are_numeric,
+    identity_file,
 )
 from arcana.core.mark import (
     analysis,
@@ -30,6 +31,7 @@ from arcana.core.enum import (
     ParameterSalience as ps,
     CheckSalience as chs,
 )
+from arcana.exceptions import ArcanaDesignError
 
 
 def get_contents(fpath):
@@ -39,12 +41,12 @@ def get_contents(fpath):
 
 @pytest.fixture(scope="session")
 def source_dir():
-    return tempfile.mkdtemp()
+    return Path(tempfile.mkdtemp())
 
 
 @pytest.fixture(scope="session")
 def test_file1(source_dir):
-    fpath = os.path.join(source_dir, "file1.txt")
+    fpath = source_dir / "file1.txt"
     with open(fpath, "w") as f:
         f.write("file1")
     return fpath
@@ -52,7 +54,7 @@ def test_file1(source_dir):
 
 @pytest.fixture(scope="session")
 def test_file2(source_dir):
-    fpath = os.path.join(source_dir, "file2.txt")
+    fpath = source_dir / "file2.txt"
     with open(fpath, "w") as f:
         f.write("file2")
     return fpath
@@ -60,7 +62,7 @@ def test_file2(source_dir):
 
 @pytest.fixture(scope="session")
 def test_file3(source_dir):
-    fpath = os.path.join(source_dir, "file3.txt")
+    fpath = source_dir / "file3.txt"
     with open(fpath, "w") as f:
         f.write("file3")
     return fpath
@@ -68,7 +70,7 @@ def test_file3(source_dir):
 
 @pytest.fixture(scope="session")
 def test_numeric_file1(source_dir):
-    file1_path = os.path.join(source_dir, "file1.txt")
+    file1_path = source_dir / "file1.txt"
     with open(file1_path, "w") as f:
         f.write("1")
     return file1_path
@@ -76,7 +78,7 @@ def test_numeric_file1(source_dir):
 
 @pytest.fixture(scope="session")
 def test_numeric_file2(source_dir):
-    file2_path = os.path.join(source_dir, "file2.txt")
+    file2_path = source_dir / "file2.txt"
     with open(file2_path, "w") as f:
         f.write("2")
     return file2_path
@@ -160,7 +162,7 @@ def ConcatWithCheck(Concat):
             match what is expected for the number of duplicates specified"""
 
             @pydra.mark.task
-            def num_lines_equals(in_file: str, num_lines: int) -> bool:
+            def num_lines_equals(in_file: Path, num_lines: int) -> CheckStatus:
                 with open(in_file) as f:
                     contents = f.read()
                 if len(contents.splitlines()) == num_lines:
@@ -228,7 +230,7 @@ def ConcatWithSwitch(Concat):
         multiplied: Text = column("contents of the concatenated files are multiplied")
 
         multiplier: int = parameter(
-            "the multiplier used to apply", salience=ps.arbitrary
+            "the multiplier used to apply", salience=ps.required
         )
 
         @switch
@@ -762,7 +764,7 @@ def test_analysis_switch(
     multiplier = analysis_spec.parameter("multiplier")
     assert multiplier.type is int
     assert multiplier.default is None
-    assert multiplier.salience == ps.arbitrary
+    assert multiplier.salience == ps.required
     assert multiplier.defined_in is ConcatWithSwitch
 
     concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
@@ -950,3 +952,171 @@ def test_analysis_with_subanalyses(
         "100.0",
         "200.0",
     ]
+
+
+def test_reserved_name_errors():
+
+    with pytest.raises(ArcanaDesignError):
+
+        @analysis(Samples)
+        class A:
+            dataset: Text = column("a reserved attribute")
+
+    with pytest.raises(ArcanaDesignError):
+
+        @analysis(Samples)
+        class B:
+            menu: Text = column("another reserved attribute")
+
+    with pytest.raises(ArcanaDesignError):
+
+        @analysis(Samples)
+        class C:
+            stack: Text = column("yet another reserved attribute")
+
+
+def test_change_of_type_errors():
+    @analysis(Samples)
+    class A:
+        x: Text = column("a reserved attribute", salience=cs.primary)
+        y: Text = column("another column")
+
+        @pipeline(y)
+        def a_pipeline(self, wf, x: Text):
+            wf.add(identity_file(name="identity", in_file=x))
+            return wf.identity.lzout.out_file
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class B(A):
+            x: Zip = inherited_from(A)
+
+    assert "Cannot change format" in e.value.msg
+
+
+def test_multiple_pipeline_builder_errors():
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class A:
+            x: Text = column("a column", salience=cs.primary)
+            y: Text = column("another column")
+
+            @pipeline(y)
+            def a_pipeline(self, wf, x: Text):
+                wf.add(identity_file(name="identity", in_file=x))
+                return wf.identity.lzout.out_file
+
+            @pipeline(y)
+            def another_pipeline(self, wf, x: Text):
+                wf.add(identity_file(name="identity", in_file=x))
+                return wf.identity.lzout.out_file
+
+    assert "Multiple pipelines provide outputs for 'y'" in e.value.msg
+
+
+def test_unconnected_column_errors():
+
+    # Should work
+    @analysis(Samples)
+    class A:
+        x: Text = column("a column", salience=cs.primary)
+        y: Text = column("another column")
+
+        @pipeline(y)
+        def a_pipeline(self, wf, x: Text):
+            wf.add(identity_file(name="identity", in_file=x))
+            return wf.identity.lzout.out_file
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class B:
+            x: Text = column("a column", salience=cs.primary)
+
+    assert "'x' is neither an input nor output to any pipeline" in e.value.msg
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class C:
+            x: Text = column("a column")
+            y: Text = column("another column")
+
+            @pipeline(y)
+            def a_pipeline(self, wf, x: Text):
+                wf.add(identity_file(name="identity", in_file=x))
+                return wf.identity.lzout.out_file
+
+    assert (
+        "'x' is not generated by any pipeline yet its salience is not specified as 'raw' or 'primary'"
+        in e.value.msg
+    )
+
+
+def test_unknown_column_errors():
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class A:
+            k: int = parameter("a parameter", default=1)
+
+            @pipeline(k)
+            def a_pipeline(self, wf):
+                pass
+
+    assert "'a_pipeline' pipeline outputs to unknown columns" in e.value.msg
+
+
+def test_automagic_arg_errors():
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class A:
+            y: Text = column("another column")
+
+            @pipeline(y)
+            def a_pipeline(self, wf, x: Text):
+                wf.add(identity_file(name="identity", in_file=x))
+                return wf.identity.lzout.out_file
+
+    assert "Unrecognised argument 'x'" in e.value.msg
+
+
+def test_inherited_from_errors():
+    @analysis(Samples)
+    class A:
+        x: Text = column("a reserved attribute", salience=cs.primary)
+        y: Text = column("another column")
+
+        @pipeline(y)
+        def a_pipeline(self, wf, x: Text):
+            wf.add(identity_file(name="identity", in_file=x))
+            return wf.identity.lzout.out_file
+
+    with pytest.raises(AttributeError) as e:
+
+        @analysis(Samples)
+        class B(A):
+            z: Text = inherited_from(A)
+
+    assert "object has no attribute 'z'" in str(e.value)
+
+    @analysis(Samples)
+    class C(A):
+        pass
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class D(C):
+            x: Text = inherited_from(C)
+
+    assert (
+        "'x' must inherit from a column that is explicitly defined in the base class it references"
+        in e.value.msg
+    )

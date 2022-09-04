@@ -256,7 +256,7 @@ class FileSystem(DataStore):
             accounted_freq |= layer
         # If not "leaf row" then
         if row.frequency != max(row.dataset.space):
-            unaccounted_freq = row.frequency - (row.frequency & accounted_freq)
+            unaccounted_freq = (row.frequency ^ accounted_freq) & row.frequency
             unaccounted_id = row.ids[unaccounted_freq]
             if unaccounted_id is None:
                 path /= f"__{unaccounted_freq}__"
@@ -279,35 +279,35 @@ class FileSystem(DataStore):
     def prov_json_path(self, file_group):
         return self.file_group_path(file_group) + self.PROV_SUFFX
 
-    def get_provenance(self, item):
-        if item.is_file_group:
-            prov = self._get_file_group_provenance(item)
-        else:
-            prov = self._get_field_provenance(item)
-        return prov
+    # def get_provenance(self, item):
+    #     if item.is_file_group:
+    #         prov = self._get_file_group_provenance(item)
+    #     else:
+    #         prov = self._get_field_provenance(item)
+    #     return prov
 
-    def _get_file_group_provenance(self, file_group):
-        if file_group.fs_path is not None:
-            prov_path = self.prov_json_path(file_group)
-            if prov_path.exists():
-                with open(prov_path) as f:
-                    provenance = json.load(f)
-            else:
-                provenance = {}
-        else:
-            provenance = None
-        return provenance
+    # def _get_file_group_provenance(self, file_group):
+    #     if file_group.fs_path is not None:
+    #         prov_path = self.prov_json_path(file_group)
+    #         if prov_path.exists():
+    #             with open(prov_path) as f:
+    #                 provenance = json.load(f)
+    #         else:
+    #             provenance = {}
+    #     else:
+    #         provenance = None
+    #     return provenance
 
-    def _get_field_provenance(self, field):
-        """
-        Loads the fields provenance from the JSON dictionary
-        """
-        val_dct = self.get_field_val(field)
-        if isinstance(val_dct, dict):
-            prov = val_dct.get(self.PROV_KEY)
-        else:
-            prov = None
-        return prov
+    # def _get_field_provenance(self, field):
+    #     """
+    #     Loads the fields provenance from the JSON dictionary
+    #     """
+    #     val_dct = self.get_field_val(field)
+    #     if isinstance(val_dct, dict):
+    #         prov = val_dct.get(self.PROV_KEY)
+    #     else:
+    #         prov = None
+    #     return prov
 
     def get_field_val(self, field):
         """

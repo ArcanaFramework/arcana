@@ -367,7 +367,6 @@ class Xnat(DataStore):
             # need to manually set this here in order to calculate the
             # checksums (instead of waiting until after the 'put' is finished)
             file_group.set_fs_paths(cache_paths)
-            file_group.exists = True
             with open(
                 append_suffix(base_cache_path, self.MD5_SUFFIX), "w", **JSON_ENCODING
             ) as f:
@@ -642,8 +641,10 @@ class Xnat(DataStore):
         """Get the URI of the XNAT row (ImageSession | Subject | Project)
         using labels rather than IDs for subject and sessions, e.g
 
-        >>> xrow = repo.login.experiments['MRH017_100_MR01']
-        >>> repo.standard_uri(xrow)
+        >>> from arcana.data.stores.medimage import Xnat
+        >>> store = Xnat.load('my-xnat')
+        >>> xsession = store.login.experiments['MRH017_100_MR01']
+        >>> store.standard_uri(xsession)
 
         '/data/archive/projects/MRH017/subjects/MRH017_100/experiments/MRH017_100_MR01'
 
@@ -693,7 +694,7 @@ class Xnat(DataStore):
     def _provenance_location(self, item, create_resource=False):
         xrow = self.get_xrow(item.row)
         if item.is_field:
-            fname = self.FIELD_PROV_PREFIX + fname
+            fname = self.FIELD_PROV_PREFIX + path2varname(item)
         else:
             fname = path2varname(item) + ".json"
         uri = f"{self.standard_uri(xrow)}/resources/{self.PROV_RESOURCE}/files/{fname}"

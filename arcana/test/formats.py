@@ -1,4 +1,5 @@
 from pathlib import Path
+import typing as ty
 from pydra import mark
 from arcana.core.mark import converter
 from arcana.core.data.format import BaseFile
@@ -14,7 +15,7 @@ class EncodedText(BaseFile):
 
     @classmethod
     @converter(Text)
-    def encode(cls, fs_path: Path, shift: int = 0):
+    def encode(cls, fs_path: ty.Union[str, Path], shift: int = 0):
         shift = int(shift)
         node = encoder_task(in_file=fs_path, shift=shift)
         return node, node.lzout.out
@@ -32,7 +33,11 @@ class DecodedText(Text):
 
 
 @mark.task
-def encoder_task(in_file: Path, shift: int, out_file: Path = "out_file.enc") -> Path:
+def encoder_task(
+    in_file: ty.Union[str, Path],
+    shift: int,
+    out_file: ty.Union[str, Path] = "out_file.enc",
+) -> ty.Union[str, Path]:
     with open(in_file) as f:
         contents = f.read()
     encoded = encode_text(contents, shift)

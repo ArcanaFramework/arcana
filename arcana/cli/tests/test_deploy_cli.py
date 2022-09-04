@@ -63,7 +63,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
-    tag = result.output.strip()
+    tag = result.output.strip().splitlines()[-1]
     assert tag == f"{DOCKER_REGISTRY}/{DOCKER_ORG}/{PKG_NAME}.concatenate:1.0-1"
 
     # Clean up the built image
@@ -122,7 +122,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
     # Build a basic image
     result = build_spec(concatenate_spec)
     assert result.exit_code == 0, show_cli_trace(result)
-    tag = result.output.strip()
+    tag = result.output.strip().splitlines()[-1]
     try:
         dc = docker.from_env()
         dc.api.push(tag)
@@ -148,7 +148,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
 
         result = build_spec(concatenate_spec)
         assert result.exit_code == 0, show_cli_trace(result)
-        rebuilt_tag = result.output.strip()
+        rebuilt_tag = result.output.strip().splitlines()[-1]
         dc.images.remove(rebuilt_tag)
     finally:
         # Clean up the built images

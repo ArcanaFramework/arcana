@@ -257,15 +257,17 @@ class Nifti(NeuroImage):
         cls, fs_path, extract_volume=None, echo=None, component=None, side_car_jq=None
     ):
         as_workflow = extract_volume is not None or side_car_jq is not None
+        in_dir = fs_path
+        compress = "n"
         if as_workflow:
             wf = Workflow(
-                name="multistep_conv", input_spec=["in_dir", "compress"], in_dir=fs_path
+                name="multistep_conv",
+                input_spec=["in_dir", "compress"],
+                in_dir=in_dir,
+                compress=compress,
             )
             in_dir = wf.lzin.in_dir
             compress = wf.lzin.compress
-        else:
-            in_dir = fs_path
-            compress = "n"
         node = Dcm2Niix(
             in_dir=in_dir,
             out_dir=".",
@@ -528,7 +530,7 @@ class CustomKspace(Kspace):
         Number of channels in the k-space
     num_echos : int
         Number of echoes in the acquisition
-    TE : tuple(float)
+    T E : tuple(float)
         The echo times
     B0_strength : float
         Strength of the B0 field

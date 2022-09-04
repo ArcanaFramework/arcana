@@ -257,18 +257,21 @@ def install_and_launch_xnat_cs_command(
 
     max_runtime = num_attempts * poll_interval
 
+    container_id = wf_result["comments"]
+
     # Get workflow stdout/stderr for error messages if required
     out_str = ""
     stdout_result = xlogin.get(
-        f"/xapi/workflows/{workflow_id}/logs/stdout", accepted_status=[200, 204]
+        f"/xapi/containers/{container_id}/logs/stdout", accepted_status=[200, 204]
     )
     if stdout_result.status_code == 200:
         out_str = f"stdout:\n{stdout_result.content.decode('utf-8')}\n"
     stderr_result = xlogin.get(
-        f"/xapi/workflows/{workflow_id}/logs/stderr", accepted_status=[200, 204]
+        f"/xapi/containers/{container_id}/logs/stderr", accepted_status=[200, 204]
     )
     if stderr_result.status_code == 200:
         out_str += f"\nstderr:\n{stderr_result.content.decode('utf-8')}"
+    out_str = "Logs temporarily disabled"
 
     if i == num_attempts - 1:
         status = f"NotCompletedAfter{max_runtime}Seconds"

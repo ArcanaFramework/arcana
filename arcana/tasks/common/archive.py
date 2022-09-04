@@ -30,7 +30,7 @@ TAR_COMPRESSION_TYPES = ["", "gz", "bz2", "xz"]
                 "allowed_values": list(TAR_COMPRESSION_TYPES),
             },
         ),
-        "format": str,
+        "format": int,
         "ignore_zeros": bool,
         "return": {"out_file": File},
     }
