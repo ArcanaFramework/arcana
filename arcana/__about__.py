@@ -29,7 +29,7 @@ tests_require = [
     "pytest>=5.4.3",
     "pytest-env>=0.6.2",
     "pytest-cov>=2.12.1",
-    "xnat4tests==0.1.5",
+    "xnat4tests>=0.2",
     "medimages4tests>=0.1",
 ]
 
