@@ -446,9 +446,7 @@ def pip_spec2str(
             raise ArcanaBuildError(
                 "Cannot specify a package by `file_path`, `version` and/or " "`url`"
             )
-        pkg_build_path = copy_sdist_into_build_dir(
-            pip_spec.name, pip_spec.file_path, build_dir
-        )
+        pkg_build_path = copy_sdist_into_build_dir(pip_spec.file_path, build_dir)
         pip_str = "/" + PYTHON_PACKAGE_DIR + "/" + pkg_build_path.name
         dockerfile.copy(
             source=[str(pkg_build_path.relative_to(build_dir))], destination=pip_str
@@ -466,9 +464,7 @@ def pip_spec2str(
     return pip_str
 
 
-def copy_sdist_into_build_dir(
-    package_name: str, local_installation: Path, build_dir: Path
-):
+def copy_sdist_into_build_dir(local_installation: Path, build_dir: Path):
     """Create a source distribution from a locally installed "editable" python package
     and copy it into the build dir so it can be installed in the Docker image
 
@@ -493,10 +489,14 @@ def copy_sdist_into_build_dir(
         )
 
     # Move existing 'dist' directory out of the way
-    orig_dist = local_installation / (
-        "dist." + datetime.strftime(datetime.now(), "%Y%m%d%H%M%S")
-    )
-    shutil.move(local_installation / "dist", orig_dist)
+    dist_dir = local_installation / "dist"
+    if dist_dir.exists():
+        moved_dist = local_installation / (
+            "dist." + datetime.strftime(datetime.now(), "%Y%m%d%H%M%S")
+        )
+        shutil.move(local_installation / "dist", moved_dist)
+    else:
+        moved_dist = None
     try:
         # Generate source distribution using setuptools
         with set_cwd(local_installation):
@@ -509,7 +509,8 @@ def copy_sdist_into_build_dir(
     finally:
         # Put original 'dist' directory back in its place
         shutil.rmtree(local_installation / "dist", ignore_errors=True)
-        shutil.move(orig_dist, local_installation / "dist")
+        if moved_dist:
+            shutil.move(moved_dist, local_installation / "dist")
 
     return build_dir_pkg_path
 
