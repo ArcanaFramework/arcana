@@ -355,6 +355,8 @@ def build_docs(spec_path, output, root, flatten, loglevel):
         spec_path = Path(spec_path.decode("utf-8"))
     if type(output) is bytes:
         output = Path(output.decode("utf-8"))
+    if type(root) is bytes:
+        root = Path(root.decode("utf-8"))
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
