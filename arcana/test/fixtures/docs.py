@@ -25,7 +25,6 @@ weight: 10
 |Key|Value|
 |---|-----|
 |App version|0.16.1|
-|XNAT wrapper version|1.10|
 
 ## Commands
     """.strip(),
@@ -50,7 +49,6 @@ weight: 10
 |Key|Value|
 |---|-----|
 |App version|0.16.1|
-|XNAT wrapper version|1.10|
 |Base image|`abc0.16.1`|
 
 ## Commands
@@ -76,7 +74,6 @@ weight: 10
 |Key|Value|
 |---|-----|
 |App version|0.16.1|
-|XNAT wrapper version|1.10|
 |Base image|`abc0.16.1`|
 
 ## Commands
@@ -99,6 +96,11 @@ python_packages:
 package_templates:
   - name: dcm2niix
     version: v1.0.20201102
+licenses:
+  - source: freesurfer.txt
+    destination: /opt/freesurfer/license.txt
+    description: >
+      license description
 commands:
   - name: mriqc
     version: 1a1
@@ -106,6 +108,8 @@ commands:
     description: a description
     long_description: >-
       a longer description
+    known_issues:
+      url: https://example.com
     inputs: &inputs
       - name: T1w
         path: anat/T1w
@@ -127,6 +131,10 @@ commands:
         path: mriqc
         format: common:Directory
     parameters:
+      - name: fmriprep_flags
+        pydra_field: flags
+        type: string
+        description: description of flags param
     frequency: session
     configuration:
       inputs: *inputs
@@ -147,9 +155,14 @@ weight: 10
 |Key|Value|
 |---|-----|
 |App version|0.16.1|
-|XNAT wrapper version|1.10|
 |Base image|`abc0.16.1`|
 |Info URL|https://example.com|
+
+### Required licenses
+|Source file|Info|
+|-----------|----|
+|`freesurfer.txt`|license description
+|
 
 ## Commands
 ### mriqc
@@ -158,19 +171,23 @@ a longer description
 |Key|Value|
 |---|-----|
 |Short description|a description|
-|Version|`1a1`|
-|Executable|`/usr/local/miniconda/bin/mriqc`|
+|Known issues|https://example.com|
 #### Inputs
 |Path|Input format|Stored format|Description|
 |----|------------|-------------|-----------|
-|`T1w`|`medimage:NiftiGzX`|`medimage:Dicom`|T1-weighted anatomical scan|
-|`T2w`|`medimage:NiftiGzX`|`medimage:Dicom`|T2-weighted anatomical scan|
-|`fMRI`|`medimage:NiftiGzX`|`medimage:Dicom`|functional MRI|
+|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:NiftiGzX" aria-label="medimage:NiftiGzX">NiftiGzX (`.nii.gz`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|T1-weighted anatomical scan|
+|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:NiftiGzX" aria-label="medimage:NiftiGzX">NiftiGzX (`.nii.gz`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|T2-weighted anatomical scan|
+|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:NiftiGzX" aria-label="medimage:NiftiGzX">NiftiGzX (`.nii.gz`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|functional MRI|
 
 #### Outputs
 |Name|Output format|Stored format|Description|
 |----|-------------|-------------|-----------|
-|`mriqc`|`common:Directory`|`format`||
+|`mriqc`|<span data-toggle="tooltip" data-placement="bottom" title="common:Directory" aria-label="common:Directory">Directory</span>|||
+
+#### Parameters
+|Name|Data type|Description|
+|----|---------|-----------|
+|`fmriprep_flags`|`string`|description of flags param|
     """.strip(),
 )
 

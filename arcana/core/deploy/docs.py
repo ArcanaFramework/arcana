@@ -1,5 +1,9 @@
 from pathlib import Path
+
 import yaml
+
+from arcana.core.utils import resolve_class
+from arcana.data.formats import Directory
 
 
 def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
@@ -31,8 +35,6 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
             tbl_info.write_row("Version", spec["version"])
         if spec.get("pkg_version", None):
             tbl_info.write_row("App version", spec["pkg_version"])
-        if spec.get("wrapper_version", None):
-            tbl_info.write_row("XNAT wrapper version", str(spec["wrapper_version"]))
         # if task.image and task.image != ':':
         #     tbl_info.write_row("Image", escaped_md(task.image))
         if spec.get("base_image", None):  # and task.image != spec["base_image"]:
@@ -47,11 +49,10 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
         if "licenses" in spec:
             f.write("### Required licenses\n")
 
-            tbl_lic = MarkdownTable(f, "Source file", "Mounted at", "Info")
+            tbl_lic = MarkdownTable(f, "Source file", "Info")
             for lic in spec.get("licenses", []):
                 tbl_lic.write_row(
                     escaped_md(lic.get("source", None)),
-                    escaped_md(lic.get("destination", None)),
                     lic.get("description", ""),
                 )
 
@@ -68,17 +69,16 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
 
             tbl_cmd = MarkdownTable(f, "Key", "Value")
             tbl_cmd.write_row("Short description", cmd["description"])
-            if cmd.get("pydra_task"):
-                tbl_cmd.write_row("Workflow", escaped_md(cmd["pydra_task"]))
-            if cmd.get("version"):
-                tbl_cmd.write_row("Version", escaped_md(cmd["version"]))
-            if cmd.get("configuration"):
-                config = cmd["configuration"]
-                # configuration keys are variable depending on the workflow class
-                if config.get("executable"):
-                    tbl_cmd.write_row("Executable", escaped_md(config["executable"]))
+            # if cmd.get("configuration"):
+            #     config = cmd["configuration"]
+            #     # configuration keys are variable depending on the workflow class
             if cmd.get("row_frequency"):
                 tbl_cmd.write_row("Operates on", cmd["row_frequency"].title())
+
+            if cmd.get("known_issues"):
+                if cmd["known_issues"].get("url"):
+                    tbl_cmd.write_row("Known issues", cmd["known_issues"]["url"])
+                # Leaving room to extend known_issues further, e.g., an inplace list of issues
 
             f.write("#### Inputs\n")
             tbl_inputs = MarkdownTable(
@@ -88,8 +88,8 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
                 for inpt in cmd["inputs"]:
                     tbl_inputs.write_row(
                         escaped_md(inpt["name"]),
-                        escaped_md(inpt["format"]),
-                        escaped_md(inpt.get("stored_format", "format")),
+                        _format_html(inpt["format"]),
+                        _format_html(inpt.get("stored_format")),
                         inpt.get("description", ""),
                     )
                 f.write("\n")
@@ -102,20 +102,41 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
                 for outpt in cmd.get("outputs", []):
                     tbl_outputs.write_row(
                         escaped_md(outpt["name"]),
-                        escaped_md(outpt["format"]),
-                        escaped_md(outpt.get("stored_format", "format")),
+                        _format_html(outpt["format"]),
+                        _format_html(outpt.get("stored_format")),
                         outpt.get("description", ""),
                     )
                 f.write("\n")
 
             if cmd.get("parameters"):
                 f.write("#### Parameters\n")
-                tbl_params = MarkdownTable(f, "Name", "Data type")
+                tbl_params = MarkdownTable(f, "Name", "Data type", "Description")
                 for param in cmd.get("parameters", []):
                     tbl_params.write_row(
-                        escaped_md(param["name"]), escaped_md(param["type"])
+                        escaped_md(param["name"]),
+                        escaped_md(param["type"]),
+                        param.get("description", ""),
                     )
                 f.write("\n")
+
+
+def _format_html(format):
+    if not format:
+        return ""
+    if ":" not in format:
+        return escaped_md(format)
+
+    resolved = resolve_class(format, prefixes=["arcana.data.formats"])
+
+    ext = getattr(resolved, "ext", None)
+    if ext:
+        text = f"{resolved.__name__} (`.{ext}`)"
+    elif getattr(resolved, "is_dir", None) and resolved is not Directory:
+        text = f"{resolved.__name__} (Directory)"
+    else:
+        text = resolved.__name__
+
+    return f'<span data-toggle="tooltip" data-placement="bottom" title="{format}" aria-label="{format}">{text}</span>'
 
 
 def escaped_md(value: str) -> str:
