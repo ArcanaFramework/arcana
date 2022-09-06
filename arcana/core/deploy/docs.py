@@ -127,14 +127,14 @@ def _format_html(format):
         return escaped_md(format)
 
     resolved = resolve_class(format, prefixes=["arcana.data.formats"])
+    desc = getattr(resolved, "desc", resolved.__name__)
 
-    ext = getattr(resolved, "ext", None)
-    if ext:
-        text = f"{resolved.__name__} (`.{ext}`)"
+    if ext := getattr(resolved, "ext", None):
+        text = f"{desc} (`.{ext}`)"
     elif getattr(resolved, "is_dir", None) and resolved is not Directory:
-        text = f"{resolved.__name__} (Directory)"
+        text = f"{desc} (Directory)"
     else:
-        text = resolved.__name__
+        text = desc
 
     return f'<span data-toggle="tooltip" data-placement="bottom" title="{format}" aria-label="{format}">{text}</span>'
 
