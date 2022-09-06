@@ -81,28 +81,22 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
                 # Leaving room to extend known_issues further, e.g., an inplace list of issues
 
             f.write("#### Inputs\n")
-            tbl_inputs = MarkdownTable(
-                f, "Path", "Input format", "Stored format", "Description"
-            )
+            tbl_inputs = MarkdownTable(f, "Name", "Format", "Description")
             if cmd.get("inputs"):
                 for inpt in cmd["inputs"]:
                     tbl_inputs.write_row(
                         escaped_md(inpt["name"]),
-                        _format_html(inpt["format"]),
                         _format_html(inpt.get("stored_format")),
                         inpt.get("description", ""),
                     )
                 f.write("\n")
 
             f.write("#### Outputs\n")
-            tbl_outputs = MarkdownTable(
-                f, "Name", "Output format", "Stored format", "Description"
-            )
+            tbl_outputs = MarkdownTable(f, "Name", "Format", "Description")
             if cmd.get("outputs"):
                 for outpt in cmd.get("outputs", []):
                     tbl_outputs.write_row(
                         escaped_md(outpt["name"]),
-                        _format_html(outpt["format"]),
                         _format_html(outpt.get("stored_format")),
                         outpt.get("description", ""),
                     )
