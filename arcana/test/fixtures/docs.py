@@ -173,16 +173,16 @@ a longer description
 |Short description|a description|
 |Known issues|https://example.com|
 #### Inputs
-|Path|Input format|Stored format|Description|
-|----|------------|-------------|-----------|
-|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:NiftiGzX" aria-label="medimage:NiftiGzX">NiftiGzX (`.nii.gz`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|T1-weighted anatomical scan|
-|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:NiftiGzX" aria-label="medimage:NiftiGzX">NiftiGzX (`.nii.gz`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|T2-weighted anatomical scan|
-|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:NiftiGzX" aria-label="medimage:NiftiGzX">NiftiGzX (`.nii.gz`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|functional MRI|
+|Name|Format|Description|
+|----|------|-----------|
+|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|T1-weighted anatomical scan|
+|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|T2-weighted anatomical scan|
+|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|functional MRI|
 
 #### Outputs
-|Name|Output format|Stored format|Description|
-|----|-------------|-------------|-----------|
-|`mriqc`|<span data-toggle="tooltip" data-placement="bottom" title="common:Directory" aria-label="common:Directory">Directory</span>|||
+|Name|Format|Description|
+|----|------|-----------|
+|`mriqc`|||
 
 #### Parameters
 |Name|Data type|Description|
