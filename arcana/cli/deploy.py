@@ -2,6 +2,9 @@ import logging
 import sys
 import shutil
 from pathlib import Path
+import re
+import json
+import yaml
 import click
 import docker
 import docker.errors
@@ -23,7 +26,7 @@ from arcana.core.deploy.docs import create_doc
 from arcana.core.deploy.build import SPEC_PATH as spec_path_in_docker
 from arcana.core.utils import package_from_module, pydra_asdict
 from arcana.core.data.row import DataRow
-from arcana.deploy.medimage.xnat import build_xnat_cs_image
+from arcana.deploy.medimage.xnat import build_xnat_cs_image, create_metapackage
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaBuildError, ArcanaUsageError
@@ -67,6 +70,12 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
         "Defaults to `.build` in the directory containing the "
         "YAML specification"
     ),
+)
+@click.option(
+    "--release",
+    default=None,
+    type=str,
+    help=("Name of the release for the package as a whole (i.e. for all pipelines)"),
 )
 @click.option(
     "--logfile",
@@ -141,6 +150,7 @@ def build(
     spec_path,
     docker_org,
     docker_registry,
+    release,
     logfile,
     loglevel,
     build_dir,
@@ -166,9 +176,17 @@ def build(
     else:
         install_extras = []
 
+    dc = docker.from_env()
+
     logging.basicConfig(filename=logfile, level=getattr(logging, loglevel.upper()))
 
     temp_dir = tempfile.mkdtemp()
+
+    if release:
+        manifest = {"package": docker_org, "release": release, "images": []}
+
+    if docker_registry != DOCKER_HUB:
+        docker_org_fullpath = docker_registry.lower() + "/" + docker_org
 
     errors = False
     for spath in walk_spec_paths(spec_path):
@@ -178,15 +196,15 @@ def build(
 
         # Make image tag
         pkg_name = spath.stem.lower()
-        tag = ".".join(spath.relative_to(spec_path).parent.parts + (pkg_name,))
+        image_name = ".".join(spath.relative_to(spec_path).parent.parts + (pkg_name,))
+
+        image_name = f"{docker_org_fullpath}/{image_name}"
 
         image_version = str(spec.pop("pkg_version"))
         if "wrapper_version" in spec:
             image_version += f"-{spec.pop('wrapper_version')}"
 
-        image_tag = f"{docker_org}/{tag}:{image_version}"
-        if docker_registry != DOCKER_HUB:
-            image_tag = docker_registry.lower() + "/" + image_tag
+        image_tag = f"{image_name}:{image_version}"
 
         if build_dir is None:
             image_build_dir = spath.parent / ".build" / spath.stem
@@ -210,6 +228,8 @@ def build(
             }
         )
 
+        changelog = None
+
         # Check the target registry to see a) if an image with the same tag
         # already exists and b) whether it was built with the same specs
         if check_registry:
@@ -223,11 +243,12 @@ def build(
                 built_spec = load_yaml_spec(
                     extracted_dir / Path(spec_path_in_docker).name
                 )
-                if diff := compare_specs(built_spec, spec, check_version=True):
+                changelog = compare_specs(built_spec, spec, check_version=True)
+                if changelog:
                     msg = (
                         f"Spec for '{image_tag}' doesn't match the one that was "
                         "used to build the image already in the registry (skipping):\n\n"
-                        + str(diff.pretty())
+                        + str(changelog.pretty())
                     )
                     if raise_errors:
                         raise ArcanaBuildError(msg)
@@ -258,7 +279,6 @@ def build(
             logger.info("Successfully built %s pipeline", image_tag)
 
         if push:
-            dc = docker.from_env()
             try:
                 dc.api.push(image_tag)
             except Exception:
@@ -268,6 +288,37 @@ def build(
                 errors = True
             else:
                 logger.info("Successfully pushed '%s' to registry", image_tag)
+
+        if release:
+            manifest["images"].append(
+                {
+                    "name": image_tag,
+                    "version": image_version,
+                    "commands": [c["name"] for c in spec["commands"]],
+                }
+            )
+    if release:
+        release_image_tag = f"{docker_org_fullpath}/release-{release}"
+        create_metapackage(
+            release_image_tag, manifest, use_local_packages=use_local_packages
+        )
+        if push:
+            try:
+                dc.api.push(release_image_tag)
+            except Exception:
+                if raise_errors:
+                    raise
+                logger.error(
+                    "Could not push release metapackage '%s':\n\n%s",
+                    release_image_tag,
+                    format_exc(),
+                )
+                errors = True
+            else:
+                logger.info(
+                    "Successfully pushed release metapackage '%s' to registry",
+                    image_tag,
+                )
 
     shutil.rmtree(temp_dir)
     if errors:
@@ -414,6 +465,115 @@ def inspect_docker_exec(image_tag):
         executable = image_attrs["Cmd"]
 
     click.echo(executable)
+
+
+@xnat.command(
+    name="pull-images",
+    help="""Updates the installed pipelines on an XNAT instance from a manifest
+JSON file via XNAT's REST API.
+
+MANIFEST_JSON is a JSON file containing a list of container images built in the release
+and the commands present in them
+
+CONFIG_YAML a YAML file contains the login details for the XNAT server to update, and
+patterns with which to filter the images to install
+
+The XNAT server to update is specified in a YAML configuration file contains the login
+details for the XNAT server to update, and optionally lists of image tag wildcards to
+include and/or exclude, e.g.
+
+    server: http://localhost
+    alias: er61aee1-fc36-569d-3aef-99dc52f479c9
+    secret: To85Tmlhh4JO2BigyQ53q87GLwegXdu9II2FoCiCIevCRCt1Tsd6cvttaglFNqTbqQ
+    include:
+    - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.*
+    - tag: ghcr.io/Australian-Imaging-Service/pet.rodent.*
+    exclude:
+    - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.bidsapps.*
+""",
+)
+@click.argument("manifest_json", type=click.File())
+@click.argument("config_yaml", type=click.File())
+def pull_images(config, manifest_json):
+    config_dict = yaml.load(config, Loader=yaml.Loader)
+    manifest = json.load(manifest_json)
+
+    to_include_re = re.compile(
+        i.replace(".", "\\.").replace("*", ".*") for i in config_dict["include"]
+    )
+    to_exclude_re = re.compile(
+        e.replace(".", "\\.").replace("*", ".*") for e in config_dict["exclude"]
+    )
+
+    with xnat.connect(
+        server=config_dict["server"],
+        user=config_dict["alias"],
+        password=config_dict["secret"],
+    ) as xlogin:
+
+        for entry in manifest["images"]:
+            if to_include_re.match(entry["name"]) and not to_exclude_re.match(["name"]):
+                tag = f"{entry['name']}:{entry['version']}"
+                xlogin.post("/xapi/docker/pull", query={"image": tag})
+                xlogin.post("/xapi/docker/images/save", query={"image": tag})
+                # Enable the commands
+                for cmd in entry["commands"]:
+                    xlogin.put(f"/xapi/commands/{tag}/wrappers/{cmd}/enabled")
+                click.echo(f"Pulled {tag} image")
+
+    click.echo(
+        f"Successfully updated all container images from {entry['release']} of "
+        f"{entry['package']} package"
+    )
+
+
+@xnat.command(
+    name="refresh-pull-auth",
+    help="""Logs into the XNAT instance and regenerates a new authorisation token
+to avoid them expiring (2 days by default)
+
+CONFIG_YAML a YAML file contains the login details for the XNAT server to update
+""",
+)
+@click.argument(
+    "config_yaml",
+    type=click.Path(exists=True),
+)
+def refresh_pull_auth(config_yaml):
+    with open(config_yaml) as f:
+        config = yaml.load(f, Loader=yaml.Loader)
+
+    with xnat.connect(
+        server=config["server"], user=config["alias"], password=config["secret"]
+    ) as xlogin:
+        alias, secret = xlogin.services.issue_token()
+
+    config["alias"] = alias
+    config["secret"] = secret
+
+    with open(config_yaml, "w") as f:
+        yaml.dump(config, f)
+
+    click.echo("Updated XNAT connection token successfully")
+
+
+@xnat.command(
+    """Displays the changelogs found in the release manifest of a deployment build
+
+MANIFEST_JSON is a JSON file containing a list of container images built in the release
+and the commands present in them"""
+)
+@click.argument("manifest_json", type=click.File())
+@click.argument("images", nargs=-1)
+def changelog(manifest_json):
+
+    manifest = json.load(manifest_json)
+
+    for entry in manifest["images"]:
+        click.echo(
+            f"{entry['name']} [{entry['version']}] changes "
+            f"from {entry['previous_version']}:\n{entry['changelog']}"
+        )
 
 
 @click.command(
