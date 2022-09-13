@@ -78,6 +78,12 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     help=("Name of the release for the package as a whole (i.e. for all pipelines)"),
 )
 @click.option(
+    "--save-manifest",
+    default=None,
+    type=click.Path(writable=True),
+    help="File path at which to save the build manifest",
+)
+@click.option(
     "--logfile",
     default=None,
     type=click.Path(path_type=Path),
@@ -151,6 +157,7 @@ def build(
     docker_org,
     docker_registry,
     release,
+    save_manifest,
     logfile,
     loglevel,
     build_dir,
@@ -182,8 +189,13 @@ def build(
 
     temp_dir = tempfile.mkdtemp()
 
-    if release:
-        manifest = {"package": docker_org, "release": release, "images": []}
+    if release or save_manifest:
+        manifest = {
+            "package": docker_org,
+            "images": [],
+        }
+        if release:
+            manifest["release"] = release
 
     if docker_registry != DOCKER_HUB:
         docker_org_fullpath = docker_registry.lower() + "/" + docker_org
@@ -289,7 +301,7 @@ def build(
             else:
                 logger.info("Successfully pushed '%s' to registry", image_tag)
 
-        if release:
+        if release or save_manifest:
             manifest["images"].append(
                 {
                     "name": image_tag,
@@ -319,6 +331,9 @@ def build(
                     "Successfully pushed release metapackage '%s' to registry",
                     image_tag,
                 )
+        if save_manifest:
+            with open(save_manifest, "w") as f:
+                json.dump(manifest, f)
 
     shutil.rmtree(temp_dir)
     if errors:

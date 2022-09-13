@@ -1,7 +1,8 @@
 import shutil
 import traceback
+from copy import copy
 from typing import Union, Dict, Tuple
-
+import json
 import yaml
 from functools import reduce
 from operator import mul
@@ -9,7 +10,7 @@ import tempfile
 from pathlib import Path
 import pytest
 import docker
-from arcana.cli.deploy import build, build_docs, run_pipeline
+from arcana.cli.deploy import build, build_docs, run_pipeline, pull_images
 from arcana.core.utils import class_location
 from arcana.test.fixtures.docs import all_docs_fixtures, DocsFixture
 from arcana.test.utils import show_cli_trace, make_dataset_id_str
@@ -461,3 +462,82 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
             dec_contents = f.read()
         assert enc_contents == encoded_contents
         assert dec_contents == unencoded_contents
+
+
+def test_auto_update(xnat_login, command_spec, work_dir, docker_registry, cli_runner):
+
+    DOCKER_ORG = "autoupdatetest"
+    PKG_NAME = "auto_update"
+
+    command_spec = copy(command_spec)
+    command_spec["name"] = "autoupdate_concat"
+
+    reverse_command_spec = copy(command_spec)
+    reverse_command_spec["name"] = "autoupdate_reverse_concat"
+    reverse_command_spec["pydra_task"] = "arcana.test.tasks:reverse_concatenate"
+
+    spec_dir = work_dir / "specs"
+    pkg_path = spec_dir / PKG_NAME
+
+    for cmd_spec in (command_spec, reverse_command_spec):
+
+        image_spec = {
+            "commands": [cmd_spec],
+            "pkg_version": "1.0",
+            "wrapper_version": "1-autoupdate",
+            "system_packages": [],
+            "python_packages": [],
+            "authors": ["some.one@an.email.org"],
+            "info_url": "http://concatenate.readthefakedocs.io",
+        }
+
+        with open(pkg_path / cmd_spec["name"] + ".yaml", "w") as f:
+            yaml.dump(image_spec, f)
+
+    build_dir = work_dir / "build"
+    manifest_path = work_dir / "manifest.json"
+
+    result = cli_runner(
+        build,
+        [
+            str(spec_dir),
+            DOCKER_ORG,
+            "--build_dir",
+            str(build_dir),
+            "--registry",
+            docker_registry,
+            "--loglevel",
+            "warning",
+            "--use-local-packages",
+            "--install_extras",
+            "test",
+            "--raise-errors",
+            "--release",
+            "autoupdate_release",
+            "--save_manifest",
+            str(manifest_path),
+            "--use-test-config",
+            "--push",
+        ],
+    )
+
+    assert result.exit_code == 0, show_cli_trace(result)
+
+    with open(manifest_path) as f:
+        manifest = json.load(f)
+
+    assert sorted(manifest["images"]) == [
+        "autoupdate_concat",
+        "autoupdate_reverse_concat",
+    ]
+
+    config_path = work_dir / "config.yaml"
+    with open(config_path, "w") as f:
+        f.write({})
+
+    result = cli_runner(
+        pull_images,
+        [str(manifest_path), str(config_path)],
+    )
+
+    assert result.exit_code == 0, show_cli_trace(result)
