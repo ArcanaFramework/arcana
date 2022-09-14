@@ -188,6 +188,7 @@ def xnat_archive_dir(xnat_root_dir):
 def xnat_repository(run_prefix):
 
     xnat4tests.launch_xnat()
+    xnat4tests.launch_docker_registry()
 
     repository = Xnat(
         server=xnat4tests.config["xnat_uri"],

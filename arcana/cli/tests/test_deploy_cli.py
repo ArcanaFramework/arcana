@@ -10,7 +10,13 @@ import tempfile
 from pathlib import Path
 import pytest
 import docker
-from arcana.cli.deploy import build, build_docs, run_pipeline, pull_images
+from arcana.cli.deploy import (
+    build,
+    build_docs,
+    run_pipeline,
+    pull_images,
+    pull_auth_refresh,
+)
 from arcana.core.utils import class_location
 from arcana.test.fixtures.docs import all_docs_fixtures, DocsFixture
 from arcana.test.utils import show_cli_trace, make_dataset_id_str
@@ -464,16 +470,15 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
         assert dec_contents == unencoded_contents
 
 
-def test_auto_update(xnat_login, command_spec, work_dir, docker_registry, cli_runner):
+def test_pull_images(
+    xnat_repository, command_spec, work_dir, docker_registry, cli_runner
+):
 
-    DOCKER_ORG = "autoupdatetest"
-    PKG_NAME = "auto_update"
-
-    command_spec = copy(command_spec)
-    command_spec["name"] = "autoupdate_concat"
+    DOCKER_ORG = "pulltest"
+    PKG_NAME = "pulltest"
 
     reverse_command_spec = copy(command_spec)
-    reverse_command_spec["name"] = "autoupdate_reverse_concat"
+    reverse_command_spec["name"] = "reverse_concat"
     reverse_command_spec["pydra_task"] = "arcana.test.tasks:reverse_concatenate"
 
     spec_dir = work_dir / "specs"
@@ -531,13 +536,58 @@ def test_auto_update(xnat_login, command_spec, work_dir, docker_registry, cli_ru
         "autoupdate_reverse_concat",
     ]
 
+    # Delete images from local Docker instance (which the test XNAT uses)
+    dc = docker.from_env()
+    for img in manifest["images"]:
+        dc.images.delete(f"{img.name}:{img.version}")
+
     config_path = work_dir / "config.yaml"
     with open(config_path, "w") as f:
-        f.write({})
-
+        f.write(
+            {
+                "server": xnat_repository.server,
+                "alias": "admin",
+                "token": "admin",
+                "include": {"name": f"{docker_registry}/{DOCKER_ORG}/{PKG_NAME}.*"},
+            }
+        )
     result = cli_runner(
         pull_images,
         [str(manifest_path), str(config_path)],
     )
 
     assert result.exit_code == 0, show_cli_trace(result)
+
+    with xnat_repository:
+
+        xlogin = xnat_repository.login
+
+        result = xlogin.get("/xapi/docker/images")
+
+    assert sorted(e["name"] for e in result.json()) == [
+        "autoupdate_concat",
+        "autoupdate_reverse_concat",
+    ]
+
+
+def test_pull_auth_refresh(xnat_repository, work_dir, cli_runner):
+
+    config_path = work_dir / "config.yaml"
+    with open(config_path, "w") as f:
+        f.write(
+            {
+                "server": xnat_repository.server,
+                "alias": "admin",
+                "token": "admin",
+            }
+        )
+
+    result = cli_runner(
+        pull_auth_refresh,
+        [str(config_path)],
+    )
+
+    assert result.exit_code == 0, show_cli_trace(result)
+
+    with open(config_path) as f:
+        json.load(f)

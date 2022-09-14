@@ -543,7 +543,7 @@ def pull_images(config, manifest_json):
 
 
 @xnat.command(
-    name="refresh-pull-auth",
+    name="pull-auth-refresh",
     help="""Logs into the XNAT instance and regenerates a new authorisation token
 to avoid them expiring (2 days by default)
 
@@ -554,7 +554,7 @@ CONFIG_YAML a YAML file contains the login details for the XNAT server to update
     "config_yaml",
     type=click.Path(exists=True),
 )
-def refresh_pull_auth(config_yaml):
+def pull_auth_refresh(config_yaml):
     with open(config_yaml) as f:
         config = yaml.load(f, Loader=yaml.Loader)
 
