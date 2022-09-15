@@ -10,6 +10,7 @@ import tempfile
 from pathlib import Path
 import pytest
 import docker
+import xnat
 from arcana.cli.deploy import (
     build,
     build_docs,
@@ -30,7 +31,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
 
     DOCKER_ORG = "testorg"
     DOCKER_REGISTRY = "test.registry.org"
-    PKG_NAME = "testpkg"
+    IMAGE_GROUP_NAME = "testpkg"
 
     concatenate_spec = {
         "commands": [command_spec],
@@ -45,7 +46,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
     build_dir = work_dir / "build"
     build_dir.mkdir()
     spec_path = work_dir / "test-specs"
-    sub_dir = spec_path / PKG_NAME
+    sub_dir = spec_path / IMAGE_GROUP_NAME
     sub_dir.mkdir(parents=True)
     with open(sub_dir / "concatenate.yml", "w") as f:
         yaml.dump(concatenate_spec, f)
@@ -62,7 +63,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
             "--loglevel",
             "warning",
             "--use-local-packages",
-            "--install_extras",
+            "--install-extras",
             "test",
             "--raise-errors",
             "--use-test-config",
@@ -71,7 +72,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
     )
     assert result.exit_code == 0, show_cli_trace(result)
     tag = result.output.strip().splitlines()[-1]
-    assert tag == f"{DOCKER_REGISTRY}/{DOCKER_ORG}/{PKG_NAME}.concatenate:1.0-1"
+    assert tag == f"{DOCKER_REGISTRY}/{DOCKER_ORG}/{IMAGE_GROUP_NAME}.concatenate:1.0-1"
 
     # Clean up the built image
     dc = docker.from_env()
@@ -82,14 +83,14 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
     """Tests the check to see whether"""
 
     DOCKER_ORG = "testorg"
-    PKG_NAME = "testpkg-rebuild" + run_prefix
+    IMAGE_GROUP_NAME = "testpkg-rebuild" + run_prefix
 
     def build_spec(spec, **kwargs):
         work_dir = Path(tempfile.mkdtemp())
         build_dir = work_dir / "build"
         build_dir.mkdir()
         spec_path = work_dir / "test-specs"
-        sub_dir = spec_path / PKG_NAME
+        sub_dir = spec_path / IMAGE_GROUP_NAME
         sub_dir.mkdir(parents=True)
         with open(sub_dir / "concatenate.yml", "w") as f:
             yaml.dump(spec, f)
@@ -106,7 +107,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
                 "--loglevel",
                 "warning",
                 "--use-local-packages",
-                "--install_extras",
+                "--install-extras",
                 "test",
                 "--raise-errors",
                 "--check-registry",
@@ -471,35 +472,54 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
 
 
 def test_pull_images(
-    xnat_repository, command_spec, work_dir, docker_registry, cli_runner
+    xnat_repository, command_spec, work_dir, docker_registry_for_xnat_uri, cli_runner
 ):
 
-    DOCKER_ORG = "pulltest"
-    PKG_NAME = "pulltest"
+    DOCKER_ORG = "pulltestorg"
+    IMAGE_GROUP_NAME = "apackage"
+    PKG_VERSION = "1.0"
+    WRAPPER_VERSION = "1-pullimages"
+
+    forward_command_spec = copy(command_spec)
+    forward_command_spec["name"] = "forward_concat"
 
     reverse_command_spec = copy(command_spec)
     reverse_command_spec["name"] = "reverse_concat"
     reverse_command_spec["pydra_task"] = "arcana.test.tasks:reverse_concatenate"
 
     spec_dir = work_dir / "specs"
-    pkg_path = spec_dir / PKG_NAME
+    pkg_path = spec_dir / IMAGE_GROUP_NAME
+    pkg_path.mkdir(parents=True)
 
-    for cmd_spec in (command_spec, reverse_command_spec):
+    expected_images = []
+    expected_commands = []
+
+    for cmd_spec in (forward_command_spec, reverse_command_spec):
 
         image_spec = {
             "commands": [cmd_spec],
-            "pkg_version": "1.0",
-            "wrapper_version": "1-autoupdate",
+            "pkg_version": PKG_VERSION,
+            "wrapper_version": WRAPPER_VERSION,
             "system_packages": [],
             "python_packages": [],
             "authors": ["some.one@an.email.org"],
             "info_url": "http://concatenate.readthefakedocs.io",
         }
 
-        with open(pkg_path / cmd_spec["name"] + ".yaml", "w") as f:
+        with open((pkg_path / cmd_spec["name"]).with_suffix(".yaml"), "w") as f:
             yaml.dump(image_spec, f)
 
+        expected_images.append(
+            f"{docker_registry_for_xnat_uri}/{DOCKER_ORG}/{IMAGE_GROUP_NAME}"
+            f".{cmd_spec['name']}:{PKG_VERSION}-{WRAPPER_VERSION}"
+        )
+        expected_commands.append(cmd_spec["name"])
+
+    expected_images.sort()
+    expected_commands.sort()
+
     build_dir = work_dir / "build"
+    build_dir.mkdir()
     manifest_path = work_dir / "manifest.json"
 
     result = cli_runner(
@@ -510,16 +530,16 @@ def test_pull_images(
             "--build_dir",
             str(build_dir),
             "--registry",
-            docker_registry,
+            docker_registry_for_xnat_uri,
             "--loglevel",
             "warning",
             "--use-local-packages",
-            "--install_extras",
+            "--install-extras",
             "test",
             "--raise-errors",
             "--release",
             "autoupdate_release",
-            "--save_manifest",
+            "--save-manifest",
             str(manifest_path),
             "--use-test-config",
             "--push",
@@ -531,25 +551,33 @@ def test_pull_images(
     with open(manifest_path) as f:
         manifest = json.load(f)
 
-    assert sorted(manifest["images"]) == [
-        "autoupdate_concat",
-        "autoupdate_reverse_concat",
-    ]
+    assert (
+        sorted(f"{i['name']}:{i['version']}" for i in manifest["images"])
+        == expected_images
+    )
 
     # Delete images from local Docker instance (which the test XNAT uses)
     dc = docker.from_env()
-    for img in manifest["images"]:
-        dc.images.delete(f"{img.name}:{img.version}")
+    for img in expected_images:
+        dc.images.remove(img)
 
     config_path = work_dir / "config.yaml"
     with open(config_path, "w") as f:
-        f.write(
+        yaml.dump(
             {
                 "server": xnat_repository.server,
                 "alias": "admin",
-                "token": "admin",
-                "include": {"name": f"{docker_registry}/{DOCKER_ORG}/{PKG_NAME}.*"},
-            }
+                "secret": "admin",
+                "include": [
+                    {
+                        "name": (
+                            f"{docker_registry_for_xnat_uri}/"
+                            f"{DOCKER_ORG}/{IMAGE_GROUP_NAME}.*"
+                        )
+                    }
+                ],
+            },
+            f,
         )
     result = cli_runner(
         pull_images,
@@ -562,24 +590,22 @@ def test_pull_images(
 
         xlogin = xnat_repository.login
 
-        result = xlogin.get("/xapi/docker/images")
+        result = xlogin.get("/xapi/commands/")
 
-    assert sorted(e["name"] for e in result.json()) == [
-        "autoupdate_concat",
-        "autoupdate_reverse_concat",
-    ]
+    assert sorted(e["name"] for e in result.json()) == expected_commands
 
 
 def test_pull_auth_refresh(xnat_repository, work_dir, cli_runner):
 
     config_path = work_dir / "config.yaml"
     with open(config_path, "w") as f:
-        f.write(
+        yaml.dump(
             {
                 "server": xnat_repository.server,
                 "alias": "admin",
-                "token": "admin",
-            }
+                "secret": "admin",
+            },
+            f,
         )
 
     result = cli_runner(
@@ -590,4 +616,11 @@ def test_pull_auth_refresh(xnat_repository, work_dir, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
 
     with open(config_path) as f:
-        json.load(f)
+        config = yaml.load(f, Loader=yaml.Loader)
+
+    assert len(config["alias"]) > 20
+    assert len(config["secret"]) > 20
+
+    assert xnat.connect(
+        xnat_repository.server, user=config["alias"], password=config["secret"]
+    )

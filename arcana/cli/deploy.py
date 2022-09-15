@@ -4,14 +4,15 @@ import shutil
 from pathlib import Path
 import re
 import json
+from collections import defaultdict
+import shlex
+from traceback import format_exc
+import tempfile
 import yaml
 import click
 import docker
 import docker.errors
-import tempfile
-from collections import defaultdict
-import shlex
-from traceback import format_exc
+import xnat as xnatpy
 from arcana.core.cli import cli
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
 from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
@@ -100,7 +101,7 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     ),
 )
 @click.option(
-    "--install_extras",
+    "--install-extras",
     type=str,
     default=None,
     help=(
@@ -304,7 +305,7 @@ def build(
         if release or save_manifest:
             manifest["images"].append(
                 {
-                    "name": image_tag,
+                    "name": image_name,
                     "version": image_version,
                     "commands": [c["name"] for c in spec["commands"]],
                 }
@@ -333,7 +334,7 @@ def build(
                 )
         if save_manifest:
             with open(save_manifest, "w") as f:
-                json.dump(manifest, f)
+                json.dump(manifest, f, indent="    ")
 
     shutil.rmtree(temp_dir)
     if errors:
@@ -497,6 +498,7 @@ The XNAT server to update is specified in a YAML configuration file contains the
 details for the XNAT server to update, and optionally lists of image tag wildcards to
 include and/or exclude, e.g.
 
+    \b
     server: http://localhost
     alias: er61aee1-fc36-569d-3aef-99dc52f479c9
     secret: To85Tmlhh4JO2BigyQ53q87GLwegXdu9II2FoCiCIevCRCt1Tsd6cvttaglFNqTbqQ
@@ -509,36 +511,61 @@ include and/or exclude, e.g.
 )
 @click.argument("manifest_json", type=click.File())
 @click.argument("config_yaml", type=click.File())
-def pull_images(config, manifest_json):
-    config_dict = yaml.load(config, Loader=yaml.Loader)
+def pull_images(config_yaml, manifest_json):
+    config = yaml.load(config_yaml, Loader=yaml.Loader)
     manifest = json.load(manifest_json)
 
-    to_include_re = re.compile(
-        i.replace(".", "\\.").replace("*", ".*") for i in config_dict["include"]
-    )
-    to_exclude_re = re.compile(
-        e.replace(".", "\\.").replace("*", ".*") for e in config_dict["exclude"]
-    )
+    def matches_entry(entry, match_exprs, default=True):
+        """Determines whether an entry meets the inclusion and exclusion criteria
 
-    with xnat.connect(
-        server=config_dict["server"],
-        user=config_dict["alias"],
-        password=config_dict["secret"],
+        Parameters
+        ----------
+        entry : dict[str, Any]
+            a image entry in the manifest
+        exprs : list[dict[str, str]]
+            match criteria
+        default : bool
+            the value if match_exprs are empty
+        """
+        if not match_exprs:
+            return default
+        return re.match(
+            "|".join(
+                i["name"].replace(".", "\\.").replace("*", ".*") for i in match_exprs
+            ),
+            entry["name"],
+        )
+
+    with xnatpy.connect(
+        server=config["server"],
+        user=config["alias"],
+        password=config["secret"],
     ) as xlogin:
 
         for entry in manifest["images"]:
-            if to_include_re.match(entry["name"]) and not to_exclude_re.match(["name"]):
+            if matches_entry(entry, config.get("include")) and not matches_entry(
+                entry, config.get("exclude"), default=False
+            ):
                 tag = f"{entry['name']}:{entry['version']}"
-                xlogin.post("/xapi/docker/pull", query={"image": tag})
-                xlogin.post("/xapi/docker/images/save", query={"image": tag})
-                # Enable the commands
-                for cmd in entry["commands"]:
-                    xlogin.put(f"/xapi/commands/{tag}/wrappers/{cmd}/enabled")
-                click.echo(f"Pulled {tag} image")
+                xlogin.post(
+                    "/xapi/docker/pull", query={"image": tag, "save-commands": True}
+                )
+
+                # Enable the commands in the built image
+                for cmd in xlogin.get("/xapi/commands").json():
+                    if cmd["image"] == tag:
+                        for wrapper in cmd["xnat"]:
+                            xlogin.put(
+                                f"/xapi/commands/{cmd['id']}/"
+                                f"wrappers/{wrapper['id']}/enabled"
+                            )
+                click.echo(f"Installed and enabled {tag}")
+            else:
+                click.echo(f"Skipping {tag} as it doesn't match filters")
 
     click.echo(
-        f"Successfully updated all container images from {entry['release']} of "
-        f"{entry['package']} package"
+        f"Successfully updated all container images from '{manifest['release']}' of "
+        f"'{manifest['package']}' package that match provided filters"
     )
 
 
@@ -558,7 +585,7 @@ def pull_auth_refresh(config_yaml):
     with open(config_yaml) as f:
         config = yaml.load(f, Loader=yaml.Loader)
 
-    with xnat.connect(
+    with xnatpy.connect(
         server=config["server"], user=config["alias"], password=config["secret"]
     ) as xlogin:
         alias, secret = xlogin.services.issue_token()
