@@ -28,7 +28,7 @@ jobs:
 
     - name: Docker pre-setup (configure access to test docker registry)
       run: |
-        sudo echo "{\"insecure-registries\": [\"172.17.0.1\"]}" > /etc/docker/daemon.json
+        sudo sh -c 'echo "{\"insecure-registries\": [\"172.17.0.1\"]}" > /etc/docker/daemon.json'
 
     - name: Docker Setup
       uses: docker/setup-buildx-action@v1.6.0
