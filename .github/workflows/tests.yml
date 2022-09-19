@@ -75,9 +75,9 @@ jobs:
         docker tag alpine:latest localhost/test-alpine
         docker push localhost/test-alpine
         docker rmi localhost/test-alpine
-        docker exec -it -v /var/run/docker.sock:/var/run/docker.sock xnat4tests docker images
-        docker exec -it -v /var/run/docker.sock:/var/run/docker.sock xnat4tests docker pull 172.17.0.1/test-alpine
-        docker exec -it -v /var/run/docker.sock:/var/run/docker.sock xnat4tests docker images
+        docker exec xnat4tests docker images
+        docker exec xnat4tests docker pull 172.17.0.1/test-alpine
+        docker exec xnat4tests docker images
 
 
     # - name: Pytest
