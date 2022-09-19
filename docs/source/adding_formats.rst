@@ -22,7 +22,7 @@ their own :class:`.FileGroup` subclass:
 
 * :class:`.File` - single files
 * :class:`.WithSideCars` - files + side car files (e.g. separate headers/JSON files)
-* :class:`.Directory` - single directories containing specific 
+* :class:`.Directory` - single directories containing specific
 
 New format classes should extend one of these classes or an existing file
 format class (or both) as they include methods to interact with the data
@@ -78,7 +78,7 @@ identification.
 .. code-block:: python
 
     from arcana.data.formats.common import Directory, File
-    
+
     class DicomFile(File):
         ext = 'dcm'
 
@@ -236,9 +236,9 @@ subjects when there is only one group).
 The "leaf rows" of a data tree, imaging sessions in this example, will be the
 bitwise-and of the dimension vectors, i.e. an imaging session
 is uniquely defined by its member, group and timepoint ID.::
-    
+
     session = 0b111
-    
+
 In addition to the data items stored in leaf rows, some data, particularly
 derivatives, may be stored in the dataset along a particular dimension, at
 a lower "row_frequency" than 'per session'. For example, brain templates are
@@ -269,7 +269,7 @@ axes for the date and weather station of the recordings, with the following code
 
     class Weather(DataSpace):
 
-        # Define the axes of the dataspace    
+        # Define the axes of the dataspace
         timepoint = 0b01
         station = 0b10
 

@@ -30,4 +30,4 @@ in the case of :meth:`.DataStore.connect` and :meth:`.DataStore.disconnect`
 
 .. autoclass:: arcana.core.data.store.DataStore
     :noindex:
-    :members: get_checksums, connect, disconnect    
+    :members: get_checksums, connect, disconnect

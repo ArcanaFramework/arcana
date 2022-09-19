@@ -343,7 +343,7 @@ options to it with ``pydra_option``.
 .. code-block:: console
 
   $ arcana derive column 'myuni-xnat//myproject:training' freesurfer/recon-all \
-    --pydra_plugin slurm --pydra_option poll_delay 5 --pydra_option max_jobs 10
+    --plugin slurm --pydra_option poll_delay 5 --pydra_option max_jobs 10
 
 
 To list the derivatives that can be derived from a dataset after workflows
@@ -393,7 +393,7 @@ remaining only in local cache.
     --link recorded_datafile datafile \
     --link recorded_metadata metadata \
     --parameter contrast 0.75 \
-    --salience_threshold qa
+    --salience-threshold qa
 
 
 Provenance

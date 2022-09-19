@@ -59,7 +59,7 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     help="The Docker registry to deploy the pipeline to",
 )
 @click.option(
-    "--build_dir",
+    "--build-dir",
     default=None,
     type=click.Path(exists=True, path_type=Path),
     help=(
@@ -85,7 +85,7 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     ),
 )
 @click.option(
-    "--install_extras",
+    "--install-extras",
     type=str,
     default=None,
     help=(
@@ -355,6 +355,8 @@ def build_docs(spec_path, output, root, flatten, loglevel):
         spec_path = Path(spec_path.decode("utf-8"))
     if type(output) is bytes:
         output = Path(output.decode("utf-8"))
+    if type(root) is bytes:
+        root = Path(root.decode("utf-8"))
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
@@ -424,7 +426,7 @@ CLI, it isn't recommended to use this command manually, it is typically used
 by automatically generated code when deploying a pipeline within a container image.
 
 Not all options are be used when defining datasets, however, the
-'--dataset_name <NAME>' option can be provided to use an existing dataset
+'--dataset-name <NAME>' option can be provided to use an existing dataset
 definition.
 
 DATASET_ID_STR string containing the nickname of the data store, the ID of the
@@ -478,14 +480,14 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     ),
 )
 @click.option(
-    "--row_frequency",
+    "--row-frequency",
     "-f",
     default=None,
     type=str,
     help=(
-        "the row_frequency of the rows the pipeline will be executed over, i.e. "
+        "the row-frequency of the rows the pipeline will be executed over, i.e. "
         "will it be run once per-session, per-subject or per whole dataset, "
-        "by default the highest row_frequency rows (e.g. per-session)"
+        "by default the highest row-frequency rows (e.g. per-session)"
     ),
 )
 @click.option(
@@ -513,12 +515,12 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     help=("The level of detail logging information is presented"),
 )
 @click.option(
-    "--dataset_hierarchy", type=str, default=None, help="Comma-separated hierarchy"
+    "--dataset-hierarchy", type=str, default=None, help="Comma-separated hierarchy"
 )
 @click.option(
-    "--dataset_space", type=str, default=None, help="The data space of the dataset"
+    "--dataset-space", type=str, default=None, help="The data space of the dataset"
 )
-@click.option("--dataset_name", type=str, default=None, help="The name of the dataset")
+@click.option("--dataset-name", type=str, default=None, help="The name of the dataset")
 @click.option(
     "--single-row",
     type=str,
@@ -619,8 +621,8 @@ def run_pipeline(
         if dataset_hierarchy is None or dataset_space is None:
             raise RuntimeError(
                 f"If the dataset ID string ('{dataset_id_str}') doesn't "
-                "reference an existing dataset '--dataset_hierarchy' and "
-                "'--dataset_space' must be provided"
+                "reference an existing dataset '--dataset-hierarchy' and "
+                "'--dataset-space' must be provided"
             )
 
         store = DataStore.load(store_name, cache_dir=store_cache_dir)

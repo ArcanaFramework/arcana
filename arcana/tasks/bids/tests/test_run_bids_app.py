@@ -60,9 +60,9 @@ def test_run_bids_pipeline(
         "--configuration",
         "executable",
         str(mock_bids_app_executable),
-        "--dataset_space",
+        "--dataset-space",
         class_location(blueprint.space),
-        "--dataset_hierarchy",
+        "--dataset-hierarchy",
         ",".join([str(ln) for ln in blueprint.hierarchy]),
     ]
     inputs_config = []

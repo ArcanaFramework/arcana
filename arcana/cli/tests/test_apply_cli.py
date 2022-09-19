@@ -1,4 +1,3 @@
-from pathlib import Path
 from arcana.core.data.set import Dataset
 from arcana.data.formats.common import Text
 from arcana.cli.apply import apply_pipeline

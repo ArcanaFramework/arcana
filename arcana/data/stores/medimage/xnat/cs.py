@@ -2,7 +2,6 @@
 Helper functions for generating XNAT Container Service compatible Docker
 containers
 """
-import sys
 import os
 import re
 import logging
@@ -10,7 +9,6 @@ import typing as ty
 from pathlib import Path
 import shutil
 import attrs
-from arcana import __version__
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileGroup

@@ -1,5 +1,4 @@
 import os
-import pytest
 from unittest.mock import patch
 from arcana.cli.store import add, ls, remove, rename
 from arcana.test.utils import show_cli_trace

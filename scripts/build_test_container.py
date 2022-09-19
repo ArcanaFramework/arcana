@@ -6,7 +6,6 @@ import docker
 import xnat
 from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.medimage.xnat.cs import XnatViaCS
-from arcana.data.stores.medimage.xnat.tests.fixtures import DOCKER_REGISTRY_URI
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats.common import text
 
@@ -19,16 +18,16 @@ parser.add_argument(
     help="Build the generated pipeline container",
 )
 parser.add_argument(
-    "--xnat_server",
+    "--xnat-server",
     default=None,
     nargs="+",
     help="The XNAT server it will be uploaded to",
 )
 parser.add_argument(
-    "--dataset_name", default=None, help="The dataset to enable the container for"
+    "--dataset-name", default=None, help="The dataset to enable the container for"
 )
 parser.add_argument(
-    "--container_registry",
+    "--container-registry",
     default=None,
     help="Container registry host to upload built image to",
 )
