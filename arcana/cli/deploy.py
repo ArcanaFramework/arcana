@@ -200,6 +200,8 @@ def build(
 
     if docker_registry != DOCKER_HUB:
         docker_org_fullpath = docker_registry.lower() + "/" + docker_org
+    else:
+        docker_org_fullpath = docker_org
 
     errors = False
     for spath in walk_spec_paths(spec_path):
