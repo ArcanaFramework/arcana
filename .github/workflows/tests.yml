@@ -31,11 +31,10 @@ jobs:
       with:
         version: v0.3.0
         install: true
-
-    - name: Docker pre-setup (configure access to test docker registry)
-      run: |
-        echo "{\"insecure-registries\": [\"172.17.0.1\"]}" > sudo tee -a /etc/docker/daemon.json
-        sudo systemctl restart docker
+        config-inline: |
+          [registry."172.17.0.1"]
+            http = true
+            insecure = true
 
     - name: Install System Packages
       run: sudo apt install libopenjp2-7
