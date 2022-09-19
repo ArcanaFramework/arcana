@@ -61,8 +61,21 @@ jobs:
       if: matrix.install == 'install'
       run: python setup.py install
 
-    - name: Pytest
-      run: pytest -vvs --cov arcana  --cov-config .coveragerc --cov-report xml
+    - name: Docker registry debugging
+      run: |
+        xnat4tests_launch
+        xnat4tests_launch_registry
+        docker pull alpine:latest
+        docker tag alpine:latest localhost/test-alpine
+        docker push localhost/test-alpine
+        docker rmi localhost/test-alpine
+        docker exec -it -v /var/run/docker.sock:/var/run/docker.sock xnat4tests docker images
+        docker exec -it -v /var/run/docker.sock:/var/run/docker.sock xnat4tests docker pull 172.17.0.1/test-alpine
+        docker exec -it -v /var/run/docker.sock:/var/run/docker.sock xnat4tests docker images
+
+
+    # - name: Pytest
+    #   run: pytest -vvs --cov arcana  --cov-config .coveragerc --cov-report xml
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v2
