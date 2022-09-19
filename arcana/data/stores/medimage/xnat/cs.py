@@ -2,7 +2,6 @@
 Helper functions for generating XNAT Container Service compatible Docker
 containers
 """
-import sys
 import os
 import re
 import logging
@@ -10,7 +9,6 @@ import typing as ty
 from pathlib import Path
 import shutil
 import attrs
-from arcana import __version__
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileGroup
@@ -104,7 +102,10 @@ class XnatViaCS(Xnat):
             if file_group.is_dir:
                 # Link files from resource dir into temp dir to avoid catalog XML
                 dir_path = self.cache_path(file_group)
-                shutil.rmtree(dir_path, ignore_errors=True)
+                try:
+                    shutil.rmtree(dir_path)
+                except FileNotFoundError:
+                    pass
                 os.makedirs(dir_path, exist_ok=True)
                 for item in resource_path.iterdir():
                     if not item.name.endswith("_catalog.xml"):
