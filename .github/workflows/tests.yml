@@ -55,13 +55,16 @@ jobs:
     - name: Update build tools
       run: python -m pip install --upgrade pip setuptools wheel
 
-    - name: Install Pydra tests dependencies (develop or setup.py install)
-      if: matrix.install == 'develop' || matrix.install == 'install'
-      run: pip install ".[test]"
+    # - name: Install Pydra tests dependencies (develop or setup.py install)
+    #   if: matrix.install == 'develop' || matrix.install == 'install'
+    #   run: pip install ".[test]"
 
-    - name: Install dependencies (setup.py install)
-      if: matrix.install == 'install'
-      run: python setup.py install
+    # - name: Install dependencies (setup.py install)
+    #   if: matrix.install == 'install'
+    #   run: python setup.py install
+
+    - name: Install xnat4tests
+      run: pip install xnat4tests==0.2.5
 
     - name: Launch Docker registry and XNAT
       run: xnat4tests_launch_registry
