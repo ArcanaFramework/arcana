@@ -16,8 +16,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10"]
-        install: [install, develop]
+        #, "3.9", "3.10"]
+        python-version: ["3.8"]
+        install: [install]
+        #, develop]
       fail-fast: false
     runs-on: ${{ matrix.os }}
 
@@ -61,10 +63,11 @@ jobs:
       if: matrix.install == 'install'
       run: python setup.py install
 
-    - name: Docker registry debugging
+    - name: Launch Docker registry and XNAT
+      run: xnat4tests_launch_registry
+
+    - name: Docker debugging
       run: |
-        xnat4tests_launch
-        xnat4tests_launch_registry
         docker pull alpine:latest
         docker tag alpine:latest localhost/test-alpine
         docker push localhost/test-alpine
