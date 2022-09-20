@@ -16,10 +16,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        #, "3.9", "3.10"]
-        python-version: ["3.8"]
-        install: [install]
-        #, develop]
+        python-version: ["3.8", "3.9", "3.10"]
+        install: [install, develop]
       fail-fast: false
     runs-on: ${{ matrix.os }}
 
@@ -33,6 +31,7 @@ jobs:
       with:
         version: v0.3.0
         install: true
+        config: ./.github/buildkitd.toml
 
     - name: Install System Packages
       run: sudo apt install libopenjp2-7
