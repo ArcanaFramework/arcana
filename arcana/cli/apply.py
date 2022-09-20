@@ -1,4 +1,3 @@
-from inspect import Arguments
 import click
 from arcana.core.data.set import Dataset
 from arcana.core.cli import cli
@@ -94,14 +93,14 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
     ),
 )
 @click.option(
-    "--row_frequency",
+    "--row-frequency",
     "-f",
     default=None,
     type=str,
     help=(
-        "the row_frequency of the rows the pipeline will be executed over, i.e. "
+        "the row-frequency of the rows the pipeline will be executed over, i.e. "
         "will it be run once per-session, per-subject or per whole dataset, "
-        "by default the highest row_frequency rows (e.g. per-session)"
+        "by default the highest row-frequency rows (e.g. per-session)"
     ),
 )
 @click.option(

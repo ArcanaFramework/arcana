@@ -7,7 +7,7 @@ from arcana.data.stores.medimage.xnat.tests.fixtures import (
 
 parser = ArgumentParser()
 parser.add_argument(
-    "--xnat_root", default=None, help="Place XNAT archive directory into container"
+    "--xnat-root", default=None, help="Place XNAT archive directory into container"
 )
 parser.add_argument(
     "--rm",

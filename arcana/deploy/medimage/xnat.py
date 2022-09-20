@@ -344,7 +344,7 @@ def generate_xnat_cs_command(
             "default-value": (
                 "--plugin serial "
                 "--work /wl "  # NB: work dir moved inside container due to file-locking issue on some mounted volumes (see https://github.com/tox-dev/py-filelock/issues/147)
-                "--dataset_name default "
+                "--dataset-name default "
                 "--loglevel info "
                 f"--export-work {XnatViaCS.WORK_MOUNT}"
             ),
@@ -368,10 +368,10 @@ def generate_xnat_cs_command(
         + config_args_str
         + FLAGS_KEY
         + " "
-        + f"--dataset_space medimage:Clinical "
-        f"--dataset_hierarchy subject,session "
+        + f"--dataset-space medimage:Clinical "
+        f"--dataset-hierarchy subject,session "
         "--single-row [SUBJECT_LABEL],[SESSION_LABEL] "
-        f"--row_frequency {row_frequency} "
+        f"--row-frequency {row_frequency} "
     )  # pass XNAT API details
     # TODO: add option for whether to overwrite existing pipeline
 

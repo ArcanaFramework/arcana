@@ -56,7 +56,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         [
             str(spec_path),
             DOCKER_ORG,
-            "--build_dir",
+            "--build-dir",
             str(build_dir),
             "--registry",
             DOCKER_REGISTRY,
@@ -100,7 +100,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
             [
                 str(spec_path),
                 DOCKER_ORG,
-                "--build_dir",
+                "--build-dir",
                 str(build_dir),
                 "--registry",
                 docker_registry,
@@ -269,9 +269,9 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
             str(work_dir),
             "--loglevel",
             "debug",
-            "--dataset_space",
+            "--dataset-space",
             class_location(bp.space),
-            "--dataset_hierarchy",
+            "--dataset-hierarchy",
         ]
         + [str(ln) for ln in bp.hierarchy],
     )
@@ -330,9 +330,9 @@ def test_run_pipeline_cli_fail(concatenate_task, saved_dataset, cli_runner, work
             "error",
             "--work",
             str(work_dir),
-            "--dataset_space",
+            "--dataset-space",
             class_location(bp.space),
-            "--dataset_hierarchy",
+            "--dataset-hierarchy",
         ]
         + [str(ln) for ln in bp.hierarchy],
     )
@@ -392,9 +392,9 @@ def test_run_pipeline_on_row_cli(cli_runner, work_dir):
             "--loglevel",
             "debug",
             "--raise-errors",
-            "--dataset_space",
+            "--dataset-space",
             class_location(bp.space),
-            "--dataset_hierarchy",
+            "--dataset-hierarchy",
         ]
         + [str(ln) for ln in bp.hierarchy],
     )
@@ -444,9 +444,9 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
             str(work_dir),
             "--loglevel",
             "debug",
-            "--dataset_space",
+            "--dataset-space",
             class_location(bp.space),
-            "--dataset_hierarchy",
+            "--dataset-hierarchy",
         ]
         + [str(ln) for ln in bp.hierarchy],
     )

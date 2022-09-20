@@ -2,7 +2,6 @@ from pathlib import Path
 import logging
 import cloudpickle as cp
 import click
-from arcana import __version__
 from arcana.core.cli import cli
 from arcana.core.data.set import Dataset
 from arcana.core.utils import set_loggers

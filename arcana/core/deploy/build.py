@@ -162,7 +162,7 @@ def construct_dockerfile(
 
     if licenses and license_dir is None:
         raise ArcanaBuildError(
-            "'--license_dir' input must be provided for specifications "
+            "'--license-dir' input must be provided for specifications "
             f"including 'licenses' items ({licenses})"
         )
 
