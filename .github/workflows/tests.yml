@@ -30,6 +30,7 @@ jobs:
       run: |
         echo '{ "insecure-registries": ["172.17.0.1"] }' >> sudo tee -a /etc/docker/daemon.json
         sudo systemctl restart docker
+        docker info
 
     - name: Install System Packages
       run: sudo apt install libopenjp2-7
