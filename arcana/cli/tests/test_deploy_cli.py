@@ -473,7 +473,7 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
 
 
 @pytest.mark.skipIf(
-    sys.platform == "linux",
+    sys.platform == "linux" and False,  # disabled skip
     "Skipping in CI as haven't been able to setup the internal host as an insecure "
     "registries setup for Docker installed in GitHub Actions properly",
 )
