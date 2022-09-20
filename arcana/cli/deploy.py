@@ -312,7 +312,7 @@ def build(
                 }
             )
     if release:
-        release_image_tag = f"{docker_org_fullpath}/release-{release}"
+        release_image_tag = f"{docker_org_fullpath}/release:{release}"
         create_metapackage(
             release_image_tag, manifest, use_local_packages=use_local_packages
         )
@@ -332,6 +332,31 @@ def build(
                 logger.info(
                     "Successfully pushed release metapackage '%s' to registry",
                     image_tag,
+                )
+
+            # Also push release to "latest" tag
+            image = dc.images.get(image_tag)
+            latest_release_tag = f"{docker_org_fullpath}/release:latest"
+            image.tag(latest_release_tag)
+
+            try:
+                dc.api.push(latest_release_tag)
+            except Exception:
+                if raise_errors:
+                    raise
+                logger.error(
+                    "Could not push latest tag for release metapackage '%s':\n\n%s",
+                    latest_release_tag,
+                    format_exc(),
+                )
+                errors = True
+            else:
+                logger.info(
+                    (
+                        "Successfully pushed latest tag for release metapackage '%s' "
+                        "to registry"
+                    ),
+                    latest_release_tag,
                 )
         if save_manifest:
             with open(save_manifest, "w") as f:
