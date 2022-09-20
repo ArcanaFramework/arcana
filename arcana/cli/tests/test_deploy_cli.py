@@ -471,6 +471,9 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
         assert dec_contents == unencoded_contents
 
 
+@pytest.mark.skip(
+    "Skipping in CI as can't get insecure registries setup on GitHub Actions"
+)
 def test_pull_images(
     xnat_repository, command_spec, work_dir, docker_registry_for_xnat_uri, cli_runner
 ):
