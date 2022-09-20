@@ -565,6 +565,22 @@ def save_store_config(dockerfile: DockerRenderer, build_dir: Path, test_config=F
     dockerfile.env(ARCANA_HOME=IN_DOCKER_ARCANA_HOME_DIR)
 
 
+def create_metapackage(image_tag, manifest, use_local_packages=False):
+
+    build_dir = Path(tempfile.mkdtemp())
+
+    dockerfile = construct_dockerfile(
+        build_dir=build_dir, use_local_packages=use_local_packages
+    )
+
+    with open(build_dir / "manifest.json", "w") as f:
+        json.dump(manifest, f)
+
+    dockerfile.copy(["./manifest.json"], "/manifest.json")
+
+    dockerfile_build(dockerfile, build_dir, image_tag)
+
+
 @dataclass
 class InputArg:
     name: str  # How the input will be referred to in the XNAT dialog, defaults to the pydra_field name

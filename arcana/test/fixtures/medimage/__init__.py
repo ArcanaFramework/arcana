@@ -7,6 +7,8 @@ from .xnat import (
     xnat_archive_dir,
     xnat_repository,
     xnat_respository_uri,
+    docker_registry_for_xnat,
+    docker_registry_for_xnat_uri,
     dummy_niftix,
 )
 from .dicom import dummy_t1w_dicom

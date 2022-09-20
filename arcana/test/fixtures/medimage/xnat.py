@@ -1,3 +1,4 @@
+import sys
 from tempfile import mkdtemp
 import json
 import pytest
@@ -189,8 +190,12 @@ def xnat_repository(run_prefix):
 
     xnat4tests.launch_xnat()
 
+    server = (
+        f"http://{xnat4tests.config['docker_host']}:{xnat4tests.config['xnat_port']}"
+    )
+
     repository = Xnat(
-        server=xnat4tests.config["xnat_uri"],
+        server=server,
         user=xnat4tests.config["xnat_user"],
         password=xnat4tests.config["xnat_password"],
         cache_dir=mkdtemp(),
@@ -205,6 +210,20 @@ def xnat_repository(run_prefix):
 @pytest.fixture(scope="session")
 def xnat_respository_uri(xnat_repository):
     return xnat_repository.server
+
+
+@pytest.fixture(scope="session")
+def docker_registry_for_xnat():
+    return xnat4tests.launch_docker_registry()
+
+
+@pytest.fixture(scope="session")
+def docker_registry_for_xnat_uri(docker_registry_for_xnat):
+    if sys.platform == "linux":
+        uri = "172.17.0.1"  # Linux + GH Actions
+    else:
+        uri = "host.docker.internal"  # Mac/Windows local debug
+    return uri
 
 
 @pytest.fixture
