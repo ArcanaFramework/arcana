@@ -3,14 +3,13 @@ import attrs
 from .analysis import _UnresolvedOp, make_analysis_class, _InheritedFrom, _MappedFrom
 from .enum import ColumnSalience, ParameterSalience, CheckSalience
 from arcana.exceptions import ArcanaDesignError
-
-
-PIPELINE_ANNOT = "__arcana_pipeline__"
-CONVERTER_ANNOT = "__arcana_converter__"
-SWICTH_ANNOT = "__arcana_switch__"
-CHECK_ANNOT = "__arcana_check__"
-
-ATTR_TYPE = "__arcana_type__"
+from .utils import (
+    ATTR_TYPE,
+    SWICTH_ANNOTATIONS,
+    CHECK_ANNOTATIONS,
+    CONVERTER_ANNOTATIONS,
+    PIPELINE_ANNOTATIONS,
+)
 
 
 def analysis(space: type):
@@ -114,7 +113,7 @@ def pipeline(*outputs, condition=None, switch=None):
     """
 
     def decorator(meth):
-        anots = meth.__annotations__[PIPELINE_ANNOT] = {}
+        anots = meth.__annotations__[PIPELINE_ANNOTATIONS] = {}
         anots["outputs"] = outputs
         anots["condition"] = condition
         anots["switch"] = switch.__name__ if switch is not None else None
@@ -133,7 +132,7 @@ def switch(meth):
         whether to wrap the switch in its own task or whether it adds its own nodes
         explicitly"""
     anot = meth.__annotations__
-    anot[SWICTH_ANNOT] = True
+    anot[SWICTH_ANNOTATIONS] = True
     return meth
 
 
@@ -141,7 +140,10 @@ def check(column, salience=CheckSalience.prudent):
     """Decorate a method, which adds a quality control check to be run against a column"""
 
     def decorator(meth):
-        meth.__annotations__[CHECK_ANNOT] = {"column": column, "salience": salience}
+        meth.__annotations__[CHECK_ANNOTATIONS] = {
+            "column": column,
+            "salience": salience,
+        }
         return meth
 
     return decorator
@@ -150,7 +152,7 @@ def check(column, salience=CheckSalience.prudent):
 def converter(output_format):
     def decorator(meth):
         anot = meth.__annotations__
-        anot[CONVERTER_ANNOT] = output_format
+        anot[CONVERTER_ANNOTATIONS] = output_format
         return meth
 
     return decorator
