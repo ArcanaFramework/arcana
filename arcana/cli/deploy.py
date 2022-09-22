@@ -876,7 +876,11 @@ def run_pipeline(
                         (e.args[0] + f" attempting to split '{full_name}' by '.'"),
                     )
                     raise e
-                qualifiers[ns][name] = json.loads(val)
+                try:
+                    val = json.loads(val)
+                except json.JSONDecodeError:
+                    pass
+                qualifiers[ns][name] = val
         else:
             path = user_input
         return path, qualifiers
