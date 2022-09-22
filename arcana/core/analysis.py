@@ -92,30 +92,18 @@ def make_class(klass: type, space: type) -> type:
                 subanalysis_specs.append(attr)
 
     # Resolve the mappings from through the subanalysis_specs in a separate loop so the column names can be resolved
-    # for subanalysis_spec in subanalysis_specs
-    #     if isinstance(attr, SubanalysisSpec):
-    #         resolved_mappings = []
-    #         for (from_, to) in attr.mappings:
-    #             resolved_mappings.append((from_, to.attr_name))
-    #         # Add in implicit mappings, where a column from the subanalysis has been
-    #         # mapped into the global namespace of the analysis class
-    #         for col_or_param in chain(column_specs, parameters):
-    #             if (
-    #                 col_or_param.mapped_from
-    #                 and col_or_param.mapped_from[0] == attr.name
-    #             ):
-    #                 resolved_mappings.append(
-    #                     (col_or_param.mapped_from[1], col_or_param.name)
-    #                 )
-    #         subanalyses.append(
-    #             SubanalysisSpec(
-    #                 name=attr.name,
-    #                 type=attr.type,
-    #                 desc=attr.metadata["desc"],
-    #                 mappings=tuple(sorted(resolved_mappings)),
-    #                 defined_in=attr.metadata.get("defined_in", [attrs_klass]),
-    #             )
-    #         )
+    for spec in subanalysis_specs:
+        resolved_mappings = []
+        for (from_, to) in spec.mappings:
+            resolved_mappings.append((from_, to.name))
+        # Add in implicit mappings, where a column from the subanalysis has been
+        # mapped into the global namespace of the analysis class
+        for col_or_param in itertools.chain(column_specs, parameters):
+            if col_or_param.mapped_from and col_or_param.mapped_from[0] == spec.name:
+                resolved_mappings.append(
+                    (col_or_param.mapped_from[1], col_or_param.name)
+                )
+        spec.mappings = tuple(sorted(resolved_mappings))
 
     # Attributes that need to be converted into attrs.fields before the class
     # is attrisfied
@@ -260,9 +248,11 @@ def make_class(klass: type, space: type) -> type:
 
     # Now that we have saved the attributes in lists to be
     for attr in to_convert_to_attrs:
-        attrs_field = attr.to_attrs_field(analysis_spec=analysis_spec)
+        attrs_field = attr.to_attrs_field()
         setattr(klass, attr.name, attrs_field)
         klass.__annotations__[attr.name] = dtype
+        # Set default method for subanalyses to initialise the subanalysis object with
+        # links back to the parent analysis object
         if isinstance(attr, SubanalysisSpec):
             setattr(
                 klass,
@@ -360,7 +350,7 @@ class ColumnSpec(BaseAttr):
             )
         return selected
 
-    def to_attrs_field(self, **kwargs):
+    def to_attrs_field(self):
         return attrs.field(
             default=None,
             metadata={ARCANA_SPEC: self},
@@ -399,7 +389,7 @@ class Parameter(BaseAttr):
                     f"({choices})"
                 )
 
-    def to_attrs_field(self, **kwargs):
+    def to_attrs_field(self):
         return attrs.field(
             default=self.default,
             validator=_parameter_validator,
@@ -423,10 +413,9 @@ class SubanalysisSpec(BaseAttr):
             raise KeyError(f"No mapping from '{name}' in sub-analysis: {self.mappings}")
         return mapped_name
 
-    def to_attrs_field(self, analysis_spec):
+    def to_attrs_field(self):
         return attrs.field(
             metadata={ARCANA_SPEC: self},
-            converter=SubanalysisConverter(spec=self, parent=analysis_spec),
         )
 
 
@@ -508,6 +497,9 @@ class Subanalysis:
     _spec: SubanalysisSpec
     _analysis: ty.Any  # initialised analysis class for the subanalysis
     _parent: ty.Any  # reference back to the parent analysis class
+
+    def __repr__(self):
+        return f"{type(self).__name__}(_name={self._spec.name}, type={type(self._analysis)})"
 
     def __getattr__(self, name: str) -> ty.Any:
         try:
@@ -927,24 +919,10 @@ class SubanalysisDefault:
     def __call__(self, analysis):
         return Subanalysis(
             spec=self.spec,
+            # Set all attributes that are mapped into global namespace to NOTHING to
+            # ensure they are not accessed inadvertently
             analysis=self.spec.type(
                 **{m[0]: attrs.NOTHING for m in self.spec.mappings}
             ),
             parent=analysis,
-        )
-
-
-@attrs.define(frozen=True)
-class SubanalysisConverter:
-    """A callable class (substitutable for a function but with a state) that is used to
-    automatically create the subanalysis objects when the parent analysis class is created"""
-
-    spec: SubanalysisSpec
-    parent: AnalysisSpec
-
-    def __call__(self, kwargs):
-        return Subanalysis(
-            spec=self.spec,
-            analysis=self.spec.type(**kwargs),
-            parent=self.parent,
         )
