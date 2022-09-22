@@ -1,16 +1,20 @@
-from copy import copy
-import attrs
-from .analysis import _UnresolvedOp, make_analysis_class, _InheritedFrom, _MappedFrom
+from types import MemberDescriptorType
+from .analysis import (
+    _UnresolvedOp,
+    make_class,
+    _Inherited,
+    _MappedFrom,
+    ColumnSpec,
+    Parameter,
+    SubanalysisSpec,
+)
 from .enum import ColumnSalience, ParameterSalience, CheckSalience
-from arcana.exceptions import ArcanaDesignError
-
-
-PIPELINE_ANNOT = "__arcana_pipeline__"
-CONVERTER_ANNOT = "__arcana_converter__"
-SWICTH_ANNOT = "__arcana_switch__"
-CHECK_ANNOT = "__arcana_check__"
-
-ATTR_TYPE = "__arcana_type__"
+from .utils import (
+    SWICTH_ANNOTATIONS,
+    CHECK_ANNOTATIONS,
+    CONVERTER_ANNOTATIONS,
+    PIPELINE_ANNOTATIONS,
+)
 
 
 def analysis(space: type):
@@ -21,29 +25,22 @@ def analysis(space: type):
     space : type (subclass of DataSpace)
         The data space the analysis operates on, see"""
 
-    def decorator(cls):
-        return make_analysis_class(cls, space)
+    def decorator(klass):
+        return make_class(klass, space)
 
     return decorator
 
 
 def column(
-    desc, row_frequency=None, salience=ColumnSalience.supplementary, metadata=None
+    desc,
+    row_frequency=None,
+    salience=ColumnSalience.supplementary,
+    metadata=None,
 ):
-    if metadata is None:
-        metadata = {}
-    else:
-        metadata = copy(metadata)
-    metadata.update(
-        {
-            ATTR_TYPE: "column",
-            "desc": desc,
-            "row_frequency": row_frequency,
-            "salience": salience,
-        }
-    )
-    return attrs.field(
-        default=None,
+    return ColumnSpec(
+        desc=desc,
+        row_frequency=row_frequency,
+        salience=salience,
         metadata=metadata,
     )
 
@@ -57,42 +54,20 @@ def parameter(
     salience=ParameterSalience.recommended,
     metadata=None,
 ):
-    if choices is not None:
-        if upper_bound is not None or lower_bound is not None:
-            raise ArcanaDesignError(
-                f"Cannot specify lower ({lower_bound}) or upper ({lower_bound}) bound "
-                f"in conjunction with 'choices' arg ({choices})"
-            )
-    if metadata is None:
-        metadata = {}
-    else:
-        metadata = copy(metadata)
-    metadata.update(
-        {
-            ATTR_TYPE: "parameter",
-            "desc": desc,
-            "salience": salience,
-            "choices": choices,
-            "lower_bound": lower_bound,
-            "upper_bound": upper_bound,
-        }
-    )
-    return attrs.field(
+    return Parameter(
+        desc=desc,
         default=default,
-        validator=_parameter_validator,
+        choices=choices,
+        lower_bound=lower_bound,
+        upper_bound=upper_bound,
+        salience=salience,
         metadata=metadata,
     )
 
 
-def subanalysis(desc, **mappings):
-
-    return attrs.field(
-        metadata={
-            ATTR_TYPE: "subanalysis",
-            "desc": desc,
-            "mappings": tuple(mappings.items()),
-        },
-        init=False,
+def subanalysis(desc, metadata=None, **mappings):
+    return SubanalysisSpec(
+        desc=desc, mappings=tuple(mappings.items()), metadata=metadata
     )
 
 
@@ -114,7 +89,7 @@ def pipeline(*outputs, condition=None, switch=None):
     """
 
     def decorator(meth):
-        anots = meth.__annotations__[PIPELINE_ANNOT] = {}
+        anots = meth.__annotations__[PIPELINE_ANNOTATIONS] = {}
         anots["outputs"] = outputs
         anots["condition"] = condition
         anots["switch"] = switch.__name__ if switch is not None else None
@@ -133,7 +108,7 @@ def switch(meth):
         whether to wrap the switch in its own task or whether it adds its own nodes
         explicitly"""
     anot = meth.__annotations__
-    anot[SWICTH_ANNOT] = True
+    anot[SWICTH_ANNOTATIONS] = True
     return meth
 
 
@@ -141,7 +116,10 @@ def check(column, salience=CheckSalience.prudent):
     """Decorate a method, which adds a quality control check to be run against a column"""
 
     def decorator(meth):
-        meth.__annotations__[CHECK_ANNOT] = {"column": column, "salience": salience}
+        meth.__annotations__[CHECK_ANNOTATIONS] = {
+            "column": column,
+            "salience": salience,
+        }
         return meth
 
     return decorator
@@ -150,13 +128,13 @@ def check(column, salience=CheckSalience.prudent):
 def converter(output_format):
     def decorator(meth):
         anot = meth.__annotations__
-        anot[CONVERTER_ANNOT] = output_format
+        anot[CONVERTER_ANNOTATIONS] = output_format
         return meth
 
     return decorator
 
 
-def inherited_from(base_class, **to_overwrite):
+def inherit(ref: MemberDescriptorType = None, **to_overwrite):
     """Used to explicitly inherit a column or attribute from a base class so it can be
     used in a sub class. This explicit inheritance is enforced when the column/parameter
     is referenced in the base class in order to make the code more readable (i.e. so
@@ -164,18 +142,20 @@ def inherited_from(base_class, **to_overwrite):
 
     Parameters
     ----------
-    base_class : type
-        the base class to inherit the column/parameter from. The name will be matched
-        to the name of the column/parameter in the base class
+    ref : MemberDescriptorType, optional
+        a reference to the field that is being inherited from. Note that it is not
+        actually used for anything, the field to be inherited is determined by scanning
+        the method-resolution order for matching names, but it can make the code more
+        readable by linking the inherited attribute with its initial definition.
     **to_overwrite:
         any attributes to override from the inherited column/parameter
     """
     if "row_frequency" in to_overwrite:
         raise ValueError("Cannot overwrite row_frequency when inheriting")
-    return _InheritedFrom(base_class, to_overwrite)
+    return _Inherited(to_overwrite)
 
 
-def mapped_from(subanalysis_name, column_name, **to_overwrite):
+def map_from(subanalysis_name, column_name, **to_overwrite):
     """Used to explicitly inherit a column or attribute from a base class so it can be
     used in a sub class. This explicit inheritance is enforced when the column/parameter
     is referenced in the base class in order to make the code more readable (i.e. so
@@ -210,23 +190,3 @@ def is_provided(column, in_format: type = None):
             in_format,
         ),
     )
-
-
-def _parameter_validator(_, attr, val):
-    if attr.metadata["choices"] is not None:
-        choices = attr.metadata["choices"]
-        if val not in choices:
-            raise ValueError(
-                f"{val} is not a valid value for '{attr.name}' parameter: {choices}"
-            )
-    else:
-        lower_bound = attr.metadata.get("lower_bound")
-        upper_bound = attr.metadata.get("upper_bound")
-        if not (
-            (lower_bound is None or val >= lower_bound)
-            and (upper_bound is None or val <= upper_bound)
-        ):
-            raise ValueError(
-                f"Value of '{attr.name}' ({val}) is not within the specified bounds: "
-                f"{lower_bound} - {upper_bound}"
-            )

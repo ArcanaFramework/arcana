@@ -32,6 +32,14 @@ __version__ = get_versions()["version"]
 del get_versions
 
 
+PIPELINE_ANNOTATIONS = "__arcana_pipeline__"
+CONVERTER_ANNOTATIONS = "__arcana_converter__"
+SWICTH_ANNOTATIONS = "__arcana_switch__"
+CHECK_ANNOTATIONS = "__arcana_check__"
+
+ARCANA_SPEC = "__arcana_type__"
+
+
 PATH_SUFFIX = "_path"
 FIELD_SUFFIX = "_field"
 CHECKSUM_SUFFIX = "_checksum"

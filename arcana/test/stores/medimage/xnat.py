@@ -271,7 +271,6 @@ def install_and_launch_xnat_cs_command(
     )
     if stderr_result.status_code == 200:
         out_str += f"\nstderr:\n{stderr_result.content.decode('utf-8')}"
-    out_str = "Logs temporarily disabled"
 
     if i == num_attempts - 1:
         status = f"NotCompletedAfter{max_runtime}Seconds"

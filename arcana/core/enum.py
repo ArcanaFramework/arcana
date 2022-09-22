@@ -61,6 +61,10 @@ class ColumnSalience(Enum):
     def __str__(self):
         return self.name
 
+    @classmethod
+    def default(self):
+        return self.supplementary
+
 
 class ParameterSalience(Enum):
     """An enum that holds the salience levels options that can be used when
@@ -82,6 +86,10 @@ class ParameterSalience(Enum):
     check = (60, "default value should be checked for validity for particular use case")
     arbitrary = (80, "a default is provided, but it is not clear which value is best")
     required = (100, "No sensible default value, should be provided")
+
+    @classmethod
+    def default(self):
+        return self.recommended
 
 
 class DataQuality(Enum):
@@ -106,6 +114,10 @@ class DataQuality(Enum):
 
     def __le__(self, other):
         return self.value <= other.value
+
+    @classmethod
+    def default(self):
+        return self.questionable
 
 
 class CheckSalience(Enum):
@@ -132,6 +144,10 @@ class CheckSalience(Enum):
     )
     required = (100, "Pipeline will often fail, checking the results is required")
 
+    @classmethod
+    def default(self):
+        return self.recommended
+
 
 class CheckStatus(Enum):
     """An enum that holds the potential values that signify how likely a pipeline has "
@@ -142,9 +158,13 @@ class CheckStatus(Enum):
 
     failed = (0, "the pipeline has failed")
     probable_fail = (25, "probable that the pipeline has failed")
-    questionable = (
+    unclear = (
         50,
         "cannot ascertain whether the pipeline has failed or not",
     )
     probable_pass = (75, "probable that the pipeline has run successfully")
     passed = (100, "the pipeline has run successfully")
+
+    @classmethod
+    def default(self):
+        return self.unclear
