@@ -5,7 +5,6 @@ from pathlib import Path
 import re
 import json
 from collections import defaultdict
-import shlex
 from traceback import format_exc
 import tempfile
 import yaml
@@ -844,7 +843,7 @@ def run_pipeline(
 
     def extract_qualifiers_from_path(user_input: str):
         """Extracts out "qualifiers" from the user-inputted paths. These are
-        in the form 'path kw1=val1 kw2=val2...
+        in the form 'path ns1.arg1=val1 ns1.arg2=val2, ns2.arg1=val3...
 
         Parameters
         ----------
@@ -862,8 +861,8 @@ def run_pipeline(
         """
         qualifiers = defaultdict(dict)
         if "=" in user_input:  # Treat user input as containing qualifiers
-            parts = shlex.split(user_input)
-            path = parts[0]
+            parts = re.findall(r'(?:[^\s"]|"(?:\\.|[^"])*")+', user_input)
+            path = parts[0].strip('"')
             for part in parts[1:]:
                 try:
                     full_name, val = part.split("=", maxsplit=1)
@@ -877,7 +876,7 @@ def run_pipeline(
                         (e.args[0] + f" attempting to split '{full_name}' by '.'"),
                     )
                     raise e
-                qualifiers[ns][name] = val
+                qualifiers[ns][name] = json.loads(val)
         else:
             path = user_input
         return path, qualifiers
