@@ -1,7 +1,7 @@
 import attrs
 import typing as ty
 import inspect
-from copy import copy
+from copy import copy, deepcopy
 from collections import defaultdict
 from itertools import chain
 import operator as operator_module
@@ -59,7 +59,7 @@ class ColumnSpec:
     desc: str
     row_frequency: DataSpace
     salience: ColumnSalience
-    defined_in: type
+    defined_in: ty.List[type]
     modified: ty.Tuple[ty.Tuple[str, ty.Any]]
     mapped_from: ty.Tuple[str, str] or None = None  # sub-analysis name, column name
 
@@ -113,7 +113,7 @@ class Parameter:
     choices: ty.Tuple[int] or ty.Tuple[float] or ty.Tuple[str] or None
     lower_bound: int or float or None
     upper_bound: int or float or None
-    defined_in: type
+    defined_in: ty.List[type]
     modified: ty.Tuple[ty.Tuple[str, ty.Any]]
     default: int or float or str or ty.Tuple[int] or ty.Tuple[float] or ty.Tuple[
         str
@@ -182,7 +182,7 @@ class SubanalysisSpec:
     desc: str
     type: type
     mappings: ty.Tuple[str, str]  # to name in subanalysis, from name in analysis class
-    defined_in: type
+    defined_in: ty.List[type]
 
     def mapping(self, name):
         try:
@@ -396,7 +396,7 @@ class StackDescriptor:
             raise NotImplementedError("Instance-based stack calls are not implemented")
 
 
-def make_analysis_class(decorated_klass: type, space: type) -> type:
+def make_class(decorated_klass: type, space: type) -> type:
     """
     Construct an analysis class and validate all the components fit together
 
@@ -421,7 +421,7 @@ def make_analysis_class(decorated_klass: type, space: type) -> type:
     except KeyError:
         pass
 
-    # Resolve 'inherited_from' and 'mapped_from' attributes to a form that `attrs` can
+    # Resolve 'Inherited' and 'mapped_from' attributes to a form that `attrs` can
     # recognise so the attributes are created
     for name, attr in list(decorated_klass.__dict__.items()):
         if name in RESERVED_NAMES:
@@ -429,7 +429,7 @@ def make_analysis_class(decorated_klass: type, space: type) -> type:
                 f"Cannot use reserved name '{name}' for attribute in "
                 f"'{decorated_klass.__name__}' analysis class"
             )
-        if isinstance(attr, (_InheritedFrom, _MappedFrom)):
+        if isinstance(attr, (_Inherited, _MappedFrom)):
             resolved, resolved_type = attr.resolve(name, decorated_klass)
             setattr(decorated_klass, name, resolved)
             try:
@@ -517,7 +517,7 @@ def make_analysis_class(decorated_klass: type, space: type) -> type:
                     desc=attr.metadata["desc"],
                     row_frequency=row_freq,
                     salience=attr.metadata["salience"],
-                    defined_in=attr.metadata.get("defined_in", attrs_klass),
+                    defined_in=attr.metadata.get("defined_in", [attrs_klass]),
                     modified=attr.metadata.get("modified"),
                     mapped_from=attr.metadata.get("mapped_from"),
                 )
@@ -533,7 +533,7 @@ def make_analysis_class(decorated_klass: type, space: type) -> type:
                     upper_bound=attr.metadata["upper_bound"],
                     desc=attr.metadata["desc"],
                     salience=attr.metadata["salience"],
-                    defined_in=attr.metadata.get("defined_in", attrs_klass),
+                    defined_in=attr.metadata.get("defined_in", [attrs_klass]),
                     modified=attr.metadata.get("modified"),
                     mapped_from=attr.metadata.get("mapped_from"),
                 )
@@ -568,7 +568,7 @@ def make_analysis_class(decorated_klass: type, space: type) -> type:
                     type=attr.type,
                     desc=attr.metadata["desc"],
                     mappings=tuple(sorted(resolved_mappings)),
-                    defined_in=attr.metadata.get("defined_in", attrs_klass),
+                    defined_in=attr.metadata.get("defined_in", [attrs_klass]),
                 )
             )
 
@@ -672,7 +672,7 @@ def make_analysis_class(decorated_klass: type, space: type) -> type:
                 raise ArcanaDesignError(
                     f"{overwritten} columns/parameters/subanalyses attributes in base "
                     f"class {base} were overwritten in {attrs_klass} without using "
-                    "explicit 'inherited_from' function"
+                    "explicit 'Inherited' function"
                 )
         # Append pipeline specs, switches and checks that were inherited from base
         # classes
@@ -698,9 +698,8 @@ def make_analysis_class(decorated_klass: type, space: type) -> type:
 
 
 @attrs.define
-class _InheritedFrom:
+class _Inherited:
 
-    base_class: type
     to_overwrite: ty.Dict[str, ty.Any]
     resolved_to: str = None
 
@@ -714,33 +713,19 @@ class _InheritedFrom:
         klass : type
             the initial class to be transformed into an analysis class
         """
-        # Validate inheritance
-        if not issubclass(klass, self.base_class):
-            raise ArcanaDesignError(
-                f"Trying to inherit '{name}' from class that is not a base "
-                f"{self.base_class}"
+        defined_in = []
+        for base in klass.__mro__[1:-1]:  # skip current class and base "object" class
+            if name in base.__dict__:
+                defined_in.append(base)
+        if not defined_in:
+            raise AttributeError(
+                f"Supers of {klass} have no attribute named '{name}' to inherit"
             )
-        inherited_from = getattr(attrs.fields(self.base_class), name)
-        for base in klass.__mro__:
-            if base is self.base_class:
-                break
-            if name in [a.name for a in attrs.fields(base)]:
-                raise ArcanaDesignError(
-                    f"Must inherited from the first class in the method-resolution order (MRO) "
-                    f"(i.e. the first super class) that defines the {name} attribute, {base} "
-                    f"not {self.base_class}"
-                )
-        # !!WARNING!!
-        # Not quite sure whey "inherited" isn't set properly sometimes, but the metadata
-        # doesn't seem to be set in this case either so using it to check
-        if inherited_from.inherited or not inherited_from.metadata:
-            raise ArcanaDesignError(
-                f"'{name}' must inherit from a column that is explicitly defined in "
-                f"the base class it references {self.base_class}"
-            )
-
-        resolved = _attr_to_counting_attr(inherited_from, self.to_overwrite)
-        resolved.metadata["defined_in"] = self.base_class
+        attr_to_inherit = getattr(attrs.fields(defined_in[0]), name)
+        resolved = _attr_to_counting_attr(attr_to_inherit, self.to_overwrite)
+        # List the sub-classes where the attribute is used/defined
+        resolved.metadata["defined_in"] = defined_in
+        resolved.metadata["overridden"] = deepcopy(self.to_overwrite)
         # Return the resolved attribute and its type annotation
         return resolved, resolved.metadata["datatype"]
 
@@ -897,7 +882,7 @@ def _attr_to_counting_attr(attr, to_overwrite):
 
 def _attr_name(cls, counting_attr):
     """Get the name of a counting attribute by reading the original class dict"""
-    if isinstance(counting_attr, (_InheritedFrom, _MappedFrom)):
+    if isinstance(counting_attr, (_Inherited, _MappedFrom)):
         assert counting_attr.resolved_to is not None
         return counting_attr.resolved_to
     try:
@@ -953,7 +938,7 @@ def _get_args_automagically(column_specs, parameters, method, index_start=2):
         else:
             raise ArcanaDesignError(
                 f"Unrecognised argument '{arg}'. If it is from a base class, "
-                "make sure that it is explicitly inherited using the `inherited_from` "
+                "make sure that it is explicitly inherited using the `Inherited` "
                 "function."
             )
     return tuple(inputs), tuple(used_parameters)

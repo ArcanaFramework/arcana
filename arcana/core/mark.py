@@ -1,6 +1,7 @@
 from copy import copy
+from types import MemberDescriptorType
 import attrs
-from .analysis import _UnresolvedOp, make_analysis_class, _InheritedFrom, _MappedFrom
+from .analysis import _UnresolvedOp, make_class, _Inherited, _MappedFrom
 from .enum import ColumnSalience, ParameterSalience, CheckSalience
 from arcana.exceptions import ArcanaDesignError
 from .utils import (
@@ -21,7 +22,7 @@ def analysis(space: type):
         The data space the analysis operates on, see"""
 
     def decorator(klass):
-        return make_analysis_class(klass, space)
+        return make_class(klass, space)
 
     return decorator
 
@@ -158,7 +159,7 @@ def converter(output_format):
     return decorator
 
 
-def inherited_from(base_class, **to_overwrite):
+def inherit(ref: MemberDescriptorType = None, **to_overwrite):
     """Used to explicitly inherit a column or attribute from a base class so it can be
     used in a sub class. This explicit inheritance is enforced when the column/parameter
     is referenced in the base class in order to make the code more readable (i.e. so
@@ -166,18 +167,20 @@ def inherited_from(base_class, **to_overwrite):
 
     Parameters
     ----------
-    base_class : type
-        the base class to inherit the column/parameter from. The name will be matched
-        to the name of the column/parameter in the base class
+    ref : MemberDescriptorType, optional
+        a reference to the field that is being inherited from. Note that it is not
+        actually used for anything, the field to be inherited is determined by scanning
+        the method-resolution order for matching names, but it can make the code more
+        readable by linking the inherited attribute with its initial definition.
     **to_overwrite:
         any attributes to override from the inherited column/parameter
     """
     if "row_frequency" in to_overwrite:
         raise ValueError("Cannot overwrite row_frequency when inheriting")
-    return _InheritedFrom(base_class, to_overwrite)
+    return _Inherited(to_overwrite)
 
 
-def mapped_from(subanalysis_name, column_name, **to_overwrite):
+def map_from(subanalysis_name, column_name, **to_overwrite):
     """Used to explicitly inherit a column or attribute from a base class so it can be
     used in a sub class. This explicit inheritance is enforced when the column/parameter
     is referenced in the base class in order to make the code more readable (i.e. so

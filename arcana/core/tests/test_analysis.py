@@ -1,5 +1,6 @@
 from pathlib import Path
 import tempfile
+import attrs
 import pytest
 import pydra
 from arcana.data.spaces.common import Samples
@@ -15,8 +16,8 @@ from arcana.core.mark import (
     pipeline,
     parameter,
     column,
-    inherited_from,
-    mapped_from,
+    inherit,
+    map_from,
     value_of,
     switch,
     is_provided,
@@ -117,7 +118,7 @@ def ExtendedConcat(Concat):
     class _ExtendedConcat(Concat):
 
         # Sources
-        concatenated = inherited_from(Concat)
+        concatenated = inherit()
         file3: Text = column("Another file to concatenate", salience=cs.primary)
 
         # Sinks
@@ -126,7 +127,7 @@ def ExtendedConcat(Concat):
         # Parameters
         # Change the default 'duplicates' value for first concat and inherit it into the
         # namespace so it can also be used for the second concatenation pipeline too
-        duplicates = inherited_from(Concat, default=2)
+        duplicates = inherit(default=2)
 
         @pipeline(doubly_concatenated)
         def doubly_concat_pipeline(
@@ -152,9 +153,9 @@ def ConcatWithCheck(Concat):
     @analysis(Samples)
     class _ConcatWithCheck(Concat):
 
-        concatenated = inherited_from(Concat)
+        concatenated = inherit()
 
-        duplicates = inherited_from(Concat)
+        duplicates = inherit()
 
         @check(concatenated, salience=chs.recommended)
         def num_lines_check(self, wf, concatenated: Text, duplicates: int):
@@ -189,11 +190,11 @@ def OverridenConcat(Concat):
     @analysis(Samples)
     class _OverridenConcat(Concat):
 
-        file1 = inherited_from(Concat)
-        file2 = inherited_from(Concat)
-        concatenated = inherited_from(Concat)
+        file1 = inherit()
+        file2 = inherit()
+        concatenated = inherit()
 
-        duplicates = inherited_from(Concat, default=2)
+        duplicates = inherit(default=2)
         order: str = parameter(
             "perform the concatenation in reverse order, i.e. file2 and then file1",
             choices=["forward", "reversed"],
@@ -224,9 +225,9 @@ def ConcatWithSwitch(Concat):
     @analysis(Samples)
     class _ConcatWithSwitch(Concat):
 
-        file1 = inherited_from(Concat)
-        file2 = inherited_from(Concat)
-        concatenated = inherited_from(Concat)
+        file1 = inherit()
+        file2 = inherit()
+        concatenated = inherit()
         multiplied: Text = column("contents of the concatenated files are multiplied")
 
         multiplier: int = parameter(
@@ -276,19 +277,17 @@ def ConcatWithSubanalyses(ExtendedConcat, ConcatWithSwitch):
         # Source columns mapped from "sub1" subanalysis so they can be shared across
         # both sub-analyses. Note that they could just as easily have been mapped from
         # "sub1" or recreated from scratch and mapped into both
-        file1 = mapped_from("sub1", "file1")
-        file2 = mapped_from("sub1", "file2")
+        file1 = map_from("sub1", "file1")
+        file2 = map_from("sub1", "file2")
 
         # Sink columns generated within the subanalyses mapped back out to the global
         # namespace so they can be mapped into the other subanalysis
-        concatenated = mapped_from("sub2", "concatenated")
-        concat_and_multiplied = mapped_from("sub2", "multiplied")
+        concatenated = map_from("sub2", "concatenated")
+        concat_and_multiplied = map_from("sub2", "multiplied")
 
         # Link the duplicates parameter across both subanalyses so it is always the same
         # by mapping a global parameter into both subanalyses
-        common_duplicates = mapped_from(
-            "sub1", "duplicates", default=5, salience=ps.check
-        )
+        common_duplicates = map_from("sub1", "duplicates", default=5, salience=ps.check)
 
         # Additional parameters such as "multiplier" can be accessed within the subanalysis
         # class after the analysis class has been initialised using the 'sub2.multiplier'
@@ -332,27 +331,27 @@ def test_analysis_basic(Concat, test_file1, test_file2):
     assert duplicates.type is int
     assert duplicates.default == 1
     assert duplicates.salience == ps.recommended
-    assert duplicates.defined_in is Concat
+    assert duplicates.defined_in == [Concat]
 
     file1 = analysis_spec.column_spec("file1")
     assert file1.type is Zip
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
-    assert file1.defined_in is Concat
+    assert file1.defined_in == [Concat]
     assert file1.mapped_from is None
 
     file2 = analysis_spec.column_spec("file2")
     assert file2.type is Text
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
-    assert file2.defined_in is Concat
+    assert file2.defined_in == [Concat]
     assert file2.mapped_from is None
 
     concatenated = analysis_spec.column_spec("concatenated")
     assert concatenated.type is Text
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
-    assert concatenated.defined_in is Concat
+    assert concatenated.defined_in == [Concat]
     assert concatenated.mapped_from is None
 
     concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
@@ -417,42 +416,42 @@ def test_analysis_extended(Concat, ExtendedConcat, test_file1, test_file2, test_
     assert duplicates.type is int
     assert duplicates.default == 2
     assert duplicates.salience == ps.recommended
-    assert duplicates.defined_in is Concat
+    assert duplicates.defined_in == [Concat]
     assert duplicates.modified == (("default", 2),)
 
     file1 = analysis_spec.column_spec("file1")
     assert file1.type is Zip
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
-    assert file1.defined_in is Concat
+    assert file1.defined_in == [Concat]
     assert file1.mapped_from is None
 
     file2 = analysis_spec.column_spec("file2")
     assert file2.type is Text
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
-    assert file2.defined_in is Concat
+    assert file2.defined_in == [Concat]
     assert file2.mapped_from is None
 
     file3 = analysis_spec.column_spec("file3")
     assert file3.type is Text
     assert file3.row_frequency == Samples.sample
     assert file3.salience == cs.primary
-    assert file3.defined_in is ExtendedConcat
+    assert file3.defined_in == [ExtendedConcat]
     assert file3.mapped_from is None
 
     concatenated = analysis_spec.column_spec("concatenated")
     assert concatenated.type is Text
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
-    assert concatenated.defined_in is Concat
+    assert concatenated.defined_in == [Concat]
     assert concatenated.mapped_from is None
 
     doubly_concatenated = analysis_spec.column_spec("doubly_concatenated")
     assert doubly_concatenated.type is Text
     assert doubly_concatenated.row_frequency == Samples.sample
     assert doubly_concatenated.salience == cs.supplementary
-    assert doubly_concatenated.defined_in is ExtendedConcat
+    assert doubly_concatenated.defined_in == [ExtendedConcat]
 
     concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
@@ -460,7 +459,7 @@ def test_analysis_extended(Concat, ExtendedConcat, test_file1, test_file2, test_
     assert concat_pipeline.inputs == ("file1", "file2")
     assert concat_pipeline.outputs == ("concatenated",)
     assert concat_pipeline.method is Concat.concat_pipeline
-    assert concat_pipeline.defined_in is Concat
+    assert concat_pipeline.defined_in == Concat
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
@@ -470,7 +469,7 @@ def test_analysis_extended(Concat, ExtendedConcat, test_file1, test_file2, test_
     assert doubly_concat_pipeline.inputs == ("concatenated", "file3")
     assert doubly_concat_pipeline.outputs == ("doubly_concatenated",)
     assert doubly_concat_pipeline.method is ExtendedConcat.doubly_concat_pipeline
-    assert doubly_concat_pipeline.defined_in is ExtendedConcat
+    assert doubly_concat_pipeline.defined_in == ExtendedConcat
     assert doubly_concat_pipeline.condition is None
     assert doubly_concat_pipeline.switch is None
 
@@ -535,27 +534,27 @@ def test_analysis_with_check(Concat, ConcatWithCheck, test_file1, test_file2):
     assert duplicates.type is int
     assert duplicates.default == 1
     assert duplicates.salience == ps.recommended
-    assert duplicates.defined_in is Concat
+    assert duplicates.defined_in == [Concat]
 
     file1 = analysis_spec.column_spec("file1")
     assert file1.type is Zip
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
-    assert file1.defined_in is Concat
+    assert file1.defined_in == [Concat]
     assert file1.mapped_from is None
 
     file2 = analysis_spec.column_spec("file2")
     assert file2.type is Text
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
-    assert file2.defined_in is Concat
+    assert file2.defined_in == [Concat]
     assert file2.mapped_from is None
 
     concatenated = analysis_spec.column_spec("concatenated")
     assert concatenated.type is Text
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
-    assert concatenated.defined_in is Concat
+    assert concatenated.defined_in == [Concat]
     assert concatenated.mapped_from is None
 
     concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
@@ -566,7 +565,7 @@ def test_analysis_with_check(Concat, ConcatWithCheck, test_file1, test_file2):
     assert concat_pipeline.method is Concat.concat_pipeline
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
-    assert concat_pipeline.defined_in is Concat
+    assert concat_pipeline.defined_in == Concat
 
     num_lines_check = analysis_spec.check("num_lines_check")
     assert num_lines_check.name == "num_lines_check"
@@ -575,7 +574,7 @@ def test_analysis_with_check(Concat, ConcatWithCheck, test_file1, test_file2):
     assert num_lines_check.parameters == ("duplicates",)
     assert num_lines_check.method == ConcatWithCheck.num_lines_check
     assert num_lines_check.column == "concatenated"
-    assert num_lines_check.defined_in is ConcatWithCheck
+    assert num_lines_check.defined_in == ConcatWithCheck
 
     # Initialise class
     analysis = ConcatWithCheck(file1="a_column", file2="another_column", duplicates=7)
@@ -628,34 +627,34 @@ def test_analysis_override(Concat, OverridenConcat, test_file1, test_file2):
     assert file1.type is Zip
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
-    assert file1.defined_in is Concat
+    assert file1.defined_in == [Concat]
     assert file1.mapped_from is None
 
     file2 = analysis_spec.column_spec("file2")
     assert file2.type is Text
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
-    assert file2.defined_in is Concat
+    assert file2.defined_in == [Concat]
     assert file2.mapped_from is None
 
     concatenated = analysis_spec.column_spec("concatenated")
     assert concatenated.type is Text
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
-    assert concatenated.defined_in is Concat
+    assert concatenated.defined_in == [Concat]
     assert concatenated.mapped_from is None
 
     duplicates = analysis_spec.parameter("duplicates")
     assert duplicates.type is int
     assert duplicates.default == 2
     assert duplicates.salience == ps.recommended
-    assert duplicates.defined_in is Concat
+    assert duplicates.defined_in == [Concat]
 
     order = analysis_spec.parameter("order")
     assert order.type is str
     assert order.default == "forward"
     assert order.salience == ps.recommended
-    assert order.defined_in is OverridenConcat
+    assert order.defined_in == [OverridenConcat]
 
     concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
@@ -663,7 +662,7 @@ def test_analysis_override(Concat, OverridenConcat, test_file1, test_file2):
     assert concat_pipeline.inputs == ("file1", "file2")
     assert concat_pipeline.outputs == ("concatenated",)
     assert concat_pipeline.method is Concat.concat_pipeline
-    assert concat_pipeline.defined_in is Concat
+    assert concat_pipeline.defined_in == Concat
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
@@ -673,7 +672,7 @@ def test_analysis_override(Concat, OverridenConcat, test_file1, test_file2):
     assert reverse_concat_pipeline.inputs == ("file1", "file2")
     assert reverse_concat_pipeline.outputs == ("concatenated",)
     assert reverse_concat_pipeline.method is OverridenConcat.reverse_concat_pipeline
-    assert reverse_concat_pipeline.defined_in is OverridenConcat
+    assert reverse_concat_pipeline.defined_in == OverridenConcat
     assert isinstance(reverse_concat_pipeline.condition, Operation)
     assert reverse_concat_pipeline.switch is None
 
@@ -731,41 +730,41 @@ def test_analysis_switch(
     assert file1.type is Zip
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
-    assert file1.defined_in is Concat
+    assert file1.defined_in == [Concat]
     assert file1.mapped_from is None
 
     file2 = analysis_spec.column_spec("file2")
     assert file2.type is Text
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
-    assert file2.defined_in is Concat
+    assert file2.defined_in == [Concat]
     assert file2.mapped_from is None
 
     concatenated = analysis_spec.column_spec("concatenated")
     assert concatenated.type is Text
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
-    assert concatenated.defined_in is Concat
+    assert concatenated.defined_in == [Concat]
     assert concatenated.mapped_from is None
 
     multiplied = analysis_spec.column_spec("multiplied")
     assert multiplied.type is Text
     assert multiplied.row_frequency == Samples.sample
     assert multiplied.salience == cs.supplementary
-    assert multiplied.defined_in is ConcatWithSwitch
+    assert multiplied.defined_in == [ConcatWithSwitch]
     assert multiplied.mapped_from is None
 
     duplicates = analysis_spec.parameter("duplicates")
     assert duplicates.type is int
     assert duplicates.default == 1
     assert duplicates.salience == ps.recommended
-    assert duplicates.defined_in is Concat
+    assert duplicates.defined_in == [Concat]
 
     multiplier = analysis_spec.parameter("multiplier")
     assert multiplier.type is int
     assert multiplier.default is None
     assert multiplier.salience == ps.required
-    assert multiplier.defined_in is ConcatWithSwitch
+    assert multiplier.defined_in == [ConcatWithSwitch]
 
     concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
@@ -773,7 +772,7 @@ def test_analysis_switch(
     assert concat_pipeline.inputs == ("file1", "file2")
     assert concat_pipeline.outputs == ("concatenated",)
     assert concat_pipeline.method is Concat.concat_pipeline
-    assert concat_pipeline.defined_in is Concat
+    assert concat_pipeline.defined_in == Concat
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
@@ -783,7 +782,7 @@ def test_analysis_switch(
     assert multiply_pipeline.inputs == ("concatenated",)
     assert multiply_pipeline.outputs == ("multiplied",)
     assert multiply_pipeline.method is ConcatWithSwitch.multiply_pipeline
-    assert multiply_pipeline.defined_in is ConcatWithSwitch
+    assert multiply_pipeline.defined_in == ConcatWithSwitch
     assert multiply_pipeline.condition is None
     assert multiply_pipeline.switch == "inputs_are_numeric"
 
@@ -792,7 +791,7 @@ def test_analysis_switch(
     assert inputs_are_numeric.parameters == ()
     assert inputs_are_numeric.inputs == ("file1", "file2")
     assert inputs_are_numeric.method is ConcatWithSwitch.inputs_are_numeric
-    assert inputs_are_numeric.defined_in is ConcatWithSwitch
+    assert inputs_are_numeric.defined_in == ConcatWithSwitch
 
     # Initialise class
     analysis = ConcatWithSwitch(
@@ -856,27 +855,27 @@ def test_analysis_with_subanalyses(
     assert common_duplicates.default == 5
     assert common_duplicates.salience == ps.check
     # Not sure why this is failing, not super critical at this point
-    # assert common_duplicates.defined_in is ConcatWithSubanalyses
+    # assert common_duplicates.defined_in == [ConcatWithSubanalyses]
 
     file1 = analysis_spec.column_spec("file1")
     assert file1.type is Zip
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
-    # assert file1.defined_in is Concat
+    # assert file1.defined_in == [Concat]
     assert file1.mapped_from == ("sub1", "file1")
 
     file2 = analysis_spec.column_spec("file2")
     assert file2.type is Text
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
-    # assert file2.defined_in is Concat
+    # assert file2.defined_in == [Concat]
     assert file2.mapped_from == ("sub1", "file2")
 
     concat_and_multiplied = analysis_spec.column_spec("concat_and_multiplied")
     assert concat_and_multiplied.type is Text
     assert concat_and_multiplied.row_frequency == Samples.sample
     assert concat_and_multiplied.salience == cs.supplementary
-    # assert concat_and_multiplied.defined_in is ConcatWithSwitch
+    # assert concat_and_multiplied.defined_in == [ConcatWithSwitch]
     assert concat_and_multiplied.mapped_from == ("sub2", "multiplied")
 
     sub1 = analysis_spec.subanalysis("sub1")
@@ -889,7 +888,7 @@ def test_analysis_with_subanalyses(
         ("file2", "file2"),
         ("file3", "concat_and_multiplied"),
     )
-    assert sub1.defined_in is ConcatWithSubanalyses
+    assert sub1.defined_in == [ConcatWithSubanalyses]
 
     sub2 = analysis_spec.subanalysis("sub2")
     assert sub2.name == "sub2"
@@ -901,7 +900,7 @@ def test_analysis_with_subanalyses(
         ("file2", "file2"),
         ("multiplied", "concat_and_multiplied"),
     )
-    assert sub2.defined_in is ConcatWithSubanalyses
+    assert sub2.defined_in == [ConcatWithSubanalyses]
 
     # Initialise class
     analysis = ConcatWithSubanalyses(
@@ -990,7 +989,7 @@ def test_change_of_type_errors():
 
         @analysis(Samples)
         class B(A):
-            x: Zip = inherited_from(A)
+            x: Zip = inherit()
 
     assert "Cannot change format" in e.value.msg
 
@@ -1087,7 +1086,7 @@ def test_automagic_arg_errors():
     assert "Unrecognised argument 'x'" in e.value.msg
 
 
-def test_inherited_from_errors():
+def test_inherit_errors():
     @analysis(Samples)
     class A:
         x: Text = column("a reserved attribute", salience=cs.primary)
@@ -1102,29 +1101,41 @@ def test_inherited_from_errors():
 
         @analysis(Samples)
         class B(A):
-            z: Text = inherited_from(A)
+            z: Text = inherit()
 
-    assert "object has no attribute 'z'" in str(e.value)
+    assert "have no attribute named 'z' to inherit" in str(e.value)
 
+    # @analysis(Samples)
+    # class C(A):
+    #     pass
+
+    # with pytest.raises(ArcanaDesignError) as e:
+
+    #     @analysis(Samples)
+    #     class D(C):
+    #         x: Text = inherit()
+
+    # assert (
+    #     "'x' must inherit from a column that is explicitly defined in the base class it references"
+    #     in e.value.msg
+    # )
+
+
+def test_defined_in():
     @analysis(Samples)
-    class C(A):
-        pass
+    class A:
+        x: Text = column("a reserved attribute", salience=cs.primary)
+        y: Text = column("another column")
 
-    with pytest.raises(ArcanaDesignError) as e:
-
-        @analysis(Samples)
-        class D(C):
-            x: Text = inherited_from(C)
-
-    assert (
-        "'x' must inherit from a column that is explicitly defined in the base class it references"
-        in e.value.msg
-    )
+        @pipeline(y)
+        def a_pipeline(self, wf, x: Text):
+            wf.add(identity_file(name="identity", in_file=x))
+            return wf.identity.lzout.out_file
 
     @analysis(Samples)
     class E(A):
 
-        y: Text = inherited_from(A, salience=cs.publication)
+        y: Text = inherit(salience=cs.publication)
         z: Text = column("yet another column", salience=cs.primary)
 
         @pipeline(z)
@@ -1134,22 +1145,17 @@ def test_inherited_from_errors():
 
             return wf.identity.lzout.out_file
 
-    with pytest.raises(ArcanaDesignError) as e:
+    @analysis(Samples)
+    class F(E):
 
-        @analysis(Samples)
-        class F(E):
+        x: Text = inherit(ref=A.x)
+        z: Text = inherit(ref=E.z)
 
-            y: Text = inherited_from(A)
-            z: Text = inherited_from(E)
+        @pipeline(z)
+        def another_pipeline(self, wf, x: Text) -> Text:
 
-            @pipeline(z)
-            def another_pipeline(self, wf, y: Text) -> Text:
+            wf.add(identity_file(name="identity", in_file=x))
 
-                wf.add(identity_file(name="identity", in_file=y))
+            return wf.identity.lzout.out_file
 
-                return wf.identity.lzout.out_file
-
-    assert (
-        "Must inherited from the first class in the method-resolution order"
-        in e.value.msg
-    )
+    assert attrs.fields(F).x.metadata["defined_in"] == [A]
