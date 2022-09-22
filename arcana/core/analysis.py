@@ -48,7 +48,7 @@ def make_class(klass: type, space: type) -> type:
 
     # Set name and datatype of attributes and Resolve 'Inherited' and 'mapped_from'
     # attributes and create list of columns, parameters and subanalyses
-    for name, attr in klass.__dict__.items():
+    for name, attr in list(klass.__dict__.items()):
         if name in RESERVED_NAMES:
             raise ArcanaDesignError(
                 f"Cannot use reserved name '{name}' for attribute in "
