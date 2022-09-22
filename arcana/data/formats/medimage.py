@@ -10,8 +10,6 @@ import numpy as np
 import nibabel
 from pydra import Workflow, mark
 from pydra.tasks.dcm2niix import Dcm2Niix
-
-# Hack to get module to load until pydra-mrtrix is published on PyPI
 from pydra.tasks.mrtrix3.utils import MRConvert
 from arcana.core.mark import converter
 from arcana.exceptions import ArcanaUsageError
