@@ -424,7 +424,7 @@ BIDS_APP_INPUTS = [
         ty.List[str],
         {
             "help_string": "The IDs to include in the analysis",
-            "argstr": "--participant_label ",
+            "argstr": "--participant-label ",
             "position": 4,
         },
     ),
