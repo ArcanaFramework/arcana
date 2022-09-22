@@ -530,7 +530,7 @@ def test_pull_images(
         [
             str(spec_dir),
             DOCKER_ORG,
-            "--build_dir",
+            "--build-dir",
             str(build_dir),
             "--registry",
             docker_registry_for_xnat_uri,
