@@ -43,7 +43,6 @@ def test_dicom_to_nifti_select_suffix(dummy_mixedfmap_dicom):
     assert list(nifti_gz_x_real.get_dims()) == [256, 256, 60]
 
 
-@pytest.mark.skip("Mrtrix isn't installed in test environment yet")
 def test_dicom_to_nifti_with_extract_volume(dummy_dwi_dicom):
 
     nifti_gz_x_e1 = dummy_dwi_dicom.convert_to(NiftiGzX, extract_volume=30)
@@ -73,7 +72,7 @@ def test_dicom_to_niftix_with_fslgrad(dummy_dwi_dicom):
     with open(nifti_gz_x_fsgrad.side_car("bvec")) as f:
         bvec_lines = f.read().split("\n")
 
-    bvecs = zip(*([float(v) for v in l.split()] for l in bvec_lines if l))
+    bvecs = zip(*([float(v) for v in ln.split()] for ln in bvec_lines if ln))
     bvec_mags = [(v[0] ** 2 + v[1] ** 2 + v[2] ** 2) for v in bvecs if any(v)]
 
     assert all(b in (0.0, 3000.0) for b in bvals)
