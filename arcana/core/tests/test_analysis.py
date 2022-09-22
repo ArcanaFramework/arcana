@@ -26,6 +26,7 @@ from arcana.core.mark import (
 )
 from arcana.core.analysis import Operation, ARCANA_SPEC
 from arcana.data.formats.common import Zip, Text
+from arcana.data.stores.common import FileSystem
 from arcana.core.enum import (
     CheckStatus,
     ColumnSalience as cs,
@@ -40,49 +41,86 @@ def get_contents(fpath):
         return f.read().splitlines()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def source_dir():
     return Path(tempfile.mkdtemp())
 
 
-@pytest.fixture(scope="session")
-def test_file1(source_dir):
-    fpath = source_dir / "file1.txt"
+@pytest.fixture
+def sample_dir1(source_dir):
+    smp_dir = source_dir / "sample1"
+    smp_dir.mkdir()
+    return smp_dir
+
+
+@pytest.fixture
+def sample_dir2(source_dir):
+    smp_dir = source_dir / "sample2"
+    smp_dir.mkdir()
+    return smp_dir
+
+
+@pytest.fixture
+def test_file1(sample_dir1):
+    fpath = sample_dir1 / "file1.txt"
     with open(fpath, "w") as f:
         f.write("file1")
     return fpath
 
 
-@pytest.fixture(scope="session")
-def test_file2(source_dir):
-    fpath = source_dir / "file2.txt"
+@pytest.fixture
+def test_file2(sample_dir1):
+    fpath = sample_dir1 / "file2.txt"
     with open(fpath, "w") as f:
         f.write("file2")
     return fpath
 
 
-@pytest.fixture(scope="session")
-def test_file3(source_dir):
-    fpath = source_dir / "file3.txt"
+@pytest.fixture
+def test_file3(sample_dir1):
+    fpath = sample_dir1 / "file3.txt"
     with open(fpath, "w") as f:
         f.write("file3")
     return fpath
 
 
-@pytest.fixture(scope="session")
-def test_numeric_file1(source_dir):
-    file1_path = source_dir / "file1.txt"
+@pytest.fixture
+def test_numeric_file1(sample_dir2):
+    file1_path = sample_dir2 / "numeric_file1.txt"
     with open(file1_path, "w") as f:
         f.write("1")
     return file1_path
 
 
-@pytest.fixture(scope="session")
-def test_numeric_file2(source_dir):
-    file2_path = source_dir / "file2.txt"
+@pytest.fixture
+def test_numeric_file2(sample_dir2):
+    file2_path = sample_dir2 / "file2.txt"
     with open(file2_path, "w") as f:
         f.write("2")
     return file2_path
+
+
+@pytest.fixture
+def test_dataset(source_dir, test_file1, test_file2, test_file3):
+    dataset = FileSystem().new_dataset(
+        source_dir, space=Samples, hierarchy=[Samples.sample]
+    )
+    dataset.add_source("a_column", Text, "file1")
+    dataset.add_source("another_column", Text, "file2")
+    dataset.add_source("yet_another_column", Text, "file3")
+    return dataset
+
+
+@pytest.fixture
+def test_partial_numeric_dataset(
+    source_dir, test_file1, test_file2, test_numeric_file1, test_numeric_file2
+):
+    dataset = FileSystem().new_dataset(
+        source_dir, space=Samples, hierarchy=[Samples.sample]
+    )
+    dataset.add_source("a_column", Text, "file1")
+    dataset.add_source("another_column", Text, "file2")
+    return dataset
 
 
 @pytest.fixture(scope="session")
@@ -310,7 +348,7 @@ def ConcatWithSubanalyses(ExtendedConcat, ConcatWithSwitch):
     return _ConcatWithSubanalyses
 
 
-def test_analysis_basic(Concat, test_file1, test_file2):
+def test_analysis_basic(Concat, test_file1, test_file2, test_dataset):
 
     analysis_spec = Concat.__spec__
 
@@ -364,9 +402,11 @@ def test_analysis_basic(Concat, test_file1, test_file2):
     assert concat_pipeline.switch is None
 
     # Initialise class
-    analysis = Concat(file1="a_column", file2="another_column", duplicates=3)
-    assert analysis.file1 == "a_column"
-    assert analysis.file2 == "another_column"
+    analysis = Concat(
+        dataset=test_dataset, file1="a_column", file2="another_column", duplicates=3
+    )
+    assert analysis.file1 == test_dataset["a_column"]
+    assert analysis.file2 == test_dataset["another_column"]
     assert analysis.concatenated is None
     assert analysis.duplicates == 3
     wf = pydra.Workflow(
@@ -390,7 +430,9 @@ def test_analysis_basic(Concat, test_file1, test_file2):
     ]
 
 
-def test_analysis_extended(Concat, ExtendedConcat, test_file1, test_file2, test_file3):
+def test_analysis_extended(
+    Concat, ExtendedConcat, test_file1, test_file2, test_file3, test_dataset
+):
 
     analysis_spec = ExtendedConcat.__spec__
 
@@ -475,14 +517,15 @@ def test_analysis_extended(Concat, ExtendedConcat, test_file1, test_file2, test_
 
     # Initialise class
     analysis = ExtendedConcat(
+        dataset=test_dataset,
         file1="a_column",
         file2="another_column",
         file3="yet_another_column",
         duplicates=1,
     )
-    assert analysis.file1 == "a_column"
-    assert analysis.file2 == "another_column"
-    assert analysis.file3 == "yet_another_column"
+    assert analysis.file1 == test_dataset["a_column"]
+    assert analysis.file2 == test_dataset["another_column"]
+    assert analysis.file3 == test_dataset["yet_another_column"]
     assert analysis.concatenated is None
     assert analysis.doubly_concatenated is None
     assert analysis.duplicates == 1
@@ -511,7 +554,9 @@ def test_analysis_extended(Concat, ExtendedConcat, test_file1, test_file2, test_
     ]
 
 
-def test_analysis_with_check(Concat, ConcatWithCheck, test_file1, test_file2):
+def test_analysis_with_check(
+    Concat, ConcatWithCheck, test_file1, test_file2, test_dataset
+):
 
     analysis_spec = ConcatWithCheck.__spec__
 
@@ -577,9 +622,11 @@ def test_analysis_with_check(Concat, ConcatWithCheck, test_file1, test_file2):
     assert num_lines_check.defined_in == (ConcatWithCheck,)
 
     # Initialise class
-    analysis = ConcatWithCheck(file1="a_column", file2="another_column", duplicates=7)
-    assert analysis.file1 == "a_column"
-    assert analysis.file2 == "another_column"
+    analysis = ConcatWithCheck(
+        dataset=test_dataset, file1="a_column", file2="another_column", duplicates=7
+    )
+    assert analysis.file1 == test_dataset["a_column"]
+    assert analysis.file2 == test_dataset["another_column"]
     assert analysis.concatenated is None
     assert analysis.duplicates == 7
     wf = pydra.Workflow(
@@ -599,7 +646,9 @@ def test_analysis_with_check(Concat, ConcatWithCheck, test_file1, test_file2):
     assert result.output.num_lines_check == CheckStatus.probable_pass
 
 
-def test_analysis_override(Concat, OverridenConcat, test_file1, test_file2):
+def test_analysis_override(
+    Concat, OverridenConcat, test_file1, test_file2, test_dataset
+):
     """Tests overriding methods in the base class with optional switches based on
     parameters and properties of the inputs"""
 
@@ -678,10 +727,14 @@ def test_analysis_override(Concat, OverridenConcat, test_file1, test_file2):
 
     # Initialise class
     analysis = OverridenConcat(
-        file1="a_column", file2="another_column", duplicates=1, order="reversed"
+        dataset=test_dataset,
+        file1="a_column",
+        file2="another_column",
+        duplicates=1,
+        order="reversed",
     )
-    assert analysis.file1 == "a_column"
-    assert analysis.file2 == "another_column"
+    assert analysis.file1 == test_dataset["a_column"]
+    assert analysis.file2 == test_dataset["another_column"]
     assert analysis.concatenated is None
     assert analysis.duplicates == 1
     assert analysis.order == "reversed"
@@ -700,7 +753,11 @@ def test_analysis_override(Concat, OverridenConcat, test_file1, test_file2):
 
 
 def test_analysis_switch(
-    Concat, ConcatWithSwitch, test_numeric_file1, test_numeric_file2
+    Concat,
+    ConcatWithSwitch,
+    test_numeric_file1,
+    test_numeric_file2,
+    test_partial_numeric_dataset,
 ):
     """Tests overriding methods in the base class with optional switches based on
     parameters and properties of the inputs"""
@@ -795,10 +852,14 @@ def test_analysis_switch(
 
     # Initialise class
     analysis = ConcatWithSwitch(
-        file1="a_column", file2="another_column", duplicates=1, multiplier=10
+        dataset=test_partial_numeric_dataset,
+        file1="a_column",
+        file2="another_column",
+        duplicates=1,
+        multiplier=10,
     )
-    assert analysis.file1 == "a_column"
-    assert analysis.file2 == "another_column"
+    assert analysis.file1 == test_partial_numeric_dataset["a_column"]
+    assert analysis.file2 == test_partial_numeric_dataset["another_column"]
     assert analysis.concatenated is None
     assert analysis.duplicates == 1
     assert analysis.multiplier == 10
@@ -832,6 +893,7 @@ def test_analysis_with_subanalyses(
     ConcatWithSwitch,
     test_numeric_file1,
     test_numeric_file2,
+    test_partial_numeric_dataset,
 ):
 
     analysis_spec = ConcatWithSubanalyses.__spec__
@@ -904,19 +966,22 @@ def test_analysis_with_subanalyses(
 
     # Initialise class
     analysis = ConcatWithSubanalyses(
-        file1="a_column", file2="another_column", common_duplicates=1
+        dataset=test_partial_numeric_dataset,
+        file1="a_column",
+        file2="another_column",
+        common_duplicates=1,
     )
     analysis.sub2.multiplier = 100
-    assert analysis.file1 == "a_column"
-    assert analysis.file2 == "another_column"
+    assert analysis.file1 == test_partial_numeric_dataset["a_column"]
+    assert analysis.file2 == test_partial_numeric_dataset["another_column"]
     assert analysis.common_duplicates == 1
-    assert analysis.sub1.file1 == "a_column"
-    assert analysis.sub1.file2 == "another_column"
+    assert analysis.sub1.file1 == test_partial_numeric_dataset["a_column"]
+    assert analysis.sub1.file2 == test_partial_numeric_dataset["another_column"]
     assert analysis.sub2.duplicates == 1
     assert analysis.sub1.concatenated is None
     assert analysis.sub1.doubly_concatenated is None
-    assert analysis.sub2.file1 == "a_column"
-    assert analysis.sub2.file2 == "another_column"
+    assert analysis.sub2.file1 == test_partial_numeric_dataset["a_column"]
+    assert analysis.sub2.file2 == test_partial_numeric_dataset["another_column"]
     assert analysis.sub2.duplicates == 1
     assert analysis.sub2.multiplier == 100
     assert analysis.sub2.concatenated is None

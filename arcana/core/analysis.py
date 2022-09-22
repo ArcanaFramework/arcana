@@ -78,13 +78,15 @@ def make_class(klass: type, space: type) -> type:
                 raise ArcanaDesignError(
                     f"Type annotation must be provided for '{name}' {type(attr).__name__}"
                 )
-            # Replace temporary attribute with Attrs attribute (as created by attrs.field)
-            # and set type annotation
-            attr.name = name
-            attr.type = dtype
+            # Set the name and type of the attributes from the class dict and annotaitons
+            # respectively. Need to use object setattr to avoid frozen status
+            object.__setattr__(attr, "name", name)
+            object.__setattr__(attr, "type", dtype)
             if isinstance(attr, ColumnSpec):
                 if attr.row_frequency is None:
-                    attr.row_frequency = max(space)  # "Leaf" frequency of the data tree
+                    object.__setattr__(
+                        attr, "row_frequency", max(space)
+                    )  # "Leaf" frequency of the data tree
                 column_specs.append(attr)
             elif isinstance(attr, Parameter):
                 parameters.append(attr)
@@ -103,7 +105,7 @@ def make_class(klass: type, space: type) -> type:
                 resolved_mappings.append(
                     (col_or_param.mapped_from[1], col_or_param.name)
                 )
-        spec.mappings = tuple(sorted(resolved_mappings))
+        object.__setattr__(spec, "mappings", tuple(sorted(resolved_mappings)))
 
     # Attributes that need to be converted into attrs.fields before the class
     # is attrisfied
@@ -222,7 +224,7 @@ def make_class(klass: type, space: type) -> type:
                 except StopIteration:
                     continue
                 # Copy across defined attribute
-                method.defined_in = base_method.defined_in
+                object.__setattr__(method, "defined_in", base_method.defined_in)
                 # Check pipeline builders to see that they don't remove outputs
                 if isinstance(method, PipelineBuilder):
                     if missing_outputs := [
@@ -255,7 +257,7 @@ def make_class(klass: type, space: type) -> type:
     # Ensure that the class has it's own annotaitons dict so we can modify it without
     # messing up other classes
     klass.__annotations__ = copy(klass.__annotations__)
-    klass._dataset = attrs.field(default=None)
+    klass._dataset = attrs.field(default=None, validator=_dataset_validator)
     klass.__annotations__["_dataset"] = Dataset
 
     # Set built-in methods
@@ -276,7 +278,7 @@ def make_class(klass: type, space: type) -> type:
         # Register the attribute/method as being defined in this class if it has
         # been either added or created
         if isinstance(attr, BaseMethod) or len(attr.modified) == len(attr.defined_in):
-            attr.defined_in += (attrs_klass,)
+            object.__setattr__(attr, "defined_in", attr.defined_in + (attrs_klass,))
 
     return attrs_klass
 
@@ -298,7 +300,7 @@ class BaseAttr:
     )
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class ColumnSpec(BaseAttr):
     """Specifies a column that the analysis can add when it is applied to a dataset"""
 
@@ -350,7 +352,7 @@ class ColumnSpec(BaseAttr):
         )
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class Parameter(BaseAttr):
     """Specifies a free parameter of an analysis"""
 
@@ -390,7 +392,7 @@ class Parameter(BaseAttr):
         )
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class SubanalysisSpec(BaseAttr):
     """Specifies a "sub-analysis" component, when composing an analysis of several
     predefined analyses"""
@@ -445,7 +447,7 @@ class Operation:
         return val
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class BaseMethod:
 
     name: str
@@ -456,7 +458,7 @@ class BaseMethod:
     defined_in: ty.Tuple[type]
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class Switch(BaseMethod):
     """Specifies a "switch" point at which the processing can bifurcate to handle two
     separate types of input streams"""
@@ -464,7 +466,7 @@ class Switch(BaseMethod):
     pass
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class PipelineBuilder(BaseMethod):
     """Specifies a method that is used to add nodes in the construction of a pipeline
     that is able to generate data for sink columns under certain conditions"""
@@ -474,7 +476,7 @@ class PipelineBuilder(BaseMethod):
     switch: ty.Union[Switch, None] = None
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class Check(BaseMethod):
     """Specifies a quality-control check that can be run on generated derivatives to
     assess the probability that they have failed"""
@@ -719,14 +721,16 @@ class _Inherited:
             raise AttributeError(
                 f"Supers of {klass} have no attribute named '{name}' to inherit"
             )
-        attr_to_inherit = getattr(attrs.fields(defining_class), name)
-        resolved = attrs.evolve(
-            attr_to_inherit.metadata[ARCANA_SPEC], **self.to_overwrite
-        )
-        # List the sub-classes where the attribute is used/defined
-        resolved.inherited = True
+        attr_to_inherit = getattr(attrs.fields(defining_class), name).metadata[
+            ARCANA_SPEC
+        ]
+        kwargs = copy(self.to_overwrite)
         if self.to_overwrite:
-            resolved.modified += (tuple(self.to_overwrite.items()),)
+            kwargs["modified"] = attr_to_inherit.modified + (
+                tuple(self.to_overwrite.items()),
+            )
+        kwargs["inherited"] = True
+        resolved = attrs.evolve(attr_to_inherit, **kwargs)
         # Return the resolved attribute and its type annotation
         return resolved, resolved.type
 
@@ -763,9 +767,10 @@ class _MappedFrom:
                 f"'{self.subanalysis_name}' ({analysis_class}): "
                 + str([a.name for a in analysis_class.__attrs_attrs__])
             )
-        resolved = attrs.evolve(attr_spec, **self.to_overwrite)
-        resolved.mapped_from = (self.subanalysis_name, self.attr_name)
-        resolved.modified += tuple(self.to_overwrite.items())
+        kwargs = copy(self.to_overwrite)
+        kwargs["mapped_from"] = (self.subanalysis_name, self.attr_name)
+        kwargs["modified"] = attr_spec.modified + (tuple(self.to_overwrite.items()),)
+        resolved = attrs.evolve(attr_spec, **kwargs)
         return resolved, attr_spec.type
 
 
@@ -912,9 +917,32 @@ def _parameter_validator(_, attr, val):
         )
 
 
+def _dataset_validator(self, _, val):
+    if not val:
+        raise ValueError(f"A dataset must be provided when initialising {self} ")
+
+
+# def _column_validator(self, attr, val):
+#     if val not in self._dataset.columns():
+#         raise ValueError(
+#             f"Unrecognised column name '{val}' provided as mapping for {attr.name} "
+#             "column spec")
+
+
 def _analysis_post_init(self):
-    """Set up subanalysis classes in after the attrs init"""
-    for spec in self.__spec__.subanalysis_specs():
+    """Set up links to dataset columns and initialise subanalysis classes in after the
+    attrs init"""
+    for spec in self.__spec__.column_specs:
+        column = getattr(self, spec.name)
+        if isinstance(column, str):
+            column = self._dataset[column]
+            setattr(self, spec.name, column)
+        elif column not in (None, attrs.NOTHING) and not isinstance(column, DataColumn):
+            raise ValueError(
+                f"Value passed to '{spec.name}' ({column}) should either be a "
+                "data column or the name of a column"
+            )
+    for spec in self.__spec__.subanalysis_specs:
         subanalysis = getattr(self, spec.name)
         if isinstance(subanalysis, dict):
             kwargs = {m[0]: attrs.NOTHING for m in spec.mappings}
@@ -926,11 +954,14 @@ def _analysis_post_init(self):
                 )
             kwargs.update(subanalysis)
             subanalysis = Subanalysis(
-                spec=spec, analysis=spec.type(**kwargs), parent=self
+                spec=spec,
+                analysis=spec.type(dataset=self._dataset, **kwargs),
+                parent=self,
             )
             setattr(self, spec.name, subanalysis)
         elif not isinstance(subanalysis, Subanalysis):
             raise ValueError(
                 f"Value passed to '{spec.name}' ({subanalysis}) should either be a "
-                "subanalysis or a dict"
+                "subanalysis or a dict containing keyword args to initialise a "
+                "subanalysis"
             )
