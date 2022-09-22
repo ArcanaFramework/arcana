@@ -4,9 +4,9 @@ from .analysis import (
     make_class,
     _Inherited,
     _MappedFrom,
-    _TempColumnAttr,
-    _TempParameterAttr,
-    _TempSubanalysisAttr,
+    ColumnSpec,
+    Parameter,
+    SubanalysisSpec,
 )
 from .enum import ColumnSalience, ParameterSalience, CheckSalience
 from .utils import (
@@ -32,10 +32,16 @@ def analysis(space: type):
 
 
 def column(
-    desc, row_frequency=None, salience=ColumnSalience.supplementary, metadata=None
+    desc,
+    row_frequency=None,
+    salience=ColumnSalience.supplementary,
+    metadata=None,
 ):
-    return _TempColumnAttr(
-        desc=desc, row_frequency=row_frequency, salience=salience, metadata=metadata
+    return ColumnSpec(
+        desc=desc,
+        row_frequency=row_frequency,
+        salience=salience,
+        metadata=metadata,
     )
 
 
@@ -48,7 +54,7 @@ def parameter(
     salience=ParameterSalience.recommended,
     metadata=None,
 ):
-    return _TempParameterAttr(
+    return Parameter(
         desc=desc,
         default=default,
         choices=choices,
@@ -59,8 +65,10 @@ def parameter(
     )
 
 
-def subanalysis(desc, **mappings):
-    return _TempSubanalysisAttr(desc=desc, mappings=tuple(mappings.items()))
+def subanalysis(desc, metadata=None, **mappings):
+    return SubanalysisSpec(
+        desc=desc, mappings=tuple(mappings.items()), metadata=metadata
+    )
 
 
 def pipeline(*outputs, condition=None, switch=None):

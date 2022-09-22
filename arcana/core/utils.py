@@ -37,7 +37,7 @@ CONVERTER_ANNOTATIONS = "__arcana_converter__"
 SWICTH_ANNOTATIONS = "__arcana_switch__"
 CHECK_ANNOTATIONS = "__arcana_check__"
 
-ATTR_TYPE = "__arcana_type__"
+ARCANA_SPEC = "__arcana_type__"
 
 
 PATH_SUFFIX = "_path"
