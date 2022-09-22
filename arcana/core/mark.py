@@ -1,11 +1,15 @@
-from copy import copy
 from types import MemberDescriptorType
-import attrs
-from .analysis import _UnresolvedOp, make_class, _Inherited, _MappedFrom
+from .analysis import (
+    _UnresolvedOp,
+    make_class,
+    _Inherited,
+    _MappedFrom,
+    _TempColumnAttr,
+    _TempParameterAttr,
+    _TempSubanalysisAttr,
+)
 from .enum import ColumnSalience, ParameterSalience, CheckSalience
-from arcana.exceptions import ArcanaDesignError
 from .utils import (
-    ATTR_TYPE,
     SWICTH_ANNOTATIONS,
     CHECK_ANNOTATIONS,
     CONVERTER_ANNOTATIONS,
@@ -30,21 +34,8 @@ def analysis(space: type):
 def column(
     desc, row_frequency=None, salience=ColumnSalience.supplementary, metadata=None
 ):
-    if metadata is None:
-        metadata = {}
-    else:
-        metadata = copy(metadata)
-    metadata.update(
-        {
-            ATTR_TYPE: "column",
-            "desc": desc,
-            "row_frequency": row_frequency,
-            "salience": salience,
-        }
-    )
-    return attrs.field(
-        default=None,
-        metadata=metadata,
+    return _TempColumnAttr(
+        desc=desc, row_frequency=row_frequency, salience=salience, metadata=metadata
     )
 
 
@@ -57,43 +48,19 @@ def parameter(
     salience=ParameterSalience.recommended,
     metadata=None,
 ):
-    if choices is not None:
-        if upper_bound is not None or lower_bound is not None:
-            raise ArcanaDesignError(
-                f"Cannot specify lower ({lower_bound}) or upper ({lower_bound}) bound "
-                f"in conjunction with 'choices' arg ({choices})"
-            )
-    if metadata is None:
-        metadata = {}
-    else:
-        metadata = copy(metadata)
-    metadata.update(
-        {
-            ATTR_TYPE: "parameter",
-            "desc": desc,
-            "salience": salience,
-            "choices": choices,
-            "lower_bound": lower_bound,
-            "upper_bound": upper_bound,
-        }
-    )
-    return attrs.field(
+    return _TempParameterAttr(
+        desc=desc,
         default=default,
-        validator=_parameter_validator,
+        choices=choices,
+        lower_bound=lower_bound,
+        upper_bound=upper_bound,
+        salience=salience,
         metadata=metadata,
     )
 
 
 def subanalysis(desc, **mappings):
-
-    return attrs.field(
-        metadata={
-            ATTR_TYPE: "subanalysis",
-            "desc": desc,
-            "mappings": tuple(mappings.items()),
-        },
-        init=False,
-    )
+    return _TempSubanalysisAttr(desc=desc, mappings=tuple(mappings.items()))
 
 
 def pipeline(*outputs, condition=None, switch=None):
@@ -215,23 +182,3 @@ def is_provided(column, in_format: type = None):
             in_format,
         ),
     )
-
-
-def _parameter_validator(_, attr, val):
-    if attr.metadata["choices"] is not None:
-        choices = attr.metadata["choices"]
-        if val not in choices:
-            raise ValueError(
-                f"{val} is not a valid value for '{attr.name}' parameter: {choices}"
-            )
-    else:
-        lower_bound = attr.metadata.get("lower_bound")
-        upper_bound = attr.metadata.get("upper_bound")
-        if not (
-            (lower_bound is None or val >= lower_bound)
-            and (upper_bound is None or val <= upper_bound)
-        ):
-            raise ValueError(
-                f"Value of '{attr.name}' ({val}) is not within the specified bounds: "
-                f"{lower_bound} - {upper_bound}"
-            )

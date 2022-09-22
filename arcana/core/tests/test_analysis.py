@@ -190,7 +190,7 @@ def OverridenConcat(Concat):
     @analysis(Samples)
     class _OverridenConcat(Concat):
 
-        file1 = inherit()
+        file1 = inherit(ref=Concat.file1)
         file2 = inherit()
         concatenated = inherit()
 
@@ -207,7 +207,7 @@ def OverridenConcat(Concat):
         )
         def reverse_concat_pipeline(
             self, wf, file1: Text, file2: Text, duplicates: int
-        ):
+        ) -> Text:
 
             wf.add(
                 concatenate_reverse(
@@ -1159,3 +1159,42 @@ def test_defined_in():
             return wf.identity.lzout.out_file
 
     assert attrs.fields(F).x.metadata["defined_in"] == [A]
+
+
+def test_pipeline_overrides():
+    @analysis(Samples)
+    class A:
+        x: Text = column("a reserved attribute", salience=cs.primary)
+        y: Text = column("another column")
+
+        @pipeline(y)
+        def a_pipeline(self, wf, x: Text):
+            wf.add(identity_file(name="identity", in_file=x))
+            return wf.identity.lzout.out_file
+
+    @analysis(Samples)
+    class B(A):
+
+        x: Text = inherit(ref=A.x)
+        y: Text = inherit(ref=A.y)
+        z: Text = column("yet another column")
+
+        @pipeline(y, z)
+        def a_pipeline(self, wf, x: Text):
+            wf.add(identity_file(name="identity", in_file=x))
+            return wf.identity.lzout.out_file, wf.identity.lzout.out_file
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class C(B):
+
+            x: Text = inherit(ref=A.x)
+            z: Text = inherit()
+
+            @pipeline(z)
+            def a_pipeline(self, wf, x: Text):
+                wf.add(identity_file(name="identity", in_file=x))
+                return wf.identity.lzout.out_file
+
+    assert "['y'] outputs are missing from 'a_pipeline'" in e.value.msg

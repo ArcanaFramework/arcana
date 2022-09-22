@@ -1,4 +1,4 @@
-import attrs
+from abc import ABCMeta
 import typing as ty
 import inspect
 from copy import copy, deepcopy
@@ -6,7 +6,9 @@ from collections import defaultdict
 from itertools import chain
 import operator as operator_module
 from operator import attrgetter
+import attrs
 from .data.space import DataSpace
+from .data.column import DataColumn
 from .data.set import Dataset
 from .enum import CheckSalience, ColumnSalience, ParameterSalience
 from .utils import (
@@ -61,7 +63,9 @@ class ColumnSpec:
     salience: ColumnSalience
     defined_in: ty.List[type]
     modified: ty.Tuple[ty.Tuple[str, ty.Any]]
-    mapped_from: ty.Tuple[str, str] or None = None  # sub-analysis name, column name
+    mapped_from: ty.Tuple[
+        str, str or ty.Tuple
+    ] or None = None  # sub-analysis name, column name
 
     def select_pipeline_builders(self, analysis, dataset):
         candidates = [
@@ -320,12 +324,6 @@ class AnalysisSpec:
                     sorted_by_cond[(pipe_spec.condition, pipe_spec.switch)].append(
                         pipe_spec
                     )
-            # If no default, just don't generate
-            # if (None, None) not in sorted_by_cond:
-            #     raise ArcanaDesignError(
-            #         "Default pipeline not specified (i.e. with no condition or switch) "
-            #         "for '{column_spec.name}'"
-            #     )
             if duplicated := [
                 (c, d) for (c, d) in sorted_by_cond.items() if len(d) > 1
             ]:
@@ -361,19 +359,6 @@ class AnalysisSpec:
                 raise ArcanaDesignError(
                     f"'{pipeline_builder.name}' pipeline outputs to unknown columns: {missing_outputs}"
                 )
-
-
-# class Analysis:
-
-#     # Would ideally define dataset here like this, but it needs to be set dynamically
-#     # due to avoid an inheritance conflict when using the attrs.define decorator
-#     # _dataset: Dataset
-
-#     def stack(self):
-#         pass
-
-#     def menu(self):
-#         pass
 
 
 RESERVED_NAMES = ("dataset", "menu", "stack")
@@ -423,53 +408,49 @@ def make_class(decorated_klass: type, space: type) -> type:
 
     # Resolve 'Inherited' and 'mapped_from' attributes to a form that `attrs` can
     # recognise so the attributes are created
-    for name, attr in list(decorated_klass.__dict__.items()):
+    for name, tmp_attr in list(decorated_klass.__dict__.items()):
         if name in RESERVED_NAMES:
             raise ArcanaDesignError(
                 f"Cannot use reserved name '{name}' for attribute in "
                 f"'{decorated_klass.__name__}' analysis class"
             )
-        if isinstance(attr, (_Inherited, _MappedFrom)):
-            resolved, resolved_type = attr.resolve(name, decorated_klass)
-            setattr(decorated_klass, name, resolved)
-            try:
-                new_type = decorated_klass.__annotations__[name]
-            except KeyError:
+        # Get attribute type from type annotations
+        dtype = decorated_klass.__annotations__.get(name)
+        if ty.get_origin(dtype) is DataColumn:
+            dtype = ty.get_args(dtype)[0]
+        # Resolve inherited and mapped attributes
+        if isinstance(tmp_attr, (_Inherited, _MappedFrom)):
+            resolved, resolved_dtype = tmp_attr.resolve(name, decorated_klass)
+            if dtype is None:
                 # Copy type annotation across to new class if it isn't present
-                decorated_klass.__annotations__[name] = resolved_type
-            else:
-                if new_type not in (str, resolved_type) and not issubclass(
-                    new_type, resolved_type
-                ):
-                    raise ArcanaDesignError(
-                        f"Cannot change format of {name} from {resolved_type} to "
-                        f"{new_type} as it is not a sub-class"
-                    )
-            attr.resolved_to = name
-            attr = resolved
-        try:
-            attr_type = attr.metadata[ATTR_TYPE]
-        except (AttributeError, KeyError):
-            pass
-        else:
+                dtype = resolved_dtype
+            elif dtype is not resolved_dtype and not issubclass(dtype, resolved_dtype):
+                raise ArcanaDesignError(
+                    f"Cannot change format of {name} from {resolved_dtype} to "
+                    f"{dtype} as it is not a sub-class"
+                )
+            tmp_attr.attr_name = name
+            tmp_attr.dtype = dtype
+            tmp_attr = resolved
+        # Convert temporary attributes to attrs.fields
+        if isinstance(tmp_attr, _TempAttr):
             # Save annotated type of column in metadata and convert to Column
-            if attr_type == "column":
-                if decorated_klass.__annotations__[name] is not str:
-                    attr.metadata["datatype"] = decorated_klass.__annotations__[name]
-                    decorated_klass.__annotations__[
-                        name
-                    ] = str  # FIXME: change to Column
-            elif attr_type == "parameter":
-                if decorated_klass.__annotations__[name] is not str:
-                    attr.metadata["datatype"] = decorated_klass.__annotations__[name]
-                # Leave annotation type as it is
-            elif attr_type == "subanalysis":
-                # This is a bit magic (even compared to the rest of this module),
-                # Setting a default method to initialise the of subanalysis attributes
+            if dtype is None:
+                raise ArcanaDesignError(
+                    f"Type annotation must be provided for '{name}' {tmp_attr.attr_type}"
+                )
+            # Replace temporary attribute with Attrs attribute (as created by attrs.field)
+            # and set type annotation
+            tmp_attr.attr_name = name
+            tmp_attr.dtype = dtype
+            attrs_field = tmp_attr.to_attrs_field()
+            setattr(decorated_klass, name, attrs_field)
+            decorated_klass.__annotations__[name] = dtype
+            if isinstance(tmp_attr, _TempSubanalysisAttr):
                 setattr(
                     decorated_klass,
                     f"_{name}_default",
-                    attr.default(SubanalysisDefault(name)),
+                    attrs_field.default(SubanalysisDefault(name)),
                 )
 
     # Ensure that the class has it's own annotaitons dict so we can modify it without
@@ -505,8 +486,8 @@ def make_class(decorated_klass: type, space: type) -> type:
         except KeyError:
             continue
         if attr.inherited:
-            continue  # Inherited attributes will be combined at the end
-        if attr_type == "column":
+            continue  # Inherited attributes will be added at the end
+        if attr_type == _TempColumnAttr.attr_type:
             row_freq = attr.metadata["row_frequency"]
             if row_freq is None:
                 row_freq = max(space)  # "Leaf" frequency of the data tree
@@ -522,7 +503,7 @@ def make_class(decorated_klass: type, space: type) -> type:
                     mapped_from=attr.metadata.get("mapped_from"),
                 )
             )
-        elif attr_type == "parameter":
+        elif attr_type == _TempParameterAttr.attr_type:
             parameters.append(
                 Parameter(
                     name=attr.name,
@@ -544,14 +525,13 @@ def make_class(decorated_klass: type, space: type) -> type:
     # Do another loop and collect all the sub-analyses after we have build the
     # column specs and parameters so we can implicitly add any mappings to the
     for attr in attrs_klass.__attrs_attrs__:
-        try:
-            attr_type = attr.metadata[ATTR_TYPE]
-        except KeyError:
-            continue
-        if attr_type == "subanalysis" and not attr.inherited:
+        if (
+            attr.metadata.get(ATTR_TYPE) == _TempSubanalysisAttr.attr_type
+            and not attr.inherited
+        ):
             resolved_mappings = []
             for (from_, to) in attr.metadata["mappings"]:
-                resolved_mappings.append((from_, _attr_name(decorated_klass, to)))
+                resolved_mappings.append((from_, to.attr_name))
             # Add in implicit mappings, where a column from the subanalysis has been
             # mapped into the global namespace of the analysis class
             for col_or_param in chain(column_specs, parameters):
@@ -582,14 +562,14 @@ def make_class(decorated_klass: type, space: type) -> type:
 
         if PIPELINE_ANNOTATIONS in attr_anots:
             anots = attr_anots[PIPELINE_ANNOTATIONS]
-            outputs = tuple(_attr_name(decorated_klass, o) for o in anots["outputs"])
+            outputs = tuple(o.attr_name for o in anots["outputs"])
             input_columns, used_parameters = _get_args_automagically(
                 column_specs=column_specs, parameters=parameters, method=attr
             )
             unresolved_condition = anots["condition"]
             if unresolved_condition is not None:
                 try:
-                    condition = _attr_name(decorated_klass, unresolved_condition)
+                    condition = unresolved_condition.metadata["attr_name"]
                 except AttributeError:
                     condition = unresolved_condition.resolve(
                         decorated_klass,
@@ -627,7 +607,7 @@ def make_class(decorated_klass: type, space: type) -> type:
             )
         elif CHECK_ANNOTATIONS in attr_anots:
             anots = attr_anots[CHECK_ANNOTATIONS]
-            column_name = _attr_name(decorated_klass, anots["column"])
+            column_name = anots["column"].attr_name
             input_columns, used_parameters = _get_args_automagically(
                 column_specs=column_specs, parameters=parameters, method=attr
             )
@@ -646,21 +626,19 @@ def make_class(decorated_klass: type, space: type) -> type:
 
     # Combine with specs from base classes
     for base in attrs_klass.__mro__[1:]:
-        try:
-            base_spec = base.__spec__
-        except AttributeError:
+        if not hasattr(base, "__spec__"):
             continue  # skip classes that aren't decorated analyses
-        if base_spec.space is not space:
+        if base.__spec__.space is not space:
             raise ValueError(
                 "Cannot redefine the space that an analysis operates on from "
-                f"{base_spec.space} to {space}"
+                f"{base.__spec__.space} to {space}"
             )
         # Append column specs, parameters and subanalyses that were inherited from base
         # classes
         for lst, base_lst in (
-            (column_specs, base_spec.column_specs),
-            (parameters, base_spec.parameters),
-            (subanalyses, base_spec.subanalyses),
+            (column_specs, base.__spec__.column_specs),
+            (parameters, base.__spec__.parameters),
+            (subanalyses, base.__spec__.subanalyses),
         ):
             lst.extend(b for b in base_lst if b.name not in (x.name for x in lst))
             if overwritten := [
@@ -674,12 +652,30 @@ def make_class(decorated_klass: type, space: type) -> type:
                     f"class {base} were overwritten in {attrs_klass} without using "
                     "explicit 'Inherited' function"
                 )
+
+        # Check to see that overriding pipelines don't remove outputs
+        for base_builder in base.__spec__.pipeline_builders:
+            try:
+                builder = next(
+                    b for b in pipeline_builders if b.name == base_builder.name
+                )
+            except StopIteration:
+                continue
+            if missing_outputs := [
+                o for o in base_builder.outputs if o not in builder.outputs
+            ]:
+                raise ArcanaDesignError(
+                    f"{missing_outputs} outputs are missing from '{builder.name}' "
+                    "pipeline builder, which were defined by the overridden method "
+                    "in {base}. Overriding methods can only add new outputs, not "
+                    "remove existing ones"
+                )
         # Append pipeline specs, switches and checks that were inherited from base
         # classes
         for lst, base_lst in (
-            (pipeline_builders, base_spec.pipeline_builders),
-            (switches, base_spec.switches),
-            (checks, base_spec.checks),
+            (pipeline_builders, base.__spec__.pipeline_builders),
+            (switches, base.__spec__.switches),
+            (checks, base.__spec__.checks),
         ):
             lst.extend(b for b in base_lst if b.name not in (x.name for x in lst))
 
@@ -702,6 +698,8 @@ class _Inherited:
 
     to_overwrite: ty.Dict[str, ty.Any]
     resolved_to: str = None
+    attr_name: str = None
+    dtype: str = None
 
     def resolve(self, name, klass):
         """Resolve to columns and parameters in the specified class
@@ -722,7 +720,7 @@ class _Inherited:
                 f"Supers of {klass} have no attribute named '{name}' to inherit"
             )
         attr_to_inherit = getattr(attrs.fields(defined_in[0]), name)
-        resolved = _attr_to_counting_attr(attr_to_inherit, self.to_overwrite)
+        resolved = _attr_to_temp(attr_to_inherit, self.to_overwrite)
         # List the sub-classes where the attribute is used/defined
         resolved.metadata["defined_in"] = defined_in
         resolved.metadata["overridden"] = deepcopy(self.to_overwrite)
@@ -734,12 +732,14 @@ class _Inherited:
 class _MappedFrom:
 
     subanalysis_name: str
-    column_name: str
+    name: str
     to_overwrite: ty.Dict[str, ty.Any]
     resolved_to: str = None
+    attr_name: str = None
+    dtype: str = None
 
     def resolve(self, name, klass):
-        """Resolve to a column "counting attribute" to be transformed into a attribute
+        """Resolve to a column temporary attribute to be transformed into a attribute
         of the analysis class
 
         Parameters
@@ -753,17 +753,17 @@ class _MappedFrom:
         # Get the Attribute in the subanalysis class
         try:
             attr_in_sub = next(
-                a for a in analysis_class.__attrs_attrs__ if a.name == self.column_name
+                a for a in analysis_class.__attrs_attrs__ if a.name == self.name
             )
         except StopIteration:
             raise ArcanaDesignError(
-                f"No attribute named '{self.column_name}' in subanalysis "
+                f"No attribute named '{self.name}' in subanalysis "
                 f"'{self.subanalysis_name}' ({analysis_class}): "
                 + str([a.name for a in analysis_class.__attrs_attrs__])
             )
 
-        resolved = _attr_to_counting_attr(attr_in_sub, self.to_overwrite)
-        resolved.metadata["mapped_from"] = (self.subanalysis_name, self.column_name)
+        resolved = _attr_to_temp(attr_in_sub, self.to_overwrite)
+        resolved.metadata["mapped_from"] = (self.subanalysis_name, self.name)
         return resolved, attr_in_sub.type
 
 
@@ -799,7 +799,7 @@ class _UnresolvedOp:
                 operand = operand.resolve(klass, column_specs, parameters)
             else:
                 try:
-                    operand = _attr_name(klass, operand)
+                    operand = operand.attr_name
                 except AttributeError:
                     pass
             resolved.append(operand)
@@ -843,56 +843,6 @@ class _UnresolvedOp:
 
     def __invert__(self):
         return _UnresolvedOp("invert_", (self,))
-
-
-def _attr_to_counting_attr(attr, to_overwrite):
-    """Reverts an Attribute as found in the __attrs_attrs__ of another class back into
-    a _CountingAttribute (as returned by attrs.field) so it can be used to specify to
-    the `attrs` package to make a new attribute in the new class
-
-    Parameters
-    ----------
-    attr : Attribute
-        the attribute to replicate in the new class
-    to_overwrite : dict[str, Any]
-        a dictionary of attributes to overwrite when adding the new attribute
-    """
-    import arcana.core.mark
-
-    # Get metadata dictionary from attribute in base class
-    metadata = dict(attr.metadata)
-    attr_func = getattr(arcana.core.mark, metadata.pop(ATTR_TYPE))
-    kwargs = {
-        a: metadata.pop(a)
-        for a in list(inspect.signature(attr_func).parameters)
-        if a not in ("metadata", "default")
-    }
-    if attr_func is arcana.core.mark.parameter:
-        kwargs["default"] = attr.default
-    kwargs.update(to_overwrite)
-    # Use the 'parameter' or 'column' methods in arcana.core.mark to create a
-    # new _CountingAttribute (as returned by attrs.field) to replace the Attribute
-    # from __attrs_attrs__ so that it can be used to create an attribute in a new class
-    metadata["modified"] = tuple(to_overwrite.items())
-    resolved = attr_func(metadata=metadata, **kwargs)
-    # Set additional metadata fields to record where the column was inherited from
-    # and which fields were modified in the process
-    return resolved
-
-
-def _attr_name(cls, counting_attr):
-    """Get the name of a counting attribute by reading the original class dict"""
-    if isinstance(counting_attr, (_Inherited, _MappedFrom)):
-        assert counting_attr.resolved_to is not None
-        return counting_attr.resolved_to
-    try:
-        return next(n for n, v in cls.__dict__.items() if v is counting_attr)
-    except StopIteration:
-        raise AttributeError(f"Attribute {counting_attr} not found in cls {cls}")
-
-
-# def _attr(cls, counting_attr):
-#     return cls.__dict__[_attr_name(cls, counting_attr)]
 
 
 def _get_args_automagically(column_specs, parameters, method, index_start=2):
@@ -942,3 +892,206 @@ def _get_args_automagically(column_specs, parameters, method, index_start=2):
                 "function."
             )
     return tuple(inputs), tuple(used_parameters)
+
+
+def _attr_to_temp(attr, to_overwrite):
+    """Reverts an Attribute as found in the __attrs_attrs__ of another class back into
+    a temporary attribute so it can be used to specify to
+    the `attrs` package to make a new attribute in the new class
+
+    Parameters
+    ----------
+    attr : Attribute
+        the attribute to replicate in the new class
+    to_overwrite : dict[str, Any]
+        a dictionary of attributes to overwrite when adding the new attribute
+    """
+    return ATTR_TYPE_TO_TEMP_TYPE[attr.metadata[ATTR_TYPE]].from_attrs_attr(
+        attr, to_overwrite
+    )
+
+
+# def _attr_name(cls, counting_attr):
+#     """Get the name of a counting attribute by reading the original class dict"""
+#     if isinstance(counting_attr, (_Inherited, _MappedFrom)):
+#         assert counting_attr.resolved_to is not None
+#         return counting_attr.resolved_to
+#     try:
+#         return next(n for n, v in cls.__dict__.items() if v is counting_attr)
+#     except StopIteration:
+#         raise AttributeError(f"Attribute {counting_attr} not found in cls {cls}")
+
+
+class _TempAttr(metaclass=ABCMeta):
+    @classmethod
+    def from_attrs_attr(cls, attr, to_overwrite, **kwargs):
+        metadata = dict(attr.metadata)
+        del metadata[ATTR_TYPE]
+        kwargs.update(
+            {
+                a.name: metadata.pop(a.name)
+                for a in list(attrs.fields(cls))
+                if a.name not in ("metadata", "default", "attr_name", "dtype")
+            }
+        )
+        kwargs.update(to_overwrite)
+        tmp_attr = cls(metadata=metadata, **kwargs)
+        tmp_attr.metadata["modified"] = tuple(to_overwrite.items())
+        return tmp_attr
+
+
+@attrs.define
+class _TempColumnAttr(_TempAttr):
+
+    attr_type = "column"
+
+    desc: str
+    row_frequency: DataSpace
+    salience: ColumnSalience = ColumnSalience.supplementary
+    metadata: dict = attrs.field(factory=dict, converter=lambda m: m if m else {})
+    attr_name: str = None
+    dtype: type = None
+
+    def to_attrs_field(self):
+        assert self.attr_name is not None
+        assert self.dtype is not None
+        metadata = dict(self.metadata)
+        metadata.update(
+            {
+                ATTR_TYPE: self.attr_type,
+                "attr_name": self.attr_name,
+                "desc": self.desc,
+                "row_frequency": self.row_frequency,
+                "salience": self.salience,
+                "datatype": self.dtype,
+            }
+        )
+        return attrs.field(
+            default=None,
+            metadata=metadata,
+        )
+
+    # @classmethod
+    # def from_attrs_attr(cls, attr, to_overwrite):
+    #     metadata = dict(attr.metadata)
+    #     del metadata[ATTR_TYPE]
+    #     kwargs = {
+    #         a: metadata.pop(a.name) for a in list(attrs.fields(cls)) if a != "metadata"
+    #     }
+    #     kwargs.update(to_overwrite)
+    #     return cls(metadata, **kwargs)
+
+
+@attrs.define
+class _TempParameterAttr(_TempAttr):
+
+    attr_type = "parameter"
+
+    desc: str
+    default: ty.Any = None
+    salience: ParameterSalience = ParameterSalience.recommended
+    choices: ty.Union[list, None] = attrs.field(default=None)
+    lower_bound: ty.Union[float, int] = None
+    upper_bound: ty.Union[float, int] = None
+    metadata: dict = attrs.field(factory=dict, converter=lambda m: m if m else {})
+    attr_name: str = None
+    dtype: type = None
+
+    @choices.validator
+    def choices_validator(self, _, choices):
+        if choices is not None:
+            if self.upper_bound is not None or self.lower_bound is not None:
+                raise ArcanaDesignError(
+                    f"Cannot specify lower ({self.lower_bound}) or upper "
+                    f"({self.upper_bound}) bound in conjunction with 'choices' arg "
+                    f"({choices})"
+                )
+
+    def to_attrs_field(self):
+        assert self.attr_name is not None
+        assert self.dtype is not None
+        metadata = dict(self.metadata)
+        metadata.update(
+            {
+                ATTR_TYPE: self.attr_type,
+                "attr_name": self.attr_name,
+                "desc": self.desc,
+                "salience": self.salience,
+                "choices": self.choices,
+                "lower_bound": self.lower_bound,
+                "upper_bound": self.upper_bound,
+                "datatype": self.dtype,
+            }
+        )
+        return attrs.field(
+            default=self.default,
+            validator=_parameter_validator,
+            metadata=metadata,
+        )
+
+    @classmethod
+    def from_attrs_attr(cls, attr, to_overwrite, **kwargs):
+        return super().from_attrs_attr(
+            attr, to_overwrite, default=attr.default, **kwargs
+        )
+
+
+@attrs.define
+class _TempSubanalysisAttr(_TempAttr):
+
+    attr_type = "subanalysis"
+
+    desc: str
+    mappings: ty.Tuple[ty.Union[str, tuple]]
+    metadata: dict = attrs.field(factory=dict, converter=lambda m: m if m else {})
+    attr_name: str = None
+    dtype: type = None
+
+    def to_attrs_field(self):
+        assert self.attr_name is not None
+        assert self.dtype is not None
+        return attrs.field(
+            metadata={
+                ATTR_TYPE: self.attr_type,
+                "attr_name": self.attr_name,
+                "desc": self.desc,
+                "mappings": self.mappings,
+                "type": self.dtype,
+            },
+            init=False,
+        )
+
+    @classmethod
+    def from_attrs_attr(cls, attr, to_overwrite):
+        metadata = copy(attr.metadata)
+        del metadata[ATTR_TYPE]
+        kwargs = {
+            a: metadata.pop(a) for a in list(attrs.fields(cls)) if a != "metadata"
+        }
+        kwargs.update(to_overwrite)
+        return cls(metadata, **kwargs)
+
+
+ATTR_TYPE_TO_TEMP_TYPE = {
+    t.attr_type: t for t in (_TempColumnAttr, _TempParameterAttr, _TempSubanalysisAttr)
+}
+
+
+def _parameter_validator(_, attr, val):
+    if attr.metadata["choices"] is not None:
+        choices = attr.metadata["choices"]
+        if val not in choices:
+            raise ValueError(
+                f"{val} is not a valid value for '{attr.name}' parameter: {choices}"
+            )
+    else:
+        lower_bound = attr.metadata.get("lower_bound")
+        upper_bound = attr.metadata.get("upper_bound")
+        if not (
+            (lower_bound is None or val >= lower_bound)
+            and (upper_bound is None or val <= upper_bound)
+        ):
+            raise ValueError(
+                f"Value of '{attr.name}' ({val}) is not within the specified bounds: "
+                f"{lower_bound} - {upper_bound}"
+            )

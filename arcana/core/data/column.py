@@ -12,8 +12,11 @@ from ..enum import DataQuality, ColumnSalience
 from .space import DataSpace
 
 
+ItemType = ty.TypeVar("ItemType")
+
+
 @attrs.define
-class DataColumn(metaclass=ABCMeta):
+class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
 
     name: str = attrs.field()
     path: str = attrs.field()
@@ -26,7 +29,7 @@ class DataColumn(metaclass=ABCMeta):
     def __iter__(self):
         return (n[self.name] for n in self.dataset.rows(self.row_frequency))
 
-    def __getitem__(self, id):
+    def __getitem__(self, id) -> ItemType:
         return self.dataset.row(id=id, row_frequency=self.row_frequency)[self.name]
 
     def __len__(self):
