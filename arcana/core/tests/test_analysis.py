@@ -313,7 +313,7 @@ def ConcatWithSubanalyses(ExtendedConcat, ConcatWithSwitch):
 
 def test_analysis_basic(Concat, test_file1, test_file2):
 
-    analysis_spec = Concat.__analysis__
+    analysis_spec = Concat.__spec__
 
     assert list(analysis_spec.parameter_names) == ["duplicates"]
 
@@ -393,7 +393,7 @@ def test_analysis_basic(Concat, test_file1, test_file2):
 
 def test_analysis_extended(Concat, ExtendedConcat, test_file1, test_file2, test_file3):
 
-    analysis_spec = ExtendedConcat.__analysis__
+    analysis_spec = ExtendedConcat.__spec__
 
     assert sorted(analysis_spec.parameter_names) == ["duplicates"]
 
@@ -514,7 +514,7 @@ def test_analysis_extended(Concat, ExtendedConcat, test_file1, test_file2, test_
 
 def test_analysis_with_check(Concat, ConcatWithCheck, test_file1, test_file2):
 
-    analysis_spec = ConcatWithCheck.__analysis__
+    analysis_spec = ConcatWithCheck.__spec__
 
     assert sorted(analysis_spec.parameter_names) == ["duplicates"]
 
@@ -604,7 +604,7 @@ def test_analysis_override(Concat, OverridenConcat, test_file1, test_file2):
     """Tests overriding methods in the base class with optional switches based on
     parameters and properties of the inputs"""
 
-    analysis_spec = OverridenConcat.__analysis__
+    analysis_spec = OverridenConcat.__spec__
 
     assert list(analysis_spec.column_names) == [
         "concatenated",
@@ -706,7 +706,7 @@ def test_analysis_switch(
     """Tests overriding methods in the base class with optional switches based on
     parameters and properties of the inputs"""
 
-    analysis_spec = ConcatWithSwitch.__analysis__
+    analysis_spec = ConcatWithSwitch.__spec__
 
     assert list(analysis_spec.column_names) == [
         "concatenated",
@@ -835,7 +835,7 @@ def test_analysis_with_subanalyses(
     test_numeric_file2,
 ):
 
-    analysis_spec = ConcatWithSubanalyses.__analysis__
+    analysis_spec = ConcatWithSubanalyses.__spec__
 
     assert list(analysis_spec.parameter_names) == ["common_duplicates"]
 

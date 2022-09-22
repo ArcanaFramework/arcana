@@ -20,8 +20,8 @@ def analysis(space: type):
     space : type (subclass of DataSpace)
         The data space the analysis operates on, see"""
 
-    def decorator(cls):
-        return make_analysis_class(cls, space)
+    def decorator(klass):
+        return make_analysis_class(klass, space)
 
     return decorator
 
