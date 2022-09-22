@@ -1120,3 +1120,36 @@ def test_inherited_from_errors():
         "'x' must inherit from a column that is explicitly defined in the base class it references"
         in e.value.msg
     )
+
+    @analysis(Samples)
+    class E(A):
+
+        y: Text = inherited_from(A, salience=cs.publication)
+        z: Text = column("yet another column", salience=cs.primary)
+
+        @pipeline(z)
+        def another_pipeline(self, wf, y: Text) -> Text:
+
+            wf.add(identity_file(name="identity", in_file=y))
+
+            return wf.identity.lzout.out_file
+
+    with pytest.raises(ArcanaDesignError) as e:
+
+        @analysis(Samples)
+        class F(E):
+
+            y: Text = inherited_from(A)
+            z: Text = inherited_from(E)
+
+            @pipeline(z)
+            def another_pipeline(self, wf, y: Text) -> Text:
+
+                wf.add(identity_file(name="identity", in_file=y))
+
+                return wf.identity.lzout.out_file
+
+    assert (
+        "Must inherited from the first class in the method-resolution order"
+        in e.value.msg
+    )
