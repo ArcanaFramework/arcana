@@ -257,14 +257,14 @@ class Nifti(NeuroImage):
         extract_volume=None,
         file_postfix=attrs.NOTHING,
         side_car_jq=None,
-        to_4d=None,
+        to_4d=False,
     ):
-        as_workflow = (
-            extract_volume is not None or side_car_jq is not None or to_4d is not None
-        )
+        as_workflow = extract_volume is not None or side_car_jq is not None or to_4d
 
-        if extract_volume is not None and to_4d is not None:
-            raise ValueError("These parameters should be mutually exclusive")
+        if extract_volume is not None and to_4d:
+            raise ValueError(
+                f"'extract_volume' ({extract_volume}) and 'to_4d' are mutually exclusive"
+            )
 
         in_dir = fs_path
         compress = "n"
@@ -288,29 +288,22 @@ class Nifti(NeuroImage):
             wf.add(node)
             out_file = wf.dcm2niix.lzout.out_file
             out_json = wf.dcm2niix.lzout.out_json
-            if extract_volume is not None:
+            if extract_volume is not None or to_4d:
                 out_filename = "out_file.nii"
                 if compress == "y":
                     out_filename += ".gz"
+                if extract_volume:
+                    coord = [3, extract_volume]
+                    axes = [0, 1, 2]
+                else:  # to_4d
+                    coord = attrs.NOTHING
+                    axes = [0, 1, 2, -1]
                 wf.add(
                     MRConvert(
                         in_file=out_file,
                         out_filename=out_filename,
-                        coord=[3, extract_volume],
-                        axes=[0, 1, 2],
-                        name="mrconvert",
-                    )
-                )
-                out_file = wf.mrconvert.lzout.out_file
-            elif to_4d is not None:
-                out_filename = "out_file.nii"
-                if compress == "y":
-                    out_filename += ".gz"
-                wf.add(
-                    MRConvert(
-                        in_file=out_file,
-                        out_filename=out_filename,
-                        axes=[0, 1, 2, -1],
+                        coord=coord,
+                        axes=axes,
                         name="mrconvert",
                     )
                 )
