@@ -266,6 +266,7 @@ def install_and_launch_xnat_cs_command(
     )
     if stdout_result.status_code == 200:
         out_str = f"stdout:\n{stdout_result.content.decode('utf-8')}\n"
+
     stderr_result = xlogin.get(
         f"/xapi/containers/{container_id}/logs/stderr", accepted_status=[200, 204]
     )
