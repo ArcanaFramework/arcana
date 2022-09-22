@@ -152,6 +152,7 @@ def generate_xnat_cs_command(
     row_frequency="session",
     registry=DOCKER_HUB,
     long_description: str = None,  # Ignored here, just part of the specs for the docs
+    known_issues: str = None,  # ditto
 ):
     """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
     should handle the containerised pipeline
