@@ -251,14 +251,6 @@ def make_class(klass: type, space: type) -> type:
         attrs_field = attr.to_attrs_field()
         setattr(klass, attr.name, attrs_field)
         klass.__annotations__[attr.name] = dtype
-        # Set default method for subanalyses to initialise the subanalysis object with
-        # links back to the parent analysis object
-        if isinstance(attr, SubanalysisSpec):
-            setattr(
-                klass,
-                f"_{name}_default",
-                attrs_field.default(SubanalysisDefault(attr)),
-            )
 
     # Ensure that the class has it's own annotaitons dict so we can modify it without
     # messing up other classes
@@ -269,6 +261,7 @@ def make_class(klass: type, space: type) -> type:
     # Set built-in methods
     klass.menu = MenuDescriptor()
     klass.stack = StackDescriptor()
+    klass.__attrs_post_init__ = _analysis_post_init
 
     # Add the analysis spec to the __spec__ attribute
     klass.__spec__ = analysis_spec
@@ -416,6 +409,7 @@ class SubanalysisSpec(BaseAttr):
     def to_attrs_field(self):
         return attrs.field(
             metadata={ARCANA_SPEC: self},
+            factory=dict,
         )
 
 
@@ -529,6 +523,15 @@ class Subanalysis:
                     f"analysis {self._parent}"
                 )
             setattr(self._analysis, name, value)
+
+    def __attrs_post_init__(self):
+        """Ensure any nested subanalyses reference this subanalysis as the parent
+        instead of the wrapped analysis object in order to link up chains of name
+        mappings
+        """
+        for spec in self._analysis.__spec__.subanalysis_specs:
+            subanalysis = getattr(self._analysis, spec.name)
+            subanalysis._parent = self
 
 
 def unique_names(inst, attr, val):
@@ -909,20 +912,25 @@ def _parameter_validator(_, attr, val):
         )
 
 
-@attrs.define(frozen=True)
-class SubanalysisDefault:
-    """A callable class (substitutable for a function but with a state) that is used to
-    automatically create the subanalysis objects when the parent analysis class is created"""
-
-    spec: SubanalysisSpec
-
-    def __call__(self, analysis):
-        return Subanalysis(
-            spec=self.spec,
-            # Set all attributes that are mapped into global namespace to NOTHING to
-            # ensure they are not accessed inadvertently
-            analysis=self.spec.type(
-                **{m[0]: attrs.NOTHING for m in self.spec.mappings}
-            ),
-            parent=analysis,
-        )
+def _analysis_post_init(self):
+    """Set up subanalysis classes in after the attrs init"""
+    for spec in self.__spec__.subanalysis_specs():
+        subanalysis = getattr(self, spec.name)
+        if isinstance(subanalysis, dict):
+            kwargs = {m[0]: attrs.NOTHING for m in spec.mappings}
+            if overwritten_mapped := list(set(kwargs) & set(subanalysis)):
+                raise ValueError(
+                    f"{overwritten_mapped} attributes cannot be set explicitly in '"
+                    f"{spec.name}' sub-analysis as they are mapped from the enclosing "
+                    "analysis"
+                )
+            kwargs.update(subanalysis)
+            subanalysis = Subanalysis(
+                spec=spec, analysis=spec.type(**kwargs), parent=self
+            )
+            setattr(self, spec.name, subanalysis)
+        elif not isinstance(subanalysis, Subanalysis):
+            raise ValueError(
+                f"Value passed to '{spec.name}' ({subanalysis}) should either be a "
+                "subanalysis or a dict"
+            )
