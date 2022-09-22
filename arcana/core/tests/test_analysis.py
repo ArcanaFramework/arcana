@@ -348,6 +348,37 @@ def ConcatWithSubanalyses(ExtendedConcat, ConcatWithSwitch):
     return _ConcatWithSubanalyses
 
 
+@pytest.fixture
+def ConcatWithNestedSubanalyses(ConcatWithSubanalyses, ExtendedConcat):
+    @analysis(Samples)
+    class _ConcatWithNestedSubanalyses:
+
+        file1 = map_from("basic_sub", "file1")
+        file2 = map_from("outer_sub2", "file1")
+
+        concatenated = map_from("basic_sub", "doubly_concatenated")
+
+        duplicates = map_from("basic_sub", "duplicates", default=4)
+
+        # multiplier1 = map_from("outer_sub1.sub1", "multiplier")  NotImplemented yet
+
+        basic_sub: ExtendedConcat = subanalysis("basic subanalysis", file2=file2)
+        outer_sub1: ConcatWithSubanalyses = subanalysis(
+            "first outer subanalysis",
+            file1=file1,
+            file2=file2,
+            concatenated=concatenated,
+        )
+
+        outer_sub2: ConcatWithSubanalyses = subanalysis(
+            "second outer subanalysis",
+            file2=file1,
+            common_duplicates=duplicates,
+        )
+
+    return _ConcatWithNestedSubanalyses
+
+
 def test_analysis_basic(Concat, test_file1, test_file2, test_dataset):
 
     analysis_spec = Concat.__spec__
@@ -970,8 +1001,9 @@ def test_analysis_with_subanalyses(
         file1="a_column",
         file2="another_column",
         common_duplicates=1,
+        sub2={"multiplier": 100},
     )
-    analysis.sub2.multiplier = 100
+    # analysis.sub2.multiplier = 100
     assert analysis.file1 == test_partial_numeric_dataset["a_column"]
     assert analysis.file2 == test_partial_numeric_dataset["another_column"]
     assert analysis.common_duplicates == 1
@@ -1015,6 +1047,202 @@ def test_analysis_with_subanalyses(
         "2",
         "100.0",
         "200.0",
+    ]
+
+
+def test_analysis_with_nested_subanalyses(
+    ConcatWithNestedSubanalyses,
+    ConcatWithSubanalyses,
+    ExtendedConcat,
+    test_numeric_file1,
+    test_numeric_file2,
+    test_partial_numeric_dataset,
+):
+
+    analysis_spec = ConcatWithNestedSubanalyses.__spec__
+
+    assert sorted(analysis_spec.parameter_names) == ["duplicates"]
+
+    assert sorted(analysis_spec.column_names) == [
+        "concatenated",
+        "file1",
+        "file2",
+    ]
+
+    assert sorted(analysis_spec.pipeline_names) == []
+    assert sorted(analysis_spec.check_names) == []
+    assert sorted(analysis_spec.switch_names) == []
+    assert sorted(analysis_spec.subanalysis_names) == [
+        "basic_sub",
+        "outer_sub1",
+        "outer_sub2",
+    ]
+
+    duplicates = analysis_spec.parameter("duplicates")
+    assert duplicates.type is int
+    assert duplicates.default == 4
+    assert duplicates.salience == ps.recommended
+    # Not sure why this is failing, not super critical at this point
+    # assert common_duplicates.defined_in == (ConcatWithSubanalyses,)
+
+    file1 = analysis_spec.column_spec("file1")
+    assert file1.type is Zip
+    assert file1.row_frequency == Samples.sample
+    assert file1.salience == cs.primary
+    # assert file1.defined_in == (Concat,)
+    assert file1.mapped_from == ("basic_sub", "file1")
+
+    file2 = analysis_spec.column_spec("file2")
+    assert file2.type is Zip
+    assert file2.row_frequency == Samples.sample
+    assert file2.salience == cs.primary
+    # assert file2.defined_in == (Concat,)
+    assert file2.mapped_from == ("outer_sub2", "file1")
+
+    basic_sub = analysis_spec.subanalysis_spec("basic_sub")
+    assert basic_sub.name == "basic_sub"
+    assert basic_sub.type is ExtendedConcat
+    assert basic_sub.mappings == (
+        ("doubly_concatenated", "concatenated"),
+        ("duplicates", "duplicates"),
+        ("file1", "file1"),
+        ("file2", "file2"),
+    )
+
+    outer_sub1 = analysis_spec.subanalysis_spec("outer_sub1")
+    assert outer_sub1.name == "outer_sub1"
+    assert outer_sub1.type is ConcatWithSubanalyses
+    assert outer_sub1.mappings == (
+        ("concatenated", "concatenated"),
+        ("file1", "file1"),
+        ("file2", "file2"),
+    )
+
+    outer_sub2 = analysis_spec.subanalysis_spec("outer_sub2")
+    assert outer_sub2.name == "outer_sub2"
+    assert outer_sub2.type is ConcatWithSubanalyses
+    assert outer_sub2.mappings == (
+        ("common_duplicates", "duplicates"),
+        ("file1", "file2"),
+        ("file2", "file1"),
+    )
+
+    # Initialise class
+    analysis = ConcatWithNestedSubanalyses(
+        dataset=test_partial_numeric_dataset,
+        file1="a_column",
+        file2="another_column",
+        duplicates=3,
+        outer_sub1={"common_duplicates": 7, "sub2": {"multiplier": 1000}},
+        outer_sub2={"sub2": {"multiplier": 10000}},
+    )
+    assert analysis.file1 == test_partial_numeric_dataset["a_column"]
+    assert analysis.file2 == test_partial_numeric_dataset["another_column"]
+    assert analysis.duplicates == 3
+    assert analysis.basic_sub.file1 == test_partial_numeric_dataset["a_column"]
+    assert analysis.basic_sub.file2 == test_partial_numeric_dataset["another_column"]
+    assert analysis.basic_sub.duplicates == 3
+
+    assert analysis.outer_sub1.file1 == test_partial_numeric_dataset["a_column"]
+    assert analysis.outer_sub1.file2 == test_partial_numeric_dataset["another_column"]
+    assert analysis.outer_sub1.common_duplicates == 7
+    assert analysis.outer_sub1.concatenated is None
+    assert analysis.outer_sub1.sub1.file1 == test_partial_numeric_dataset["a_column"]
+    assert (
+        analysis.outer_sub1.sub1.file2 == test_partial_numeric_dataset["another_column"]
+    )
+    assert analysis.outer_sub1.sub2.duplicates == 7
+    assert analysis.outer_sub1.sub1.concatenated is None
+    assert analysis.outer_sub1.sub1.doubly_concatenated is None
+    assert analysis.outer_sub1.sub2.file1 == test_partial_numeric_dataset["a_column"]
+    assert (
+        analysis.outer_sub1.sub2.file2 == test_partial_numeric_dataset["another_column"]
+    )
+    assert analysis.outer_sub1.sub2.duplicates == 7
+    assert analysis.outer_sub1.sub2.multiplier == 1000
+    assert analysis.outer_sub1.sub2.concatenated is None
+    assert analysis.outer_sub1.sub2.multiplied is None
+
+    assert analysis.outer_sub2.file1 == test_partial_numeric_dataset["another_column"]
+    assert analysis.outer_sub2.file2 == test_partial_numeric_dataset["a_column"]
+    assert analysis.outer_sub2.common_duplicates == 3
+    assert analysis.outer_sub2.concatenated is None
+    assert (
+        analysis.outer_sub2.sub1.file1 == test_partial_numeric_dataset["another_column"]
+    )
+    assert analysis.outer_sub2.sub1.file2 == test_partial_numeric_dataset["a_column"]
+    assert analysis.outer_sub2.sub2.duplicates == 3
+    assert analysis.outer_sub2.sub1.concatenated is None
+    assert analysis.outer_sub2.sub1.doubly_concatenated is None
+    assert (
+        analysis.outer_sub2.sub2.file1 == test_partial_numeric_dataset["another_column"]
+    )
+    assert analysis.outer_sub2.sub2.file2 == test_partial_numeric_dataset["a_column"]
+    assert analysis.outer_sub2.sub2.duplicates == 3
+    assert analysis.outer_sub2.sub2.multiplier == 10000
+    assert analysis.outer_sub2.sub2.concatenated is None
+    assert analysis.outer_sub2.sub2.multiplied is None
+
+    wf = pydra.Workflow(
+        name="test_analysis",
+        input_spec=["file1", "file2"],
+        file1=test_numeric_file1,
+        file2=test_numeric_file2,
+    )
+    concatenated = analysis.outer_sub2.sub2.concat_pipeline(
+        wf,
+        file1=wf.lzin.file1,
+        file2=wf.lzin.file2,
+        duplicates=analysis.outer_sub2.sub2.duplicates,
+    )
+    concat_and_multiplied = analysis.outer_sub2.sub2.multiply_pipeline(
+        wf, concatenated=concatenated, multiplier=analysis.outer_sub2.sub2.multiplier
+    )
+    doubly_concatenated = analysis.outer_sub2.sub1.doubly_concat_pipeline(
+        wf,
+        concatenated=concatenated,
+        file3=concat_and_multiplied,
+        duplicates=analysis.duplicates,
+    )
+    wf.set_output(("doubly_concatenated", doubly_concatenated))
+    result = wf(plugin="serial")
+    assert get_contents(result.output.doubly_concatenated) == [
+        "1",
+        "2",
+        "1",
+        "2",
+        "1",
+        "2",
+        "10000.0",
+        "20000.0",
+        "10000.0",
+        "20000.0",
+        "10000.0",
+        "20000.0",
+        "1",
+        "2",
+        "1",
+        "2",
+        "1",
+        "2",
+        "10000.0",
+        "20000.0",
+        "10000.0",
+        "20000.0",
+        "10000.0",
+        "20000.0",
+        "1",
+        "2",
+        "1",
+        "2",
+        "1",
+        "2",
+        "10000.0",
+        "20000.0",
+        "10000.0",
+        "20000.0",
+        "10000.0",
+        "20000.0",
     ]
 
 
@@ -1263,3 +1491,72 @@ def test_pipeline_overrides():
                 return wf.identity.lzout.out_file
 
     assert "['y'] outputs are missing from 'a_pipeline'" in e.value.msg
+
+
+def test_parameter_bounds_validation():
+    @analysis(Samples)
+    class A:
+        x: Text = column("a reserved attribute", salience=cs.primary)
+        y: Text = column("another column")
+
+        a: int = parameter("an int parameter", default=2, lower_bound=2)
+        b: float = parameter("a float parameter", default=5, upper_bound=10)
+        c: float = parameter(
+            "a float parameter", default=10, lower_bound=2, upper_bound=20
+        )
+        required: str = parameter(
+            "a required parameter", salience=ps.required, choices=["choice1", "choice2"]
+        )
+
+        @pipeline(y)
+        def a_pipeline(self, wf, x: Text, a: int, b: float, required: str) -> Text:
+            wf.add(identity_file(name="identity", in_file=x))
+            return wf.identity.lzout.out_file
+
+    with pytest.raises(ValueError) as e:
+        A(dataset=test_dataset, x="file1", a=1, required="choice1")
+
+    assert "Value of 'a' (1) is not within the specified bounds" in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+        A(dataset=test_dataset, x="file1", b=10.01, required="choice1")
+
+    assert "Value of 'b' (10.01) is not within the specified bounds" in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+        A(dataset=test_dataset, x="file1", c=-99, required="choice1")
+
+    assert "Value of 'c' (-99) is not within the specified bounds" in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+        A(
+            dataset=test_dataset,
+            x="file1",
+            a=5,
+            b=8.5,
+        )
+
+    assert "A value needs to be provided to required parameter 'required'" in str(
+        e.value
+    )
+
+    with pytest.raises(ValueError) as e:
+        A(dataset=test_dataset, x="file1", a=5, b=8.5, required="bad_choice")
+
+    assert "'bad_choice' is not a valid value for 'required'" in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+
+        @analysis(Samples)
+        class B:
+            a: int = parameter("bad default", default=-1, lower_bound=0)
+
+    assert "is lower than lower bound" in str(e.value)
+
+    with pytest.raises(ValueError) as e:
+
+        @analysis(Samples)
+        class C:
+            a: int = parameter("bad default", default=100, upper_bound=99)
+
+    assert "is higher than upper bound" in str(e.value)

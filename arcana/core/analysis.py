@@ -368,11 +368,23 @@ class Parameter(BaseAttr):
 
     @default.validator
     def default_validator(self, _, default):
-        if default is None and self.salience != ParameterSalience.required:
-            raise ValueError(
-                f"Default value for '{self.name}' parameter must be provided unless "
-                f"parameter salience is set to'{ParameterSalience.required}'"
-            )
+        if default is None:
+            if self.salience != ParameterSalience.required:
+                raise ValueError(
+                    f"Default value for '{self.name}' parameter must be provided unless "
+                    f"parameter salience is set to'{ParameterSalience.required}'"
+                )
+        else:
+            if self.lower_bound is not None and default < self.lower_bound:
+                raise ValueError(
+                    f"Default provided to '{self.name}' ({default}) is lower than "
+                    f"lower bound ({self.lower_bound})"
+                )
+            if self.upper_bound is not None and default > self.upper_bound:
+                raise ValueError(
+                    f"Default provided to '{self.name}' ({default}) is higher than "
+                    f"upper bound ({self.upper_bound})"
+                )
 
     @choices.validator
     def choices_validator(self, _, choices):
@@ -901,11 +913,17 @@ def _get_args_automagically(column_specs, parameters, method, index_start=2):
     return tuple(inputs), tuple(used_parameters)
 
 
-def _parameter_validator(_, attr, val):
+def _parameter_validator(self, attr, val):
     spec = attr.metadata[ARCANA_SPEC]
-    if spec.choices is not None and val not in spec.choices:
+    if spec.salience is ParameterSalience.required and val is None:
         raise ValueError(
-            f"{val} is not a valid value for '{attr.name}' parameter: {spec.choices}"
+            f"A value needs to be provided to required parameter '{attr.name}' in {self}"
+        )
+    if spec.choices is not None and val not in spec.choices:
+        val_str = f"'{val}'" if isinstance(val, str) else val
+        raise ValueError(
+            f"{val_str} is not a valid value for '{attr.name}' parameter in {self}, "
+            f"valid choices are {spec.choices}"
         )
     if not (
         (spec.lower_bound is None or val >= spec.lower_bound)
@@ -913,7 +931,7 @@ def _parameter_validator(_, attr, val):
     ):
         raise ValueError(
             f"Value of '{attr.name}' ({val}) is not within the specified bounds: "
-            f"{spec.lower_bound} - {spec.upper_bound}"
+            f"{spec.lower_bound} - {spec.upper_bound} in {self}"
         )
 
 
