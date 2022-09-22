@@ -78,3 +78,11 @@ def test_dicom_to_niftix_with_fslgrad(dummy_dwi_dicom):
     assert all(b in (0.0, 3000.0) for b in bvals)
     assert len(bvec_mags) == 60
     assert all(abs(1 - m) < 1e5 for m in bvec_mags)
+
+
+# @pytest.mark.skip("Mrtrix isn't installed in test environment yet")
+def test_dicom_to_nifti_as_4d(dummy_t1w_dicom):
+
+    nifti_gz_x_e1 = dummy_t1w_dicom.convert_to(NiftiGzX, to_4d=True)
+
+    assert nifti_gz_x_e1.get_header()["dims"] == 1

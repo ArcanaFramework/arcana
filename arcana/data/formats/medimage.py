@@ -252,9 +252,20 @@ class Nifti(NeuroImage):
     @classmethod
     @converter(Dicom)
     def dcm2niix(
-        cls, fs_path, extract_volume=None, file_postfix=attrs.NOTHING, side_car_jq=None
+        cls,
+        fs_path,
+        extract_volume=None,
+        file_postfix=attrs.NOTHING,
+        side_car_jq=None,
+        to_4d=None,
     ):
-        as_workflow = extract_volume is not None or side_car_jq is not None
+        as_workflow = (
+            extract_volume is not None or side_car_jq is not None or to_4d is not None
+        )
+
+        if extract_volume is not None and to_4d is not None:
+            raise ValueError("These parameters should be mutually exclusive")
+
         in_dir = fs_path
         compress = "n"
         if as_workflow:
@@ -291,6 +302,20 @@ class Nifti(NeuroImage):
                     )
                 )
                 out_file = wf.mrconvert.lzout.out_file
+            elif to_4d is not None:
+                out_filename = "out_file.nii"
+                if compress == "y":
+                    out_filename += ".gz"
+                wf.add(
+                    MRConvert(
+                        in_file=out_file,
+                        out_filename=out_filename,
+                        axes=[0, 1, 2, -1],
+                        name="mrconvert",
+                    )
+                )
+                out_file = wf.mrconvert.lzout.out_file
+
             if side_car_jq is not None:
                 wf.add(
                     edit_side_car(
