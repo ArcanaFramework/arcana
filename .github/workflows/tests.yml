@@ -57,6 +57,9 @@ jobs:
       if: matrix.install == 'install'
       run: python setup.py install
 
+    - name: Copy generic SSL certs into xnat4tests dir to enable HTTPS for test registry
+      run: cp -r .github/certs ~/.xnat4tests/certs
+
     - name: Pytest
       run: pytest -vvs --cov arcana  --cov-config .coveragerc --cov-report xml
 
