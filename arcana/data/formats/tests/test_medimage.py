@@ -19,8 +19,8 @@ def test_dicom_to_nifti(dummy_t1w_dicom):
 
 def test_dicom_to_nifti_select_echo(dummy_magfmap_dicom):
 
-    nifti_gz_x_e1 = dummy_magfmap_dicom.convert_to(NiftiGzX, echo=1)
-    nifti_gz_x_e2 = dummy_magfmap_dicom.convert_to(NiftiGzX, echo=2)
+    nifti_gz_x_e1 = dummy_magfmap_dicom.convert_to(NiftiGzX, file_postfix="_e1")
+    nifti_gz_x_e2 = dummy_magfmap_dicom.convert_to(NiftiGzX, file_postfix="_e2")
     assert nifti_gz_x_e1.get_header()["EchoNumber"] == 1
     assert nifti_gz_x_e2.get_header()["EchoNumber"] == 2
 
@@ -32,11 +32,11 @@ def test_dicom_to_nifti_select_echo(dummy_magfmap_dicom):
 
 def test_dicom_to_nifti_select_suffix(dummy_mixedfmap_dicom):
 
-    nifti_gz_x_ph = dummy_mixedfmap_dicom.convert_to(NiftiGzX, component="ph")
+    nifti_gz_x_ph = dummy_mixedfmap_dicom.convert_to(NiftiGzX, file_postfix="_ph")
     nifti_gz_x_imaginary = dummy_mixedfmap_dicom.convert_to(
-        NiftiGzX, component="imaginary"
+        NiftiGzX, file_postfix="_imaginary"
     )
-    nifti_gz_x_real = dummy_mixedfmap_dicom.convert_to(NiftiGzX, component="real")
+    nifti_gz_x_real = dummy_mixedfmap_dicom.convert_to(NiftiGzX, file_postfix="_real")
 
     assert list(nifti_gz_x_ph.get_dims()) == [256, 256, 60]
     assert list(nifti_gz_x_imaginary.get_dims()) == [256, 256, 60]

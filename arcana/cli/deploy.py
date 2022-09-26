@@ -1,5 +1,6 @@
 import logging
 import sys
+import os
 import shutil
 from pathlib import Path
 import re
@@ -31,6 +32,8 @@ from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaBuildError, ArcanaUsageError
 
+PULL_IMAGES_ALIAS = "ARCANA_XNAT_PULL_IMAGES_ALIAS"
+PULL_IMAGES_SECRET = "ARCANA_XNAT_PULL_IMAGES_SECRET"
 
 logger = logging.getLogger("arcana")
 
@@ -538,10 +541,39 @@ include and/or exclude, e.g.
 """,
 )
 @click.argument("manifest_json", type=click.File())
-@click.argument("config_yaml", type=click.File())
-def pull_images(config_yaml, manifest_json):
-    config = yaml.load(config_yaml, Loader=yaml.Loader)
+@click.argument("--config-file", type=click.File())
+@click.option(
+    "--auth-file",
+    type=click.File(),
+    default=None,
+    help="JSON file containing 'alias' + 'secret' fields for XNAT authentication",
+)
+def pull_images(manifest_json, config_file, auth_file):
+    config = yaml.load(config_file, Loader=yaml.Loader)
     manifest = json.load(manifest_json)
+    auth = json.load(auth_file)
+
+    try:
+        auth_alias = auth["alias"]
+    except KeyError:
+        try:
+            auth_alias = os.environ[PULL_IMAGES_ALIAS]
+        except KeyError:
+            raise ValueError(
+                "Authentication alias needs to be provided in the '--auth-file' JSON or "
+                f"via the {PULL_IMAGES_ALIAS} environment variable"
+            )
+
+    try:
+        auth_secret = auth["secret"]
+    except KeyError:
+        try:
+            auth_secret = os.environ[PULL_IMAGES_SECRET]
+        except KeyError:
+            raise ValueError(
+                "Authentication alias needs to be provided in the '--auth-file' JSON or "
+                f"via the {PULL_IMAGES_SECRET} environment variable"
+            )
 
     def matches_entry(entry, match_exprs, default=True):
         """Determines whether an entry meets the inclusion and exclusion criteria
@@ -566,8 +598,8 @@ def pull_images(config_yaml, manifest_json):
 
     with xnatpy.connect(
         server=config["server"],
-        user=config["alias"],
-        password=config["secret"],
+        user=auth_alias,
+        password=auth_secret,
     ) as xlogin:
 
         for entry in manifest["images"]:
