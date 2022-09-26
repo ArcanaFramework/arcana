@@ -21,7 +21,7 @@ install_requires = [
     "neurodocker>=0.9.1",
     "xnat>=0.3.17",
     "pydra @ git+https://github.com/tclose/pydra.git@debug-path-handling",
-    "pydra-dcm2niix>=1.1.0",
+    "pydra-dcm2niix>=1.2.0",
     "pydra-mrtrix3>=0.1",
 ]
 
