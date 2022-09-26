@@ -517,22 +517,16 @@ def inspect_docker_exec(image_tag):
 @xnat.command(
     name="pull-images",
     help="""Updates the installed pipelines on an XNAT instance from a manifest
-JSON file via XNAT's REST API.
+JSON file using the XNAT instance's REST API.
 
 MANIFEST_JSON is a JSON file containing a list of container images built in the release
-and the commands present in them
+and the commands present in them (see 'arcana deploy xnat build')
 
 CONFIG_YAML a YAML file contains the login details for the XNAT server to update, and
-patterns with which to filter the images to install
-
-The XNAT server to update is specified in a YAML configuration file contains the login
-details for the XNAT server to update, and optionally lists of image tag wildcards to
-include and/or exclude, e.g.
+patterns with which to filter the images to install, e.g.
 
     \b
     server: http://localhost
-    alias: er61aee1-fc36-569d-3aef-99dc52f479c9
-    secret: To85Tmlhh4JO2BigyQ53q87GLwegXdu9II2FoCiCIevCRCt1Tsd6cvttaglFNqTbqQ
     include:
     - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.*
     - tag: ghcr.io/Australian-Imaging-Service/pet.rodent.*
@@ -551,28 +545,24 @@ include and/or exclude, e.g.
 def pull_images(config_file, manifest_json, auth_file):
     config = yaml.load(config_file, Loader=yaml.Loader)
     manifest = json.load(manifest_json)
-    auth = json.load(auth_file)
-
-    try:
-        auth_alias = auth["alias"]
-    except KeyError:
+    if auth_file is not None:
+        auth = json.load(auth_file)
+        try:
+            auth_alias = auth["alias"]
+            auth_secret = auth["secret"]
+        except KeyError:
+            raise KeyError(
+                "--auth-file should be in JSON and contain 'alias' and 'secret' keys"
+            )
+    else:
         try:
             auth_alias = os.environ[PULL_IMAGES_ALIAS_KEY]
-        except KeyError:
-            raise ValueError(
-                "Authentication alias needs to be provided in the '--auth-file' JSON or "
-                f"via the {PULL_IMAGES_ALIAS_KEY} environment variable"
-            )
-
-    try:
-        auth_secret = auth["secret"]
-    except KeyError:
-        try:
             auth_secret = os.environ[PULL_IMAGES_SECRET_KEY]
         except KeyError:
-            raise ValueError(
-                "Authentication alias needs to be provided in the '--auth-file' JSON or "
-                f"via the {PULL_IMAGES_SECRET_KEY} environment variable"
+            raise KeyError(
+                "If '--auth-file' is not provided, then an alias and secret to authenticate "
+                f"with the server with must be set in the '{PULL_IMAGES_ALIAS_KEY}' and "
+                f"'{PULL_IMAGES_SECRET_KEY}' environment variable, respectively"
             )
 
     def matches_entry(entry, match_exprs, default=True):
@@ -637,26 +627,29 @@ to avoid them expiring (2 days by default)
 CONFIG_YAML a YAML file contains the login details for the XNAT server to update
 """,
 )
-@click.argument(
-    "config_yaml",
-    type=click.Path(exists=True),
-)
-def pull_auth_refresh(config_yaml):
+@click.argument("config_yaml", type=click.Path(exists=True))
+@click.argument("auth_file", type=click.File())
+def pull_auth_refresh(config_yaml, auth_file):
     with open(config_yaml) as f:
         config = yaml.load(f, Loader=yaml.Loader)
+    with open(auth_file) as f:
+        auth = json.load(f)
 
     with xnatpy.connect(
-        server=config["server"], user=config["alias"], password=config["secret"]
+        server=config["server"], user=auth["alias"], password=auth["secret"]
     ) as xlogin:
         alias, secret = xlogin.services.issue_token()
 
-    config["alias"] = alias
-    config["secret"] = secret
-
     with open(config_yaml, "w") as f:
-        yaml.dump(config, f)
+        json.dump(
+            {
+                "alias": alias,
+                "secret": secret,
+            },
+            f,
+        )
 
-    click.echo("Updated XNAT connection token successfully")
+    click.echo(f"Updated XNAT connection token to {config['server']} successfully")
 
 
 @xnat.command(

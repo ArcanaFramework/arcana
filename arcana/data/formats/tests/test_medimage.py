@@ -1,5 +1,4 @@
 import json
-import pytest
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 from logging import getLogger
 
@@ -24,11 +23,6 @@ def test_dicom_to_nifti_select_echo(dummy_magfmap_dicom):
     assert nifti_gz_x_e1.get_header()["EchoNumber"] == 1
     assert nifti_gz_x_e2.get_header()["EchoNumber"] == 2
 
-    with pytest.raises(ValueError) as excinfo:
-        dummy_magfmap_dicom.convert_to(NiftiGzX)
-
-    assert "DICOM dataset contains multiple echos" in str(excinfo.value)
-
 
 def test_dicom_to_nifti_select_suffix(dummy_mixedfmap_dicom):
 
@@ -47,7 +41,7 @@ def test_dicom_to_nifti_with_extract_volume(dummy_dwi_dicom):
 
     nifti_gz_x_e1 = dummy_dwi_dicom.convert_to(NiftiGzX, extract_volume=30)
 
-    assert nifti_gz_x_e1.get_header()["dims"] == 1
+    assert nifti_gz_x_e1.get_header()["dim"][0] == 3
 
 
 def test_dicom_to_nifti_with_jq_edit(dummy_t1w_dicom):
@@ -84,5 +78,4 @@ def test_dicom_to_niftix_with_fslgrad(dummy_dwi_dicom):
 def test_dicom_to_nifti_as_4d(dummy_t1w_dicom):
 
     nifti_gz_x_e1 = dummy_t1w_dicom.convert_to(NiftiGzX, to_4d=True)
-
-    assert nifti_gz_x_e1.get_header()["dims"] == 1
+    assert nifti_gz_x_e1.get_header()["dim"][0] == 4

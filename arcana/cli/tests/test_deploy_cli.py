@@ -594,8 +594,8 @@ def test_pull_images(
     with patch.dict(
         os.environ,
         {
-            PULL_IMAGES_ALIAS_KEY: xnat4tests.config["user"],
-            PULL_IMAGES_SECRET_KEY: xnat4tests.config["password"],
+            PULL_IMAGES_ALIAS_KEY: xnat4tests.config["xnat_user"],
+            PULL_IMAGES_SECRET_KEY: xnat4tests.config["xnat_password"],
         },
     ):
         result = cli_runner(
