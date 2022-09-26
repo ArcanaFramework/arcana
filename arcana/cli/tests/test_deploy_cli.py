@@ -1,4 +1,5 @@
 import sys
+import os
 import shutil
 import traceback
 from copy import copy
@@ -9,15 +10,19 @@ from functools import reduce
 from operator import mul
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 import pytest
 import docker
 import xnat
+import xnat4tests
 from arcana.cli.deploy import (
     build,
     build_docs,
     run_pipeline,
     pull_images,
     pull_auth_refresh,
+    PULL_IMAGES_ALIAS_KEY,
+    PULL_IMAGES_SECRET_KEY,
 )
 from arcana.core.utils import class_location
 from arcana.test.fixtures.docs import all_docs_fixtures, DocsFixture
@@ -585,10 +590,18 @@ def test_pull_images(
             },
             f,
         )
-    result = cli_runner(
-        pull_images,
-        [str(manifest_path), str(config_path)],
-    )
+
+    with patch.dict(
+        os.environ,
+        {
+            PULL_IMAGES_ALIAS_KEY: xnat4tests.config["user"],
+            PULL_IMAGES_SECRET_KEY: xnat4tests.config["password"],
+        },
+    ):
+        result = cli_runner(
+            pull_images,
+            [str(config_path), str(manifest_path)],
+        )
 
     assert result.exit_code == 0, show_cli_trace(result)
 

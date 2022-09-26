@@ -32,8 +32,8 @@ from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaBuildError, ArcanaUsageError
 
-PULL_IMAGES_ALIAS = "ARCANA_XNAT_PULL_IMAGES_ALIAS"
-PULL_IMAGES_SECRET = "ARCANA_XNAT_PULL_IMAGES_SECRET"
+PULL_IMAGES_ALIAS_KEY = "ARCANA_XNAT_PULL_IMAGES_ALIAS"
+PULL_IMAGES_SECRET_KEY = "ARCANA_XNAT_PULL_IMAGES_SECRET"
 
 logger = logging.getLogger("arcana")
 
@@ -540,15 +540,15 @@ include and/or exclude, e.g.
     - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.bidsapps.*
 """,
 )
+@click.argument("config_file", type=click.File())
 @click.argument("manifest_json", type=click.File())
-@click.argument("--config-file", type=click.File())
 @click.option(
     "--auth-file",
     type=click.File(),
     default=None,
     help="JSON file containing 'alias' + 'secret' fields for XNAT authentication",
 )
-def pull_images(manifest_json, config_file, auth_file):
+def pull_images(config_file, manifest_json, auth_file):
     config = yaml.load(config_file, Loader=yaml.Loader)
     manifest = json.load(manifest_json)
     auth = json.load(auth_file)
@@ -557,22 +557,22 @@ def pull_images(manifest_json, config_file, auth_file):
         auth_alias = auth["alias"]
     except KeyError:
         try:
-            auth_alias = os.environ[PULL_IMAGES_ALIAS]
+            auth_alias = os.environ[PULL_IMAGES_ALIAS_KEY]
         except KeyError:
             raise ValueError(
                 "Authentication alias needs to be provided in the '--auth-file' JSON or "
-                f"via the {PULL_IMAGES_ALIAS} environment variable"
+                f"via the {PULL_IMAGES_ALIAS_KEY} environment variable"
             )
 
     try:
         auth_secret = auth["secret"]
     except KeyError:
         try:
-            auth_secret = os.environ[PULL_IMAGES_SECRET]
+            auth_secret = os.environ[PULL_IMAGES_SECRET_KEY]
         except KeyError:
             raise ValueError(
                 "Authentication alias needs to be provided in the '--auth-file' JSON or "
-                f"via the {PULL_IMAGES_SECRET} environment variable"
+                f"via the {PULL_IMAGES_SECRET_KEY} environment variable"
             )
 
     def matches_entry(entry, match_exprs, default=True):
