@@ -39,7 +39,9 @@ jobs:
         mv dcm2niix /usr/local/bin
 
     - name: Install MRtrix via Conda
-      run: conda install -c mrtrix3 mrtrix3
+      run: |
+        conda install -c mrtrix3 mrtrix3
+        mrconvert --version
 
     - name: Set up Python ${{ matrix.python-version }} on ${{ matrix.os }}
       uses: actions/setup-python@v2
