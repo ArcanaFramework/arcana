@@ -621,25 +621,30 @@ def test_pull_auth_refresh(xnat_repository, work_dir, cli_runner):
         yaml.dump(
             {
                 "server": xnat_repository.server,
-                "alias": "admin",
-                "secret": "admin",
             },
+            f,
+        )
+
+    auth_path = work_dir / "auth.json"
+    with open(auth_path, "w") as f:
+        json.dump(
+            {"alias": "admin", "secret": "admin"},
             f,
         )
 
     result = cli_runner(
         pull_auth_refresh,
-        [str(config_path)],
+        [str(config_path), str(auth_path)],
     )
 
     assert result.exit_code == 0, show_cli_trace(result)
 
-    with open(config_path) as f:
-        config = yaml.load(f, Loader=yaml.Loader)
+    with open(auth_path) as f:
+        auth = yaml.load(f, Loader=yaml.Loader)
 
-    assert len(config["alias"]) > 20
-    assert len(config["secret"]) > 20
+    assert len(auth["alias"]) > 20
+    assert len(auth["secret"]) > 20
 
     assert xnat.connect(
-        xnat_repository.server, user=config["alias"], password=config["secret"]
+        xnat_repository.server, user=auth["alias"], password=auth["secret"]
     )

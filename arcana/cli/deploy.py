@@ -627,20 +627,19 @@ to avoid them expiring (2 days by default)
 CONFIG_YAML a YAML file contains the login details for the XNAT server to update
 """,
 )
-@click.argument("config_yaml", type=click.Path(exists=True))
-@click.argument("auth_file", type=click.File())
-def pull_auth_refresh(config_yaml, auth_file):
-    with open(config_yaml) as f:
-        config = yaml.load(f, Loader=yaml.Loader)
-    with open(auth_file) as f:
-        auth = json.load(f)
+@click.argument("config_yaml_file", type=click.File())
+@click.argument("auth_file_path", type=click.Path(exists=True))
+def pull_auth_refresh(config_yaml_file, auth_file_path):
+    config = yaml.load(config_yaml_file, Loader=yaml.Loader)
+    with open(auth_file_path) as fp:
+        auth = json.load(fp)
 
     with xnatpy.connect(
         server=config["server"], user=auth["alias"], password=auth["secret"]
     ) as xlogin:
         alias, secret = xlogin.services.issue_token()
 
-    with open(config_yaml, "w") as f:
+    with open(auth_file_path, "w") as f:
         json.dump(
             {
                 "alias": alias,
