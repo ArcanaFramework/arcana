@@ -155,6 +155,14 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     default=False,
     help=("push built images to registry"),
 )
+@click.option(
+    "--clean-up/--dont-clean-up",
+    type=bool,
+    default=False,
+    help=(
+        "Remove built images after they are pushed to the registry (requires --push)"
+    ),
+)
 def build(
     spec_path,
     docker_org,
@@ -172,7 +180,11 @@ def build(
     license_dir,
     check_registry,
     push,
+    clean_up,
 ):
+
+    if clean_up and not push:
+        raise ValueError("--clean-up flag requires '--push'")
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode("utf-8"))
@@ -305,6 +317,10 @@ def build(
                 errors = True
             else:
                 logger.info("Successfully pushed '%s' to registry", image_tag)
+            if clean_up:
+                dc.images.get(image_tag).remove()
+                dc.images.prune()
+                logger.info("Removed '%s' to clean-up disk space")
 
         if release or save_manifest:
             manifest["images"].append(
@@ -339,7 +355,9 @@ def build(
 
             # Also push release to "latest" tag
             image = dc.images.get(image_tag)
-            latest_release_tag = f"{docker_org_fullpath}/release:latest"
+            latest_release_tag = (
+                docker_org_fullpath + "/" + release.split(":")[0] + ":latest"
+            )
             image.tag(latest_release_tag)
 
             try:
