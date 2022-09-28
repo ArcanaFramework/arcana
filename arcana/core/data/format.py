@@ -1046,7 +1046,8 @@ class BaseDirectory(FileGroup):
         types_str = ", ".join(t.__name__ for t in self.content_types)
         if not matches:
             raise ArcanaFileFormatError(
-                f"No matching directories with contents matching {types_str}"
+                f"No matching directories with contents matching {types_str} amongst "
+                f"{fs_paths}"
             )
         elif len(matches) > 1:
             matches_str = ", ".join(str(m) for m in matches)

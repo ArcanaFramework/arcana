@@ -1,11 +1,11 @@
 import logging
 import sys
+import os
 import shutil
 from pathlib import Path
 import re
 import json
 from collections import defaultdict
-import shlex
 from traceback import format_exc
 import tempfile
 import yaml
@@ -32,6 +32,8 @@ from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaBuildError, ArcanaUsageError
 
+PULL_IMAGES_ALIAS_KEY = "ARCANA_XNAT_PULL_IMAGES_ALIAS"
+PULL_IMAGES_SECRET_KEY = "ARCANA_XNAT_PULL_IMAGES_SECRET"
 
 logger = logging.getLogger("arcana")
 
@@ -313,7 +315,7 @@ def build(
                 }
             )
     if release:
-        release_image_tag = f"{docker_org_fullpath}/release-{release}"
+        release_image_tag = f"{docker_org_fullpath}/release:{release}"
         create_metapackage(
             release_image_tag, manifest, use_local_packages=use_local_packages
         )
@@ -333,6 +335,31 @@ def build(
                 logger.info(
                     "Successfully pushed release metapackage '%s' to registry",
                     image_tag,
+                )
+
+            # Also push release to "latest" tag
+            image = dc.images.get(image_tag)
+            latest_release_tag = f"{docker_org_fullpath}/release:latest"
+            image.tag(latest_release_tag)
+
+            try:
+                dc.api.push(latest_release_tag)
+            except Exception:
+                if raise_errors:
+                    raise
+                logger.error(
+                    "Could not push latest tag for release metapackage '%s':\n\n%s",
+                    latest_release_tag,
+                    format_exc(),
+                )
+                errors = True
+            else:
+                logger.info(
+                    (
+                        "Successfully pushed latest tag for release metapackage '%s' "
+                        "to registry"
+                    ),
+                    latest_release_tag,
                 )
         if save_manifest:
             with open(save_manifest, "w") as f:
@@ -490,22 +517,16 @@ def inspect_docker_exec(image_tag):
 @xnat.command(
     name="pull-images",
     help="""Updates the installed pipelines on an XNAT instance from a manifest
-JSON file via XNAT's REST API.
+JSON file using the XNAT instance's REST API.
 
 MANIFEST_JSON is a JSON file containing a list of container images built in the release
-and the commands present in them
+and the commands present in them (see 'arcana deploy xnat build')
 
 CONFIG_YAML a YAML file contains the login details for the XNAT server to update, and
-patterns with which to filter the images to install
-
-The XNAT server to update is specified in a YAML configuration file contains the login
-details for the XNAT server to update, and optionally lists of image tag wildcards to
-include and/or exclude, e.g.
+patterns with which to filter the images to install, e.g.
 
     \b
     server: http://localhost
-    alias: er61aee1-fc36-569d-3aef-99dc52f479c9
-    secret: To85Tmlhh4JO2BigyQ53q87GLwegXdu9II2FoCiCIevCRCt1Tsd6cvttaglFNqTbqQ
     include:
     - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.*
     - tag: ghcr.io/Australian-Imaging-Service/pet.rodent.*
@@ -513,11 +534,36 @@ include and/or exclude, e.g.
     - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.bidsapps.*
 """,
 )
+@click.argument("config_file", type=click.File())
 @click.argument("manifest_json", type=click.File())
-@click.argument("config_yaml", type=click.File())
-def pull_images(config_yaml, manifest_json):
-    config = yaml.load(config_yaml, Loader=yaml.Loader)
+@click.option(
+    "--auth-file",
+    type=click.File(),
+    default=None,
+    help="JSON file containing 'alias' + 'secret' fields for XNAT authentication",
+)
+def pull_images(config_file, manifest_json, auth_file):
+    config = yaml.load(config_file, Loader=yaml.Loader)
     manifest = json.load(manifest_json)
+    if auth_file is not None:
+        auth = json.load(auth_file)
+        try:
+            auth_alias = auth["alias"]
+            auth_secret = auth["secret"]
+        except KeyError:
+            raise KeyError(
+                "--auth-file should be in JSON and contain 'alias' and 'secret' keys"
+            )
+    else:
+        try:
+            auth_alias = os.environ[PULL_IMAGES_ALIAS_KEY]
+            auth_secret = os.environ[PULL_IMAGES_SECRET_KEY]
+        except KeyError:
+            raise KeyError(
+                "If '--auth-file' is not provided, then an alias and secret to authenticate "
+                f"with the server with must be set in the '{PULL_IMAGES_ALIAS_KEY}' and "
+                f"'{PULL_IMAGES_SECRET_KEY}' environment variable, respectively"
+            )
 
     def matches_entry(entry, match_exprs, default=True):
         """Determines whether an entry meets the inclusion and exclusion criteria
@@ -542,8 +588,8 @@ def pull_images(config_yaml, manifest_json):
 
     with xnatpy.connect(
         server=config["server"],
-        user=config["alias"],
-        password=config["secret"],
+        user=auth_alias,
+        password=auth_secret,
     ) as xlogin:
 
         for entry in manifest["images"]:
@@ -581,26 +627,28 @@ to avoid them expiring (2 days by default)
 CONFIG_YAML a YAML file contains the login details for the XNAT server to update
 """,
 )
-@click.argument(
-    "config_yaml",
-    type=click.Path(exists=True),
-)
-def pull_auth_refresh(config_yaml):
-    with open(config_yaml) as f:
-        config = yaml.load(f, Loader=yaml.Loader)
+@click.argument("config_yaml_file", type=click.File())
+@click.argument("auth_file_path", type=click.Path(exists=True))
+def pull_auth_refresh(config_yaml_file, auth_file_path):
+    config = yaml.load(config_yaml_file, Loader=yaml.Loader)
+    with open(auth_file_path) as fp:
+        auth = json.load(fp)
 
     with xnatpy.connect(
-        server=config["server"], user=config["alias"], password=config["secret"]
+        server=config["server"], user=auth["alias"], password=auth["secret"]
     ) as xlogin:
         alias, secret = xlogin.services.issue_token()
 
-    config["alias"] = alias
-    config["secret"] = secret
+    with open(auth_file_path, "w") as f:
+        json.dump(
+            {
+                "alias": alias,
+                "secret": secret,
+            },
+            f,
+        )
 
-    with open(config_yaml, "w") as f:
-        yaml.dump(config, f)
-
-    click.echo("Updated XNAT connection token successfully")
+    click.echo(f"Updated XNAT connection token to {config['server']} successfully")
 
 
 @xnat.command(
@@ -844,7 +892,7 @@ def run_pipeline(
 
     def extract_qualifiers_from_path(user_input: str):
         """Extracts out "qualifiers" from the user-inputted paths. These are
-        in the form 'path kw1=val1 kw2=val2...
+        in the form 'path ns1.arg1=val1 ns1.arg2=val2, ns2.arg1=val3...
 
         Parameters
         ----------
@@ -862,8 +910,8 @@ def run_pipeline(
         """
         qualifiers = defaultdict(dict)
         if "=" in user_input:  # Treat user input as containing qualifiers
-            parts = shlex.split(user_input)
-            path = parts[0]
+            parts = re.findall(r'(?:[^\s"]|"(?:\\.|[^"])*")+', user_input)
+            path = parts[0].strip('"')
             for part in parts[1:]:
                 try:
                     full_name, val = part.split("=", maxsplit=1)
@@ -877,6 +925,10 @@ def run_pipeline(
                         (e.args[0] + f" attempting to split '{full_name}' by '.'"),
                     )
                     raise e
+                try:
+                    val = json.loads(val)
+                except json.JSONDecodeError:
+                    pass
                 qualifiers[ns][name] = val
         else:
             path = user_input

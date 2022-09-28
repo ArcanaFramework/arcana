@@ -1,3 +1,5 @@
+import sys
+import os
 import shutil
 import traceback
 from copy import copy
@@ -8,15 +10,19 @@ from functools import reduce
 from operator import mul
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 import pytest
 import docker
 import xnat
+import xnat4tests
 from arcana.cli.deploy import (
     build,
     build_docs,
     run_pipeline,
     pull_images,
     pull_auth_refresh,
+    PULL_IMAGES_ALIAS_KEY,
+    PULL_IMAGES_SECRET_KEY,
 )
 from arcana.core.utils import class_location
 from arcana.test.fixtures.docs import all_docs_fixtures, DocsFixture
@@ -471,8 +477,13 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
         assert dec_contents == unencoded_contents
 
 
-@pytest.mark.skip(
-    "Skipping in CI as can't get insecure registries setup on GitHub Actions"
+@pytest.mark.xfail(
+    sys.platform == "linux",
+    reason=(
+        "Haven't been able to setup either SSL for the Xnat4Tests test docker "
+        "registry, or the internal host on GH Actions as an insecure "
+        "registries"
+    ),
 )
 def test_pull_images(
     xnat_repository, command_spec, work_dir, docker_registry_for_xnat_uri, cli_runner
@@ -530,7 +541,7 @@ def test_pull_images(
         [
             str(spec_dir),
             DOCKER_ORG,
-            "--build_dir",
+            "--build-dir",
             str(build_dir),
             "--registry",
             docker_registry_for_xnat_uri,
@@ -582,10 +593,18 @@ def test_pull_images(
             },
             f,
         )
-    result = cli_runner(
-        pull_images,
-        [str(manifest_path), str(config_path)],
-    )
+
+    with patch.dict(
+        os.environ,
+        {
+            PULL_IMAGES_ALIAS_KEY: xnat4tests.config["xnat_user"],
+            PULL_IMAGES_SECRET_KEY: xnat4tests.config["xnat_password"],
+        },
+    ):
+        result = cli_runner(
+            pull_images,
+            [str(config_path), str(manifest_path)],
+        )
 
     assert result.exit_code == 0, show_cli_trace(result)
 
@@ -605,25 +624,30 @@ def test_pull_auth_refresh(xnat_repository, work_dir, cli_runner):
         yaml.dump(
             {
                 "server": xnat_repository.server,
-                "alias": "admin",
-                "secret": "admin",
             },
+            f,
+        )
+
+    auth_path = work_dir / "auth.json"
+    with open(auth_path, "w") as f:
+        json.dump(
+            {"alias": "admin", "secret": "admin"},
             f,
         )
 
     result = cli_runner(
         pull_auth_refresh,
-        [str(config_path)],
+        [str(config_path), str(auth_path)],
     )
 
     assert result.exit_code == 0, show_cli_trace(result)
 
-    with open(config_path) as f:
-        config = yaml.load(f, Loader=yaml.Loader)
+    with open(auth_path) as f:
+        auth = yaml.load(f, Loader=yaml.Loader)
 
-    assert len(config["alias"]) > 20
-    assert len(config["secret"]) > 20
+    assert len(auth["alias"]) > 20
+    assert len(auth["secret"]) > 20
 
     assert xnat.connect(
-        xnat_repository.server, user=config["alias"], password=config["secret"]
+        xnat_repository.server, user=auth["alias"], password=auth["secret"]
     )

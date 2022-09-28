@@ -10,8 +10,6 @@ import numpy as np
 import nibabel
 from pydra import Workflow, mark
 from pydra.tasks.dcm2niix import Dcm2Niix
-
-# Hack to get module to load until pydra-mrtrix is published on PyPI
 from pydra.tasks.mrtrix3.utils import MRConvert
 from arcana.core.mark import converter
 from arcana.exceptions import ArcanaUsageError
@@ -254,9 +252,20 @@ class Nifti(NeuroImage):
     @classmethod
     @converter(Dicom)
     def dcm2niix(
-        cls, fs_path, extract_volume=None, echo=None, component=None, side_car_jq=None
+        cls,
+        fs_path,
+        extract_volume=None,
+        file_postfix=attrs.NOTHING,
+        side_car_jq=None,
+        to_4d=False,
     ):
-        as_workflow = extract_volume is not None or side_car_jq is not None
+        as_workflow = extract_volume is not None or side_car_jq is not None or to_4d
+
+        if extract_volume is not None and to_4d:
+            raise ValueError(
+                f"'extract_volume' ({extract_volume}) and 'to_4d' are mutually exclusive"
+            )
+
         in_dir = fs_path
         compress = "n"
         if as_workflow:
@@ -273,27 +282,29 @@ class Nifti(NeuroImage):
             out_dir=".",
             name="dcm2niix",
             compress=compress,
-            echo=echo if echo else attrs.NOTHING,
-            suffix=component if component else attrs.NOTHING,
+            file_postfix=file_postfix,
         )
         if as_workflow:
             wf.add(node)
             out_file = wf.dcm2niix.lzout.out_file
             out_json = wf.dcm2niix.lzout.out_json
-            if extract_volume is not None:
-                out_filename = "out_file.nii"
-                if compress == "y":
-                    out_filename += ".gz"
+            if extract_volume is not None or to_4d:
+                if extract_volume:
+                    coord = [3, extract_volume]
+                    axes = [0, 1, 2]
+                else:  # to_4d
+                    coord = attrs.NOTHING
+                    axes = [0, 1, 2, -1]
                 wf.add(
                     MRConvert(
                         in_file=out_file,
-                        out_filename=out_filename,
-                        coord=[3, extract_volume],
-                        axes=[0, 1, 2],
+                        coord=coord,
+                        axes=axes,
                         name="mrconvert",
                     )
                 )
                 out_file = wf.mrconvert.lzout.out_file
+
             if side_car_jq is not None:
                 wf.add(
                     edit_side_car(
