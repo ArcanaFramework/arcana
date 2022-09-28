@@ -315,7 +315,7 @@ def build(
                 }
             )
     if release:
-        release_image_tag = f"{docker_org_fullpath}/release:{release}"
+        release_image_tag = f"{docker_org_fullpath}/{release}"
         create_metapackage(
             release_image_tag, manifest, use_local_packages=use_local_packages
         )
