@@ -23,7 +23,7 @@ __version__ = get_versions()["version"]
 del get_versions
 from pydra import set_input_validator
 
-set_input_validator(False)
+set_input_validator(True)
 from .__about__ import __authors__
 from .core.data.set import Dataset
 from .core.data.store import DataStore
