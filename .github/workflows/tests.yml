@@ -20,14 +20,13 @@ jobs:
         install: [install, develop]
       fail-fast: false
     runs-on: ${{ matrix.os }}
-
+    defaults:
+      run:
+        shell: bash -l {0}
     steps:
     - uses: actions/checkout@v2
     - name: Disable etelemetry
       run:  echo "NO_ET=TRUE" >> $GITHUB_ENV
-
-    - name: Minconda
-      uses: conda-incubator/setup-miniconda@v2
 
     - name: Install System Packages
       run: sudo apt install libopenjp2-7
@@ -37,6 +36,12 @@ jobs:
         curl -fLO https://github.com/rordenlab/dcm2niix/releases/latest/download/dcm2niix_lnx.zip
         unzip dcm2niix_lnx.zip
         mv dcm2niix /usr/local/bin
+
+    - name: Install Minconda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        auto-activate-base: true
+        activate-environment: ""
 
     - name: Install MRtrix via Conda
       run: |
