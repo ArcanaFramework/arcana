@@ -81,7 +81,7 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     help=("Name of the release for the package as a whole (i.e. for all pipelines)"),
 )
 @click.option(
-    "--tag-latest/dont-tag-latest",
+    "--tag-latest/--dont-tag-latest",
     default=False,
     type=bool,
     help='whether to tag the release as the "latest" or not',
