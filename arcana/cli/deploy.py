@@ -193,8 +193,14 @@ def build(
     if clean_up and not push:
         raise ValueError("'--clean-up' flag requires '--push'")
 
-    if tag_latest and not release:
-        raise ValueError("'--tag-latest' flag requires '--release'")
+    if tag_latest:
+        if not release:
+            raise ValueError("'--tag-latest' flag requires '--release'")
+        elif ":" not in release:
+            raise ValueError(
+                "if tagging the release as \"latest\" (as specified by '--tag-latest'), "
+                "then the release must contain explicit version (i.e. part after ':')"
+            )
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode("utf-8"))
@@ -328,9 +334,13 @@ def build(
             else:
                 logger.info("Successfully pushed '%s' to registry", image_tag)
             if clean_up:
-                dc.images.get(image_tag).remove()
-                dc.images.prune()
-                logger.info("Removed '%s' to clean-up disk space")
+                dc.api.remove_image(image_tag)
+                dc.images.prune(filters={"dangling": False})
+                dc.api.prune_builds()
+                logger.info(
+                    "Removed '%s' and pruned dangling images to free up disk space",
+                    image_tag,
+                )
 
         if release or save_manifest:
             manifest["images"].append(
