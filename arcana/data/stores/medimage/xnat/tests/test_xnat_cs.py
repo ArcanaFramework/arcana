@@ -141,7 +141,10 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     # outer Docker socket. Since we build the pipeline image with the same
     # socket there is no need to pull it.
     xnat_command = generate_xnat_cs_command(
-        image_tag=build_spec["image_tag"], **command_spec
+        image_tag=build_spec["image_tag"],
+        pkg_version="1.0",
+        wrapper_version="1.0",
+        **command_spec,
     )
 
     launch_inputs = {}
