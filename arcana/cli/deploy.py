@@ -291,14 +291,14 @@ def build(
                 changelog = compare_specs(built_spec, spec, check_version=True)
                 if changelog:
                     msg = (
-                        f"Spec for '{image_tag}' doesn't match the one that was "
-                        "used to build the image already in the registry (skipping):\n\n"
+                        f"spec for '{image_tag}' doesn't match the one that was "
+                        "used to build the image already in the registry:\n\n"
                         + str(changelog.pretty())
                     )
                     if raise_errors:
                         raise ArcanaBuildError(msg)
                     else:
-                        logger.error(msg)
+                        logger.error("Skipped {image_tag} because " + msg)
                     continue
                 else:
                     logger.info(
