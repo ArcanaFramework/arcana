@@ -335,6 +335,7 @@ def build(
                 logger.info("Successfully pushed '%s' to registry", image_tag)
             if clean_up:
                 dc.api.remove_image(image_tag)
+                dc.containers.prune()
                 dc.images.prune(filters={"dangling": False})
                 dc.api.remove_image(spec["base_image"])
                 dc.images.prune(filters={"dangling": False})
