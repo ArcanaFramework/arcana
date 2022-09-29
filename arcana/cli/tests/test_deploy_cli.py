@@ -45,7 +45,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         "wrapper_version": "1",
         "system_packages": ["vim"],  # just to test it out
         "python_packages": ["pytest"],  # just to test it out
-        "authors": {"name": "Some One", "email": "some.one@an.email.org"},
+        "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
         "info_url": "http://concatenate.readthefakedocs.io",
     }
 
@@ -129,7 +129,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         "wrapper_version": "1",
         "system_packages": [],
         "python_packages": [],
-        "authors": {"name": "Some One", "email": "some.one@an.email.org"},
+        "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
         "info_url": "http://concatenate.readthefakedocs.io",
     }
 
@@ -516,7 +516,7 @@ def test_pull_images(
             "wrapper_version": WRAPPER_VERSION,
             "system_packages": [],
             "python_packages": [],
-            "authors": {"name": "Some One", "email": "some.one@an.email.org"},
+            "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
             "info_url": "http://concatenate.readthefakedocs.io",
         }
 
