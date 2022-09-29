@@ -31,7 +31,7 @@ IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
 def build_xnat_cs_image(
     image_tag: str,
     commands: ty.List[ty.Dict[str, ty.Any]],
-    authors: ty.List[ty.Tuple[str, str]],
+    authors: ty.List[ty.Dict[str, str]],
     info_url: str,
     docker_registry: str = DOCKER_HUB,
     build_dir: Path = None,
@@ -51,7 +51,7 @@ def build_xnat_cs_image(
     commands: dict[str, Any]
         List of command specifications (in dicts) to be installed on the
         image, see `generate_xnat_command` for valid args (dictionary keys).
-    authors : list[str]
+    authors : list[dict[str, str]]
         Names and emails of the maintainers of the wrapper pipeline
     info_url : str
         The URL of the package website explaining the analysis software
@@ -111,7 +111,11 @@ def build_xnat_cs_image(
             cmd_spec["info_url"] = info_url
 
         xnat_cmd = generate_xnat_cs_command(
-            image_tag=image_tag, registry=docker_registry, **cmd_spec
+            image_tag=image_tag,
+            registry=docker_registry,
+            pkg_version=pkg_version,
+            wrapper_version=wrapper_version,
+            **cmd_spec,
         )
 
         xnat_commands.append(xnat_cmd)
@@ -122,7 +126,7 @@ def build_xnat_cs_image(
 
     dockerfile = construct_dockerfile(
         build_dir,
-        labels={"org.nrg.commands": command_label, "maintainer": authors[0]},
+        labels={"org.nrg.commands": command_label, "maintainer": authors[0]["email"]},
         spec=spec,
         **kwargs,
     )
@@ -147,6 +151,8 @@ def generate_xnat_cs_command(
     description: str,
     version: str,
     info_url: str,
+    pkg_version: str,
+    wrapper_version: str,
     parameters=None,
     configuration=None,
     row_frequency="session",
@@ -181,6 +187,12 @@ def generate_xnat_cs_command(
         Version string for the wrapped pipeline
     info_url : str
         URI explaining in detail what the pipeline does
+    pkg_version : str
+        Version of the package to be wrapped by the Docker image (used in the command
+        description)
+    wrapper_version : str
+        Version of the wrapper script used to generate the Docker image for the given
+        package version (used in the command description)
     parameters : ty.List[str]
         Parameters to be exposed in the CS command
     row_frequency : str
@@ -194,6 +206,9 @@ def generate_xnat_cs_command(
         A long description of the pipeline, used in documentation and ignored
         here. Only included in the signature so that an error isn't thrown when
         it is encountered.
+    known_issues : str
+        Any known issues with the pipeline. Only included in the signature so that an
+        error isn't thrown when it is encountered.
 
     Returns
     -------
@@ -472,7 +487,7 @@ def generate_xnat_cs_command(
     # Generate the complete configuration JSON
     xnat_command = {
         "name": name,
-        "description": description,
+        "description": f"{name} {pkg_version} ({wrapper_version}): {description}",
         "label": name,
         "version": version,
         "schema-version": "1.0",
@@ -578,6 +593,10 @@ def create_metapackage(image_tag, manifest, use_local_packages=False):
         json.dump(manifest, f)
 
     dockerfile.copy(["./manifest.json"], "/manifest.json")
+
+    dockerfile.entrypoint(["arcana", "deploy", "xnat", "pull-images"])
+
+    dockerfile._parts.append('CMD ["/manifest.json"]')
 
     dockerfile_build(dockerfile, build_dir, image_tag)
 

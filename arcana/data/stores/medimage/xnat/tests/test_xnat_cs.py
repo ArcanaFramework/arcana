@@ -33,7 +33,7 @@ def run_spec(
         spec["build"] = {
             "image_tag": "arcana-tests/concatenate-xnat-cs",
             "commands": [command_spec],
-            "authors": ["some.one@an.org"],
+            "authors": {"name": "Some One", "email": "some.one@an.email.org"},
             "info_url": "http://concatenate.readthefakedocs.io",
             "system_packages": [],
             "python_packages": [],
@@ -55,7 +55,7 @@ def run_spec(
             "image_tag": "arcana-tests/bids-app-xnat-cs",
             "base_image": mock_bids_app_image,
             "commands": [bids_command_spec],
-            "authors": ["some.one.else@another.org"],
+            "authors": {"name": "Some One Else", "email": "some.oneelse@an.email.org"},
             "info_url": "http://a-bids-app.readthefakedocs.io",
             "system_packages": [],
             "python_packages": [],

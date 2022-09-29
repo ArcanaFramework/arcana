@@ -81,6 +81,12 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     help=("Name of the release for the package as a whole (i.e. for all pipelines)"),
 )
 @click.option(
+    "--tag-latest/dont-tag-latest",
+    default=False,
+    type=bool,
+    help='whether to tag the release as the "latest" or not',
+)
+@click.option(
     "--save-manifest",
     default=None,
     type=click.Path(writable=True),
@@ -168,6 +174,7 @@ def build(
     docker_org,
     docker_registry,
     release,
+    tag_latest,
     save_manifest,
     logfile,
     loglevel,
@@ -184,7 +191,10 @@ def build(
 ):
 
     if clean_up and not push:
-        raise ValueError("--clean-up flag requires '--push'")
+        raise ValueError("'--clean-up' flag requires '--push'")
+
+    if tag_latest and not release:
+        raise ValueError("'--tag-latest' flag requires '--release'")
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode("utf-8"))
@@ -353,32 +363,32 @@ def build(
                     image_tag,
                 )
 
-            # Also push release to "latest" tag
-            image = dc.images.get(image_tag)
-            latest_release_tag = (
-                docker_org_fullpath + "/" + release.split(":")[0] + ":latest"
-            )
-            image.tag(latest_release_tag)
+            if tag_latest:
+                # Also push release to "latest" tag
+                image = dc.images.get(image_tag)
+                base_tag = docker_org_fullpath + "/" + release.split(":")[0]
+                latest_release_tag = base_tag + ":latest"
+                image.tag(latest_release_tag)
 
-            try:
-                dc.api.push(latest_release_tag)
-            except Exception:
-                if raise_errors:
-                    raise
-                logger.error(
-                    "Could not push latest tag for release metapackage '%s':\n\n%s",
-                    latest_release_tag,
-                    format_exc(),
-                )
-                errors = True
-            else:
-                logger.info(
-                    (
-                        "Successfully pushed latest tag for release metapackage '%s' "
-                        "to registry"
-                    ),
-                    latest_release_tag,
-                )
+                try:
+                    dc.api.push(latest_release_tag)
+                except Exception:
+                    if raise_errors:
+                        raise
+                    logger.error(
+                        "Could not push latest tag for release metapackage '%s':\n\n%s",
+                        base_tag,
+                        format_exc(),
+                    )
+                    errors = True
+                else:
+                    logger.info(
+                        (
+                            "Successfully pushed latest tag for release metapackage '%s' "
+                            "to registry"
+                        ),
+                        base_tag,
+                    )
         if save_manifest:
             with open(save_manifest, "w") as f:
                 json.dump(manifest, f, indent="    ")
