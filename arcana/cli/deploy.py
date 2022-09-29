@@ -335,11 +335,14 @@ def build(
                 logger.info("Successfully pushed '%s' to registry", image_tag)
             if clean_up:
                 dc.api.remove_image(image_tag)
-                dc.images.prune(filters={"dangling": False})
-                dc.api.prune_builds()
+                pruned_images = dc.images.prune(filters={"dangling": False})
+                pruned_builds = dc.api.prune_builds()
                 logger.info(
-                    "Removed '%s' and pruned dangling images to free up disk space",
+                    "Removed '%s' and pruned dangling images to free up disk space"
+                    "(images: %s, builds: %s)",
                     image_tag,
+                    pruned_images,
+                    pruned_builds,
                 )
 
         if release or save_manifest:
