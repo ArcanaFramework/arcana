@@ -21,8 +21,9 @@ from arcana.cli.deploy import (
     run_pipeline,
     pull_images,
     pull_auth_refresh,
-    PULL_IMAGES_ALIAS_KEY,
-    PULL_IMAGES_SECRET_KEY,
+    PULL_IMAGES_XNAT_HOST_KEY,
+    PULL_IMAGES_XNAT_USER_KEY,
+    PULL_IMAGES_XNAT_PASS_KEY,
 )
 from arcana.core.utils import class_location
 from arcana.test.fixtures.docs import all_docs_fixtures, DocsFixture
@@ -486,7 +487,12 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
     ),
 )
 def test_pull_images(
-    xnat_repository, command_spec, work_dir, docker_registry_for_xnat_uri, cli_runner
+    xnat_repository,
+    command_spec,
+    work_dir,
+    docker_registry_for_xnat_uri,
+    cli_runner,
+    run_prefix,
 ):
 
     DOCKER_ORG = "pulltestorg"
@@ -552,7 +558,7 @@ def test_pull_images(
             "test",
             "--raise-errors",
             "--release",
-            "autoupdate_release",
+            f"test-pipelines-metapackage:{run_prefix}",
             "--save-manifest",
             str(manifest_path),
             "--use-test-config",
@@ -575,13 +581,10 @@ def test_pull_images(
     for img in expected_images:
         dc.images.remove(img)
 
-    config_path = work_dir / "config.yaml"
-    with open(config_path, "w") as f:
+    filters_file = work_dir / "filters.yaml"
+    with open(filters_file, "w") as f:
         yaml.dump(
             {
-                "server": xnat_repository.server,
-                "alias": "admin",
-                "secret": "admin",
                 "include": [
                     {
                         "name": (
@@ -597,13 +600,14 @@ def test_pull_images(
     with patch.dict(
         os.environ,
         {
-            PULL_IMAGES_ALIAS_KEY: xnat4tests.config["xnat_user"],
-            PULL_IMAGES_SECRET_KEY: xnat4tests.config["xnat_password"],
+            PULL_IMAGES_XNAT_HOST_KEY: xnat4tests.config["xnat_uri"],
+            PULL_IMAGES_XNAT_USER_KEY: xnat4tests.config["xnat_user"],
+            PULL_IMAGES_XNAT_PASS_KEY: xnat4tests.config["xnat_password"],
         },
     ):
         result = cli_runner(
             pull_images,
-            [str(config_path), str(manifest_path)],
+            [str(manifest_path), "--filters", str(filters_file)],
         )
 
     assert result.exit_code == 0, show_cli_trace(result)

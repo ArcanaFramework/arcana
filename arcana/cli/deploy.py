@@ -1,6 +1,5 @@
 import logging
 import sys
-import os
 import shutil
 from pathlib import Path
 import re
@@ -32,8 +31,9 @@ from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaBuildError, ArcanaUsageError
 
-PULL_IMAGES_ALIAS_KEY = "ARCANA_XNAT_PULL_IMAGES_ALIAS"
-PULL_IMAGES_SECRET_KEY = "ARCANA_XNAT_PULL_IMAGES_SECRET"
+PULL_IMAGES_XNAT_HOST_KEY = "XNAT_PULL_IMAGES_HOST"
+PULL_IMAGES_XNAT_USER_KEY = "XNAT_PULL_IMAGES_USER"
+PULL_IMAGES_XNAT_PASS_KEY = "XNAT_PULL_IMAGES_PASS"
 
 logger = logging.getLogger("arcana")
 
@@ -556,54 +556,53 @@ def inspect_docker_exec(image_tag):
 
 @xnat.command(
     name="pull-images",
-    help="""Updates the installed pipelines on an XNAT instance from a manifest
+    help=f"""Updates the installed pipelines on an XNAT instance from a manifest
 JSON file using the XNAT instance's REST API.
 
-MANIFEST_JSON is a JSON file containing a list of container images built in the release
-and the commands present in them (see 'arcana deploy xnat build')
+MANIFEST_FILE is a JSON file containing a list of container images built in a release
+created by `arcana deploy xnat build`
 
-CONFIG_YAML a YAML file contains the login details for the XNAT server to update, and
-patterns with which to filter the images to install, e.g.
+Authentication credentials can be passed through the {PULL_IMAGES_XNAT_USER_KEY}
+and {PULL_IMAGES_XNAT_PASS_KEY} environment variables. Otherwise, tokens can be saved
+in a JSON file passed to '--auth'.
 
+Which of available pipelines to install can be controlled by a YAML file passed to the
+'--filters' option of the form
     \b
-    server: http://localhost
     include:
     - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.*
     - tag: ghcr.io/Australian-Imaging-Service/pet.rodent.*
     exclude:
-    - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.bidsapps.*
+    - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.bidsapps.
 """,
 )
-@click.argument("config_file", type=click.File())
-@click.argument("manifest_json", type=click.File())
+@click.argument("manifest_file", type=click.File())
 @click.option(
-    "--auth-file",
-    type=click.File(),
-    default=None,
-    help="JSON file containing 'alias' + 'secret' fields for XNAT authentication",
+    "--server",
+    type=str,
+    envvar=PULL_IMAGES_XNAT_HOST_KEY,
+    help=("the username used to authenticate with the XNAT instance to update"),
 )
-def pull_images(config_file, manifest_json, auth_file):
-    config = yaml.load(config_file, Loader=yaml.Loader)
-    manifest = json.load(manifest_json)
-    if auth_file is not None:
-        auth = json.load(auth_file)
-        try:
-            auth_alias = auth["alias"]
-            auth_secret = auth["secret"]
-        except KeyError:
-            raise KeyError(
-                "--auth-file should be in JSON and contain 'alias' and 'secret' keys"
-            )
-    else:
-        try:
-            auth_alias = os.environ[PULL_IMAGES_ALIAS_KEY]
-            auth_secret = os.environ[PULL_IMAGES_SECRET_KEY]
-        except KeyError:
-            raise KeyError(
-                "If '--auth-file' is not provided, then an alias and secret to authenticate "
-                f"with the server with must be set in the '{PULL_IMAGES_ALIAS_KEY}' and "
-                f"'{PULL_IMAGES_SECRET_KEY}' environment variable, respectively"
-            )
+@click.option(
+    "--user",
+    envvar=PULL_IMAGES_XNAT_USER_KEY,
+    help=("the username used to authenticate with the XNAT instance to update"),
+)
+@click.option(
+    "--password",
+    envvar=PULL_IMAGES_XNAT_PASS_KEY,
+    help=("the password used to authenticate with the XNAT instance to update"),
+)
+@click.option(
+    "--filters",
+    "filters_file",
+    default=None,
+    type=click.File(),
+    help=("a YAML file containing filter rules for the images to install"),
+)
+def pull_images(manifest_file, server, user, password, filters_file):
+    manifest = json.load(manifest_file)
+    filters = yaml.load(filters_file, Loader=yaml.Loader) if filters_file else {}
 
     def matches_entry(entry, match_exprs, default=True):
         """Determines whether an entry meets the inclusion and exclusion criteria
@@ -627,14 +626,14 @@ def pull_images(config_file, manifest_json, auth_file):
         )
 
     with xnatpy.connect(
-        server=config["server"],
-        user=auth_alias,
-        password=auth_secret,
+        server=server,
+        user=user,
+        password=password,
     ) as xlogin:
 
         for entry in manifest["images"]:
-            if matches_entry(entry, config.get("include")) and not matches_entry(
-                entry, config.get("exclude"), default=False
+            if matches_entry(entry, filters.get("include")) and not matches_entry(
+                entry, filters.get("exclude"), default=False
             ):
                 tag = f"{entry['name']}:{entry['version']}"
                 xlogin.post(
