@@ -594,9 +594,20 @@ def create_metapackage(image_tag, manifest, use_local_packages=False):
 
     dockerfile.copy(["./manifest.json"], "/manifest.json")
 
-    dockerfile.entrypoint(["arcana", "deploy", "xnat", "pull-images"])
-
-    dockerfile._parts.append('CMD ["/manifest.json"]')
+    dockerfile.entrypoint(
+        [
+            "conda",
+            "run",
+            "--no-capture-output",
+            "-n",
+            "arcana",
+            "arcana",
+            "deploy",
+            "xnat",
+            "pull-images",
+            "/manifest.json",
+        ]
+    )
 
     dockerfile_build(dockerfile, build_dir, image_tag)
 

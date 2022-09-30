@@ -31,9 +31,9 @@ from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaBuildError, ArcanaUsageError
 
-PULL_IMAGES_XNAT_HOST_KEY = "XNAT_PULL_IMAGES_HOST"
-PULL_IMAGES_XNAT_USER_KEY = "XNAT_PULL_IMAGES_USER"
-PULL_IMAGES_XNAT_PASS_KEY = "XNAT_PULL_IMAGES_PASS"
+PULL_IMAGES_XNAT_HOST_KEY = "XNAT_HOST"
+PULL_IMAGES_XNAT_USER_KEY = "XNAT_USER"
+PULL_IMAGES_XNAT_PASS_KEY = "XNAT_PASS"
 
 logger = logging.getLogger("arcana")
 
