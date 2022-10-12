@@ -85,46 +85,14 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
         parameters=[
             ('use_priors', 'Use priors'),
             ('bias_lowpass', 'Low-pass filter bias field')],
-        defaults=[  # If different from the Pydra task
+        configuration=[  # If different from the Pydra task
             ('output_biasfield', True),
             ('output_biascorrected', True),
             ('bias_lowpass', 5.0)],
-        registry='ghrc.io',
         row_frequency='session')
 
 When working with the CLI, command configurations are stored in YAML_ format,
 with keys matching the arguments of :meth:`XnatViaCS.generate_xnat_command`.
-For example, the preceding example would be:
-
-.. code-block:: yaml
-
-    pipeline_name: fast
-    pydra_task: pydra.tasks.fsl.preprocess.fast:FAST
-    description:
-        FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of
-        the brain into different tissue types (Grey Matter, White Matter,
-        CSF, etc.), whilst also correcting for spatial intensity variations
-        (also known as bias field or RF inhomogeneities).
-    version: 1
-    info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
-    inputs:
-        - [in_files, medimage:NiftiGz, File to segment, session]
-    outputs:
-        - [tissue_class_files, medimage:NiftiGz, fast/tissue-classes]
-        - [partial_volume_map, medimage:NiftiGz, fast/partial-volumes]
-        - [partial_volume_files, medimage:NiftiGz, fast/partial-volume-files]
-        - [bias_field, medimage:NiftiGz, fast/bias-field]
-        - [probability_maps, medimage:NiftiGz, fast/probability-map]
-    parameters:
-        - [use_priors, Use priors]
-        - [number_of_classes, Number of classes]
-        - [bias_lowpass, Low-pass filter bias field]
-    defaults:
-        - [output_biasfield, True]
-        - [output_biascorrected, True]
-        - [bias_lowpass, 5.0]
-    row_frequency: session
-
 
 .. note::
     ``image_tag`` and ``registry`` are omitted from the YAML representation
