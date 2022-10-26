@@ -800,6 +800,14 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     help=("The Pydra plugin with which to process the task/workflow"),
 )
 @click.option(
+    "--license",
+    multiple=True,
+    nargs=2,
+    default=(),
+    metavar="<source> <destination>",
+    help=("Licenses to download into the image"),
+)
+@click.option(
     "--loglevel",
     type=str,
     default="info",
@@ -874,6 +882,7 @@ def run_pipeline(
     overwrite,
     work_dir,
     plugin,
+    license,
     loglevel,
     dataset_name,
     dataset_space,
@@ -1077,6 +1086,8 @@ def run_pipeline(
 
     if ids is not None:
         ids = ids.split(",")
+
+    Dataset.store.download_licenses(license)
 
     # execute the workflow
     try:
