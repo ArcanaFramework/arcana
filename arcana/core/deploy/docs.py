@@ -53,7 +53,7 @@ def create_doc(spec, doc_dir, pkg_name, src_file, flatten: bool):
             for lic in spec.get("licenses", []):
                 tbl_lic.write_row(
                     escaped_md(lic.get("source", None)),
-                    lic.get("description", ""),
+                    lic.get("info", ""),
                 )
 
             f.write("\n")

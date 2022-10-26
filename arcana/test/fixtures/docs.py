@@ -99,7 +99,7 @@ package_templates:
 licenses:
   - source: freesurfer.txt
     destination: /opt/freesurfer/license.txt
-    description: >
+    info: >
       license description
 commands:
   - name: mriqc

@@ -1,6 +1,5 @@
 import logging
 import sys
-import os
 import shutil
 from pathlib import Path
 import re
@@ -32,8 +31,9 @@ from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaBuildError, ArcanaUsageError
 
-PULL_IMAGES_ALIAS_KEY = "ARCANA_XNAT_PULL_IMAGES_ALIAS"
-PULL_IMAGES_SECRET_KEY = "ARCANA_XNAT_PULL_IMAGES_SECRET"
+PULL_IMAGES_XNAT_HOST_KEY = "XNAT_HOST"
+PULL_IMAGES_XNAT_USER_KEY = "XNAT_USER"
+PULL_IMAGES_XNAT_PASS_KEY = "XNAT_PASS"
 
 logger = logging.getLogger("arcana")
 
@@ -79,6 +79,12 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     default=None,
     type=str,
     help=("Name of the release for the package as a whole (i.e. for all pipelines)"),
+)
+@click.option(
+    "--tag-latest/--dont-tag-latest",
+    default=False,
+    type=bool,
+    help='whether to tag the release as the "latest" or not',
 )
 @click.option(
     "--save-manifest",
@@ -155,11 +161,20 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     default=False,
     help=("push built images to registry"),
 )
+@click.option(
+    "--clean-up/--dont-clean-up",
+    type=bool,
+    default=False,
+    help=(
+        "Remove built images after they are pushed to the registry (requires --push)"
+    ),
+)
 def build(
     spec_path,
     docker_org,
     docker_registry,
     release,
+    tag_latest,
     save_manifest,
     logfile,
     loglevel,
@@ -172,7 +187,20 @@ def build(
     license_dir,
     check_registry,
     push,
+    clean_up,
 ):
+
+    if clean_up and not push:
+        raise ValueError("'--clean-up' flag requires '--push'")
+
+    if tag_latest:
+        if not release:
+            raise ValueError("'--tag-latest' flag requires '--release'")
+        elif ":" not in release:
+            raise ValueError(
+                "if tagging the release as \"latest\" (as specified by '--tag-latest'), "
+                "then the release must contain explicit version (i.e. part after ':')"
+            )
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode("utf-8"))
@@ -263,14 +291,14 @@ def build(
                 changelog = compare_specs(built_spec, spec, check_version=True)
                 if changelog:
                     msg = (
-                        f"Spec for '{image_tag}' doesn't match the one that was "
-                        "used to build the image already in the registry (skipping):\n\n"
+                        f"spec for '{image_tag}' doesn't match the one that was "
+                        "used to build the image already in the registry:\n\n"
                         + str(changelog.pretty())
                     )
                     if raise_errors:
                         raise ArcanaBuildError(msg)
                     else:
-                        logger.error(msg)
+                        logger.error("Skipped {image_tag} because " + msg)
                     continue
                 else:
                     logger.info(
@@ -305,6 +333,16 @@ def build(
                 errors = True
             else:
                 logger.info("Successfully pushed '%s' to registry", image_tag)
+            if clean_up:
+                dc.api.remove_image(image_tag)
+                dc.containers.prune()
+                dc.images.prune(filters={"dangling": False})
+                dc.api.remove_image(spec["base_image"])
+                dc.images.prune(filters={"dangling": False})
+                logger.info(
+                    "Removed '%s' and pruned dangling images to free up disk space",
+                    image_tag,
+                )
 
         if release or save_manifest:
             manifest["images"].append(
@@ -315,7 +353,7 @@ def build(
                 }
             )
     if release:
-        release_image_tag = f"{docker_org_fullpath}/release:{release}"
+        release_image_tag = f"{docker_org_fullpath}/{release}"
         create_metapackage(
             release_image_tag, manifest, use_local_packages=use_local_packages
         )
@@ -337,30 +375,32 @@ def build(
                     image_tag,
                 )
 
-            # Also push release to "latest" tag
-            image = dc.images.get(image_tag)
-            latest_release_tag = f"{docker_org_fullpath}/release:latest"
-            image.tag(latest_release_tag)
+            if tag_latest:
+                # Also push release to "latest" tag
+                image = dc.images.get(image_tag)
+                base_tag = docker_org_fullpath + "/" + release.split(":")[0]
+                latest_release_tag = base_tag + ":latest"
+                image.tag(latest_release_tag)
 
-            try:
-                dc.api.push(latest_release_tag)
-            except Exception:
-                if raise_errors:
-                    raise
-                logger.error(
-                    "Could not push latest tag for release metapackage '%s':\n\n%s",
-                    latest_release_tag,
-                    format_exc(),
-                )
-                errors = True
-            else:
-                logger.info(
-                    (
-                        "Successfully pushed latest tag for release metapackage '%s' "
-                        "to registry"
-                    ),
-                    latest_release_tag,
-                )
+                try:
+                    dc.api.push(latest_release_tag)
+                except Exception:
+                    if raise_errors:
+                        raise
+                    logger.error(
+                        "Could not push latest tag for release metapackage '%s':\n\n%s",
+                        base_tag,
+                        format_exc(),
+                    )
+                    errors = True
+                else:
+                    logger.info(
+                        (
+                            "Successfully pushed latest tag for release metapackage '%s' "
+                            "to registry"
+                        ),
+                        base_tag,
+                    )
         if save_manifest:
             with open(save_manifest, "w") as f:
                 json.dump(manifest, f, indent="    ")
@@ -516,54 +556,53 @@ def inspect_docker_exec(image_tag):
 
 @xnat.command(
     name="pull-images",
-    help="""Updates the installed pipelines on an XNAT instance from a manifest
+    help=f"""Updates the installed pipelines on an XNAT instance from a manifest
 JSON file using the XNAT instance's REST API.
 
-MANIFEST_JSON is a JSON file containing a list of container images built in the release
-and the commands present in them (see 'arcana deploy xnat build')
+MANIFEST_FILE is a JSON file containing a list of container images built in a release
+created by `arcana deploy xnat build`
 
-CONFIG_YAML a YAML file contains the login details for the XNAT server to update, and
-patterns with which to filter the images to install, e.g.
+Authentication credentials can be passed through the {PULL_IMAGES_XNAT_USER_KEY}
+and {PULL_IMAGES_XNAT_PASS_KEY} environment variables. Otherwise, tokens can be saved
+in a JSON file passed to '--auth'.
 
+Which of available pipelines to install can be controlled by a YAML file passed to the
+'--filters' option of the form
     \b
-    server: http://localhost
     include:
     - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.*
     - tag: ghcr.io/Australian-Imaging-Service/pet.rodent.*
     exclude:
-    - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.bidsapps.*
+    - tag: ghcr.io/Australian-Imaging-Service/mri.human.neuro.bidsapps.
 """,
 )
-@click.argument("config_file", type=click.File())
-@click.argument("manifest_json", type=click.File())
+@click.argument("manifest_file", type=click.File())
 @click.option(
-    "--auth-file",
-    type=click.File(),
-    default=None,
-    help="JSON file containing 'alias' + 'secret' fields for XNAT authentication",
+    "--server",
+    type=str,
+    envvar=PULL_IMAGES_XNAT_HOST_KEY,
+    help=("the username used to authenticate with the XNAT instance to update"),
 )
-def pull_images(config_file, manifest_json, auth_file):
-    config = yaml.load(config_file, Loader=yaml.Loader)
-    manifest = json.load(manifest_json)
-    if auth_file is not None:
-        auth = json.load(auth_file)
-        try:
-            auth_alias = auth["alias"]
-            auth_secret = auth["secret"]
-        except KeyError:
-            raise KeyError(
-                "--auth-file should be in JSON and contain 'alias' and 'secret' keys"
-            )
-    else:
-        try:
-            auth_alias = os.environ[PULL_IMAGES_ALIAS_KEY]
-            auth_secret = os.environ[PULL_IMAGES_SECRET_KEY]
-        except KeyError:
-            raise KeyError(
-                "If '--auth-file' is not provided, then an alias and secret to authenticate "
-                f"with the server with must be set in the '{PULL_IMAGES_ALIAS_KEY}' and "
-                f"'{PULL_IMAGES_SECRET_KEY}' environment variable, respectively"
-            )
+@click.option(
+    "--user",
+    envvar=PULL_IMAGES_XNAT_USER_KEY,
+    help=("the username used to authenticate with the XNAT instance to update"),
+)
+@click.option(
+    "--password",
+    envvar=PULL_IMAGES_XNAT_PASS_KEY,
+    help=("the password used to authenticate with the XNAT instance to update"),
+)
+@click.option(
+    "--filters",
+    "filters_file",
+    default=None,
+    type=click.File(),
+    help=("a YAML file containing filter rules for the images to install"),
+)
+def pull_images(manifest_file, server, user, password, filters_file):
+    manifest = json.load(manifest_file)
+    filters = yaml.load(filters_file, Loader=yaml.Loader) if filters_file else {}
 
     def matches_entry(entry, match_exprs, default=True):
         """Determines whether an entry meets the inclusion and exclusion criteria
@@ -587,14 +626,14 @@ def pull_images(config_file, manifest_json, auth_file):
         )
 
     with xnatpy.connect(
-        server=config["server"],
-        user=auth_alias,
-        password=auth_secret,
+        server=server,
+        user=user,
+        password=password,
     ) as xlogin:
 
         for entry in manifest["images"]:
-            if matches_entry(entry, config.get("include")) and not matches_entry(
-                entry, config.get("exclude"), default=False
+            if matches_entry(entry, filters.get("include")) and not matches_entry(
+                entry, filters.get("exclude"), default=False
             ):
                 tag = f"{entry['name']}:{entry['version']}"
                 xlogin.post(

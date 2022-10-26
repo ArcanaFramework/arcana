@@ -33,7 +33,7 @@ def run_spec(
         spec["build"] = {
             "image_tag": "arcana-tests/concatenate-xnat-cs",
             "commands": [command_spec],
-            "authors": ["some.one@an.org"],
+            "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
             "info_url": "http://concatenate.readthefakedocs.io",
             "system_packages": [],
             "python_packages": [],
@@ -55,7 +55,9 @@ def run_spec(
             "image_tag": "arcana-tests/bids-app-xnat-cs",
             "base_image": mock_bids_app_image,
             "commands": [bids_command_spec],
-            "authors": ["some.one.else@another.org"],
+            "authors": [
+                {"name": "Some One Else", "email": "some.oneelse@an.email.org"}
+            ],
             "info_url": "http://a-bids-app.readthefakedocs.io",
             "system_packages": [],
             "python_packages": [],
@@ -139,7 +141,10 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     # outer Docker socket. Since we build the pipeline image with the same
     # socket there is no need to pull it.
     xnat_command = generate_xnat_cs_command(
-        image_tag=build_spec["image_tag"], **command_spec
+        image_tag=build_spec["image_tag"],
+        pkg_version="1.0",
+        wrapper_version="1.0",
+        **command_spec,
     )
 
     launch_inputs = {}
