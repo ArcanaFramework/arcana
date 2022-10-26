@@ -1,11 +1,11 @@
-import attr
+import attrs
 
 
-@attr.s
+@attrs.define
 class A:
 
-    a = attr.ib()
-    b = attr.ib()
+    a = attrs.field()
+    b = attrs.field()
 
 
 a = A(1, 2)
@@ -26,4 +26,4 @@ class C:
 
 c = C()
 
-attr.asdict(c)
+attrs.asdict(c)

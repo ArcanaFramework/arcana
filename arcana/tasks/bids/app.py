@@ -7,7 +7,7 @@ import typing as ty
 import shutil
 import shlex
 from pathlib import Path
-from dataclasses import dataclass
+import dataclasses
 from pydra import Workflow, mark
 from pydra.engine.task import DockerTask, SingularityTask, ShellCommandTask
 from pydra.engine.specs import (
@@ -27,7 +27,7 @@ from arcana.core.utils import func_task, path2varname, resolve_class
 logger = logging.getLogger("arcana")
 
 
-@dataclass
+@dataclasses.dataclass
 class Input:
 
     path: str
@@ -36,7 +36,7 @@ class Input:
 
     @classmethod
     def fromdict(cls, dct):
-        return cls(path=dct.get("path"), format=dct.get("format"), name=dct.get("name"))
+        return cls(**{f.name: dct.get(f.name) for f in dataclasses.fields(cls)})
 
     def __post_init__(self):
         if isinstance(self.format, str):
@@ -45,7 +45,7 @@ class Input:
             self.name = path2varname(self.path)
 
 
-@dataclass
+@dataclasses.dataclass
 class Output:
 
     name: str
@@ -54,7 +54,7 @@ class Output:
 
     @classmethod
     def fromdict(cls, dct):
-        return cls(path=dct.get("path"), format=dct.get("format"), name=dct.get("name"))
+        return cls(**{f.name: dct.get(f.name) for f in dataclasses.fields(cls)})
 
     def __post_init__(self):
         if self.path is None:
@@ -121,6 +121,9 @@ def bids_app(
     app_output_dir : Path, optional
         file system path where the app outputs will be written before being
         copied to the dataset directory
+    app_work_dir: Path, optional
+        the directory used to run the app within. Can be used to avoid overly long path
+        lengths that can occur running nested workflows (e.g. fmriprep)
     json_edits: ty.List[ty.Tuple[str, str]]
         Ad-hoc edits to JSON side-cars that are fixed during the configuration
         of the app, i.e. not passed as an input. Input JSON edits are appended
