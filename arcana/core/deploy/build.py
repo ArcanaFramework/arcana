@@ -62,7 +62,7 @@ def construct_dockerfile(
     readme: str = None,
     use_local_packages: bool = False,
     pypi_fallback: bool = False,
-    license_dir: Path = None,
+    license_src: Path = None,
     licenses: ty.Iterable[ty.Dict[str, str]] = (),
     spec: dict = None,
 ) -> DockerRenderer:
@@ -99,7 +99,7 @@ def construct_dockerfile(
     pypi_fallback : bool, optional
         whether to fallback to packages installed on PyPI when versions of
         local packages don't match installed
-    license_dir : Path, optional
+    license_src : Path, optional
         path to the directory containing the licence files to copy into the
         image
     licenses : list[dict[str, str]], optional
@@ -160,13 +160,13 @@ def construct_dockerfile(
         use_local_package=use_local_packages,
     )
 
-    if licenses and license_dir is None:
+    if licenses and license_src is None:
         raise ArcanaBuildError(
-            "'--license-dir' input must be provided for specifications "
+            "'--license-src' input must be provided for specifications "
             f"including 'licenses' items ({licenses})"
         )
 
-    install_licenses(dockerfile, licenses, license_dir, build_dir)
+    install_licenses(dockerfile, licenses, license_src, build_dir)
 
     if readme:
         insert_readme(dockerfile, readme, build_dir)
@@ -341,7 +341,7 @@ def install_package_templates(
 def install_licenses(
     dockerfile: DockerRenderer,
     licenses: ty.List[ty.Dict[str, str]],
-    license_dir: Path,
+    license_src: Path,
     build_dir: Path,
 ):
     """Generate Neurodocker instructions to install README file inside the docker
@@ -361,7 +361,7 @@ def install_licenses(
         return
     # Copy licenses into build directory
     license_build_dir = build_dir / "licenses"
-    shutil.copytree(license_dir, license_build_dir, dirs_exist_ok=True)
+    shutil.copytree(license_src, license_build_dir, dirs_exist_ok=True)
     for spec in licenses:
         src = license_build_dir / spec["source"]
         dockerfile.copy(

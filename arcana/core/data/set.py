@@ -4,10 +4,12 @@ import typing as ty
 from pathlib import Path
 from itertools import chain
 import re
+import shutil
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
 from arcana.exceptions import (
+    ArcanaLicenseNotFoundError,
     ArcanaNameError,
     ArcanaDataTreeConstructionError,
     ArcanaUsageError,
@@ -109,6 +111,9 @@ class Dataset:
     """
 
     DEFAULT_NAME = "default"
+    LICENSES_PATH = (
+        "LICENSES"  # The resource that project-specifc licenses are expected
+    )
 
     id: str = attrs.field(converter=str)
     store: datastore.DataStore = attrs.field()
@@ -810,6 +815,40 @@ class Dataset:
         else:
             id, name = parts
         return store_name, id, name
+
+    def install_licenses(self, licenses: ty.List[ty.Tuple[str, str]]):
+        """Install licenses from project-specific location in data store and
+        install them at the destination location
+
+        Parameters
+        ----------
+        licenses : list[tuple[str, str]]
+            a list of tuples representing the name of a license and the
+            destination location it should be installed
+
+        Raises
+        ------
+        ArcanaLicenseNotFoundError
+            raised if the license of the given name isn't present in the project-specific
+            location to retrieve
+        """
+        self.add_source(
+            "licenses", path=self.LICENSES_PATH, row_frequency=self.root_freq
+        )
+        licenses_dir = self.root["licenses"]
+        licenses_dir.get()
+        found_licenses = list(licenses_dir.fs_path.iterdir())
+        for name, dest in licenses:
+            license_path = licenses_dir.fs_path / name
+            if not license_path.exists():
+                raise ArcanaLicenseNotFoundError(
+                    name,
+                    (
+                        f"Did not find a license corresponding to '{name}', "
+                        f"found: {found_licenses}"
+                    ),
+                )
+            shutil.copyfile(license_path, dest)
 
 
 @attrs.define

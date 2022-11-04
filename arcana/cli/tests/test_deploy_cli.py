@@ -14,7 +14,6 @@ from unittest.mock import patch
 import pytest
 import docker
 import xnat
-import xnat4tests
 from arcana.cli.deploy import (
     build,
     build_docs,
@@ -493,6 +492,7 @@ def test_pull_images(
     docker_registry_for_xnat_uri,
     cli_runner,
     run_prefix,
+    xnat4tests_config,
 ):
 
     DOCKER_ORG = "pulltestorg"
@@ -600,9 +600,9 @@ def test_pull_images(
     with patch.dict(
         os.environ,
         {
-            PULL_IMAGES_XNAT_HOST_KEY: xnat4tests.config["xnat_uri"],
-            PULL_IMAGES_XNAT_USER_KEY: xnat4tests.config["xnat_user"],
-            PULL_IMAGES_XNAT_PASS_KEY: xnat4tests.config["xnat_password"],
+            PULL_IMAGES_XNAT_HOST_KEY: xnat4tests_config["xnat_uri"],
+            PULL_IMAGES_XNAT_USER_KEY: xnat4tests_config["xnat_user"],
+            PULL_IMAGES_XNAT_PASS_KEY: xnat4tests_config["xnat_password"],
         },
     ):
         result = cli_runner(

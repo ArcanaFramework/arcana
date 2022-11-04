@@ -140,7 +140,7 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     help="Just create the build directory and dockerfile",
 )
 @click.option(
-    "--license-dir",
+    "--license-src",
     type=click.Path(exists=True, path_type=Path),
     default=None,
     help="Directory containing licences required to build the images",
@@ -184,7 +184,7 @@ def build(
     raise_errors,
     generate_only,
     use_test_config,
-    license_dir,
+    license_src,
     check_registry,
     push,
     clean_up,
@@ -206,8 +206,8 @@ def build(
         spec_path = Path(spec_path.decode("utf-8"))
     if isinstance(build_dir, bytes):  # FIXME: This shouldn't be necessary
         build_dir = Path(build_dir.decode("utf-8"))
-    if isinstance(license_dir, bytes):  # FIXME: This shouldn't be necessary
-        license_dir = Path(license_dir.decode("utf-8"))
+    if isinstance(license_src, bytes):  # FIXME: This shouldn't be necessary
+        license_src = Path(license_src.decode("utf-8"))
 
     if install_extras:
         install_extras = install_extras.split(",")
@@ -310,7 +310,7 @@ def build(
             build_xnat_cs_image(
                 build_dir=image_build_dir,
                 generate_only=generate_only,
-                license_dir=license_dir,
+                license_src=license_src,
                 **spec,
             )
         except Exception:
@@ -800,7 +800,8 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     help=("The Pydra plugin with which to process the task/workflow"),
 )
 @click.option(
-    "--license",
+    "--install_license",
+    "install_licenses",
     multiple=True,
     nargs=2,
     default=(),
@@ -882,7 +883,7 @@ def run_pipeline(
     overwrite,
     work_dir,
     plugin,
-    license,
+    install_licenses,
     loglevel,
     dataset_name,
     dataset_space,
@@ -1087,7 +1088,8 @@ def run_pipeline(
     if ids is not None:
         ids = ids.split(",")
 
-    Dataset.store.download_licenses(license)
+    # Install dataset-specific licenses within the container
+    dataset.install_licenses(install_licenses)
 
     # execute the workflow
     try:

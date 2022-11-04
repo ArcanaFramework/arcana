@@ -77,6 +77,7 @@ class Xnat(DataStore):
     DEFAULT_SPACE = Clinical
     DEFAULT_HIERARCHY = ["subject", "session"]
     METADATA_RESOURCE = "__arcana__"
+    LICENSE_RESOURCE = "LICENSES"
 
     def save_dataset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str

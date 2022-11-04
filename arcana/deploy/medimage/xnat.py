@@ -89,7 +89,7 @@ def build_xnat_cs_image(
         "kwargs",
         "build_dir",
         "generate_only",
-        "license_dir",
+        "license_src",
         "pkg_version",
         "wrapper_version",
     ]

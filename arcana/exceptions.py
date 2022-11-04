@@ -115,6 +115,10 @@ class ArcanaFileFormatError(ArcanaError):
     pass
 
 
+class ArcanaLicenseNotFoundError(ArcanaNameError):
+    pass
+
+
 class ArcanaUnresolvableFormatException(ArcanaException):
     pass
 
