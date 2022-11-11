@@ -178,12 +178,12 @@ def saved_dataset_multi_store(xnat_archive_dir, xnat_repository, work_dir, reque
 @pytest.fixture(scope="session")
 def xnat4tests_config():
 
-    return xnat4tests.load_config(name="default")
+    return xnat4tests.Config(name="default")
 
 
 @pytest.fixture(scope="session")
 def xnat_root_dir(xnat4tests_config):
-    return xnat4tests_config["xnat_root_dir"]
+    return xnat4tests_config.xnat_root_dir
 
 
 @pytest.fixture(scope="session")
@@ -194,16 +194,12 @@ def xnat_archive_dir(xnat_root_dir):
 @pytest.fixture(scope="session")
 def xnat_repository(run_prefix, xnat4tests_config):
 
-    xnat4tests.launch_xnat()
-
-    server = (
-        f"http://{xnat4tests_config['docker_host']}:{xnat4tests_config['xnat_port']}"
-    )
+    xnat4tests.start()
 
     repository = Xnat(
-        server=server,
-        user=xnat4tests_config["xnat_user"],
-        password=xnat4tests_config["xnat_password"],
+        server=xnat4tests_config.xnat_uri,
+        user=xnat4tests_config.xnat_user,
+        password=xnat4tests_config.xnat_password,
         cache_dir=mkdtemp(),
     )
 
@@ -220,7 +216,7 @@ def xnat_respository_uri(xnat_repository):
 
 @pytest.fixture(scope="session")
 def docker_registry_for_xnat():
-    return xnat4tests.launch_docker_registry()
+    return xnat4tests.start_registry()
 
 
 @pytest.fixture(scope="session")
