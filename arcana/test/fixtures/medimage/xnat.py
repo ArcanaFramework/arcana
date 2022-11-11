@@ -194,7 +194,7 @@ def xnat_archive_dir(xnat_root_dir):
 @pytest.fixture(scope="session")
 def xnat_repository(run_prefix, xnat4tests_config):
 
-    xnat4tests.start()
+    xnat4tests.start_xnat()
 
     repository = Xnat(
         server=xnat4tests_config.xnat_uri,
