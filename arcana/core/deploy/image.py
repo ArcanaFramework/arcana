@@ -8,6 +8,7 @@ from datetime import datetime
 from copy import copy
 import shutil
 from natsort import natsorted
+import attrs
 import docker
 import yaml
 from neurodocker.reproenv import DockerRenderer
@@ -15,17 +16,95 @@ from arcana import __version__
 from arcana.core.utils import set_cwd
 from arcana.__about__ import PACKAGE_NAME, python_versions
 from arcana.exceptions import ArcanaBuildError
-from .utils import PipSpec, local_package_location
+from .utils import PipSpec, local_package_location, DOCKER_HUB, DictConverter
 
 
 logger = logging.getLogger("arcana")
 
 DEFAULT_BASE_IMAGE = "ubuntu:kinetic"
 PYTHON_PACKAGE_DIR = "python-packages"
+DEFAULT_PACKAGE_MANAGER = "apt"
 
 CONDA_ENV = "arcana"
 
 SPEC_PATH = "/arcana-spec.yaml"
+
+
+@attrs.define
+class ContainerAuthor:
+
+    name: str
+    email: str
+
+
+@attrs.define
+class SystemPackage:
+
+    name: str
+    version: str
+
+
+@attrs.define
+class LicenseSpec:
+
+    name: str
+    destination: str
+    description: str
+    link: str
+
+
+@attrs.define
+class NeurodockerPackage:
+
+    name: str
+    version: str
+
+
+@attrs.define
+class ContainerImageSpec:
+
+    name: str
+    pkg_version: str
+    wrapper_version: str
+    info_url: str
+    authors: ty.List[ContainerAuthor] = attrs.field(
+        converter=DictConverter(ContainerAuthor)
+    )
+    commands: ty.List[ContainerCommandSpec] = attrs.field(
+        converter=DictConverter(ContainerCommandSpec)
+    )
+    base_image: str = DEFAULT_BASE_IMAGE
+    package_manager: str = DEFAULT_PACKAGE_MANAGER
+    python_packages: ty.List[PipSpec] = attrs.field(
+        factory=list, converter=DictConverter(PipSpec)
+    )
+    system_packages: ty.List[SystemPackage] = (
+        attrs.field(factory=list, converter=DictConverter(SystemPackage)),
+    )
+    package_templates: ty.List[NeurodockerPackage] = attrs.field(
+        factory=list, converter=DictConverter(NeurodockerPackage)
+    )
+    licenses: ty.Iterable[LicenseSpec] = attrs.field(
+        factory=list, converter=DictConverter(LicenseSpec)
+    )
+
+    @property
+    def image_tag(self):
+        pass
+
+    def build(
+        self,
+        build_dir: Path = None,
+        use_local_packages: bool = False,
+        pypi_fallback: bool = False,
+        docker_registry: str = DOCKER_HUB,
+        arcana_install_extras: ty.List[str] = (),
+        readme: str = None,
+        labels: ty.Dict[str, str] = None,
+        test_config: bool = False,
+        generate_only: bool = False,
+    ):
+        pass
 
 
 def build_docker_image(image_tag: str, build_dir: Path = None, **kwargs):
@@ -50,20 +129,7 @@ def build_docker_image(image_tag: str, build_dir: Path = None, **kwargs):
 
 def construct_dockerfile(
     build_dir: Path,
-    base_image: str = DEFAULT_BASE_IMAGE,
-    python_packages: ty.Iterable[
-        PipSpec or ty.Dict[str, str] or ty.Tuple[str, str]
-    ] = None,
-    system_packages: ty.Iterable[ty.Iterable[ty.Tuple[str, str]]] = None,
-    package_templates: ty.Iterable[ty.Dict[str, str]] = None,
-    labels: ty.Dict[str, str] = None,
-    package_manager: str = "apt",
-    arcana_install_extras: ty.Iterable[str] = (),
-    readme: str = None,
-    use_local_packages: bool = False,
-    pypi_fallback: bool = False,
-    license_src: Path = None,
-    licenses: ty.Iterable[ty.Dict[str, str]] = (),
+    static_licenses: ty.Iterable[ty.Tuple[str, str or Path]] = (),
     spec: dict = None,
 ) -> DockerRenderer:
     """Constructs a dockerfile that wraps a with dependencies
@@ -99,12 +165,13 @@ def construct_dockerfile(
     pypi_fallback : bool, optional
         whether to fallback to packages installed on PyPI when versions of
         local packages don't match installed
-    license_src : Path, optional
-        path to the directory containing the licence files to copy into the
-        image
     licenses : list[dict[str, str]], optional
-        specification of licenses to install inside docker image. Each dict
-        should contain 'source' and 'destination' items.
+        specification of licenses required by the commands in the container. Each dict
+        should contain the 'name' of the license and the 'destination' it should be
+        installed inside the container.
+    static_licenses : list[tuple[str, str or Path]]
+        licenses provided at build time to be installed inside the container image.
+        A list of 'name' and 'source path' pairs.
     spec : dict, optional
         the specification used to generate the image to be saved inside it for
         future reference
@@ -160,13 +227,12 @@ def construct_dockerfile(
         use_local_package=use_local_packages,
     )
 
-    if licenses and license_src is None:
-        raise ArcanaBuildError(
-            "'--license-src' input must be provided for specifications "
-            f"including 'licenses' items ({licenses})"
-        )
-
-    install_licenses(dockerfile, licenses, license_src, build_dir)
+    install_licenses(
+        dockerfile,
+        {k: v["destination"] for k, v in licenses.items()},
+        static_licenses,
+        build_dir,
+    )
 
     if readme:
         insert_readme(dockerfile, readme, build_dir)
@@ -340,32 +406,35 @@ def install_package_templates(
 
 def install_licenses(
     dockerfile: DockerRenderer,
-    licenses: ty.List[ty.Dict[str, str]],
-    license_src: Path,
+    licenses_spec: ty.List[ty.Dict[str, str]],
+    to_install: Path,
     build_dir: Path,
 ):
-    """Generate Neurodocker instructions to install README file inside the docker
-    image
+    """Generate Neurodocker instructions to install licenses within the container image
 
     Parameters
     ----------
     dockerfile : DockerRenderer
         the neurodocker renderer to append the install instructions to
-    description : str
-        a description of what the pipeline does, to be inserted in a README file
-        in the Docker image
+    licenses_spec : dict[str, str]
+        specification of the licenses required by the commands in the container. The
+        keys of the dictionary are the license names and the values are the
+        destination path of the license within the image.
+    to_install : dict[str, str or Path]
+        licenses provided at build time to be installed inside the container image.
+        A list of 'name' and 'source path' pairs.
     build_dir : Path
         path to build dir
     """
-    if not licenses:
-        return
     # Copy licenses into build directory
     license_build_dir = build_dir / "licenses"
-    shutil.copytree(license_src, license_build_dir, dirs_exist_ok=True)
-    for spec in licenses:
-        src = license_build_dir / spec["source"]
+    license_build_dir.mkdir()
+    for name, src in to_install:
+        build_path = license_build_dir / name
+        shutil.copyfile(src, build_path)
         dockerfile.copy(
-            source=[str(src.relative_to(build_dir))], destination=spec["destination"]
+            source=[str(build_path.relative_to(build_dir))],
+            destination=licenses_spec[name],
         )
 
 

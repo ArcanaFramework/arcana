@@ -9,6 +9,7 @@ from itertools import chain
 import pkg_resources
 import os
 from dataclasses import dataclass, field as dataclass_field
+import attrs
 import docker
 from deepdiff import DeepDiff
 import yaml
@@ -58,7 +59,7 @@ class PipSpec:
         dct = {}
         for pip_spec in pip_specs:
             if isinstance(pip_spec, dict):
-                pkg_spec = PipSpec(**pkg_spec)
+                pip_spec = PipSpec(**pip_spec)
             if pip_spec.name == PACKAGE_NAME and remove_arcana:
                 continue
             try:
@@ -313,6 +314,19 @@ def compare_specs(s1, s2, check_version=True):
 
     diff = DeepDiff(prep(s1), prep(s2), ignore_order=True)
     return diff
+
+
+@attrs.define
+class DictConverter:
+
+    klass: type
+
+    def __call__(self, value):
+        if isinstance(value, dict):
+            value = self.klass(**dict)
+        elif not isinstance(value, self.klass):
+            raise ValueError(f"Cannot convert {value} into {self.klass}")
+        return value
 
 
 DOCKER_HUB = "docker.io"

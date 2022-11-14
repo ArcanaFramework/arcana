@@ -14,9 +14,10 @@ import arcana.data.formats.common
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.medimage import XnatViaCS
 import arcana.core.data.row
-from arcana.core.deploy.build import construct_dockerfile, dockerfile_build, CONDA_ENV
-from arcana.core.deploy.utils import DOCKER_HUB
-from arcana.core.utils import resolve_class, class_location, path2varname
+from arcana.core.deploy.image import construct_dockerfile, dockerfile_build, CONDA_ENV
+
+# from arcana.core.deploy.utils import
+from arcana.core.utils import class_location, path2varname
 from arcana.core.data.store import DataStore
 from arcana.exceptions import ArcanaUsageError
 
@@ -37,6 +38,7 @@ def build_xnat_cs_image(
     build_dir: Path = None,
     test_config: bool = False,
     generate_only: bool = False,
+    site_licenses_dataset: ty.Tuple[str, str, str] = None,
     pkg_version: str = None,  # Ignored here, just included to allow specs to be passed directly as kwargs
     wrapper_version: str = None,  # ditto
     **kwargs,
@@ -89,7 +91,6 @@ def build_xnat_cs_image(
         "kwargs",
         "build_dir",
         "generate_only",
-        "license_src",
         "pkg_version",
         "wrapper_version",
     ]
@@ -157,6 +158,8 @@ def generate_xnat_cs_command(
     configuration=None,
     row_frequency="session",
     registry=DOCKER_HUB,
+    dynamic_licenses: ty.List[ty.Tuple[str, str]] = None,
+    site_licenses_dataset: ty.Tuple[str, str, str] = None,
     long_description: str = None,  # Ignored here, just part of the specs for the docs
     known_issues: str = None,  # ditto
 ):
@@ -202,6 +205,13 @@ def generate_xnat_cs_command(
     configuration : dict[str, Any]
         Fixed arguments passed to the workflow at initialisation. Can be used to specify
         the input fields of the workflow/task
+    dynamic_licenses : list[tuple[str, str]]
+        licenses that need to be downloaded at runtime as they can't be stored within
+        the Docker image
+    site_licenses_dataset : tuple[str, str, str], optional
+        a special dataset containing site-wide licenses, so that they don't need to be
+        downloaded to every project. The value is a 3-tuple containing the
+        DATASET_NAME, DATASET_USER and DATASET_PASSWORD
     long_description : str
         A long description of the pipeline, used in documentation and ignored
         here. Only included in the signature so that an error isn't thrown when
@@ -232,6 +242,8 @@ def generate_xnat_cs_command(
             + "', '".join(VALID_FREQUENCIES)
             + "')"
         )
+    if dynamic_licenses is None:
+        dynamic_licenses = {}
 
     # Convert tuples to appropriate dataclasses for inputs, outputs and parameters
     def parse_specs(args, klass):
@@ -374,6 +386,7 @@ def generate_xnat_cs_command(
     output_args_str = " ".join(output_args)
     param_args_str = " ".join(param_args)
     config_args_str = " ".join(config_args)
+    licenses_str = " ".join(f"--dynamic-license {n} {v}" for n, v in dynamic_licenses)
 
     cmdline = (
         f"conda run --no-capture-output -n {CONDA_ENV} "  # activate conda
@@ -383,9 +396,10 @@ def generate_xnat_cs_command(
         + param_args_str
         + config_args_str
         + FLAGS_KEY
+        + licenses_str
         + " "
-        + f"--dataset-space medimage:Clinical "
-        f"--dataset-hierarchy subject,session "
+        "--dataset-space medimage:Clinical "
+        "--dataset-hierarchy subject,session "
         "--single-row [SUBJECT_LABEL],[SESSION_LABEL] "
         f"--row-frequency {row_frequency} "
     )  # pass XNAT API details
@@ -610,72 +624,6 @@ def create_metapackage(image_tag, manifest, use_local_packages=False):
     )
 
     dockerfile_build(dockerfile, build_dir, image_tag)
-
-
-@dataclass
-class InputArg:
-    name: str  # How the input will be referred to in the XNAT dialog, defaults to the pydra_field name
-    path: str = None
-    format: type = arcana.data.formats.common.File
-    pydra_field: str = None  # Must match the name of the Pydra task input
-    row_frequency: Clinical = Clinical.session
-    description: str = ""  # description of the input
-    stored_format: type = None  # the format the input is stored in the data store in
-
-    def __post_init__(self):
-        if self.path is None:
-            self.path = self.name
-        if self.pydra_field is None:
-            self.pydra_field = self.name
-        if self.stored_format is None:
-            self.stored_format = self.format
-        if isinstance(self.format, str):
-            self.format = resolve_class(self.format, prefixes=["arcana.data.formats"])
-        if isinstance(self.stored_format, str):
-            self.stored_format = resolve_class(
-                self.stored_format, prefixes=["arcana.data.formats"]
-            )
-
-
-@dataclass
-class OutputArg:
-    name: str
-    path: str = None  # The path the output is stored at in XNAT
-    format: type = arcana.data.formats.common.File
-    pydra_field: str = (
-        None  # Must match the name of the Pydra task output, defaults to the path
-    )
-    stored_format: type = (
-        None  # the format the output is to be stored in the data store in
-    )
-
-    def __post_init__(self):
-        if self.path is None:
-            self.path = self.name
-        if self.pydra_field is None:
-            self.pydra_field = self.name
-        if self.stored_format is None:
-            self.stored_format = self.format
-        if isinstance(self.format, str):
-            self.format = resolve_class(self.format, prefixes=["arcana.data.formats"])
-        if isinstance(self.stored_format, str):
-            self.stored_format = resolve_class(
-                self.stored_format, prefixes=["arcana.data.formats"]
-            )
-
-
-@dataclass
-class ParamArg:
-    name: str  # How the input will be referred to in the XNAT dialog, defaults to pydra_field name
-    type: type = str
-    pydra_field: str = None  # Name of parameter to expose in Pydra task
-    required: bool = False
-    default: str = None
-    description: str = ""  # description of the parameter
-
-    def __post_init__(self):
-        if self.pydra_field is None:
-            self.pydra_field = path2varname(self.name)
 
 
 COMMAND_INPUT_TYPES = {bool: "bool", str: "string", int: "number", float: "number"}

@@ -23,7 +23,7 @@ from arcana.core.deploy.utils import (
     compare_specs,
 )
 from arcana.core.deploy.docs import create_doc
-from arcana.core.deploy.build import SPEC_PATH as spec_path_in_docker
+from arcana.core.deploy.image import SPEC_PATH as spec_path_in_docker
 from arcana.core.utils import package_from_module, pydra_asdict
 from arcana.core.data.row import DataRow
 from arcana.deploy.medimage.xnat import build_xnat_cs_image, create_metapackage
@@ -140,7 +140,7 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     help="Just create the build directory and dockerfile",
 )
 @click.option(
-    "--license-src",
+    "--site-licenses",
     type=click.Path(exists=True, path_type=Path),
     default=None,
     help="Directory containing licences required to build the images",
@@ -184,7 +184,7 @@ def build(
     raise_errors,
     generate_only,
     use_test_config,
-    license_src,
+    site_licenses,
     check_registry,
     push,
     clean_up,
@@ -206,8 +206,6 @@ def build(
         spec_path = Path(spec_path.decode("utf-8"))
     if isinstance(build_dir, bytes):  # FIXME: This shouldn't be necessary
         build_dir = Path(build_dir.decode("utf-8"))
-    if isinstance(license_src, bytes):  # FIXME: This shouldn't be necessary
-        license_src = Path(license_src.decode("utf-8"))
 
     if install_extras:
         install_extras = install_extras.split(",")
@@ -310,7 +308,7 @@ def build(
             build_xnat_cs_image(
                 build_dir=image_build_dir,
                 generate_only=generate_only,
-                license_src=license_src,
+                site_licenses_dataset=site_licenses,
                 **spec,
             )
         except Exception:

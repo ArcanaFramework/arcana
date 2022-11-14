@@ -2,7 +2,7 @@ import os
 import pytest
 import docker
 from arcana.data.formats.medimage import NiftiGzX
-from arcana.core.deploy.build import DEFAULT_BASE_IMAGE
+from arcana.core.deploy.image import DEFAULT_BASE_IMAGE
 
 
 BIDS_VALIDATOR_DOCKER = "bids/validator:latest"
