@@ -38,14 +38,14 @@ logger = logging.getLogger("arcana")
 @dataclass
 class Input:
     col_name: str
-    pydra_field: str
+    task_field: str
     required_format: type
 
 
 @dataclass
 class Output:
     col_name: str
-    pydra_field: str
+    task_field: str
     produced_format: type
 
 
@@ -105,9 +105,9 @@ class Pipeline:
                 column = self.dataset[inpt.col_name]
                 if inpt.required_format is not column.format:
                     inpt.required_format.find_converter(column.format)
-            if inpt.pydra_field not in self.workflow.input_names:
+            if inpt.task_field not in self.workflow.input_names:
                 raise ArcanaNameError(
-                    f"{inpt.pydra_field} is not in the input spec of '{self.name}' "
+                    f"{inpt.task_field} is not in the input spec of '{self.name}' "
                     f"pipeline: " + "', '".join(self.workflow.input_names)
                 )
 
@@ -123,9 +123,9 @@ class Pipeline:
                     )
                 if outpt.produced_format is not column.format:
                     column.format.find_converter(outpt.produced_format)
-            if outpt.pydra_field not in self.workflow.output_names:
+            if outpt.task_field not in self.workflow.output_names:
                 raise ArcanaNameError(
-                    f"{outpt.pydra_field} is not in the output spec of '{self.name}' "
+                    f"{outpt.task_field} is not in the output spec of '{self.name}' "
                     f"pipeline: " + "', '".join(self.workflow.output_names)
                 )
 
@@ -291,7 +291,7 @@ class Pipeline:
         for inpt in self.inputs:
             setattr(
                 getattr(wf.per_row, self.workflow.name).inputs,
-                inpt.pydra_field,
+                inpt.task_field,
                 getattr(wf.per_row.input_interface.lzout, inpt.col_name),
             )
 
@@ -307,7 +307,7 @@ class Pipeline:
                 outputs=self.outputs,
                 **{
                     o.col_name: getattr(
-                        getattr(wf.per_row, self.workflow.name).lzout, o.pydra_field
+                        getattr(wf.per_row, self.workflow.name).lzout, o.task_field
                     )
                     for o in self.outputs
                 },

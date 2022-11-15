@@ -456,7 +456,7 @@ would look like
         "outputs": {
           "wm_tracks": {
             "pydra_task": "tckgen",
-            "pydra_field": "out_file",
+            "task_field": "out_file",
             "format": "<arcana.data.formats.medimage:MrtrixTrack>",
             "checksums": {
               ".": "D30073044A7B1239EFF753C85BC1C5B3"
@@ -473,10 +473,10 @@ would look like
               "version": "0.1.1",
               "inputs": {
                 "in_file": {
-                  "pydra_field": "T1w_reg_dwi"
+                  "task_field": "T1w_reg_dwi"
                 }
                 "t2": {
-                  "pydra_field": "T1w_reg_dwi"
+                  "task_field": "T1w_reg_dwi"
                 }
                 "sgm_amyg_hipp": true
               },
@@ -491,11 +491,11 @@ would look like
               "version": "0.1.1",
               "inputs": {
                 "in_file": {
-                  "pydra_field": "dwi_fod"
+                  "task_field": "dwi_fod"
                 },
                 "act": {
                   "pydra_task": "5ttgen",
-                  "pydra_field": "out_file"
+                  "task_field": "out_file"
                 },
                 "select": 100000000,
               },

@@ -31,7 +31,7 @@ tag_parse_re = re.compile(r"\((\d+),(\d+)\)")
 
 RELEVANT_DICOM_TAG_TYPES = set(("UI", "CS", "DA", "TM", "SH", "LO", "PN", "ST", "AS"))
 
-COMMAND_INPUT_TYPES = {bool: "bool", str: "string", int: "number", float: "number"}
+# COMMAND_INPUT_TYPES = {bool: "bool", str: "string", int: "number", float: "number"}
 
 
 @attrs.define

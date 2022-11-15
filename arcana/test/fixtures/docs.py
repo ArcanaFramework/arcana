@@ -132,7 +132,7 @@ commands:
         format: common:Directory
     parameters:
       - name: fmriprep_flags
-        pydra_field: flags
+        task_field: flags
         type: string
         description: description of flags param
     frequency: session

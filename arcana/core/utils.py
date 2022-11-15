@@ -765,7 +765,7 @@ def pydra_asdict(
         ]
         dct["outputs"] = outputs = {}
         for outpt_name, lf in obj._connections:
-            outputs[outpt_name] = {"pydra_task": lf.name, "pydra_field": lf.field}
+            outputs[outpt_name] = {"pydra_task": lf.name, "task_field": lf.field}
     else:
         if isinstance(obj, FunctionTask):
             func = cp.loads(obj.inputs._func)
@@ -790,7 +790,7 @@ def pydra_asdict(
         if not inpt_name.startswith("_"):
             inpt_value = getattr(obj.inputs, inpt_name)
             if isinstance(inpt_value, LazyField):
-                inputs[inpt_name] = {"pydra_field": inpt_value.field}
+                inputs[inpt_name] = {"task_field": inpt_value.field}
                 # If the lazy field comes from the workflow lazy in, we omit
                 # the "pydra_task" item
                 if workflow is None or inpt_value.name != workflow.name:
@@ -806,9 +806,9 @@ def lazy_field_fromdict(dct: dict, workflow: Workflow):
     """Unserialises a LazyField object from a dictionary"""
     if "pydra_task" in dct:
         inpt_task = getattr(workflow, dct["pydra_task"])
-        lf = getattr(inpt_task.lzout, dct["pydra_field"])
+        lf = getattr(inpt_task.lzout, dct["task_field"])
     else:
-        lf = getattr(workflow.lzin, dct["pydra_field"])
+        lf = getattr(workflow.lzin, dct["task_field"])
     return lf
 
 
@@ -838,9 +838,9 @@ def pydra_fromdict(dct: dict, workflow: Workflow = None, **kwargs) -> TaskBase:
     for inpt_name, inpt_val in dct["inputs"].items():
         if inpt_val == NOTHING_STR:
             continue
-        # Check for 'pydra_field' key in a dictionary val and convert to a
+        # Check for 'task_field' key in a dictionary val and convert to a
         # LazyField object
-        if isinstance(inpt_val, dict) and "pydra_field" in inpt_val:
+        if isinstance(inpt_val, dict) and "task_field" in inpt_val:
             inpt_val = lazy_field_fromdict(inpt_val, workflow=workflow)
         inputs[inpt_name] = inpt_val
     kwargs.update((k, v) for k, v in inputs.items() if k not in kwargs)
@@ -965,6 +965,43 @@ def show_workflow_errors(
                 else:
                     out_str += f"        {k}: {v}\n"
     return out_str
+
+
+@attrs.define
+class DictConverter:
+
+    klass: type
+
+    def __call__(self, value):
+        if isinstance(value, dict):
+            value = self.klass(**dict)
+        elif not isinstance(value, self.klass):
+            raise ValueError(f"Cannot convert {value} into {self.klass}")
+        return value
+
+
+@attrs.define
+class ListDictConverter:
+
+    klass: type
+
+    def __call__(self, value):
+        converted = []
+        for item in value:
+            if isinstance(value, dict):
+                item = self.klass(**dict)
+            elif not isinstance(value, self.klass):
+                raise ValueError(f"Cannot convert {item} into {self.klass}")
+            converted.append(item)
+        return converted
+
+
+def format_resolver(format):
+    if isinstance(format, str):
+        format = resolve_class(format, prefixes=["arcana.data.formats"])
+    elif not isinstance(format, type):
+        raise ValueError(f"Cannot resolve {format} to data format")
+    return format
 
 
 # Minimum version of Arcana that this version can read the serialisation from

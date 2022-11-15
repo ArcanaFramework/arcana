@@ -225,23 +225,23 @@ def command_spec():
             {
                 "name": "first_file",
                 "format": "common:Text",
-                "pydra_field": "in_file1",
+                "task_field": "in_file1",
                 "row_frequency": "session",
             },
             {
                 "name": "second_file",
                 "format": "common:Text",
-                "pydra_field": "in_file2",
+                "task_field": "in_file2",
                 "row_frequency": "session",
             },
         ],
         "outputs": [
-            {"name": "concatenated", "format": "common:Text", "pydra_field": "out_file"}
+            {"name": "concatenated", "format": "common:Text", "task_field": "out_file"}
         ],
         "parameters": [
             {
                 "name": "number_of_duplicates",
-                "pydra_field": "duplicates",
+                "task_field": "duplicates",
                 "required": True,
             }
         ],
@@ -277,4 +277,4 @@ def docker_registry():
         )
 
     yield f"localhost:{PORT}"
-    # container.stop()
+    container.stop()

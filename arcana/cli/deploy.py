@@ -707,8 +707,8 @@ def changelog(manifest_json):
         )
 
 
-@click.command(
-    name="run-arcana-pipeline",
+@deploy.command(
+    name="run-in-image",
     help="""Defines a new dataset, applies and launches a pipeline
 in a single command. Given the complexity of combining all these steps in one
 CLI, it isn't recommended to use this command manually, it is typically used
@@ -870,7 +870,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
         "be able to 'exec' into the container to debug."
     ),
 )
-def run_pipeline(
+def run_in_image(
     dataset_id_str,
     pipeline_name,
     task_location,
@@ -983,7 +983,7 @@ def run_pipeline(
 
     pipeline_inputs = []
     converter_args = {}  # Arguments passed to converter
-    for col_name, col_format_name, match_criteria, pydra_field, format_name in input:
+    for col_name, col_format_name, match_criteria, task_field, format_name in input:
         col_format = resolve_class(col_format_name, prefixes=["arcana.data.formats"])
         format = resolve_class(format_name, prefixes=["arcana.data.formats"])
         if not match_criteria and format != DataRow:
@@ -991,7 +991,7 @@ def run_pipeline(
                 f"Skipping '{col_name}' source column as no input was provided"
             )
             continue
-        pipeline_inputs.append(PipelineInput(col_name, pydra_field, format))
+        pipeline_inputs.append(PipelineInput(col_name, task_field, format))
         if DataRow in (col_format, format):
             if (col_format, format) != (DataRow, DataRow):
                 raise ArcanaUsageError(
@@ -1027,10 +1027,10 @@ def run_pipeline(
     logger.debug("Pipeline inputs: %s", pipeline_inputs)
 
     pipeline_outputs = []
-    for col_name, col_format_name, path_expr, pydra_field, format_name in output:
+    for col_name, col_format_name, path_expr, task_field, format_name in output:
         format = resolve_class(format_name, prefixes=["arcana.data.formats"])
         col_format = resolve_class(col_format_name, prefixes=["arcana.data.formats"])
-        pipeline_outputs.append(PipelineOutput(col_name, pydra_field, format))
+        pipeline_outputs.append(PipelineOutput(col_name, task_field, format))
         path, qualifiers = extract_qualifiers_from_path(path_expr)
         converter_args[col_name] = qualifiers.pop("converter", {})
         if qualifiers:
@@ -1122,4 +1122,4 @@ def run_pipeline(
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    run_in_image()
