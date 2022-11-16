@@ -1,5 +1,4 @@
 import typing as ty
-import json
 import re
 import attrs
 from arcana.core.data.format import FileGroup
@@ -7,13 +6,21 @@ from arcana.core.deploy.command import ContainerCommandSpec
 from arcana.data.stores.medimage import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
 
+if ty.TYPE_CHECKING:
+    from .image import XnatCSImageSpec
+
 
 @attrs.define
-class XnatContainerCommandSpec(ContainerCommandSpec):
+class XnatCSCommandSpec(ContainerCommandSpec):
+
+    image: XnatCSImageSpec = None
+
+    STORE_TYPE = "xnat-cs"
+
     def make_json(
         self,
-        dynamic_licenses: ty.List[ty.Tuple[str, str]] = None,
-        site_licenses_dataset: ty.Tuple[str, str, str] = None,
+        dynamic_licenses: list[tuple[str, str]] = None,
+        site_licenses_dataset: tuple[str, str, str] = None,
     ):
         """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
         should handle the containerised pipeline
@@ -42,11 +49,102 @@ class XnatContainerCommandSpec(ContainerCommandSpec):
         if dynamic_licenses is None:
             dynamic_licenses = []
 
-        # JSON to define all inputs and parameters to the pipelines
-        inputs_json = []
+        cmd_json = self.init_command_json()
 
+        input_args = self.add_input_fields(cmd_json)
+
+        param_args = self.add_parameter_fields(cmd_json)
+
+        output_args = self.add_output_fields(cmd_json)
+
+        flag_args = self.add_arcana_flags_field(cmd_json)
+
+        xnat_input_args = self.add_inputs_from_xnat(cmd_json)
+
+        cmd_json["command-line"] = self.command_line(
+            project_id="[PROJECT_ID]",
+            dynamic_licenses=dynamic_licenses,
+            site_licenses_dataset=site_licenses_dataset,
+        ) + " ".join(
+            (
+                input_args,
+                output_args,
+                param_args,
+                flag_args,
+                xnat_input_args,
+            )
+        )
+
+        return cmd_json
+
+    def init_command_json(self):
+        """Initialises the command JSON that specifies to the XNAT Cs how the command
+        should be run
+
+        Returns
+        -------
+        dict[str, *]
+            the JSON-like dictionary to specify the command to the XNAT CS
+        """
+        # Generate the complete configuration JSON
+        spec_version_str = (
+            f" ({self.image.spec_version})" if self.image.spec_version == "0" else ""
+        )
+
+        cmd_json = {
+            "name": self.name,
+            "description": f"{self.name} {self.image.version}{spec_version_str}: {self.description}",
+            "label": self.name,
+            "version": self.image.full_version,
+            "schema-version": "1.0",
+            "image": self.image.tag,
+            "index": self.image.registry,
+            "info-url": self.info_url,
+            "type": "docker",
+            # "command-line": cmdline,
+            "override-entrypoint": True,
+            "mounts": [
+                {"name": "in", "writable": False, "path": str(XnatViaCS.INPUT_MOUNT)},
+                {"name": "out", "writable": True, "path": str(XnatViaCS.OUTPUT_MOUNT)},
+                {  # Saves the Pydra-cache directory outside of the container for easier debugging
+                    "name": "work",
+                    "writable": True,
+                    "path": str(XnatViaCS.WORK_MOUNT),
+                },
+            ],
+            "ports": {},
+            "inputs": [],  # inputs_json,
+            "outputs": [],  # outputs_json,
+            "xnat": [
+                {
+                    "name": self.name,
+                    "description": self.description,
+                    "contexts": [],  # context,
+                    "external-inputs": [],  # external_inputs,
+                    "derived-inputs": [],  # derived_inputs,
+                    "output-handlers": [],  # output_handlers,
+                }
+            ],
+        }
+
+        return cmd_json
+
+    def add_input_fields(self, cmd_json):
+        """Adds pipeline inputs to the command JSON
+
+        Parameters
+        ----------
+        cmd_json : dict
+            JSON-like dictionary to be passed to the XNAT container service to specify
+            how to run a command
+
+        Returns
+        -------
+        list[str]
+            list of arguments to be appended to the command line
+        """
         # Add task inputs to inputs JSON specification
-        input_args = []
+        cmd_args = []
         for inpt in self.inputs:
             replacement_key = f"[{inpt.task_field.upper()}_INPUT]"
             if issubclass(inpt.format, FileGroup):
@@ -55,7 +153,7 @@ class XnatContainerCommandSpec(ContainerCommandSpec):
             else:
                 desc = f"Match field ({inpt.format.dtype}) [FIELD_NAME]: {inpt.description} "
                 input_type = self.COMMAND_INPUT_TYPES.get(inpt.format, "string")
-            inputs_json.append(
+            cmd_json["inputs"].append(
                 {
                     "name": self.path2xnatname(inpt.name),
                     "description": desc,
@@ -66,18 +164,20 @@ class XnatContainerCommandSpec(ContainerCommandSpec):
                     "replacement-key": replacement_key,
                 }
             )
-            input_args.append(
-                f"--input {inpt.name} {inpt.stored_format.location()} '{replacement_key}' {inpt.task_field} {inpt.format.location()} "
-            )
+            cmd_args.append(inpt.command_arg("'" + replacement_key + "'"))
+
+        return " ".join(cmd_args)
+
+    def add_parameter_fields(self, cmd_json):
 
         # Add parameters as additional inputs to inputs JSON specification
-        param_args = []
+        cmd_args = []
         for param in self.parameters:
             desc = f"Parameter ({param.type}): " + param.description
 
             replacement_key = f"[{param.task_field.upper()}_PARAM]"
 
-            inputs_json.append(
+            cmd_json["inputs"].append(
                 {
                     "name": param.name,
                     "description": desc,
@@ -88,29 +188,31 @@ class XnatContainerCommandSpec(ContainerCommandSpec):
                     "replacement-key": replacement_key,
                 }
             )
-            param_args.append(f"--parameter {param.task_field} '{replacement_key}' ")
+            cmd_args.append(param.command_arg("'" + replacement_key + "'"))
+
+        return " ".join(cmd_args)
+
+    def add_output_fields(self, cmd_json):
 
         # Set up output handlers and arguments
-        outputs_json = []
-        output_handlers = []
-        output_args = []
+        cmd_args = []
         for output in self.outputs:
             label = output.path.split("/")[0]
             out_fname = output.path + (
                 "." + output.format.ext if output.format.ext else ""
             )
             # Set the path to the
-            outputs_json.append(
+            cmd_json["outputs"].append(
                 {
                     "name": output.name,
-                    "description": f"{output.task_field} ({output.format.location()})",
+                    "description": f"{output.task_field} ({output.format.class_location()})",
                     "required": True,
                     "mount": "out",
                     "path": out_fname,
                     "glob": None,
                 }
             )
-            output_handlers.append(
+            cmd_json["xnat"]["output-handlers"].append(
                 {
                     "name": f"{output.name}-resource",
                     "accepts-command-output": output.name,
@@ -121,19 +223,15 @@ class XnatContainerCommandSpec(ContainerCommandSpec):
                     "format": output.format.class_name(),
                 }
             )
-            output_args.append(
-                f"--output {output.name} {output.stored_format.location()} '{output.path}' {output.task_field} {output.format.location()} "
-            )
+            cmd_args.append(output.command_arg())
 
-        # Set up fixed arguments used to configure the workflow at initialisation
-        config_args = []
-        for cname, cvalue in self.configuration.items():
-            cvalue_json = json.dumps(cvalue)  # .replace('"', '\\"')
-            config_args.append(f"--configuration {cname} '{cvalue_json}' ")
+        return " ".join(cmd_args)
+
+    def add_arcana_flags_field(self, cmd_json):
 
         # Add input for dataset name
         FLAGS_KEY = "#ARCANA_FLAGS#"
-        inputs_json.append(
+        cmd_json["inputs"].append(
             {
                 "name": "Arcana_flags",
                 "description": "Flags passed to `run-arcana-pipeline` command",
@@ -151,34 +249,15 @@ class XnatContainerCommandSpec(ContainerCommandSpec):
             }
         )
 
-        input_args_str = " ".join(input_args)
-        output_args_str = " ".join(output_args)
-        param_args_str = " ".join(param_args)
-        config_args_str = " ".join(config_args)
-        licenses_str = " ".join(
-            f"--dynamic-license {n} {v}" for n, v in dynamic_licenses
-        )
+        return FLAGS_KEY
 
-        cmdline = (
-            f"conda run --no-capture-output -n {self.image.CONDA_ENV} "  # activate conda
-            f"arcana deploy run-in-image xnat-cs//[PROJECT_ID] {self.name} {self.pydra_task} "  # run pydra task in Arcana
-            + input_args_str
-            + output_args_str
-            + param_args_str
-            + config_args_str
-            + FLAGS_KEY
-            + licenses_str
-            + " "
-            "--dataset-space medimage:Clinical "
-            "--dataset-hierarchy subject,session "
-            "--single-row [SUBJECT_LABEL],[SESSION_LABEL] "
-            f"--row-frequency {self.row_frequency} "
-        )  # pass XNAT API details
-        # TODO: add option for whether to overwrite existing pipeline
+    def add_inputs_from_xnat(self, cmd_json):
+
+        cmd_args = []
 
         # Create Project input that can be passed to the command line, which will
         # be populated by inputs derived from the XNAT object passed to the pipeline
-        inputs_json.append(
+        cmd_json["inputs"].append(
             {
                 "name": "PROJECT_ID",
                 "description": "Project ID",
@@ -192,11 +271,11 @@ class XnatContainerCommandSpec(ContainerCommandSpec):
         # Access session via Container service args and derive
         if self.row_frequency == Clinical.session:
             # Set the object the pipeline is to be run against
-            context = ["xnat:imageSessionData"]
+            cmd_json["xnat"]["context"] = ["xnat:imageSessionData"]
             # Create Session input that  can be passed to the command line, which
             # will be populated by inputs derived from the XNAT session object
             # passed to the pipeline.
-            inputs_json.extend(
+            cmd_json["inputs"].extend(
                 [
                     {
                         "name": "SESSION_LABEL",
@@ -217,9 +296,11 @@ class XnatContainerCommandSpec(ContainerCommandSpec):
                 ]
             )
             # Add specific session to process to command line args
-            cmdline += " --ids [SESSION_LABEL] "
+            cmd_args.append("--ids [SESSION_LABEL]")
+            cmd_args.append("--single-row [SUBJECT_LABEL],[SESSION_LABEL]")
+
             # Access the session XNAT object passed to the pipeline
-            external_inputs = [
+            cmd_json["xnat"]["external-inputs"] = [
                 {
                     "name": "SESSION",
                     "description": "Imaging session",
@@ -237,7 +318,7 @@ class XnatContainerCommandSpec(ContainerCommandSpec):
                 }
             ]
             # Access to project ID and session label from session XNAT object
-            derived_inputs = [
+            cmd_json["xnat"]["derived-inputs"] = [
                 {
                     "name": "__SESSION_LABEL__",
                     "type": "string",
@@ -269,49 +350,7 @@ class XnatContainerCommandSpec(ContainerCommandSpec):
                 "Wrapper currently only supports session-level pipelines"
             )
 
-        # Generate the complete configuration JSON
-        spec_version_str = (
-            f" ({self.image.spec_version})" if self.image.spec_version == "0" else ""
-        )
-        xnat_command = {
-            "name": self.name,
-            "description": f"{self.name} {self.image.version}{spec_version_str}: {self.description}",
-            "label": self.name,
-            "version": self.image.full_version,
-            "schema-version": "1.0",
-            "image": self.image.tag,
-            "index": self.image.registry,
-            "type": "docker",
-            "command-line": cmdline,
-            "override-entrypoint": True,
-            "mounts": [
-                {"name": "in", "writable": False, "path": str(XnatViaCS.INPUT_MOUNT)},
-                {"name": "out", "writable": True, "path": str(XnatViaCS.OUTPUT_MOUNT)},
-                {  # Saves the Pydra-cache directory outside of the container for easier debugging
-                    "name": "work",
-                    "writable": True,
-                    "path": str(XnatViaCS.WORK_MOUNT),
-                },
-            ],
-            "ports": {},
-            "inputs": inputs_json,
-            "outputs": outputs_json,
-            "xnat": [
-                {
-                    "name": self.name,
-                    "description": self.description,
-                    "contexts": context,
-                    "external-inputs": external_inputs,
-                    "derived-inputs": derived_inputs,
-                    "output-handlers": output_handlers,
-                }
-            ],
-        }
-
-        if self.info_url:
-            xnat_command["info-url"] = self.info_url
-
-        return xnat_command
+        return " ".join(cmd_args)
 
     @classmethod
     def path2xnatname(cls, path):

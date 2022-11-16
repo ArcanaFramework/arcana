@@ -125,7 +125,7 @@ class DataItem(metaclass=ABCMeta):
         return cls.__name__.lower()
 
     @classmethod
-    def location(cls, relative=True):
+    def class_location(cls, relative=True):
         """Returns the location of the format class definition
 
         Parameters

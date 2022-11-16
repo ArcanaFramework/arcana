@@ -249,7 +249,7 @@ class ContainerImageSpec:
                 f"Build dir '{str(build_dir)}' is not a valid directory"
             )
 
-        dockerfile = self.init_dockerfile()
+        dockerfile = self.init_dockerfile(self.package_manager, self.base_image)
 
         self.install_system_packages(dockerfile)
 
@@ -294,8 +294,9 @@ class ContainerImageSpec:
 
         return dockerfile
 
-    def init_dockerfile(self):
-        dockerfile = DockerRenderer(self.package_manager).from_(self.base_image)
+    @classmethod
+    def init_dockerfile(cls, package_manager, base_image):
+        dockerfile = DockerRenderer(package_manager).from_(base_image)
         dockerfile.install(["git", "ssh-client", "vim"])
         return dockerfile
 
@@ -357,39 +358,6 @@ class ContainerImageSpec:
                 )
                 for p in packages
             ),
-        )
-
-    def install_arcana(
-        self,
-        dockerfile: DockerRenderer,
-        build_dir: Path,
-        install_extras: ty.Iterable = (),
-        use_local_package: bool = False,
-    ):
-        """Install the Arcana Python package into the Dockerfile
-
-        Parameters
-        ----------
-        dockerfile : DockerRenderer
-            the Neurdocker renderer
-        build_dir : Path
-            the directory the Docker image is built from
-        install_extras : list[str]
-            list of "install extras" (options) to specify when installing Arcana
-            (e.g. 'test')
-        use_local_package : bool
-            Use local installation of arcana
-        """
-        pip_str = self.pip_spec2str(
-            PipSpec(PACKAGE_NAME, extras=install_extras),
-            dockerfile,
-            build_dir,
-            use_local_packages=use_local_package,
-            pypi_fallback=False,
-        )
-        dockerfile.run(
-            f'bash -c "source activate {self.CONDA_ENV} \\\n'
-            f'&& python -m pip install --pre --no-cache-dir {pip_str}"'
         )
 
     def install_system_packages(
@@ -461,6 +429,57 @@ class ContainerImageSpec:
                 destination=licenses_spec[name],
             )
 
+    def write_spec(self, dockerfile: DockerRenderer, spec, build_dir):
+        """Generate Neurodocker instructions to install README file inside the docker
+        image
+
+        Parameters
+        ----------
+        dockerfile : DockerRenderer
+            the neurodocker renderer to append the install instructions to
+        spec : dict
+            the specification used to build the image
+        build_dir : Path
+            path to build dir
+        """
+        with open(build_dir / "arcana-spec.yaml", "w") as f:
+            yaml.dump(spec, f)
+        dockerfile.copy(source=["./arcana-spec.yaml"], destination=self.SPEC_PATH)
+
+    @classmethod
+    def install_arcana(
+        cls,
+        dockerfile: DockerRenderer,
+        build_dir: Path,
+        install_extras: ty.Iterable = (),
+        use_local_package: bool = False,
+    ):
+        """Install the Arcana Python package into the Dockerfile
+
+        Parameters
+        ----------
+        dockerfile : DockerRenderer
+            the Neurdocker renderer
+        build_dir : Path
+            the directory the Docker image is built from
+        install_extras : list[str]
+            list of "install extras" (options) to specify when installing Arcana
+            (e.g. 'test')
+        use_local_package : bool
+            Use local installation of arcana
+        """
+        pip_str = cls.pip_spec2str(
+            PipSpec(PACKAGE_NAME, extras=install_extras),
+            dockerfile,
+            build_dir,
+            use_local_packages=use_local_package,
+            pypi_fallback=False,
+        )
+        dockerfile.run(
+            f'bash -c "source activate {cls.CONDA_ENV} \\\n'
+            f'&& python -m pip install --pre --no-cache-dir {pip_str}"'
+        )
+
     @classmethod
     def write_readme(cls, dockerfile: DockerRenderer, description, build_dir):
         """Generate Neurodocker instructions to install README file inside the docker
@@ -484,25 +503,9 @@ class ContainerImageSpec:
             f.write(cls.DOCKERFILE_README_TEMPLATE.format(__version__, description))
         dockerfile.copy(source=["./README.md"], destination="/README.md")
 
-    def write_spec(self, dockerfile: DockerRenderer, spec, build_dir):
-        """Generate Neurodocker instructions to install README file inside the docker
-        image
-
-        Parameters
-        ----------
-        dockerfile : DockerRenderer
-            the neurodocker renderer to append the install instructions to
-        spec : dict
-            the specification used to build the image
-        build_dir : Path
-            path to build dir
-        """
-        with open(build_dir / "arcana-spec.yaml", "w") as f:
-            yaml.dump(spec, f)
-        dockerfile.copy(source=["./arcana-spec.yaml"], destination=self.SPEC_PATH)
-
+    @classmethod
     def pip_spec2str(
-        self,
+        cls,
         pip_spec: PipSpec,
         dockerfile: DockerRenderer,
         build_dir: Path,
@@ -538,10 +541,10 @@ class ContainerImageSpec:
                 raise ArcanaBuildError(
                     "Cannot specify a package by `file_path`, `version` and/or " "`url`"
                 )
-            pkg_build_path = self.copy_sdist_into_build_dir(
+            pkg_build_path = cls.copy_sdist_into_build_dir(
                 pip_spec.file_path, build_dir
             )
-            pip_str = "/" + self.PYTHON_PACKAGE_DIR + "/" + pkg_build_path.name
+            pip_str = "/" + cls.PYTHON_PACKAGE_DIR + "/" + pkg_build_path.name
             dockerfile.copy(
                 source=[str(pkg_build_path.relative_to(build_dir))], destination=pip_str
             )
@@ -559,7 +562,8 @@ class ContainerImageSpec:
             pip_str += "==" + pip_spec.version
         return pip_str
 
-    def copy_sdist_into_build_dir(self, local_installation: Path, build_dir: Path):
+    @classmethod
+    def copy_sdist_into_build_dir(cls, local_installation: Path, build_dir: Path):
         """Create a source distribution from a locally installed "editable" python package
         and copy it into the build dir so it can be installed in the Docker image
 
@@ -600,7 +604,7 @@ class ContainerImageSpec:
                 )
             # Copy generated source distribution into build directory
             sdist_path = next((local_installation / "dist").iterdir())
-            build_dir_pkg_path = build_dir / self.PYTHON_PACKAGE_DIR / sdist_path.name
+            build_dir_pkg_path = build_dir / cls.PYTHON_PACKAGE_DIR / sdist_path.name
             build_dir_pkg_path.parent.mkdir(exist_ok=True)
             shutil.copy(sdist_path, build_dir_pkg_path)
         finally:
@@ -624,3 +628,4 @@ class ContainerImageSpec:
     PYTHON_PACKAGE_DIR = "python-packages"
     SPEC_PATH = "/arcana-spec.yaml"
     IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
+    CONDA_ENV = "arcana"
