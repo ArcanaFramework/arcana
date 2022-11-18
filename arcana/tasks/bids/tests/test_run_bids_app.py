@@ -5,7 +5,7 @@ from arcana.test.fixtures.common import make_dataset, TestDatasetBlueprint
 from arcana.data.formats.common import Text
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats.medimage import NiftiGzX
-from arcana.cli.deploy import run_pipeline
+from arcana.cli.deploy import run_in_image
 from arcana.core.utils import class_location, path2varname
 from arcana.test.utils import show_cli_trace
 
@@ -50,9 +50,9 @@ def test_run_bids_pipeline(
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     args = [
-        dataset_id_str,
         "a_bids_app",
         "arcana.tasks.bids.app:bids_app",
+        dataset_id_str,
         "--plugin",
         "serial",
         "--work",
@@ -69,7 +69,8 @@ def test_run_bids_pipeline(
     for path, (format, _) in blueprint.expected_formats.items():
         format_str = class_location(format)
         varname = path2varname(path)
-        args.extend(["--input", varname, format_str, varname, varname, format_str])
+        args.extend(["--input-config", varname, format_str, varname, format_str])
+        args.extend(["--input", varname, varname])
         inputs_config.append({"name": varname, "path": path, "format": format_str})
     args.extend(
         ["--configuration", "inputs", json.dumps(inputs_config)]
@@ -78,13 +79,14 @@ def test_run_bids_pipeline(
     for path, _, format, _ in blueprint.derivatives:
         format_str = class_location(format)
         varname = path2varname(path)
-        args.extend(["--output", varname, format_str, varname, varname, format_str])
+        args.extend(["--output-config", varname, format_str, varname, format_str])
+        args.extend(["--output", varname, varname])
         outputs_config.append({"name": varname, "path": path, "format": format_str})
     args.extend(
         ["--configuration", "outputs", json.dumps(outputs_config)]
     )  # .replace('"', '\\"')
 
-    result = cli_runner(run_pipeline, args)
+    result = cli_runner(run_in_image, args)
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source column to saved dataset
     for fname in ["file1", "file2"]:

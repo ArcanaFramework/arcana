@@ -3,6 +3,7 @@ import typing as ty
 from pathlib import Path
 import json
 import tempfile
+from itertools import chain
 import logging
 from datetime import datetime
 from copy import copy
@@ -11,13 +12,21 @@ from natsort import natsorted
 import attrs
 import docker
 import yaml
+from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
-from arcana.core.utils import set_cwd, ListDictConverter
+from arcana.core.utils import set_cwd, ListDictConverter, resolve_class
 from arcana.__about__ import PACKAGE_NAME, python_versions
 from arcana.exceptions import ArcanaBuildError
 from .command import ContainerCommandSpec
-from .utils import PipSpec, local_package_location, DOCKER_HUB
+from arcana.data.formats import Directory
+from .utils import (
+    PipSpec,
+    local_package_location,
+    DOCKER_HUB,
+    MarkdownTable,
+    escaped_md,
+)
 
 
 logger = logging.getLogger("arcana")
@@ -93,6 +102,13 @@ class ContainerImageSpec:
         reset to "0" if the package version is updated.
     registry : str, optional
         the container registry the image is to be installed at
+    builtin_licenses : dict[str, Path]
+        licenses provided that can be built into the image (i.e. only if the
+        licensing terms permit), which are provided at build time. The remaining licenses
+        specified in the build will be downloaded at runtime either from the root node
+        of the dataset or the "site-wide-license dataset"
+    site_licenses_dataset : tuple[str, str, str]
+
     """
 
     DEFAULT_BASE_IMAGE = "ubuntu:kinetic"
@@ -100,7 +116,6 @@ class ContainerImageSpec:
 
     name: str
     version: str
-    org: str
     info_url: str
     authors: ty.List[ContainerAuthor] = attrs.field(
         converter=ListDictConverter(ContainerAuthor)
@@ -110,6 +125,7 @@ class ContainerImageSpec:
     )
     base_image: str = DEFAULT_BASE_IMAGE
     package_manager: str = DEFAULT_PACKAGE_MANAGER
+    org: str = None
     python_packages: ty.List[PipSpec] = attrs.field(
         factory=list, converter=ListDictConverter(PipSpec)
     )
@@ -124,6 +140,9 @@ class ContainerImageSpec:
     )
     spec_version: str = attrs.field(default=0, converter=str)
     registry: str = DOCKER_HUB
+    builtin_licenses: dict[str, Path] = attrs.field(factory=dict)
+    site_licenses_dataset: tuple[str, str, str] = None
+    loaded_from: Path = None
 
     def __attrs_post_init__(self):
 
@@ -138,14 +157,15 @@ class ContainerImageSpec:
     @property
     def full_version(self):
         ver = str(self.version)
-        if self.spec_version != "0":
+        if self.spec_version is not None:
             ver += f"-{self.spec_version}"
         return ver
 
     @property
     def path(self):
-        prefix = self.registry.lower() + "/" if self.registry != DOCKER_HUB else ""
-        return f"{prefix}{self.org}/{self.name}"
+        prefix = self.registry + "/" if self.registry != DOCKER_HUB else ""
+        org_str = self.org + "/" if self.org else ""
+        return (prefix + org_str + self.name).lower()
 
     def make(
         self,
@@ -206,7 +226,7 @@ class ContainerImageSpec:
     def construct_dockerfile(
         self,
         build_dir: Path,
-        static_licenses: ty.Iterable[ty.Tuple[str, str or Path]] = (),
+        builtin_licenses: ty.Iterable[ty.Tuple[str, str or Path]] = (),
         use_local_packages: bool = False,
         pypi_fallback: bool = False,
         arcana_install_extras: ty.List[str] = (),
@@ -234,7 +254,7 @@ class ContainerImageSpec:
         pypi_fallback : bool, optional
             whether to fallback to packages installed on PyPI when versions of
             local packages don't match installed
-        static_licenses : list[tuple[str, str or Path]]
+        builtin_licenses : list[tuple[str, str or Path]]
             licenses provided at build time to be installed inside the container image.
             A list of 'name' and 'source path' pairs.
 
@@ -275,7 +295,7 @@ class ContainerImageSpec:
         self.install_licenses(
             dockerfile,
             # {k: v["destination"] for k, v in licenses.items()},
-            static_licenses,
+            builtin_licenses,
             build_dir,
         )
 
@@ -284,13 +304,6 @@ class ContainerImageSpec:
         self.write_spec(dockerfile, build_dir)
 
         self.add_labels(dockerfile, labels)
-
-        # if labels:
-        #     # dockerfile.label(labels)
-        #     dockerfile._parts.append(
-        #         "LABEL "
-        #         + " \\\n      ".join(f"{k}={json.dumps(v)}" for k, v in labels.items())
-        #     )
 
         return dockerfile
 
@@ -301,6 +314,10 @@ class ContainerImageSpec:
         return dockerfile
 
     def add_labels(self, dockerfile, labels):
+        # dockerfile._parts.append(
+        #     "LABEL "
+        #     + " \\\n      ".join(f"{k}={json.dumps(v)}" for k, v in labels.items())
+        # )
         dockerfile.labels({k: json.dumps(v) for k, v in labels.items()})
 
     def install_python(
@@ -615,6 +632,234 @@ class ContainerImageSpec:
 
         return build_dir_pkg_path
 
+    @classmethod
+    def load(cls, yaml_path: Path, root_dir: Path = None, **kwargs):
+        """Loads a deploy-build specification from a YAML file
+
+        Parameters
+        ----------
+        yaml_path : Path
+            path to the YAML file to load
+        root_dir : Path, optional
+            path to the root directory from which a tree of specs are being loaded from.
+            The name of the root directory is taken to be the organisation the image
+            belongs to, and all nested directories above the YAML file will be joined by
+            '.' and prepended to the name of the loaded spec.
+        **kwargs
+            additional keyword arguments that override/augment the values loaded from
+            the spec file
+
+        Returns
+        -------
+        Self
+            The loaded spec object
+        """
+
+        def concat(loader, node):
+            seq = loader.construct_sequence(node)
+            return "".join([str(i) for i in seq])
+
+        # Add special constructors to handle joins and concatenations within the YAML
+        yaml.SafeLoader.add_constructor(tag="!join", constructor=concat)
+        # yaml.SafeLoader.add_constructor(tag="!concat", constructor=concat)
+
+        with open(yaml_path, "r") as f:
+            dct = yaml.load(f, Loader=yaml.SafeLoader)
+
+        if type(dct) is not dict:
+            raise ValueError(f"{yaml_path!r} didn't contain a dict!")
+
+        if root_dir is not None:
+            dct["name"] = ".".join(
+                yaml_path.relative_to(root_dir).parent.parts + [yaml_path.stem]
+            )
+            dct["org"] = root_dir.name
+        else:
+            dct["name"] = yaml_path.stem
+            dct["org"] = None
+
+        # Override/augment loaded values from spec
+        dct.update(kwargs)
+
+        return cls(**dct)
+
+    @classmethod
+    def load_tree(cls, root_dir: Path, **kwargs) -> list:
+        """Walk the given directory structure and load all specs found within it
+
+        Parameters
+        ----------
+        root_dir : Path
+            path to the base directory
+        """
+        if root_dir.is_file():
+            return [cls.load(root_dir, **kwargs)]
+        specs = []
+        for path in chain(root_dir.rglob("*.yml"), root_dir.rglob("*.yaml")):
+            if not any(p.startswith(".") for p in path.parts):
+
+                logging.info("Found container image specification file '%s'", path)
+                specs.append(cls.load(path, root_dir=root_dir, **kwargs))
+
+        return specs
+
+    def autodoc(self, doc_dir, flatten: bool):
+        header = {
+            "title": self.name,
+            "weight": 10,
+        }
+
+        if self.loaded_from:
+            header["source_file"] = str(self.loaded_from)
+
+        if flatten:
+            out_dir = doc_dir
+        else:
+            assert isinstance(doc_dir, Path)
+
+            out_dir = doc_dir.joinpath(self._relative_dir)
+
+            assert doc_dir in out_dir.parents or out_dir == doc_dir
+
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(f"{out_dir}/{self.name}.md", "w") as f:
+            f.write("---\n")
+            yaml.dump(header, f)
+            f.write("\n---\n\n")
+
+            f.write("## Package Info\n")
+            tbl_info = MarkdownTable(f, "Key", "Value")
+            tbl_info.write_row("Package version", self.version)
+            tbl_info.write_row("Spec version", self.version)
+            tbl_info.write_row("Base image", escaped_md(self.base_image))
+            tbl_info.write_row("Maintainer", self.maintainer)
+            tbl_info.write_row("Info URL", self.info_url)
+
+            f.write("\n")
+
+            if self.licenses:
+                f.write("### Required licenses\n")
+
+                tbl_lic = MarkdownTable(f, "Source file", "Info")
+                for lic in self.licenses:
+                    tbl_lic.write_row(
+                        escaped_md(lic.get("source", None)),
+                        lic.get("info", ""),
+                    )
+
+                f.write("\n")
+
+            f.write("## Commands\n")
+
+            for cmd in self.commands:
+
+                f.write(f"### {cmd['name']}\n")
+
+                short_desc = cmd.get("long_description", None) or cmd.description
+                f.write(f"{short_desc}\n\n")
+
+                tbl_cmd = MarkdownTable(f, "Key", "Value")
+                tbl_cmd.write_row("Short description", cmd.description)
+                # if cmd.configuration is not None:
+                #     config = cmd.configuration
+                #     # configuration keys are variable depending on the workflow class
+                tbl_cmd.write_row("Operates on", cmd.row_frequency.title())
+
+                if cmd.known_issues is not None:
+                    if cmd.known_issues.get("url"):
+                        tbl_cmd.write_row("Known issues", cmd.known_issues["url"])
+                    # Leaving room to extend known_issues further, e.g., an inplace list of issues
+
+                f.write("#### Inputs\n")
+                tbl_inputs = MarkdownTable(f, "Name", "Format", "Description")
+                if cmd.inputs is not None:
+                    for inpt in cmd.inputs:
+                        tbl_inputs.write_row(
+                            escaped_md(inpt.name),
+                            self._format_html(inpt.stored_format),
+                            inpt.description,
+                        )
+                    f.write("\n")
+
+                f.write("#### Outputs\n")
+                tbl_outputs = MarkdownTable(f, "Name", "Format", "Description")
+                if cmd.outputs is not None:
+                    for outpt in cmd.outputs:
+                        tbl_outputs.write_row(
+                            escaped_md(outpt.name),
+                            self._format_html(outpt.stored_format),
+                            outpt.get("description", ""),
+                        )
+                    f.write("\n")
+
+                if cmd.parameters is not None:
+                    f.write("#### Parameters\n")
+                    tbl_params = MarkdownTable(f, "Name", "Data type", "Description")
+                    for param in cmd.parameters:
+                        tbl_params.write_row(
+                            escaped_md(param.name),
+                            escaped_md(param.type),
+                            param.get("description", ""),
+                        )
+                    f.write("\n")
+
+    def compare_specs(self, other, check_version=True):
+        """Compares two build specs against each other and returns the difference
+
+        Parameters
+        ----------
+        s1 : dict
+            first spec
+        s2 : dict
+            second spec
+        check_version : bool
+            check the arcana version used to generate the specs
+
+        Returns
+        -------
+        DeepDiff
+            the difference between the specs
+        """
+
+        sdict = attrs.asdict(self, recurse=True)
+        odict = attrs.asdict(other, recurse=True)
+
+        def prep(s):
+            dct = {
+                k: v
+                for k, v in s.items()
+                if (not k.startswith("_") and (v or isinstance(v, bool)))
+            }
+            if check_version:
+                if "arcana_version" not in dct:
+                    dct["arcana_version"] = __version__
+            else:
+                del dct["arcana_version"]
+            return dct
+
+        diff = DeepDiff(prep(sdict), prep(odict), ignore_order=True)
+        return diff
+
+    @classmethod
+    def _format_html(cls, format):
+        if not format:
+            return ""
+        if ":" not in format:
+            return escaped_md(format)
+
+        resolved = resolve_class(format, prefixes=["arcana.data.formats"])
+        desc = getattr(resolved, "desc", resolved.__name__)
+
+        if ext := getattr(resolved, "ext", None):
+            text = f"{desc} (`.{ext}`)"
+        elif getattr(resolved, "is_dir", None) and resolved is not Directory:
+            text = f"{desc} (Directory)"
+        else:
+            text = desc
+
+        return f'<span data-toggle="tooltip" data-placement="bottom" title="{format}" aria-label="{format}">{text}</span>'
+
     DOCKERFILE_README_TEMPLATE = """
         The following Docker image was generated by arcana v{} to enable the
         commands to be run in the XNAT container service. See
@@ -624,7 +869,6 @@ class ContainerImageSpec:
         {}
 
         """
-
     PYTHON_PACKAGE_DIR = "python-packages"
     SPEC_PATH = "/arcana-spec.yaml"
     IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"

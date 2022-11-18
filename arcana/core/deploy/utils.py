@@ -5,17 +5,13 @@ import site
 import tempfile
 import tarfile
 import logging
-from itertools import chain
 import pkg_resources
-import os
 from dataclasses import dataclass, field as dataclass_field
 import docker
-from deepdiff import DeepDiff
-import yaml
-from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME
 from arcana.exceptions import ArcanaBuildError
 from arcana.exceptions import ArcanaError
+
 
 logger = logging.getLogger("arcana")
 
@@ -77,64 +73,6 @@ class PipSpec:
                     )
                 prev_spec.extras.extend(pip_spec.extras)
         return list(dct.values())
-
-
-def load_yaml_spec(path: Path, base_dir: Path = None):
-    """Loads a deploy-build specification from a YAML file
-
-    Parameters
-    ----------
-    path : Path
-        path to the YAML file to load
-    base_dir : Path
-        path to the base directory of the suite of specs to be read
-
-    Returns
-    -------
-    dict
-        The loaded dictionary
-    """
-
-    def concat(loader, node):
-        seq = loader.construct_sequence(node)
-        return "".join([str(i) for i in seq])
-
-    yaml.SafeLoader.add_constructor(tag="!join", constructor=concat)
-    yaml.SafeLoader.add_constructor(tag="!concat", constructor=concat)
-
-    with open(path, "r") as f:
-        data = yaml.load(f, Loader=yaml.SafeLoader)
-
-    # row_frequency = data.get('row_frequency', None)
-    # if row_frequency:
-    #     # TODO: Handle other row_frequency types, are there any?
-    #     data['row_frequency'] = Clinical[row_frequency.split('.')[-1]]
-
-    if type(data) is not dict:
-        raise ValueError(f"{path!r} didn't contain a dict!")
-
-    data["_relative_dir"] = (
-        os.path.dirname(os.path.relpath(path, base_dir)) if base_dir else ""
-    )
-    data["_module_name"] = os.path.basename(path).rsplit(".", maxsplit=1)[0]
-
-    return data
-
-
-def walk_spec_paths(spec_path: Path) -> ty.Iterable[Path]:
-    """Walk a directory structure and return all YAML specs found with it
-
-    Parameters
-    ----------
-    spec_path : Path
-        path to the directory
-    """
-    if spec_path.is_file():
-        yield spec_path
-    else:
-        for path in chain(spec_path.rglob("*.yml"), spec_path.rglob("*.yaml")):
-            if not any(p.startswith(".") for p in path.parts):
-                yield path
 
 
 def local_package_location(pip_spec: PipSpec, pypi_fallback: bool = False):
@@ -233,7 +171,7 @@ def local_package_location(pip_spec: PipSpec, pypi_fallback: bool = False):
 
 
 def extract_file_from_docker_image(
-    image_tag: str, file_path: PosixPath, out_path: Path = None
+    image_tag, file_path: PosixPath, out_path: Path = None
 ) -> Path:
     """Extracts a file from a Docker image onto the local host
 
@@ -280,39 +218,37 @@ def extract_file_from_docker_image(
     return out_path
 
 
-def compare_specs(s1, s2, check_version=True):
-    """Compares two build specs against each other and returns the difference
+def escaped_md(value: str) -> str:
+    if not value:
+        return ""
+    return f"`{value}`"
 
-    Parameters
-    ----------
-    s1 : dict
-        first spec
-    s2 : dict
-        second spec
-    check_version : bool
-        check the arcana version used to generate the specs
 
-    Returns
-    -------
-    DeepDiff
-        the difference between the specs
-    """
+class MarkdownTable:
+    def __init__(self, f, *headers: str) -> None:
+        self.headers = tuple(headers)
 
-    def prep(s):
-        dct = {
-            k: v
-            for k, v in s.items()
-            if (not k.startswith("_") and (v or isinstance(v, bool)))
-        }
-        if check_version:
-            if "arcana_version" not in dct:
-                dct["arcana_version"] = __version__
-        else:
-            del dct["arcana_version"]
-        return dct
+        self.f = f
+        self._write_header()
 
-    diff = DeepDiff(prep(s1), prep(s2), ignore_order=True)
-    return diff
+    def _write_header(self):
+        self.write_row(*self.headers)
+        self.write_row(*("-" * len(x) for x in self.headers))
+
+    def write_row(self, *cols: str):
+        cols = list(cols)
+        if len(cols) > len(self.headers):
+            raise ValueError(
+                f"More entries in row ({len(cols)} than columns ({len(self.headers)})"
+            )
+
+        # pad empty column entries if there's not enough
+        cols += [""] * (len(self.headers) - len(cols))
+
+        # TODO handle new lines in col
+        self.f.write(
+            "|" + "|".join(str(col).replace("|", "\\|") for col in cols) + "|\n"
+        )
 
 
 DOCKER_HUB = "docker.io"

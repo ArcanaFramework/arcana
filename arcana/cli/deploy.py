@@ -4,7 +4,6 @@ import shutil
 from pathlib import Path
 import re
 import json
-from collections import defaultdict
 from traceback import format_exc
 import tempfile
 import yaml
@@ -13,23 +12,13 @@ import docker
 import docker.errors
 import xnat as xnatpy
 from arcana.core.cli import cli
-from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
-from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
-from arcana.core.deploy.utils import (
-    load_yaml_spec,
-    walk_spec_paths,
-    DOCKER_HUB,
-    extract_file_from_docker_image,
-    compare_specs,
-)
-from arcana.core.deploy.docs import create_doc
-from arcana.core.deploy.image import SPEC_PATH as spec_path_in_docker
+from arcana.core.utils import resolve_class
 from arcana.core.utils import package_from_module, pydra_asdict
-from arcana.core.data.row import DataRow
-from arcana.deploy.medimage.xnat import build_xnat_cs_image, create_metapackage
-from arcana.core.data.set import Dataset
-from arcana.core.data.store import DataStore
-from arcana.exceptions import ArcanaBuildError, ArcanaUsageError
+from arcana.deploy.medimage.xnat.image import XnatCSImageSpec
+from arcana.deploy.medimage.xnat.command import XnatCSCommandSpec
+from arcana.exceptions import ArcanaBuildError
+from arcana.core.deploy.utils import DOCKER_HUB, extract_file_from_docker_image
+
 
 PULL_IMAGES_XNAT_HOST_KEY = "XNAT_HOST"
 PULL_IMAGES_XNAT_USER_KEY = "XNAT_USER"
@@ -51,16 +40,14 @@ def xnat():
 @xnat.command(
     help="""Build a wrapper image specified in a module
 
-SPEC_PATH is the file system path to the specification to build, or directory
+SPEC_ROOT is the file system path to the specification to build, or directory
 containing multiple specifications
 
 DOCKER_ORG is the Docker organisation the images should belong to"""
 )
-@click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
-@click.argument("docker_org", type=str)
+@click.argument("spec_root", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--registry",
-    "docker_registry",
     default=DOCKER_HUB,
     help="The Docker registry to deploy the pipeline to",
 )
@@ -140,10 +127,25 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     help="Just create the build directory and dockerfile",
 )
 @click.option(
-    "--site-licenses",
+    "--builtin-license",
+    type=tuple[str, click.Path(exists=True, path_type=Path)],
+    default=None,
+    nargs=2,
+    metavar="<license-name> <path-to-license-file>",
+    multiple=True,
+    help=(
+        "Licenses provided at build time to be stored in the image (instead of "
+        "downloaded at runtime)"
+    ),
+)
+@click.option(
+    "--site-licenses-dataset",
     type=click.Path(exists=True, path_type=Path),
     default=None,
-    help="Directory containing licences required to build the images",
+    help=(
+        "Dataset containing site-wide licences accessible across all datasets in "
+        "the store"
+    ),
 )
 @click.option(
     "--check-registry/--dont-check-registry",
@@ -170,9 +172,8 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     ),
 )
 def build(
-    spec_path,
-    docker_org,
-    docker_registry,
+    spec_root,
+    registry,
     release,
     tag_latest,
     save_manifest,
@@ -184,7 +185,8 @@ def build(
     raise_errors,
     generate_only,
     use_test_config,
-    site_licenses,
+    site_licenses_dataset,
+    builtin_licenses,
     check_registry,
     push,
     clean_up,
@@ -202,157 +204,144 @@ def build(
                 "then the release must contain explicit version (i.e. part after ':')"
             )
 
-    if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
-        spec_path = Path(spec_path.decode("utf-8"))
+    if isinstance(spec_root, bytes):  # FIXME: This shouldn't be necessary
+        spec_root = Path(spec_root.decode("utf-8"))
     if isinstance(build_dir, bytes):  # FIXME: This shouldn't be necessary
         build_dir = Path(build_dir.decode("utf-8"))
 
-    if install_extras:
-        install_extras = install_extras.split(",")
-    else:
-        install_extras = []
-
-    dc = docker.from_env()
+    install_extras = install_extras.split(",") if install_extras else []
 
     logging.basicConfig(filename=logfile, level=getattr(logging, loglevel.upper()))
 
     temp_dir = tempfile.mkdtemp()
 
+    dc = docker.from_env()
+
+    # Load image specifications from YAML files stored in directory tree
+    image_specs = XnatCSImageSpec.load_tree(
+        spec_root,
+        registry=registry,
+        builtin_licenses=builtin_licenses,
+        site_licenses_dataset=site_licenses_dataset,
+    )
+
+    # Check the target registry to see a) if the images with the same tag
+    # already exists and b) whether it was built with the same specs
+    if check_registry:
+
+        conflicting = {}
+        to_build = []
+        for image_spec in image_specs:
+
+            extracted_dir = extract_file_from_docker_image(
+                image_spec.tag, image_spec.SPEC_PATH
+            )
+            if extracted_dir is None:
+                return None
+
+            logger.info(
+                f"Comparing build spec with that of existing image {image_spec.tag}"
+            )
+            built_spec = image_spec.load(
+                extracted_dir / Path(image_spec.SPEC_PATH).name
+            )
+
+            changelog = image_spec.compare_specs(built_spec, check_version=True)
+
+            if changelog is None:
+                to_build.append(image_spec)
+            elif not changelog:
+                logger.info(
+                    "Skipping '%s' build as identical image already "
+                    "exists in registry"
+                )
+            else:
+                conflicting[image_spec.tag] = changelog
+
+        if conflicting:
+            msg = ""
+            for tag, changelog in conflicting.items():
+                msg += (
+                    f"spec for '{tag}' doesn't match the one that was "
+                    "used to build the image already in the registry:\n\n"
+                    + str(changelog.pretty())
+                    + "\n\n\n"
+                )
+
+            if raise_errors:
+                raise ArcanaBuildError(msg)
+            else:
+                skipped_tags = "', '".join(conflicting)
+                logger.error("Skipped %s because %s", skipped_tags, msg)
+
+        image_specs = to_build
+
+    if build_dir is None:
+        build_dir = spec_root / ".build"
+
     if release or save_manifest:
         manifest = {
-            "package": docker_org,
+            "package": spec_root.stem,
             "images": [],
         }
         if release:
             manifest["release"] = release
 
-    if docker_registry != DOCKER_HUB:
-        docker_org_fullpath = docker_registry.lower() + "/" + docker_org
-    else:
-        docker_org_fullpath = docker_org
-
-    errors = False
-    for spath in walk_spec_paths(spec_path):
-
-        logging.info("Building '%s' image", spath)
-        spec = load_yaml_spec(spath, base_dir=spec_path)
-
-        # Make image tag
-        pkg_name = spath.stem.lower()
-        image_name = ".".join(spath.relative_to(spec_path).parent.parts + (pkg_name,))
-
-        image_name = f"{docker_org_fullpath}/{image_name}"
-
-        image_version = str(spec.pop("pkg_version"))
-        if "wrapper_version" in spec:
-            image_version += f"-{spec.pop('wrapper_version')}"
-
-        image_tag = f"{image_name}:{image_version}"
-
-        if build_dir is None:
-            image_build_dir = spath.parent / ".build" / spath.stem
-        else:
-            image_build_dir = build_dir
-            if spath != spec_path:
-                image_build_dir /= spath.parent.relative_to(spec_path)
-            image_build_dir /= spath.stem
-
-        image_build_dir.mkdir(exist_ok=True, parents=True)
-
-        # Update the spec to remove '_' prefixed keys and add in build params
-        spec = {k: v for k, v in spec.items() if not k.startswith("_")}
-        spec.update(
-            {
-                "image_tag": image_tag,
-                "docker_registry": docker_registry,
-                "use_local_packages": use_local_packages,
-                "arcana_install_extras": install_extras,
-                "test_config": use_test_config,
-            }
-        )
-
-        changelog = None
-
-        # Check the target registry to see a) if an image with the same tag
-        # already exists and b) whether it was built with the same specs
-        if check_registry:
-            extracted_dir = extract_file_from_docker_image(
-                image_tag, spec_path_in_docker
-            )
-            if extracted_dir is not None:
-                logger.info(
-                    f"Comparing build spec with that of existing image {image_tag}"
-                )
-                built_spec = load_yaml_spec(
-                    extracted_dir / Path(spec_path_in_docker).name
-                )
-                changelog = compare_specs(built_spec, spec, check_version=True)
-                if changelog:
-                    msg = (
-                        f"spec for '{image_tag}' doesn't match the one that was "
-                        "used to build the image already in the registry:\n\n"
-                        + str(changelog.pretty())
-                    )
-                    if raise_errors:
-                        raise ArcanaBuildError(msg)
-                    else:
-                        logger.error("Skipped {image_tag} because " + msg)
-                    continue
-                else:
-                    logger.info(
-                        "Skipping '%s' build as identical image already "
-                        "exists in registry"
-                    )
-                    continue
+    for image_spec in image_specs:
+        spec_build_dir = build_dir / image_spec.loaded_from.relative_to(spec_root)
+        if spec_build_dir.exists():
+            shutil.rmtree(spec_build_dir)
+        spec_build_dir.mkdir(parents=True)
         try:
-            build_xnat_cs_image(
-                build_dir=image_build_dir,
+            image_spec.build(
+                build_dir=spec_build_dir,
+                test_config=use_test_config,
                 generate_only=generate_only,
-                site_licenses_dataset=site_licenses,
-                **spec,
             )
         except Exception:
             if raise_errors:
                 raise
-            logger.error("Could not build %s pipeline:\n%s", image_tag, format_exc())
+            logger.error(
+                "Could not build %s pipeline:\n%s", image_spec.tag, format_exc()
+            )
             errors = True
             continue
         else:
-            click.echo(image_tag)
-            logger.info("Successfully built %s pipeline", image_tag)
+            click.echo(image_spec.tag)
+            logger.info("Successfully built %s pipeline", image_spec.tag)
 
         if push:
             try:
-                dc.api.push(image_tag)
+                dc.api.push(image_spec.tag)
             except Exception:
                 if raise_errors:
                     raise
-                logger.error("Could not push '%s':\n\n%s", image_tag, format_exc())
+                logger.error("Could not push '%s':\n\n%s", image_spec.tag, format_exc())
                 errors = True
             else:
-                logger.info("Successfully pushed '%s' to registry", image_tag)
+                logger.info("Successfully pushed '%s' to registry", image_spec.tag)
             if clean_up:
-                dc.api.remove_image(image_tag)
+                dc.api.remove_image(image_spec.tag)
                 dc.containers.prune()
                 dc.images.prune(filters={"dangling": False})
-                dc.api.remove_image(spec["base_image"])
+                dc.api.remove_image(image_spec.base_image)
                 dc.images.prune(filters={"dangling": False})
                 logger.info(
                     "Removed '%s' and pruned dangling images to free up disk space",
-                    image_tag,
+                    image_spec.tag,
                 )
 
         if release or save_manifest:
             manifest["images"].append(
                 {
-                    "name": image_name,
-                    "version": image_version,
-                    "commands": [c["name"] for c in spec["commands"]],
+                    "name": image_spec.path,
+                    "version": image_spec.version,
+                    "commands": [c.name for c in image_spec.commands],
                 }
             )
     if release:
-        release_image_tag = f"{docker_org_fullpath}/{release}"
-        create_metapackage(
+        release_image_tag = f"{spec_root.stem}/{release}"
+        XnatCSImageSpec.create_metapackage(
             release_image_tag, manifest, use_local_packages=use_local_packages
         )
         if push:
@@ -370,14 +359,14 @@ def build(
             else:
                 logger.info(
                     "Successfully pushed release metapackage '%s' to registry",
-                    image_tag,
+                    release_image_tag,
                 )
 
             if tag_latest:
                 # Also push release to "latest" tag
-                image = dc.images.get(image_tag)
-                base_tag = docker_org_fullpath + "/" + release.split(":")[0]
-                latest_release_tag = base_tag + ":latest"
+                image = dc.images.get(release_image_tag)
+                base_release_tag = release_image_tag.split(":")[0]
+                latest_release_tag = base_release_tag + ":latest"
                 image.tag(latest_release_tag)
 
                 try:
@@ -387,7 +376,7 @@ def build(
                         raise
                     logger.error(
                         "Could not push latest tag for release metapackage '%s':\n\n%s",
-                        base_tag,
+                        base_release_tag,
                         format_exc(),
                     )
                     errors = True
@@ -397,7 +386,7 @@ def build(
                             "Successfully pushed latest tag for release metapackage '%s' "
                             "to registry"
                         ),
-                        base_tag,
+                        base_release_tag,
                     )
         if save_manifest:
             with open(save_manifest, "w") as f:
@@ -413,104 +402,78 @@ def build(
     help="""Walk through the specification paths and list tags of the images
 that will be build from them.
 
-SPEC_PATH is the file system path to the specification to build, or directory
+SPEC_ROOT is the file system path to the specification to build, or directory
 containing multiple specifications
 
 DOCKER_ORG is the Docker organisation the images should belong to""",
 )
-@click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
-@click.argument("docker_org", type=str)
+@click.argument("spec_root", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--registry",
-    "docker_registry",
     default=None,
     help="The Docker registry to deploy the pipeline to",
 )
-def list_images(spec_path, docker_org, docker_registry):
+def list_images(spec_root, registry):
 
-    if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
-        spec_path = Path(spec_path.decode("utf-8"))
+    if isinstance(spec_root, bytes):  # FIXME: This shouldn't be necessary
+        spec_root = Path(spec_root.decode("utf-8"))
 
-    for spath in walk_spec_paths(spec_path):
-        spec = load_yaml_spec(spath, base_dir=spec_path)
-
-        # Make image tag
-        pkg_name = spath.stem.lower()
-        tag = ".".join(spath.relative_to(spec_path).parent.parts + (pkg_name,))
-        image_version = str(spec.pop("pkg_version"))
-        if "wrapper_version" in spec:
-            image_version += f"-{spec.pop('wrapper_version')}"
-        image_tag = f"{docker_org}/{tag}:{image_version}"
-        if docker_registry is not None:
-            image_tag = docker_registry.lower().rstrip("/") + "/" + image_tag
-        else:
-            docker_registry = DOCKER_HUB
-        click.echo(image_tag)
+    for image_spec in XnatCSImageSpec.load_tree(spec_root, registry=registry):
+        click.echo(image_spec.tag)
 
 
-@deploy.command(
-    name="test",
-    help="""Test container images defined by YAML
-specs
+# @deploy.command(
+#     name="test",
+#     help="""Test container images defined by YAML
+# specs
 
-Arguments
----------
-module_path
-    The file system path to the module to build""",
-)
-@click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
-def test(spec_path):
-    # FIXME: Workaround for click 7.x, which improperly handles path_type
-    if type(spec_path) is bytes:
-        spec_path = Path(spec_path.decode("utf-8"))
+# Arguments
+# ---------
+# module_path
+#     The file system path to the module to build""",
+# )
+# @click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
+# def test(spec_path):
+#     # FIXME: Workaround for click 7.x, which improperly handles path_type
+#     if type(spec_path) is bytes:
+#         spec_path = Path(spec_path.decode("utf-8"))
 
-    raise NotImplementedError
+#     raise NotImplementedError
 
 
 @deploy.command(
     name="docs",
     help="""Build docs for one or more yaml wrappers
 
-SPEC_PATH is the path of a YAML spec file or directory containing one or more such files.
+SPEC_ROOT is the path of a YAML spec file or directory containing one or more such files.
 
 The generated documentation will be saved to OUTPUT.
 """,
 )
-@click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
+@click.argument("spec_root", type=click.Path(exists=True, path_type=Path))
 @click.argument("output", type=click.Path(path_type=Path))
 @click.option(
-    "--root", type=click.Path(exists=True, path_type=Path), default=Path.cwd()
+    "--registry",
+    default=DOCKER_HUB,
+    help="The Docker registry to deploy the pipeline to",
 )
 @click.option("--flatten/--no-flatten", default=False)
 @click.option("--loglevel", default="warning", help="The level to display logs at")
-def build_docs(spec_path, output, root, flatten, loglevel):
+def build_docs(spec_root, output, registry, flatten, loglevel):
     # FIXME: Workaround for click 7.x, which improperly handles path_type
-    if type(spec_path) is bytes:
-        spec_path = Path(spec_path.decode("utf-8"))
+    if type(spec_root) is bytes:
+        spec_root = Path(spec_root.decode("utf-8"))
     if type(output) is bytes:
         output = Path(output.decode("utf-8"))
-    if type(root) is bytes:
-        root = Path(root.decode("utf-8"))
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
     output.mkdir(parents=True, exist_ok=True)
 
-    for spath in walk_spec_paths(spec_path):
-        spec = load_yaml_spec(spath, base_dir=spec_path)
-        mod_name = spec["_module_name"]
+    for image_spec in XnatCSImageSpec.load_tree(spec_root, registry=registry):
 
-        try:
-            src_file = spath.absolute().relative_to(root)
-        except ValueError:
-            logger.warning(
-                f"build_docs: {spath.absolute().as_posix()!r} does not lie "
-                f"within {root.as_posix()!r}, do you need to specify --root?"
-            )
-            src_file = spath.absolute()
-
-        create_doc(spec, output, mod_name, src_file=src_file, flatten=flatten)
-        logging.info("Successfully created docs for %s", mod_name)
+        image_spec.autdoc(output, flatten=flatten)
+        logging.info("Successfully created docs for %s", image_spec.path)
 
 
 @deploy.command(
@@ -728,9 +691,29 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path.
 It can be omitted if PIPELINE_NAME matches an existing pipeline
 """,
 )
-@click.argument("dataset_id_str")
-@click.argument("pipeline_name")
 @click.argument("task_location")
+@click.argument("pipeline_name")
+@click.argument("dataset_id_str")
+@click.option(
+    "--input",
+    "-i",
+    nargs=2,
+    default=(),
+    metavar="<col-name> <match-criteria>",
+    multiple=True,
+    type=str,
+    help=("The match criteria to pass to the column"),
+)
+@click.option(
+    "--output",
+    "-o",
+    nargs=2,
+    default=(),
+    metavar="<col-name> <output-path>",
+    multiple=True,
+    type=str,
+    help=("The path in which to store the output of the pipeline"),
+)
 @click.option(
     "--parameter",
     "-p",
@@ -742,10 +725,10 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     help=("free parameters of the workflow to be passed by the pipeline user"),
 )
 @click.option(
-    "--input",
-    nargs=5,
+    "--input-config",
+    nargs=4,
     default=(),
-    metavar="<col-name> <col-format> <match-criteria> <pydra-field> <format>",
+    metavar="<col-name> <col-format> <pydra-field> <format>",
     multiple=True,
     type=str,
     help=(
@@ -756,10 +739,10 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     ),
 )
 @click.option(
-    "--output",
-    nargs=5,
+    "--output-config",
+    nargs=4,
     default=(),
-    metavar="<col-name> <col-format> <output-path> <pydra-field> <format>",
+    metavar="<col-name> <col-format> <pydra-field> <format>",
     multiple=True,
     type=str,
     help=(
@@ -877,6 +860,8 @@ def run_in_image(
     parameter,
     input,
     output,
+    input_config,
+    output_config,
     row_frequency,
     overwrite,
     work_dir,
@@ -908,218 +893,30 @@ def run_in_image(
     store_cache_dir = work_dir / "store-cache"
     pipeline_cache_dir = work_dir / "pydra"
 
-    try:
-        dataset = Dataset.load(dataset_id_str)
-    except KeyError:
+    task_cls = resolve_class(task_location)
 
-        store_name, id, name = Dataset.parse_id_str(dataset_id_str)
-
-        if dataset_name is not None:
-            name = dataset_name
-
-        if dataset_hierarchy is None or dataset_space is None:
-            raise RuntimeError(
-                f"If the dataset ID string ('{dataset_id_str}') doesn't "
-                "reference an existing dataset '--dataset-hierarchy' and "
-                "'--dataset-space' must be provided"
-            )
-
-        store = DataStore.load(store_name, cache_dir=store_cache_dir)
-        space = resolve_class(dataset_space, ["arcana.data.spaces"])
-        hierarchy = dataset_hierarchy.split(",")
-
-        try:
-            dataset = store.load_dataset(id, name)
-        except KeyError:
-            dataset = store.new_dataset(id, hierarchy=hierarchy, space=space)
-
-    if single_row is not None:
-        # Adds a single row to the dataset (i.e. skips a full scan)
-        dataset.add_leaf(single_row.split(","))
-
-    def extract_qualifiers_from_path(user_input: str):
-        """Extracts out "qualifiers" from the user-inputted paths. These are
-        in the form 'path ns1.arg1=val1 ns1.arg2=val2, ns2.arg1=val3...
-
-        Parameters
-        ----------
-        col_name : str
-            name of the column the
-        user_input : str
-            The path expression + qualifying keyword args to extract
-
-        Returns
-        -------
-        path : str
-            the path expression stripped of qualifiers
-        qualifiers : defaultdict[dict]
-            the extracted qualifiers
-        """
-        qualifiers = defaultdict(dict)
-        if "=" in user_input:  # Treat user input as containing qualifiers
-            parts = re.findall(r'(?:[^\s"]|"(?:\\.|[^"])*")+', user_input)
-            path = parts[0].strip('"')
-            for part in parts[1:]:
-                try:
-                    full_name, val = part.split("=", maxsplit=1)
-                except ValueError as e:
-                    e.args = ((e.args[0] + f" attempting to split '{part}' by '='"),)
-                    raise e
-                try:
-                    ns, name = full_name.split(".", maxsplit=1)
-                except ValueError as e:
-                    e.args = (
-                        (e.args[0] + f" attempting to split '{full_name}' by '.'"),
-                    )
-                    raise e
-                try:
-                    val = json.loads(val)
-                except json.JSONDecodeError:
-                    pass
-                qualifiers[ns][name] = val
-        else:
-            path = user_input
-        return path, qualifiers
-
-    pipeline_inputs = []
-    converter_args = {}  # Arguments passed to converter
-    for col_name, col_format_name, match_criteria, task_field, format_name in input:
-        col_format = resolve_class(col_format_name, prefixes=["arcana.data.formats"])
-        format = resolve_class(format_name, prefixes=["arcana.data.formats"])
-        if not match_criteria and format != DataRow:
-            logger.warning(
-                f"Skipping '{col_name}' source column as no input was provided"
-            )
-            continue
-        pipeline_inputs.append(PipelineInput(col_name, task_field, format))
-        if DataRow in (col_format, format):
-            if (col_format, format) != (DataRow, DataRow):
-                raise ArcanaUsageError(
-                    "Cannot convert to/from built-in data type `DataRow`: "
-                    f"col_format={col_format}, format={format}"
-                )
-            logger.info(
-                f"No column added for '{col_name}' column as it uses built-in "
-                "type `arcana.core.data.row.DataRow`"
-            )
-            continue
-        path, qualifiers = extract_qualifiers_from_path(match_criteria)
-        source_kwargs = qualifiers.pop("criteria", {})
-        converter_args[col_name] = qualifiers.pop("converter", {})
-        if qualifiers:
-            raise ArcanaUsageError(
-                "Unrecognised qualifier namespaces extracted from path for "
-                f"{col_name} (expected ['criteria', 'converter']): {qualifiers}"
-            )
-        if col_name in dataset.columns:
-            column = dataset[col_name]
-            logger.info(f"Found existing source column {column}")
-        else:
-            logger.info(f"Adding new source column '{col_name}'")
-            dataset.add_source(
-                name=col_name,
-                format=col_format,
-                path=path,
-                is_regex=True,
-                **source_kwargs,
-            )
-
-    logger.debug("Pipeline inputs: %s", pipeline_inputs)
-
-    pipeline_outputs = []
-    for col_name, col_format_name, path_expr, task_field, format_name in output:
-        format = resolve_class(format_name, prefixes=["arcana.data.formats"])
-        col_format = resolve_class(col_format_name, prefixes=["arcana.data.formats"])
-        pipeline_outputs.append(PipelineOutput(col_name, task_field, format))
-        path, qualifiers = extract_qualifiers_from_path(path_expr)
-        converter_args[col_name] = qualifiers.pop("converter", {})
-        if qualifiers:
-            raise ArcanaUsageError(
-                "Unrecognised qualifier namespaces extracted from path for "
-                f"{col_name} (expected ['criteria', 'converter']): {qualifiers}"
-            )
-        if col_name in dataset.columns:
-            column = dataset[col_name]
-            if not column.is_sink:
-                raise ArcanaUsageError(
-                    "Output column name '{col_name}' shadows existing source column"
-                )
-            logger.info(f"Found existing sink column {column}")
-        else:
-            logger.info(f"Adding new source column '{col_name}'")
-            dataset.add_sink(name=col_name, format=col_format, path=path)
-
-    logger.debug("Pipeline outputs: %s", pipeline_outputs)
-
-    kwargs = {n: parse_value(v) for n, v in configuration}
-    if "name" not in kwargs:
-        kwargs["name"] = "workflow_to_run"
-
-    task = resolve_class(task_location)(**kwargs)
-
-    for pname, pval in parameter:
-        if pval != "":
-            setattr(task.inputs, pname, parse_value(pval))
-
-    if pipeline_name in dataset.pipelines and not overwrite:
-        pipeline = dataset.pipelines[pipeline_name]
-        if task != pipeline.workflow:
-            raise RuntimeError(
-                f"A pipeline named '{pipeline_name}' has already been applied to "
-                "which differs from one specified. Please use '--overwrite' option "
-                "if this is intentional"
-            )
-    else:
-        pipeline = dataset.apply_pipeline(
-            pipeline_name,
-            task,
-            inputs=pipeline_inputs,
-            outputs=pipeline_outputs,
-            row_frequency=row_frequency,
-            overwrite=overwrite,
-            converter_args=converter_args,
-        )
-
-    # Instantiate the Pydra workflow
-    wf = pipeline(cache_dir=pipeline_cache_dir)
-
-    if ids is not None:
-        ids = ids.split(",")
-
-    # Install dataset-specific licenses within the container
-    dataset.install_licenses(install_licenses)
-
-    # execute the workflow
-    try:
-        result = wf(ids=ids, plugin=plugin)
-    except Exception:
-        msg = show_workflow_errors(pipeline_cache_dir, omit_nodes=["per_node", wf.name])
-        logger.error("Pipeline failed with errors for the following nodes:\n\n%s", msg)
-        if raise_errors or not msg:
-            raise
-        else:
-            errors = True
-    else:
-        logger.info(
-            "Pipeline %s ran successfully for the following data rows:\n%s",
-            pipeline_name,
-            "\n".join(result.output.processed),
-        )
-        errors = False
-    finally:
-        if export_work:
-            logger.info("Exporting work directory to '%s'", export_work)
-            export_work.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(pipeline_cache_dir, export_work / "pydra")
-    # Abort at the end after the working directory can be copied back to the
-    # host so that XNAT knows there was an error
-    if errors:
-        if keep_running_on_errors:
-            while True:
-                pass
-        else:
-            sys.exit(1)
-
-
-if __name__ == "__main__":
-    run_in_image()
+    XnatCSCommandSpec.run(
+        dataset_id_str=dataset_id_str,
+        pipeline_name=pipeline_name,
+        task_cls=task_cls,
+        input=input,
+        output=output,
+        input_config=input_config,
+        output_config=output_config,
+        parameter=parameter,
+        row_frequency=row_frequency,
+        overwrite=overwrite,
+        plugin=plugin,
+        install_licenses=install_licenses,
+        dataset_name=dataset_name,
+        dataset_space=dataset_space,
+        dataset_hierarchy=dataset_hierarchy,
+        ids=ids,
+        configuration=configuration,
+        single_row=single_row,
+        export_work=export_work,
+        raise_errors=raise_errors,
+        store_cache_dir=store_cache_dir,
+        pipeline_cache_dir=pipeline_cache_dir,
+        keep_running_on_errors=keep_running_on_errors,
+    )

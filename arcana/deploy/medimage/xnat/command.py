@@ -1,5 +1,7 @@
+from __future__ import annotations
 import typing as ty
 import re
+from itertools import chain
 import attrs
 from arcana.core.data.format import FileGroup
 from arcana.core.deploy.command import ContainerCommandSpec
@@ -15,13 +17,7 @@ class XnatCSCommandSpec(ContainerCommandSpec):
 
     image: XnatCSImageSpec = None
 
-    STORE_TYPE = "xnat-cs"
-
-    def make_json(
-        self,
-        dynamic_licenses: list[tuple[str, str]] = None,
-        site_licenses_dataset: tuple[str, str, str] = None,
-    ):
+    def make_json(self):
         """Constructs the XNAT CS "command" JSON config, which specifies how XNAT
         should handle the containerised pipeline
 
@@ -46,8 +42,6 @@ class XnatCSCommandSpec(ContainerCommandSpec):
             stored within the "org.nrg.commands" label of the container to allow the
             images to be automatically recognised.
         """
-        if dynamic_licenses is None:
-            dynamic_licenses = []
 
         cmd_json = self.init_command_json()
 
@@ -57,22 +51,21 @@ class XnatCSCommandSpec(ContainerCommandSpec):
 
         output_args = self.add_output_fields(cmd_json)
 
-        flag_args = self.add_arcana_flags_field(cmd_json)
+        flag_arg = self.add_arcana_flags_field(cmd_json)
 
         xnat_input_args = self.add_inputs_from_xnat(cmd_json)
 
         cmd_json["command-line"] = self.command_line(
-            project_id="[PROJECT_ID]",
-            dynamic_licenses=dynamic_licenses,
-            site_licenses_dataset=site_licenses_dataset,
-        ) + " ".join(
-            (
-                input_args,
-                output_args,
-                param_args,
-                flag_args,
-                xnat_input_args,
-            )
+            dataset_id_str="xnat-cs//[PROJECT_ID]",
+            options=chain(
+                (
+                    input_args,
+                    output_args,
+                    param_args,
+                    xnat_input_args,
+                    [flag_arg],
+                )
+            ),
         )
 
         return cmd_json
@@ -164,9 +157,9 @@ class XnatCSCommandSpec(ContainerCommandSpec):
                     "replacement-key": replacement_key,
                 }
             )
-            cmd_args.append(inpt.command_arg("'" + replacement_key + "'"))
+            cmd_args.append(f"--input {inpt.name} '{replacement_key}'")
 
-        return " ".join(cmd_args)
+        return cmd_args
 
     def add_parameter_fields(self, cmd_json):
 
@@ -188,9 +181,9 @@ class XnatCSCommandSpec(ContainerCommandSpec):
                     "replacement-key": replacement_key,
                 }
             )
-            cmd_args.append(param.command_arg("'" + replacement_key + "'"))
+            cmd_args.append(f"--parameter {param.name} '{replacement_key}'")
 
-        return " ".join(cmd_args)
+        return cmd_args
 
     def add_output_fields(self, cmd_json):
 
@@ -223,9 +216,9 @@ class XnatCSCommandSpec(ContainerCommandSpec):
                     "format": output.format.class_name(),
                 }
             )
-            cmd_args.append(output.command_arg())
+            cmd_args.append(f"--output {output.name} '{output.path}'")
 
-        return " ".join(cmd_args)
+        return cmd_args
 
     def add_arcana_flags_field(self, cmd_json):
 
@@ -253,7 +246,9 @@ class XnatCSCommandSpec(ContainerCommandSpec):
 
     def add_inputs_from_xnat(self, cmd_json):
 
-        cmd_args = []
+        # Define the fixed subject>session dataset hierarchy of XNAT, i.e. the data
+        # tree contains two levels, one for subjects and the other for sessions
+        cmd_args = ["--dataset-hierarchy subject,session"]
 
         # Create Project input that can be passed to the command line, which will
         # be populated by inputs derived from the XNAT object passed to the pipeline
@@ -295,9 +290,6 @@ class XnatCSCommandSpec(ContainerCommandSpec):
                     },
                 ]
             )
-            # Add specific session to process to command line args
-            cmd_args.append("--ids [SESSION_LABEL]")
-            cmd_args.append("--single-row [SUBJECT_LABEL],[SESSION_LABEL]")
 
             # Access the session XNAT object passed to the pipeline
             cmd_json["xnat"]["external-inputs"] = [
@@ -345,12 +337,17 @@ class XnatCSCommandSpec(ContainerCommandSpec):
                 },
             ]
 
+            # Add specific session to process to command line args
+            cmd_args.extend(
+                ["--ids [SESSION_LABEL]" "--single-row [SUBJECT_LABEL],[SESSION_LABEL]"]
+            )
+
         else:
             raise NotImplementedError(
                 "Wrapper currently only supports session-level pipelines"
             )
 
-        return " ".join(cmd_args)
+        return cmd_args
 
     @classmethod
     def path2xnatname(cls, path):

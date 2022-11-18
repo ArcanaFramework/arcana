@@ -1,9 +1,4 @@
 import pytest
-from arcana.deploy.medimage.xnat import (
-    build_xnat_cs_image,
-    generate_xnat_cs_command,
-    path2xnatname,
-)
 from arcana.test.fixtures.medimage.xnat import (
     make_mutable_dataset,
     TEST_XNAT_DATASET_BLUEPRINTS,
@@ -11,6 +6,8 @@ from arcana.test.fixtures.medimage.xnat import (
     ResourceBlueprint,
     ScanBlueprint,
 )
+from arcana.deploy.medimage.xnat.image import XnatCSImageSpec
+from arcana.deploy.medimage.xnat.command import XnatCSCommandSpec
 from arcana.test.stores.medimage.xnat import install_and_launch_xnat_cs_command
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 
@@ -131,26 +128,21 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     # Append run_prefix to command name to avoid clash with previous test runs
     command_spec["name"] = "xnat-cs-test" + run_prefix
 
-    build_xnat_cs_image(
-        build_dir=work_dir, use_local_packages=True, test_config=True, **build_spec
-    )
+    image_spec = XnatCSImageSpec(**build_spec)
+
+    image_spec.build(build_dir=work_dir, use_local_packages=True, test_config=True)
 
     # We manually set the command in the test XNAT instance as commands are
     # loaded from images when they are pulled from a registry and we use
     # the fact that the container service test XNAT instance shares the
     # outer Docker socket. Since we build the pipeline image with the same
     # socket there is no need to pull it.
-    xnat_command = generate_xnat_cs_command(
-        image_tag=build_spec["image_tag"],
-        pkg_version="1.0",
-        wrapper_version="1.0",
-        **command_spec,
-    )
+    xnat_command = image_spec.commands[0].make_json()
 
     launch_inputs = {}
 
     for inpt, scan in zip(xnat_command["inputs"], blueprint.scans):
-        launch_inputs[path2xnatname(inpt["name"])] = scan.name
+        launch_inputs[XnatCSCommandSpec.path2xnatname(inpt["name"])] = scan.name
 
     for pname, pval in params.items():
         launch_inputs[pname] = pval

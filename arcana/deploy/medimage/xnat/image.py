@@ -1,34 +1,35 @@
 from __future__ import annotations
 import sys
 from pathlib import Path
-import typing as ty
 import tempfile
 import json
-from copy import copy
 import attrs
 from neurodocker.reproenv import DockerRenderer
 from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.utils import class_location, ListDictConverter
 from arcana.core.data.store import DataStore
 from arcana.core.deploy.image import ContainerImageSpec
-
-if ty.TYPE_CHECKING:
-    from .command import XnatCSCommandSpec
+from .command import XnatCSCommandSpec
 
 
 @attrs.define
 class XnatCSImageSpec(ContainerImageSpec):
 
     commands: list[XnatCSCommandSpec] = attrs.field(
-        converter=ListDictConverter(XnatCSCommandSpec)
+        factory=list, converter=ListDictConverter(XnatCSCommandSpec)
     )
+
+    @commands.validator
+    def commands_validator(self, _, commands):
+        if not commands:
+            raise RuntimeError(
+                "At least one command must be provided to an XNAT image spec"
+            )
 
     def construct_dockerfile(
         self,
         build_dir: Path,
         test_config: bool = False,
-        dynamic_licenses: list[tuple[str, str]] = None,
-        site_licenses_dataset: tuple[str, str, str] = None,
         **kwargs,
     ):
         """Creates a Docker image containing one or more XNAT commands ready
@@ -55,19 +56,7 @@ class XnatCSImageSpec(ContainerImageSpec):
 
         dockerfile = super().construct_dockerfile(build_dir, **kwargs)
 
-        xnat_commands = []
-        for cmd_spec in self.commands:
-
-            if "info_url" not in cmd_spec:
-                cmd_spec = copy(cmd_spec)
-                cmd_spec["info_url"] = self.info_url
-
-            xnat_commands.append(
-                cmd_spec.make_json(
-                    dynamic_licenses=dynamic_licenses,
-                    site_licenses_dataset=site_licenses_dataset,
-                )
-            )
+        xnat_commands = [c.make_json() for c in self.commands]
 
         # Copy the generated XNAT commands inside the container for ease of reference
         self.copy_command_ref(dockerfile, xnat_commands, build_dir)
@@ -148,7 +137,10 @@ class XnatCSImageSpec(ContainerImageSpec):
         if build_dir is None:
             build_dir = Path(tempfile.mkdtemp())
 
-        dockerfile = cls.init_dockerfile()
+        dockerfile = cls.init_dockerfile(
+            base_image=cls.DEFAULT_BASE_IMAGE,
+            package_manager=cls.DEFAULT_PACKAGE_MANAGER,
+        )
 
         cls.install_arcana(
             dockerfile, build_dir=build_dir, use_local_package=use_local_packages
