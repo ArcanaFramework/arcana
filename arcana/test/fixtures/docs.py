@@ -9,8 +9,8 @@ class DocsFixture:
 
 minimal_doc_spec = DocsFixture(
     """
-pkg_version: &pkg_version '0.16.1'
-wrapper_version: '1.10'
+version: &version '0.16.1'
+spec_version: '1.10'
 commands: []
     """.strip(),
     """
@@ -32,9 +32,9 @@ weight: 10
 
 yaml_constructors_join_spec = DocsFixture(
     """
-pkg_version: &pkg_version '0.16.1'
-wrapper_version: '1.10'
-base_image: !join [ 'abc', *pkg_version ]
+version: &version '0.16.1'
+spec_version: '1.10'
+base_image: !join [ 'abc', *version ]
 commands: []
     """.strip(),
     """
@@ -57,9 +57,9 @@ weight: 10
 
 yaml_constructors_concat_spec = DocsFixture(
     """
-pkg_version: &pkg_version '0.16.1'
-wrapper_version: '1.10'
-base_image: !concat [ 'abc', *pkg_version ]
+version: &version '0.16.1'
+spec_version: '1.10'
+base_image: !concat [ 'abc', *version ]
 commands: []
     """.strip(),
     """
@@ -82,11 +82,11 @@ weight: 10
 
 complete_doc_spec = DocsFixture(
     """
-pkg_version: &pkg_version '0.16.1'
-wrapper_version: '1.10'
+version: &version '0.16.1'
+spec_version: '1.10'
 authors:
   - author_field
-base_image: !join [ 'abc', *pkg_version ]
+base_image: !join [ 'abc', *version ]
 info_url: https://example.com
 package_manager: apt
 system_packages: []

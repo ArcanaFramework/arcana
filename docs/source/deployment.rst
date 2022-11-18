@@ -117,12 +117,12 @@ the full configuration required to build an XNAT docker image looks like
 .. code-block:: yaml
 
     pkg_name: FSL
-    pkg_version: &pkg_version '6.0.1'
-    wrapper_version: '1'
+    version: &version '6.0.1'
+    spec_version: '1'
     authors:
         - name: Thomas G. Close
           email: thomas.close@sydney.edu.au
-    base_image: !join [ 'brainlife/fsl:', *pkg_version ]
+    base_image: !join [ 'brainlife/fsl:', *version ]
     info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki
     package_manager: apt
     system_packages:

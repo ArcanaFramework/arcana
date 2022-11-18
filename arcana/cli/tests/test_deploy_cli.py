@@ -41,8 +41,8 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
 
     concatenate_spec = {
         "commands": [command_spec],
-        "pkg_version": "1.0",
-        "wrapper_version": "1",
+        "version": "1.0",
+        "spec_version": "1",
         "system_packages": ["vim"],  # just to test it out
         "python_packages": ["pytest"],  # just to test it out
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
@@ -122,8 +122,8 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
 
     concatenate_spec = {
         "commands": [command_spec],
-        "pkg_version": "1.0",
-        "wrapper_version": "1",
+        "version": "1.0",
+        "spec_version": "1",
         "system_packages": [],
         "python_packages": [],
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
@@ -155,7 +155,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         )
 
         # Increment the version number to avoid the clash
-        concatenate_spec["wrapper_version"] = "2"
+        concatenate_spec["spec_version"] = "2"
 
         result = build_spec(concatenate_spec)
         assert result.exit_code == 0, show_cli_trace(result)
@@ -535,8 +535,8 @@ def test_pull_images(
 
         image_spec = {
             "commands": [cmd_spec],
-            "pkg_version": PKG_VERSION,
-            "wrapper_version": WRAPPER_VERSION,
+            "version": PKG_VERSION,
+            "spec_version": WRAPPER_VERSION,
             "system_packages": [],
             "python_packages": [],
             "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
