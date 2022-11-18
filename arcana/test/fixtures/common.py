@@ -220,35 +220,41 @@ def concatenate_task(request):
 def command_spec():
     return {
         "name": "conctenate-test",
-        "pydra_task": "arcana.test.tasks:concatenate",
+        "task": "arcana.test.tasks:concatenate",
         "inputs": [
             {
                 "name": "first_file",
                 "format": "common:Text",
                 "task_field": "in_file1",
                 "row_frequency": "session",
+                "description": "the first file to pass as an input",
             },
             {
                 "name": "second_file",
                 "format": "common:Text",
                 "task_field": "in_file2",
                 "row_frequency": "session",
+                "description": "the second file to pass as an input",
             },
         ],
         "outputs": [
-            {"name": "concatenated", "format": "common:Text", "task_field": "out_file"}
+            {
+                "name": "concatenated",
+                "format": "common:Text",
+                "task_field": "out_file",
+                "description": "an output file",
+            }
         ],
         "parameters": [
             {
                 "name": "number_of_duplicates",
                 "task_field": "duplicates",
                 "required": True,
+                "description": "a parameter",
             }
         ],
         "description": "A pipeline to test Arcana's deployment tool",
-        "version": "0.1",
         "row_frequency": "session",
-        "info_url": None,
     }
 
 

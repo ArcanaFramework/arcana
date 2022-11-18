@@ -293,7 +293,7 @@ def build(
             shutil.rmtree(spec_build_dir)
         spec_build_dir.mkdir(parents=True)
         try:
-            image_spec.build(
+            image_spec.make(
                 build_dir=spec_build_dir,
                 test_config=use_test_config,
                 generate_only=generate_only,
@@ -335,7 +335,7 @@ def build(
             manifest["images"].append(
                 {
                     "name": image_spec.path,
-                    "version": image_spec.version,
+                    "version": image_spec.full_version,
                     "commands": [c.name for c in image_spec.commands],
                 }
             )

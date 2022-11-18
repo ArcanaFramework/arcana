@@ -28,14 +28,15 @@ def run_spec(
     spec = {}
     if request.param == "func":
         spec["build"] = {
-            "image_tag": "arcana-tests/concatenate-xnat-cs",
+            "org": "arcana-tests",
+            "name": "concatenate-xnat-cs",
             "commands": [command_spec],
             "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
             "info_url": "http://concatenate.readthefakedocs.io",
             "system_packages": [],
             "python_packages": [],
             "readme": "This is a test README",
-            "docker_registry": "a.docker.registry.io",
+            "registry": "a.docker.registry.io",
             "arcana_install_extras": ["test"],
         }
         spec["dataset"] = make_mutable_dataset(

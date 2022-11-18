@@ -69,6 +69,7 @@ class CommandInput:
 @attrs.define
 class CommandOutput:
     name: str
+    description: str  # description of the input
     path: str = attrs.field()  # The path the output is stored at in XNAT
     format: type = attrs.field(converter=format_resolver)
     task_field: str = (
@@ -127,7 +128,7 @@ class ContainerCommandSpec:
         A long description of the pipeline, used in documentation and ignored
         here. Only included in the signature so that an error isn't thrown when
         it is encountered.
-    known_issues : str
+    known_issues : dict
         Any known issues with the pipeline. To be used in auto-doc generation
     """
 
@@ -136,9 +137,9 @@ class ContainerCommandSpec:
     name: str
     task: str
     description: str
-    long_description: str
-    known_issues: str
     row_frequency: DataSpace
+    long_description: str = ""
+    known_issues: dict = attrs.field(factory=dict)
     inputs: list[CommandInput] = attrs.field(
         factory=list, converter=ListDictConverter(CommandInput)
     )

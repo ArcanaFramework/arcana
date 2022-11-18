@@ -19,12 +19,12 @@ method is used to generate the JSON metadata to be saved in this field.
 There are four key fields that will determine the functionality of the command
 (the rest are metadata fields that are exposed to the XNAT UI):
 
-* ``pydra_task``
+* ``task``
 * ``inputs``
 * ``outputs``
 * ``parameters``
 
-The ``pydra_task`` keyword argument should be the path to an installed
+The ``task`` keyword argument should be the path to an installed
 Python module containing a Pydra task followed by a colon and the name of
 the task, e.g. ``pydra.tasks.fsl.preprocess.fast:Fast``. Note that Arcana
 will attempt to resolve the package that contains the Pydra task and install the
@@ -55,41 +55,44 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 * format produced by pydra task
 * destination path (slashes are permitted interpreted as a relative path from the derivatives root)
 
-.. code-block:: python
+.. .. code-block:: python
 
-    from arcana.data.stores.medimage import XnatViaCS
-    from arcana.data.spaces.medimage import Clinical
-    from arcana.data.formats.medimage import NiftiGz
+..     import json
+..     from arcana.deploy.medimage import XnatCSCommandSpec
+..     from arcana.data.spaces.medimage import Clinical
+..     from arcana.data.formats.medimage import NiftiGz
 
+..     xnat_command = XnatCSCommandSpec(
+..         name='example_pipeline',
+..         task='pydra.tasks.fsl.preprocess.fast:FAST',
+..         image_tag='example/0.1',
+..         description=(
+..             "FAST (FMRIB's Automated Segmentation Tool) segments a 3D image of "
+..             "the brain into different tissue types (Grey Matter, White Matter, "
+..             "CSF, etc.), whilst also correcting for spatial intensity variations "
+..             "(also known as bias field or RF inhomogeneities)."),
+..         version='6.0-1',
+..         info_url='https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST',
+..         inputs={
+..             "field": 'in_files', NiftiGz, 'File to segment', 'session'),
+..             ('number_of_classes', int, 'Number of classes', 'session')],
+..         outputs=[
+..             ('tissue_class_files', NiftiGz, 'fast/tissue-classes'),
+..             ('partial_volume_map', NiftiGz, 'fast/partial-volumes'),
+..             ('partial_volume_files', NiftiGz, 'fast/partial-volume-files'),
+..             ('bias_field', NiftiGz, 'fast/bias-field'),
+..             ('probability_maps', NiftiGz, 'fast/probability-map')],
+..         parameters=[
+..             ('use_priors', 'Use priors'),
+..             ('bias_lowpass', 'Low-pass filter bias field')],
+..         configuration=[  # If different from the Pydra task
+..             ('output_biasfield', True),
+..             ('output_biascorrected', True),
+..             ('bias_lowpass', 5.0)],
+..         row_frequency='session')
 
-    xnat_command = XnatViaCS.generate_xnat_command(
-        pipeline_name='example_pipeline',
-        pydra_task='pydra.tasks.fsl.preprocess.fast:FAST',
-        image_tag='example/0.1',
-        description=(
-            "FAST (FMRIB's Automated Segmentation Tool) segments a 3D image of "
-            "the brain into different tissue types (Grey Matter, White Matter, "
-            "CSF, etc.), whilst also correcting for spatial intensity variations "
-            "(also known as bias field or RF inhomogeneities)."),
-        version='6.0-1',
-        info_url='https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST',
-        inputs=[
-            ('in_files', NiftiGz, 'File to segment', 'session'),
-            ('number_of_classes', int, 'Number of classes', 'session')],
-        outputs=[
-            ('tissue_class_files', NiftiGz, 'fast/tissue-classes'),
-            ('partial_volume_map', NiftiGz, 'fast/partial-volumes'),
-            ('partial_volume_files', NiftiGz, 'fast/partial-volume-files'),
-            ('bias_field', NiftiGz, 'fast/bias-field'),
-            ('probability_maps', NiftiGz, 'fast/probability-map')],
-        parameters=[
-            ('use_priors', 'Use priors'),
-            ('bias_lowpass', 'Low-pass filter bias field')],
-        configuration=[  # If different from the Pydra task
-            ('output_biasfield', True),
-            ('output_biascorrected', True),
-            ('bias_lowpass', 5.0)],
-        row_frequency='session')
+..         with open("/path/to/a/file", "w") as f:
+..             json.dump(f, xnat_command.make_json())
 
 When working with the CLI, command configurations are stored in YAML_ format,
 with keys matching the arguments of :meth:`XnatViaCS.generate_xnat_command`.
@@ -133,7 +136,7 @@ the full configuration required to build an XNAT docker image looks like
         - name: pydra-dcm2niix
     commands:
         pipeline_name: fast
-        pydra_task: pydra.tasks.fsl.preprocess.fast:FAST
+        task: pydra.tasks.fsl.preprocess.fast:FAST
         description:
             FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of
             the brain into different tissue types (Grey Matter, White Matter,

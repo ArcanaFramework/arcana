@@ -43,13 +43,13 @@ if args.container_registry is not None:
 else:
     image_tag = f"{args.image_name}:latest"
 
-pydra_task = concatenate()
+task = concatenate()
 
 pipeline_name = args.image_name.split("/")[-1]
 
 json_config = XnatViaCS.generate_json_config(
     pipeline_name=pipeline_name,
-    pydra_task=pydra_task,
+    task=task,
     image_tag=image_tag,
     inputs=[("in_file1", text, Clinical.session), ("in_file2", text, Clinical.session)],
     outputs=[("out_file", text)],
@@ -62,7 +62,7 @@ json_config = XnatViaCS.generate_json_config(
 )
 
 dockerfile, build_dir = XnatViaCS.generate_dockerfile(
-    pydra_task=pydra_task,
+    task=task,
     json_config=json_config,
     maintainer="some.one@an.org",
     build_dir=build_dir,
@@ -79,7 +79,7 @@ if args.build:
         image, build_logs = dc.images.build(path=str(build_dir), tag=image_tag)
     except docker.errors.BuildError as e:
         logging.error(f"Error building docker file in {build_dir}")
-        logging.error("\n".join(l.get("stream", "") for l in e.build_log))
+        logging.error("\n".join(ln.get("stream", "") for ln in e.build_log))
         raise
     print(f"Built {image_tag} image")
 
@@ -98,7 +98,7 @@ if args.xnat_server is not None:
     # Enable the command globally and in the project
     with xnat.connect(server, user=user, password=password) as xlogin:
 
-        cmd_ids = [c["id"] for c in xlogin.get(f"/xapi/commands/").json()]
+        cmd_ids = [c["id"] for c in xlogin.get("/xapi/commands/").json()]
         for cmd_id in cmd_ids:
             xlogin.delete(f"/xapi/commands/{cmd_id}", accepted_status=[204])
         cmd_id = xlogin.post("/xapi/commands", json=json_config).json()

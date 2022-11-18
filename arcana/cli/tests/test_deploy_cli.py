@@ -522,7 +522,7 @@ def test_pull_images(
 
     reverse_command_spec = copy(command_spec)
     reverse_command_spec["name"] = "reverse_concat"
-    reverse_command_spec["pydra_task"] = "arcana.test.tasks:reverse_concatenate"
+    reverse_command_spec["task"] = "arcana.test.tasks:reverse_concatenate"
 
     spec_dir = work_dir / DOCKER_ORG
     pkg_path = spec_dir / IMAGE_GROUP_NAME

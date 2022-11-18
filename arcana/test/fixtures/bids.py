@@ -146,11 +146,10 @@ def bids_command_spec(mock_bids_app_executable):
 
     return {
         "name": "bids-app-test",
-        "pydra_task": "arcana.tasks.bids.app:bids_app",
+        "task": "arcana.tasks.bids.app:bids_app",
         "inputs": inputs,
         "outputs": outputs,
         "description": "A pipeline to test wrapping of BIDS apps",
-        "version": "0.1",
         "row_frequency": "session",
         "info_url": None,
         "configuration": {

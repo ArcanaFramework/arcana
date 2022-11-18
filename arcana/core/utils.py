@@ -765,7 +765,7 @@ def pydra_asdict(
         ]
         dct["outputs"] = outputs = {}
         for outpt_name, lf in obj._connections:
-            outputs[outpt_name] = {"pydra_task": lf.name, "task_field": lf.field}
+            outputs[outpt_name] = {"task": lf.name, "task_field": lf.field}
     else:
         if isinstance(obj, FunctionTask):
             func = cp.loads(obj.inputs._func)
@@ -792,9 +792,9 @@ def pydra_asdict(
             if isinstance(inpt_value, LazyField):
                 inputs[inpt_name] = {"task_field": inpt_value.field}
                 # If the lazy field comes from the workflow lazy in, we omit
-                # the "pydra_task" item
+                # the "task" item
                 if workflow is None or inpt_value.name != workflow.name:
-                    inputs[inpt_name]["pydra_task"] = inpt_value.name
+                    inputs[inpt_name]["task"] = inpt_value.name
             elif inpt_value == attrs.NOTHING:
                 inputs[inpt_name] = NOTHING_STR
             else:
@@ -804,8 +804,8 @@ def pydra_asdict(
 
 def lazy_field_fromdict(dct: dict, workflow: Workflow):
     """Unserialises a LazyField object from a dictionary"""
-    if "pydra_task" in dct:
-        inpt_task = getattr(workflow, dct["pydra_task"])
+    if "task" in dct:
+        inpt_task = getattr(workflow, dct["task"])
         lf = getattr(inpt_task.lzout, dct["task_field"])
     else:
         lf = getattr(workflow.lzin, dct["task_field"])
@@ -988,9 +988,9 @@ class ListDictConverter:
     def __call__(self, value):
         converted = []
         for item in value:
-            if isinstance(value, dict):
-                item = self.klass(**dict)
-            elif not isinstance(value, self.klass):
+            if isinstance(item, dict):
+                item = self.klass(**item)
+            elif not isinstance(item, self.klass):
                 raise ValueError(f"Cannot convert {item} into {self.klass}")
             converted.append(item)
         return converted

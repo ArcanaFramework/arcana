@@ -318,12 +318,12 @@ class ContainerImageSpec:
         #     "LABEL "
         #     + " \\\n      ".join(f"{k}={json.dumps(v)}" for k, v in labels.items())
         # )
-        dockerfile.labels({k: json.dumps(v) for k, v in labels.items()})
+        if labels is not None:
+            dockerfile.labels({k: json.dumps(v) for k, v in labels.items()})
 
     def install_python(
         self,
         dockerfile: DockerRenderer,
-        packages: ty.Iterable[PipSpec],
         build_dir: Path,
         use_local_packages: bool = False,
         pypi_fallback: bool = False,
@@ -335,8 +335,6 @@ class ContainerImageSpec:
         ----------
         dockerfile : DockerRenderer
             the neurodocker renderer to append the install instructions to
-        packages : ty.Iterable[PipSpec]
-            the python packages (with optional extras) that need to be installed
         build_dir : Path
             the path to the build directory
         arcana_install_extras : Iterable[str]
@@ -359,7 +357,7 @@ class ContainerImageSpec:
         # # Split out and merge any extras specifications (e.g. "arcana[test]")
         # between dependencies of the same package
         # Add arcana dependency
-        packages = PipSpec.unique(packages, remove_arcana=True)
+        packages = PipSpec.unique(self.python_packages, remove_arcana=True)
 
         dockerfile.add_registered_template(
             "miniconda",
@@ -377,9 +375,7 @@ class ContainerImageSpec:
             ),
         )
 
-    def install_system_packages(
-        self, dockerfile: DockerRenderer, packages: ty.Iterable[str]
-    ):
+    def install_system_packages(self, dockerfile: DockerRenderer):
         """Generate Neurodocker instructions to install systems packages in dockerfile
 
         Parameters
@@ -389,12 +385,11 @@ class ContainerImageSpec:
         system_packages : Iterable[str]
             the packages to install on the operating system
         """
-        dockerfile.install(packages)
+        dockerfile.install(self.system_packages)
 
     def install_package_templates(
         self,
         dockerfile: DockerRenderer,
-        package_templates: ty.Iterable[ty.Dict[str, str]],
     ):
         """Install custom packages from Neurodocker package_templates
 
@@ -407,7 +402,7 @@ class ContainerImageSpec:
             dictionary containing the 'name' and 'version' of the template along
             with any additional keyword arguments required by the template
         """
-        for kwds in package_templates:
+        for kwds in self.package_templates:
             kwds = copy(
                 kwds
             )  # so we can pop the name and leave the original dictionary intact
@@ -446,7 +441,7 @@ class ContainerImageSpec:
                 destination=licenses_spec[name],
             )
 
-    def write_spec(self, dockerfile: DockerRenderer, spec, build_dir):
+    def write_spec(self, dockerfile: DockerRenderer, build_dir):
         """Generate Neurodocker instructions to install README file inside the docker
         image
 
@@ -459,8 +454,11 @@ class ContainerImageSpec:
         build_dir : Path
             path to build dir
         """
+        dct = attrs.asdict(
+            self, filter=lambda a, v: not isinstance(v, ContainerImageSpec)
+        )
         with open(build_dir / "arcana-spec.yaml", "w") as f:
-            yaml.dump(spec, f)
+            yaml.dump(dct, f)
         dockerfile.copy(source=["./arcana-spec.yaml"], destination=self.SPEC_PATH)
 
     @classmethod
@@ -677,6 +675,7 @@ class ContainerImageSpec:
         else:
             dct["name"] = yaml_path.stem
             dct["org"] = None
+        dct["loaded_from"] = yaml_path.absolute()
 
         # Override/augment loaded values from spec
         dct.update(kwargs)

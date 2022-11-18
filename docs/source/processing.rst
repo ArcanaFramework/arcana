@@ -455,7 +455,7 @@ would look like
         },
         "outputs": {
           "wm_tracks": {
-            "pydra_task": "tckgen",
+            "task": "tckgen",
             "task_field": "out_file",
             "format": "<arcana.data.formats.medimage:MrtrixTrack>",
             "checksums": {
@@ -494,7 +494,7 @@ would look like
                   "task_field": "dwi_fod"
                 },
                 "act": {
-                  "pydra_task": "5ttgen",
+                  "task": "5ttgen",
                   "task_field": "out_file"
                 },
                 "select": 100000000,
