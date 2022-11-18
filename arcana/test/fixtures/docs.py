@@ -103,7 +103,6 @@ licenses:
       license description
 commands:
   - name: mriqc
-    version: 1a1
     workflow: arcana.tasks.bids:bids_app
     description: a description
     long_description: >-

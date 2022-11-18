@@ -732,7 +732,7 @@ class ContainerImageSpec:
             tbl_info.write_row("Package version", self.version)
             tbl_info.write_row("Spec version", self.version)
             tbl_info.write_row("Base image", escaped_md(self.base_image))
-            tbl_info.write_row("Maintainer", self.maintainer)
+            tbl_info.write_row("Maintainer", self.authors[0])
             tbl_info.write_row("Info URL", self.info_url)
 
             f.write("\n")
@@ -765,10 +765,8 @@ class ContainerImageSpec:
                 #     # configuration keys are variable depending on the workflow class
                 tbl_cmd.write_row("Operates on", cmd.row_frequency.title())
 
-                if cmd.known_issues is not None:
-                    if cmd.known_issues.get("url"):
-                        tbl_cmd.write_row("Known issues", cmd.known_issues["url"])
-                    # Leaving room to extend known_issues further, e.g., an inplace list of issues
+                for known_issue in cmd.known_issues:
+                    tbl_cmd.write_row("Known issues", known_issue.url)
 
                 f.write("#### Inputs\n")
                 tbl_inputs = MarkdownTable(f, "Name", "Format", "Description")

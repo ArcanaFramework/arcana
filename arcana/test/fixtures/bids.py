@@ -134,14 +134,39 @@ ENTRYPOINT ["/launch.sh"]"""
 @pytest.fixture(scope="session")
 def bids_command_spec(mock_bids_app_executable):
     inputs = [
-        {"name": "T1w", "path": "anat/T1w", "format": "medimage:NiftiGzX"},
-        {"name": "T2w", "path": "anat/T2w", "format": "medimage:NiftiGzX"},
-        {"name": "DWI", "path": "dwi/dwi", "format": "medimage:NiftiGzXFslgrad"},
+        {
+            "name": "T1w",
+            "path": "anat/T1w",
+            "format": "medimage:NiftiGzX",
+            "description": "T1-weighted image",
+        },
+        {
+            "name": "T2w",
+            "path": "anat/T2w",
+            "format": "medimage:NiftiGzX",
+            "description": "T2-weighted image",
+        },
+        {
+            "name": "DWI",
+            "path": "dwi/dwi",
+            "format": "medimage:NiftiGzXFslgrad",
+            "description": "DWI-weighted image",
+        },
     ]
 
     outputs = [
-        {"name": "file1", "path": "file1", "format": "common:Text"},
-        {"name": "file2", "path": "file2", "format": "common:Text"},
+        {
+            "name": "file1",
+            "path": "file1",
+            "format": "common:Text",
+            "description": "an output file",
+        },
+        {
+            "name": "file2",
+            "path": "file2",
+            "format": "common:Text",
+            "description": "another output file",
+        },
     ]
 
     return {
@@ -151,7 +176,6 @@ def bids_command_spec(mock_bids_app_executable):
         "outputs": outputs,
         "description": "A pipeline to test wrapping of BIDS apps",
         "row_frequency": "session",
-        "info_url": None,
         "configuration": {
             "inputs": inputs,
             "outputs": outputs,

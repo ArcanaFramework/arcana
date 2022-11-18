@@ -120,6 +120,12 @@ class CommandParameter:
 
 
 @attrs.define
+class KnownIssue:
+
+    url: str
+
+
+@attrs.define
 class ContainerCommandSpec:
     """
     Parameters
@@ -133,13 +139,13 @@ class ContainerCommandSpec:
     """
 
     STORE_TYPE = "file"
+    DEFAULT_DATA_SPACE = None
 
     name: str
     task: str
     description: str
     row_frequency: DataSpace
-    long_description: str = ""
-    known_issues: dict = attrs.field(factory=dict)
+    data_space: type
     inputs: list[CommandInput] = attrs.field(
         factory=list, converter=ListDictConverter(CommandInput)
     )
@@ -150,7 +156,15 @@ class ContainerCommandSpec:
         factory=list, converter=ListDictConverter(CommandParameter)
     )
     configuration: dict[str, ty.Any] = None
+    known_issues: list[KnownIssue] = attrs.field(
+        factory=list, converter=ListDictConverter(KnownIssue)
+    )
+    long_description: str = ""
     image: ContainerImageSpec = None
+
+    def __attrs_post_init__(self):
+        if isinstance(self.row_frequency, str):
+            self.row_frequency = self.data_space[self.row_frequency]
 
     def command_line(
         self,
@@ -196,11 +210,12 @@ class ContainerCommandSpec:
 
         # Set up fixed arguments used to configure the workflow at initialisation
         cmd_args = []
-        for cname, cvalue in self.configuration.items():
-            cvalue_json = json.dumps(cvalue)
-            cmd_args.append(f"--configuration {cname} '{cvalue_json}' ")
+        if self.configuration is not None:
+            for cname, cvalue in self.configuration.items():
+                cvalue_json = json.dumps(cvalue)
+                cmd_args.append(f"--configuration {cname} '{cvalue_json}' ")
 
-        return " ".join(cmd_args)
+        return cmd_args
 
     @classmethod
     def run(

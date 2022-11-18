@@ -288,7 +288,9 @@ def build(
             manifest["release"] = release
 
     for image_spec in image_specs:
-        spec_build_dir = build_dir / image_spec.loaded_from.relative_to(spec_root)
+        spec_build_dir = (
+            build_dir / image_spec.loaded_from.relative_to(spec_root)
+        ).with_suffix("")
         if spec_build_dir.exists():
             shutil.rmtree(spec_build_dir)
         spec_build_dir.mkdir(parents=True)

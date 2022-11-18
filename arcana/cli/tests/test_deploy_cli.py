@@ -133,6 +133,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
     # Build a basic image
     result = build_spec(concatenate_spec)
     assert result.exit_code == 0, show_cli_trace(result)
+    assert result.output
     tag = result.output.strip().splitlines()[-1]
     try:
         dc = docker.from_env()

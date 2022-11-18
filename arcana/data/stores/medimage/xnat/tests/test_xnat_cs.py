@@ -30,12 +30,13 @@ def run_spec(
         spec["build"] = {
             "org": "arcana-tests",
             "name": "concatenate-xnat-cs",
+            "version": "1.0",
             "commands": [command_spec],
             "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
             "info_url": "http://concatenate.readthefakedocs.io",
             "system_packages": [],
             "python_packages": [],
-            "readme": "This is a test README",
+            # "readme": "This is a test README",
             "registry": "a.docker.registry.io",
             "arcana_install_extras": ["test"],
         }
@@ -50,7 +51,9 @@ def run_spec(
     elif request.param == "bids_app":
         bids_command_spec["configuration"]["executable"] = "/launch.sh"
         spec["build"] = {
-            "image_tag": "arcana-tests/bids-app-xnat-cs",
+            "org": "arcana-tests",
+            "name": "bids-app-xnat-cs",
+            "version": "1.0",
             "base_image": mock_bids_app_image,
             "commands": [bids_command_spec],
             "authors": [
@@ -60,8 +63,8 @@ def run_spec(
             "system_packages": [],
             "python_packages": [],
             "package_manager": "apt",
-            "readme": "This is another test README for BIDS app image",
-            "docker_registry": "another.docker.registry.io",
+            # "readme": "This is another test README for BIDS app image",
+            "registry": "another.docker.registry.io",
         }
         blueprint = TestXnatDatasetBlueprint(
             [1, 1, 1],
@@ -131,7 +134,7 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
 
     image_spec = XnatCSImageSpec(**build_spec)
 
-    image_spec.build(build_dir=work_dir, use_local_packages=True, test_config=True)
+    image_spec.make(build_dir=work_dir, use_local_packages=True, test_config=True)
 
     # We manually set the command in the test XNAT instance as commands are
     # loaded from images when they are pulled from a registry and we use

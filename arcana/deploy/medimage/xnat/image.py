@@ -68,7 +68,8 @@ class XnatCSImageSpec(ContainerImageSpec):
         command_label = json.dumps(xnat_commands).replace("$", r"\$")
 
         self.add_labels(
-            {"org.nrg.commands": command_label, "maintainer": self.authors[0]["email"]}
+            dockerfile,
+            {"org.nrg.commands": command_label, "maintainer": self.authors[0].email},
         )
 
         return dockerfile

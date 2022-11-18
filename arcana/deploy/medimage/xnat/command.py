@@ -1,8 +1,8 @@
 from __future__ import annotations
 import typing as ty
 import re
-from itertools import chain
 import attrs
+from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileGroup
 from arcana.core.deploy.command import ContainerCommandSpec
 from arcana.data.stores.medimage import XnatViaCS
@@ -15,6 +15,8 @@ if ty.TYPE_CHECKING:
 @attrs.define
 class XnatCSCommandSpec(ContainerCommandSpec):
 
+    # Hard-code the data_space of XNAT commands to be clinical
+    data_space: DataSpace = Clinical
     image: XnatCSImageSpec = None
 
     def make_json(self):
@@ -57,14 +59,8 @@ class XnatCSCommandSpec(ContainerCommandSpec):
 
         cmd_json["command-line"] = self.command_line(
             dataset_id_str="xnat-cs//[PROJECT_ID]",
-            options=chain(
-                (
-                    input_args,
-                    output_args,
-                    param_args,
-                    xnat_input_args,
-                    [flag_arg],
-                )
+            options=(
+                input_args + output_args + param_args + xnat_input_args + [flag_arg]
             ),
         )
 
@@ -203,7 +199,7 @@ class XnatCSCommandSpec(ContainerCommandSpec):
                     "glob": None,
                 }
             )
-            cmd_json["xnat"]["output-handlers"].append(
+            cmd_json["xnat"][0]["output-handlers"].append(
                 {
                     "name": f"{output.name}-resource",
                     "accepts-command-output": output.name,
@@ -264,7 +260,7 @@ class XnatCSCommandSpec(ContainerCommandSpec):
         # Access session via Container service args and derive
         if self.row_frequency == Clinical.session:
             # Set the object the pipeline is to be run against
-            cmd_json["xnat"]["context"] = ["xnat:imageSessionData"]
+            cmd_json["xnat"][0]["context"] = ["xnat:imageSessionData"]
             # Create Session input that  can be passed to the command line, which
             # will be populated by inputs derived from the XNAT session object
             # passed to the pipeline.
@@ -290,7 +286,7 @@ class XnatCSCommandSpec(ContainerCommandSpec):
             )
 
             # Access the session XNAT object passed to the pipeline
-            cmd_json["xnat"]["external-inputs"] = [
+            cmd_json["xnat"][0]["external-inputs"] = [
                 {
                     "name": "SESSION",
                     "description": "Imaging session",
@@ -308,7 +304,7 @@ class XnatCSCommandSpec(ContainerCommandSpec):
                 }
             ]
             # Access to project ID and session label from session XNAT object
-            cmd_json["xnat"]["derived-inputs"] = [
+            cmd_json["xnat"][0]["derived-inputs"] = [
                 {
                     "name": "__SESSION_LABEL__",
                     "type": "string",
