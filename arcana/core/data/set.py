@@ -20,7 +20,6 @@ from arcana.core.utils import asdict
 from .space import DataSpace
 from .column import DataColumn, DataSink, DataSource
 from . import store as datastore
-
 from .row import DataRow
 
 
@@ -832,8 +831,13 @@ class Dataset:
             raised if the license of the given name isn't present in the project-specific
             location to retrieve
         """
+        from arcana.data.formats import Directory
+
         self.add_source(
-            "licenses", path=self.LICENSES_PATH, row_frequency=self.root_freq
+            "licenses",
+            format=Directory,
+            path=self.LICENSES_PATH,
+            row_frequency=self.root_freq,
         )
         licenses_dir = self.root["licenses"]
         licenses_dir.get()

@@ -35,7 +35,7 @@ from arcana.exceptions import ArcanaBuildError
 
 def test_deploy_build_cli(command_spec, cli_runner, work_dir):
 
-    DOCKER_ORG = "testorg"
+    DOCKER_ORG = "pulltestorg"
     DOCKER_REGISTRY = "test.registry.org"
     IMAGE_GROUP_NAME = "testpkg"
 
@@ -51,7 +51,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
 
     build_dir = work_dir / "build"
     build_dir.mkdir()
-    spec_path = work_dir / "test-specs"
+    spec_path = work_dir / DOCKER_ORG
     sub_dir = spec_path / IMAGE_GROUP_NAME
     sub_dir.mkdir(parents=True)
     with open(sub_dir / "concatenate.yml", "w") as f:
@@ -61,7 +61,6 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         build,
         [
             str(spec_path),
-            DOCKER_ORG,
             "--build-dir",
             str(build_dir),
             "--registry",
@@ -88,14 +87,13 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
 def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefix):
     """Tests the check to see whether"""
 
-    DOCKER_ORG = "testorg"
     IMAGE_GROUP_NAME = "testpkg-rebuild" + run_prefix
 
     def build_spec(spec, **kwargs):
         work_dir = Path(tempfile.mkdtemp())
         build_dir = work_dir / "build"
         build_dir.mkdir()
-        spec_path = work_dir / "test-specs"
+        spec_path = work_dir / "testorg"
         sub_dir = spec_path / IMAGE_GROUP_NAME
         sub_dir.mkdir(parents=True)
         with open(sub_dir / "concatenate.yml", "w") as f:
@@ -105,7 +103,6 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
             build,
             [
                 str(spec_path),
-                DOCKER_ORG,
                 "--build-dir",
                 str(build_dir),
                 "--registry",
@@ -244,8 +241,8 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
     result = cli_runner(
         run_in_image,
         [
-            "a_pipeline",
             "arcana.test.tasks:" + concatenate_task.__name__,
+            "a_pipeline",
             dataset_id_str,
             "--input-config",
             "source1",
@@ -312,8 +309,8 @@ def test_run_pipeline_cli_fail(concatenate_task, saved_dataset, cli_runner, work
     result = cli_runner(
         run_in_image,
         [
-            "a_pipeline",
             "arcana.test.tasks:" + concatenate_task.__name__,
+            "a_pipeline",
             dataset_id_str,
             "--input-config",
             "source1",
@@ -394,8 +391,8 @@ def test_run_pipeline_on_row_cli(cli_runner, work_dir):
     result = cli_runner(
         run_in_image,
         [
-            "a_pipeline",
             "arcana.test.tasks:plus_10_to_filenumbers",
+            "a_pipeline",
             dataset_id_str,
             "--input-config",
             "a_row",
@@ -436,8 +433,8 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
     result = cli_runner(
         run_in_image,
         [
-            "a_pipeline",
             "arcana.test.tasks:identity_file",
+            "a_pipeline",
             dataset_id_str,
             "--input-config",
             "source",
@@ -527,7 +524,7 @@ def test_pull_images(
     reverse_command_spec["name"] = "reverse_concat"
     reverse_command_spec["pydra_task"] = "arcana.test.tasks:reverse_concatenate"
 
-    spec_dir = work_dir / "specs"
+    spec_dir = work_dir / DOCKER_ORG
     pkg_path = spec_dir / IMAGE_GROUP_NAME
     pkg_path.mkdir(parents=True)
 
@@ -566,7 +563,6 @@ def test_pull_images(
         build,
         [
             str(spec_dir),
-            DOCKER_ORG,
             "--build-dir",
             str(build_dir),
             "--registry",

@@ -74,8 +74,7 @@ class XnatCSImageSpec(ContainerImageSpec):
         return dockerfile
 
     def copy_command_ref(self, dockerfile: DockerRenderer, xnat_commands, build_dir):
-        """Generate Neurodocker instructions to copy a version of the XNAT commands
-        into the image for reference
+        """Copy the generated command JSON within the Docker image for future reference
 
         Parameters
         ----------

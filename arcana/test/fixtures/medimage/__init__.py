@@ -1,5 +1,6 @@
 from .xnat import (
     nifti_sample_dir,
+    xnat4tests_config,
     xnat_dataset,
     mutable_xnat_dataset,
     saved_dataset_multi_store,

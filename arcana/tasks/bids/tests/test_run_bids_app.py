@@ -50,8 +50,8 @@ def test_run_bids_pipeline(
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     args = [
-        "a_bids_app",
         "arcana.tasks.bids.app:bids_app",
+        "a_bids_app",
         dataset_id_str,
         "--plugin",
         "serial",

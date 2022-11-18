@@ -265,7 +265,7 @@ class ContainerCommandSpec:
 
         pipeline_inputs = []
         converter_args = {}  # Arguments passed to converter
-        match_criteria = dict(*inputs)
+        match_criteria = dict(inputs)
         for (
             col_name,
             col_format_name,
@@ -319,8 +319,8 @@ class ContainerCommandSpec:
         logger.debug("Pipeline inputs: %s", pipeline_inputs)
 
         pipeline_outputs = []
-        output_paths = dict(*outputs)
-        for col_name, col_format_name, task_field, format_name in outputs:
+        output_paths = dict(outputs)
+        for col_name, col_format_name, task_field, format_name in output_configs:
             format = resolve_class(format_name, prefixes=["arcana.data.formats"])
             col_format = resolve_class(
                 col_format_name, prefixes=["arcana.data.formats"]
@@ -384,7 +384,7 @@ class ContainerCommandSpec:
             ids = ids.split(",")
 
         # Install dataset-specific licenses within the container
-        dataset.install_licenses(install_licenses)
+        # dataset.install_licenses(install_licenses)
 
         # execute the workflow
         try:

@@ -671,7 +671,7 @@ class ContainerImageSpec:
 
         if root_dir is not None:
             dct["name"] = ".".join(
-                yaml_path.relative_to(root_dir).parent.parts + [yaml_path.stem]
+                yaml_path.relative_to(root_dir).parent.parts + (yaml_path.stem,)
             )
             dct["org"] = root_dir.name
         else:

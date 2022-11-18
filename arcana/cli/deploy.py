@@ -186,7 +186,7 @@ def build(
     generate_only,
     use_test_config,
     site_licenses_dataset,
-    builtin_licenses,
+    builtin_license,
     check_registry,
     push,
     clean_up,
@@ -221,7 +221,7 @@ def build(
     image_specs = XnatCSImageSpec.load_tree(
         spec_root,
         registry=registry,
-        builtin_licenses=builtin_licenses,
+        builtin_licenses=builtin_license,
         site_licenses_dataset=site_licenses_dataset,
     )
 
@@ -854,9 +854,9 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     ),
 )
 def run_in_image(
-    dataset_id_str,
-    pipeline_name,
     task_location,
+    pipeline_name,
+    dataset_id_str,
     parameter,
     input,
     output,
@@ -899,11 +899,11 @@ def run_in_image(
         dataset_id_str=dataset_id_str,
         pipeline_name=pipeline_name,
         task_cls=task_cls,
-        input=input,
-        output=output,
-        input_config=input_config,
-        output_config=output_config,
-        parameter=parameter,
+        inputs=input,
+        outputs=output,
+        parameters=parameter,
+        input_configs=input_config,
+        output_configs=output_config,
         row_frequency=row_frequency,
         overwrite=overwrite,
         plugin=plugin,

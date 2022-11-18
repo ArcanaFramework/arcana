@@ -1,6 +1,7 @@
 import sys
 from tempfile import mkdtemp
 import json
+from pathlib import Path
 import pytest
 import numpy
 import nibabel
@@ -176,13 +177,13 @@ def saved_dataset_multi_store(xnat_archive_dir, xnat_repository, work_dir, reque
 
 
 @pytest.fixture(scope="session")
-def xnat4tests_config():
+def xnat4tests_config() -> xnat4tests.Config:
 
-    return xnat4tests.Config(name="default")
+    return xnat4tests.Config()
 
 
 @pytest.fixture(scope="session")
-def xnat_root_dir(xnat4tests_config):
+def xnat_root_dir(xnat4tests_config) -> Path:
     return xnat4tests_config.xnat_root_dir
 
 
