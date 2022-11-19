@@ -14,8 +14,8 @@ import xnat as xnatpy
 from arcana.core.cli import cli
 from arcana.core.utils import resolve_class
 from arcana.core.utils import package_from_module, pydra_asdict
-from arcana.deploy.medimage.xnat.image import XnatCSImageSpec
-from arcana.deploy.medimage.xnat.command import XnatCSCommandSpec
+from arcana.deploy.medimage.xnat.image import XnatCSImage
+from arcana.deploy.medimage.xnat.command import XnatCSCommand
 from arcana.exceptions import ArcanaBuildError
 from arcana.core.deploy.utils import DOCKER_HUB, extract_file_from_docker_image
 
@@ -218,7 +218,7 @@ def build(
     dc = docker.from_env()
 
     # Load image specifications from YAML files stored in directory tree
-    image_specs = XnatCSImageSpec.load_tree(
+    image_specs = XnatCSImage.load_tree(
         spec_root,
         registry=registry,
         builtin_licenses=builtin_license,
@@ -343,7 +343,7 @@ def build(
             )
     if release:
         release_image_tag = f"{spec_root.stem}/{release}"
-        XnatCSImageSpec.create_metapackage(
+        XnatCSImage.create_metapackage(
             release_image_tag, manifest, use_local_packages=use_local_packages
         )
         if push:
@@ -420,7 +420,7 @@ def list_images(spec_root, registry):
     if isinstance(spec_root, bytes):  # FIXME: This shouldn't be necessary
         spec_root = Path(spec_root.decode("utf-8"))
 
-    for image_spec in XnatCSImageSpec.load_tree(spec_root, registry=registry):
+    for image_spec in XnatCSImage.load_tree(spec_root, registry=registry):
         click.echo(image_spec.tag)
 
 
@@ -472,7 +472,7 @@ def build_docs(spec_root, output, registry, flatten, loglevel):
 
     output.mkdir(parents=True, exist_ok=True)
 
-    for image_spec in XnatCSImageSpec.load_tree(spec_root, registry=registry):
+    for image_spec in XnatCSImage.load_tree(spec_root, registry=registry):
 
         image_spec.autdoc(output, flatten=flatten)
         logging.info("Successfully created docs for %s", image_spec.path)
@@ -897,7 +897,7 @@ def run_in_image(
 
     task_cls = resolve_class(task_location)
 
-    XnatCSCommandSpec.run(
+    XnatCSCommand.run(
         dataset_id_str=dataset_id_str,
         pipeline_name=pipeline_name,
         task_cls=task_cls,

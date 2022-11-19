@@ -58,11 +58,11 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 .. .. code-block:: python
 
 ..     import json
-..     from arcana.deploy.medimage import XnatCSCommandSpec
+..     from arcana.deploy.medimage import XnatCSCommand
 ..     from arcana.data.spaces.medimage import Clinical
 ..     from arcana.data.formats.medimage import NiftiGz
 
-..     xnat_command = XnatCSCommandSpec(
+..     xnat_command = XnatCSCommand(
 ..         name='example_pipeline',
 ..         task='pydra.tasks.fsl.preprocess.fast:FAST',
 ..         image_tag='example/0.1',

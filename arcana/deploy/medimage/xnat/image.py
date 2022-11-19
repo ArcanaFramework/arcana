@@ -8,15 +8,15 @@ from neurodocker.reproenv import DockerRenderer
 from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.utils import class_location, ListDictConverter
 from arcana.core.data.store import DataStore
-from arcana.core.deploy.image import ContainerImageSpec
-from .command import XnatCSCommandSpec
+from arcana.core.deploy.image import ContainerImage
+from .command import XnatCSCommand
 
 
 @attrs.define
-class XnatCSImageSpec(ContainerImageSpec):
+class XnatCSImage(ContainerImage):
 
-    commands: list[XnatCSCommandSpec] = attrs.field(
-        factory=list, converter=ListDictConverter(XnatCSCommandSpec)
+    commands: list[XnatCSCommand] = attrs.field(
+        factory=list, converter=ListDictConverter(XnatCSCommand)
     )
 
     @commands.validator

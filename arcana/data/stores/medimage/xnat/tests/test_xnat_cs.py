@@ -6,8 +6,8 @@ from arcana.test.fixtures.medimage.xnat import (
     ResourceBlueprint,
     ScanBlueprint,
 )
-from arcana.deploy.medimage.xnat.image import XnatCSImageSpec
-from arcana.deploy.medimage.xnat.command import XnatCSCommandSpec
+from arcana.deploy.medimage.xnat.image import XnatCSImage
+from arcana.deploy.medimage.xnat.command import XnatCSCommand
 from arcana.test.stores.medimage.xnat import install_and_launch_xnat_cs_command
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 
@@ -132,7 +132,7 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     # Append run_prefix to command name to avoid clash with previous test runs
     command_spec["name"] = "xnat-cs-test" + run_prefix
 
-    image_spec = XnatCSImageSpec(**build_spec)
+    image_spec = XnatCSImage(**build_spec)
 
     image_spec.make(build_dir=work_dir, use_local_packages=True, test_config=True)
 
@@ -146,7 +146,7 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     launch_inputs = {}
 
     for inpt, scan in zip(xnat_command["inputs"], blueprint.scans):
-        launch_inputs[XnatCSCommandSpec.path2xnatname(inpt["name"])] = scan.name
+        launch_inputs[XnatCSCommand.path2xnatname(inpt["name"])] = scan.name
 
     for pname, pval in params.items():
         launch_inputs[pname] = pval

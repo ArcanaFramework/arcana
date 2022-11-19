@@ -4,20 +4,20 @@ import re
 import attrs
 from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileGroup
-from arcana.core.deploy.command import ContainerCommandSpec
+from arcana.core.deploy.command import ContainerCommand
 from arcana.data.stores.medimage import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
 
 if ty.TYPE_CHECKING:
-    from .image import XnatCSImageSpec
+    from .image import XnatCSImage
 
 
 @attrs.define
-class XnatCSCommandSpec(ContainerCommandSpec):
+class XnatCSCommand(ContainerCommand):
 
     # Hard-code the data_space of XNAT commands to be clinical
     data_space: DataSpace = Clinical
-    image: XnatCSImageSpec = None
+    image: XnatCSImage = None
 
     def make_json(self):
         """Constructs the XNAT CS "command" JSON config, which specifies how XNAT

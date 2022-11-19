@@ -18,7 +18,7 @@ from arcana import __version__
 from arcana.core.utils import set_cwd, ListDictConverter, resolve_class
 from arcana.__about__ import PACKAGE_NAME, python_versions
 from arcana.exceptions import ArcanaBuildError
-from .command import ContainerCommandSpec
+from .command import ContainerCommand
 from arcana.data.formats import Directory
 from .utils import (
     PipSpec,
@@ -63,7 +63,7 @@ class NeurodockerPackage:
 
 
 @attrs.define
-class ContainerImageSpec:
+class ContainerImage:
     """
     name : str
         name of the package/pipeline
@@ -75,7 +75,7 @@ class ContainerImageSpec:
         the url of a documentation page describing the package
     authors : list[ContainerAuthor]
         list of authors of the package
-    commands : list[ContainerCommandSpec]
+    commands : list[ContainerCommand]
         list of available commands that are installed within the image
     base_image : str, optional
         the base image to build from
@@ -120,8 +120,8 @@ class ContainerImageSpec:
     authors: ty.List[ContainerAuthor] = attrs.field(
         converter=ListDictConverter(ContainerAuthor)
     )
-    commands: ty.List[ContainerCommandSpec] = attrs.field(
-        converter=ListDictConverter(ContainerCommandSpec)
+    commands: ty.List[ContainerCommand] = attrs.field(
+        converter=ListDictConverter(ContainerCommand)
     )
     base_image: str = DEFAULT_BASE_IMAGE
     package_manager: str = DEFAULT_PACKAGE_MANAGER
@@ -454,9 +454,7 @@ class ContainerImageSpec:
         build_dir : Path
             path to build dir
         """
-        dct = attrs.asdict(
-            self, filter=lambda a, v: not isinstance(v, ContainerImageSpec)
-        )
+        dct = attrs.asdict(self, filter=lambda a, v: not isinstance(v, ContainerImage))
         with open(build_dir / "arcana-spec.yaml", "w") as f:
             yaml.dump(dct, f)
         dockerfile.copy(source=["./arcana-spec.yaml"], destination=self.SPEC_PATH)

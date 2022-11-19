@@ -23,7 +23,7 @@ import arcana.data.formats.common
 from arcana.core.data.space import DataSpace
 
 if ty.TYPE_CHECKING:
-    from .image import ContainerImageSpec
+    from .image import ContainerImage
 
 logger = logging.getLogger("arcana")
 
@@ -126,7 +126,7 @@ class KnownIssue:
 
 
 @attrs.define
-class ContainerCommandSpec:
+class ContainerCommand:
     """
     Parameters
     ----------
@@ -160,7 +160,7 @@ class ContainerCommandSpec:
         factory=list, converter=ListDictConverter(KnownIssue)
     )
     long_description: str = ""
-    image: ContainerImageSpec = None
+    image: ContainerImage = None
 
     def __attrs_post_init__(self):
         if isinstance(self.row_frequency, str):

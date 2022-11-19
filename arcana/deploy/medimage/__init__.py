@@ -1,1 +1,1 @@
-from .xnat import XnatCSImageSpec, XnatCSCommandSpec
+from .xnat import XnatCSImage, XnatCSCommand
