@@ -12,12 +12,17 @@ import docker
 import docker.errors
 import xnat as xnatpy
 from arcana.core.cli import cli
-from arcana.core.utils import resolve_class
-from arcana.core.utils import package_from_module, pydra_asdict
+from arcana.core.utils import (
+    package_from_module,
+    pydra_asdict,
+    resolve_class,
+    DOCKER_HUB,
+)
+from arcana.core.deploy.image import Metapackage
 from arcana.deploy.medimage.xnat.image import XnatCSImage
 from arcana.deploy.medimage.xnat.command import XnatCSCommand
 from arcana.exceptions import ArcanaBuildError
-from arcana.core.deploy.utils import DOCKER_HUB, extract_file_from_docker_image
+from arcana.core.deploy.utils import extract_file_from_docker_image
 
 
 PULL_IMAGES_XNAT_HOST_KEY = "XNAT_HOST"
@@ -336,46 +341,44 @@ def build(
                 }
             )
     if release:
-        release_tag = XnatCSImage.create_metapackage(
+        metapkg = Metapackage(
             name=release[0],
-            version=release[1],
             org=spec_root.stem,
             manifest=manifest,
-            use_local_packages=use_local_packages,
         )
+        metapkg.make(use_local_packages=use_local_packages)
         if push:
             try:
-                dc.api.push(release_tag)
+                dc.api.push(metapkg.tag)
             except Exception:
                 if raise_errors:
                     raise
                 logger.error(
                     "Could not push release metapackage '%s':\n\n%s",
-                    release_tag,
+                    metapkg.tag,
                     format_exc(),
                 )
                 errors = True
             else:
                 logger.info(
                     "Successfully pushed release metapackage '%s' to registry",
-                    release_tag,
+                    metapkg.tag,
                 )
 
             if tag_latest:
                 # Also push release to "latest" tag
-                image = dc.images.get(release_tag)
-                base_release_tag = release_tag.split(":")[0]
-                latest_release_tag = base_release_tag + ":latest"
-                image.tag(latest_release_tag)
+                image = dc.images.get(metapkg.tag)
+                latest_tag = metapkg.path + ":latest"
+                image.tag(latest_tag)
 
                 try:
-                    dc.api.push(latest_release_tag)
+                    dc.api.push(latest_tag)
                 except Exception:
                     if raise_errors:
                         raise
                     logger.error(
                         "Could not push latest tag for release metapackage '%s':\n\n%s",
-                        base_release_tag,
+                        metapkg.path,
                         format_exc(),
                     )
                     errors = True
@@ -385,7 +388,7 @@ def build(
                             "Successfully pushed latest tag for release metapackage '%s' "
                             "to registry"
                         ),
-                        base_release_tag,
+                        metapkg.path,
                     )
         if save_manifest:
             with open(save_manifest, "w") as f:

@@ -12,7 +12,7 @@ if ty.TYPE_CHECKING:
     from .image import XnatCSImage
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XnatCSCommand(ContainerCommand):
 
     # Hard-code the data_space of XNAT commands to be clinical

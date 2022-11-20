@@ -11,19 +11,12 @@ from arcana.core.deploy.image import ContainerImage
 from .command import XnatCSCommand
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class XnatCSImage(ContainerImage):
 
     commands: list[XnatCSCommand] = attrs.field(
-        factory=list, converter=ListDictConverter(XnatCSCommand)
+        converter=ListDictConverter(XnatCSCommand)  # Change the default command type
     )
-
-    @commands.validator
-    def commands_validator(self, _, commands):
-        if not commands:
-            raise RuntimeError(
-                "At least one command must be provided to an XNAT image spec"
-            )
 
     def construct_dockerfile(
         self,

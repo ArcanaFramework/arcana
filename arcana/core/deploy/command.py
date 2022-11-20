@@ -125,7 +125,7 @@ class KnownIssue:
     url: str
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class ContainerCommand:
     """
     Parameters

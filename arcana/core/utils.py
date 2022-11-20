@@ -1008,6 +1008,9 @@ def format_resolver(format):
 MIN_SERIAL_VERSION = "0.0.0"
 
 
+DOCKER_HUB = "docker.io"
+
+
 package_dir = os.path.join(os.path.dirname(__file__), "..")
 
 try:
