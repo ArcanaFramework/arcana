@@ -64,6 +64,8 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
 @click.option(
     "--release",
     default=None,
+    nargs=2,
+    metavar="<release-name> <release-version>",
     type=str,
     help=("Name of the release for the package as a whole (i.e. for all pipelines)"),
 )
@@ -185,7 +187,6 @@ def build(
     raise_errors,
     generate_only,
     use_test_config,
-    site_licenses_dataset,
     builtin_license,
     check_registry,
     push,
@@ -195,14 +196,8 @@ def build(
     if clean_up and not push:
         raise ValueError("'--clean-up' flag requires '--push'")
 
-    if tag_latest:
-        if not release:
-            raise ValueError("'--tag-latest' flag requires '--release'")
-        elif ":" not in release:
-            raise ValueError(
-                "if tagging the release as \"latest\" (as specified by '--tag-latest'), "
-                "then the release must contain explicit version (i.e. part after ':')"
-            )
+    if tag_latest and not release:
+        raise ValueError("'--tag-latest' flag requires '--release'")
 
     if isinstance(spec_root, bytes):  # FIXME: This shouldn't be necessary
         spec_root = Path(spec_root.decode("utf-8"))
@@ -222,7 +217,6 @@ def build(
         spec_root,
         registry=registry,
         builtin_licenses=builtin_license,
-        site_licenses_dataset=site_licenses_dataset,
     )
 
     # Check the target registry to see a) if the images with the same tag
@@ -285,7 +279,7 @@ def build(
             "images": [],
         }
         if release:
-            manifest["release"] = release
+            manifest["release"] = ":".join(release)
 
     for image_spec in image_specs:
         spec_build_dir = (
@@ -342,32 +336,35 @@ def build(
                 }
             )
     if release:
-        release_image_tag = f"{spec_root.stem}/{release}"
-        XnatCSImage.create_metapackage(
-            release_image_tag, manifest, use_local_packages=use_local_packages
+        release_tag = XnatCSImage.create_metapackage(
+            name=release[0],
+            version=release[1],
+            org=spec_root.stem,
+            manifest=manifest,
+            use_local_packages=use_local_packages,
         )
         if push:
             try:
-                dc.api.push(release_image_tag)
+                dc.api.push(release_tag)
             except Exception:
                 if raise_errors:
                     raise
                 logger.error(
                     "Could not push release metapackage '%s':\n\n%s",
-                    release_image_tag,
+                    release_tag,
                     format_exc(),
                 )
                 errors = True
             else:
                 logger.info(
                     "Successfully pushed release metapackage '%s' to registry",
-                    release_image_tag,
+                    release_tag,
                 )
 
             if tag_latest:
                 # Also push release to "latest" tag
-                image = dc.images.get(release_image_tag)
-                base_release_tag = release_image_tag.split(":")[0]
+                image = dc.images.get(release_tag)
+                base_release_tag = release_tag.split(":")[0]
                 latest_release_tag = base_release_tag + ":latest"
                 image.tag(latest_release_tag)
 

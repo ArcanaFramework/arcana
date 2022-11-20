@@ -43,8 +43,8 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         "commands": [command_spec],
         "version": "1.0",
         "spec_version": "1",
-        "system_packages": ["vim"],  # just to test it out
-        "python_packages": ["pytest"],  # just to test it out
+        "system_packages": [{"name": "vim"}],  # just to test it out
+        "python_packages": [{"name": "pytest"}],  # just to test it out
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
         "info_url": "http://concatenate.readthefakedocs.io",
     }
@@ -575,7 +575,8 @@ def test_pull_images(
             "test",
             "--raise-errors",
             "--release",
-            f"test-pipelines-metapackage:{run_prefix}",
+            "test-pipelines-metapackage",
+            run_prefix,
             "--save-manifest",
             str(manifest_path),
             "--use-test-config",

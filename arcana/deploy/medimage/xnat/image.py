@@ -1,7 +1,6 @@
 from __future__ import annotations
 import sys
 from pathlib import Path
-import tempfile
 import json
 import attrs
 from neurodocker.reproenv import DockerRenderer
@@ -128,42 +127,3 @@ class XnatCSImage(ContainerImage):
             destination=self.IN_DOCKER_ARCANA_HOME_DIR + "/stores.yaml",
         )
         dockerfile.env(ARCANA_HOME=self.IN_DOCKER_ARCANA_HOME_DIR)
-
-    @classmethod
-    def create_metapackage(
-        cls, image_tag, manifest, build_dir: Path = None, use_local_packages=False
-    ):
-
-        if build_dir is None:
-            build_dir = Path(tempfile.mkdtemp())
-
-        dockerfile = cls.init_dockerfile(
-            base_image=cls.DEFAULT_BASE_IMAGE,
-            package_manager=cls.DEFAULT_PACKAGE_MANAGER,
-        )
-
-        cls.install_arcana(
-            dockerfile, build_dir=build_dir, use_local_package=use_local_packages
-        )
-
-        with open(build_dir / "manifest.json", "w") as f:
-            json.dump(manifest, f)
-
-        dockerfile.copy(["./manifest.json"], "/manifest.json")
-
-        dockerfile.entrypoint(
-            [
-                "conda",
-                "run",
-                "--no-capture-output",
-                "-n",
-                "arcana",
-                "arcana",
-                "deploy",
-                "xnat",
-                "pull-images",
-                "/manifest.json",
-            ]
-        )
-
-        cls.build(dockerfile, build_dir, image_tag)

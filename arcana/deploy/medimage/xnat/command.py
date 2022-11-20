@@ -32,10 +32,6 @@ class XnatCSCommand(ContainerCommand):
         dynamic_licenses : list[tuple[str, str]]
             licenses that need to be downloaded at runtime as they can't be stored within
             the Docker image
-        site_licenses_dataset : tuple[str, str, str], optional
-            a special dataset containing site-wide licenses, so that they don't need to be
-            downloaded to every project. The value is a 3-tuple containing the
-            DATASET_NAME, DATASET_USER and DATASET_PASSWORD
 
         Returns
         -------
