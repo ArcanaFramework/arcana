@@ -168,9 +168,9 @@ class PipelineImage(ContainerImage):
         build_dir : Path
             path to build dir
         """
-        dct = attrs.asdict(self, filter=lambda a, v: not isinstance(v, type(self)))
+
         with open(build_dir / "arcana-spec.yaml", "w") as f:
-            yaml.dump(dct, f)
+            yaml.dump(self.asdict(), f)
         dockerfile.copy(source=["./arcana-spec.yaml"], destination=self.SPEC_PATH)
 
     @classmethod
@@ -372,8 +372,8 @@ class PipelineImage(ContainerImage):
             the difference between the specs
         """
 
-        sdict = attrs.asdict(self, recurse=True)
-        odict = attrs.asdict(other, recurse=True)
+        sdict = self.asdict()
+        odict = other.asdict()
 
         def prep(s):
             dct = {

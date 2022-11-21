@@ -11,6 +11,7 @@ from arcana.core.utils import (
     path2varname,
     ListDictConverter,
     format_resolver,
+    data_space_resolver,
     class_location,
 )
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
@@ -145,7 +146,7 @@ class ContainerCommand:
     task: str
     description: str
     row_frequency: DataSpace
-    data_space: type
+    data_space: type = attrs.field(converter=data_space_resolver)
     inputs: list[CommandInput] = attrs.field(
         factory=list, converter=ListDictConverter(CommandInput)
     )
@@ -164,7 +165,10 @@ class ContainerCommand:
 
     def __attrs_post_init__(self):
         if isinstance(self.row_frequency, str):
-            self.row_frequency = self.data_space[self.row_frequency]
+            try:
+                self.row_frequency = DataSpace.fromstr(self.row_frequency)
+            except ValueError:
+                self.row_frequency = self.data_space[self.row_frequency]
 
     def command_line(
         self,

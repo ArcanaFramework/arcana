@@ -7,6 +7,7 @@ from arcana.core.data.format import FileGroup
 from arcana.core.deploy.command import ContainerCommand
 from arcana.data.stores.medimage import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
+from arcana.core.utils import data_space_resolver
 
 if ty.TYPE_CHECKING:
     from .image import XnatCSImage
@@ -16,7 +17,7 @@ if ty.TYPE_CHECKING:
 class XnatCSCommand(ContainerCommand):
 
     # Hard-code the data_space of XNAT commands to be clinical
-    data_space: DataSpace = Clinical
+    data_space: DataSpace = attrs.field(default=Clinical, converter=data_space_resolver)
     image: XnatCSImage = None
 
     def make_json(self):

@@ -1004,6 +1004,14 @@ def format_resolver(format):
     return format
 
 
+def data_space_resolver(space):
+    if isinstance(space, str):
+        space = resolve_class(space, prefixes=["arcana.data.spaces"])
+    elif not isinstance(space, type):
+        raise ValueError(f"Cannot resolve {space} to data space")
+    return space
+
+
 # Minimum version of Arcana that this version can read the serialisation from
 MIN_SERIAL_VERSION = "0.0.0"
 

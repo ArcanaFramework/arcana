@@ -169,5 +169,10 @@ class DataSpace(Enum):
 
     @classmethod
     def fromstr(cls, s):
-        class_loc, val = re.match(r"(.*)\[([^\]]+)\]", s).groups()
+        match = re.match(r"(.*)\[([^\]]+)\]", s)
+        if match is None:
+            raise ValueError(
+                f"'{s}' is not a string of the format <data-space-enum>[<value>]"
+            )
+        class_loc, val = match.groups()
         return resolve_class(class_loc)[val]
