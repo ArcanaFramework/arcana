@@ -19,6 +19,7 @@ from arcana.core.utils import (
     DOCKER_HUB,
 )
 from arcana.core.deploy.image import Metapackage
+from arcana.core.deploy.image.components import License
 from arcana.deploy.medimage.xnat.image import XnatCSImage
 from arcana.deploy.medimage.xnat.command import XnatCSCommand
 from arcana.exceptions import ArcanaBuildError
@@ -134,24 +135,15 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     help="Just create the build directory and dockerfile",
 )
 @click.option(
-    "--builtin-license",
+    "--license",
     type=tuple[str, click.Path(exists=True, path_type=Path)],
-    default=None,
+    default=(),
     nargs=2,
     metavar="<license-name> <path-to-license-file>",
     multiple=True,
     help=(
         "Licenses provided at build time to be stored in the image (instead of "
         "downloaded at runtime)"
-    ),
-)
-@click.option(
-    "--site-licenses-dataset",
-    type=click.Path(exists=True, path_type=Path),
-    default=None,
-    help=(
-        "Dataset containing site-wide licences accessible across all datasets in "
-        "the store"
     ),
 )
 @click.option(
@@ -192,7 +184,7 @@ def build(
     raise_errors,
     generate_only,
     use_test_config,
-    builtin_license,
+    license,
     check_registry,
     push,
     clean_up,
@@ -221,7 +213,7 @@ def build(
     image_specs = XnatCSImage.load_tree(
         spec_root,
         registry=registry,
-        builtin_licenses=builtin_license,
+        licenses=dict(license),
     )
 
     # Check the target registry to see a) if the images with the same tag
@@ -236,16 +228,17 @@ def build(
                 image_spec.tag, image_spec.SPEC_PATH
             )
             if extracted_dir is None:
-                return None
+                logger.info(f"Did not find existing image matching {image_spec.tag}")
+                changelog = None
+            else:
+                logger.info(
+                    f"Comparing build spec with that of existing image {image_spec.tag}"
+                )
+                built_spec = image_spec.load(
+                    extracted_dir / Path(image_spec.SPEC_PATH).name
+                )
 
-            logger.info(
-                f"Comparing build spec with that of existing image {image_spec.tag}"
-            )
-            built_spec = image_spec.load(
-                extracted_dir / Path(image_spec.SPEC_PATH).name
-            )
-
-            changelog = image_spec.compare_specs(built_spec, check_version=True)
+                changelog = image_spec.compare_specs(built_spec, check_version=True)
 
             if changelog is None:
                 to_build.append(image_spec)
@@ -267,11 +260,7 @@ def build(
                     + "\n\n\n"
                 )
 
-            if raise_errors:
-                raise ArcanaBuildError(msg)
-            else:
-                skipped_tags = "', '".join(conflicting)
-                logger.error("Skipped %s because %s", skipped_tags, msg)
+            raise ArcanaBuildError(msg)
 
         image_specs = to_build
 
@@ -285,6 +274,8 @@ def build(
         }
         if release:
             manifest["release"] = ":".join(release)
+
+    errors = False
 
     for image_spec in image_specs:
         spec_build_dir = (
@@ -343,6 +334,7 @@ def build(
     if release:
         metapkg = Metapackage(
             name=release[0],
+            version=release[1],
             org=spec_root.stem,
             manifest=manifest,
         )
@@ -474,7 +466,7 @@ def build_docs(spec_root, output, registry, flatten, loglevel):
 
     for image_spec in XnatCSImage.load_tree(spec_root, registry=registry):
 
-        image_spec.autdoc(output, flatten=flatten)
+        image_spec.autodoc(output, flatten=flatten)
         logging.info("Successfully created docs for %s", image_spec.path)
 
 
@@ -783,8 +775,7 @@ It can be omitted if PIPELINE_NAME matches an existing pipeline
     help=("The Pydra plugin with which to process the task/workflow"),
 )
 @click.option(
-    "--install_license",
-    "install_licenses",
+    "--download-license",
     multiple=True,
     nargs=2,
     default=(),
@@ -868,7 +859,7 @@ def run_in_image(
     overwrite,
     work_dir,
     plugin,
-    install_licenses,
+    download_license,
     loglevel,
     dataset_name,
     dataset_space,
@@ -897,6 +888,8 @@ def run_in_image(
 
     task_cls = resolve_class(task_location)
 
+    download_licenses = [License(*lic, description="") for lic in download_license]
+
     XnatCSCommand.run(
         dataset_id_str=dataset_id_str,
         pipeline_name=pipeline_name,
@@ -909,7 +902,7 @@ def run_in_image(
         row_frequency=row_frequency,
         overwrite=overwrite,
         plugin=plugin,
-        install_licenses=install_licenses,
+        download_licenses=download_licenses,
         dataset_name=dataset_name,
         dataset_space=dataset_space,
         dataset_hierarchy=dataset_hierarchy,

@@ -85,11 +85,14 @@ complete_doc_spec = DocsFixture(
 version: &version '0.16.1'
 spec_version: '1.10'
 authors:
-  - author_field
+  - name: author_name
+    email: author@email.org
 base_image: !join [ 'abc', *version ]
 info_url: https://example.com
 package_manager: apt
-system_packages: []
+system_packages:
+  - name: vim
+    version: 99.1
 python_packages:
   - name: pydra
   - name: pydra-dcm2niix
@@ -97,18 +100,19 @@ package_templates:
   - name: dcm2niix
     version: v1.0.20201102
 licenses:
-  - source: freesurfer.txt
+  - name: freesurfer
     destination: /opt/freesurfer/license.txt
-    info: >
+    description: >
       license description
+    info_url: http://path.to.license.provider.org/licenses
 commands:
   - name: mriqc
-    workflow: arcana.tasks.bids:bids_app
+    task: arcana.tasks.bids:bids_app
     description: a description
     long_description: >-
       a longer description
     known_issues:
-      url: https://example.com
+      - url: https://example.com
     inputs: &inputs
       - name: T1w
         path: anat/T1w
@@ -129,12 +133,13 @@ commands:
       - name: mriqc
         path: mriqc
         format: common:Directory
+        description: "MRIQC output directory"
     parameters:
       - name: fmriprep_flags
         task_field: flags
         type: string
         description: description of flags param
-    frequency: session
+    row_frequency: session
     configuration:
       inputs: *inputs
       outputs: *outputs
@@ -144,7 +149,7 @@ commands:
     """.strip(),
     """
 ---
-source_file: spec.yaml
+source_file: /var/folders/mz/yn83q2fd3s758w1j75d2nnw80000gn/T/tmp47_dxmyq/specs/spec.yaml
 title: spec
 weight: 10
 
@@ -153,14 +158,16 @@ weight: 10
 ## Package Info
 |Key|Value|
 |---|-----|
-|App version|0.16.1|
+|Package version|0.16.1|
+|Spec version|0.16.1|
 |Base image|`abc0.16.1`|
+|Maintainer|author_name (author@email.org)|
 |Info URL|https://example.com|
 
 ### Required licenses
-|Source file|Info|
-|-----------|----|
-|`freesurfer.txt`|license description
+|URL|Info|
+|---|----|
+|`http://path.to.license.provider.org/licenses`|license description
 |
 
 ## Commands
@@ -170,23 +177,25 @@ a longer description
 |Key|Value|
 |---|-----|
 |Short description|a description|
+|Operates on|session|
 |Known issues|https://example.com|
 #### Inputs
 |Name|Format|Description|
 |----|------|-----------|
-|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|T1-weighted anatomical scan|
-|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|T2-weighted anatomical scan|
-|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="medimage:Dicom" aria-label="medimage:Dicom">Dicom (Directory)</span>|functional MRI|
+|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (Directory)</span>|T1-weighted anatomical scan|
+|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (Directory)</span>|T2-weighted anatomical scan|
+|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (Directory)</span>|functional MRI|
 
 #### Outputs
 |Name|Format|Description|
 |----|------|-----------|
-|`mriqc`|||
+|`mriqc`|<span data-toggle="tooltip" data-placement="bottom" title="directory" aria-label="directory">directory</span>|MRIQC output directory|
 
 #### Parameters
 |Name|Data type|Description|
 |----|---------|-----------|
 |`fmriprep_flags`|`string`|description of flags param|
+
     """.strip(),
 )
 

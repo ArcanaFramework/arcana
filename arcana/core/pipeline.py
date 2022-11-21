@@ -56,6 +56,8 @@ class Pipeline:
 
     Parameters
     ----------
+    name : str
+        the name of the pipeline, used to differentiate it from others
     row_frequency : DataSpace, optional
         The row_frequency of the pipeline, i.e. the row_frequency of the
         derivatvies within the dataset, e.g. per-session, per-subject, etc,

@@ -1,7 +1,6 @@
 import sys
 import os
 import shutil
-import traceback
 from copy import copy
 from typing import Union, Dict, Tuple
 import json
@@ -146,7 +145,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         # Modify the spec so it doesn't match the original that has just been
         # built (but don't increment the version number -> image tag so there
         # is a clash)
-        concatenate_spec["system_packages"].append("vim")
+        concatenate_spec["system_packages"].append({"name": "vim"})
 
         with pytest.raises(ArcanaBuildError) as excinfo:
             build_spec(concatenate_spec, catch_exceptions=False)
@@ -193,20 +192,12 @@ def _build_docs(
         [
             specs_dir.as_posix(),
             out_dir.as_posix(),
-            "--root",
-            specs_dir,
         ]
         + (["--flatten" if flatten else "--no-flatten"] if flatten is not None else [])
         + list(args),
     )
 
-    if result.exit_code != 0:
-        print(result.output)
-        if result.exception:
-            traceback.print_exception(
-                type(result.exception), result.exception, result.exception.__traceback__
-            )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, show_cli_trace(result)
 
     if type(docs) is str:
         return (out_dir / "spec.md").read_text().strip()
@@ -519,10 +510,10 @@ def test_pull_images(
     WRAPPER_VERSION = "1-pullimages"
 
     forward_command_spec = copy(command_spec)
-    forward_command_spec["name"] = "forward_concat"
+    forward_command_spec["name"] = "forward_concat-pullimages"
 
     reverse_command_spec = copy(command_spec)
-    reverse_command_spec["name"] = "reverse_concat"
+    reverse_command_spec["name"] = "reverse_concat-pullimages"
     reverse_command_spec["task"] = "arcana.test.tasks:reverse_concatenate"
 
     spec_dir = work_dir / DOCKER_ORG
@@ -636,7 +627,9 @@ def test_pull_images(
 
         result = xlogin.get("/xapi/commands/")
 
-    assert sorted(e["name"] for e in result.json()) == expected_commands
+    # Check commands have been installed
+    available_cmds = [e["name"] for e in result.json()]
+    assert all(cmd in available_cmds for cmd in expected_commands)
 
 
 def test_pull_auth_refresh(xnat_repository, work_dir, cli_runner):

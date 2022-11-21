@@ -9,21 +9,21 @@ from urllib.parse import urlparse
 from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
-from arcana.core.utils import ListDictConverter, resolve_class
-from arcana.__about__ import PACKAGE_NAME
-from arcana.exceptions import ArcanaBuildError
+from arcana.core.utils import ListDictConverter
 from arcana.data.formats import Directory
 from ..command import ContainerCommand
-from .base import BaseContainerImage
+from .base import ContainerImage
 from .components import (
-    PipSpec,
     ContainerAuthor,
     License,
 )
 
 
+logger = logging.getLogger("arcana")
+
+
 @attrs.define(kw_only=True)
-class BasePipelineImage(BaseContainerImage):
+class PipelineImage(ContainerImage):
     """
     name : str
         name of the package/pipeline
@@ -61,7 +61,6 @@ class BasePipelineImage(BaseContainerImage):
     """
 
     info_url: str = attrs.field()
-    version: str = attrs.field(converter=str)
     spec_version: str = attrs.field(default=0, converter=str)
     authors: ty.List[ContainerAuthor] = attrs.field(
         converter=ListDictConverter(ContainerAuthor)
@@ -94,16 +93,7 @@ class BasePipelineImage(BaseContainerImage):
             f"{self.version}-{self.spec_version}" if self.spec_version else self.version
         )
 
-    def construct_dockerfile(
-        self,
-        build_dir: Path,
-        builtin_licenses: ty.Iterable[ty.Tuple[str, str or Path]] = (),
-        use_local_packages: bool = False,
-        pypi_fallback: bool = False,
-        arcana_install_extras: ty.List[str] = (),
-        readme: str = None,
-        labels: ty.Dict[str, str] = None,
-    ) -> DockerRenderer:
+    def construct_dockerfile(self, build_dir: Path, **kwargs) -> DockerRenderer:
         """Constructs a dockerfile that wraps a with dependencies
 
         Parameters
@@ -111,23 +101,8 @@ class BasePipelineImage(BaseContainerImage):
         build_dir : Path
             Path to the directory the Dockerfile will be written into copy any local
             files to
-        labels : ty.Dict[str, str], optional
-            labels to be added to the image
-        arcana_install_extras : Iterable[str], optional
-            Extras for the Arcana package that need to be installed into the
-            dockerfile (e.g. tests)
-        readme : str, optional
-            Description of the container to put in a README
-        use_local_packages: bool, optional
-            Use the python package versions that are installed within the
-            current environment, i.e. instead of pulling from PyPI. Useful during
-            development and testing
-        pypi_fallback : bool, optional
-            whether to fallback to packages installed on PyPI when versions of
-            local packages don't match installed
-        builtin_licenses : list[tuple[str, str or Path]]
-            licenses provided at build time to be installed inside the container image.
-            A list of 'name' and 'source path' pairs.
+        **kwargs
+            Passed onto the ContainerImage.construct_dockerfile() method
 
         Returns
         -------
@@ -135,53 +110,20 @@ class BasePipelineImage(BaseContainerImage):
             Neurodocker Docker renderer to construct dockerfile from
         """
 
-        if not build_dir.is_dir():
-            raise ArcanaBuildError(
-                f"Build dir '{str(build_dir)}' is not a valid directory"
-            )
-
-        dockerfile = self.init_dockerfile()
-
-        self.install_system_packages(dockerfile)
-
-        self.install_package_templates(dockerfile)
-
-        self.install_python(
-            dockerfile,
-            build_dir,
-            use_local_packages=use_local_packages,
-            pypi_fallback=pypi_fallback,
-        )
-
-        # Arcana is installed separately from the other Python packages, partly so
-        # the dependency Docker layer can be cached in dev and partly so it can be
-        # treated differently if required in the future
-        self.install_arcana(
-            dockerfile,
-            build_dir,
-            install_extras=arcana_install_extras,
-            use_local_package=use_local_packages,
-        )
+        dockerfile = super().construct_dockerfile(build_dir, **kwargs)
 
         self.install_licenses(
             dockerfile,
-            # {k: v["destination"] for k, v in licenses.items()},
-            builtin_licenses,
             build_dir,
         )
 
-        self.write_readme(dockerfile, readme, build_dir)
-
         self.write_spec(dockerfile, build_dir)
-
-        self.add_labels(dockerfile, labels)
 
         return dockerfile
 
     def install_licenses(
+        self,
         dockerfile: DockerRenderer,
-        licenses_spec: ty.List[ty.Dict[str, str]],
-        to_install: Path,
         build_dir: Path,
     ):
         """Generate Neurodocker instructions to install licenses within the container image
@@ -190,26 +132,28 @@ class BasePipelineImage(BaseContainerImage):
         ----------
         dockerfile : DockerRenderer
             the neurodocker renderer to append the install instructions to
-        licenses_spec : dict[str, str]
-            specification of the licenses required by the commands in the container. The
-            keys of the dictionary are the license names and the values are the
-            destination path of the license within the image.
-        to_install : dict[str, str or Path]
-            licenses provided at build time to be installed inside the container image.
-            A list of 'name' and 'source path' pairs.
         build_dir : Path
             path to build dir
         """
         # Copy licenses into build directory
         license_build_dir = build_dir / "licenses"
         license_build_dir.mkdir()
-        for name, src in to_install:
-            build_path = license_build_dir / name
-            shutil.copyfile(src, build_path)
-            dockerfile.copy(
-                source=[str(build_path.relative_to(build_dir))],
-                destination=licenses_spec[name],
-            )
+        for lic in self.licenses:
+            if lic.source is not None:
+                build_path = license_build_dir / lic.name
+                shutil.copyfile(lic.source, build_path)
+                dockerfile.copy(
+                    source=[str(build_path.relative_to(build_dir))],
+                    destination=lic.destination,
+                )
+            else:
+                logger.warning(
+                    "License file for '%s' was not provided, will attempt to download "
+                    "from %s%s dataset-level column at runtime",
+                    lic.name,
+                    lic.name,
+                    self.LICENSE_SUFFIX,
+                )
 
     def write_spec(self, dockerfile: DockerRenderer, build_dir):
         """Generate Neurodocker instructions to install README file inside the docker
@@ -229,64 +173,14 @@ class BasePipelineImage(BaseContainerImage):
             yaml.dump(dct, f)
         dockerfile.copy(source=["./arcana-spec.yaml"], destination=self.SPEC_PATH)
 
-    def install_arcana(
-        self,
-        dockerfile: DockerRenderer,
-        build_dir: Path,
-        install_extras: ty.Iterable = (),
-        use_local_package: bool = False,
+    @classmethod
+    def load(
+        cls,
+        yaml_path: Path,
+        root_dir: Path = None,
+        licenses: dict[str, Path] = None,
+        **kwargs,
     ):
-        """Install the Arcana Python package into the Dockerfile
-
-        Parameters
-        ----------
-        dockerfile : DockerRenderer
-            the Neurdocker renderer
-        build_dir : Path
-            the directory the Docker image is built from
-        install_extras : list[str]
-            list of "install extras" (options) to specify when installing Arcana
-            (e.g. 'test')
-        use_local_package : bool
-            Use local installation of arcana
-        """
-        pip_str = self.pip_spec2str(
-            PipSpec(PACKAGE_NAME, extras=install_extras),
-            dockerfile,
-            build_dir,
-            use_local_packages=use_local_package,
-            pypi_fallback=False,
-        )
-        dockerfile.run(
-            f'bash -c "source activate {self.CONDA_ENV} \\\n'
-            f'&& python -m pip install --pre --no-cache-dir {pip_str}"'
-        )
-
-    @classmethod
-    def write_readme(cls, dockerfile: DockerRenderer, description, build_dir):
-        """Generate Neurodocker instructions to install README file inside the docker
-        image
-
-        Parameters
-        ----------
-        dockerfile : DockerRenderer
-            the neurodocker renderer to append the install instructions to
-        description : str
-            a description of what the pipeline does, to be inserted in a README file
-            in the Docker image
-        build_dir : Path
-            path to build dir
-        """
-        if description is None:
-            description = ""
-        else:
-            description = "\n" + description + "\n"
-        with open(build_dir / "README.md", "w") as f:
-            f.write(cls.DOCKERFILE_README_TEMPLATE.format(__version__, description))
-        dockerfile.copy(source=["./README.md"], destination="/README.md")
-
-    @classmethod
-    def load(cls, yaml_path: Path, root_dir: Path = None, **kwargs):
         """Loads a deploy-build specification from a YAML file
 
         Parameters
@@ -298,6 +192,8 @@ class BasePipelineImage(BaseContainerImage):
             The name of the root directory is taken to be the organisation the image
             belongs to, and all nested directories above the YAML file will be joined by
             '.' and prepended to the name of the loaded spec.
+        licenses : dict[str, Path], optional
+            Licenses that are provided at build time to be included in the image
         **kwargs
             additional keyword arguments that override/augment the values loaded from
             the spec file
@@ -371,7 +267,7 @@ class BasePipelineImage(BaseContainerImage):
         else:
             assert isinstance(doc_dir, Path)
 
-            out_dir = doc_dir.joinpath(self._relative_dir)
+            out_dir = doc_dir.joinpath(*self.name.split(".")[:-1])
 
             assert doc_dir in out_dir.parents or out_dir == doc_dir
 
@@ -387,7 +283,9 @@ class BasePipelineImage(BaseContainerImage):
             tbl_info.write_row("Package version", self.version)
             tbl_info.write_row("Spec version", self.version)
             tbl_info.write_row("Base image", escaped_md(self.base_image))
-            tbl_info.write_row("Maintainer", self.authors[0])
+            tbl_info.write_row(
+                "Maintainer", f"{self.authors[0].name} ({self.authors[0].email})"
+            )
             tbl_info.write_row("Info URL", self.info_url)
 
             f.write("\n")
@@ -395,11 +293,11 @@ class BasePipelineImage(BaseContainerImage):
             if self.licenses:
                 f.write("### Required licenses\n")
 
-                tbl_lic = MarkdownTable(f, "Source file", "Info")
+                tbl_lic = MarkdownTable(f, "URL", "Info")
                 for lic in self.licenses:
                     tbl_lic.write_row(
-                        escaped_md(lic.get("source", None)),
-                        lic.get("info", ""),
+                        escaped_md(lic.info_url),
+                        lic.description,
                     )
 
                 f.write("\n")
@@ -408,9 +306,9 @@ class BasePipelineImage(BaseContainerImage):
 
             for cmd in self.commands:
 
-                f.write(f"### {cmd['name']}\n")
+                f.write(f"### {cmd.name}\n")
 
-                short_desc = cmd.get("long_description", None) or cmd.description
+                short_desc = cmd.long_description or cmd.description
                 f.write(f"{short_desc}\n\n")
 
                 tbl_cmd = MarkdownTable(f, "Key", "Value")
@@ -418,7 +316,7 @@ class BasePipelineImage(BaseContainerImage):
                 # if cmd.configuration is not None:
                 #     config = cmd.configuration
                 #     # configuration keys are variable depending on the workflow class
-                tbl_cmd.write_row("Operates on", cmd.row_frequency.title())
+                tbl_cmd.write_row("Operates on", cmd.row_frequency.name)
 
                 for known_issue in cmd.known_issues:
                     tbl_cmd.write_row("Known issues", known_issue.url)
@@ -429,7 +327,7 @@ class BasePipelineImage(BaseContainerImage):
                     for inpt in cmd.inputs:
                         tbl_inputs.write_row(
                             escaped_md(inpt.name),
-                            self._format_html(inpt.stored_format),
+                            self._data_format_html(inpt.stored_format),
                             inpt.description,
                         )
                     f.write("\n")
@@ -440,8 +338,8 @@ class BasePipelineImage(BaseContainerImage):
                     for outpt in cmd.outputs:
                         tbl_outputs.write_row(
                             escaped_md(outpt.name),
-                            self._format_html(outpt.stored_format),
-                            outpt.get("description", ""),
+                            self._data_format_html(outpt.stored_format),
+                            outpt.description,
                         )
                     f.write("\n")
 
@@ -452,7 +350,7 @@ class BasePipelineImage(BaseContainerImage):
                         tbl_params.write_row(
                             escaped_md(param.name),
                             escaped_md(param.type),
-                            param.get("description", ""),
+                            param.description,
                         )
                     f.write("\n")
 
@@ -494,26 +392,19 @@ class BasePipelineImage(BaseContainerImage):
         return diff
 
     @classmethod
-    def _format_html(cls, format):
-        if not format:
-            return ""
-        if ":" not in format:
-            return escaped_md(format)
+    def _data_format_html(cls, format):
 
-        resolved = resolve_class(format, prefixes=["arcana.data.formats"])
-        desc = getattr(resolved, "desc", resolved.__name__)
-
-        if ext := getattr(resolved, "ext", None):
-            text = f"{desc} (`.{ext}`)"
-        elif getattr(resolved, "is_dir", None) and resolved is not Directory:
-            text = f"{desc} (Directory)"
+        if ext := getattr(format, "ext", None):
+            text = f"{format.desc} (`.{ext}`)"
+        elif getattr(format, "is_dir", None) and format is not Directory:
+            text = f"{format.desc} (Directory)"
         else:
-            text = desc
+            text = format.desc
 
-        return f'<span data-toggle="tooltip" data-placement="bottom" title="{format}" aria-label="{format}">{text}</span>'
+        return f'<span data-toggle="tooltip" data-placement="bottom" title="{format.desc}" aria-label="{format.desc}">{text}</span>'
 
     DOCKERFILE_README_TEMPLATE = """
-        The following Docker image was generated by arcana v{} to enable the
+        The following Docker image was generated by Arcana v{} to enable the
         commands to be run in the XNAT container service. See
         https://raw.githubusercontent.com/Australian-Imaging-Service/arcana/main/LICENSE
         for licence.

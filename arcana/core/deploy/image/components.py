@@ -40,7 +40,7 @@ class License:
     destination: str
     description: str
     info_url: str = attrs.field()
-    src: Path = attrs.field(default=None)
+    source: Path = attrs.field(default=None)
 
     @info_url.validator
     def info_url_validator(self, _, info_url):
@@ -50,12 +50,20 @@ class License:
                 f"Could not parse info url '{info_url}', please include URL scheme"
             )
 
-    @src.validator
-    def src_validator(self, _, src):
-        if src is not None and not src.exists():
+    @source.validator
+    def source_validator(self, _, source):
+        if source is not None and not source.exists():
             raise ValueError(
-                f"Source file for {self.name} license, '{str(src)}', does not exist"
+                f"Source file for {self.name} license, '{str(source)}', does not exist"
             )
+
+    @property
+    def col_name(self):
+        """The column name (and resource name) for the license if it is to be downloaded
+        from the source dataset"""
+        return self.name + self.COLUMN_SUFFIX
+
+    COLUMN_SUFFIX = "_license"
 
 
 @attrs.define
@@ -63,7 +71,9 @@ class PipSpec:
     """Specification of a Python package"""
 
     name: str
-    version: str = attrs.field(converter=lambda _, v: str(v) if v is not None else None)
+    version: str = attrs.field(
+        default=None, converter=lambda v: str(v) if v is not None else None
+    )
     url: str = None
     file_path: str = None
     extras: ty.List[str] = attrs.field(factory=list)

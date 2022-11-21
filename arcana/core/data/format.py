@@ -15,6 +15,7 @@ from arcana.core.utils import (
     parse_value,
     func_task,
     path2varname,
+    classproperty,
     CONVERTER_ANNOTATIONS,
 )
 from arcana.exceptions import (
@@ -88,6 +89,17 @@ class DataItem(metaclass=ABCMeta):
             The value to update
         """
         raise NotImplementedError
+
+    @classproperty
+    def desc(cls):
+        """Descriptive name that can be overridden in subclasses
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        return cls.__name__.lower()
 
     @property
     def recorded_checksums(self):

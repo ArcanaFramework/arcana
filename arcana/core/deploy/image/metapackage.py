@@ -2,11 +2,11 @@ import json
 import tempfile
 import attrs
 from pathlib import Path
-from .base import BaseContainerImage
+from .base import ContainerImage
 
 
 @attrs.define
-class Metapackage(BaseContainerImage):
+class Metapackage(ContainerImage):
 
     manifest: dict
 
@@ -48,3 +48,5 @@ class Metapackage(BaseContainerImage):
                 "/manifest.json",
             ]
         )
+
+        return dockerfile

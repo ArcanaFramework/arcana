@@ -7,15 +7,17 @@ from neurodocker.reproenv import DockerRenderer
 from arcana.data.stores.medimage import XnatViaCS
 from arcana.core.utils import class_location, ListDictConverter
 from arcana.core.data.store import DataStore
-from arcana.core.deploy.image import ContainerImage
+from arcana.core.deploy.image import PipelineImage
 from .command import XnatCSCommand
 
 
 @attrs.define(kw_only=True)
-class XnatCSImage(ContainerImage):
+class XnatCSImage(PipelineImage):
 
     commands: list[XnatCSCommand] = attrs.field(
-        converter=ListDictConverter(XnatCSCommand)  # Change the default command type
+        converter=ListDictConverter(
+            XnatCSCommand
+        )  # Change the command type to XnatCSCommand subclass
     )
 
     def construct_dockerfile(

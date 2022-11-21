@@ -329,7 +329,10 @@ class XnatCSCommand(ContainerCommand):
 
             # Add specific session to process to command line args
             cmd_args.extend(
-                ["--ids [SESSION_LABEL]" "--single-row [SUBJECT_LABEL],[SESSION_LABEL]"]
+                [
+                    "--ids [SESSION_LABEL]",
+                    "--single-row [SUBJECT_LABEL],[SESSION_LABEL]",
+                ]
             )
 
         else:

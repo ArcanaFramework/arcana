@@ -1,2 +1,2 @@
-from .pipeline import BasePipelineImage
+from .pipeline import PipelineImage
 from .metapackage import Metapackage

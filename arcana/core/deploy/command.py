@@ -23,7 +23,7 @@ import arcana.data.formats.common
 from arcana.core.data.space import DataSpace
 
 if ty.TYPE_CHECKING:
-    from .image import ContainerImage
+    from .image import PipelineImage
 
 logger = logging.getLogger("arcana")
 
@@ -160,7 +160,7 @@ class ContainerCommand:
         factory=list, converter=ListDictConverter(KnownIssue)
     )
     long_description: str = ""
-    image: ContainerImage = None
+    image: PipelineImage = None
 
     def __attrs_post_init__(self):
         if isinstance(self.row_frequency, str):
@@ -195,10 +195,13 @@ class ContainerCommand:
             f"arcana deploy run-in-image "
             f"--dataset-space {class_location(data_space)} "
             f"--row-frequency {self.row_frequency} "
-            + " ".join(i.command_config_arg() for i in self.inputs)
-            + " ".join(o.command_config_arg() for o in self.outputs)
-            + " ".join(self.get_configuration_args())
-            + " ".join(options)
+            + " ".join(
+                [i.command_config_arg() for i in self.inputs]
+                + [o.command_config_arg() for o in self.outputs]
+                + self.configuration_args()
+                + self.license_args()
+                + options
+            )
             + f" {self.task} {self.name} "
         )
         if dataset_id_str is not None:
@@ -206,7 +209,7 @@ class ContainerCommand:
 
         return cmdline
 
-    def get_configuration_args(self):
+    def configuration_args(self):
 
         # Set up fixed arguments used to configure the workflow at initialisation
         cmd_args = []
@@ -215,6 +218,13 @@ class ContainerCommand:
                 cvalue_json = json.dumps(cvalue)
                 cmd_args.append(f"--configuration {cname} '{cvalue_json}' ")
 
+        return cmd_args
+
+    def license_args(self):
+        cmd_args = []
+        for lic in self.image.licenses:
+            if lic.source is None:
+                cmd_args.append(f"--download-license {lic.name} {lic.destination}")
         return cmd_args
 
     @classmethod
@@ -231,7 +241,7 @@ class ContainerCommand:
         row_frequency,
         overwrite,
         plugin,
-        install_licenses,
+        download_licenses,
         dataset_name,
         dataset_space,
         ids,
@@ -274,6 +284,10 @@ class ContainerCommand:
                 dataset = store.load_dataset(id, name)
             except KeyError:
                 dataset = store.new_dataset(id, hierarchy=hierarchy, space=space)
+
+        for lic in download_licenses:
+            dataset.add_column(lic.col_name, format=arcana.data.formats.common.File)
+            shutil.copyfile(dataset.root[lic.col_name].fs_path, lic.destination)
 
         if single_row is not None:
             # Adds a single row to the dataset (i.e. skips a full scan)

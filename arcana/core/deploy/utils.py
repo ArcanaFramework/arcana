@@ -22,8 +22,8 @@ def extract_file_from_docker_image(
 
     Returns
     -------
-    Path
-        path to the extracted file
+    Path or None
+        path to the extracted file or None if image doesn't exist
     """
     tmp_dir = Path(tempfile.mkdtemp())
     if out_path is None:

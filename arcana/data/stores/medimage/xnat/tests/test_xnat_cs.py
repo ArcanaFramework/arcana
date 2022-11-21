@@ -36,9 +36,8 @@ def run_spec(
             "info_url": "http://concatenate.readthefakedocs.io",
             "system_packages": [],
             "python_packages": [],
-            # "readme": "This is a test README",
+            "readme": "This is a test README",
             "registry": "a.docker.registry.io",
-            "arcana_install_extras": ["test"],
         }
         spec["dataset"] = make_mutable_dataset(
             dataset_id="xnat_cs_func",
@@ -63,7 +62,7 @@ def run_spec(
             "system_packages": [],
             "python_packages": [],
             "package_manager": "apt",
-            # "readme": "This is another test README for BIDS app image",
+            "readme": "This is another test README for BIDS app image",
             "registry": "another.docker.registry.io",
         }
         blueprint = TestXnatDatasetBlueprint(
@@ -134,7 +133,12 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
 
     image_spec = XnatCSImage(**build_spec)
 
-    image_spec.make(build_dir=work_dir, use_local_packages=True, test_config=True)
+    image_spec.make(
+        build_dir=work_dir,
+        arcana_install_extras=["test"],
+        use_local_packages=True,
+        test_config=True,
+    )
 
     # We manually set the command in the test XNAT instance as commands are
     # loaded from images when they are pulled from a registry and we use
