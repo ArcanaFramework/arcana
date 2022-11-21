@@ -280,8 +280,8 @@ class PipelineImage(ContainerImage):
 
             f.write("## Package Info\n")
             tbl_info = MarkdownTable(f, "Key", "Value")
-            tbl_info.write_row("Package version", self.version)
-            tbl_info.write_row("Spec version", self.version)
+            tbl_info.write_row("App version", self.version)
+            tbl_info.write_row("Spec version", self.spec_version)
             tbl_info.write_row("Base image", escaped_md(self.base_image))
             tbl_info.write_row(
                 "Maintainer", f"{self.authors[0].name} ({self.authors[0].email})"

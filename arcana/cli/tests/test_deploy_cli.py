@@ -2,6 +2,7 @@ import sys
 import os
 import shutil
 from copy import copy
+import re
 from typing import Union, Dict, Tuple
 import json
 import yaml
@@ -218,8 +219,13 @@ def test_build_docs_cli(
     print(f"Processing fixture: {fixture_name!r}")
     output = _build_docs(cli_runner, work_dir, fixture_content.yaml_src)
 
+    strip_source_file_re = re.compile(r"source_file:.*")
+
+    stripped_output = strip_source_file_re.sub("", output)
+    stripped_reference = strip_source_file_re.sub("", fixture_content.markdown)
+
     assert (
-        output == fixture_content.markdown
+        stripped_output == stripped_reference
     ), f"Fixture {fixture_name!r} didn't match output"
 
 

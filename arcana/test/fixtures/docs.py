@@ -1,4 +1,5 @@
 from typing import Iterable, Union, List
+from arcana.core.deploy.image.base import ContainerImage
 
 
 class DocsFixture:
@@ -11,9 +12,13 @@ minimal_doc_spec = DocsFixture(
     """
 version: &version '0.16.1'
 spec_version: '1.10'
+authors:
+  - name: author_name
+    email: author@email.org
+info_url: https://example.com
 commands: []
     """.strip(),
-    """
+    f"""
 ---
 source_file: spec.yaml
 title: spec
@@ -25,6 +30,10 @@ weight: 10
 |Key|Value|
 |---|-----|
 |App version|0.16.1|
+|Spec version|1.10|
+|Base image|`{ContainerImage.DEFAULT_BASE_IMAGE}`|
+|Maintainer|author_name (author@email.org)|
+|Info URL|https://example.com|
 
 ## Commands
     """.strip(),
@@ -34,6 +43,10 @@ yaml_constructors_join_spec = DocsFixture(
     """
 version: &version '0.16.1'
 spec_version: '1.10'
+authors:
+  - name: author_name
+    email: author@email.org
+info_url: https://example.com
 base_image: !join [ 'abc', *version ]
 commands: []
     """.strip(),
@@ -49,36 +62,46 @@ weight: 10
 |Key|Value|
 |---|-----|
 |App version|0.16.1|
+|Spec version|1.10|
 |Base image|`abc0.16.1`|
+|Maintainer|author_name (author@email.org)|
+|Info URL|https://example.com|
 
 ## Commands
     """.strip(),
 )
 
-yaml_constructors_concat_spec = DocsFixture(
-    """
-version: &version '0.16.1'
-spec_version: '1.10'
-base_image: !concat [ 'abc', *version ]
-commands: []
-    """.strip(),
-    """
----
-source_file: spec.yaml
-title: spec
-weight: 10
+# yaml_constructors_concat_spec = DocsFixture(
+#     """
+# version: &version '0.16.1'
+# spec_version: '1.10'
+# base_image: !concat [ 'abc', *version ]
+# authors:
+#   - name: author_name
+#     email: author@email.org
+# info_url: https://example.com
+# commands: []
+#     """.strip(),
+#     """
+# ---
+# source_file: spec.yaml
+# title: spec
+# weight: 10
 
----
+# ---
 
-## Package Info
-|Key|Value|
-|---|-----|
-|App version|0.16.1|
-|Base image|`abc0.16.1`|
+# ## Package Info
+# |Key|Value|
+# |---|-----|
+# |App version|0.16.1|
+# |Spec version|1.10|
+# |Base image|`abc0.16.1`|
+# |Maintainer|author_name (author@email.org)|
+# |Info URL|https://example.com|
 
-## Commands
-    """.strip(),
-)
+# ## Commands
+#     """.strip(),
+# )
 
 complete_doc_spec = DocsFixture(
     """
@@ -158,8 +181,8 @@ weight: 10
 ## Package Info
 |Key|Value|
 |---|-----|
-|Package version|0.16.1|
-|Spec version|0.16.1|
+|App version|0.16.1|
+|Spec version|1.10|
 |Base image|`abc0.16.1`|
 |Maintainer|author_name (author@email.org)|
 |Info URL|https://example.com|
