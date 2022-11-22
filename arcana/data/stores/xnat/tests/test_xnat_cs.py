@@ -31,7 +31,7 @@ def run_spec(
             "org": "arcana-tests",
             "name": "concatenate-xnat-cs",
             "version": "1.0",
-            "commands": [command_spec],
+            "command": command_spec,
             "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
             "info_url": "http://concatenate.readthefakedocs.io",
             "system_packages": [],
@@ -54,7 +54,7 @@ def run_spec(
             "name": "bids-app-xnat-cs",
             "version": "1.0",
             "base_image": mock_bids_app_image,
-            "commands": [bids_command_spec],
+            "command": bids_command_spec,
             "authors": [
                 {"name": "Some One Else", "email": "some.oneelse@an.email.org"}
             ],
@@ -145,7 +145,7 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     # the fact that the container service test XNAT instance shares the
     # outer Docker socket. Since we build the pipeline image with the same
     # socket there is no need to pull it.
-    xnat_command = image_spec.commands[0].make_json()
+    xnat_command = image_spec.command.make_json()
 
     launch_inputs = {}
 

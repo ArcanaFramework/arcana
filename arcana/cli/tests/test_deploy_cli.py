@@ -40,7 +40,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
     IMAGE_GROUP_NAME = "testpkg"
 
     concatenate_spec = {
-        "commands": [command_spec],
+        "command": command_spec,
         "version": "1.0",
         "spec_version": "1",
         "system_packages": [{"name": "vim"}],  # just to test it out
@@ -121,7 +121,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         return result
 
     concatenate_spec = {
-        "commands": [command_spec],
+        "command": command_spec,
         "version": "1.0",
         "spec_version": "1",
         "system_packages": [],
@@ -532,7 +532,7 @@ def test_pull_images(
     for cmd_spec in (forward_command_spec, reverse_command_spec):
 
         image_spec = {
-            "commands": [cmd_spec],
+            "command": cmd_spec,
             "version": PKG_VERSION,
             "spec_version": WRAPPER_VERSION,
             "system_packages": [],

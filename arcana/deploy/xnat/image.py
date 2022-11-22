@@ -5,7 +5,7 @@ import json
 import attrs
 from neurodocker.reproenv import DockerRenderer
 from arcana.data.stores.xnat import XnatViaCS
-from arcana.core.utils import class_location, ListDictConverter
+from arcana.core.utils import class_location, DictConverter
 from arcana.core.data.store import DataStore
 from arcana.core.deploy.image import BasePipelineImage
 from .command import XnatCSCommand
@@ -14,8 +14,8 @@ from .command import XnatCSCommand
 @attrs.define(kw_only=True)
 class XnatCSImage(BasePipelineImage):
 
-    commands: list[XnatCSCommand] = attrs.field(
-        converter=ListDictConverter(
+    command: XnatCSCommand = attrs.field(
+        converter=DictConverter(
             XnatCSCommand
         )  # Change the command type to XnatCSCommand subclass
     )
@@ -50,26 +50,26 @@ class XnatCSImage(BasePipelineImage):
 
         dockerfile = super().construct_dockerfile(build_dir, **kwargs)
 
-        xnat_commands = [c.make_json() for c in self.commands]
+        xnat_command = self.command.make_json()
 
         # Copy the generated XNAT commands inside the container for ease of reference
-        self.copy_command_ref(dockerfile, xnat_commands, build_dir)
+        self.copy_command_ref(dockerfile, xnat_command, build_dir)
 
         self.save_store_config(dockerfile, build_dir, test_config=test_config)
 
         # Convert XNAT command label into string that can by placed inside the
         # Docker label
-        command_label = json.dumps(xnat_commands).replace("$", r"\$")
+        commands_label = json.dumps([xnat_command]).replace("$", r"\$")
 
         self.add_labels(
             dockerfile,
-            {"org.nrg.commands": command_label, "maintainer": self.authors[0].email},
+            {"org.nrg.commands": commands_label, "maintainer": self.authors[0].email},
         )
 
         return dockerfile
 
     def add_entrypoint(self, dockerfile: DockerRenderer, build_dir: Path):
-        pass  # Don't need to add entrypoint as it is handled in the command
+        pass  # Don't need to add entrypoint as the command line is specified in the command JSON
 
     def copy_command_ref(self, dockerfile: DockerRenderer, xnat_commands, build_dir):
         """Copy the generated command JSON within the Docker image for future reference

@@ -340,7 +340,6 @@ def build(
                 {
                     "name": image_spec.path,
                     "version": image_spec.full_version,
-                    "commands": [c.name for c in image_spec.commands],
                 }
             )
     if release:

@@ -24,7 +24,7 @@ import arcana.data.formats.common
 from arcana.core.data.space import DataSpace
 
 if ty.TYPE_CHECKING:
-    from .image import PipelineImage
+    from .image import BasePipelineImage
 
 logger = logging.getLogger("arcana")
 
@@ -161,7 +161,7 @@ class ContainerCommand:
         factory=list, converter=ListDictConverter(KnownIssue)
     )
     long_description: str = ""
-    image: PipelineImage = None
+    image: BasePipelineImage = None
 
     def __attrs_post_init__(self):
         if isinstance(self.row_frequency, str):

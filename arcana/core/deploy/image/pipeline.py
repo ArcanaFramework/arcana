@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
-from arcana.core.utils import ListDictConverter
+from arcana.core.utils import DictConverter, ListDictConverter
 from arcana.data.formats import Directory
 from ..command import ContainerCommand
 from .generic import ContainerImage
@@ -66,9 +66,7 @@ class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
     authors: ty.List[ContainerAuthor] = attrs.field(
         converter=ListDictConverter(ContainerAuthor)
     )
-    commands: ty.List[ContainerCommand] = attrs.field(
-        converter=ListDictConverter(ContainerCommand)
-    )
+    command: ContainerCommand = attrs.field(converter=DictConverter(ContainerCommand))
     licenses: ty.List[License] = attrs.field(
         factory=list, converter=ListDictConverter(License)
     )
@@ -76,9 +74,8 @@ class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
 
     def __attrs_post_init__(self):
 
-        # Set back-references to this image in the command specs
-        for cmd_spec in self.commands:
-            cmd_spec.image = self
+        # Set back-references to this image in the command spec
+        self.command.image = self
 
     @info_url.validator
     def info_url_validator(self, _, info_url):
@@ -329,57 +326,55 @@ class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
 
                 f.write("\n")
 
-            f.write("## Commands\n")
+            f.write("## Command\n")
 
-            for cmd in self.commands:
+            f.write(f"### {self.command.name}\n")
 
-                f.write(f"### {cmd.name}\n")
+            short_desc = self.command.long_description or self.command.description
+            f.write(f"{short_desc}\n\n")
 
-                short_desc = cmd.long_description or cmd.description
-                f.write(f"{short_desc}\n\n")
+            tbl_cmd = MarkdownTable(f, "Key", "Value")
+            tbl_cmd.write_row("Short description", self.command.description)
+            # if self.command.configuration is not None:
+            #     config = self.command.configuration
+            #     # configuration keys are variable depending on the workflow class
+            tbl_cmd.write_row("Operates on", self.command.row_frequency.name)
 
-                tbl_cmd = MarkdownTable(f, "Key", "Value")
-                tbl_cmd.write_row("Short description", cmd.description)
-                # if cmd.configuration is not None:
-                #     config = cmd.configuration
-                #     # configuration keys are variable depending on the workflow class
-                tbl_cmd.write_row("Operates on", cmd.row_frequency.name)
+            for known_issue in self.command.known_issues:
+                tbl_cmd.write_row("Known issues", known_issue.url)
 
-                for known_issue in cmd.known_issues:
-                    tbl_cmd.write_row("Known issues", known_issue.url)
+            f.write("#### Inputs\n")
+            tbl_inputs = MarkdownTable(f, "Name", "Format", "Description")
+            if self.command.inputs is not None:
+                for inpt in self.command.inputs:
+                    tbl_inputs.write_row(
+                        escaped_md(inpt.name),
+                        self._data_format_html(inpt.stored_format),
+                        inpt.description,
+                    )
+                f.write("\n")
 
-                f.write("#### Inputs\n")
-                tbl_inputs = MarkdownTable(f, "Name", "Format", "Description")
-                if cmd.inputs is not None:
-                    for inpt in cmd.inputs:
-                        tbl_inputs.write_row(
-                            escaped_md(inpt.name),
-                            self._data_format_html(inpt.stored_format),
-                            inpt.description,
-                        )
-                    f.write("\n")
+            f.write("#### Outputs\n")
+            tbl_outputs = MarkdownTable(f, "Name", "Format", "Description")
+            if self.command.outputs is not None:
+                for outpt in self.command.outputs:
+                    tbl_outputs.write_row(
+                        escaped_md(outpt.name),
+                        self._data_format_html(outpt.stored_format),
+                        outpt.description,
+                    )
+                f.write("\n")
 
-                f.write("#### Outputs\n")
-                tbl_outputs = MarkdownTable(f, "Name", "Format", "Description")
-                if cmd.outputs is not None:
-                    for outpt in cmd.outputs:
-                        tbl_outputs.write_row(
-                            escaped_md(outpt.name),
-                            self._data_format_html(outpt.stored_format),
-                            outpt.description,
-                        )
-                    f.write("\n")
-
-                if cmd.parameters is not None:
-                    f.write("#### Parameters\n")
-                    tbl_params = MarkdownTable(f, "Name", "Data type", "Description")
-                    for param in cmd.parameters:
-                        tbl_params.write_row(
-                            escaped_md(param.name),
-                            escaped_md(param.type),
-                            param.description,
-                        )
-                    f.write("\n")
+            if self.command.parameters is not None:
+                f.write("#### Parameters\n")
+                tbl_params = MarkdownTable(f, "Name", "Data type", "Description")
+                for param in self.command.parameters:
+                    tbl_params.write_row(
+                        escaped_md(param.name),
+                        escaped_md(param.type),
+                        param.description,
+                    )
+                f.write("\n")
 
     def compare_specs(self, other, check_version=True):
         """Compares two build specs against each other and returns the difference

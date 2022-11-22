@@ -8,4 +8,4 @@ from arcana.core.deploy.image import BasePipelineImage
 @attrs.define
 class PipelineImage(BasePipelineImage):
     def add_entrypoint(self, dockerfile: DockerRenderer, build_dir: Path):
-        dockerfile.entrypoint(shlex.split(self.commands[0].command_line()))
+        dockerfile.entrypoint(shlex.split(self.command.command_line()))
