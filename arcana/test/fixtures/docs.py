@@ -1,11 +1,15 @@
+from __future__ import annotations
+import attrs
 from typing import Iterable, Union, List
 from arcana.core.deploy.image.base import ContainerImage
 
 
+@attrs.define
 class DocsFixture:
-    def __init__(self, yaml_src: str, markdown: str):
-        self.yaml_src = yaml_src
-        self.markdown = markdown
+
+    yaml_src: str
+    markdown: str
+    licenses_to_provide: list[str] = attrs.field(factory=list)
 
 
 minimal_doc_spec = DocsFixture(
@@ -220,6 +224,7 @@ a longer description
 |`fmriprep_flags`|`string`|description of flags param|
 
     """.strip(),
+    ["freesurfer"],
 )
 
 

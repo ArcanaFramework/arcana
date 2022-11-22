@@ -126,7 +126,8 @@ class PipelineImage(ContainerImage):
         dockerfile: DockerRenderer,
         build_dir: Path,
     ):
-        """Generate Neurodocker instructions to install licenses within the container image
+        """Generate Neurodocker instructions to install licenses within the container
+        image
 
         Parameters
         ----------
@@ -139,7 +140,7 @@ class PipelineImage(ContainerImage):
         license_build_dir = build_dir / "licenses"
         license_build_dir.mkdir()
         for lic in self.licenses:
-            if lic.source is not None:
+            if lic.source:
                 build_path = license_build_dir / lic.name
                 shutil.copyfile(lic.source, build_path)
                 dockerfile.copy(
@@ -149,10 +150,10 @@ class PipelineImage(ContainerImage):
             else:
                 logger.warning(
                     "License file for '%s' was not provided, will attempt to download "
-                    "from %s%s dataset-level column at runtime",
+                    "from '%s' dataset-level column or site-wide license dataset at "
+                    "runtime",
                     lic.name,
-                    lic.name,
-                    self.LICENSE_SUFFIX,
+                    lic.col_name,
                 )
 
     def write_spec(self, dockerfile: DockerRenderer, build_dir):
@@ -178,7 +179,8 @@ class PipelineImage(ContainerImage):
         cls,
         yaml_path: Path,
         root_dir: Path = None,
-        licenses: dict[str, Path] = None,
+        license_paths: dict[str, Path] = None,
+        licenses_to_download: set[str] = None,
         **kwargs,
     ):
         """Loads a deploy-build specification from a YAML file
@@ -192,8 +194,13 @@ class PipelineImage(ContainerImage):
             The name of the root directory is taken to be the organisation the image
             belongs to, and all nested directories above the YAML file will be joined by
             '.' and prepended to the name of the loaded spec.
-        licenses : dict[str, Path], optional
-            Licenses that are provided at build time to be included in the image
+        license_paths : dict[str, Path], optional
+            Licenses that are provided at build time to be included in the image.
+        licenses_to_download : set[str], optional
+            Licenses that are to be downloaded at runtime. If `license_paths` is not
+            None (i.e. how to access required licenses are to be specified) then required
+            licenses that are not in license_paths need to be explicitly listed in
+            `licenses_to_download` otherwise an error is raised
         **kwargs
             additional keyword arguments that override/augment the values loaded from
             the spec file
@@ -204,12 +211,12 @@ class PipelineImage(ContainerImage):
             The loaded spec object
         """
 
-        def concat(loader, node):
+        def yaml_join(loader, node):
             seq = loader.construct_sequence(node)
             return "".join([str(i) for i in seq])
 
         # Add special constructors to handle joins and concatenations within the YAML
-        yaml.SafeLoader.add_constructor(tag="!join", constructor=concat)
+        yaml.SafeLoader.add_constructor(tag="!join", constructor=yaml_join)
         # yaml.SafeLoader.add_constructor(tag="!concat", constructor=concat)
 
         with open(yaml_path, "r") as f:
@@ -231,7 +238,20 @@ class PipelineImage(ContainerImage):
         # Override/augment loaded values from spec
         dct.update(kwargs)
 
-        return cls(**dct)
+        image = cls(**dct)
+
+        if license_paths is not None:
+            for lic in image.licenses:
+                try:
+                    lic.source = license_paths[lic.name]
+                except KeyError:
+                    if lic.name not in licenses_to_download:
+                        raise RuntimeError(
+                            f"{lic.name} license has not been provided or specified as "
+                            "being to be downloaded at runtime"
+                        )
+
+        return image
 
     @classmethod
     def load_tree(cls, root_dir: Path, **kwargs) -> list:

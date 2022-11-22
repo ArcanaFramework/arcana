@@ -22,6 +22,8 @@ from .column import DataColumn, DataSink, DataSource
 from . import store as datastore
 from .row import DataRow
 
+if ty.TYPE_CHECKING:
+    from ..deploy.image.components import License
 
 logger = logging.getLogger("arcana")
 
@@ -815,13 +817,13 @@ class Dataset:
             id, name = parts
         return store_name, id, name
 
-    def install_licenses(self, licenses: ty.List[ty.Tuple[str, str]]):
+    def install_licenses(self, licenses: list[License]):
         """Install licenses from project-specific location in data store and
         install them at the destination location
 
         Parameters
         ----------
-        licenses : list[tuple[str, str]]
+        licenses : list[License]
             a list of tuples representing the name of a license and the
             destination location it should be installed
 
@@ -831,28 +833,53 @@ class Dataset:
             raised if the license of the given name isn't present in the project-specific
             location to retrieve
         """
-        from arcana.data.formats import Directory
+        import arcana.data.formats
 
-        self.add_source(
-            "licenses",
-            format=Directory,
-            path=self.LICENSES_PATH,
-            row_frequency=self.root_freq,
-        )
-        licenses_dir = self.root["licenses"]
-        licenses_dir.get()
-        found_licenses = list(licenses_dir.fs_path.iterdir())
-        for name, dest in licenses:
-            license_path = licenses_dir.fs_path / name
-            if not license_path.exists():
-                raise ArcanaLicenseNotFoundError(
-                    name,
-                    (
-                        f"Did not find a license corresponding to '{name}', "
-                        f"found: {found_licenses}"
-                    ),
-                )
-            shutil.copyfile(license_path, dest)
+        # if License.SITE_DATASET_ENV in os.environ:
+        #     site_licenses = DataStore.load()
+
+        # for lic in download_licenses:
+        #     dataset.add_column(lic.col_name, format=arcana.data.formats.common.File,
+        #                        row_frequency=dataset.root_freq)
+        #     try:
+        #         lic_path = dataset.root[lic.col_name].fs_path
+        #     except:
+
+        #     shutil.copyfile(lic_path, lic.destination)
+
+        def get_license_fs_path(license, dataset):
+            self.add_source(
+                lic.col_name,
+                format=arcana.data.formats.File,
+                row_frequency=self.root_freq,
+            )
+            license_file = self.root[lic.col_name]
+            try:
+                return license_file.fs_path
+            except Exception:
+                return None
+
+        site_licenses_dataset = self.store.site_licenses_dataset()
+
+        for lic in licenses:
+
+            lic_fs_path = get_license_fs_path(lic, self)
+            if lic_fs_path is None:
+                if site_licenses_dataset is not None:
+                    lic_fs_path = get_license_fs_path(lic, site_licenses_dataset)
+                if lic_fs_path is None:
+                    msg = (
+                        f"Did not find a license corresponding to '{lic.name}' at "
+                        f"{lic.col_name} in {self}"
+                    )
+                    if site_licenses_dataset:
+                        msg += f" or {site_licenses_dataset}"
+                    raise ArcanaLicenseNotFoundError(
+                        lic.name,
+                        msg,
+                    )
+
+            shutil.copyfile(lic_fs_path, lic.destination)
 
 
 @attrs.define

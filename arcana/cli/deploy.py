@@ -147,6 +147,16 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     ),
 )
 @click.option(
+    "--license-to-download",
+    type=str,
+    default=(),
+    multiple=True,
+    help=(
+        "Specify licenses that are not provided at runtime and instead downloaded "
+        "from the data store at runtime in order to satisfy their conditions"
+    ),
+)
+@click.option(
     "--check-registry/--dont-check-registry",
     type=bool,
     default=False,
@@ -185,6 +195,7 @@ def build(
     generate_only,
     use_test_config,
     license,
+    license_to_download,
     check_registry,
     push,
     clean_up,
@@ -213,7 +224,8 @@ def build(
     image_specs = XnatCSImage.load_tree(
         spec_root,
         registry=registry,
-        licenses=dict(license),
+        license_paths=dict(license),
+        licenses_to_download=set(license_to_download),
     )
 
     # Check the target registry to see a) if the images with the same tag

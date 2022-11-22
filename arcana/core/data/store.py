@@ -246,6 +246,10 @@ class DataStore(metaclass=ABCMeta):
     def asdict(self, **kwargs):
         return asdict(self, **kwargs)
 
+    def site_licenses_dataset(self):
+        """Can be overridden by subclasses to provide a dataset to hold site-wide licenses"""
+        return None
+
     @classmethod
     def load(cls: ty.Type[DS], name: str, config_path: Path = None, **kwargs) -> DS:
         """Loads a DataStore from that has been saved in the configuration file.

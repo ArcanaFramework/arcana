@@ -289,9 +289,8 @@ class ContainerCommand:
             except KeyError:
                 dataset = store.new_dataset(id, hierarchy=hierarchy, space=space)
 
-        for lic in download_licenses:
-            dataset.add_column(lic.col_name, format=arcana.data.formats.common.File)
-            shutil.copyfile(dataset.root[lic.col_name].fs_path, lic.destination)
+        # Install required software licenses from store into container
+        dataset.install_licenses(download_licenses)
 
         if single_row is not None:
             # Adds a single row to the dataset (i.e. skips a full scan)

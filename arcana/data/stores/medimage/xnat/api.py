@@ -637,6 +637,32 @@ class Xnat(DataStore):
                 "{} is from {} instead of {}".format(item, item.dataset.store, self)
             )
 
+    def site_licenses_dataset(self):
+        """Return a dataset that holds site-wide licenses
+
+        Returns
+        -------
+        Dataset or None
+            the dataset that holds site-wide licenses
+        """
+        try:
+            user = os.environ[self.SITE_LICENSES_USER_ENV]
+        except KeyError:
+            store = self
+        else:
+            # Reconnect to store with site-license user/password
+            store = type(self)(
+                server=self,
+                cache_dir=self.cache_dir,
+                user=user,
+                password=os.environ[self.SITE_LICENSES_PASS_ENV],
+            )
+        try:
+            dataset_name = os.environ[self.SITE_LICENSES_DATASET_ENV]
+        except KeyError:
+            return None
+        return store.load_dataset(dataset_name)
+
     @classmethod
     def standard_uri(cls, xrow):
         """Get the URI of the XNAT row (ImageSession | Subject | Project)
@@ -725,6 +751,10 @@ class Xnat(DataStore):
         dct = asdict(self, **kwargs)
         self._encrypt_credentials(dct)
         return dct
+
+    SITE_LICENSES_DATASET_ENV = "ARCANA_SITE_LICENSE_DATASET"
+    SITE_LICENSES_USER_ENV = "ARCANA_SITE_LICENSE_USER"
+    SITE_LICENSES_PASS_ENV = "ARCANA_SITE_LICENSE_PASS"
 
 
 def append_suffix(path, suffix):
