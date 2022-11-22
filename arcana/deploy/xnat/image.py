@@ -4,15 +4,15 @@ from pathlib import Path
 import json
 import attrs
 from neurodocker.reproenv import DockerRenderer
-from arcana.data.stores.medimage import XnatViaCS
+from arcana.data.stores.xnat import XnatViaCS
 from arcana.core.utils import class_location, ListDictConverter
 from arcana.core.data.store import DataStore
-from arcana.core.deploy.image import PipelineImage
+from arcana.core.deploy.image import BasePipelineImage
 from .command import XnatCSCommand
 
 
 @attrs.define(kw_only=True)
-class XnatCSImage(PipelineImage):
+class XnatCSImage(BasePipelineImage):
 
     commands: list[XnatCSCommand] = attrs.field(
         converter=ListDictConverter(
@@ -67,6 +67,9 @@ class XnatCSImage(PipelineImage):
         )
 
         return dockerfile
+
+    def add_entrypoint(self, dockerfile: DockerRenderer, build_dir: Path):
+        pass  # Don't need to add entrypoint as it is handled in the command
 
     def copy_command_ref(self, dockerfile: DockerRenderer, xnat_commands, build_dir):
         """Copy the generated command JSON within the Docker image for future reference

@@ -2,6 +2,7 @@ import typing as ty
 from pathlib import Path
 from itertools import chain
 import logging
+from abc import ABCMeta, abstractmethod
 import shutil
 import attrs
 import yaml
@@ -12,7 +13,7 @@ from arcana import __version__
 from arcana.core.utils import ListDictConverter
 from arcana.data.formats import Directory
 from ..command import ContainerCommand
-from .base import ContainerImage
+from .generic import ContainerImage
 from .components import (
     ContainerAuthor,
     License,
@@ -23,7 +24,7 @@ logger = logging.getLogger("arcana")
 
 
 @attrs.define(kw_only=True)
-class PipelineImage(ContainerImage):
+class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
     """
     name : str
         name of the package/pipeline
@@ -93,6 +94,10 @@ class PipelineImage(ContainerImage):
             f"{self.version}-{self.spec_version}" if self.spec_version else self.version
         )
 
+    @abstractmethod
+    def add_entrypoint(self, dockerfile: DockerRenderer, build_dir: Path):
+        pass
+
     def construct_dockerfile(self, build_dir: Path, **kwargs) -> DockerRenderer:
         """Constructs a dockerfile that wraps a with dependencies
 
@@ -118,6 +123,8 @@ class PipelineImage(ContainerImage):
         )
 
         self.write_spec(dockerfile, build_dir)
+
+        self.add_entrypoint(dockerfile, build_dir)
 
         return dockerfile
 

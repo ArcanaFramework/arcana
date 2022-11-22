@@ -221,3 +221,11 @@ def contents_are_numeric(in_file: Path) -> bool:
     except ValueError:
         return False
     return True
+
+
+@mark.task
+def check_license(license_path: Path, license_contents: str) -> bool:
+    with open(license_path) as f:
+        contents = f.read()
+    assert contents == license_contents
+    return license_path
