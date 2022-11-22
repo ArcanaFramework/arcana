@@ -5,7 +5,7 @@ import attrs
 from arcana.core.data.space import DataSpace
 from arcana.core.data.format import FileGroup
 from arcana.core.deploy.command import ContainerCommand
-from arcana.data.stores.medimage import XnatViaCS
+from arcana.data.stores.xnat import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.utils import data_space_resolver
 

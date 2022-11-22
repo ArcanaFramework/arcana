@@ -20,8 +20,8 @@ from arcana.core.utils import (
 )
 from arcana.core.deploy.image import Metapackage
 from arcana.core.deploy.image.components import License
-from arcana.deploy.medimage.xnat.image import XnatCSImage
-from arcana.deploy.medimage.xnat.command import XnatCSCommand
+from arcana.deploy.xnat.image import XnatCSImage
+from arcana.deploy.xnat.command import XnatCSCommand
 from arcana.exceptions import ArcanaBuildError
 from arcana.core.deploy.utils import extract_file_from_docker_image
 

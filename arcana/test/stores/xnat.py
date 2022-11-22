@@ -7,8 +7,8 @@ from tempfile import mkdtemp
 from itertools import product
 import xnat
 import xnat4tests
-from arcana.data.stores.medimage.xnat.api import Xnat
-from arcana.data.stores.medimage.xnat.cs import XnatViaCS
+from arcana.data.stores.xnat.api import Xnat
+from arcana.data.stores.xnat.cs import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
 from arcana.test.datasets import create_test_file
 from arcana.exceptions import ArcanaError

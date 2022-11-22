@@ -1,14 +1,14 @@
 import pytest
-from arcana.test.fixtures.medimage.xnat import (
+from arcana.test.fixtures.xnat import (
     make_mutable_dataset,
     TEST_XNAT_DATASET_BLUEPRINTS,
     TestXnatDatasetBlueprint,
     ResourceBlueprint,
     ScanBlueprint,
 )
-from arcana.deploy.medimage.xnat.image import XnatCSImage
-from arcana.deploy.medimage.xnat.command import XnatCSCommand
-from arcana.test.stores.medimage.xnat import install_and_launch_xnat_cs_command
+from arcana.deploy.xnat.image import XnatCSImage
+from arcana.deploy.xnat.command import XnatCSCommand
+from arcana.test.stores.xnat import install_and_launch_xnat_cs_command
 from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
 
 

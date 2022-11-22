@@ -2,7 +2,7 @@ import os
 import pytest
 import docker
 from arcana.data.formats.medimage import NiftiGzX
-from arcana.core.deploy.image import PipelineImage
+from arcana.deploy.common import PipelineImage
 
 
 BIDS_VALIDATOR_DOCKER = "bids/validator:latest"

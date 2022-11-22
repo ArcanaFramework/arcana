@@ -24,46 +24,42 @@ license_build = {
             "description": "This is a license to test the build structure",
         }
     ],
-    "commands": [
-        {
-            "name": "conctenate-test",
-            "task": "arcana.test.tasks:concatenate",
-            "inputs": [
-                {
-                    "name": "first_file",
-                    "format": "common:Text",
-                    "task_field": "in_file1",
-                    "row_frequency": "session",
-                    "description": "the first file to pass as an input",
-                },
-                {
-                    "name": "second_file",
-                    "format": "common:Text",
-                    "task_field": "in_file2",
-                    "row_frequency": "session",
-                    "description": "the second file to pass as an input",
-                },
-            ],
-            "outputs": [
-                {
-                    "name": "concatenated",
-                    "format": "common:Text",
-                    "task_field": "out_file",
-                    "description": "an output file",
-                }
-            ],
-            "parameters": [
-                {
-                    "name": "number_of_duplicates",
-                    "task_field": "duplicates",
-                    "required": True,
-                    "description": "a parameter",
-                }
-            ],
-            "description": "A pipeline to test Arcana's deployment tool",
-            "row_frequency": "session",
-        },
-    ],
+    "command": {
+        "task": "arcana.test.tasks:concatenate",
+        "description": "A pipeline to test Arcana's deployment tool",
+        "inputs": [
+            {
+                "name": "first_file",
+                "format": "common:Text",
+                "task_field": "in_file1",
+                "description": "the first file to pass as an input",
+            },
+            {
+                "name": "second_file",
+                "format": "common:Text",
+                "task_field": "in_file2",
+                "description": "the second file to pass as an input",
+            },
+        ],
+        "outputs": [
+            {
+                "name": "concatenated",
+                "format": "common:Text",
+                "task_field": "out_file",
+                "description": "an output file",
+            }
+        ],
+        "parameters": [
+            {
+                "name": "number_of_duplicates",
+                "type": "int",
+                "task_field": "duplicates",
+                "required": True,
+                "description": "a parameter",
+            }
+        ],
+        "row_frequency": "session",
+    },
 }
 
 

@@ -6,11 +6,11 @@ import pytest
 import numpy
 import nibabel
 import xnat4tests
-from arcana.data.stores.medimage.xnat.api import Xnat
+from arcana.data.stores.xnat.api import Xnat
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiGzX, NiftiGz, Dicom, NiftiX
-from arcana.test.stores.medimage.xnat import (
+from arcana.test.stores.xnat import (
     make_mutable_dataset,
     TestXnatDatasetBlueprint,
     ResourceBlueprint,
