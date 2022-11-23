@@ -1,4 +1,5 @@
 from pathlib import Path
+import docker.errors
 from arcana.deploy.common import PipelineImage
 
 
@@ -25,37 +26,31 @@ license_build = {
         }
     ],
     "command": {
-        "task": "arcana.test.tasks:concatenate",
+        "task": "arcana.test.tasks:check_license",
         "description": "A pipeline to test Arcana's deployment tool",
         "inputs": [
             {
-                "name": "first_file",
+                "name": "license_file",
                 "format": "common:Text",
-                "task_field": "in_file1",
-                "description": "the first file to pass as an input",
-            },
-            {
-                "name": "second_file",
-                "format": "common:Text",
-                "task_field": "in_file2",
-                "description": "the second file to pass as an input",
+                "task_field": "license_path",
+                "description": "the path to the license",
             },
         ],
         "outputs": [
             {
-                "name": "concatenated",
+                "name": "validated_license",
                 "format": "common:Text",
-                "task_field": "out_file",
-                "description": "an output file",
+                "task_field": "out",
+                "description": "the validated license path",
             }
         ],
         "parameters": [
             {
-                "name": "number_of_duplicates",
-                "type": "int",
-                "task_field": "duplicates",
+                "name": "license_contents",
+                "type": "str",
+                "task_field": "license_contents",
                 "required": True,
-                "description": "a parameter",
+                "description": "the expected contents of the license file",
             }
         ],
         "row_frequency": "session",
@@ -72,6 +67,19 @@ def test_license_installation(work_dir: Path, run_prefix: str, xnat_connect):
     build_dir = work_dir / "build"
     build_dir.mkdir()
     image_spec.make(build_dir)
+
+    dc = docker.from_env()
+
+    args = [
+        "--input",
+        "license_file",
+        license_path,
+        "--parameter",
+        "license_contents",
+        f"'{license_contents}'",
+    ]
+
+    dc.run(image_spec.tag, args)
 
 
 def test_license_download():
