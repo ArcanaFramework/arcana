@@ -10,7 +10,7 @@ from copy import copy
 import re
 import inspect
 from importlib import import_module
-from inspect import isclass
+from inspect import isclass, isfunction
 from itertools import zip_longest
 import pkg_resources
 from pathlib import Path, PosixPath
@@ -233,7 +233,7 @@ def set_loggers(loglevel, pydra_level="warning", depend_level="warning"):
 def class_location(cls, strip_prefix=None):
     """Records the location of a class so it can be loaded later using
     `resolve_class`, in the format <module-name>:<class-name>"""
-    if not isinstance(cls, type):
+    if not (isclass(cls) or isfunction(cls)):
         cls = type(cls)  # Get the class rather than the object
     module_name = cls.__module__
     if strip_prefix and module_name.startswith(strip_prefix):
@@ -1011,19 +1011,33 @@ class ListDictConverter:
 
 
 def format_resolver(format):
+    from arcana.core.data.format import DataItem
+
     if isinstance(format, str):
         format = resolve_class(format, prefixes=["arcana.data.formats"])
-    elif not isinstance(format, type):
+    elif not issubclass(format, DataItem):
         raise ValueError(f"Cannot resolve {format} to data format")
     return format
 
 
 def data_space_resolver(space):
+    from arcana.core.data.space import DataSpace
+
     if isinstance(space, str):
         space = resolve_class(space, prefixes=["arcana.data.spaces"])
-    elif not isinstance(space, type):
+    elif not issubclass(space, DataSpace):
         raise ValueError(f"Cannot resolve {space} to data space")
     return space
+
+
+def task_resolver(task):
+    from pydra.engine.task import TaskBase
+
+    if isinstance(task, str):
+        task = resolve_class(task, prefixes=["arcana.tasks"])
+    elif not isinstance(task, TaskBase):
+        raise ValueError(f"Cannot resolve {task} to data space")
+    return task
 
 
 def extract_file_from_docker_image(

@@ -1,3 +1,3 @@
 from .generic import ContainerImage
-from .pipeline import BasePipelineImage
+from .with_command import ContainerImageWithCommand
 from .metapackage import Metapackage

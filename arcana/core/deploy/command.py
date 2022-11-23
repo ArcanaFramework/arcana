@@ -7,11 +7,13 @@ import typing as ty
 import sys
 from collections import defaultdict
 import attrs
+import pydra.engine.task
 from arcana.core.utils import (
     path2varname,
     ListDictConverter,
     format_resolver,
     data_space_resolver,
+    task_resolver,
     class_location,
 )
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
@@ -24,7 +26,7 @@ import arcana.data.formats.common
 from arcana.core.data.space import DataSpace
 
 if ty.TYPE_CHECKING:
-    from .image import BasePipelineImage
+    from .image import ContainerImageWithCommand
 
 logger = logging.getLogger("arcana")
 
@@ -126,7 +128,7 @@ class ContainerCommand:
     STORE_TYPE = "file"
     DEFAULT_DATA_SPACE = None
 
-    task: str
+    task: pydra.engine.task.TaskBase = attrs.field(converter=task_resolver)
     row_frequency: DataSpace
     data_space: type = attrs.field(converter=data_space_resolver)
     inputs: list[CommandInput] = attrs.field(
@@ -139,7 +141,7 @@ class ContainerCommand:
         factory=list, converter=ListDictConverter(CommandParameter)
     )
     configuration: dict[str, ty.Any] = None
-    image: BasePipelineImage = None
+    image: ContainerImageWithCommand = None
 
     def __attrs_post_init__(self):
         if isinstance(self.row_frequency, str):

@@ -25,12 +25,14 @@ description: >-
 command:
   task: arcana.test.tasks:identity_file
   row_frequency: session
-  inputs
+  inputs:
     - name: in_file
       format: common:Text
+      description: the input file
   outputs:
     - name: out_file
       format: common:Text
+      description: the output file
     """.strip(),
     f"""
 ---
@@ -49,9 +51,29 @@ weight: 10
 |Base image|`{ContainerImage.DEFAULT_BASE_IMAGE}`|
 |Maintainer|author_name (author@email.org)|
 |Info URL|https://example.com|
+|Short description|a test specification|
 
-## Commands
-    """.strip(),
+a test specification
+
+## Command
+|Key|Value|
+|---|-----|
+|Task|arcana.test.tasks:identity_file|
+|Operates on|session|
+#### Inputs
+|Name|Format|Description|
+|----|------|-----------|
+|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the input file|
+
+#### Outputs
+|Name|Format|Description|
+|----|------|-----------|
+|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the output file|
+
+#### Parameters
+|Name|Data type|Description|
+|----|---------|-----------|
+""".strip(),
 )
 
 yaml_constructors_join_spec = DocsFixture(
@@ -68,12 +90,14 @@ description: >-
 command:
   task: arcana.test.tasks:identity_file
   row_frequency: session
-  inputs
+  inputs:
     - name: in_file
       format: common:Text
+      description: the input file
   outputs:
     - name: out_file
       format: common:Text
+      description: the output file
     """.strip(),
     """
 ---
@@ -92,9 +116,29 @@ weight: 10
 |Base image|`abc0.16.1`|
 |Maintainer|author_name (author@email.org)|
 |Info URL|https://example.com|
+|Short description|a test of the YAML join functionality|
 
-## Commands
-    """.strip(),
+a test of the YAML join functionality
+
+## Command
+|Key|Value|
+|---|-----|
+|Task|arcana.test.tasks:identity_file|
+|Operates on|session|
+#### Inputs
+|Name|Format|Description|
+|----|------|-----------|
+|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the input file|
+
+#### Outputs
+|Name|Format|Description|
+|----|------|-----------|
+|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the output file|
+
+#### Parameters
+|Name|Data type|Description|
+|----|---------|-----------|
+""".strip(),
 )
 
 complete_doc_spec = DocsFixture(
@@ -181,8 +225,9 @@ weight: 10
 |Maintainer|author_name (author@email.org)|
 |Info URL|https://example.com|
 |Short description|a description|
+|Known issues|https://example.com|
 
-
+a longer description
 
 ### Required licenses
 |URL|Info|
@@ -191,12 +236,10 @@ weight: 10
 |
 
 ## Command
-
 |Key|Value|
 |---|-----|
-
+|Task|arcana.tasks.bids.app:bids_app|
 |Operates on|session|
-|Known issues|https://example.com|
 #### Inputs
 |Name|Format|Description|
 |----|------|-----------|
@@ -213,8 +256,7 @@ weight: 10
 |Name|Data type|Description|
 |----|---------|-----------|
 |`fmriprep_flags`|`string`|description of flags param|
-
-    """.strip(),
+""".strip(),
     ["freesurfer"],
 )
 

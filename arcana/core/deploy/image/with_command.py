@@ -21,7 +21,7 @@ logger = logging.getLogger("arcana")
 
 
 @attrs.define(kw_only=True)
-class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
+class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
     """
     Parameters
     ----------
@@ -324,15 +324,12 @@ class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
                 "Maintainer", f"{self.authors[0].name} ({self.authors[0].email})"
             )
             tbl_info.write_row("Info URL", self.info_url)
-
-            short_desc = self.long_description or self.description
-            f.write(f"{short_desc}\n\n")
             tbl_info.write_row("Short description", self.description)
-
             for known_issue in self.known_issues:
                 tbl_info.write_row("Known issues", known_issue.url)
 
-            f.write("\n")
+            short_desc = self.long_description or self.description
+            f.write(f"\n{short_desc}\n\n")
 
             if self.licenses:
                 f.write("### Required licenses\n")

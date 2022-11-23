@@ -7,12 +7,12 @@ from neurodocker.reproenv import DockerRenderer
 from arcana.data.stores.xnat import XnatViaCS
 from arcana.core.utils import class_location, DictConverter
 from arcana.core.data.store import DataStore
-from arcana.core.deploy.image import BasePipelineImage
+from arcana.core.deploy.image import ContainerImageWithCommand
 from .command import XnatCSCommand
 
 
 @attrs.define(kw_only=True)
-class XnatCSImage(BasePipelineImage):
+class XnatCSImage(ContainerImageWithCommand):
 
     command: XnatCSCommand = attrs.field(
         converter=DictConverter(
