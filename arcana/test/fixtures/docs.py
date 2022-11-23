@@ -20,7 +20,17 @@ authors:
   - name: author_name
     email: author@email.org
 info_url: https://example.com
-commands: []
+description: >-
+  a test specification
+command:
+  task: arcana.test.tasks:identity_file
+  row_frequency: session
+  inputs
+    - name: in_file
+      format: common:Text
+  outputs:
+    - name: out_file
+      format: common:Text
     """.strip(),
     f"""
 ---
@@ -33,6 +43,7 @@ weight: 10
 ## Package Info
 |Key|Value|
 |---|-----|
+|Name|spec|
 |App version|0.16.1|
 |Spec version|1.10|
 |Base image|`{ContainerImage.DEFAULT_BASE_IMAGE}`|
@@ -50,9 +61,19 @@ spec_version: '1.10'
 authors:
   - name: author_name
     email: author@email.org
-info_url: https://example.com
 base_image: !join [ 'abc', *version ]
-commands: []
+info_url: https://example.com
+description: >-
+  a test of the YAML join functionality
+command:
+  task: arcana.test.tasks:identity_file
+  row_frequency: session
+  inputs
+    - name: in_file
+      format: common:Text
+  outputs:
+    - name: out_file
+      format: common:Text
     """.strip(),
     """
 ---
@@ -65,6 +86,7 @@ weight: 10
 ## Package Info
 |Key|Value|
 |---|-----|
+|Name|spec|
 |App version|0.16.1|
 |Spec version|1.10|
 |Base image|`abc0.16.1`|
@@ -75,38 +97,6 @@ weight: 10
     """.strip(),
 )
 
-# yaml_constructors_concat_spec = DocsFixture(
-#     """
-# version: &version '0.16.1'
-# spec_version: '1.10'
-# base_image: !concat [ 'abc', *version ]
-# authors:
-#   - name: author_name
-#     email: author@email.org
-# info_url: https://example.com
-# commands: []
-#     """.strip(),
-#     """
-# ---
-# source_file: spec.yaml
-# title: spec
-# weight: 10
-
-# ---
-
-# ## Package Info
-# |Key|Value|
-# |---|-----|
-# |App version|0.16.1|
-# |Spec version|1.10|
-# |Base image|`abc0.16.1`|
-# |Maintainer|author_name (author@email.org)|
-# |Info URL|https://example.com|
-
-# ## Commands
-#     """.strip(),
-# )
-
 complete_doc_spec = DocsFixture(
     """
 version: &version '0.16.1'
@@ -114,7 +104,12 @@ spec_version: '1.10'
 authors:
   - name: author_name
     email: author@email.org
-base_image: !join [ 'abc', *version ]
+base_image: !join [ 'abc:', *version ]
+description: a description
+long_description: >-
+  a longer description
+known_issues:
+  - url: https://example.com
 info_url: https://example.com
 package_manager: apt
 system_packages:
@@ -132,14 +127,8 @@ licenses:
     description: >
       license description
     info_url: http://path.to.license.provider.org/licenses
-commands:
-  - name: mriqc
+command:
     task: arcana.tasks.bids:bids_app
-    description: a description
-    long_description: >-
-      a longer description
-    known_issues:
-      - url: https://example.com
     inputs: &inputs
       - name: T1w
         path: anat/T1w
@@ -185,11 +174,15 @@ weight: 10
 ## Package Info
 |Key|Value|
 |---|-----|
+|Name|spec|
 |App version|0.16.1|
 |Spec version|1.10|
-|Base image|`abc0.16.1`|
+|Base image|`abc:0.16.1`|
 |Maintainer|author_name (author@email.org)|
 |Info URL|https://example.com|
+|Short description|a description|
+
+
 
 ### Required licenses
 |URL|Info|
@@ -197,13 +190,11 @@ weight: 10
 |`http://path.to.license.provider.org/licenses`|license description
 |
 
-## Commands
-### mriqc
-a longer description
+## Command
 
 |Key|Value|
 |---|-----|
-|Short description|a description|
+
 |Operates on|session|
 |Known issues|https://example.com|
 #### Inputs

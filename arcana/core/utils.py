@@ -9,15 +9,18 @@ from enum import Enum
 from copy import copy
 import re
 import inspect
-from pathlib import Path
 from importlib import import_module
 from inspect import isclass
 from itertools import zip_longest
 import pkg_resources
+from pathlib import Path, PosixPath
+import tempfile
+import tarfile
+import logging
+import docker
 import os.path
 from contextlib import contextmanager
 from collections.abc import Iterable
-import logging
 import cloudpickle as cp
 import attrs
 from pydra.engine.core import Workflow, LazyField, TaskBase
@@ -30,6 +33,9 @@ from arcana._version import get_versions
 
 __version__ = get_versions()["version"]
 del get_versions
+
+
+logger = logging.getLogger("arcana")
 
 
 PIPELINE_ANNOTATIONS = "__arcana_pipeline__"
@@ -588,7 +594,7 @@ def package_from_module(module: Sequence[str]):
             if not module_paths:  # If there are no more modules to find pkgs for
                 break
     if module_paths:
-        paths_str = "', '".join(module_paths)
+        paths_str = "', '".join(str(p) for p in module_paths)
         raise ArcanaUsageError(f"Did not find package for {paths_str}")
     return tuple(packages) if as_tuple else next(iter(packages))
 
@@ -971,10 +977,18 @@ def show_workflow_errors(
 class DictConverter:
 
     klass: type
+    allow_none: bool = False
 
     def __call__(self, value):
+        if value is None:
+            if self.allow_none:
+                return None
+            else:
+                raise ValueError(
+                    f"None values not accepted in automatic conversion to {self.klass}"
+                )
         if isinstance(value, dict):
-            value = self.klass(**dict)
+            value = self.klass(**value)
         elif not isinstance(value, self.klass):
             raise ValueError(f"Cannot convert {value} into {self.klass}")
         return value
@@ -1010,6 +1024,54 @@ def data_space_resolver(space):
     elif not isinstance(space, type):
         raise ValueError(f"Cannot resolve {space} to data space")
     return space
+
+
+def extract_file_from_docker_image(
+    image_tag, file_path: PosixPath, out_path: Path = None
+) -> Path:
+    """Extracts a file from a Docker image onto the local host
+
+    Parameters
+    ----------
+    image_tag : str
+        the name/tag of the image to extract the file from
+    file_path : PosixPath
+        the path to the file inside the image
+
+    Returns
+    -------
+    Path or None
+        path to the extracted file or None if image doesn't exist
+    """
+    tmp_dir = Path(tempfile.mkdtemp())
+    if out_path is None:
+        out_path = tmp_dir / "extracted-dir"
+    dc = docker.from_env()
+    try:
+        dc.api.pull(image_tag)
+    except docker.errors.APIError as e:
+        if e.response.status_code in (404, 500):
+            return None
+        else:
+            raise
+    else:
+        container = dc.containers.get(dc.api.create_container(image_tag)["Id"])
+        try:
+            tarfile_path = tmp_dir / "tar-file.tar.gz"
+            with open(tarfile_path, mode="w+b") as f:
+                try:
+                    stream, _ = dc.api.get_archive(container.id, str(file_path))
+                except docker.errors.NotFound:
+                    pass
+                else:
+                    for chunk in stream:
+                        f.write(chunk)
+                    f.flush()
+        finally:
+            container.remove()
+        with tarfile.open(tarfile_path) as f:
+            f.extractall(out_path)
+    return out_path
 
 
 # Minimum version of Arcana that this version can read the serialisation from

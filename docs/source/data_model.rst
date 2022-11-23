@@ -39,13 +39,13 @@ For instructions on how to add support for new systems see :ref:`alternative_sto
 
 To configure access to a store via the CLI use the ':ref:`arcana store add`' command.
 The store type is specified by the path to the data store sub-class,
-*<module-path>:<class-name>*,  e.g. ``arcana.data.stores.medimage:Xnat``.
+*<module-path>:<class-name>*,  e.g. ``arcana.data.stores.xnat:Xnat``.
 However, if the format is in a submodule of ``arcana.data.stores`` then that
 prefix can be dropped for convenience, e.g. ``mediamge:Xnat``.
 
 .. code-block:: console
 
-    $ arcana store add xnat-central medimage:Xnat https://central.xnat.org \
+    $ arcana store add xnat-central xnat:Xnat https://central.xnat.org \
       --user user123 --cache /work/xnat-cache
     Password:
 

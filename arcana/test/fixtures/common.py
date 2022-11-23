@@ -219,7 +219,6 @@ def concatenate_task(request):
 @pytest.fixture(scope="session")
 def command_spec():
     return {
-        "name": "conctenate-test",
         "task": "arcana.test.tasks:concatenate",
         "inputs": [
             {
@@ -253,7 +252,6 @@ def command_spec():
                 "description": "a parameter",
             }
         ],
-        "description": "A pipeline to test Arcana's deployment tool",
         "row_frequency": "session",
     }
 

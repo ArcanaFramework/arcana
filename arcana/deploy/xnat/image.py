@@ -71,26 +71,24 @@ class XnatCSImage(BasePipelineImage):
     def add_entrypoint(self, dockerfile: DockerRenderer, build_dir: Path):
         pass  # Don't need to add entrypoint as the command line is specified in the command JSON
 
-    def copy_command_ref(self, dockerfile: DockerRenderer, xnat_commands, build_dir):
+    def copy_command_ref(self, dockerfile: DockerRenderer, xnat_command, build_dir):
         """Copy the generated command JSON within the Docker image for future reference
 
         Parameters
         ----------
         dockerfile : DockerRenderer
             Neurodocker renderer to build
-        xnat_commands : list[dict]
-            XNAT command JSONs to copy into the Dockerfile for reference
+        xnat_command : dict[str, Any]
+            XNAT command to write to file within the image for future reference
         build_dir : Path
             path to build directory
         """
         # Copy command JSON inside dockerfile for ease of reference
-        cmds_dir = build_dir / "xnat_commands"
-        cmds_dir.mkdir(exist_ok=True)
-        for cmd in xnat_commands:
-            fname = cmd.get("name", "command") + ".json"
-            with open(cmds_dir / fname, "w") as f:
-                json.dump(cmd, f, indent="    ")
-        dockerfile.copy(source=["./xnat_commands"], destination="/xnat_commands")
+        with open(build_dir / "xnat_command.json", "w") as f:
+            json.dump(xnat_command, f, indent="    ")
+        dockerfile.copy(
+            source=["./xnat_command.json"], destination="/xnat_command.json"
+        )
 
     def save_store_config(
         self, dockerfile: DockerRenderer, build_dir: Path, test_config=False

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import setuptools.sandbox
 import typing as ty
 from pathlib import Path
@@ -58,6 +59,9 @@ class ContainerImage:
         with any additional keyword arguments required by the template
     registry : str, optional
         the container registry the image is to be installed at
+    readme : str, optional
+        text to include in the image README file
+    labels : dict[str, str]
     """
 
     DEFAULT_BASE_IMAGE = "ubuntu:kinetic"
@@ -79,7 +83,7 @@ class ContainerImage:
     )
     registry: str = DOCKER_HUB
     readme: str = None
-    labels: ty.Dict[str, str] = None
+    labels: dict[str, str] = None
 
     @property
     def tag(self):

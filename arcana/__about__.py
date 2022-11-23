@@ -7,8 +7,8 @@ CODE_URL = f"https://github.com/australian-imaging-service/{PACKAGE_NAME}"
 __authors__ = [("Thomas G. Close", "tom.g.close@gmail.com")]
 
 install_requires = [
+    "pydra>=0.20",  # @ git+https://github.com/Australian-Imaging-Service/pydra.git@0.19+ais1",
     "docker>=5.0.2",
-    "jq>=1.2.2",
     "click>=7.1.2",  # 8.1.3",
     "PyYAML>=6.0",
     "natsort>=7.1.1",
@@ -16,11 +16,11 @@ install_requires = [
     "numexpr>=1.10.1",
     "importlib-metadata>=1.4",
     "deepdiff>=3.3",
+    "neurodocker>=0.9.1",
+    "jq>=1.2.2",
     "pydicom>=1.0.2",
     "nibabel>=3.2.1",
-    "neurodocker>=0.9.1",
     "xnat>=0.3.17",
-    "pydra>=0.20",  # @ git+https://github.com/Australian-Imaging-Service/pydra.git@0.19+ais1",
     "pydra-dcm2niix>=1.2.0",
     "pydra-mrtrix3>=0.2",
 ]

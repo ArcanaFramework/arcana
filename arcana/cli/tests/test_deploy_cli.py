@@ -47,6 +47,8 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         "python_packages": [{"name": "pytest"}],  # just to test it out
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
         "info_url": "http://concatenate.readthefakedocs.io",
+        "description": "a test image spec",
+        "name": "test_deploy_build_cli",
     }
 
     build_dir = work_dir / "build"
@@ -126,6 +128,8 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         "spec_version": "1",
         "system_packages": [],
         "python_packages": [],
+        "description": "a test image",
+        "name": "test_deploy_rebuild_cli",
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
         "info_url": "http://concatenate.readthefakedocs.io",
     }
@@ -515,11 +519,7 @@ def test_pull_images(
     PKG_VERSION = "1.0"
     WRAPPER_VERSION = "1-pullimages"
 
-    forward_command_spec = copy(command_spec)
-    forward_command_spec["name"] = "forward_concat-pullimages"
-
     reverse_command_spec = copy(command_spec)
-    reverse_command_spec["name"] = "reverse_concat-pullimages"
     reverse_command_spec["task"] = "arcana.test.tasks:reverse_concatenate"
 
     spec_dir = work_dir / DOCKER_ORG
@@ -529,9 +529,13 @@ def test_pull_images(
     expected_images = []
     expected_commands = []
 
-    for cmd_spec in (forward_command_spec, reverse_command_spec):
+    for name, cmd_spec in (
+        ("forward_concat-pullimages", command_spec),
+        ("reverse_concat-pullimages", reverse_command_spec),
+    ):
 
         image_spec = {
+            "name": name,
             "command": cmd_spec,
             "version": PKG_VERSION,
             "spec_version": WRAPPER_VERSION,
@@ -539,16 +543,17 @@ def test_pull_images(
             "python_packages": [],
             "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
             "info_url": "http://concatenate.readthefakedocs.io",
+            "description": "a command to test build process",
         }
 
-        with open((pkg_path / cmd_spec["name"]).with_suffix(".yaml"), "w") as f:
+        with open((pkg_path / name).with_suffix(".yaml"), "w") as f:
             yaml.dump(image_spec, f)
 
         expected_images.append(
             f"{docker_registry_for_xnat_uri}/{DOCKER_ORG}/{IMAGE_GROUP_NAME}"
-            f".{cmd_spec['name']}:{PKG_VERSION}-{WRAPPER_VERSION}"
+            f".{name}:{PKG_VERSION}-{WRAPPER_VERSION}"
         )
-        expected_commands.append(cmd_spec["name"])
+        expected_commands.append(f"{IMAGE_GROUP_NAME}.{name}")
 
     expected_images.sort()
     expected_commands.sort()

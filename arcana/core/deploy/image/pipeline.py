@@ -10,14 +10,11 @@ from urllib.parse import urlparse
 from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
-from arcana.core.utils import DictConverter, ListDictConverter
+from arcana.core.utils import DictConverter, ListDictConverter, class_location
 from arcana.data.formats import Directory
 from ..command import ContainerCommand
 from .generic import ContainerImage
-from .components import (
-    ContainerAuthor,
-    License,
-)
+from .components import ContainerAuthor, License, KnownIssue
 
 
 logger = logging.getLogger("arcana")
@@ -26,18 +23,14 @@ logger = logging.getLogger("arcana")
 @attrs.define(kw_only=True)
 class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
     """
+    Parameters
+    ----------
     name : str
         name of the package/pipeline
     version : str
         version of the package/pipeline
     org : str
         the organisation the image will be tagged within
-    info_url : str
-        the url of a documentation page describing the package
-    authors : list[ContainerAuthor]
-        list of authors of the package
-    commands : list[ContainerCommand]
-        list of available commands that are installed within the image
     base_image : str, optional
         the base image to build from
     package_manager : str, optional
@@ -48,6 +41,16 @@ class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
     system_packages: Iterable[str], optional
         Name and version of operating system packages (see Neurodocker) to add
         to the image
+    registry : str, optional
+        the container registry the image is to be installed at
+    info_url : str
+        the url of a documentation page describing the package
+    authors : list[ContainerAuthor]
+        list of authors of the package
+    description : str
+        single line description to be when referring to the pipeline in UIs
+    command : ContainerCommand
+        description of the command that is to be run within the image
     licenses : list[dict[str, str]], optional
         specification of licenses required by the commands in the container. Each dict
         should contain the 'name' of the license and the 'destination' it should be
@@ -57,8 +60,12 @@ class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
         version hasn't been updated but the specification has been altered, the spec
         version should be updated (otherwise builds will fail). The spec version should
         reset to "0" if the package version is updated.
-    registry : str, optional
-        the container registry the image is to be installed at
+    long_description : str
+        Multi-line description of the pipeline used in documentation
+    known_issues : dict
+        Any known issues with the pipeline. To be used in auto-doc generation
+    loaded_from : Path
+        the file the spec was loaded from, if applicable
     """
 
     info_url: str = attrs.field()
@@ -66,10 +73,15 @@ class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
     authors: ty.List[ContainerAuthor] = attrs.field(
         converter=ListDictConverter(ContainerAuthor)
     )
+    description: str
     command: ContainerCommand = attrs.field(converter=DictConverter(ContainerCommand))
     licenses: ty.List[License] = attrs.field(
         factory=list, converter=ListDictConverter(License)
     )
+    known_issues: list[KnownIssue] = attrs.field(
+        factory=list, converter=ListDictConverter(KnownIssue)
+    )
+    long_description: str = ""
     loaded_from: Path = None
 
     def __attrs_post_init__(self):
@@ -304,6 +316,7 @@ class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
 
             f.write("## Package Info\n")
             tbl_info = MarkdownTable(f, "Key", "Value")
+            tbl_info.write_row("Name", self.name)
             tbl_info.write_row("App version", self.version)
             tbl_info.write_row("Spec version", self.spec_version)
             tbl_info.write_row("Base image", escaped_md(self.base_image))
@@ -311,6 +324,13 @@ class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
                 "Maintainer", f"{self.authors[0].name} ({self.authors[0].email})"
             )
             tbl_info.write_row("Info URL", self.info_url)
+
+            short_desc = self.long_description or self.description
+            f.write(f"{short_desc}\n\n")
+            tbl_info.write_row("Short description", self.description)
+
+            for known_issue in self.known_issues:
+                tbl_info.write_row("Known issues", known_issue.url)
 
             f.write("\n")
 
@@ -328,20 +348,13 @@ class BasePipelineImage(ContainerImage, metaclass=ABCMeta):
 
             f.write("## Command\n")
 
-            f.write(f"### {self.command.name}\n")
-
-            short_desc = self.command.long_description or self.command.description
-            f.write(f"{short_desc}\n\n")
-
             tbl_cmd = MarkdownTable(f, "Key", "Value")
-            tbl_cmd.write_row("Short description", self.command.description)
+
             # if self.command.configuration is not None:
             #     config = self.command.configuration
             #     # configuration keys are variable depending on the workflow class
+            tbl_cmd.write_row("Task", class_location(self.command.task))
             tbl_cmd.write_row("Operates on", self.command.row_frequency.name)
-
-            for known_issue in self.command.known_issues:
-                tbl_cmd.write_row("Known issues", known_issue.url)
 
             f.write("#### Inputs\n")
             tbl_inputs = MarkdownTable(f, "Name", "Format", "Description")

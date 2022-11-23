@@ -34,6 +34,12 @@ class ContainerAuthor:
 
 
 @attrs.define
+class KnownIssue:
+
+    url: str
+
+
+@attrs.define
 class License:
 
     name: str

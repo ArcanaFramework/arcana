@@ -120,31 +120,13 @@ class CommandParameter:
         return path2varname(self.name)
 
 
-@attrs.define
-class KnownIssue:
-
-    url: str
-
-
 @attrs.define(kw_only=True)
 class ContainerCommand:
-    """
-    Parameters
-    ----------
-    long_description : str
-        A long description of the pipeline, used in documentation and ignored
-        here. Only included in the signature so that an error isn't thrown when
-        it is encountered.
-    known_issues : dict
-        Any known issues with the pipeline. To be used in auto-doc generation
-    """
 
     STORE_TYPE = "file"
     DEFAULT_DATA_SPACE = None
 
-    name: str
     task: str
-    description: str
     row_frequency: DataSpace
     data_space: type = attrs.field(converter=data_space_resolver)
     inputs: list[CommandInput] = attrs.field(
@@ -157,10 +139,6 @@ class ContainerCommand:
         factory=list, converter=ListDictConverter(CommandParameter)
     )
     configuration: dict[str, ty.Any] = None
-    known_issues: list[KnownIssue] = attrs.field(
-        factory=list, converter=ListDictConverter(KnownIssue)
-    )
-    long_description: str = ""
     image: BasePipelineImage = None
 
     def __attrs_post_init__(self):
@@ -169,6 +147,14 @@ class ContainerCommand:
                 self.row_frequency = DataSpace.fromstr(self.row_frequency)
             except ValueError:
                 self.row_frequency = self.data_space[self.row_frequency]
+
+    @property
+    def name(self):
+        if self.image is None:
+            raise RuntimeError(
+                f"Cannot access name of unbound container commands {self}"
+            )
+        return self.image.name
 
     def command_line(
         self,

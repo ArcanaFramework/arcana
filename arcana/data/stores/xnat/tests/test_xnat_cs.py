@@ -31,6 +31,7 @@ def run_spec(
             "org": "arcana-tests",
             "name": "concatenate-xnat-cs",
             "version": "1.0",
+            "description": "A pipeline to test Arcana's deployment tool",
             "command": command_spec,
             "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
             "info_url": "http://concatenate.readthefakedocs.io",
@@ -53,6 +54,7 @@ def run_spec(
             "org": "arcana-tests",
             "name": "bids-app-xnat-cs",
             "version": "1.0",
+            "description": "A pipeline to test wrapping of BIDS apps",
             "base_image": mock_bids_app_image,
             "command": bids_command_spec,
             "authors": [
@@ -125,11 +127,10 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
     build_spec = run_spec["build"]
     dataset = run_spec["dataset"]
     params = run_spec["params"]
-    command_spec = build_spec["commands"][0]
     blueprint = dataset.__annotations__["blueprint"]
 
     # Append run_prefix to command name to avoid clash with previous test runs
-    command_spec["name"] = "xnat-cs-test" + run_prefix
+    build_spec["name"] = "xnat-cs-test" + run_prefix
 
     image_spec = XnatCSImage(**build_spec)
 

@@ -23,7 +23,7 @@ from arcana.core.deploy.image.components import License
 from arcana.deploy.xnat.image import XnatCSImage
 from arcana.deploy.xnat.command import XnatCSCommand
 from arcana.exceptions import ArcanaBuildError
-from arcana.core.deploy.utils import extract_file_from_docker_image
+from arcana.core.utils import extract_file_from_docker_image
 
 
 PULL_IMAGES_XNAT_HOST_KEY = "XNAT_HOST"
