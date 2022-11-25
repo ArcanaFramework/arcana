@@ -745,7 +745,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
     "--input-config",
     nargs=4,
     default=(),
-    metavar="<col-name> <col-format> <pydra-field> <format>",
+    metavar="<col-name> <stored-format> <field> <format>",
     multiple=True,
     type=str,
     help=(
@@ -759,7 +759,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
     "--output-config",
     nargs=4,
     default=(),
-    metavar="<col-name> <col-format> <pydra-field> <format>",
+    metavar="<col-name> <stored-format> <field> <format>",
     multiple=True,
     type=str,
     help=(
@@ -767,6 +767,15 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
         "in a single step. The sink column be in the same format as produced "
         "by the task/workflow"
     ),
+)
+@click.option(
+    "--parameter-config",
+    nargs=4,
+    default=(),
+    metavar="<col-name> <field> <type>",
+    multiple=True,
+    type=str,
+    help=("Configure a parameter that can be passed to the workflow"),
 )
 @click.option(
     "--row-frequency",
@@ -878,6 +887,7 @@ def run_in_image(
     output,
     input_config,
     output_config,
+    parameter_config,
     row_frequency,
     overwrite,
     work_dir,
@@ -914,14 +924,15 @@ def run_in_image(
     download_licenses = dict(download_license)
 
     XnatCSCommand.run(
+        task_cls=task_cls,
         dataset_id_str=dataset_id_str,
         pipeline_name=pipeline_name,
-        task_cls=task_cls,
         inputs=input,
         outputs=output,
         parameters=parameter,
         input_configs=input_config,
         output_configs=output_config,
+        parameter_configs=parameter_config,
         row_frequency=row_frequency,
         overwrite=overwrite,
         plugin=plugin,

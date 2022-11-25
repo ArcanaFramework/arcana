@@ -121,6 +121,12 @@ class CommandParameter:
     def task_field_default(self):
         return path2varname(self.name)
 
+    def command_config_arg(self):
+        """a formatted command argument that can be passed to the
+        `arcana deploy run-in-image` command
+        """
+        return f"--parameter-config {self.name} {self.task_field} {class_location(self.type)}"
+
 
 @attrs.define(kw_only=True)
 class ContainerCommand:
@@ -190,6 +196,7 @@ class ContainerCommand:
             + " ".join(
                 [i.command_config_arg() for i in self.inputs]
                 + [o.command_config_arg() for o in self.outputs]
+                + [p.command_config_arg() for p in self.parameters]
                 + self.configuration_args()
                 + self.license_args()
                 + list(options)
@@ -225,11 +232,12 @@ class ContainerCommand:
         dataset_id_str: str,
         pipeline_name: str,
         task_cls: type,
-        parameters: list[tuple[str, str, str]],
         inputs,
         outputs,
+        parameters: list[tuple[str, str]],
         input_configs,
         output_configs,
+        parameter_configs,
         row_frequency,
         overwrite,
         plugin,
@@ -304,7 +312,11 @@ class ContainerCommand:
                     f"Skipping '{col_name}' source column as no input was provided"
                 )
                 continue
-            pipeline_inputs.append(PipelineInput(col_name, task_field, format))
+            pipeline_inputs.append(
+                PipelineInput(
+                    col_name=col_name, task_field=task_field, required_format=format
+                )
+            )
             if DataRow in (col_format, format):
                 if (col_format, format) != (DataRow, DataRow):
                     raise ArcanaUsageError(
@@ -377,9 +389,10 @@ class ContainerCommand:
 
         task = task_cls(**kwargs)
 
-        for pname, pval in parameters:
-            if pval != "":
-                setattr(task.inputs, pname, parse_value(pval))
+        parameter_values = dict(parameters)
+        for param_name, param_field, param_type in parameter_configs:
+            param_type = resolve_class(param_type)
+            setattr(task.inputs, param_field, param_type(parameter_values[param_name]))
 
         if pipeline_name in dataset.pipelines and not overwrite:
             pipeline = dataset.pipelines[pipeline_name]
