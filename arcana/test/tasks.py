@@ -224,7 +224,7 @@ def contents_are_numeric(in_file: Path) -> bool:
 
 
 @mark.task
-def check_license(expected_license_path: Path, expected_license_contents: Path) -> Path:
+def check_license(expected_license_path: str, expected_license_contents: Path) -> Path:
     """Checks the `expected_license_path` to see if there is a file with the same contents
     as that of `expected_license_contents`
 

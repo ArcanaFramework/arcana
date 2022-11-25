@@ -714,6 +714,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 @click.option(
     "--input",
     "-i",
+    "inputs",
     nargs=2,
     default=(),
     metavar="<col-name> <match-criteria>",
@@ -724,6 +725,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 @click.option(
     "--output",
     "-o",
+    "outputs",
     nargs=2,
     default=(),
     metavar="<col-name> <output-path>",
@@ -734,6 +736,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 @click.option(
     "--parameter",
     "-p",
+    "parameters",
     nargs=2,
     default=(),
     metavar="<name> <value>",
@@ -743,6 +746,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 )
 @click.option(
     "--input-config",
+    "input_configs",
     nargs=4,
     default=(),
     metavar="<col-name> <stored-format> <field> <format>",
@@ -757,6 +761,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 )
 @click.option(
     "--output-config",
+    "output_configs",
     nargs=4,
     default=(),
     metavar="<col-name> <stored-format> <field> <format>",
@@ -770,7 +775,8 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 )
 @click.option(
     "--parameter-config",
-    nargs=4,
+    "parameter_configs",
+    nargs=3,
     default=(),
     metavar="<col-name> <field> <type>",
     multiple=True,
