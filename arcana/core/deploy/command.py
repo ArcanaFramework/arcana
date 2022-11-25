@@ -115,7 +115,7 @@ class CommandParameter:
     task_field: str = attrs.field()  # Name of parameter to expose in Pydra task
     type: type = str
     required: bool = False
-    default = None
+    default = attrs.NOTHING
 
     @task_field.default
     def task_field_default(self):
@@ -125,7 +125,10 @@ class CommandParameter:
         """a formatted command argument that can be passed to the
         `arcana deploy run-in-image` command
         """
-        return f"--parameter-config {self.name} {self.task_field} {class_location(self.type)}"
+        return (
+            f"--parameter-config {self.name} {self.task_field} "
+            f"{class_location(self.type)} {self.default}"
+        )
 
 
 @attrs.define(kw_only=True)
@@ -390,9 +393,17 @@ class ContainerCommand:
         task = task_cls(**kwargs)
 
         parameter_values = dict(parameters)
-        for param_name, param_field, param_type in parameter_configs:
+        for param_name, param_field, param_type, param_default in parameter_configs:
             param_type = resolve_class(param_type)
-            setattr(task.inputs, param_field, param_type(parameter_values[param_name]))
+            try:
+                param_value = param_type(parameter_values[param_name])
+            except KeyError:
+                if param_default is attrs.NOTHING:
+                    raise RuntimeError(
+                        f"A value must be provided to required '{param_name}' parameter"
+                    )
+                param_value = param_default
+            setattr(task.inputs, param_field, param_value)
 
         if pipeline_name in dataset.pipelines and not overwrite:
             pipeline = dataset.pipelines[pipeline_name]

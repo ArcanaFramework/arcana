@@ -81,7 +81,7 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
     description: str
     command: ContainerCommand = attrs.field(converter=DictConverter(ContainerCommand))
     licenses: dict[str, License] = attrs.field(
-        factory=list, converter=DictDictConverter(License)
+        factory=dict, converter=DictDictConverter(License)
     )
     known_issues: list[KnownIssue] = attrs.field(
         factory=list, converter=ListDictConverter(KnownIssue)

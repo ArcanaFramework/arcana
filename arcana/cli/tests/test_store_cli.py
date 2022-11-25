@@ -112,7 +112,7 @@ def test_store_cli_encrypt_credentials(xnat_repository, cli_runner, work_dir):
         assert result.exit_code == 0, show_cli_trace(result)
         # Check credentials have been encrypted
         loaded_xnat_repository = DataStore.load("test-xnat")
-        assert loaded_xnat_repository.password == ""
+        assert loaded_xnat_repository.password != ""
         assert loaded_xnat_repository.password is not xnat_repository.password
-        assert loaded_xnat_repository.user == ""
+        assert loaded_xnat_repository.user != ""
         assert loaded_xnat_repository.user is not xnat_repository.user

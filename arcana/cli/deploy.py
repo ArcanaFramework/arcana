@@ -776,9 +776,9 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 @click.option(
     "--parameter-config",
     "parameter_configs",
-    nargs=3,
+    nargs=4,
     default=(),
-    metavar="<col-name> <field> <type>",
+    metavar="<col-name> <field> <type> <default>",
     multiple=True,
     type=str,
     help=("Configure a parameter that can be passed to the workflow"),
