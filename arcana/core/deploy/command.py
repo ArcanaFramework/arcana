@@ -192,9 +192,9 @@ class ContainerCommand:
                 + [o.command_config_arg() for o in self.outputs]
                 + self.configuration_args()
                 + self.license_args()
-                + options
+                + list(options)
             )
-            + f" {self.task} {self.name} "
+            + f" {class_location(self.task)} {self.name} "
         )
         if dataset_id_str is not None:
             cmdline += f"{dataset_id_str} "
@@ -214,9 +214,9 @@ class ContainerCommand:
 
     def license_args(self):
         cmd_args = []
-        for lic in self.image.licenses:
+        for lic_name, lic in self.image.licenses.items():
             if lic.source is None:
-                cmd_args.append(f"--download-license {lic.name} {lic.destination}")
+                cmd_args.append(f"--download-license {lic_name} {lic.destination}")
         return cmd_args
 
     @classmethod
@@ -247,9 +247,6 @@ class ContainerCommand:
         keep_running_on_errors=False,
     ):
 
-        if dataset_hierarchy is None:
-            dataset_hierarchy = dataset_space.default.span()
-
         # ApplyApply a pipeline to a dataset (creating the dataset if necessary)
 
         try:
@@ -261,19 +258,24 @@ class ContainerCommand:
             if dataset_name is not None:
                 name = dataset_name
 
-            if dataset_hierarchy is None or dataset_space is None:
+            if dataset_space is None:
                 raise RuntimeError(
                     f"If the dataset ID string ('{dataset_id_str}') doesn't "
-                    "reference an existing dataset '--dataset-hierarchy' and "
-                    "'--dataset-space' must be provided"
+                    "reference an existing dataset '--dataset-space' must be provided"
                 )
 
             store = DataStore.load(store_name, cache_dir=store_cache_dir)
             space = resolve_class(dataset_space, ["arcana.data.spaces"])
-            hierarchy = dataset_hierarchy.split(",")
+
+            if dataset_hierarchy is None:
+                hierarchy = space.default().span()
+            else:
+                hierarchy = dataset_hierarchy.split(",")
 
             try:
-                dataset = store.load_dataset(id, name)
+                dataset = store.load_dataset(
+                    id, name
+                )  # FIXME: Does this need to be here or this covered by L253??
             except KeyError:
                 dataset = store.new_dataset(id, hierarchy=hierarchy, space=space)
 

@@ -10,7 +10,12 @@ from urllib.parse import urlparse
 from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
-from arcana.core.utils import DictConverter, ListDictConverter, class_location
+from arcana.core.utils import (
+    DictConverter,
+    ListDictConverter,
+    DictDictConverter,
+    class_location,
+)
 from arcana.data.formats import Directory
 from ..command import ContainerCommand
 from .generic import ContainerImage
@@ -75,8 +80,8 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
     )
     description: str
     command: ContainerCommand = attrs.field(converter=DictConverter(ContainerCommand))
-    licenses: ty.List[License] = attrs.field(
-        factory=list, converter=ListDictConverter(License)
+    licenses: dict[str, License] = attrs.field(
+        factory=list, converter=DictDictConverter(License)
     )
     known_issues: list[KnownIssue] = attrs.field(
         factory=list, converter=ListDictConverter(KnownIssue)
@@ -155,9 +160,9 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         # Copy licenses into build directory
         license_build_dir = build_dir / "licenses"
         license_build_dir.mkdir()
-        for lic in self.licenses:
+        for lic_name, lic in self.licenses.items():
             if lic.source:
-                build_path = license_build_dir / lic.name
+                build_path = license_build_dir / lic_name
                 shutil.copyfile(lic.source, build_path)
                 dockerfile.copy(
                     source=[str(build_path.relative_to(build_dir))],
@@ -168,8 +173,8 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
                     "License file for '%s' was not provided, will attempt to download "
                     "from '%s' dataset-level column or site-wide license dataset at "
                     "runtime",
-                    lic.name,
-                    lic.col_name,
+                    lic_name,
+                    lic.column_name(lic_name),
                 )
 
     def write_spec(self, dockerfile: DockerRenderer, build_dir):
@@ -257,13 +262,13 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         image = cls(**dct)
 
         if license_paths is not None:
-            for lic in image.licenses:
+            for lic_name, lic in image.licenses.items():
                 try:
-                    lic.source = license_paths[lic.name]
+                    lic.source = license_paths[lic_name]
                 except KeyError:
-                    if lic.name not in licenses_to_download:
+                    if lic_name not in licenses_to_download:
                         raise RuntimeError(
-                            f"{lic.name} license has not been provided or specified as "
+                            f"{lic_name} license has not been provided or specified as "
                             "being to be downloaded at runtime"
                         )
 
@@ -334,9 +339,10 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
             if self.licenses:
                 f.write("### Required licenses\n")
 
-                tbl_lic = MarkdownTable(f, "URL", "Info")
-                for lic in self.licenses:
+                tbl_lic = MarkdownTable(f, "Name", "URL", "Description")
+                for lic_name, lic in self.licenses.items():
                     tbl_lic.write_row(
+                        lic_name,
                         escaped_md(lic.info_url),
                         lic.description,
                     )

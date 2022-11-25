@@ -42,7 +42,6 @@ class KnownIssue:
 @attrs.define
 class License:
 
-    name: str
     destination: str
     description: str
     info_url: str = attrs.field()
@@ -63,13 +62,13 @@ class License:
                 f"Source file for {self.name} license, '{str(source)}', does not exist"
             )
 
-    @property
-    def col_name(self):
+    @classmethod
+    def column_name(self, name):
         """The column name (and resource name) for the license if it is to be downloaded
         from the source dataset"""
-        return self.name + self.COLUMN_SUFFIX
+        return name + self.COLUMN_SUFFIX
 
-    COLUMN_SUFFIX = "_license"
+    COLUMN_SUFFIX = "_LICENSE"
 
 
 @attrs.define

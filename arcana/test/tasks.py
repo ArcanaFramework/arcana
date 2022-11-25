@@ -224,8 +224,29 @@ def contents_are_numeric(in_file: Path) -> bool:
 
 
 @mark.task
-def check_license(license_path: Path, license_contents: str) -> bool:
-    with open(license_path) as f:
-        contents = f.read()
-    assert contents == license_contents
-    return license_path
+def check_license(expected_license_path: Path, expected_license_contents: Path) -> Path:
+    """Checks the `expected_license_path` to see if there is a file with the same contents
+    as that of `expected_license_contents`
+
+    Parameters
+    ----------
+    expected_license_path : Path
+        path to the expected license file
+    expected_license_contents : Path
+        path containing the contents expected in the expected license file
+
+    Returns
+    -------
+    Path
+        passes through the expected license file so the task can be connected back to the
+        dataset
+    """
+    expected_license_path = Path(expected_license_path)
+    expected_license_contents = Path(expected_license_contents)
+    with open(expected_license_contents) as f:
+        expected_contents = f.read()
+    assert expected_license_path.exists()
+    with open(expected_license_path) as f:
+        actual_contents = f.read()
+    assert expected_contents == actual_contents
+    return expected_license_contents

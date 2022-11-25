@@ -817,7 +817,7 @@ class Dataset:
             id, name = parts
         return store_name, id, name
 
-    def install_licenses(self, licenses: list[License]):
+    def install_licenses(self, licenses: dict[str, Path]):
         """Install licenses from project-specific location in data store and
         install them at the destination location
 
@@ -847,13 +847,14 @@ class Dataset:
 
         #     shutil.copyfile(lic_path, lic.destination)
 
-        def get_license_fs_path(license, dataset):
+        def get_license_fs_path(lic_name, dataset):
+            col_name = License.column_name(lic_name)
             self.add_source(
-                lic.col_name,
+                col_name,
                 format=arcana.data.formats.File,
                 row_frequency=self.root_freq,
             )
-            license_file = self.root[lic.col_name]
+            license_file = self.root[col_name]
             try:
                 return license_file.fs_path
             except Exception:
@@ -861,25 +862,25 @@ class Dataset:
 
         site_licenses_dataset = self.store.site_licenses_dataset()
 
-        for lic in licenses:
+        for lic_name, destination in licenses:
 
-            lic_fs_path = get_license_fs_path(lic, self)
+            lic_fs_path = get_license_fs_path(lic_name, self)
             if lic_fs_path is None:
                 if site_licenses_dataset is not None:
-                    lic_fs_path = get_license_fs_path(lic, site_licenses_dataset)
+                    lic_fs_path = get_license_fs_path(lic_name, site_licenses_dataset)
                 if lic_fs_path is None:
                     msg = (
-                        f"Did not find a license corresponding to '{lic.name}' at "
-                        f"{lic.col_name} in {self}"
+                        f"Did not find a license corresponding to '{lic_name}' at "
+                        f"{License.column_name(lic_name)} in {self}"
                     )
                     if site_licenses_dataset:
                         msg += f" or {site_licenses_dataset}"
                     raise ArcanaLicenseNotFoundError(
-                        lic.name,
+                        lic_name,
                         msg,
                     )
 
-            shutil.copyfile(lic_fs_path, lic.destination)
+            shutil.copyfile(lic_fs_path, destination)
 
 
 @attrs.define

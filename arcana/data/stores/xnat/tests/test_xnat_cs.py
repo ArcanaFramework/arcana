@@ -138,7 +138,7 @@ def test_xnat_cs_pipeline(xnat_repository, run_spec, run_prefix, work_dir):
         build_dir=work_dir,
         arcana_install_extras=["test"],
         use_local_packages=True,
-        test_config=True,
+        use_test_config=True,
     )
 
     # We manually set the command in the test XNAT instance as commands are

@@ -129,6 +129,7 @@ class ContainerImage:
         use_local_packages: bool = False,
         pypi_fallback: bool = False,
         arcana_install_extras: ty.List[str] = (),
+        **kwargs,
     ) -> DockerRenderer:
         """Constructs a dockerfile that wraps a with dependencies
 

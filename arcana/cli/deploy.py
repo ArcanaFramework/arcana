@@ -19,7 +19,6 @@ from arcana.core.utils import (
     DOCKER_HUB,
 )
 from arcana.core.deploy.image import Metapackage
-from arcana.core.deploy.image.components import License
 from arcana.deploy.xnat.image import XnatCSImage
 from arcana.deploy.xnat.command import XnatCSCommand
 from arcana.exceptions import ArcanaBuildError
@@ -38,19 +37,18 @@ def deploy():
     pass
 
 
-@deploy.group()
-def xnat():
-    pass
-
-
-@xnat.command(
+@deploy.command(
     help="""Build a wrapper image specified in a module
 
-SPEC_ROOT is the file system path to the specification to build, or directory
-containing multiple specifications
+BUILD_TARGET is the type of image to build, e.g. arcana.deploy.xnat:XnatCSImage
+the target should resolve to a class deriviing from arcana.core.deploy.ContainerImageWithCommand.
+If it is located under the `arcana.deploy`, then that prefix can be dropped, e.g.
+common:PipelineImage
 
-DOCKER_ORG is the Docker organisation the images should belong to"""
+SPEC_ROOT is the file system path to the specification to build, or directory
+containing multiple specifications"""
 )
+@click.argument("build_target", type=str)
 @click.argument("spec_root", type=click.Path(exists=True, path_type=Path))
 @click.option(
     "--registry",
@@ -60,7 +58,7 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
 @click.option(
     "--build-dir",
     default=None,
-    type=click.Path(exists=True, path_type=Path),
+    type=click.Path(path_type=Path),
     help=(
         "Specify the directory to build the Docker image in. "
         "Defaults to `.build` in the directory containing the "
@@ -136,7 +134,7 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
 )
 @click.option(
     "--license",
-    type=tuple[str, click.Path(exists=True, path_type=Path)],
+    type=(str, click.Path(exists=True, path_type=Path)),
     default=(),
     nargs=2,
     metavar="<license-name> <path-to-license-file>",
@@ -181,6 +179,7 @@ DOCKER_ORG is the Docker organisation the images should belong to"""
     ),
 )
 def build(
+    build_target,
     spec_root,
     registry,
     release,
@@ -188,7 +187,7 @@ def build(
     save_manifest,
     logfile,
     loglevel,
-    build_dir,
+    build_dir: Path,
     use_local_packages,
     install_extras,
     raise_errors,
@@ -212,19 +211,33 @@ def build(
     if isinstance(build_dir, bytes):  # FIXME: This shouldn't be necessary
         build_dir = Path(build_dir.decode("utf-8"))
 
+    if build_dir is None:
+        build_dir = spec_root / ".build"
+
+    if not build_dir.exists():
+        build_dir.mkdir()
+
     install_extras = install_extras.split(",") if install_extras else []
 
     logging.basicConfig(filename=logfile, level=getattr(logging, loglevel.upper()))
 
     temp_dir = tempfile.mkdtemp()
 
+    target_cls = resolve_class(build_target, prefixes=["arcana.deploy"])
+
     dc = docker.from_env()
 
+    license_paths = {}
+    for lic_name, lic_src in license:
+        if isinstance(lic_src, bytes):  # FIXME: This shouldn't be necessary
+            lic_src = Path(lic_src.decode("utf-8"))
+        license_paths[lic_name] = lic_src
+
     # Load image specifications from YAML files stored in directory tree
-    image_specs = XnatCSImage.load_tree(
+    image_specs = target_cls.load_tree(
         spec_root,
         registry=registry,
-        license_paths=dict(license),
+        license_paths=license_paths,
         licenses_to_download=set(license_to_download),
     )
 
@@ -276,9 +289,6 @@ def build(
 
         image_specs = to_build
 
-    if build_dir is None:
-        build_dir = spec_root / ".build"
-
     if release or save_manifest:
         manifest = {
             "package": spec_root.stem,
@@ -299,7 +309,8 @@ def build(
         try:
             image_spec.make(
                 build_dir=spec_build_dir,
-                test_config=use_test_config,
+                use_test_config=use_test_config,
+                use_local_packages=use_local_packages,
                 generate_only=generate_only,
             )
         except Exception:
@@ -520,8 +531,8 @@ def inspect_docker_exec(image_tag):
     click.echo(executable)
 
 
-@xnat.command(
-    name="pull-images",
+@deploy.command(
+    name="pull-xnat-images",
     help=f"""Updates the installed pipelines on an XNAT instance from a manifest
 JSON file using the XNAT instance's REST API.
 
@@ -566,7 +577,7 @@ Which of available pipelines to install can be controlled by a YAML file passed 
     type=click.File(),
     help=("a YAML file containing filter rules for the images to install"),
 )
-def pull_images(manifest_file, server, user, password, filters_file):
+def pull_xnat_images(manifest_file, server, user, password, filters_file):
     manifest = json.load(manifest_file)
     filters = yaml.load(filters_file, Loader=yaml.Loader) if filters_file else {}
 
@@ -624,8 +635,8 @@ def pull_images(manifest_file, server, user, password, filters_file):
     )
 
 
-@xnat.command(
-    name="pull-auth-refresh",
+@deploy.command(
+    name="xnat-auth-refresh",
     help="""Logs into the XNAT instance and regenerates a new authorisation token
 to avoid them expiring (2 days by default)
 
@@ -634,7 +645,7 @@ CONFIG_YAML a YAML file contains the login details for the XNAT server to update
 )
 @click.argument("config_yaml_file", type=click.File())
 @click.argument("auth_file_path", type=click.Path(exists=True))
-def pull_auth_refresh(config_yaml_file, auth_file_path):
+def xnat_auth_refresh(config_yaml_file, auth_file_path):
     config = yaml.load(config_yaml_file, Loader=yaml.Loader)
     with open(auth_file_path) as fp:
         auth = json.load(fp)
@@ -656,8 +667,8 @@ def pull_auth_refresh(config_yaml_file, auth_file_path):
     click.echo(f"Updated XNAT connection token to {config['server']} successfully")
 
 
-@xnat.command(
-    """Displays the changelogs found in the release manifest of a deployment build
+@deploy.command(
+    help="""Displays the changelogs found in the release manifest of a deployment build
 
 MANIFEST_JSON is a JSON file containing a list of container images built in the release
 and the commands present in them"""
@@ -686,14 +697,15 @@ Not all options are be used when defining datasets, however, the
 '--dataset-name <NAME>' option can be provided to use an existing dataset
 definition.
 
+TASK_LOCATION is the location to a Pydra workflow on the Python system path.
+It can be omitted if PIPELINE_NAME matches an existing pipeline
+
+PIPELINE_NAME is the name of the pipeline
+
 DATASET_ID_STR string containing the nickname of the data store, the ID of the
 dataset (e.g. XNAT project ID or file-system directory) and the dataset's name
 in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 
-PIPELINE_NAME is the name of the pipeline
-
-WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path.
-It can be omitted if PIPELINE_NAME matches an existing pipeline
 """,
 )
 @click.argument("task_location")
@@ -899,7 +911,7 @@ def run_in_image(
 
     task_cls = resolve_class(task_location)
 
-    download_licenses = [License(*lic, description="") for lic in download_license]
+    download_licenses = dict(download_license)
 
     XnatCSCommand.run(
         dataset_id_str=dataset_id_str,

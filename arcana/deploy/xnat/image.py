@@ -23,7 +23,7 @@ class XnatCSImage(ContainerImageWithCommand):
     def construct_dockerfile(
         self,
         build_dir: Path,
-        test_config: bool = False,
+        use_test_config: bool = False,
         **kwargs,
     ):
         """Creates a Docker image containing one or more XNAT commands ready
@@ -34,7 +34,7 @@ class XnatCSImage(ContainerImageWithCommand):
         build_dir : Path
             the directory to build the docker image within, i.e. where to write
             Dockerfile and supporting files to be copied within the image
-        test_config : bool
+        use_test_config : bool
             whether to create the container so that it will work with the test
             XNAT configuration (i.e. hard-coding the XNAT server IP)
         **kwargs:
@@ -55,7 +55,7 @@ class XnatCSImage(ContainerImageWithCommand):
         # Copy the generated XNAT commands inside the container for ease of reference
         self.copy_command_ref(dockerfile, xnat_command, build_dir)
 
-        self.save_store_config(dockerfile, build_dir, test_config=test_config)
+        self.save_store_config(dockerfile, build_dir, use_test_config=use_test_config)
 
         # Convert XNAT command label into string that can by placed inside the
         # Docker label
@@ -91,7 +91,7 @@ class XnatCSImage(ContainerImageWithCommand):
         )
 
     def save_store_config(
-        self, dockerfile: DockerRenderer, build_dir: Path, test_config=False
+        self, dockerfile: DockerRenderer, build_dir: Path, use_test_config=False
     ):
         """Save a configuration for a XnatViaCS store.
 
@@ -101,13 +101,13 @@ class XnatCSImage(ContainerImageWithCommand):
             Neurodocker renderer to build
         build_dir : Path
             the build directory to save supporting files
-        test_config : bool
+        use_test_config : bool
             whether the target XNAT is using the local test configuration, in which
             case the server location will be hard-coded rather than rely on the
             XNAT_HOST environment variable passed to the container by the XNAT CS
         """
         xnat_cs_store_entry = {"class": "<" + class_location(XnatViaCS) + ">"}
-        if test_config:
+        if use_test_config:
             if sys.platform == "linux":
                 ip_address = "172.17.0.1"  # Linux + GH Actions
             else:

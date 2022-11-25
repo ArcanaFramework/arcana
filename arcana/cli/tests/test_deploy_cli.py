@@ -18,8 +18,8 @@ from arcana.cli.deploy import (
     build,
     build_docs,
     run_in_image,
-    pull_images,
-    pull_auth_refresh,
+    pull_xnat_images,
+    xnat_auth_refresh,
     PULL_IMAGES_XNAT_HOST_KEY,
     PULL_IMAGES_XNAT_USER_KEY,
     PULL_IMAGES_XNAT_PASS_KEY,
@@ -504,7 +504,7 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
         "registries"
     ),
 )
-def test_pull_images(
+def test_pull_xnat_images(
     xnat_repository,
     command_spec,
     work_dir,
@@ -626,7 +626,7 @@ def test_pull_images(
         },
     ):
         result = cli_runner(
-            pull_images,
+            pull_xnat_images,
             [str(manifest_path), "--filters", str(filters_file)],
         )
 
@@ -643,7 +643,7 @@ def test_pull_images(
     assert all(cmd in available_cmds for cmd in expected_commands)
 
 
-def test_pull_auth_refresh(xnat_repository, work_dir, cli_runner):
+def test_xnat_auth_refresh(xnat_repository, work_dir, cli_runner):
 
     config_path = work_dir / "config.yaml"
     with open(config_path, "w") as f:
@@ -662,7 +662,7 @@ def test_pull_auth_refresh(xnat_repository, work_dir, cli_runner):
         )
 
     result = cli_runner(
-        pull_auth_refresh,
+        xnat_auth_refresh,
         [str(config_path), str(auth_path)],
     )
 

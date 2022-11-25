@@ -16,6 +16,7 @@ from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical, DataSpace
 from arcana.core.data.store import DataStore
 from arcana.core.data.format import FileGroup
+from arcana.core.utils import ARCANA_HOME_DIR
 
 
 logger = logging.getLogger("arcana")
@@ -279,6 +280,15 @@ class FileSystem(DataStore):
     def prov_json_path(self, file_group):
         return self.file_group_path(file_group) + self.PROV_SUFFX
 
+    def site_licenses_dataset(self):
+        """Return access to site-wide licenses installed in the 'site-licenses' dataset
+        within the arcana home directory (~/.arcana/site-licenses) by default. Use
+        `arcana deploy install-license` command to"""
+        try:
+            return self.load_dataset(self.SITE_LICENSES_DATASET)
+        except KeyError:
+            return None
+
     # def get_provenance(self, item):
     #     if item.is_file_group:
     #         prov = self._get_file_group_provenance(item)
@@ -335,6 +345,8 @@ class FileSystem(DataStore):
             raise ArcanaMissingDataException(
                 "{} does not exist in the local store {}".format(field.name, self)
             )
+
+    SITE_LICENSES_DATASET = ARCANA_HOME_DIR / "site-licenses"
 
 
 def single_dataset(

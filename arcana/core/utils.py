@@ -1010,6 +1010,22 @@ class ListDictConverter:
         return converted
 
 
+@attrs.define
+class DictDictConverter:
+
+    klass: type
+
+    def __call__(self, dct):
+        converted = {}
+        for key, val in dct.items():
+            if isinstance(val, dict):
+                val = self.klass(**val)
+            elif not isinstance(val, self.klass):
+                raise ValueError(f"Cannot convert {val} into {self.klass}")
+            converted[key] = val
+        return converted
+
+
 def format_resolver(format):
     from arcana.core.data.format import DataItem
 
