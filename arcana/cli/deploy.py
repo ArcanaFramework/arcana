@@ -19,8 +19,8 @@ from arcana.core.utils import (
     DOCKER_HUB,
 )
 from arcana.core.deploy.image import Metapackage
+from arcana.core.deploy.command import ContainerCommand
 from arcana.deploy.xnat.image import XnatCSImage
-from arcana.deploy.xnat.command import XnatCSCommand
 from arcana.exceptions import ArcanaBuildError
 from arcana.core.utils import extract_file_from_docker_image
 
@@ -879,30 +879,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
     ),
 )
 def run_in_image(
-    task_location,
-    pipeline_name,
-    dataset_id_str,
-    parameter,
-    input,
-    output,
-    input_config,
-    output_config,
-    parameter_config,
-    row_frequency,
-    overwrite,
-    work_dir,
-    plugin,
-    download_license,
-    loglevel,
-    dataset_name,
-    dataset_space,
-    dataset_hierarchy,
-    ids,
-    configuration,
-    single_row,
-    export_work,
-    raise_errors,
-    keep_running_on_errors,
+    task_location, work_dir, download_license, loglevel, export_work, **kwargs
 ):
 
     if type(export_work) is bytes:
@@ -923,29 +900,11 @@ def run_in_image(
 
     download_licenses = dict(download_license)
 
-    XnatCSCommand.run(
+    ContainerCommand.run(
         task_cls=task_cls,
-        dataset_id_str=dataset_id_str,
-        pipeline_name=pipeline_name,
-        inputs=input,
-        outputs=output,
-        parameters=parameter,
-        input_configs=input_config,
-        output_configs=output_config,
-        parameter_configs=parameter_config,
-        row_frequency=row_frequency,
-        overwrite=overwrite,
-        plugin=plugin,
         download_licenses=download_licenses,
-        dataset_name=dataset_name,
-        dataset_space=dataset_space,
-        dataset_hierarchy=dataset_hierarchy,
-        ids=ids,
-        configuration=configuration,
-        single_row=single_row,
-        export_work=export_work,
-        raise_errors=raise_errors,
         store_cache_dir=store_cache_dir,
         pipeline_cache_dir=pipeline_cache_dir,
-        keep_running_on_errors=keep_running_on_errors,
+        export_work=export_work,
+        **kwargs,
     )
