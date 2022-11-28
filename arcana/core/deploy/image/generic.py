@@ -18,7 +18,7 @@ from arcana.__about__ import PACKAGE_NAME
 from arcana.core.utils import set_cwd, ListDictConverter, DOCKER_HUB, class_location
 from arcana.core.data.space import DataSpace
 from arcana.__about__ import python_versions
-from arcana.exceptions import ArcanaBuildError
+from arcana.core.exceptions import ArcanaBuildError
 from .components import PipSpec, SystemPackage, NeurodockerPackage
 
 logger = logging.getLogger("arcana")

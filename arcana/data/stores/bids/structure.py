@@ -8,7 +8,7 @@ import jq
 from pathlib import Path
 from ..common import FileSystem
 from arcana.core.data.format import FileGroup
-from arcana.exceptions import ArcanaUsageError, ArcanaEmptyDatasetError
+from arcana.core.exceptions import ArcanaUsageError, ArcanaEmptyDatasetError
 
 
 logger = logging.getLogger("arcana")

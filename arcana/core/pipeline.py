@@ -10,7 +10,7 @@ from collections.abc import Iterable
 import attrs.converters
 import pydra.mark
 from pydra.engine.core import Workflow
-from arcana.exceptions import (
+from arcana.core.exceptions import (
     ArcanaNameError,
     ArcanaUsageError,
     ArcanaDesignError,

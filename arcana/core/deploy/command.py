@@ -21,7 +21,7 @@ from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
 from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
-from arcana.exceptions import ArcanaUsageError
+from arcana.core.exceptions import ArcanaUsageError
 import arcana.data.formats.common
 from arcana.core.data.space import DataSpace
 

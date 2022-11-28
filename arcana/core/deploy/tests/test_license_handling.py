@@ -3,7 +3,7 @@ from pathlib import Path
 import docker
 import docker.errors
 import yaml
-from arcana.test.utils import show_cli_trace
+from arcana.core.test.utils import show_cli_trace
 from arcana.cli.deploy import build
 
 
@@ -142,7 +142,7 @@ TEST_IMAGE_SPEC = {
         }
     },
     "command": {
-        "task": "arcana.test.tasks:check_license",
+        "task": "arcana.core.test.tasks:check_license",
         "data_space": "common:Samples",
         "row_frequency": "sample",
         "inputs": [

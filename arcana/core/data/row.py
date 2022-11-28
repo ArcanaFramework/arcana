@@ -5,7 +5,7 @@ import attrs
 from collections import defaultdict
 from abc import ABCMeta
 import arcana.core.data.set
-from arcana.exceptions import (
+from arcana.core.exceptions import (
     ArcanaNameError,
     ArcanaWrongFrequencyError,
     ArcanaFileFormatError,

@@ -54,10 +54,11 @@ def catch_cli_exceptions():
     return CATCH_CLI_EXCEPTIONS
 
 
-# Load all test fixtures under `arcana.test.fixtures` package
+# Load all test fixtures under `arcana.core.test.fixtures` package
 pytest_plugins = [
     m.name
     for m in pkgutil.iter_modules(
-        [str(PKG_DIR / "arcana" / "test" / "fixtures")], prefix="arcana.test.fixtures."
+        [str(PKG_DIR / "arcana" / "test" / "fixtures")],
+        prefix="arcana.core.test.fixtures.",
     )
 ]

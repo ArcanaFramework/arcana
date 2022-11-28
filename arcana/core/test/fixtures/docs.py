@@ -23,7 +23,7 @@ info_url: https://example.com
 description: >-
   a test specification
 command:
-  task: arcana.test.tasks:identity_file
+  task: arcana.core.test.tasks:identity_file
   row_frequency: session
   inputs:
     - name: in_file
@@ -58,7 +58,7 @@ a test specification
 ## Command
 |Key|Value|
 |---|-----|
-|Task|arcana.test.tasks:identity_file|
+|Task|arcana.core.test.tasks:identity_file|
 |Operates on|session|
 #### Inputs
 |Name|Format|Description|
@@ -88,7 +88,7 @@ info_url: https://example.com
 description: >-
   a test of the YAML join functionality
 command:
-  task: arcana.test.tasks:identity_file
+  task: arcana.core.test.tasks:identity_file
   row_frequency: session
   inputs:
     - name: in_file
@@ -123,7 +123,7 @@ a test of the YAML join functionality
 ## Command
 |Key|Value|
 |---|-----|
-|Task|arcana.test.tasks:identity_file|
+|Task|arcana.core.test.tasks:identity_file|
 |Operates on|session|
 #### Inputs
 |Name|Format|Description|

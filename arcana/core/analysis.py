@@ -17,7 +17,7 @@ from .utils import (
     CHECK_ANNOTATIONS,
     ARCANA_SPEC,
 )
-from arcana.exceptions import ArcanaDesignError
+from arcana.core.exceptions import ArcanaDesignError
 
 
 def make_class(klass: type, space: type) -> type:

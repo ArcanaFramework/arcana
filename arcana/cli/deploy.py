@@ -21,7 +21,7 @@ from arcana.core.utils import (
 from arcana.core.deploy.image import Metapackage
 from arcana.core.deploy.command import ContainerCommand
 from arcana.deploy.xnat.image import XnatCSImage
-from arcana.exceptions import ArcanaBuildError
+from arcana.core.exceptions import ArcanaBuildError
 from arcana.core.utils import extract_file_from_docker_image
 
 

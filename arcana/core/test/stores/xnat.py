@@ -10,8 +10,8 @@ import xnat4tests
 from arcana.data.stores.xnat.api import Xnat
 from arcana.data.stores.xnat.cs import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
-from arcana.test.datasets import create_test_file
-from arcana.exceptions import ArcanaError
+from arcana.core.test.datasets import create_test_file
+from arcana.core.exceptions import ArcanaError
 
 
 @dataclass

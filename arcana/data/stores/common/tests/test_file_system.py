@@ -6,7 +6,7 @@ from pathlib import Path
 import operator as op
 from functools import reduce
 from arcana.core.data.set import Dataset
-from arcana.test.datasets import create_test_file
+from arcana.core.test.datasets import create_test_file
 
 
 def test_find_rows(dataset: Dataset):

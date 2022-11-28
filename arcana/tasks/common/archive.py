@@ -8,7 +8,7 @@ import attrs
 from pydra import mark
 from pydra.engine.specs import MultiInputObj, MultiOutputObj, File, Directory
 from arcana.core.utils import set_cwd
-from arcana.exceptions import ArcanaUsageError
+from arcana.core.exceptions import ArcanaUsageError
 
 
 TAR_COMPRESSION_TYPES = ["", "gz", "bz2", "xz"]

@@ -8,7 +8,8 @@ import shutil
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
-from arcana.exceptions import (
+from arcana.core.utils import asdict
+from arcana.core.exceptions import (
     ArcanaLicenseNotFoundError,
     ArcanaNameError,
     ArcanaDataTreeConstructionError,
@@ -16,7 +17,6 @@ from arcana.exceptions import (
     ArcanaBadlyFormattedIDError,
     ArcanaWrongDataSpaceError,
 )
-from arcana.core.utils import asdict
 from .space import DataSpace
 from .column import DataColumn, DataSink, DataSource
 from . import store as datastore

@@ -2,9 +2,9 @@ import zipfile
 import tempfile
 from pathlib import Path
 from arcana.data.formats.common import Text, Zip
-from arcana.test.datasets import make_dataset, TestDataSpace
-from arcana.test.fixtures.common import TEST_DATASET_BLUEPRINTS
-from arcana.test.tasks import concatenate
+from arcana.core.test.datasets import make_dataset, TestDataSpace
+from arcana.core.test.fixtures.common import TEST_DATASET_BLUEPRINTS
+from arcana.core.test.tasks import concatenate
 
 # from pydra.tasks.fsl.preprocess.bet import BET
 # from arcana.data.formats.medimage import Dicom, NiftiGz

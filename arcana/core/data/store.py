@@ -10,7 +10,7 @@ from arcana.core.utils import (
     asdict,
     fromdict,
 )
-from arcana.exceptions import ArcanaUsageError, ArcanaNameError
+from arcana.core.exceptions import ArcanaUsageError, ArcanaNameError
 
 DS = ty.TypeVar("DS", bound="DataStore")
 

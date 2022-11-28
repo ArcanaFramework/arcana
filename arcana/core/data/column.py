@@ -7,7 +7,7 @@ from attrs.converters import optional
 
 # from arcana.core.data.row import DataRow
 from arcana.core.utils import class_location
-from arcana.exceptions import ArcanaDataMatchError
+from arcana.core.exceptions import ArcanaDataMatchError
 from ..enum import DataQuality, ColumnSalience
 from .space import DataSpace
 

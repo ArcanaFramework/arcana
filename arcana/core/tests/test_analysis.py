@@ -4,7 +4,7 @@ import attrs
 import pytest
 import pydra
 from arcana.data.spaces.common import Samples
-from arcana.test.tasks import (
+from arcana.core.test.tasks import (
     concatenate,
     concatenate_reverse,
     multiply_contents,
@@ -33,7 +33,7 @@ from arcana.core.enum import (
     ParameterSalience as ps,
     CheckSalience as chs,
 )
-from arcana.exceptions import ArcanaDesignError
+from arcana.core.exceptions import ArcanaDesignError
 
 
 def get_contents(fpath):

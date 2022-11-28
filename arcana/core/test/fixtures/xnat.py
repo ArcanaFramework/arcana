@@ -10,7 +10,7 @@ from arcana.data.stores.xnat.api import Xnat
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats.common import Text, Directory
 from arcana.data.formats.medimage import NiftiGzX, NiftiGz, Dicom, NiftiX
-from arcana.test.stores.xnat import (
+from arcana.core.test.stores.xnat import (
     make_mutable_dataset,
     TestXnatDatasetBlueprint,
     ResourceBlueprint,
@@ -20,7 +20,7 @@ from arcana.test.stores.xnat import (
     make_project_id,
     access_dataset,
 )
-from arcana.test.datasets import save_dataset as save_file_system_dataset
+from arcana.core.test.datasets import save_dataset as save_file_system_dataset
 
 
 @pytest.fixture(scope="session")

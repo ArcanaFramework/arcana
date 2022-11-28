@@ -18,7 +18,7 @@ from arcana.core.utils import (
     classproperty,
     CONVERTER_ANNOTATIONS,
 )
-from arcana.exceptions import (
+from arcana.core.exceptions import (
     ArcanaUsageError,
     ArcanaNameError,
     ArcanaDataNotDerivedYetError,

@@ -7,7 +7,7 @@ from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME, CODE_URL
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical
-from arcana.exceptions import ArcanaError, ArcanaEmptyDatasetError
+from arcana.core.exceptions import ArcanaError, ArcanaEmptyDatasetError
 from .structure import Bids
 
 

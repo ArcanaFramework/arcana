@@ -26,7 +26,7 @@ import attrs
 from pydra.engine.core import Workflow, LazyField, TaskBase
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
-from arcana.exceptions import ArcanaUsageError
+from arcana.core.exceptions import ArcanaUsageError
 
 # Avoid arcana.__version__ causing a circular import
 from arcana._version import get_versions
