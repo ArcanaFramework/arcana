@@ -396,13 +396,37 @@ class ContainerCommand:
         for param_name, param_field, param_type, param_default in parameter_configs:
             param_type = resolve_class(param_type)
             try:
-                param_value = param_type(parameter_values[param_name])
+                param_value = parameter_values[param_name]
             except KeyError:
+                param_value = attrs.NOTHING
+            logger.info(
+                "Parameter %s (type %s) passed value %s",
+                param_name,
+                param_type,
+                param_value,
+            )
+            if param_type is not str and param_value == "":
+                param_value = attrs.NOTHING
+                logger.info(
+                    "Parameter %s set to NOTHING",
+                    param_name,
+                )
+            if param_value is attrs.NOTHING:
                 if param_default is attrs.NOTHING:
                     raise RuntimeError(
                         f"A value must be provided to required '{param_name}' parameter"
                     )
                 param_value = param_default
+                logger.info("Using default value for %s, %s", param_name, param_value)
+
+            # Convert parameter to parameter type
+            try:
+                param_value = param_type(param_value)
+            except ValueError:
+                raise ValueError(
+                    f"Could not convert value passed to '{param_name}' parameter, "
+                    f"{param_value}, into {param_type}"
+                )
             setattr(task.inputs, param_field, param_value)
 
         if pipeline_name in dataset.pipelines and not overwrite:

@@ -166,7 +166,7 @@ package_templates:
   - name: dcm2niix
     version: v1.0.20201102
 licenses:
-  - name: freesurfer
+  freesurfer:
     destination: /opt/freesurfer/license.txt
     description: >
       license description
@@ -230,10 +230,9 @@ weight: 10
 a longer description
 
 ### Required licenses
-|URL|Info|
-|---|----|
-|`http://path.to.license.provider.org/licenses`|license description
-|
+|Name|URL|Description|
+|----|---|-----------|
+|freesurfer|`http://path.to.license.provider.org/licenses`|license description|
 
 ## Command
 |Key|Value|

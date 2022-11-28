@@ -66,6 +66,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
     result = cli_runner(
         build,
         [
+            "xnat:XnatCSImage",
             str(spec_path),
             "--build-dir",
             str(build_dir),
@@ -108,6 +109,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         result = cli_runner(
             build,
             [
+                "xnat:XnatCSImage",
                 str(spec_path),
                 "--build-dir",
                 str(build_dir),
@@ -273,6 +275,9 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
             "common:Text",
             "--parameter-config",
             "duplicates",
+            "duplicates",
+            "int",
+            "2",
             "--output",
             "sink1",
             "concatenated",
@@ -344,6 +349,11 @@ def test_run_pipeline_cli_fail(concatenate_task, saved_dataset, cli_runner, work
             "--output",
             "sink1",
             "concatenated",
+            "--parameter-config",
+            "duplicates",
+            "duplicates",
+            "int",
+            "2",
             "--parameter",
             "duplicates",
             str(duplicates),

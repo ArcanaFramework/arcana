@@ -1,6 +1,7 @@
 from __future__ import annotations
 import setuptools.sandbox
 import typing as ty
+import hashlib
 from pathlib import Path
 import json
 import tempfile
@@ -8,14 +9,20 @@ import logging
 from datetime import datetime
 from copy import copy
 import shutil
-from inspect import isclass
+from inspect import isclass, isfunction
 from natsort import natsorted
 import attrs
 import docker
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME
-from arcana.core.utils import set_cwd, ListDictConverter, DOCKER_HUB, class_location
+from arcana.core.utils import (
+    set_cwd,
+    ListDictConverter,
+    DOCKER_HUB,
+    class_location,
+    HASH_CHUNK_SIZE,
+)
 from arcana.core.data.space import DataSpace
 from arcana.__about__ import python_versions
 from arcana.core.exceptions import ArcanaBuildError
@@ -491,9 +498,20 @@ class ContainerImage:
             return not isinstance(value, type(self))
 
         def serializer(_, __, value):
-            if isinstance(value, (Path, DataSpace)):
+            if isinstance(value, DataSpace):
                 value = str(value)
-            elif isclass(value):
+            elif isinstance(value, Path):
+                if value.exists():
+                    fhash = hashlib.md5()
+                    with open(value, "rb") as f:
+                        # Calculate hash in chunks so we don't run out of memory for
+                        # large files.
+                        for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b""):
+                            fhash.update(chunk)
+                    value = fhash.hexdigest()
+                else:
+                    value = str(value)
+            elif isclass(value) or isfunction(value):
                 value = class_location(value)
             return value
 

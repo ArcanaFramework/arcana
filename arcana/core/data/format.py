@@ -17,6 +17,7 @@ from arcana.core.utils import (
     path2varname,
     classproperty,
     CONVERTER_ANNOTATIONS,
+    HASH_CHUNK_SIZE,
 )
 from arcana.core.exceptions import (
     ArcanaUsageError,
@@ -268,8 +269,6 @@ class FileGroup(DataItem, metaclass=ABCMeta):
     # sub-classes where necessary
     alternative_names = ()
 
-    HASH_CHUNK_SIZE = 2**20  # 1MB in calc. checksums to avoid mem. issues
-
     @fs_path.validator
     def validate_fs_path(self, _, fs_path):
         if fs_path is not None:
@@ -384,7 +383,7 @@ class FileGroup(DataItem, metaclass=ABCMeta):
             with open(fpath, "rb") as f:
                 # Calculate hash in chunks so we don't run out of memory for
                 # large files.
-                for chunk in iter(lambda: f.read(self.HASH_CHUNK_SIZE), b""):
+                for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b""):
                     fhash.update(chunk)
             checksums[fpath] = fhash.hexdigest()
         checksums = self.generalise_checksum_keys(checksums)

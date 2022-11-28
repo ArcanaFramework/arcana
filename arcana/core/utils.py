@@ -6,6 +6,7 @@ import pkgutil
 import json
 import typing as ty
 from enum import Enum
+import builtins
 from copy import copy
 import re
 import inspect
@@ -53,6 +54,8 @@ CHECKSUM_SUFFIX = "_checksum"
 ARCANA_HOME_DIR = Path.home() / ".arcana"
 
 ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
+
+HASH_CHUNK_SIZE = 2**20  # 1MB in calc. checksums to avoid mem. issues
 
 
 def get_home_dir():
@@ -236,6 +239,8 @@ def class_location(cls, strip_prefix=None):
     if not (isclass(cls) or isfunction(cls)):
         cls = type(cls)  # Get the class rather than the object
     module_name = cls.__module__
+    if module_name == "builtins":
+        return cls.__name__
     if strip_prefix and module_name.startswith(strip_prefix):
         module_name = module_name[len(strip_prefix) :]
     return module_name + ":" + cls.__name__
@@ -262,7 +267,16 @@ def resolve_class(class_str: str, prefixes: Sequence[str] = ()) -> type:
     """
     if class_str.startswith("<") and class_str.endswith(">"):
         class_str = class_str[1:-1]
-    module_path, class_name = class_str.split(":")
+    try:
+        module_path, class_name = class_str.split(":")
+    except ValueError:
+        try:
+            return getattr(builtins, class_str)
+        except AttributeError:
+            raise ValueError(
+                f"Class location '{class_str}' should contain a ':' unless it is in the "
+                "builtins module"
+            ) from None
     cls = None
     for prefix in [None] + list(prefixes):
         if prefix is not None:

@@ -344,7 +344,7 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
                     tbl_lic.write_row(
                         lic_name,
                         escaped_md(lic.info_url),
-                        lic.description,
+                        lic.description.strip(),
                     )
 
                 f.write("\n")
