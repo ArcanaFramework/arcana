@@ -17,7 +17,7 @@ import xnat
 from arcana.cli.deploy import (
     build,
     build_docs,
-    run_in_image,
+    image_entrypoint,
     pull_xnat_images,
     xnat_auth_refresh,
     PULL_IMAGES_XNAT_HOST_KEY,
@@ -247,7 +247,7 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     result = cli_runner(
-        run_in_image,
+        image_entrypoint,
         [
             "arcana.core.testing.tasks:" + concatenate_task.__name__,
             "a_pipeline",
@@ -320,7 +320,7 @@ def test_run_pipeline_cli_fail(concatenate_task, saved_dataset, cli_runner, work
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     result = cli_runner(
-        run_in_image,
+        image_entrypoint,
         [
             "arcana.core.testing.tasks:" + concatenate_task.__name__,
             "a_pipeline",
@@ -407,7 +407,7 @@ def test_run_pipeline_on_row_cli(cli_runner, work_dir):
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     result = cli_runner(
-        run_in_image,
+        image_entrypoint,
         [
             "arcana.core.testing.tasks:plus_10_to_filenumbers",
             "a_pipeline",
@@ -449,7 +449,7 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     result = cli_runner(
-        run_in_image,
+        image_entrypoint,
         [
             "arcana.core.testing.tasks:identity_file",
             "a_pipeline",

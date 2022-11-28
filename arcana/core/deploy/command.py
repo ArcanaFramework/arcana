@@ -1,8 +1,10 @@
 from __future__ import annotations
 import shutil
 import re
+from copy import copy
 import json
 import logging
+from pathlib import Path
 import typing as ty
 import sys
 from collections import defaultdict
@@ -17,7 +19,7 @@ from arcana.core.utils import (
     class_location,
 )
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
-from arcana.core.utils import resolve_class, parse_value, show_workflow_errors
+from arcana.core.utils import show_workflow_errors
 from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
@@ -167,6 +169,10 @@ class ContainerCommand:
             )
         return self.image.name
 
+    @property
+    def data_space(self):
+        return type(self.row_frequency)
+
     def command_line(
         self,
         dataset_id_str: str = None,
@@ -229,126 +235,107 @@ class ContainerCommand:
                 cmd_args.append(f"--download-license {lic_name} {lic.destination}")
         return cmd_args
 
-    @classmethod
     def run(
-        cls,
-        dataset_id_str: str,
-        pipeline_name: str,
-        task_cls: type,
-        inputs,
-        outputs,
-        parameters: list[tuple[str, str]],
-        input_configs,
-        output_configs,
-        parameter_configs,
-        row_frequency,
-        overwrite,
-        plugin,
-        download_licenses,
-        dataset_name,
-        dataset_space,
-        ids,
-        configuration,
-        single_row,
-        export_work,
-        raise_errors,
-        store_cache_dir,
-        pipeline_cache_dir,
-        dataset_hierarchy=None,
+        self,
+        dataset: Dataset,
+        input_values: dict[str, str],
+        output_values: dict[str, str],
+        parameter_values: dict[str, ty.Any],
+        pipeline_cache_dir: Path,
+        plugin: str,
+        ids: list[str],
+        overwrite: bool = False,
+        export_work: Path = False,
+        raise_errors: bool = False,
         keep_running_on_errors=False,
     ):
+        """Runs the command within the entrypoint of the container image.
 
-        # ApplyApply a pipeline to a dataset (creating the dataset if necessary)
+        Performs a number of steps in one long pipeline that would typically be done
+        in separate command calls when running manually, i.e.:
 
-        try:
-            dataset = Dataset.load(dataset_id_str)
-        except KeyError:
+            * Loads a dataset, creating if it doesn't exist
+            * create input and output columns if they don't exist
+            * applies the pipeline to the dataset
+            * runs the pipeline
 
-            store_name, id, name = Dataset.parse_id_str(dataset_id_str)
-
-            if dataset_name is not None:
-                name = dataset_name
-
-            if dataset_space is None:
-                raise RuntimeError(
-                    f"If the dataset ID string ('{dataset_id_str}') doesn't "
-                    "reference an existing dataset '--dataset-space' must be provided"
-                )
-
-            store = DataStore.load(store_name, cache_dir=store_cache_dir)
-            space = resolve_class(dataset_space, ["arcana.data.spaces"])
-
-            if dataset_hierarchy is None:
-                hierarchy = space.default().span()
-            else:
-                hierarchy = dataset_hierarchy.split(",")
-
-            try:
-                dataset = store.load_dataset(
-                    id, name
-                )  # FIXME: Does this need to be here or this covered by L253??
-            except KeyError:
-                dataset = store.new_dataset(id, hierarchy=hierarchy, space=space)
+        Parameters
+        ----------
+        dataset : Dataset
+            dataset ID str (<store-nickname>//<dataset-id>:<dataset-name>)
+        input_values : dict[str, str]
+            values passed to the inputs of the command
+        output_values : dict[str, str]
+            values passed to the outputs of the command
+        parameter_values : dict[str, ty.Any]
+            values passed to the parameters of the command
+        store_cache_dir : Path
+            cache path used to download data from the store to the working node (if necessary)
+        pipeline_cache_dir : Path
+            cache path created when running the pipelines
+        plugin : str
+            Pydra plugin used to execute the pipeline
+        ids : list[str]
+            IDs of the dataset rows to run the pipeline over
+        overwrite : bool, optional
+            overwrite existing outputs
+        export_work : Path
+            export work directory to an alternate location after the workflow is run
+            (e.g. for forensics)
+        raise_errors : bool
+            raise errors instead of capturing and logging (for debugging)
+        """
 
         # Install required software licenses from store into container
-        dataset.install_licenses(download_licenses)
-
-        if single_row is not None:
-            # Adds a single row to the dataset (i.e. skips a full scan)
-            dataset.add_leaf(single_row.split(","))
+        licenses_to_download = [
+            lic.name for lic in self.image.licenses if lic.source is None
+        ]
+        dataset.install_licenses(licenses_to_download)
 
         pipeline_inputs = []
         converter_args = {}  # Arguments passed to converter
-        match_criteria = dict(inputs)
-        for (
-            col_name,
-            col_format_name,
-            task_field,
-            format_name,
-        ) in input_configs:
-            col_format = resolve_class(
-                col_format_name, prefixes=["arcana.data.formats"]
-            )
-            format = resolve_class(format_name, prefixes=["arcana.data.formats"])
-            if not match_criteria[col_name] and format != DataRow:
+        for inpt in self.inputs:
+            if not input_values[inpt.name] and inpt.format != DataRow:
                 logger.warning(
-                    f"Skipping '{col_name}' source column as no input was provided"
+                    f"Skipping '{inpt.name}' source column as no input was provided"
                 )
                 continue
             pipeline_inputs.append(
                 PipelineInput(
-                    col_name=col_name, task_field=task_field, required_format=format
+                    col_name=inpt.name,
+                    task_field=inpt.task_field,
+                    required_format=inpt.format,
                 )
             )
-            if DataRow in (col_format, format):
-                if (col_format, format) != (DataRow, DataRow):
+            if DataRow in (inpt.stored_format, inpt.format):
+                if (inpt.stored_format, inpt.format) != (DataRow, DataRow):
                     raise ArcanaUsageError(
                         "Cannot convert to/from built-in data type `DataRow`: "
-                        f"col_format={col_format}, format={format}"
+                        f"col_format={inpt.stored_format}, format={inpt.format}"
                     )
                 logger.info(
-                    f"No column added for '{col_name}' column as it uses built-in "
+                    f"No column added for '{inpt.name}' column as it uses built-in "
                     "type `arcana.core.data.row.DataRow`"
                 )
                 continue
-            path, qualifiers = cls.extract_qualifiers_from_path(
-                match_criteria[col_name]
+            path, qualifiers = self.extract_qualifiers_from_path(
+                input_values[inpt.name]
             )
             source_kwargs = qualifiers.pop("criteria", {})
-            converter_args[col_name] = qualifiers.pop("converter", {})
+            converter_args[inpt.name] = qualifiers.pop("converter", {})
             if qualifiers:
                 raise ArcanaUsageError(
                     "Unrecognised qualifier namespaces extracted from path for "
-                    f"{col_name} (expected ['criteria', 'converter']): {qualifiers}"
+                    f"{inpt.name} (expected ['criteria', 'converter']): {qualifiers}"
                 )
-            if col_name in dataset.columns:
-                column = dataset[col_name]
+            if inpt.name in dataset.columns:
+                column = dataset[inpt.name]
                 logger.info(f"Found existing source column {column}")
             else:
-                logger.info(f"Adding new source column '{col_name}'")
+                logger.info(f"Adding new source column '{inpt.name}'")
                 dataset.add_source(
-                    name=col_name,
-                    format=col_format,
+                    name=inpt.name,
+                    format=inpt.stored_format,
                     path=path,
                     is_regex=True,
                     **source_kwargs,
@@ -357,93 +344,87 @@ class ContainerCommand:
         logger.debug("Pipeline inputs: %s", pipeline_inputs)
 
         pipeline_outputs = []
-        output_paths = dict(outputs)
-        for col_name, col_format_name, task_field, format_name in output_configs:
-            format = resolve_class(format_name, prefixes=["arcana.data.formats"])
-            col_format = resolve_class(
-                col_format_name, prefixes=["arcana.data.formats"]
+        for output in self.outputs:
+            pipeline_outputs.append(
+                PipelineOutput(output.name, output.task_field, output.format)
             )
-            pipeline_outputs.append(PipelineOutput(col_name, task_field, format))
-            path, qualifiers = cls.extract_qualifiers_from_path(
-                output_paths.get(col_name, col_name)
+            path, qualifiers = self.extract_qualifiers_from_path(
+                output_values.get(output.name, output.name)
             )
-            converter_args[col_name] = qualifiers.pop("converter", {})
+            converter_args[output.name] = qualifiers.pop("converter", {})
             if qualifiers:
                 raise ArcanaUsageError(
                     "Unrecognised qualifier namespaces extracted from path for "
-                    f"{col_name} (expected ['criteria', 'converter']): {qualifiers}"
+                    f"{output.name} (expected ['criteria', 'converter']): {qualifiers}"
                 )
-            if col_name in dataset.columns:
-                column = dataset[col_name]
+            if output.name in dataset.columns:
+                column = dataset[output.name]
                 if not column.is_sink:
                     raise ArcanaUsageError(
-                        "Output column name '{col_name}' shadows existing source column"
+                        "Output column name '{output.name}' shadows existing source column"
                     )
                 logger.info(f"Found existing sink column {column}")
             else:
-                logger.info(f"Adding new source column '{col_name}'")
-                dataset.add_sink(name=col_name, format=col_format, path=path)
+                logger.info(f"Adding new source column '{output.name}'")
+                dataset.add_sink(
+                    name=output.name, format=output.stored_format, path=path
+                )
 
         logger.debug("Pipeline outputs: %s", pipeline_outputs)
 
-        kwargs = {n: parse_value(v) for n, v in configuration}
+        kwargs = copy(self.configuration)
         if "name" not in kwargs:
             kwargs["name"] = "workflow_to_run"
 
-        task = task_cls(**kwargs)
+        task = self.task(**kwargs)
 
-        parameter_values = dict(parameters)
-        for param_name, param_field, param_type, param_default in parameter_configs:
-            param_type = resolve_class(param_type)
-            try:
-                param_value = parameter_values[param_name]
-            except KeyError:
-                param_value = attrs.NOTHING
+        for param in self.parameters:
+            param_value = parameter_values.get(param.name, attrs.NOTHING)
             logger.info(
                 "Parameter %s (type %s) passed value %s",
-                param_name,
-                param_type,
+                param.name,
+                param.type,
                 param_value,
             )
-            if param_type is not str and param_value == "":
+            if param_value == "" and param.type is not str:
                 param_value = attrs.NOTHING
                 logger.info(
-                    "Parameter %s set to NOTHING",
-                    param_name,
+                    "Non-string parameter '%s' passed empty string, setting to NOTHING",
+                    param.name,
                 )
             if param_value is attrs.NOTHING:
-                if param_default is attrs.NOTHING:
+                if param.default is attrs.NOTHING:
                     raise RuntimeError(
-                        f"A value must be provided to required '{param_name}' parameter"
+                        f"A value must be provided to required '{param.name}' parameter"
                     )
-                param_value = param_default
-                logger.info("Using default value for %s, %s", param_name, param_value)
+                param_value = param.default
+                logger.info("Using default value for %s, %s", param.name, param_value)
 
             # Convert parameter to parameter type
             try:
-                param_value = param_type(param_value)
+                param_value = param.type(param_value)
             except ValueError:
                 raise ValueError(
-                    f"Could not convert value passed to '{param_name}' parameter, "
-                    f"{param_value}, into {param_type}"
+                    f"Could not convert value passed to '{param.name}' parameter, "
+                    f"{param_value}, into {param.type}"
                 )
-            setattr(task.inputs, param_field, param_value)
+            setattr(task.inputs, param.task_field, param_value)
 
-        if pipeline_name in dataset.pipelines and not overwrite:
-            pipeline = dataset.pipelines[pipeline_name]
+        if self.name in dataset.pipelines and not overwrite:
+            pipeline = dataset.pipelines[self.name]
             if task != pipeline.workflow:
                 raise RuntimeError(
-                    f"A pipeline named '{pipeline_name}' has already been applied to "
+                    f"A pipeline named '{self.name}' has already been applied to "
                     "which differs from one specified. Please use '--overwrite' option "
                     "if this is intentional"
                 )
         else:
             pipeline = dataset.apply_pipeline(
-                pipeline_name,
+                self.name,
                 task,
                 inputs=pipeline_inputs,
                 outputs=pipeline_outputs,
-                row_frequency=row_frequency,
+                row_frequency=self.row_frequency,
                 overwrite=overwrite,
                 converter_args=converter_args,
             )
@@ -453,9 +434,6 @@ class ContainerCommand:
 
         if ids is not None:
             ids = ids.split(",")
-
-        # Install dataset-specific licenses within the container
-        # dataset.install_licenses(install_licenses)
 
         # execute the workflow
         try:
@@ -474,7 +452,7 @@ class ContainerCommand:
         else:
             logger.info(
                 "Pipeline %s ran successfully for the following data rows:\n%s",
-                pipeline_name,
+                self.name,
                 "\n".join(result.output.processed),
             )
             errors = False
@@ -537,3 +515,54 @@ class ContainerCommand:
         else:
             path = user_input
         return path, qualifiers
+
+    def load_dataset(
+        self,
+        dataset_id_str: str,
+        cache_dir: Path,
+        dataset_hierarchy: str,
+        dataset_name: str,
+    ):
+        """Loads a dataset from within an image, to be used in image entrypoints
+
+        Parameters
+        ----------
+        dataset_id_str : str
+            dataset ID str
+        cache_dir : Path
+            the directory to use for the store cache
+        dataset_hierarchy : str, optional
+            the hierarchy of the dataset
+        dataset_name : str
+            overwrite dataset name loaded from ID str
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        try:
+            dataset = Dataset.load(dataset_id_str)
+        except KeyError:
+
+            store_name, id, name = Dataset.parse_id_str(dataset_id_str)
+
+            if dataset_name is not None:
+                name = dataset_name
+
+            store = DataStore.load(store_name, cache_dir=cache_dir)
+
+            if dataset_hierarchy is None:
+                hierarchy = self.data_space.default().span()
+            else:
+                hierarchy = dataset_hierarchy.split(",")
+
+            try:
+                dataset = store.load_dataset(
+                    id, name
+                )  # FIXME: Does this need to be here or this covered by L253??
+            except KeyError:
+                dataset = store.new_dataset(
+                    id, hierarchy=hierarchy, space=self.data_space
+                )
+        return dataset

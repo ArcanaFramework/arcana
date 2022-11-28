@@ -18,8 +18,7 @@ from arcana.core.utils import (
     resolve_class,
     DOCKER_HUB,
 )
-from arcana.core.deploy.image import Metapackage
-from arcana.core.deploy.command import ContainerCommand
+from arcana.core.deploy.image import Metapackage, ContainerImageWithCommand
 from arcana.deploy.xnat.image import XnatCSImage
 from arcana.core.exceptions import ArcanaBuildError
 from arcana.core.utils import extract_file_from_docker_image
@@ -708,8 +707,6 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 
 """,
 )
-@click.argument("task_location")
-@click.argument("pipeline_name")
 @click.argument("dataset_id_str")
 @click.option(
     "--input",
@@ -745,56 +742,6 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
     help=("free parameters of the workflow to be passed by the pipeline user"),
 )
 @click.option(
-    "--input-config",
-    "input_configs",
-    nargs=4,
-    default=(),
-    metavar="<col-name> <stored-format> <field> <format>",
-    multiple=True,
-    type=str,
-    help=(
-        "link an input of the task/workflow to a column of the dataset, adding a source"
-        "column matched by the name/path of the column if it isn't already present. "
-        "Automatically generated source columns must be able to be specified by their "
-        "path alone and be already in the format required by the task/workflow"
-    ),
-)
-@click.option(
-    "--output-config",
-    "output_configs",
-    nargs=4,
-    default=(),
-    metavar="<col-name> <stored-format> <field> <format>",
-    multiple=True,
-    type=str,
-    help=(
-        "add a sink to the dataset and link it to an output of the task/workflow "
-        "in a single step. The sink column be in the same format as produced "
-        "by the task/workflow"
-    ),
-)
-@click.option(
-    "--parameter-config",
-    "parameter_configs",
-    nargs=4,
-    default=(),
-    metavar="<col-name> <field> <type> <default>",
-    multiple=True,
-    type=str,
-    help=("Configure a parameter that can be passed to the workflow"),
-)
-@click.option(
-    "--row-frequency",
-    "-f",
-    default=None,
-    type=str,
-    help=(
-        "the row-frequency of the rows the pipeline will be executed over, i.e. "
-        "will it be run once per-session, per-subject or per whole dataset, "
-        "by default the highest row-frequency rows (e.g. per-session)"
-    ),
-)
-@click.option(
     "--ids", default=None, type=str, help="List of IDs to restrict the pipeline to"
 )
 @click.option(
@@ -813,14 +760,6 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
     help=("The Pydra plugin with which to process the task/workflow"),
 )
 @click.option(
-    "--download-license",
-    multiple=True,
-    nargs=2,
-    default=(),
-    metavar="<source> <destination>",
-    help=("Licenses to download into the image"),
-)
-@click.option(
     "--loglevel",
     type=str,
     default="info",
@@ -828,9 +767,6 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 )
 @click.option(
     "--dataset-hierarchy", type=str, default=None, help="Comma-separated hierarchy"
-)
-@click.option(
-    "--dataset-space", type=str, default=None, help="The data space of the dataset"
 )
 @click.option("--dataset-name", type=str, default=None, help="The name of the dataset")
 @click.option(
@@ -847,19 +783,6 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
     "--overwrite/--no-overwrite",
     type=bool,
     help=("Whether to overwrite the saved pipeline with the same name, if present"),
-)
-@click.option(
-    "--configuration",
-    nargs=2,
-    default=(),
-    metavar="<name> <value>",
-    multiple=True,
-    type=str,
-    help=(
-        "configuration args of the task/workflow. Differ from parameters in that they is passed to the "
-        "task/workflow at initialisation (and can therefore help specify its inputs) not as inputs. Values "
-        "can be any valid JSON (including basic types)."
-    ),
 )
 @click.option(
     "--export-work",
@@ -884,8 +807,15 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
         "be able to 'exec' into the container to debug."
     ),
 )
-def run_in_image(
-    task_location, work_dir, download_license, loglevel, export_work, **kwargs
+def image_entrypoint(
+    dataset_id_str,
+    work_dir,
+    loglevel,
+    export_work,
+    dataset_hierarchy,
+    dataset_name,
+    single_row,
+    **kwargs,
 ):
 
     if type(export_work) is bytes:
@@ -902,13 +832,18 @@ def run_in_image(
     store_cache_dir = work_dir / "store-cache"
     pipeline_cache_dir = work_dir / "pydra"
 
-    task_cls = resolve_class(task_location)
+    image_spec = ContainerImageWithCommand.load_in_image()
 
-    download_licenses = dict(download_license)
+    dataset = image_spec.command.load_dataset(
+        dataset_id_str, store_cache_dir, dataset_hierarchy, dataset_name
+    )
 
-    ContainerCommand.run(
-        task_cls=task_cls,
-        download_licenses=download_licenses,
+    if single_row is not None:
+        # Adds a single row to the dataset (i.e. skips a full scan)
+        dataset.add_leaf(single_row.split(","))
+
+    image_spec.command.run(
+        dataset,
         store_cache_dir=store_cache_dir,
         pipeline_cache_dir=pipeline_cache_dir,
         export_work=export_work,

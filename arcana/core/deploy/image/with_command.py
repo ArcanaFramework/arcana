@@ -7,7 +7,6 @@ import shutil
 import attrs
 import yaml
 from urllib.parse import urlparse
-from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.core.utils import (
@@ -15,6 +14,7 @@ from arcana.core.utils import (
     ListDictConverter,
     DictDictConverter,
     class_location,
+    resolve_class,
 )
 from arcana.data.formats import Directory
 from ..command import ContainerCommand
@@ -87,7 +87,8 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         factory=list, converter=ListDictConverter(KnownIssue)
     )
     long_description: str = ""
-    loaded_from: Path = None
+    loaded_from: Path = attrs.field(default=None, metadata={"asdict": False})
+    arcana_version: str = __version__
 
     def __attrs_post_init__(self):
 
@@ -178,8 +179,8 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
                 )
 
     def write_spec(self, dockerfile: DockerRenderer, build_dir):
-        """Generate Neurodocker instructions to install README file inside the docker
-        image
+        """Generate Neurodocker instructions to save the specification inside the built
+        image to be used when running the command and comparing against future builds
 
         Parameters
         ----------
@@ -190,15 +191,16 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         build_dir : Path
             path to build dir
         """
-
+        yml_dct = self.asdict()
+        yml_dct["type"] = class_location(self)
         with open(build_dir / "arcana-spec.yaml", "w") as f:
-            yaml.dump(self.asdict(), f)
+            yaml.dump(yml_dct, f)
         dockerfile.copy(source=["./arcana-spec.yaml"], destination=self.SPEC_PATH)
 
     @classmethod
     def load(
         cls,
-        yaml_path: Path,
+        yml: Path or dict,
         root_dir: Path = None,
         license_paths: dict[str, Path] = None,
         licenses_to_download: set[str] = None,
@@ -208,8 +210,8 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
 
         Parameters
         ----------
-        yaml_path : Path
-            path to the YAML file to load
+        yml : Path or dict
+            path to the YAML file to load or loaded dictionary
         root_dir : Path, optional
             path to the root directory from which a tree of specs are being loaded from.
             The name of the root directory is taken to be the organisation the image
@@ -232,34 +234,35 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
             The loaded spec object
         """
 
-        def yaml_join(loader, node):
-            seq = loader.construct_sequence(node)
-            return "".join([str(i) for i in seq])
+        if isinstance(yml, str):
+            yml = Path(yml)
+        if isinstance(yml, Path):
+            yml_dict = cls._load_yaml(yml)
+            if type(yml_dict) is not dict:
+                raise ValueError(f"{yml!r} didn't contain a dict!")
 
-        # Add special constructors to handle joins and concatenations within the YAML
-        yaml.SafeLoader.add_constructor(tag="!join", constructor=yaml_join)
-        # yaml.SafeLoader.add_constructor(tag="!concat", constructor=concat)
+            if "name" not in yml_dict:
+                if root_dir is not None:
+                    yml_dict["name"] = ".".join(
+                        yml.relative_to(root_dir).parent.parts + (yml.stem,)
+                    )
+                else:
+                    yml_dict["name"] = yml.stem
 
-        with open(yaml_path, "r") as f:
-            dct = yaml.load(f, Loader=yaml.SafeLoader)
+            if "org" not in yml_dict:
+                if root_dir is not None:
+                    yml_dict["org"] = root_dir.name
+                else:
+                    yml_dict["org"] = None
 
-        if type(dct) is not dict:
-            raise ValueError(f"{yaml_path!r} didn't contain a dict!")
-
-        if root_dir is not None:
-            dct["name"] = ".".join(
-                yaml_path.relative_to(root_dir).parent.parts + (yaml_path.stem,)
-            )
-            dct["org"] = root_dir.name
+            yml_dict["loaded_from"] = yml.absolute()
         else:
-            dct["name"] = yaml_path.stem
-            dct["org"] = None
-        dct["loaded_from"] = yaml_path.absolute()
+            yml_dict = yml
 
         # Override/augment loaded values from spec
-        dct.update(kwargs)
+        yml_dict.update(kwargs)
 
-        image = cls(**dct)
+        image = cls(**yml_dict)
 
         if license_paths is not None:
             for lic_name, lic in image.licenses.items():
@@ -273,6 +276,18 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
                         )
 
         return image
+
+    @classmethod
+    def _load_yaml(cls, yaml_file: Path or str):
+        def yaml_join(loader, node):
+            seq = loader.construct_sequence(node)
+            return "".join([str(i) for i in seq])
+
+        # Add special constructors to handle joins and concatenations within the YAML
+        yaml.SafeLoader.add_constructor(tag="!join", constructor=yaml_join)
+        with open(yaml_file, "r") as f:
+            dct = yaml.load(f, Loader=yaml.SafeLoader)
+        return dct
 
     @classmethod
     def load_tree(cls, root_dir: Path, **kwargs) -> list:
@@ -392,42 +407,48 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
                     )
                 f.write("\n")
 
-    def compare_specs(self, other, check_version=True):
-        """Compares two build specs against each other and returns the difference
+    # def compare_specs(self, other, check_version=True):
+    #     """Compares two build specs against each other and returns the difference
 
-        Parameters
-        ----------
-        s1 : dict
-            first spec
-        s2 : dict
-            second spec
-        check_version : bool
-            check the arcana version used to generate the specs
+    #     Parameters
+    #     ----------
+    #     s1 : dict
+    #         first spec
+    #     s2 : dict
+    #         second spec
+    #     check_version : bool
+    #         check the arcana version used to generate the specs
 
-        Returns
-        -------
-        DeepDiff
-            the difference between the specs
-        """
+    #     Returns
+    #     -------
+    #     DeepDiff
+    #         the difference between the specs
+    #     """
 
-        sdict = self.asdict()
-        odict = other.asdict()
+    #     sdict = self.asdict()
+    #     odict = other.asdict()
 
-        def prep(s):
-            dct = {
-                k: v
-                for k, v in s.items()
-                if (not k.startswith("_") and (v or isinstance(v, bool)))
-            }
-            if check_version:
-                if "arcana_version" not in dct:
-                    dct["arcana_version"] = __version__
-            else:
-                del dct["arcana_version"]
-            return dct
+    #     def prep(s):
+    #         dct = {
+    #             k: v
+    #             for k, v in s.items()
+    #             if (not k.startswith("_") and (v or isinstance(v, bool)))
+    #         }
+    #         if check_version:
+    #             if "arcana_version" not in dct:
+    #                 dct["arcana_version"] = __version__
+    #         else:
+    #             del dct["arcana_version"]
+    #         return dct
 
-        diff = DeepDiff(prep(sdict), prep(odict), ignore_order=True)
-        return diff
+    #     diff = DeepDiff(prep(sdict), prep(odict), ignore_order=True)
+    #     return diff
+
+    @classmethod
+    def load_in_image(cls):
+        yml_dct = cls._load_yaml(cls.SPEC_PATH)
+        klass = resolve_class(yml_dct.pop("type"))
+        return klass.load(yml_dct)
 
     @classmethod
     def _data_format_html(cls, format):

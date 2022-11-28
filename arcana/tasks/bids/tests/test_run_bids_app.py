@@ -5,7 +5,7 @@ from arcana.core.testing.fixtures.common import make_dataset, TestDatasetBluepri
 from arcana.data.formats.common import Text
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats.medimage import NiftiGzX
-from arcana.cli.deploy import run_in_image
+from arcana.cli.deploy import image_entrypoint
 from arcana.core.utils import class_location, path2varname
 from arcana.core.testing.utils import show_cli_trace
 
@@ -86,7 +86,7 @@ def test_run_bids_pipeline(
         ["--configuration", "outputs", json.dumps(outputs_config)]
     )  # .replace('"', '\\"')
 
-    result = cli_runner(run_in_image, args)
+    result = cli_runner(image_entrypoint, args)
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source column to saved dataset
     for fname in ["file1", "file2"]:

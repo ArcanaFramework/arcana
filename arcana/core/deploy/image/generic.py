@@ -494,8 +494,10 @@ class ContainerImage:
         """Return a serialized version of the pipeline image specification that can be
         written to file"""
 
-        def filter(_, value):
-            return not isinstance(value, type(self))
+        def filter(attr, value):
+            return not isinstance(value, type(self)) and attr.metadata.get(
+                "asdict", True
+            )
 
         def serializer(_, __, value):
             if isinstance(value, DataSpace):
