@@ -25,10 +25,14 @@ from arcana.cli.deploy import (
     PULL_IMAGES_XNAT_PASS_KEY,
 )
 from arcana.core.utils import class_location
-from arcana.core.test.fixtures.docs import all_docs_fixtures, DocsFixture
-from arcana.core.test.utils import show_cli_trace, make_dataset_id_str
-from arcana.core.test.formats import EncodedText
-from arcana.core.test.datasets import make_dataset, TestDatasetBlueprint, TestDataSpace
+from arcana.core.testing.fixtures.docs import all_docs_fixtures, DocsFixture
+from arcana.core.testing.utils import show_cli_trace, make_dataset_id_str
+from arcana.core.testing.formats import EncodedText
+from arcana.core.testing.datasets import (
+    make_dataset,
+    TestDatasetBlueprint,
+    TestDataSpace,
+)
 from arcana.data.formats.common import Text
 from arcana.core.exceptions import ArcanaBuildError
 
@@ -243,7 +247,7 @@ def test_run_pipeline_cli(concatenate_task, saved_dataset, cli_runner, work_dir)
     result = cli_runner(
         run_in_image,
         [
-            "arcana.core.test.tasks:" + concatenate_task.__name__,
+            "arcana.core.testing.tasks:" + concatenate_task.__name__,
             "a_pipeline",
             dataset_id_str,
             "--input-config",
@@ -313,7 +317,7 @@ def test_run_pipeline_cli_fail(concatenate_task, saved_dataset, cli_runner, work
     result = cli_runner(
         run_in_image,
         [
-            "arcana.core.test.tasks:" + concatenate_task.__name__,
+            "arcana.core.testing.tasks:" + concatenate_task.__name__,
             "a_pipeline",
             dataset_id_str,
             "--input-config",
@@ -395,7 +399,7 @@ def test_run_pipeline_on_row_cli(cli_runner, work_dir):
     result = cli_runner(
         run_in_image,
         [
-            "arcana.core.test.tasks:plus_10_to_filenumbers",
+            "arcana.core.testing.tasks:plus_10_to_filenumbers",
             "a_pipeline",
             dataset_id_str,
             "--input-config",
@@ -437,30 +441,30 @@ def test_run_pipeline_cli_converter_args(saved_dataset, cli_runner, work_dir):
     result = cli_runner(
         run_in_image,
         [
-            "arcana.core.test.tasks:identity_file",
+            "arcana.core.testing.tasks:identity_file",
             "a_pipeline",
             dataset_id_str,
             "--input-config",
             "source",
             "common:Text",
             "in_file",
-            "arcana.core.test.formats:EncodedText",
+            "arcana.core.testing.formats:EncodedText",
             "--input",
             "source",
             "file1 converter.shift=3",
             "--output-config",
             "sink1",
-            "arcana.core.test.formats:EncodedText",
+            "arcana.core.testing.formats:EncodedText",
             "out",
-            "arcana.core.test.formats:EncodedText",
+            "arcana.core.testing.formats:EncodedText",
             "--output",
             "sink1",
             "encoded",
             "--output-config",
             "sink2",
-            "arcana.core.test.formats:DecodedText",
+            "arcana.core.testing.formats:DecodedText",
             "out",
-            "arcana.core.test.formats:EncodedText",
+            "arcana.core.testing.formats:EncodedText",
             "--output",
             "sink2",
             "decoded converter.shift=3",
@@ -522,7 +526,7 @@ def test_pull_xnat_images(
     WRAPPER_VERSION = "1-pullimages"
 
     reverse_command_spec = copy(command_spec)
-    reverse_command_spec["task"] = "arcana.core.test.tasks:concatenate_reverse"
+    reverse_command_spec["task"] = "arcana.core.testing.tasks:concatenate_reverse"
 
     spec_dir = work_dir / DOCKER_ORG
     pkg_path = spec_dir / IMAGE_GROUP_NAME

@@ -10,7 +10,7 @@ from tempfile import mkdtemp
 from functools import reduce
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.set import Dataset
-from arcana.core.test.datasets import create_test_file
+from arcana.core.testing.datasets import create_test_file
 
 if sys.platform == "win32":
 

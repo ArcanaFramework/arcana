@@ -1,13 +1,13 @@
 from functools import reduce
 import json
 from operator import mul
-from arcana.core.test.fixtures.common import make_dataset, TestDatasetBlueprint
+from arcana.core.testing.fixtures.common import make_dataset, TestDatasetBlueprint
 from arcana.data.formats.common import Text
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.formats.medimage import NiftiGzX
 from arcana.cli.deploy import run_in_image
 from arcana.core.utils import class_location, path2varname
-from arcana.core.test.utils import show_cli_trace
+from arcana.core.testing.utils import show_cli_trace
 
 
 def test_run_bids_pipeline(
