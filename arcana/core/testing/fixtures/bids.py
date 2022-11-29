@@ -133,41 +133,36 @@ ENTRYPOINT ["/launch.sh"]"""
 
 @pytest.fixture(scope="session")
 def bids_command_spec(mock_bids_app_executable):
-    inputs = [
-        {
-            "name": "T1w",
+    inputs = {
+        "T1w": {
             "path": "anat/T1w",
             "format": "medimage:NiftiGzX",
             "description": "T1-weighted image",
         },
-        {
-            "name": "T2w",
+        "T2w": {
             "path": "anat/T2w",
             "format": "medimage:NiftiGzX",
             "description": "T2-weighted image",
         },
-        {
-            "name": "DWI",
+        "DWI": {
             "path": "dwi/dwi",
             "format": "medimage:NiftiGzXFslgrad",
             "description": "DWI-weighted image",
         },
-    ]
+    }
 
-    outputs = [
-        {
-            "name": "file1",
+    outputs = {
+        "file1": {
             "path": "file1",
             "format": "common:Text",
             "description": "an output file",
         },
-        {
-            "name": "file2",
+        "file2": {
             "path": "file2",
             "format": "common:Text",
             "description": "another output file",
         },
-    ]
+    }
 
     return {
         "task": "arcana.tasks.bids.app:bids_app",

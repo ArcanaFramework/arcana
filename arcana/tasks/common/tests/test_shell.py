@@ -6,27 +6,24 @@ def test_shell_cmd(work_dir):
     task = shell_cmd(
         name="copy",
         executable="cp",
-        inputs=[
-            {
-                "name": "in_dir",
+        inputs={
+            "in_dir": {
                 "format": "common:Text",
             }
-        ],
-        outputs=[
-            {
-                "name": "out_dir",
+        },
+        outputs={
+            "out_dir": {
                 "format": "common:Text",
                 "position": -1,
             }
-        ],
-        parameters=[
-            {
-                "name": "recursive",
+        },
+        parameters={
+            "recursive": {
                 "type": bool,
                 "argstr": "-R",
                 "position": 0,
             }
-        ],
+        },
     )
 
     in_dir = work_dir / "source-dir"

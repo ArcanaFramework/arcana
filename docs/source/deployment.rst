@@ -119,47 +119,43 @@ the full configuration required to build an XNAT docker image looks like
 
 .. code-block:: yaml
 
-    pkg_name: FSL
     version: &version '6.0.1'
     spec_version: '1'
     authors:
-        - name: Thomas G. Close
+        Thomas: G. Close
           email: thomas.close@sydney.edu.au
     base_image: !join [ 'brainlife/fsl:', *version ]
-    info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki
+    info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
     package_manager: apt
     system_packages:
     package_templates:
-    - name: dcm2niix
+    dcm2niix:
         version: v1.0.20201102
     python_packages:
-        - name: pydra-dcm2niix
+        pydra:-dcm2niix
     commands:
-        pipeline_name: fast
         task: pydra.tasks.fsl.preprocess.fast:FAST
         description:
             FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of
             the brain into different tissue types (Grey Matter, White Matter,
             CSF, etc.), whilst also correcting for spatial intensity variations
             (also known as bias field or RF inhomogeneities).
-        version: 1
-        info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
         inputs:
-            - name: in_files
+            in_files:
               format: medimage:NiftiGzX
               stored_format: medimage:Dicom
               description: Anatomical image to segment into different tissues
         outputs:
-            - name: tissue_classes
+            tissue_classes:
               format: medimage:NiftiGz
               path: fast/tissue-classes
-            - name: probability_maps
+            probability_maps:
               format: medimage:NiftiGz
               path: fast/probability-map
         parameters:
-            - name: use_priors
+            use_priors:
               description: Use priors in tissue estimation
-            - name: bias_lowpass
+            bias_lowpass:
               description: Low-pass filter bias field
         configuration:
             - output_biasfield: true

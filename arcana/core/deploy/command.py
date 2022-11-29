@@ -13,7 +13,7 @@ from attrs.converters import default_if_none
 import pydra.engine.task
 from arcana.core.utils import (
     path2varname,
-    ListDictConverter,
+    DictDictConverter,
     format_resolver,
     task_resolver,
     class_location,
@@ -36,8 +36,10 @@ logger = logging.getLogger("arcana")
 
 @attrs.define
 class CommandInput:
-    name: str  # How the input will be referred to in the XNAT dialog, defaults to the field name
-    description: str  # description of the input
+    name: str = attrs.field(
+        metadata={"asdict": False}
+    )  # How the input will be referred to in the XNAT dialog, defaults to the field name
+    description: str = attrs.field()  # description of the input
     format: type = attrs.field(converter=format_resolver)
     path: str = attrs.field()
     stored_format: type = attrs.field(
@@ -74,8 +76,8 @@ class CommandInput:
 
 @attrs.define
 class CommandOutput:
-    name: str
-    description: str  # description of the input
+    name: str = attrs.field(metadata={"asdict": False})
+    description: str = attrs.field()  # description of the input
     path: str = attrs.field()  # The path the output is stored at in XNAT
     format: type = attrs.field(converter=format_resolver)
     field: str = (
@@ -113,8 +115,10 @@ class CommandOutput:
 
 @attrs.define
 class CommandParameter:
-    name: str  # How the input will be referred to in the XNAT dialog, defaults to field name
-    description: str  # description of the parameter
+    name: str = attrs.field(
+        metadata={"asdict": False}
+    )  # How the input will be referred to in the XNAT dialog, defaults to field name
+    description: str = attrs.field()  # description of the parameter
     type: type = attrs.field(converter=resolve_class)
     field: str = attrs.field()  # Name of parameter to expose in Pydra task
     required: bool = False
@@ -142,14 +146,14 @@ class ContainerCommand:
 
     task: pydra.engine.task.TaskBase = attrs.field(converter=task_resolver)
     row_frequency: DataSpace = None
-    inputs: list[CommandInput] = attrs.field(
-        factory=list, converter=ListDictConverter(CommandInput)
+    inputs: dict[CommandInput] = attrs.field(
+        factory=dict, converter=DictDictConverter(CommandInput)
     )
-    outputs: list[CommandOutput] = attrs.field(
-        factory=list, converter=ListDictConverter(CommandOutput)
+    outputs: dict[CommandOutput] = attrs.field(
+        factory=dict, converter=DictDictConverter(CommandOutput)
     )
-    parameters: list[CommandParameter] = attrs.field(
-        factory=list, converter=ListDictConverter(CommandParameter)
+    parameters: dict[CommandParameter] = attrs.field(
+        factory=dict, converter=DictDictConverter(CommandParameter)
     )
     configuration: dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(dict)
@@ -302,7 +306,7 @@ class ContainerCommand:
 
         pipeline_inputs = []
         converter_args = {}  # Arguments passed to converter
-        for inpt in self.inputs:
+        for inpt in self.inputs.values():
             if not input_values[inpt.name] and inpt.format != DataRow:
                 logger.warning(
                     f"Skipping '{inpt.name}' source column as no input was provided"
@@ -352,7 +356,7 @@ class ContainerCommand:
         logger.debug("Pipeline inputs: %s", pipeline_inputs)
 
         pipeline_outputs = []
-        for output in self.outputs:
+        for output in self.outputs.values():
             pipeline_outputs.append(
                 PipelineOutput(output.name, output.field, output.format)
             )
@@ -386,7 +390,7 @@ class ContainerCommand:
 
         task = self.task(**kwargs)
 
-        for param in self.parameters:
+        for param in self.parameters.values():
             param_value = parameter_values.get(param.name, None)
             logger.info(
                 "Parameter %s (type %s) passed value %s",

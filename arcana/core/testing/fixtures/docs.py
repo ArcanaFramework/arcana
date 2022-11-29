@@ -26,11 +26,11 @@ command:
   task: arcana.core.testing.tasks:identity_file
   row_frequency: session
   inputs:
-    - name: in_file
+    in_file:
       format: common:Text
       description: the input file
   outputs:
-    - name: out_file
+    out_file:
       format: common:Text
       description: the output file
     """.strip(),
@@ -91,11 +91,11 @@ command:
   task: arcana.core.testing.tasks:identity_file
   row_frequency: session
   inputs:
-    - name: in_file
+    in_file:
       format: common:Text
       description: the input file
   outputs:
-    - name: out_file
+    out_file:
       format: common:Text
       description: the output file
     """.strip(),
@@ -174,28 +174,28 @@ licenses:
 command:
     task: arcana.tasks.bids:bids_app
     inputs: &inputs
-      - name: T1w
+      T1w:
         path: anat/T1w
         format: medimage:NiftiGzX
         stored_format: medimage:Dicom
         description: "T1-weighted anatomical scan"
-      - name: T2w
+      T2w:
         path: anat/T2w
         format: medimage:NiftiGzX
         stored_format: medimage:Dicom
         description: "T2-weighted anatomical scan"
-      - name: fMRI
+      fMRI:
         path: func/task-rest_bold
         format: medimage:NiftiGzX
         stored_format: medimage:Dicom
         description: "functional MRI"
     outputs: &outputs
-      - name: mriqc
+      mriqc:
         path: mriqc
         format: common:Directory
         description: "MRIQC output directory"
     parameters:
-      - name: fmriprep_flags
+      fmriprep_flags:
         field: flags
         type: str
         description: description of flags param

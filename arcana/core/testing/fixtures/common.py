@@ -220,40 +220,36 @@ def concatenate_task(request):
 def command_spec():
     return {
         "task": "arcana.core.testing.tasks:concatenate",
-        "inputs": [
-            {
-                "name": "first_file",
+        "inputs": {
+            "first_file": {
                 "format": "common:Text",
                 "field": "in_file1",
                 "row_frequency": "session",
                 "description": "the first file to pass as an input",
             },
-            {
-                "name": "second_file",
+            "second_file": {
                 "format": "common:Text",
                 "field": "in_file2",
                 "row_frequency": "session",
                 "description": "the second file to pass as an input",
             },
-        ],
-        "outputs": [
-            {
-                "name": "concatenated",
+        },
+        "outputs": {
+            "concatenated": {
                 "format": "common:Text",
                 "field": "out_file",
                 "description": "an output file",
             }
-        ],
-        "parameters": [
-            {
-                "name": "number_of_duplicates",
+        },
+        "parameters": {
+            "number_of_duplicates": {
                 "field": "duplicates",
                 "default": 2,
                 "type": "int",
                 "required": True,
                 "description": "a parameter",
             }
-        ],
+        },
         "row_frequency": "session",
     }
 

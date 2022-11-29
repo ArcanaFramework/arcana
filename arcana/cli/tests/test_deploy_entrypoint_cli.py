@@ -40,36 +40,32 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
         command={
             "task": "arcana.core.testing.tasks:" + concatenate_task.__name__,
             "row_frequency": bp.space.default(),
-            "inputs": [
-                {
-                    "name": "source1",
+            "inputs": {
+                "source1": {
                     "format": "common:Text",
                     "field": "in_file1",
                     "description": "dummy",
                 },
-                {
-                    "name": "source2",
+                "source2": {
                     "format": "common:Text",
                     "field": "in_file2",
                     "description": "dummy",
                 },
-            ],
-            "outputs": [
-                {
-                    "name": "sink1",
+            },
+            "outputs": {
+                "sink1": {
                     "format": "common:Text",
                     "field": "out_file",
                     "description": "dummy",
                 }
-            ],
-            "parameters": [
-                {
-                    "name": "duplicates",
+            },
+            "parameters": {
+                "duplicates": {
                     "type": "int",
                     "default": 2,
                     "description": "dummy",
                 }
-            ],
+            },
         },
         path=work_dir / "spec.yaml",
     )
@@ -130,36 +126,32 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
         command={
             "task": "arcana.core.testing.tasks:" + concatenate_task.__name__,
             "row_frequency": bp.space.default(),
-            "inputs": [
-                {
-                    "name": "source1",
+            "inputs": {
+                "source1": {
                     "format": "common:Text",
                     "field": "in_file1",
                     "description": "dummy",
                 },
-                {
-                    "name": "source2",
+                "source2": {
                     "format": "common:Directory",
                     "field": "in_file2",
                     "description": "dummy",
                 },
-            ],
-            "outputs": [
-                {
-                    "name": "sink1",
+            },
+            "outputs": {
+                "sink1": {
                     "format": "common:Text",
                     "field": "out_file",
                     "description": "dummy",
                 }
-            ],
-            "parameters": [
-                {
-                    "name": "duplicates",
+            },
+            "parameters": {
+                "duplicates": {
                     "type": "int",
                     "default": 2,
                     "description": "dummy",
                 }
-            ],
+            },
         },
         path=work_dir / "spec.yaml",
     )
@@ -234,14 +226,13 @@ def test_entrypoint_cli_on_row(cli_runner, work_dir):
         command={
             "task": "arcana.core.testing.tasks:plus_10_to_filenumbers",
             "row_frequency": bp.space.default(),
-            "inputs": [
-                {
-                    "name": "a_row",
+            "inputs": {
+                "a_row": {
                     "format": "arcana.core.data.row:DataRow",
                     "field": "filenumber_row",
                     "description": "dummy",
                 },
-            ],
+            },
         },
         path=work_dir / "spec.yaml",
     )
@@ -288,30 +279,27 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
         command={
             "task": "arcana.core.testing.tasks:identity_file",
             "row_frequency": bp.space.default(),
-            "inputs": [
-                {
-                    "name": "source",
+            "inputs": {
+                "source": {
                     "format": "arcana.core.testing.formats:EncodedText",
                     "stored_format": "common:Text",
                     "field": "in_file",
                     "description": "dummy",
                 },
-            ],
-            "outputs": [
-                {
-                    "name": "sink1",
+            },
+            "outputs": {
+                "sink1": {
                     "format": "arcana.core.testing.formats:EncodedText",
                     "field": "out",
                     "description": "dummy",
                 },
-                {
-                    "name": "sink2",
+                "sink2": {
                     "format": "arcana.core.testing.formats:EncodedText",
                     "stored_format": "arcana.core.testing.formats:DecodedText",
                     "field": "out",
                     "description": "dummy",
                 },
-            ],
+            },
         },
         path=work_dir / "spec.yaml",
     )
