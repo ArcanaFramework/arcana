@@ -292,7 +292,7 @@ class ContainerCommand:
 
         # Install required software licenses from store into container
         licenses_to_download = [
-            lic.name for lic in self.image.licenses if lic.source is None
+            lic.name for lic in self.image.licenses.values() if lic.source is None
         ]
         dataset.install_licenses(licenses_to_download)
 

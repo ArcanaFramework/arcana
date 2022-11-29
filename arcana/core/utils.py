@@ -1034,6 +1034,9 @@ class DictDictConverter:
     def __call__(self, dct):
         converted = {}
         for key, val in dct.items():
+            if "name" in attrs.fields_dict(self.klass):
+                val = copy(val)
+                val["name"] = key
             if isinstance(val, dict):
                 val = self.klass(**val)
             elif not isinstance(val, self.klass):

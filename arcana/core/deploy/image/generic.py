@@ -1,7 +1,8 @@
 from __future__ import annotations
 import setuptools.sandbox
 import typing as ty
-import hashlib
+
+# import hashlib
 from pathlib import Path
 import json
 import tempfile
@@ -21,7 +22,7 @@ from arcana.core.utils import (
     ListDictConverter,
     DOCKER_HUB,
     class_location,
-    HASH_CHUNK_SIZE,
+    # HASH_CHUNK_SIZE,
 )
 from arcana.core.data.space import DataSpace
 from arcana.__about__ import python_versions
@@ -506,16 +507,17 @@ class ContainerImage:
                 else:
                     value = value.tostr()
             elif isinstance(value, Path):
-                if value.exists():
-                    fhash = hashlib.md5()
-                    with open(value, "rb") as f:
-                        # Calculate hash in chunks so we don't run out of memory for
-                        # large files.
-                        for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b""):
-                            fhash.update(chunk)
-                    value = fhash.hexdigest()
-                else:
-                    value = str(value)
+                # TODO: need better handling of saving checksums
+                # if value.exists():
+                #     fhash = hashlib.md5()
+                #     with open(value, "rb") as f:
+                #         # Calculate hash in chunks so we don't run out of memory for
+                #         # large files.
+                #         for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b""):
+                #             fhash.update(chunk)
+                #     value = "checksum:" + fhash.hexdigest()
+                # else:
+                value = str(value)
             elif isclass(value) or isfunction(value):
                 value = class_location(value)
             return value

@@ -42,10 +42,13 @@ class KnownIssue:
 @attrs.define
 class License:
 
-    destination: str
-    description: str
+    name: str = attrs.field(metadata={"asdict": False})
+    destination: str = attrs.field()
+    description: str = attrs.field()
     info_url: str = attrs.field()
-    source: Path = attrs.field(default=None)
+    source: Path = attrs.field(
+        default=None, converter=lambda x: Path(x) if x is not None else None
+    )
 
     @info_url.validator
     def info_url_validator(self, _, info_url):
@@ -55,12 +58,13 @@ class License:
                 f"Could not parse info url '{info_url}', please include URL scheme"
             )
 
-    @source.validator
-    def source_validator(self, _, source):
-        if source is not None and not source.exists():
-            raise ValueError(
-                f"Source file for {self.name} license, '{str(source)}', does not exist"
-            )
+    # FIXME: this doesn't work inside images
+    # @source.validator
+    # def source_validator(self, _, source):
+    #     if source is not None and not source.exists():
+    #         raise ValueError(
+    #             f"Source file for {self.name} license, '{str(source)}', does not exist"
+    #         )
 
     @classmethod
     def column_name(self, name):
