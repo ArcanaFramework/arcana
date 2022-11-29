@@ -787,7 +787,7 @@ def pydra_asdict(
         ]
         dct["outputs"] = outputs = {}
         for outpt_name, lf in obj._connections:
-            outputs[outpt_name] = {"task": lf.name, "task_field": lf.field}
+            outputs[outpt_name] = {"task": lf.name, "field": lf.field}
     else:
         if isinstance(obj, FunctionTask):
             func = cp.loads(obj.inputs._func)
@@ -812,7 +812,7 @@ def pydra_asdict(
         if not inpt_name.startswith("_"):
             inpt_value = getattr(obj.inputs, inpt_name)
             if isinstance(inpt_value, LazyField):
-                inputs[inpt_name] = {"task_field": inpt_value.field}
+                inputs[inpt_name] = {"field": inpt_value.field}
                 # If the lazy field comes from the workflow lazy in, we omit
                 # the "task" item
                 if workflow is None or inpt_value.name != workflow.name:
@@ -828,9 +828,9 @@ def lazy_field_fromdict(dct: dict, workflow: Workflow):
     """Unserialises a LazyField object from a dictionary"""
     if "task" in dct:
         inpt_task = getattr(workflow, dct["task"])
-        lf = getattr(inpt_task.lzout, dct["task_field"])
+        lf = getattr(inpt_task.lzout, dct["field"])
     else:
-        lf = getattr(workflow.lzin, dct["task_field"])
+        lf = getattr(workflow.lzin, dct["field"])
     return lf
 
 
@@ -860,9 +860,9 @@ def pydra_fromdict(dct: dict, workflow: Workflow = None, **kwargs) -> TaskBase:
     for inpt_name, inpt_val in dct["inputs"].items():
         if inpt_val == NOTHING_STR:
             continue
-        # Check for 'task_field' key in a dictionary val and convert to a
+        # Check for 'field' key in a dictionary val and convert to a
         # LazyField object
-        if isinstance(inpt_val, dict) and "task_field" in inpt_val:
+        if isinstance(inpt_val, dict) and "field" in inpt_val:
             inpt_val = lazy_field_fromdict(inpt_val, workflow=workflow)
         inputs[inpt_name] = inpt_val
     kwargs.update((k, v) for k, v in inputs.items() if k not in kwargs)

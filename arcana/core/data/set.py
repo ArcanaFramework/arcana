@@ -720,10 +720,8 @@ class Dataset:
                 elif len(spec) == 3:
                     parsed.append(conn_type(*spec))
                 else:
-                    col_name, task_field = spec
-                    parsed.append(
-                        conn_type(col_name, task_field, self[col_name].format)
-                    )
+                    col_name, field = spec
+                    parsed.append(conn_type(col_name, field, self[col_name].format))
             return parsed
 
         pipeline = Pipeline(

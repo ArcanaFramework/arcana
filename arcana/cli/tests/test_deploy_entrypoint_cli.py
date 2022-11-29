@@ -44,13 +44,13 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
                 {
                     "name": "source1",
                     "format": "common:Text",
-                    "task_field": "in_file1",
+                    "field": "in_file1",
                     "description": "dummy",
                 },
                 {
                     "name": "source2",
                     "format": "common:Text",
-                    "task_field": "in_file2",
+                    "field": "in_file2",
                     "description": "dummy",
                 },
             ],
@@ -58,7 +58,7 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
                 {
                     "name": "sink1",
                     "format": "common:Text",
-                    "task_field": "out_file",
+                    "field": "out_file",
                     "description": "dummy",
                 }
             ],
@@ -134,13 +134,13 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
                 {
                     "name": "source1",
                     "format": "common:Text",
-                    "task_field": "in_file1",
+                    "field": "in_file1",
                     "description": "dummy",
                 },
                 {
                     "name": "source2",
                     "format": "common:Directory",
-                    "task_field": "in_file2",
+                    "field": "in_file2",
                     "description": "dummy",
                 },
             ],
@@ -148,7 +148,7 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
                 {
                     "name": "sink1",
                     "format": "common:Text",
-                    "task_field": "out_file",
+                    "field": "out_file",
                     "description": "dummy",
                 }
             ],
@@ -238,7 +238,7 @@ def test_entrypoint_cli_on_row(cli_runner, work_dir):
                 {
                     "name": "a_row",
                     "format": "arcana.core.data.row:DataRow",
-                    "task_field": "filenumber_row",
+                    "field": "filenumber_row",
                     "description": "dummy",
                 },
             ],
@@ -293,7 +293,7 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
                     "name": "source",
                     "format": "arcana.core.testing.formats:EncodedText",
                     "stored_format": "common:Text",
-                    "task_field": "in_file",
+                    "field": "in_file",
                     "description": "dummy",
                 },
             ],
@@ -301,14 +301,14 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
                 {
                     "name": "sink1",
                     "format": "arcana.core.testing.formats:EncodedText",
-                    "task_field": "out",
+                    "field": "out",
                     "description": "dummy",
                 },
                 {
                     "name": "sink2",
                     "format": "arcana.core.testing.formats:EncodedText",
                     "stored_format": "arcana.core.testing.formats:DecodedText",
-                    "task_field": "out",
+                    "field": "out",
                     "description": "dummy",
                 },
             ],

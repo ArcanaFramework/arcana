@@ -36,14 +36,14 @@ logger = logging.getLogger("arcana")
 
 @attrs.define
 class CommandInput:
-    name: str  # How the input will be referred to in the XNAT dialog, defaults to the task_field name
+    name: str  # How the input will be referred to in the XNAT dialog, defaults to the field name
     description: str  # description of the input
     format: type = attrs.field(converter=format_resolver)
     path: str = attrs.field()
     stored_format: type = attrs.field(
         converter=format_resolver
     )  # the format the input is stored in the data store in
-    task_field: str = attrs.field()  # Must match the name of the Pydra task input
+    field: str = attrs.field()  # Must match the name of the Pydra task input
     row_frequency: DataSpace = None
 
     @format.default
@@ -54,7 +54,7 @@ class CommandInput:
     def stored_format_default(self):
         return self.format
 
-    @task_field.default
+    @field.default
     def field_default(self):
         return self.name
 
@@ -68,7 +68,7 @@ class CommandInput:
         """
         return (
             f"--input-config {self.name} {self.stored_format.class_location()} "
-            f"{self.task_field} {self.format.class_location()}"
+            f"{self.field} {self.format.class_location()}"
         )
 
 
@@ -78,7 +78,7 @@ class CommandOutput:
     description: str  # description of the input
     path: str = attrs.field()  # The path the output is stored at in XNAT
     format: type = attrs.field(converter=format_resolver)
-    task_field: str = (
+    field: str = (
         attrs.field()
     )  # Must match the name of the Pydra task output, defaults to the path
     stored_format: type = attrs.field(
@@ -93,7 +93,7 @@ class CommandOutput:
     def stored_format_default(self):
         return self.format
 
-    @task_field.default
+    @field.default
     def field_default(self):
         return self.name
 
@@ -107,21 +107,21 @@ class CommandOutput:
         """
         return (
             f"--output-config {self.name} {self.stored_format.class_location()} "
-            f"{self.task_field} {self.format.class_location()}"
+            f"{self.field} {self.format.class_location()}"
         )
 
 
 @attrs.define
 class CommandParameter:
-    name: str  # How the input will be referred to in the XNAT dialog, defaults to task_field name
+    name: str  # How the input will be referred to in the XNAT dialog, defaults to field name
     description: str  # description of the parameter
     type: type = attrs.field(converter=resolve_class)
-    task_field: str = attrs.field()  # Name of parameter to expose in Pydra task
+    field: str = attrs.field()  # Name of parameter to expose in Pydra task
     required: bool = False
     default: ty.Union[str, int, float, bool] = None
 
-    @task_field.default
-    def task_field_default(self):
+    @field.default
+    def field_default(self):
         return path2varname(self.name)
 
     def command_config_arg(self):
@@ -129,7 +129,7 @@ class CommandParameter:
         `arcana deploy run-in-image` command
         """
         return (
-            f"--parameter-config {self.name} {self.task_field} "
+            f"--parameter-config {self.name} {self.field} "
             f"{class_location(self.type)} {self.default}"
         )
 
@@ -311,7 +311,7 @@ class ContainerCommand:
             pipeline_inputs.append(
                 PipelineInput(
                     col_name=inpt.name,
-                    task_field=inpt.task_field,
+                    field=inpt.field,
                     required_format=inpt.format,
                 )
             )
@@ -354,7 +354,7 @@ class ContainerCommand:
         pipeline_outputs = []
         for output in self.outputs:
             pipeline_outputs.append(
-                PipelineOutput(output.name, output.task_field, output.format)
+                PipelineOutput(output.name, output.field, output.format)
             )
             path, qualifiers = self.extract_qualifiers_from_path(
                 output_values.get(output.name, output.name)
@@ -416,7 +416,7 @@ class ContainerCommand:
                     f"Could not convert value passed to '{param.name}' parameter, "
                     f"{param_value}, into {param.type}"
                 )
-            setattr(task.inputs, param.task_field, param_value)
+            setattr(task.inputs, param.field, param_value)
 
         if self.name in dataset.pipelines and not overwrite:
             pipeline = dataset.pipelines[self.name]

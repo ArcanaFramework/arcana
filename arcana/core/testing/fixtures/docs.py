@@ -196,7 +196,7 @@ command:
         description: "MRIQC output directory"
     parameters:
       - name: fmriprep_flags
-        task_field: flags
+        field: flags
         type: str
         description: description of flags param
     row_frequency: session

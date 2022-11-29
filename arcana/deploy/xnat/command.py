@@ -129,7 +129,7 @@ class XnatCSCommand(ContainerCommand):
         # Add task inputs to inputs JSON specification
         cmd_args = []
         for inpt in self.inputs:
-            replacement_key = f"[{inpt.task_field.upper()}_INPUT]"
+            replacement_key = f"[{inpt.field.upper()}_INPUT]"
             if issubclass(inpt.format, FileGroup):
                 desc = f"Match resource [SCAN_TYPE]: {inpt.description} "
                 input_type = "string"
@@ -158,7 +158,7 @@ class XnatCSCommand(ContainerCommand):
         for param in self.parameters:
             desc = f"Parameter ({param.type}): " + param.description
 
-            replacement_key = f"[{param.task_field.upper()}_PARAM]"
+            replacement_key = f"[{param.field.upper()}_PARAM]"
 
             cmd_json["inputs"].append(
                 {
@@ -188,7 +188,7 @@ class XnatCSCommand(ContainerCommand):
             cmd_json["outputs"].append(
                 {
                     "name": output.name,
-                    "description": f"{output.task_field} ({output.format.class_location()})",
+                    "description": f"{output.field} ({output.format.class_location()})",
                     "required": True,
                     "mount": "out",
                     "path": out_fname,

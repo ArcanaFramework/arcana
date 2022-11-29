@@ -148,7 +148,7 @@ TEST_IMAGE_SPEC = {
             {
                 "name": LICENSE_INPUT_FIELD,
                 "format": "common:Text",
-                "task_field": "expected_license_contents",
+                "field": "expected_license_contents",
                 "description": "the path to the license",
             },
         ],
@@ -156,7 +156,7 @@ TEST_IMAGE_SPEC = {
             {
                 "name": LICENSE_OUTPUT_FIELD,
                 "format": "common:Text",
-                "task_field": "out",
+                "field": "out",
                 "description": "the validated license path",
             }
         ],
@@ -164,7 +164,7 @@ TEST_IMAGE_SPEC = {
             {
                 "name": LICENSE_PATH_PARAM,
                 "type": "str",
-                "task_field": "expected_license_path",
+                "field": "expected_license_path",
                 "required": True,
                 "description": "the expected contents of the license file",
             }
