@@ -7,6 +7,7 @@ import shutil
 import attrs
 import yaml
 from urllib.parse import urlparse
+from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.core.utils import (
@@ -73,6 +74,9 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         the file the spec was loaded from, if applicable
     """
 
+    SPEC_PATH = "/arcana-spec.yaml"
+    IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
+
     info_url: str = attrs.field()
     spec_version: str = attrs.field(default=0, converter=str)
     authors: ty.List[ContainerAuthor] = attrs.field(
@@ -137,7 +141,7 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
             build_dir,
         )
 
-        self.write_spec(dockerfile, build_dir)
+        self.insert_spec(dockerfile, build_dir)
 
         self.add_entrypoint(dockerfile, build_dir)
 
@@ -178,7 +182,7 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
                     lic.column_name(lic_name),
                 )
 
-    def write_spec(self, dockerfile: DockerRenderer, build_dir):
+    def insert_spec(self, dockerfile: DockerRenderer, build_dir):
         """Generate Neurodocker instructions to save the specification inside the built
         image to be used when running the command and comparing against future builds
 
@@ -191,16 +195,26 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         build_dir : Path
             path to build dir
         """
+        self.save(build_dir / "arcana-spec.yaml")
+        dockerfile.copy(source=["./arcana-spec.yaml"], destination=self.SPEC_PATH)
+
+    def save(self, yml_path: Path):
+        """Saves the specification to a YAML file that can be loaded again
+
+        Parameters
+        ----------
+        yml_path : Path
+            path to file to save the spec to
+        """
         yml_dct = self.asdict()
         yml_dct["type"] = class_location(self)
-        with open(build_dir / "arcana-spec.yaml", "w") as f:
+        with open(yml_path, "w") as f:
             yaml.dump(yml_dct, f)
-        dockerfile.copy(source=["./arcana-spec.yaml"], destination=self.SPEC_PATH)
 
     @classmethod
     def load(
         cls,
-        yml: Path or dict,
+        yml: ty.Union[Path, dict],
         root_dir: Path = None,
         license_paths: dict[str, Path] = None,
         licenses_to_download: set[str] = None,
@@ -259,6 +273,8 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         else:
             yml_dict = yml
 
+        yml_dict.pop("type", None)  # Remove "type" from dict if present
+
         # Override/augment loaded values from spec
         yml_dict.update(kwargs)
 
@@ -278,7 +294,7 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         return image
 
     @classmethod
-    def _load_yaml(cls, yaml_file: Path or str):
+    def _load_yaml(cls, yaml_file: ty.Union[Path, str]):
         def yaml_join(loader, node):
             seq = loader.construct_sequence(node)
             return "".join([str(i) for i in seq])
@@ -402,51 +418,51 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
                 for param in self.command.parameters:
                     tbl_params.write_row(
                         escaped_md(param.name),
-                        escaped_md(param.type),
+                        escaped_md(class_location(param.type)),
                         param.description,
                     )
                 f.write("\n")
 
-    # def compare_specs(self, other, check_version=True):
-    #     """Compares two build specs against each other and returns the difference
+    def compare_specs(self, other, check_version=True):
+        """Compares two build specs against each other and returns the difference
 
-    #     Parameters
-    #     ----------
-    #     s1 : dict
-    #         first spec
-    #     s2 : dict
-    #         second spec
-    #     check_version : bool
-    #         check the arcana version used to generate the specs
+        Parameters
+        ----------
+        s1 : dict
+            first spec
+        s2 : dict
+            second spec
+        check_version : bool
+            check the arcana version used to generate the specs
 
-    #     Returns
-    #     -------
-    #     DeepDiff
-    #         the difference between the specs
-    #     """
+        Returns
+        -------
+        DeepDiff
+            the difference between the specs
+        """
 
-    #     sdict = self.asdict()
-    #     odict = other.asdict()
+        sdict = self.asdict()
+        odict = other.asdict()
 
-    #     def prep(s):
-    #         dct = {
-    #             k: v
-    #             for k, v in s.items()
-    #             if (not k.startswith("_") and (v or isinstance(v, bool)))
-    #         }
-    #         if check_version:
-    #             if "arcana_version" not in dct:
-    #                 dct["arcana_version"] = __version__
-    #         else:
-    #             del dct["arcana_version"]
-    #         return dct
+        def prep(s):
+            dct = {
+                k: v
+                for k, v in s.items()
+                if (not k.startswith("_") and (v or isinstance(v, bool)))
+            }
+            if check_version:
+                if "arcana_version" not in dct:
+                    dct["arcana_version"] = __version__
+            else:
+                del dct["arcana_version"]
+            return dct
 
-    #     diff = DeepDiff(prep(sdict), prep(odict), ignore_order=True)
-    #     return diff
+        diff = DeepDiff(prep(sdict), prep(odict), ignore_order=True)
+        return diff
 
     @classmethod
-    def load_in_image(cls):
-        yml_dct = cls._load_yaml(cls.SPEC_PATH)
+    def load_in_image(cls, spec_path: Path = SPEC_PATH):
+        yml_dct = cls._load_yaml(spec_path)
         klass = resolve_class(yml_dct.pop("type"))
         return klass.load(yml_dct)
 
@@ -471,9 +487,6 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         {}
 
         """
-
-    SPEC_PATH = "/arcana-spec.yaml"
-    IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
 
 
 class MarkdownTable:

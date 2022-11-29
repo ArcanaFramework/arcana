@@ -9,14 +9,15 @@ import typing as ty
 import sys
 from collections import defaultdict
 import attrs
+from attrs.converters import default_if_none
 import pydra.engine.task
 from arcana.core.utils import (
     path2varname,
     ListDictConverter,
     format_resolver,
-    data_space_resolver,
     task_resolver,
     class_location,
+    resolve_class,
 )
 from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
 from arcana.core.utils import show_workflow_errors
@@ -114,10 +115,10 @@ class CommandOutput:
 class CommandParameter:
     name: str  # How the input will be referred to in the XNAT dialog, defaults to task_field name
     description: str  # description of the parameter
+    type: type = attrs.field(converter=resolve_class)
     task_field: str = attrs.field()  # Name of parameter to expose in Pydra task
-    type: type = str
     required: bool = False
-    default = attrs.NOTHING
+    default: ty.Union[str, int, float, bool] = None
 
     @task_field.default
     def task_field_default(self):
@@ -137,11 +138,10 @@ class CommandParameter:
 class ContainerCommand:
 
     STORE_TYPE = "file"
-    DEFAULT_DATA_SPACE = None
+    DATA_SPACE = None
 
     task: pydra.engine.task.TaskBase = attrs.field(converter=task_resolver)
-    row_frequency: DataSpace
-    data_space: type = attrs.field(converter=data_space_resolver)
+    row_frequency: DataSpace = None
     inputs: list[CommandInput] = attrs.field(
         factory=list, converter=ListDictConverter(CommandInput)
     )
@@ -151,15 +151,32 @@ class ContainerCommand:
     parameters: list[CommandParameter] = attrs.field(
         factory=list, converter=ListDictConverter(CommandParameter)
     )
-    configuration: dict[str, ty.Any] = None
+    configuration: dict[str, ty.Any] = attrs.field(
+        factory=dict, converter=default_if_none(dict)
+    )
     image: ContainerImageWithCommand = None
 
     def __attrs_post_init__(self):
-        if isinstance(self.row_frequency, str):
+        if isinstance(self.row_frequency, DataSpace):
+            pass
+        elif isinstance(self.row_frequency, str):
             try:
                 self.row_frequency = DataSpace.fromstr(self.row_frequency)
             except ValueError:
-                self.row_frequency = self.data_space[self.row_frequency]
+                if self.DATA_SPACE:
+                    self.row_frequency = self.DATA_SPACE[self.row_frequency]
+                else:
+                    raise ValueError(
+                        f"Cannot par'{self.row_frequency}' cannot be resolved to a data space, "
+                        "needs to be of form <data-space-enum>[<row-frequency-name>]"
+                    )
+        elif self.DATA_SPACE:
+            self.row_frequency = self.DATA_SPACE.default()
+        else:
+            raise ValueError(
+                f"Value for row_frequency must be provided to {type(self).__name__}.__init__ "
+                "because it doesn't have a defined DATA_SPACE class attribute"
+            )
 
     @property
     def name(self):
@@ -195,25 +212,12 @@ class ContainerCommand:
             generated commandline
         """
 
-        data_space = type(self.row_frequency)
-
         cmdline = (
             f"conda run --no-capture-output -n {self.image.CONDA_ENV} "  # activate conda
-            f"arcana deploy run-in-image "
-            f"--dataset-space {class_location(data_space)} "
-            f"--row-frequency {self.row_frequency} "
-            + " ".join(
-                [i.command_config_arg() for i in self.inputs]
-                + [o.command_config_arg() for o in self.outputs]
-                + [p.command_config_arg() for p in self.parameters]
-                + self.configuration_args()
-                + self.license_args()
-                + list(options)
-            )
-            + f" {class_location(self.task)} {self.name} "
+            f"arcana deploy image-entrypoint " + " ".join(options)
         )
         if dataset_id_str is not None:
-            cmdline += f"{dataset_id_str} "
+            cmdline += f" {dataset_id_str} "
 
         return cmdline
 
@@ -291,6 +295,10 @@ class ContainerCommand:
             lic.name for lic in self.image.licenses if lic.source is None
         ]
         dataset.install_licenses(licenses_to_download)
+
+        input_values = dict(input_values)
+        output_values = dict(output_values)
+        parameter_values = dict(parameter_values)
 
         pipeline_inputs = []
         converter_args = {}  # Arguments passed to converter
@@ -379,7 +387,7 @@ class ContainerCommand:
         task = self.task(**kwargs)
 
         for param in self.parameters:
-            param_value = parameter_values.get(param.name, attrs.NOTHING)
+            param_value = parameter_values.get(param.name, None)
             logger.info(
                 "Parameter %s (type %s) passed value %s",
                 param.name,
@@ -387,13 +395,13 @@ class ContainerCommand:
                 param_value,
             )
             if param_value == "" and param.type is not str:
-                param_value = attrs.NOTHING
+                param_value = None
                 logger.info(
                     "Non-string parameter '%s' passed empty string, setting to NOTHING",
                     param.name,
                 )
-            if param_value is attrs.NOTHING:
-                if param.default is attrs.NOTHING:
+            if param_value is None:
+                if param.default is None:
                     raise RuntimeError(
                         f"A value must be provided to required '{param.name}' parameter"
                     )

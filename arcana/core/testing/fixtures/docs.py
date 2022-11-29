@@ -197,7 +197,7 @@ command:
     parameters:
       - name: fmriprep_flags
         task_field: flags
-        type: string
+        type: str
         description: description of flags param
     row_frequency: session
     configuration:
@@ -254,7 +254,7 @@ a longer description
 #### Parameters
 |Name|Data type|Description|
 |----|---------|-----------|
-|`fmriprep_flags`|`string`|description of flags param|
+|`fmriprep_flags`|`str`|description of flags param|
 """.strip(),
     ["freesurfer"],
 )

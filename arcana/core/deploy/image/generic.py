@@ -501,7 +501,10 @@ class ContainerImage:
 
         def serializer(_, __, value):
             if isinstance(value, DataSpace):
-                value = str(value)
+                if hasattr(self, "command") and self.command.DATA_SPACE:
+                    value = str(value)
+                else:
+                    value = value.tostr()
             elif isinstance(value, Path):
                 if value.exists():
                     fhash = hashlib.md5()

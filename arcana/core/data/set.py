@@ -230,8 +230,8 @@ class Dataset:
         if not hierarchy:
             raise ArcanaUsageError(f"hierarchy provided to {self} cannot be empty")
 
-        not_valid = [f for f in hierarchy if f not in self.space.__members__]
         space = type(hierarchy[0]) if self.space is None else self.space
+        not_valid = [f for f in hierarchy if f not in self.space.__members__]
         if space is str:
             raise ArcanaUsageError(
                 "Either the data space of the set needs to be provided "

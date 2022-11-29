@@ -686,7 +686,7 @@ def changelog(manifest_json):
 
 
 @deploy.command(
-    name="run-in-image",
+    name="image-entrypoint",
     help="""Defines a new dataset, applies and launches a pipeline
 in a single command. Given the complexity of combining all these steps in one
 CLI, it isn't recommended to use this command manually, it is typically used
@@ -711,7 +711,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 @click.option(
     "--input",
     "-i",
-    "inputs",
+    "input_values",
     nargs=2,
     default=(),
     metavar="<col-name> <match-criteria>",
@@ -722,7 +722,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 @click.option(
     "--output",
     "-o",
-    "outputs",
+    "output_values",
     nargs=2,
     default=(),
     metavar="<col-name> <output-path>",
@@ -733,7 +733,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 @click.option(
     "--parameter",
     "-p",
-    "parameters",
+    "parameter_values",
     nargs=2,
     default=(),
     metavar="<name> <value>",
@@ -807,6 +807,15 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
         "be able to 'exec' into the container to debug."
     ),
 )
+@click.option(
+    "--spec-path",
+    type=click.Path(exists=True, path_type=Path),
+    default=Path(ContainerImageWithCommand.SPEC_PATH),
+    help=(
+        "Used to specify a different path to the spec path from the one that is written "
+        "to in the image (typically used in debugging/testing)"
+    ),
+)
 def image_entrypoint(
     dataset_id_str,
     work_dir,
@@ -815,6 +824,7 @@ def image_entrypoint(
     dataset_hierarchy,
     dataset_name,
     single_row,
+    spec_path,
     **kwargs,
 ):
 
@@ -832,7 +842,7 @@ def image_entrypoint(
     store_cache_dir = work_dir / "store-cache"
     pipeline_cache_dir = work_dir / "pydra"
 
-    image_spec = ContainerImageWithCommand.load_in_image()
+    image_spec = ContainerImageWithCommand.load_in_image(spec_path)
 
     dataset = image_spec.command.load_dataset(
         dataset_id_str, store_cache_dir, dataset_hierarchy, dataset_name
@@ -844,7 +854,6 @@ def image_entrypoint(
 
     image_spec.command.run(
         dataset,
-        store_cache_dir=store_cache_dir,
         pipeline_cache_dir=pipeline_cache_dir,
         export_work=export_work,
         **kwargs,

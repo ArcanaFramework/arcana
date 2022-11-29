@@ -1,5 +1,4 @@
 from functools import reduce
-import json
 from operator import mul
 from arcana.core.testing.fixtures.common import make_dataset, TestDatasetBlueprint
 from arcana.data.formats.common import Text
@@ -8,9 +7,10 @@ from arcana.data.formats.medimage import NiftiGzX
 from arcana.cli.deploy import image_entrypoint
 from arcana.core.utils import class_location, path2varname
 from arcana.core.testing.utils import show_cli_trace
+from arcana.deploy.common import PipelineImage
 
 
-def test_run_bids_pipeline(
+def test_bids_app_entrypoint(
     mock_bids_app_executable, cli_runner, nifti_sample_dir, work_dir
 ):
 
@@ -44,24 +44,21 @@ def test_run_bids_pipeline(
         dataset_path=dataset_path, blueprint=blueprint, source_data=nifti_sample_dir
     )
 
+    spec_path = work_dir / "spec.yaml"
+
     blueprint = dataset.__annotations__["blueprint"]
 
     dataset_id_str = f"file//{dataset_path}"
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     args = [
-        "arcana.tasks.bids.app:bids_app",
-        "a_bids_app",
         dataset_id_str,
         "--plugin",
         "serial",
         "--work",
         str(work_dir),
-        "--configuration",
-        "executable",
-        str(mock_bids_app_executable),
-        "--dataset-space",
-        class_location(blueprint.space),
+        "--spec-path",
+        spec_path,
         "--dataset-hierarchy",
         ",".join([str(ln) for ln in blueprint.hierarchy]),
     ]
@@ -69,22 +66,52 @@ def test_run_bids_pipeline(
     for path, (format, _) in blueprint.expected_formats.items():
         format_str = class_location(format)
         varname = path2varname(path)
-        args.extend(["--input-config", varname, format_str, varname, format_str])
         args.extend(["--input", varname, varname])
-        inputs_config.append({"name": varname, "path": path, "format": format_str})
-    args.extend(
-        ["--configuration", "inputs", json.dumps(inputs_config)]
-    )  # .replace('"', '\\"')
+        inputs_config.append(
+            {
+                "name": varname,
+                "path": path,
+                "format": format_str,
+                "description": "dummy",
+            }
+        )
+
     outputs_config = []
     for path, _, format, _ in blueprint.derivatives:
         format_str = class_location(format)
         varname = path2varname(path)
-        args.extend(["--output-config", varname, format_str, varname, format_str])
         args.extend(["--output", varname, varname])
-        outputs_config.append({"name": varname, "path": path, "format": format_str})
-    args.extend(
-        ["--configuration", "outputs", json.dumps(outputs_config)]
-    )  # .replace('"', '\\"')
+        outputs_config.append(
+            {
+                "name": varname,
+                "path": path,
+                "format": format_str,
+                "description": "dummy",
+            }
+        )
+
+    image_spec = PipelineImage(
+        name="test_bids_app_entrypoint",
+        version="1.0",
+        spec_version="1",
+        system_packages=[],
+        python_packages=[],
+        description="a test image",
+        authors=[{"name": "Some One", "email": "some.one@an.email.org"}],
+        info_url="http://concatenate.readthefakedocs.io",
+        command={
+            "task": "arcana.tasks.bids.app:bids_app",
+            "row_frequency": "medimage:Clinical[session]",
+            "inputs": inputs_config,
+            "outputs": outputs_config,
+            "configuration": {
+                "inputs": inputs_config,
+                "outputs": outputs_config,
+                "executable": str(mock_bids_app_executable),
+            },
+        },
+    )
+    image_spec.save(spec_path)
 
     result = cli_runner(image_entrypoint, args)
     assert result.exit_code == 0, show_cli_trace(result)

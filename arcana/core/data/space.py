@@ -175,4 +175,4 @@ class DataSpace(Enum):
                 f"'{s}' is not a string of the format <data-space-enum>[<value>]"
             )
         class_loc, val = match.groups()
-        return resolve_class(class_loc)[val]
+        return resolve_class(class_loc, prefixes=["arcana.data.spaces"])[val]

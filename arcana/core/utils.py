@@ -265,6 +265,8 @@ def resolve_class(class_str: str, prefixes: Sequence[str] = ()) -> type:
     type:
         The resolved class
     """
+    if not isinstance(class_str, str):
+        return class_str  # Assume that it is already resolved
     if class_str.startswith("<") and class_str.endswith(">"):
         class_str = class_str[1:-1]
     try:
@@ -1042,10 +1044,11 @@ class DictDictConverter:
 
 def format_resolver(format):
     from arcana.core.data.format import DataItem
+    from arcana.core.data.row import DataRow
 
     if isinstance(format, str):
         format = resolve_class(format, prefixes=["arcana.data.formats"])
-    elif not issubclass(format, DataItem):
+    elif not issubclass(format, (DataItem, DataRow)):
         raise ValueError(f"Cannot resolve {format} to data format")
     return format
 

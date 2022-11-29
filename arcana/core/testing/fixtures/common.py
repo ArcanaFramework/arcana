@@ -248,6 +248,7 @@ def command_spec():
             {
                 "name": "number_of_duplicates",
                 "task_field": "duplicates",
+                "default": 2,
                 "type": "int",
                 "required": True,
                 "description": "a parameter",

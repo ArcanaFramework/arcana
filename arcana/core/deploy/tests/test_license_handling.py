@@ -143,8 +143,7 @@ TEST_IMAGE_SPEC = {
     },
     "command": {
         "task": "arcana.core.testing.tasks:check_license",
-        "data_space": "common:Samples",
-        "row_frequency": "sample",
+        "row_frequency": "common:Samples[sample]",
         "inputs": [
             {
                 "name": LICENSE_INPUT_FIELD,
