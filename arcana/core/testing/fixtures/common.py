@@ -2,8 +2,8 @@ from tempfile import mkdtemp
 from pathlib import Path
 import shutil
 import docker
-from arcana.data.formats.common import Text, Directory, Json
-from arcana.data.formats.medimage import (
+from arcana.data.types.common import Text, Directory, Json
+from arcana.data.types.medimage import (
     NiftiGz,
     NiftiGzX,
     NiftiX,
@@ -222,13 +222,13 @@ def command_spec():
         "task": "arcana.core.testing.tasks:concatenate",
         "inputs": {
             "first_file": {
-                "format": "common:Text",
+                "datatype": "common:Text",
                 "field": "in_file1",
                 "row_frequency": "session",
                 "description": "the first file to pass as an input",
             },
             "second_file": {
-                "format": "common:Text",
+                "datatype": "common:Text",
                 "field": "in_file2",
                 "row_frequency": "session",
                 "description": "the second file to pass as an input",
@@ -236,7 +236,7 @@ def command_spec():
         },
         "outputs": {
             "concatenated": {
-                "format": "common:Text",
+                "datatype": "common:Text",
                 "field": "out_file",
                 "description": "an output file",
             }

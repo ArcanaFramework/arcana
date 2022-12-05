@@ -25,7 +25,7 @@ from arcana.core.mark import (
     subanalysis,
 )
 from arcana.core.analysis import Operation, ARCANA_SPEC
-from arcana.data.formats.common import Zip, Text
+from arcana.data.types.common import Zip, Text
 from arcana.data.stores.common import FileSystem
 from arcana.core.salience import (
     CheckStatus,
@@ -1284,7 +1284,7 @@ def test_change_of_type_errors():
         class B(A):
             x: Zip = inherit()
 
-    assert "Cannot change format" in e.value.msg
+    assert "Cannot change datatype" in e.value.msg
 
 
 def test_multiple_pipeline_builder_errors():

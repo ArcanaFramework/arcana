@@ -1,5 +1,5 @@
 from arcana.core.data.set import Dataset
-from arcana.data.formats.common import Text
+from arcana.data.types.common import Text
 from arcana.cli.apply import apply_pipeline
 from arcana.core.testing.utils import show_cli_trace, make_dataset_id_str
 

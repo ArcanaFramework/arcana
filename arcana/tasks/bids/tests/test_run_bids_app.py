@@ -1,9 +1,9 @@
 from functools import reduce
 from operator import mul
 from arcana.core.testing.fixtures.common import make_dataset, TestDatasetBlueprint
-from arcana.data.formats.common import Text
+from arcana.data.types.common import Text
 from arcana.data.spaces.medimage import Clinical
-from arcana.data.formats.medimage import NiftiGzX
+from arcana.data.types.medimage import NiftiGzX
 from arcana.cli.deploy import image_entrypoint
 from arcana.core.utils import class2str, path2varname
 from arcana.core.testing.utils import show_cli_trace
@@ -62,33 +62,27 @@ def test_bids_app_entrypoint(
         "--dataset-hierarchy",
         ",".join([str(ln) for ln in blueprint.hierarchy]),
     ]
-    inputs_config = []
-    for path, (format, _) in blueprint.expected_formats.items():
-        format_str = class2str(format)
+    inputs_config = {}
+    for path, (datatype, _) in blueprint.expected_formats.items():
+        format_str = class2str(datatype)
         varname = path2varname(path)
         args.extend(["--input", varname, varname])
-        inputs_config.append(
-            {
-                "name": varname,
-                "path": path,
-                "format": format_str,
-                "description": "dummy",
-            }
-        )
+        inputs_config[varname] = {
+            "path": path,
+            "datatype": format_str,
+            "description": "dummy",
+        }
 
     outputs_config = []
     for path, _, datatype, _ in blueprint.derivatives:
-        format_str = class2str(format)
+        format_str = class2str(datatype)
         varname = path2varname(path)
         args.extend(["--output", varname, varname])
-        outputs_config.append(
-            {
-                "name": varname,
-                "path": path,
-                "format": format_str,
-                "description": "dummy",
-            }
-        )
+        outputs_config[varname] = {
+            "path": path,
+            "datatype": format_str,
+            "description": "dummy",
+        }
 
     image_spec = PipelineImage(
         name="test_bids_app_entrypoint",

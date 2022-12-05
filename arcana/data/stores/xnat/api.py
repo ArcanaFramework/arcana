@@ -418,10 +418,10 @@ class Xnat(DataStore):
         """
         self._check_store(field)
         if field.array:
-            if field.format is str:
-                value = ['"{}"'.format(v) for v in value]
+            if field.datatype is str:
+                value = ['"{}"'.datatype(v) for v in value]
             value = "[" + ",".join(str(v) for v in value) + "]"
-        if field.format is str:
+        if field.datatype is str:
             value = '"{}"'.format(value)
         with self:
             xsession = self.get_xrow(field.row)

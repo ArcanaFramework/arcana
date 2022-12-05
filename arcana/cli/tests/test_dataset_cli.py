@@ -5,7 +5,7 @@ from arcana.core.data.set import Dataset
 from arcana.core.salience import DataQuality, ColumnSalience
 from arcana.core.testing.data.sets import TestDataSpace
 from arcana.cli.dataset import define, add_source, add_sink, missing_items
-from arcana.data.formats.common import Text
+from arcana.data.types.common import Text
 from arcana.core.testing.utils import make_dataset_id_str, show_cli_trace
 
 

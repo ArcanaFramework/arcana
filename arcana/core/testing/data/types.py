@@ -3,7 +3,7 @@ import typing as ty
 from pydra import mark
 from arcana.core.mark import converter
 from arcana.core.data.type import BaseFile
-from arcana.data.formats.common import Text
+from arcana.data.types.common import Text
 
 
 class EncodedText(BaseFile):

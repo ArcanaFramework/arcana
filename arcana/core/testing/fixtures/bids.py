@@ -1,7 +1,7 @@
 import os
 import pytest
 import docker
-from arcana.data.formats.medimage import NiftiGzX
+from arcana.data.types.medimage import NiftiGzX
 from arcana.deploy.common import PipelineImage
 
 
@@ -43,8 +43,8 @@ def mock_bids_app_script():
     ]:
         subdir, suffix = inpt_path.split("/")
         file_tests += f"""
-        if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{format.ext}" ]; then
-            echo "Did not find {suffix} file at $BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{format.ext}"
+        if [ ! -f "$BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{datatype.ext}" ]; then
+            echo "Did not find {suffix} file at $BIDS_DATASET/sub-${{SUBJ_ID}}/{subdir}/sub-${{SUBJ_ID}}_{suffix}.{datatype.ext}"
             exit 1;
         fi
         """
@@ -136,17 +136,17 @@ def bids_command_spec(mock_bids_app_executable):
     inputs = {
         "T1w": {
             "path": "anat/T1w",
-            "format": "medimage:NiftiGzX",
+            "datatype": "medimage:NiftiGzX",
             "description": "T1-weighted image",
         },
         "T2w": {
             "path": "anat/T2w",
-            "format": "medimage:NiftiGzX",
+            "datatype": "medimage:NiftiGzX",
             "description": "T2-weighted image",
         },
         "DWI": {
             "path": "dwi/dwi",
-            "format": "medimage:NiftiGzXFslgrad",
+            "datatype": "medimage:NiftiGzXFslgrad",
             "description": "DWI-weighted image",
         },
     }
@@ -154,12 +154,12 @@ def bids_command_spec(mock_bids_app_executable):
     outputs = {
         "file1": {
             "path": "file1",
-            "format": "common:Text",
+            "datatype": "common:Text",
             "description": "an output file",
         },
         "file2": {
             "path": "file2",
-            "format": "common:Text",
+            "datatype": "common:Text",
             "description": "another output file",
         },
     }

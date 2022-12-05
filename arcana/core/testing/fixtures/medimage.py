@@ -1,5 +1,5 @@
 import pytest
-from arcana.data.formats.medimage import Dicom
+from arcana.data.types.medimage import Dicom
 
 
 @pytest.fixture(scope="session")

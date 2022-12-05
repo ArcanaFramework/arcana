@@ -31,7 +31,7 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
     "-i",
     nargs=3,
     default=(),
-    metavar="<col-name> <pydra-field> <required-format>",
+    metavar="<col-name> <pydra-field> <required-datatype>",
     multiple=True,
     type=str,
     help=(
@@ -45,12 +45,12 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
     "-o",
     nargs=3,
     default=(),
-    metavar="<col-name> <pydra-field> <produced-format>",
+    metavar="<col-name> <pydra-field> <produced-datatype>",
     multiple=True,
     type=str,
     help=(
         "the link between an output of the workflow and a sink column. "
-        "The produced format is the location (<module-path>:<class>) of the format "
+        "The produced datatype is the location (<module-path>:<class>) of the datatype "
         "produced by the workflow"
     ),
 )
@@ -69,13 +69,13 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
     "-s",
     nargs=3,
     default=(),
-    metavar="<col-name> <pydra-field> <required-format>",
+    metavar="<col-name> <pydra-field> <required-datatype>",
     multiple=True,
     type=str,
     help=(
         "add a source to the dataset and link it to an input of the workflow "
         "in a single step. The source column must be able to be specified by its "
-        "path alone and be already in the format required by the workflow"
+        "path alone and be already in the datatype required by the workflow"
     ),
 )
 @click.option(
@@ -83,12 +83,12 @@ WORKFLOW_LOCATION is the location to a Pydra workflow on the Python system path,
     "-k",
     nargs=3,
     default=(),
-    metavar="<col-name> <pydra-field> <produced-format>",
+    metavar="<col-name> <pydra-field> <produced-datatype>",
     multiple=True,
     type=str,
     help=(
         "add a sink to the dataset and link it to an output of the workflow "
-        "in a single step. The sink column be in the same format as produced "
+        "in a single step. The sink column be in the same datatype as produced "
         "by the workflow"
     ),
 )
@@ -181,6 +181,4 @@ def apply_bids_app():
 
 
 def parse_col_option(option):
-    return [
-        (c, p, str2class(f, prefixes=["arcana.data.formats"])) for c, p, f in option
-    ]
+    return [(c, p, str2class(f, prefixes=["arcana.data.types"])) for c, p, f in option]

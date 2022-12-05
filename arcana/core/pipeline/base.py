@@ -69,11 +69,11 @@ class Pipeline:
     inputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
         List of column names (i.e. either data sources or sinks) to be
         connected to the inputs of the pipeline. If the pipelines requires
-        the input to be in a format to the source, then it can be specified
+        the input to be in a datatype to the source, then it can be specified
         in a tuple (NAME, FORMAT)
     outputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
         List of sink names to be connected to the outputs of the pipeline
-        If the input to be in a specific format, then it can be provided in
+        If the input to be in a specific datatype, then it can be provided in
         a tuple (NAME, FORMAT)
     converter_args : dict[str, dict]
         keyword arguments passed on to the converter to control how the
@@ -240,7 +240,7 @@ class Pipeline:
             for i in self.inputs
         }
 
-        # Do input format conversions if required
+        # Do input datatype conversions if required
         for inpt in self.inputs:
             if inpt.required_format == arcana.core.data.row.DataRow:
                 continue
@@ -316,13 +316,13 @@ class Pipeline:
             )
         )
 
-        # Set format converters where required
+        # Set datatype converters where required
         to_sink = {
             o: getattr(wf.per_row.output_interface.lzout, o)
             for o in self.output_varnames
         }
 
-        # Do output format conversions if required
+        # Do output datatype conversions if required
         for outpt in self.outputs:
             stored_format = self.dataset[outpt.name].datatype
             if not (
@@ -451,7 +451,7 @@ class Pipeline:
                 raise ArcanaDesignError(
                     f"{pipeline} cannot be a dependency of itself. Call-stack:\n"
                     + "\n".join(
-                        "{} ({})".format(p, ", ".join(ro))
+                        "{} ({})".datatype(p, ", ".join(ro))
                         for p, ro in (
                             [[pipeline, sink.name]] + downstream[: (recur_index + 1)]
                         )
@@ -480,7 +480,7 @@ class Pipeline:
                     except ArcanaPipelinesStackError as e:
                         e.msg += (
                             "\nwhich are required as inputs to the '{}' "
-                            "pipeline to produce '{}'".format(
+                            "pipeline to produce '{}'".datatype(
                                 pipeline.name, "', '".join(s.name for s in to_produce)
                             )
                         )
@@ -559,7 +559,7 @@ def source_items(
     with dataset.store:
         missing_inputs = {}
         for inpt in inputs:
-            # If the required format is of type DataRow then provide the whole
+            # If the required datatype is of type DataRow then provide the whole
             # row to the pipeline input
             if inpt.required_format == arcana.core.data.row.DataRow:
                 sourced.append(row)
@@ -663,7 +663,7 @@ def encapsulate_paths_and_values(outputs, **kwargs):
 #         exclude_res = [self._gen_prov_path_regex(p) for p in exclude]
 #     diff = DeepDiff(self._prov, other._prov, ignore_order=True)
 #     # Create regular expressions for the include and exclude name_paths in
-#     # the format that deepdiff uses for nested dictionary/lists
+#     # the datatype that deepdiff uses for nested dictionary/lists
 
 #     def include_change(change):
 #         if include is None:

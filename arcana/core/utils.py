@@ -397,8 +397,8 @@ def dir_modtime(dpath):
 #     elif not isinstance(value, (int, float, bool)):
 #         raise ArcanaUsageError(
 #             "Unrecognised type for single value {}".format(value))
-#     if format is not None:
-#         value = format(value)
+#     if datatype is not None:
+#         value = datatype(value)
 #     return value
 
 
@@ -425,15 +425,15 @@ def parse_value(value):
 #         except TypeError:
 #             pass
 #     if isinstance(value, list):
-#         value = [parse_single_value(v, datatype=format) for v in value]
+#         value = [parse_single_value(v, datatype=datatype) for v in value]
 #         # Check to see if datatypes are consistent
 #         datatypes = set(type(v) for v in value)
 #         if len(datatypes) > 1:
 #             raise ArcanaUsageError(
 #                 "Inconsistent datatypes in values array ({})"
-#                 .format(value))
+#                 .datatype(value))
 #     else:
-#         value = parse_single_value(value, datatype=format)
+#         value = parse_single_value(value, datatype=datatype)
 #     return value
 
 
@@ -1062,9 +1062,9 @@ def str2datatype(datatype):
     from arcana.core.data.row import DataRow
 
     if isinstance(datatype, str):
-        datatype = str2class(datatype, prefixes=["arcana.data.formats"])
+        datatype = str2class(datatype, prefixes=["arcana.data.types"])
     elif not issubclass(datatype, (DataType, DataRow)):
-        raise ValueError(f"Cannot resolve {datatype} to data format")
+        raise ValueError(f"Cannot resolve {datatype} to datatype")
     return datatype
 
 

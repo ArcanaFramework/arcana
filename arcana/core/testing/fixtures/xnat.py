@@ -8,8 +8,8 @@ import nibabel
 import xnat4tests
 from arcana.data.stores.xnat.api import Xnat
 from arcana.data.spaces.medimage import Clinical
-from arcana.data.formats.common import Text, Directory
-from arcana.data.formats.medimage import NiftiGzX, NiftiGz, Dicom, NiftiX
+from arcana.data.types.common import Text, Directory
+from arcana.data.types.medimage import NiftiGzX, NiftiGz, Dicom, NiftiX
 from arcana.core.testing.data.stores.xnat import (
     make_mutable_dataset,
     TestXnatDatasetBlueprint,
@@ -41,7 +41,7 @@ TEST_XNAT_DATASET_BLUEPRINTS = {
                 "scan1",  # scan type (ID is index)
                 [
                     ResourceBlueprint(
-                        "Text", Text, ["file.txt"]  # resource name  # Data format
+                        "Text", Text, ["file.txt"]  # resource name  # Data datatype
                     )
                 ],
             ),  # name files to place within resource

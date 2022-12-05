@@ -22,7 +22,7 @@ class Input:
 
     def __post_init__(self):
         if isinstance(self.datatype, str):
-            self.datatype = str2class(self.datatype, prefixes=["arcana.data.formats"])
+            self.datatype = str2class(self.datatype, prefixes=["arcana.data.types"])
 
 
 @dataclasses.dataclass
@@ -43,7 +43,7 @@ class Output:
 
     def __post_init__(self):
         if isinstance(self.datatype, str):
-            self.datatype = str2class(self.datatype, prefixes=["arcana.data.formats"])
+            self.datatype = str2class(self.datatype, prefixes=["arcana.data.types"])
 
 
 @dataclasses.dataclass
@@ -86,12 +86,12 @@ def shell_cmd(
         The inputs to be inserted into the BIDS dataset. Should be a list of tuples
         consisting of the the path the file/directory should be stored within a BIDS subject/session,
         e.g. anat/T1w, func/bold, and the DataFormat class it should be stored in, e.g.
-        arcana.data.formats.bids.NiftiGzX.
+        arcana.data.types.bids.NiftiGzX.
     outputs : list[tuple[str, type] or dict[str, str]]
         The outputs to be extracted from the derivatives directory. Should be a list of tuples
         consisting of the the path the file/directory is saved by the app within a BIDS subject/session,
         e.g. freesurfer/recon-all, and the DataFormat class it is stored in, e.g.
-        arcana.data.formats.common.Directory.
+        arcana.data.types.common.Directory.
     executable : str, optional
         Name of the executable within the image to run (i.e. the entrypoint of the image).
         Required when extending the base image and launching Arcana within it. Defaults to

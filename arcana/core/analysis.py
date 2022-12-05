@@ -66,7 +66,7 @@ def make_class(klass: type, space: type) -> type:
                 dtype = resolved_dtype
             elif dtype is not resolved_dtype and not issubclass(dtype, resolved_dtype):
                 raise ArcanaDesignError(
-                    f"Cannot change format of {name} from {resolved_dtype} to "
+                    f"Cannot change datatype of {name} from {resolved_dtype} to "
                     f"{dtype} as it is not a sub-class"
                 )
             attr.resolved_to = resolved

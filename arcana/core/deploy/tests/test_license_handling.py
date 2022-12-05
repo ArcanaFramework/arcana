@@ -147,7 +147,7 @@ TEST_IMAGE_SPEC = {
         "inputs": [
             {
                 "name": LICENSE_INPUT_FIELD,
-                "format": "common:Text",
+                "datatype": "common:Text",
                 "field": "expected_license_contents",
                 "description": "the path to the license",
             },
@@ -155,7 +155,7 @@ TEST_IMAGE_SPEC = {
         "outputs": [
             {
                 "name": LICENSE_OUTPUT_FIELD,
-                "format": "common:Text",
+                "datatype": "common:Text",
                 "field": "out",
                 "description": "the validated license path",
             }

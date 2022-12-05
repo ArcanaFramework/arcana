@@ -14,7 +14,7 @@ from pydra.tasks.mrtrix3.utils import MRConvert
 from arcana.core.mark import converter
 from arcana.core.exceptions import ArcanaUsageError
 from arcana.core.data.type import WithSideCars
-from arcana.data.formats.common import File, Directory
+from arcana.data.types.common import File, Directory
 
 
 # =====================================================================

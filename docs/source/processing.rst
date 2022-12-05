@@ -68,8 +68,8 @@ to appropriate columns in the dataset (``T1w``, ``T2w`` and
       --parameter param1 10 \
       --parameter param2 20
 
-If there is a mismatch in the data format (see :ref:`data_formats`) between the
-workflow inputs/outputs and the columns they are connected to, a format conversion
+If there is a mismatch in the data datatype (see :ref:`data_formats`) between the
+workflow inputs/outputs and the columns they are connected to, a datatype conversion
 task will be inserted into the pipeline if converter method between the two
 formats exists (see :ref:`file_formats`).
 
@@ -78,7 +78,7 @@ To add a workflow to a dataset via the API use the :meth:`Dataset.apply_pipeline
 .. code-block:: python
 
     from pydra.tasks.freesurfer import Freesurfer
-    from arcana.data.formats import common, medimage
+    from arcana.data.types import common, medimage
 
     dataset = Dataset.load('myuni-xnat//myproject:training')
 
@@ -131,7 +131,7 @@ back to the dataset.
 .. code-block:: python
 
     from myworkflows import vbm_template
-    from arcana.data.formats import common, medimage
+    from arcana.data.types import common, medimage
     from arcana.data.spaces.medimage import Clinical
 
     dataset = Dataset.load('bids///data/openneuro/ds00014')
@@ -194,14 +194,14 @@ methods, and takes the columns the pipeline outputs are connected to as argument
     from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
     from arcana.core.mark import analysis, pipeline, parameter
     from arcana.data.spaces.example import ExampleDataSpace
-    from arcana.data.formats.common import Zip, Directory, Json, Png, Gif
+    from arcana.data.types.common import Zip, Directory, Json, Png, Gif
 
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
 
         # Define the columns for the dataset along with their formats.
         # The `column` decorator can be used to specify additional options but
-        # is not required by default. The data formats specify the format
+        # is not required by default. The data formats specify the datatype
         # that the column data will be stored in
         recorded_datafile: Zip  # Not derived by a pipeline, should be linked to existing dataset column
         recorded_metadata: Json  # "     "     "     "
@@ -283,7 +283,7 @@ parameters.
 .. code-block:: python
 
   from arcana.core.data.set import Dataset
-  from arcana.data.formats.common import Yaml
+  from arcana.data.types.common import Yaml
   from arcana.analyses.example import ExampleAnalysis
 
   a_dataset = Dataset.load('file///data/a-dataset')
@@ -433,21 +433,21 @@ would look like
           // MD5 Checksums for all files in the file group. "." refers to the
           // "primary file" in the file group.
           "T1w_reg_dwi": {
-            "format": "<arcana.data.formats.medimage:NiftiGzX>",
+            "datatype": "<arcana.data.types.medimage:NiftiGzX>",
             "checksums": {
               ".": "4838470888DBBEADEAD91089DD4DFC55",
               "json": "7500099D8BE29EF9057D6DE5D515DFFE"
             }
           },
           "T2w_reg_dwi": {
-            "format": "<arcana.data.formats.medimage:NiftiGzX>",
+            "datatype": "<arcana.data.types.medimage:NiftiGzX>",
             "checksums": {
               ".": "4838470888DBBEADEAD91089DD4DFC55",
               "json": "5625E881E32AE6415E7E9AF9AEC59FD6"
             }
           },
           "dwi_fod": {
-            "format": "<arcana.data.formats.medimage:MrtrixImage>",
+            "datatype": "<arcana.data.types.medimage:MrtrixImage>",
             "checksums": {
               ".": "92EF19B942DD019BF8D32A2CE2A3652F"
             }
@@ -457,7 +457,7 @@ would look like
           "wm_tracks": {
             "task": "tckgen",
             "field": "out_file",
-            "format": "<arcana.data.formats.medimage:MrtrixTrack>",
+            "datatype": "<arcana.data.types.medimage:MrtrixTrack>",
             "checksums": {
               ".": "D30073044A7B1239EFF753C85BC1C5B3"
             }

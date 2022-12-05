@@ -203,7 +203,7 @@ class XnatCSCommand(ContainerCommand):
                     "as-a-child-of": "SESSION",
                     "type": "Resource",
                     "label": label,
-                    "format": output.datatype.class_name(),
+                    "datatype": output.datatype.class_name(),
                 }
             )
             cmd_args.append(f"--output {output.name} '{output.path}'")

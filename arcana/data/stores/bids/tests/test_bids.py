@@ -10,11 +10,11 @@ from dataclasses import dataclass
 import pytest
 import docker
 from arcana import __version__
-from arcana.data.formats import NiftiX
+from arcana.data.types import NiftiX
 from arcana.data.stores.bids import BidsDataset
 from arcana.tasks.bids.app import bids_app, Input, Output
-from arcana.data.formats.common import Text, Directory
-from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
+from arcana.data.types.common import Text, Directory
+from arcana.data.types.medimage import NiftiGzX, NiftiGzXFslgrad
 
 
 MOCK_BIDS_APP_NAME = "mockapp"

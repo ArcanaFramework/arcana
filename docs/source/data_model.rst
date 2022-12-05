@@ -40,7 +40,7 @@ For instructions on how to add support for new systems see :ref:`alternative_sto
 To configure access to a store via the CLI use the ':ref:`arcana store add`' command.
 The store type is specified by the path to the data store sub-class,
 *<module-path>:<class-name>*,  e.g. ``arcana.data.stores.xnat:Xnat``.
-However, if the format is in a submodule of ``arcana.data.stores`` then that
+However, if the store is in a submodule of ``arcana.data.stores`` then that
 prefix can be dropped for convenience, e.g. ``mediamge:Xnat``.
 
 .. code-block:: console
@@ -219,9 +219,9 @@ are accessed they need to be cached locally with :meth:`.DataType.get`.
 Newly created and modified data items are placed into the store with
 :meth:`.DataType.put`.
 
-:class:`.FileGroup` is typically subclassed to specify the format of the
+:class:`.FileGroup` is typically subclassed to specify the datatype of the
 files/directories in the group. For example, there are a number common file
-formats implemented in :mod:`arcana.data.formats.common`, including
+formats implemented in :mod:`arcana.data.types.common`, including
 
 * :class:`.common.Text`
 * :class:`.common.Zip`
@@ -238,8 +238,8 @@ a pipeline and that stored in the data store. See :ref:`adding_formats` for deta
 instructions on how to specify new file formats and converters between them.
 
 As with data stores, file formats are specified in the CLI by *<module-path>:<class-name>*,
-e.g. ``arcana.data.formats.common:Text``. However, if the format is in a submodule of
-``arcana.data.formats`` then that prefix can be dropped for convenience,
+e.g. ``arcana.data.types.common:Text``. However, if the datatype is in a submodule of
+``arcana.data.types`` then that prefix can be dropped for convenience,
 e.g. ``common:Text``.
 
 
@@ -268,7 +268,7 @@ A data frame is defined by adding "source" columns to access existing
 (typically acquired) data, and "sink" columns to define where
 derivatives will be stored within the data tree. The "row frequency" argument
 of the column (e.g. per 'session', 'subject', etc...) specifies which data frame
-the column belongs to. The format of a column's member items (see :ref:`Items`)
+the column belongs to. The datatype of a column's member items (see :ref:`Items`)
 must be consistent and is also specified when the column is created.
 
 The data items (e.g. files, scans) within a source column do not need to have
@@ -320,7 +320,7 @@ methods can be used directly to add sources and sinks via the Python API.
 .. code-block:: python
 
     from arcana.data.spaces.medimage import Clinical
-    from arcana.data.formats.medimage import Dicom, NiftiGz
+    from arcana.data.types.medimage import Dicom, NiftiGz
 
     xnat_dataset.add_source(
         name='T1w',
@@ -355,7 +355,7 @@ operator
     plt.imshow(t1w['T2', 'sub01'].data[:, :, 30])
 
 
-One of the main benefits of using datasets in BIDS_ format is that the names
+One of the main benefits of using datasets in BIDS_ datatype is that the names
 and file formats of the data are strictly defined. This allows the :class:`.Bids`
 data store object to automatically add sources to the dataset when it is
 initialised.

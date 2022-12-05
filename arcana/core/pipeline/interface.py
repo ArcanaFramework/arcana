@@ -7,7 +7,7 @@ from arcana.core.utils import (
     str2datatype,
     str2class,
 )
-import arcana.data.formats.common
+import arcana.data.types.common
 from arcana.core.data.space import DataSpace
 
 
@@ -23,12 +23,12 @@ class PipelineInput:
     field: str = attrs.field()  # Must match the name of the Pydra task input field
     stored_format: type = attrs.field(
         converter=str2datatype
-    )  # the format the input is stored in the data store in
+    )  # the datatype the input is stored in the data store in
     row_frequency: DataSpace = None
 
-    @format.default
-    def format_default(self):
-        return arcana.data.formats.common.File
+    @datatype.default
+    def datatype_default(self):
+        return arcana.data.types.common.File
 
     @stored_format.default
     def stored_format_default(self):
@@ -54,11 +54,11 @@ class PipelineOutput:
     )  # Must match the name of the Pydra task output, defaults to the path
     stored_format: type = attrs.field(
         converter=str2datatype
-    )  # the format the output is to be stored in the data store in
+    )  # the datatype the output is to be stored in the data store in
 
-    @format.default
-    def format_default(self):
-        return arcana.data.formats.common.File
+    @datatype.default
+    def datatype_default(self):
+        return arcana.data.types.common.File
 
     @stored_format.default
     def stored_format_default(self):

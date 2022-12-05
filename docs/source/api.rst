@@ -4,7 +4,7 @@ Application Programming Interface
 The core of Arcana's framework is located under the ``arcana.core`` sub-package,
 which contains all the domain-independent logic. Domain-specific extensions
 for alternative data stores, dimensions and formats should be placed in
-``arcana.data.stores``, ``arcana.data.spaces`` and ``arcana.data.formats``
+``arcana.data.stores``, ``arcana.data.spaces`` and ``arcana.data.types``
 respectively.
 
 
@@ -32,18 +32,18 @@ Core
 
 .. autoclass:: arcana.core.data.column.DataSink
 
-.. autoclass:: arcana.core.data.format.DataType
+.. autoclass:: arcana.core.data.datatype.DataType
     :members: get, put
 
-.. autoclass:: arcana.core.data.format.FileGroup
+.. autoclass:: arcana.core.data.datatype.FileGroup
 
-.. autoclass:: arcana.core.data.format.Field
+.. autoclass:: arcana.core.data.datatype.Field
 
-.. autoclass:: arcana.core.data.format.BaseFile
+.. autoclass:: arcana.core.data.datatype.BaseFile
 
-.. autoclass:: arcana.core.data.format.BaseDirectory
+.. autoclass:: arcana.core.data.datatype.BaseDirectory
 
-.. autoclass:: arcana.core.data.format.WithSideCars
+.. autoclass:: arcana.core.data.datatype.WithSideCars
 
 
 Stores

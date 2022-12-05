@@ -140,22 +140,22 @@ class DataType(metaclass=ABCMeta):
 
     @classmethod
     def class2str(cls, relative=True):
-        """Returns the location of the format class definition
+        """Returns a string representation of location of the class definition
 
         Parameters
         ----------
         relative : bool, optional
-            return the module location relative to `arcana.data.formats`,
+            return the module location relative to `arcana.data.types`,
             if applicable, by default True
 
         Returns
         -------
         str
-            the location of the class format in <module-path>:<class-name>
+            the location of the class definition in <module-path>:<class-name> format
         """
         loc = class2str(cls)
-        if relative and loc.startswith("arcana.data.formats."):
-            loc = loc[len("arcana.data.formats.") :]
+        if relative and loc.startswith("arcana.data.types."):
+            loc = loc[len("arcana.data.types.") :]
         return loc
 
 
@@ -351,7 +351,7 @@ class FileGroup(DataType, metaclass=ABCMeta):
         Returns
         -------
         bool
-            whether or not the name matches the format
+            whether or not the name matches the datatype
         """
         return name.lower() in [
             n.lower() for n in (cls.class_name(),) + cls.alternative_names
@@ -408,13 +408,13 @@ class FileGroup(DataType, metaclass=ABCMeta):
 
     @classmethod
     def resolve(cls, unresolved):
-        """Resolve file group loaded from a repository to the specific format
+        """Resolve file group loaded from a repository to the specific datatype
 
         Parameters
         ----------
         unresolved : UnresolvedFileGroup
             A file group loaded from a repository that has not been resolved to
-            a specific format yet
+            a specific datatype yet
 
         Returns
         -------
@@ -425,10 +425,10 @@ class FileGroup(DataType, metaclass=ABCMeta):
         ------
         ArcanaUnresolvableFormatException
             If there doesn't exist a unique resolution from the unresolved file
-            group to the given format, then an ArcanaFileFormatError should be
+            group to the given datatype, then an ArcanaFileFormatError should be
             raised
         """
-        # Perform matching based on resource names in multi-format
+        # Perform matching based on resource names in multi-datatype
         # file-group
         if unresolved.uris is not None:
             item = None
@@ -438,7 +438,7 @@ class FileGroup(DataType, metaclass=ABCMeta):
             if item is None:
                 raise ArcanaFileFormatError(
                     f"Could not file a matching resource in {unresolved.path} for"
-                    f" the given format ({cls.class_name()}), found "
+                    f" the given datatype ({cls.class_name()}), found "
                     "('{}')".format("', '".join(unresolved.uris))
                 )
         else:
@@ -547,12 +547,12 @@ class FileGroup(DataType, metaclass=ABCMeta):
             raise ArcanaFileFormatError(msg)
 
     def convert_to(self, to_format, **kwargs):
-        """Convert the FileGroup to a new format
+        """Convert the FileGroup to a new datatype
 
         Parameters
         ----------
         to_format : type
-            the file-group format to convert to
+            the file-group datatype to convert to
         **kwargs
             args to pass to the conversion process
 
@@ -643,13 +643,13 @@ class FileGroup(DataType, metaclass=ABCMeta):
 
     @classmethod
     def find_converter(cls, from_format):
-        """Selects the converter method from the given format. Will select the
+        """Selects the converter method from the given datatype. Will select the
         most specific conversion.
 
         Parameters
         ----------
         from_format : type
-            The format type to convert from
+            The datatype type to convert from
 
         Returns
         -------

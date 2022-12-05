@@ -1,5 +1,5 @@
 import json
-from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
+from arcana.data.types.medimage import NiftiGzX, NiftiGzXFslgrad
 from logging import getLogger
 
 

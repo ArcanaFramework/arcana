@@ -8,7 +8,7 @@ from arcana.core.testing.data.sets import (
     TestDatasetBlueprint,
     TestDataSpace,
 )
-from arcana.data.formats.common import Text
+from arcana.data.types.common import Text
 from arcana.deploy.common import PipelineImage
 
 
@@ -43,13 +43,13 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
             "inputs": [
                 {
                     "name": "source1",
-                    "format": "common:Text",
+                    "datatype": "common:Text",
                     "field": "in_file1",
                     "description": "dummy",
                 },
                 {
                     "name": "source2",
-                    "format": "common:Text",
+                    "datatype": "common:Text",
                     "field": "in_file2",
                     "description": "dummy",
                 },
@@ -57,7 +57,7 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
             "outputs": [
                 {
                     "name": "sink1",
-                    "format": "common:Text",
+                    "datatype": "common:Text",
                     "field": "out_file",
                     "description": "dummy",
                 }
@@ -133,13 +133,13 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
             "inputs": [
                 {
                     "name": "source1",
-                    "format": "common:Text",
+                    "datatype": "common:Text",
                     "field": "in_file1",
                     "description": "dummy",
                 },
                 {
                     "name": "source2",
-                    "format": "common:Directory",
+                    "datatype": "common:Directory",
                     "field": "in_file2",
                     "description": "dummy",
                 },
@@ -147,7 +147,7 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
             "outputs": [
                 {
                     "name": "sink1",
-                    "format": "common:Text",
+                    "datatype": "common:Text",
                     "field": "out_file",
                     "description": "dummy",
                 }
@@ -196,7 +196,7 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
     )
     assert (
         result.exit_code == 1
-    )  # fails due to missing path for source1 and incorrect format of source2
+    )  # fails due to missing path for source1 and incorrect datatype of source2
     # TODO: Should try to read logs to check for error message but can't work out how to capture them
 
 
@@ -237,7 +237,7 @@ def test_entrypoint_cli_on_row(cli_runner, work_dir):
             "inputs": [
                 {
                     "name": "a_row",
-                    "format": "arcana.core.data.row:DataRow",
+                    "datatype": "arcana.core.data.row:DataRow",
                     "field": "filenumber_row",
                     "description": "dummy",
                 },
@@ -291,7 +291,7 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
             "inputs": [
                 {
                     "name": "source",
-                    "format": "arcana.core.testing.formats:EncodedText",
+                    "datatype": "arcana.core.testing.formats:EncodedText",
                     "stored_format": "common:Text",
                     "field": "in_file",
                     "description": "dummy",
@@ -300,13 +300,13 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
             "outputs": [
                 {
                     "name": "sink1",
-                    "format": "arcana.core.testing.formats:EncodedText",
+                    "datatype": "arcana.core.testing.formats:EncodedText",
                     "field": "out",
                     "description": "dummy",
                 },
                 {
                     "name": "sink2",
-                    "format": "arcana.core.testing.formats:EncodedText",
+                    "datatype": "arcana.core.testing.formats:EncodedText",
                     "stored_format": "arcana.core.testing.formats:DecodedText",
                     "field": "out",
                     "description": "dummy",

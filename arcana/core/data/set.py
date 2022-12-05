@@ -318,7 +318,7 @@ class Dataset:
             The name used to reference the dataset "column" for the
             source
         datatype : type
-            The file-format (for file-groups) or format (for fields)
+            The file-format (for file-groups) or datatype (for fields)
             that the source will be stored in within the dataset
         path : str, default `name`
             The location of the source within the dataset
@@ -348,7 +348,7 @@ class Dataset:
             The name used to reference the dataset "column" for the
             sink
         datatype : type
-            The file-format (for file-groups) or format (for fields)
+            The file-format (for file-groups) or datatype (for fields)
             that the sink will be stored in within the dataset
         path : str, default `name`
             The location of the sink within the dataset
@@ -831,13 +831,13 @@ class Dataset:
             raised if the license of the given name isn't present in the project-specific
             location to retrieve
         """
-        import arcana.data.formats
+        import arcana.data.types
 
         # if License.SITE_DATASET_ENV in os.environ:
         #     site_licenses = DataStore.load()
 
         # for lic in download_licenses:
-        #     dataset.add_column(lic.col_name, datatype=arcana.data.formats.common.File,
+        #     dataset.add_column(lic.col_name, datatype=arcana.data.types.common.File,
         #                        row_frequency=dataset.root_freq)
         #     try:
         #         lic_path = dataset.root[lic.col_name].fs_path
@@ -849,7 +849,7 @@ class Dataset:
             col_name = License.column_name(lic_name)
             self.add_source(
                 col_name,
-                datatype=arcana.data.formats.File,
+                datatype=arcana.data.types.File,
                 row_frequency=self.root_freq,
             )
             license_file = self.root[col_name]

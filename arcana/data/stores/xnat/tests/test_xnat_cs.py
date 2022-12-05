@@ -8,8 +8,8 @@ from arcana.core.testing.fixtures.xnat import (
 )
 from arcana.deploy.xnat.image import XnatCSImage
 from arcana.deploy.xnat.command import XnatCSCommand
-from arcana.core.testing.stores.xnat import install_and_launch_xnat_cs_command
-from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
+from arcana.core.testing.data.stores.xnat import install_and_launch_xnat_cs_command
+from arcana.data.types.medimage import NiftiGzX, NiftiGzXFslgrad
 
 
 PIPELINE_NAME = "test-concatenate"

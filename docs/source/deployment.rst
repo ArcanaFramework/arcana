@@ -39,7 +39,7 @@ source columns to the dataset (see :ref:`data_columns`). They are specified by
 4-tuple consisting of
 
 * name of field in the pydra task input interface
-* format required by pydra task
+* datatype required by pydra task
 * description of input that will be exposed to the XNAT UI
 * the row row_frequency of the column (see :ref:`data_spaces` and :ref:`data_columns`)
 
@@ -52,7 +52,7 @@ is run in the container, and consist of a 2-tuple with
 Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 
 * name of field in the pydra task output interface
-* format produced by pydra task
+* datatype produced by pydra task
 * destination path (slashes are permitted interpreted as a relative path from the derivatives root)
 
 .. .. code-block:: python
@@ -60,7 +60,7 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 ..     import json
 ..     from arcana.deploy.medimage import XnatCSCommand
 ..     from arcana.data.spaces.medimage import Clinical
-..     from arcana.data.formats.medimage import NiftiGz
+..     from arcana.data.types.medimage import NiftiGz
 
 ..     xnat_command = XnatCSCommand(
 ..         name='example_pipeline',

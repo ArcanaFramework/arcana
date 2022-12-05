@@ -146,17 +146,17 @@ class DataRow:
 
     def resolved(self, datatype):
         """
-        Items in the row that are able to be resolved to the given format
+        Items in the row that are able to be resolved to the given datatype
 
         Parameters
         ----------
         datatype : type
-            The file format or type to reolve the item to
+            The file datatype or type to reolve the item to
         """
         matches = []
         for potential in self.unresolved:
             try:
-                matches.append(format.resolve(potential))
+                matches.append(datatype.resolve(potential))
             except ArcanaFileFormatError:
                 pass
         return matches
@@ -251,7 +251,7 @@ class UnresolvedFileGroup(UnresolvedDataType):
     file_paths : Sequence[str] | None
         Path to the file-group in the local cache
     uris : Dict[str, str] | None
-        For stores where the name of the file format is saved with the
+        For stores where the name of the file datatype is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
         datatype identification. It is stored here along with URIs corresponding
         to each resource
@@ -307,20 +307,20 @@ class UnresolvedField(UnresolvedDataType):
 
     # def _resolve(self, datatype):
     #     try:
-    #         if format._name == 'Sequence':
-    #             if len(format.__args__) > 1:
+    #         if datatype._name == 'Sequence':
+    #             if len(datatype.__args__) > 1:
     #                 raise ArcanaUsageError(
     #                     f"Sequence formats with more than one arg "
-    #                     "are not supported ({format})")
-    #             subtype = format.__args__[0]
+    #                     "are not supported ({datatype})")
+    #             subtype = datatype.__args__[0]
     #             value = [subtype(v)
     #                         for v in self.value[1:-1].split(',')]
     #         else:
-    #             value = format(self.value)
+    #             value = datatype(self.value)
     #     except ValueError as e:
     #         raise ArcanaUnresolvableFormatException(
     #                 f"Could not convert value of {self} ({self.value}) "
-    #                 f"to format {format}") from e
+    #                 f"to datatype {datatype}") from e
     #     else:
     #         item = DataType(value=value, **self.item_kwargs)
     #     return item

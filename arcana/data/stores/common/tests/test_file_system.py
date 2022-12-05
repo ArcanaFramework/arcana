@@ -26,10 +26,10 @@ def test_find_rows(dataset: Dataset):
 def test_get_items(dataset: Dataset):
     blueprint = dataset.__annotations__["blueprint"]
     source_files = {}
-    for fg_name, formats in blueprint.expected_formats.items():
-        for format, files in formats:
-            source_name = fg_name + format.class_name()
-            dataset.add_source(source_name, path=fg_name, datatype=format)
+    for fg_name, datatypes in blueprint.expected_formats.items():
+        for datatype, files in datatypes:
+            source_name = fg_name + datatype.class_name()
+            dataset.add_source(source_name, path=fg_name, datatype=datatype)
             source_files[source_name] = set(files)
     for row in dataset.rows(dataset.leaf_freq):
         for source_name, files in source_files.items():
@@ -43,7 +43,7 @@ def test_put_items(dataset: Dataset):
     all_checksums = {}
     all_fs_paths = {}
     for name, freq, datatype, files in blueprint.derivatives:
-        dataset.add_sink(name=name, datatype=format, row_frequency=freq)
+        dataset.add_sink(name=name, datatype=datatype, row_frequency=freq)
         deriv_tmp_dir = Path(mkdtemp())
         # Create test files, calculate checksums and recorded expected paths
         # for inserted files

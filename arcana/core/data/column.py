@@ -123,12 +123,12 @@ class DataSource(DataColumn):
             (match_quality, self.quality_threshold),
             (match_header_vals, self.header_vals),
         ]
-        # Get all items that match the data format of the source
+        # Get all items that match the data type of the source
         matches = row.resolved(self.datatype)
         if not matches:
-            format_str = class2str(self.format, strip_prefix="arcana.data.formats.")
+            format_str = class2str(self.format, strip_prefix="arcana.data.types.")
             msg = (
-                f"Did not find any items matching data format "
+                f"Did not find any items matching data datatype "
                 f"{format_str} in '{row.id}' {self.row_frequency} for the "
                 f"'{self.name}' column, found unresolved items:"
             )
@@ -147,7 +147,7 @@ class DataSource(DataColumn):
                 if not filtered:
                     raise ArcanaDataMatchError(
                         "Did not find any items "
-                        + func.__doc__.format(arg)
+                        + func.__doc__.datatype(arg)
                         + self._error_msg(row, matches)
                     )
                 matches = filtered
@@ -170,7 +170,7 @@ class DataSource(DataColumn):
         return match
 
     def _error_msg(self, row, matches):
-        format_str = class2str(self.format, strip_prefix="arcana.data.formats.")
+        format_str = class2str(self.datatype, strip_prefix="arcana.data.types.")
         return (
             f" attempting to select {format_str} item for the '{row.id}' "
             f"{row.frequency} in the '{self.name}' column, found:"
@@ -179,10 +179,10 @@ class DataSource(DataColumn):
         )
 
     def _format_criteria(self):
-        format_str = class2str(self.format, strip_prefix="arcana.data.formats.")
+        format_str = class2str(self.datatype, strip_prefix="arcana.data.types.")
         return (
             f"\n\n    criteria: {self.path}', is_regex={self.is_regex}, "
-            + f"format={format_str}, quality_threshold='{self.quality_threshold}', "
+            + f"datatype={format_str}, quality_threshold='{self.quality_threshold}', "
             + f"header_vals={self.header_vals}, order={self.order}"
         )
 
@@ -231,7 +231,7 @@ class DataSink(DataColumn):
         The path to the relative location the corresponding data items will be
         stored within the rows of the data tree.
     datatype : type
-        The file format or data type used to store the corresponding items
+        The file datatype or data type used to store the corresponding items
         in the store dataset.
     row_frequency : DataSpace
         The row_frequency of the file-group within the dataset tree, e.g. per
@@ -254,10 +254,10 @@ class DataSink(DataColumn):
     is_sink = True
 
     def match(self, row):
-        matches = [i for i in row.resolved(self.format) if i.path == self.path]
+        matches = [i for i in row.resolved(self.datatype) if i.path == self.path]
         if not matches:
             # Return a placeholder data item th.datatypebe set
-            return self.format(path=self.path, row=row, exists=False)
+            return self.datatype(path=self.path, row=row, exists=False)
         elif len(matches) > 1:
             raise ArcanaDataMatchError(
                 "Found multiple matches " + self._error_msg(row, matches)

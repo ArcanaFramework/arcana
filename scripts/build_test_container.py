@@ -7,7 +7,7 @@ import xnat
 from arcana.tasks.tests.fixtures import concatenate
 from arcana.data.stores.medimage.xnat.cs import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
-from arcana.data.formats.common import text
+from arcana.data.types.common import text
 
 parser = ArgumentParser()
 parser.add_argument("image_name", help="Name of the generated docker image")

@@ -3,7 +3,7 @@ from operator import mul
 from arcana.cli.apply import apply_pipeline
 from arcana.cli.derive import derive_column
 from arcana.core.testing.utils import show_cli_trace, make_dataset_id_str
-from arcana.data.formats.common import Text
+from arcana.data.types.common import Text
 
 
 def test_derive_cli(saved_dataset, concatenate_task, cli_runner):

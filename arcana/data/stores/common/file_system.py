@@ -102,9 +102,9 @@ class FileSystem(DataStore):
         if isinstance(val, dict):
             val = val[self.VALUE_KEY]
         if field.array:
-            val = [field.format(v) for v in val]
+            val = [field.datatype(v) for v in val]
         else:
-            val = field.format(val)
+            val = field.datatype(val)
         return val
 
     def put_file_group_paths(self, file_group: FileGroup, fs_paths: ty.List[Path]):
