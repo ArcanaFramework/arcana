@@ -4,7 +4,7 @@ from pathlib import Path
 from pydra import ShellCommandTask
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
 from arcana.core.utils import str2class
-from arcana.core.data.format import FileGroup
+from arcana.core.data.type import FileGroup
 
 
 @dataclasses.dataclass

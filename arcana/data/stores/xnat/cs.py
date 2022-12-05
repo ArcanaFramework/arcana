@@ -11,7 +11,7 @@ import shutil
 import attrs
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.space import DataSpace
-from arcana.core.data.format import FileGroup
+from arcana.core.data.type import FileGroup
 from arcana.core.exceptions import ArcanaNoDirectXnatMountException
 from .api import Xnat
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 import typing as ty
 import re
 import attrs
-from arcana.core.data.format import FileGroup
+from arcana.core.data.type import FileGroup
 from arcana.core.deploy.command import ContainerCommand
 from arcana.data.stores.xnat import XnatViaCS
 from arcana.data.spaces.medimage import Clinical

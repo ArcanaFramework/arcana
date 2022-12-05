@@ -1058,7 +1058,7 @@ class NamedObjectsConverter:
 
 
 def str2datatype(format):
-    from arcana.core.data.format import DataItem
+    from arcana.core.data.type import DataItem
     from arcana.core.data.row import DataRow
 
     if isinstance(format, str):

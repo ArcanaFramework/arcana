@@ -10,7 +10,7 @@ from arcana.core.exceptions import (
     ArcanaWrongFrequencyError,
     ArcanaFileFormatError,
 )
-from .format import DataItem
+from .type import DataItem
 from ..enum import DataQuality
 from .space import DataSpace
 

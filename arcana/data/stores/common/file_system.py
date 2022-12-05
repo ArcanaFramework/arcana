@@ -15,7 +15,7 @@ from arcana.core.exceptions import ArcanaMissingDataException, ArcanaUsageError
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical, DataSpace
 from arcana.core.data.store import DataStore
-from arcana.core.data.format import FileGroup
+from arcana.core.data.type import FileGroup
 from arcana.core.utils import ARCANA_HOME_DIR
 
 

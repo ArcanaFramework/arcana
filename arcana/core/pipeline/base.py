@@ -16,7 +16,7 @@ from arcana.core.exceptions import (
     ArcanaOutputNotProducedException,
     ArcanaDataMatchError,
 )
-from ..data.format import DataItem, FileGroup, Field
+from ..data.type import DataItem, FileGroup, Field
 import arcana.core.data.set
 import arcana.core.data.row
 from ..data.space import DataSpace
