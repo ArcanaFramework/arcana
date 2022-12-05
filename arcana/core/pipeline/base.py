@@ -16,7 +16,7 @@ from arcana.core.exceptions import (
     ArcanaOutputNotProducedException,
     ArcanaDataMatchError,
 )
-from ..data.type import DataItem, FileGroup, Field
+from ..data.type import DataType, FileGroup, Field
 import arcana.core.data.set
 import arcana.core.data.row
 from ..data.space import DataSpace
@@ -99,7 +99,7 @@ class Pipeline:
     )
 
     @inputs.validator
-    def inputs_validator(self, _, inputs: ty.List[DataItem]):
+    def inputs_validator(self, _, inputs: ty.List[DataType]):
         for inpt in inputs:
             if inpt.required_format is arcana.core.data.row.DataRow:  # special case
                 continue
@@ -277,7 +277,7 @@ class Pipeline:
             func_task(
                 access_paths_and_values,
                 in_fields=[
-                    (i.col_name, ty.Union[DataItem, arcana.core.data.row.DataRow])
+                    (i.col_name, ty.Union[DataType, arcana.core.data.row.DataRow])
                     for i in self.inputs
                 ],
                 out_fields=[(i.col_name, ty.Any) for i in self.inputs],
@@ -298,13 +298,13 @@ class Pipeline:
             )
 
         # Creates a row to accept values from user-defined rows and
-        # encapsulate them into DataItems
+        # encapsulate them into DataTypes
         wf.per_row.add(
             func_task(
                 encapsulate_paths_and_values,
                 in_fields=[("outputs", ty.List[PipelineOutput])]
                 + [(o.col_name, ty.Union[str, Path]) for o in self.outputs],
-                out_fields=[(o.col_name, DataItem) for o in self.outputs],
+                out_fields=[(o.col_name, DataType) for o in self.outputs],
                 name="output_interface",
                 outputs=self.outputs,
                 **{
@@ -359,7 +359,7 @@ class Pipeline:
                         ("id", str),
                         ("provenance", ty.Dict[str, ty.Any]),
                     ]
-                    + [(s, DataItem) for s in to_sink]
+                    + [(s, DataType) for s in to_sink]
                 ),
                 out_fields=[("id", str)],
                 name="sink",
@@ -589,7 +589,7 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
         the ID of the row to source from
     provenance : dict
         provenance information to be stored alongside the generated data
-    **to_sink : dict[str, DataItem]
+    **to_sink : dict[str, DataType]
         data items to be stored in the data store
     """
     logger.debug("Sinking %s", to_sink)

@@ -1058,12 +1058,12 @@ class NamedObjectsConverter:
 
 
 def str2datatype(format):
-    from arcana.core.data.type import DataItem
+    from arcana.core.data.type import DataType
     from arcana.core.data.row import DataRow
 
     if isinstance(format, str):
         format = str2class(format, prefixes=["arcana.data.formats"])
-    elif not issubclass(format, (DataItem, DataRow)):
+    elif not issubclass(format, (DataType, DataRow)):
         raise ValueError(f"Cannot resolve {format} to data format")
     return format
 

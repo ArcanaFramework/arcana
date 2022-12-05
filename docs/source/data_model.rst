@@ -206,7 +206,7 @@ corresponding to *MYXNATPROJECT*
 Items
 -----
 
-Atomic items within a dataset are encapsulated by :class:`DataItem` objects.
+Atomic items within a dataset are encapsulated by :class:`DataType` objects.
 There are three types of data items:
 
 * :class:`.FileGroup` (single files, files + header/side-cars or directories)
@@ -215,9 +215,9 @@ There are three types of data items:
 
 Instead of holding the data directly, data items reference files and
 fields stored in the data store. Before data in remote stores
-are accessed they need to be cached locally with :meth:`.DataItem.get`.
+are accessed they need to be cached locally with :meth:`.DataType.get`.
 Newly created and modified data items are placed into the store with
-:meth:`.DataItem.put`.
+:meth:`.DataType.put`.
 
 :class:`.FileGroup` is typically subclassed to specify the format of the
 files/directories in the group. For example, there are a number common file

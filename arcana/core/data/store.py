@@ -170,7 +170,7 @@ class DataStore(metaclass=ABCMeta):
 
         Parameters
         ----------
-        item: DataItem
+        item: DataType
             The item to store the provenance data for
         provenance: dict[str, Any]
             The provenance data to store"""
@@ -181,7 +181,7 @@ class DataStore(metaclass=ABCMeta):
 
         Parameters
         ----------
-        item: DataItem
+        item: DataType
             The item to store the provenance data for
 
         Returns

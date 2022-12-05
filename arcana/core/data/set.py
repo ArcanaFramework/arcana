@@ -765,7 +765,7 @@ class Dataset:
 
         Returns
         -------
-        Sequence[List[DataItem]]
+        Sequence[List[DataType]]
             The derived columns
         """
         from arcana.core.pipeline.base import Pipeline

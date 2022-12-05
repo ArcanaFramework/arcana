@@ -4,7 +4,7 @@ from pydra import mark
 from pydra.engine.core import File
 from pydra.engine.specs import BaseSpec, SpecInfo
 from pydra.engine.task import FunctionTask
-from arcana.core.data.type import DataItem, FileGroup
+from arcana.core.data.type import DataType, FileGroup
 from arcana.core.data.row import DataRow
 
 
@@ -18,7 +18,7 @@ def identity_task(task_name, fields):
         input_spec=SpecInfo(
             name=f"{task_name}Inputs",
             bases=(BaseSpec,),
-            fields=[(s, DataItem) for s in fields],
+            fields=[(s, DataType) for s in fields],
         ),
         output_spec=SpecInfo(
             name=f"{task_name}Outputs", bases=(BaseSpec,), fields=[("row", DataRow)]

@@ -32,7 +32,7 @@ Core
 
 .. autoclass:: arcana.core.data.column.DataSink
 
-.. autoclass:: arcana.core.data.format.DataItem
+.. autoclass:: arcana.core.data.format.DataType
     :members: get, put
 
 .. autoclass:: arcana.core.data.format.FileGroup
