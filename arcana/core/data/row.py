@@ -10,8 +10,8 @@ from arcana.core.exceptions import (
     ArcanaWrongFrequencyError,
     ArcanaFileFormatError,
 )
-from .type import DataItem
-from ..enum import DataQuality
+from .type import DataType
+from ..salience import DataQuality
 from .space import DataSpace
 
 
@@ -50,7 +50,7 @@ class DataRow:
 
         Returns
         -------
-        DataItem
+        DataType
             The item matching the provided name specified by the column name
         """
         if column_name in self._items:
@@ -120,7 +120,7 @@ class DataRow:
 
         Returns
         -------
-        Sequence[DataItem]
+        Sequence[DataType]
             The item matching the provided name specified by the column name
             if the column is of matching or ancestor frequency, or list of
             items if a descendent or unrelated frequency.
@@ -179,7 +179,7 @@ class DataRow:
 
 
 @attrs.define
-class UnresolvedDataItem(metaclass=ABCMeta):
+class UnresolvedDataType(metaclass=ABCMeta):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
@@ -206,7 +206,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     order: int = attrs.field(default=None)
     quality: DataQuality = attrs.field(default=DataQuality.usable)
     provenance: ty.Dict[str, ty.Any] = attrs.field(default=None)
-    _matched: ty.Dict[str, DataItem] = attrs.field(factory=dict, init=False)
+    _matched: ty.Dict[str, DataType] = attrs.field(factory=dict, init=False)
 
     @property
     def item_kwargs(self):
@@ -226,7 +226,7 @@ def normalise_paths(file_paths):
 
 
 @attrs.define
-class UnresolvedFileGroup(UnresolvedDataItem):
+class UnresolvedFileGroup(UnresolvedDataType):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
@@ -274,7 +274,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
 
 
 @attrs.define
-class UnresolvedField(UnresolvedDataItem):
+class UnresolvedField(UnresolvedDataType):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
@@ -322,5 +322,5 @@ class UnresolvedField(UnresolvedDataItem):
     #                 f"Could not convert value of {self} ({self.value}) "
     #                 f"to format {format}") from e
     #     else:
-    #         item = DataItem(value=value, **self.item_kwargs)
+    #         item = DataType(value=value, **self.item_kwargs)
     #     return item

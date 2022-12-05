@@ -10,7 +10,7 @@ from attrs.converters import default_if_none
 from .data.space import DataSpace
 from .data.column import DataColumn
 from .data.set import Dataset
-from .enum import CheckSalience, ColumnSalience, ParameterSalience
+from .salience import CheckSalience, ColumnSalience, ParameterSalience
 from .utils import (
     PIPELINE_ANNOTATIONS,
     SWICTH_ANNOTATIONS,

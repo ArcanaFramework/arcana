@@ -8,7 +8,7 @@ from .analysis import (
     Parameter,
     SubanalysisSpec,
 )
-from .enum import ColumnSalience, ParameterSalience, CheckSalience
+from .salience import ColumnSalience, ParameterSalience, CheckSalience
 from .utils import (
     SWICTH_ANNOTATIONS,
     CHECK_ANNOTATIONS,

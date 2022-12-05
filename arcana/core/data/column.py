@@ -8,7 +8,7 @@ from attrs.converters import optional
 # from arcana.core.data.row import DataRow
 from arcana.core.utils import class2str
 from arcana.core.exceptions import ArcanaDataMatchError
-from ..enum import DataQuality, ColumnSalience
+from ..salience import DataQuality, ColumnSalience
 from .space import DataSpace
 
 
@@ -51,7 +51,7 @@ class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
 
         Returns
         -------
-        DataItem
+        DataType
             the data item that matches the criteria/path
 
         Raises

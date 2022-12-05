@@ -26,16 +26,17 @@ from arcana.core.exceptions import (
     ArcanaFileFormatError,
     ArcanaFormatConversionError,
 )
-from ..enum import DataQuality
+from ..salience import DataQuality  # @ignore reshadowedImports
 
 
 logger = logging.getLogger("arcana")
 
 
 @attrs.define
-class DataItem(metaclass=ABCMeta):
+class DataType(metaclass=ABCMeta):
     """
-    A representation of a file_group within the dataset.
+    A representation of an atomic data item within a dataset. Subclassed to define
+    different data file/directory formats and fields
 
     Parameters
     ----------
@@ -159,7 +160,7 @@ class DataItem(metaclass=ABCMeta):
 
 
 @attrs.define
-class Field(DataItem):
+class Field(DataType):
     """
     A representation of a value field in the dataset.
 
@@ -229,7 +230,7 @@ def absolute_paths_dict(dct):
 
 
 @attrs.define
-class FileGroup(DataItem, metaclass=ABCMeta):
+class FileGroup(DataType, metaclass=ABCMeta):
     """
     A representation of a file_group within the dataset.
 

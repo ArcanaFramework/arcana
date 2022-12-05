@@ -27,7 +27,7 @@ from arcana.core.mark import (
 from arcana.core.analysis import Operation, ARCANA_SPEC
 from arcana.data.formats.common import Zip, Text
 from arcana.data.stores.common import FileSystem
-from arcana.core.enum import (
+from arcana.core.salience import (
     CheckStatus,
     ColumnSalience as cs,
     ParameterSalience as ps,
