@@ -12,14 +12,14 @@ from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.core.utils import (
     DictConverter,
-    ListDictConverter,
-    DictDictConverter,
+    Dict2NamedObjsConverter,
+    named_objs2dict,
     class_location,
     resolve_class,
 )
 from arcana.data.formats import Directory
 from ..command import ContainerCommand
-from .generic import ContainerImage
+from .base import ContainerImage
 from .components import ContainerAuthor, License, KnownIssue
 
 
@@ -27,7 +27,7 @@ logger = logging.getLogger("arcana")
 
 
 @attrs.define(kw_only=True)
-class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
+class CommandImage(ContainerImage, metaclass=ABCMeta):
     """
     Parameters
     ----------
@@ -80,15 +80,20 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
     info_url: str = attrs.field()
     spec_version: str = attrs.field(default=0, converter=str)
     authors: ty.List[ContainerAuthor] = attrs.field(
-        converter=ListDictConverter(ContainerAuthor)
+        converter=Dict2NamedObjsConverter(ContainerAuthor),
+        metadata={"asdict": named_objs2dict},
     )
     description: str
     command: ContainerCommand = attrs.field(converter=DictConverter(ContainerCommand))
-    licenses: dict[str, License] = attrs.field(
-        factory=dict, converter=DictDictConverter(License)
+    licenses: list[License] = attrs.field(
+        factory=dict,
+        converter=Dict2NamedObjsConverter(License),
+        metadata={"asdict": named_objs2dict},
     )
     known_issues: list[KnownIssue] = attrs.field(
-        factory=list, converter=ListDictConverter(KnownIssue)
+        factory=list,
+        converter=Dict2NamedObjsConverter(KnownIssue),
+        metadata={"asdict": named_objs2dict},
     )
     long_description: str = ""
     loaded_from: Path = attrs.field(default=None, metadata={"asdict": False})
@@ -165,9 +170,9 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         # Copy licenses into build directory
         license_build_dir = build_dir / "licenses"
         license_build_dir.mkdir()
-        for lic_name, lic in self.licenses.items():
+        for lic in self.licenses:
             if lic.source:
-                build_path = license_build_dir / lic_name
+                build_path = license_build_dir / lic.name
                 shutil.copyfile(lic.source, build_path)
                 dockerfile.copy(
                     source=[str(build_path.relative_to(build_dir))],
@@ -178,8 +183,8 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
                     "License file for '%s' was not provided, will attempt to download "
                     "from '%s' dataset-level column or site-wide license dataset at "
                     "runtime",
-                    lic_name,
-                    lic.column_name(lic_name),
+                    lic.name,
+                    lic.column_name(lic.name),
                 )
 
     def insert_spec(self, dockerfile: DockerRenderer, build_dir):
@@ -281,13 +286,13 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
         image = cls(**yml_dict)
 
         if license_paths is not None:
-            for lic_name, lic in image.licenses.items():
+            for lic in image.licenses:
                 try:
-                    lic.source = license_paths[lic_name]
+                    lic.source = license_paths[lic.name]
                 except KeyError:
-                    if lic_name not in licenses_to_download:
+                    if lic.name not in licenses_to_download:
                         raise RuntimeError(
-                            f"{lic_name} license has not been provided or specified as "
+                            f"{lic.name} license has not been provided or specified as "
                             "being to be downloaded at runtime"
                         )
 
@@ -371,9 +376,9 @@ class ContainerImageWithCommand(ContainerImage, metaclass=ABCMeta):
                 f.write("### Required licenses\n")
 
                 tbl_lic = MarkdownTable(f, "Name", "URL", "Description")
-                for lic_name, lic in self.licenses.items():
+                for lic in self.licenses:
                     tbl_lic.write_row(
-                        lic_name,
+                        lic.name,
                         escaped_md(lic.info_url),
                         lic.description.strip(),
                     )

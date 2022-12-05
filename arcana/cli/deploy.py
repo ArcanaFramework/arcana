@@ -18,7 +18,7 @@ from arcana.core.utils import (
     resolve_class,
     DOCKER_HUB,
 )
-from arcana.core.deploy.image import Metapackage, ContainerImageWithCommand
+from arcana.core.deploy.image import Metapackage, CommandImage
 from arcana.deploy.xnat.image import XnatCSImage
 from arcana.core.exceptions import ArcanaBuildError
 from arcana.core.utils import extract_file_from_docker_image
@@ -40,7 +40,7 @@ def deploy():
     help="""Build a wrapper image specified in a module
 
 BUILD_TARGET is the type of image to build, e.g. arcana.deploy.xnat:XnatCSImage
-the target should resolve to a class deriviing from arcana.core.deploy.ContainerImageWithCommand.
+the target should resolve to a class deriviing from arcana.core.deploy.CommandImage.
 If it is located under the `arcana.deploy`, then that prefix can be dropped, e.g.
 common:PipelineImage
 
@@ -810,7 +810,7 @@ in the format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
 @click.option(
     "--spec-path",
     type=click.Path(exists=True, path_type=Path),
-    default=Path(ContainerImageWithCommand.SPEC_PATH),
+    default=Path(CommandImage.SPEC_PATH),
     help=(
         "Used to specify a different path to the spec path from the one that is written "
         "to in the image (typically used in debugging/testing)"
@@ -842,7 +842,7 @@ def image_entrypoint(
     store_cache_dir = work_dir / "store-cache"
     pipeline_cache_dir = work_dir / "pydra"
 
-    image_spec = ContainerImageWithCommand.load_in_image(spec_path)
+    image_spec = CommandImage.load_in_image(spec_path)
 
     dataset = image_spec.command.load_dataset(
         dataset_id_str, store_cache_dir, dataset_hierarchy, dataset_name

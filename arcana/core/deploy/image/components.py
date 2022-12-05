@@ -42,7 +42,7 @@ class KnownIssue:
 @attrs.define
 class License:
 
-    name: str = attrs.field(metadata={"asdict": False})
+    name: str = attrs.field()
     destination: str = attrs.field()
     description: str = attrs.field()
     info_url: str = attrs.field()

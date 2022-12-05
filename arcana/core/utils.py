@@ -1010,39 +1010,51 @@ class DictConverter:
         return value
 
 
+def named_objs2dict(objs: list, **kwargs) -> dict:
+    dct = {}
+    for obj in objs:
+        obj_dict = attrs.asdict(obj, **kwargs)
+        dct[obj_dict.pop("name")] = obj_dict
+    return dct
+
+
 @attrs.define
-class ListDictConverter:
+class Dict2NamedObjsConverter:
 
     klass: type
 
     def __call__(self, value):
         converted = []
-        for item in value:
-            if isinstance(item, dict):
-                item = self.klass(**item)
-            elif not isinstance(item, self.klass):
-                raise ValueError(f"Cannot convert {item} into {self.klass}")
-            converted.append(item)
+        if isinstance(value, dict):
+            for name, item in value.items():
+                converted.append(self.klass(name=name, **item))
+        else:
+            for item in value:
+                if isinstance(item, dict):
+                    item = self.klass(**item)
+                elif not isinstance(item, self.klass):
+                    raise ValueError(f"Cannot convert {item} into {self.klass}")
+                converted.append(item)
         return converted
 
 
-@attrs.define
-class DictDictConverter:
+# @attrs.define
+# class DictDictConverter:
 
-    klass: type
+#     klass: type
 
-    def __call__(self, dct):
-        converted = {}
-        for key, val in dct.items():
-            if "name" in attrs.fields_dict(self.klass):
-                val = copy(val)
-                val["name"] = key
-            if isinstance(val, dict):
-                val = self.klass(**val)
-            elif not isinstance(val, self.klass):
-                raise ValueError(f"Cannot convert {val} into {self.klass}")
-            converted[key] = val
-        return converted
+#     def __call__(self, dct):
+#         converted = {}
+#         for key, val in dct.items():
+#             if "name" in attrs.fields_dict(self.klass):
+#                 val = copy(val)
+#                 val["name"] = key
+#             if isinstance(val, dict):
+#                 val = self.klass(**val)
+#             elif not isinstance(val, self.klass):
+#                 raise ValueError(f"Cannot convert {val} into {self.klass}")
+#             converted[key] = val
+#         return converted
 
 
 def format_resolver(format):

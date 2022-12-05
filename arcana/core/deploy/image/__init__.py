@@ -1,3 +1,3 @@
-from .generic import ContainerImage
-from .with_command import ContainerImageWithCommand
+from .base import ContainerImage
+from .command import CommandImage
 from .metapackage import Metapackage

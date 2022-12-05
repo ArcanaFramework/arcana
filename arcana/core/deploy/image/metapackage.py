@@ -2,7 +2,7 @@ import json
 import tempfile
 import attrs
 from pathlib import Path
-from .generic import ContainerImage
+from .base import ContainerImage
 
 
 @attrs.define

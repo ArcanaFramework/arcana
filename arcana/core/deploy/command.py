@@ -13,7 +13,8 @@ from attrs.converters import default_if_none
 import pydra.engine.task
 from arcana.core.utils import (
     path2varname,
-    ListDictConverter,
+    Dict2NamedObjsConverter,
+    named_objs2dict,
     format_resolver,
     task_resolver,
     class_location,
@@ -29,7 +30,7 @@ import arcana.data.formats.common
 from arcana.core.data.space import DataSpace
 
 if ty.TYPE_CHECKING:
-    from .image import ContainerImageWithCommand
+    from .image import CommandImage
 
 logger = logging.getLogger("arcana")
 
@@ -143,18 +144,24 @@ class ContainerCommand:
     task: pydra.engine.task.TaskBase = attrs.field(converter=task_resolver)
     row_frequency: DataSpace = None
     inputs: list[CommandInput] = attrs.field(
-        factory=list, converter=ListDictConverter(CommandInput)
+        factory=list,
+        converter=Dict2NamedObjsConverter(CommandInput),
+        metadata={"asdict": named_objs2dict},
     )
     outputs: list[CommandOutput] = attrs.field(
-        factory=list, converter=ListDictConverter(CommandOutput)
+        factory=list,
+        converter=Dict2NamedObjsConverter(CommandOutput),
+        metadata={"asdict": named_objs2dict},
     )
     parameters: list[CommandParameter] = attrs.field(
-        factory=list, converter=ListDictConverter(CommandParameter)
+        factory=list,
+        converter=Dict2NamedObjsConverter(CommandParameter),
+        metadata={"asdict": named_objs2dict},
     )
     configuration: dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(dict)
     )
-    image: ContainerImageWithCommand = None
+    image: CommandImage = None
 
     def __attrs_post_init__(self):
         if isinstance(self.row_frequency, DataSpace):
@@ -292,7 +299,7 @@ class ContainerCommand:
 
         # Install required software licenses from store into container
         licenses_to_download = [
-            lic.name for lic in self.image.licenses.values() if lic.source is None
+            lic.name for lic in self.image.licenses if lic.source is None
         ]
         dataset.install_licenses(licenses_to_download)
 

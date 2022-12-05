@@ -19,7 +19,8 @@ from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME
 from arcana.core.utils import (
     set_cwd,
-    ListDictConverter,
+    Dict2NamedObjsConverter,
+    named_objs2dict,
     DOCKER_HUB,
     class_location,
     # HASH_CHUNK_SIZE,
@@ -37,7 +38,9 @@ def python_package_converter(packages):
     Split out and merge any extras specifications (e.g. "arcana[test]")
     between dependencies of the same package
     """
-    return PipSpec.unique(ListDictConverter(PipSpec)(packages), remove_arcana=True)
+    return PipSpec.unique(
+        Dict2NamedObjsConverter(PipSpec)(packages), remove_arcana=True
+    )
 
 
 @attrs.define(kw_only=True)
@@ -84,10 +87,14 @@ class ContainerImage:
         factory=list, converter=python_package_converter
     )
     system_packages: ty.List[SystemPackage] = attrs.field(
-        factory=list, converter=ListDictConverter(SystemPackage)
+        factory=list,
+        converter=Dict2NamedObjsConverter(SystemPackage),
+        metadata={"asdict": named_objs2dict},
     )
     package_templates: ty.List[NeurodockerPackage] = attrs.field(
-        factory=list, converter=ListDictConverter(NeurodockerPackage)
+        factory=list,
+        converter=Dict2NamedObjsConverter(NeurodockerPackage),
+        metadata={"asdict": named_objs2dict},
     )
     registry: str = DOCKER_HUB
     readme: str = None
@@ -500,8 +507,14 @@ class ContainerImage:
                 "asdict", True
             )
 
-        def serializer(_, __, value):
-            if isinstance(value, DataSpace):
+        def serializer(_, attr, value):
+            if attr is not None and "asdict" in attr.metadata:
+                value = attr.metadata["asdict"](
+                    value,
+                    value_serializer=serializer,
+                    filter=filter,
+                )
+            elif isinstance(value, DataSpace):
                 if hasattr(self, "command") and self.command.DATA_SPACE:
                     value = str(value)
                 else:
