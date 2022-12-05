@@ -15,7 +15,7 @@ from arcana.core.cli import cli
 from arcana.core.utils import (
     package_from_module,
     pydra_asdict,
-    resolve_class,
+    str2class,
     DOCKER_HUB,
 )
 from arcana.core.deploy.image import Metapackage, CommandImage
@@ -222,7 +222,7 @@ def build(
 
     temp_dir = tempfile.mkdtemp()
 
-    target_cls = resolve_class(build_target, prefixes=["arcana.deploy"])
+    target_cls = str2class(build_target, prefixes=["arcana.deploy"])
 
     dc = docker.from_env()
 
@@ -501,7 +501,7 @@ def required_packages(task_locations):
 
     required_modules = set()
     for task_location in task_locations:
-        workflow = resolve_class(task_location)
+        workflow = str2class(task_location)
         pydra_asdict(workflow, required_modules)
 
     for pkg in package_from_module(required_modules):

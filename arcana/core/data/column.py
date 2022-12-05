@@ -6,7 +6,7 @@ from operator import attrgetter
 from attrs.converters import optional
 
 # from arcana.core.data.row import DataRow
-from arcana.core.utils import class_location
+from arcana.core.utils import class2str
 from arcana.core.exceptions import ArcanaDataMatchError
 from ..enum import DataQuality, ColumnSalience
 from .space import DataSpace
@@ -124,11 +124,9 @@ class DataSource(DataColumn):
             (match_header_vals, self.header_vals),
         ]
         # Get all items that match the data format of the source
-        matches = row.resolved(self.format)
+        matches = row.resolved(self.datatype)
         if not matches:
-            format_str = class_location(
-                self.format, strip_prefix="arcana.data.formats."
-            )
+            format_str = class2str(self.format, strip_prefix="arcana.data.formats.")
             msg = (
                 f"Did not find any items matching data format "
                 f"{format_str} in '{row.id}' {self.row_frequency} for the "
@@ -172,18 +170,18 @@ class DataSource(DataColumn):
         return match
 
     def _error_msg(self, row, matches):
-        format_str = class_location(self.format, strip_prefix="arcana.data.formats.")
+        format_str = class2str(self.format, strip_prefix="arcana.data.formats.")
         return (
-            f" attempting to select a {format_str} item for the '{row.id}' "
+            f" attempting to select {format_str} item for the '{row.id}' "
             f"{row.frequency} in the '{self.name}' column, found:"
             + self._format_matches(matches)
             + self._format_criteria()
         )
 
     def _format_criteria(self):
-        format_str = class_location(self.format, strip_prefix="arcana.data.formats.")
+        format_str = class2str(self.format, strip_prefix="arcana.data.formats.")
         return (
-            f"\n\n    criteria: path='{self.path}', is_regex={self.is_regex}, "
+            f"\n\n    criteria: {self.path}', is_regex={self.is_regex}, "
             + f"format={format_str}, quality_threshold='{self.quality_threshold}', "
             + f"header_vals={self.header_vals}, order={self.order}"
         )
@@ -258,7 +256,7 @@ class DataSink(DataColumn):
     def match(self, row):
         matches = [i for i in row.resolved(self.format) if i.path == self.path]
         if not matches:
-            # Return a placeholder data item that can be set
+            # Return a placeholder data item th.datatypebe set
             return self.format(path=self.path, row=row, exists=False)
         elif len(matches) > 1:
             raise ArcanaDataMatchError(

@@ -449,8 +449,8 @@ class Operation:
                 column = dataset[column_name]
                 if len(operands) == 2:
                     in_format = operands[1]
-                    val = column.format is in_format or issubclass(
-                        column.format, in_format
+                    val = column.datatype is in_format or issubclass(
+                        column.datatype, in_format
                     )
                 else:
                     val = True

@@ -12,10 +12,10 @@ from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.core.utils import (
     DictConverter,
-    Dict2NamedObjsConverter,
-    named_objs2dict,
-    class_location,
-    resolve_class,
+    NamedObjectsConverter,
+    named_objects2dict,
+    class2str,
+    str2class,
 )
 from arcana.data.formats import Directory
 from ..command import ContainerCommand
@@ -80,20 +80,20 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
     info_url: str = attrs.field()
     spec_version: str = attrs.field(default=0, converter=str)
     authors: ty.List[ContainerAuthor] = attrs.field(
-        converter=Dict2NamedObjsConverter(ContainerAuthor),
-        metadata={"asdict": named_objs2dict},
+        converter=NamedObjectsConverter(ContainerAuthor),
+        metadata={"asdict": named_objects2dict},
     )
     description: str
     command: ContainerCommand = attrs.field(converter=DictConverter(ContainerCommand))
     licenses: list[License] = attrs.field(
         factory=dict,
-        converter=Dict2NamedObjsConverter(License),
-        metadata={"asdict": named_objs2dict},
+        converter=NamedObjectsConverter(License),
+        metadata={"asdict": named_objects2dict},
     )
     known_issues: list[KnownIssue] = attrs.field(
         factory=list,
-        converter=Dict2NamedObjsConverter(KnownIssue),
-        metadata={"asdict": named_objs2dict},
+        converter=NamedObjectsConverter(KnownIssue),
+        metadata={"asdict": named_objects2dict},
     )
     long_description: str = ""
     loaded_from: Path = attrs.field(default=None, metadata={"asdict": False})
@@ -212,7 +212,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             path to file to save the spec to
         """
         yml_dct = self.asdict()
-        yml_dct["type"] = class_location(self)
+        yml_dct["type"] = class2str(self)
         with open(yml_path, "w") as f:
             yaml.dump(yml_dct, f)
 
@@ -392,7 +392,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             # if self.command.configuration is not None:
             #     config = self.command.configuration
             #     # configuration keys are variable depending on the workflow class
-            tbl_cmd.write_row("Task", class_location(self.command.task))
+            tbl_cmd.write_row("Task", class2str(self.command.task))
             tbl_cmd.write_row("Operates on", self.command.row_frequency.name)
 
             f.write("#### Inputs\n")
@@ -423,7 +423,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
                 for param in self.command.parameters:
                     tbl_params.write_row(
                         escaped_md(param.name),
-                        escaped_md(class_location(param.type)),
+                        escaped_md(class2str(param.type)),
                         param.description,
                     )
                 f.write("\n")
@@ -468,7 +468,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
     @classmethod
     def load_in_image(cls, spec_path: Path = SPEC_PATH):
         yml_dct = cls._load_yaml(spec_path)
-        klass = resolve_class(yml_dct.pop("type"))
+        klass = str2class(yml_dct.pop("type"))
         return klass.load(yml_dct)
 
     @classmethod

@@ -2,7 +2,7 @@ import click
 from arcana.core.cli import cli
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
-from arcana.core.utils import resolve_class
+from arcana.core.utils import str2class
 
 
 XNAT_CACHE_DIR = "xnat-cache"
@@ -112,7 +112,7 @@ def define(id_str, hierarchy, include, exclude, space, id_inference):
     store = DataStore.load(store_name)
 
     if space:
-        space = resolve_class(space, ["arcana.data.spaces"])
+        space = str2class(space, ["arcana.data.spaces"])
 
     dataset = store.new_dataset(
         id,
@@ -142,8 +142,8 @@ def copy(dataset_path, new_name):
     dataset.save(new_name)
 
 
-def optional_args(names, args):
-    kwargs = {}
+# def optional_args(names, args):
+#     kwargs = {}
 
 
 @dataset.command(
@@ -226,7 +226,7 @@ def add_source(
     dataset.add_source(
         name=name,
         path=path,
-        format=resolve_class(format, prefixes=["arcana.data.formats"]),
+        format=str2class(format, prefixes=["arcana.data.formats"]),
         row_frequency=row_frequency,
         quality_threshold=quality,
         order=order,
@@ -289,7 +289,7 @@ def add_sink(dataset_path, name, format, row_frequency, path, salience):
     dataset.add_sink(
         name=name,
         path=path,
-        format=resolve_class(format, prefixes=["arcana.data.formats"]),
+        format=str2class(format, prefixes=["arcana.data.formats"]),
         row_frequency=row_frequency,
         salience=salience,
     )

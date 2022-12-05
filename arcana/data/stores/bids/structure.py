@@ -113,7 +113,7 @@ class Bids(FileSystem):
             elif len(parts) == 2 and not file_group.is_dir:
                 raise ArcanaUsageError(
                     "Single-level derivative paths must be of type directory "
-                    f"({file_group.path}: {file_group.format})"
+                    f"({file_group.path}: {file_group.datatype})"
                 )
             # append the first to parts of the path before the row ID (e.g. sub-01/ses-02)
             fs_path = fs_path.joinpath(*parts[:2])

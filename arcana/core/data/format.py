@@ -11,7 +11,7 @@ import attrs
 from attrs.converters import optional
 from pydra.engine.core import LazyField, Workflow
 from arcana.core.utils import (
-    class_location,
+    class2str,
     parse_value,
     func_task,
     path2varname,
@@ -138,7 +138,7 @@ class DataItem(metaclass=ABCMeta):
         return cls.__name__.lower()
 
     @classmethod
-    def class_location(cls, relative=True):
+    def class2str(cls, relative=True):
         """Returns the location of the format class definition
 
         Parameters
@@ -152,7 +152,7 @@ class DataItem(metaclass=ABCMeta):
         str
             the location of the class format in <module-path>:<class-name>
         """
-        loc = class_location(cls)
+        loc = class2str(cls)
         if relative and loc.startswith("arcana.data.formats."):
             loc = loc[len("arcana.data.formats.") :]
         return loc
@@ -199,14 +199,14 @@ class Field(DataItem):
         return float(self.value)
 
     def __str__(self):
-        if self.format.__args__:  # Sequence type
+        if self.datatype.__args__:  # Sequence type
             val = "[" + ",".join(self._to_str(v) for v in self.value) + "]"
         else:
             val = self._to_str(self.value)
         return val
 
     def _to_str(self, val):
-        if self.format is str:
+        if self.datatype is str:
             val = '"{}"'.format(val)
         else:
             val = str(val)

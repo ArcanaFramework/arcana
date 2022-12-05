@@ -1,7 +1,7 @@
 import typing as ty
 import re
 from enum import Enum
-from arcana.core.utils import class_location, resolve_class
+from arcana.core.utils import class2str, str2class
 
 
 class DataSpace(Enum):
@@ -165,7 +165,7 @@ class DataSpace(Enum):
         return ((self & child) == self) and (child != self or if_match)
 
     def tostr(self):
-        return f"{class_location(self)}[{str(self)}]"
+        return f"{class2str(self)}[{str(self)}]"
 
     @classmethod
     def fromstr(cls, s):
@@ -175,4 +175,4 @@ class DataSpace(Enum):
                 f"'{s}' is not a string of the format <data-space-enum>[<value>]"
             )
         class_loc, val = match.groups()
-        return resolve_class(class_loc, prefixes=["arcana.data.spaces"])[val]
+        return str2class(class_loc, prefixes=["arcana.data.spaces"])[val]

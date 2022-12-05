@@ -1,9 +1,9 @@
 from operator import itemgetter
 import click
-from arcana.core.utils import resolve_class
+from arcana.core.utils import str2class
 from arcana.core.data.store import DataStore
 from arcana.core.cli import cli
-from arcana.core.utils import get_home_dir, class_location
+from arcana.core.utils import get_home_dir, class2str
 
 
 @cli.group()
@@ -52,7 +52,7 @@ def add(nickname, type, location, varargs, cache, user, password):
     if cache is None:
         cache = get_home_dir() / "cache" / nickname
         cache.mkdir(parents=True, exist_ok=True)
-    store_cls = resolve_class(type, ["arcana.data.stores"])
+    store_cls = str2class(type, ["arcana.data.stores"])
     store = store_cls(location, *varargs, cache_dir=cache, user=user, password=password)
     store.save(nickname)
 
@@ -117,7 +117,7 @@ def refresh(nickname, user, password):
 def ls():
     click.echo("Built-in stores\n---------------")
     for name, store in sorted(DataStore.singletons().items(), key=itemgetter(0)):
-        click.echo(f"{name} - {class_location(store)}")
+        click.echo(f"{name} - {class2str(store)}")
     click.echo("\nSaved stores\n-------------")
     for name, entry in DataStore.load_saved_entries().items():
         store_class = entry.pop("class")

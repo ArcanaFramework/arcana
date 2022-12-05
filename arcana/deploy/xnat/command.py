@@ -130,12 +130,12 @@ class XnatCSCommand(ContainerCommand):
         cmd_args = []
         for inpt in self.inputs:
             replacement_key = f"[{inpt.field.upper()}_INPUT]"
-            if issubclass(inpt.format, FileGroup):
+            if issubclass(inpt.datatype, FileGroup):
                 desc = f"Match resource [SCAN_TYPE]: {inpt.description} "
                 input_type = "string"
             else:
-                desc = f"Match field ({inpt.format.dtype}) [FIELD_NAME]: {inpt.description} "
-                input_type = self.COMMAND_INPUT_TYPES.get(inpt.format, "string")
+                desc = f"Match field ({inpt.datatype.dtype}) [FIELD_NAME]: {inpt.description} "
+                input_type = self.COMMAND_INPUT_TYPES.get(inpt.datatype, "string")
             cmd_json["inputs"].append(
                 {
                     "name": self.path2xnatname(inpt.name),
@@ -182,13 +182,13 @@ class XnatCSCommand(ContainerCommand):
         for output in self.outputs:
             label = output.path.split("/")[0]
             out_fname = output.path + (
-                "." + output.format.ext if output.format.ext else ""
+                "." + output.datatype.ext if output.datatype.ext else ""
             )
             # Set the path to the
             cmd_json["outputs"].append(
                 {
                     "name": output.name,
-                    "description": f"{output.field} ({output.format.class_location()})",
+                    "description": f"{output.field} ({output.datatype.class2str()})",
                     "required": True,
                     "mount": "out",
                     "path": out_fname,
@@ -203,7 +203,7 @@ class XnatCSCommand(ContainerCommand):
                     "as-a-child-of": "SESSION",
                     "type": "Resource",
                     "label": label,
-                    "format": output.format.class_name(),
+                    "format": output.datatype.class_name(),
                 }
             )
             cmd_args.append(f"--output {output.name} '{output.path}'")

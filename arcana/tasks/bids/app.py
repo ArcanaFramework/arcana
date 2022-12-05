@@ -22,7 +22,7 @@ from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.bids.structure import JsonEdit
 from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.core.exceptions import ArcanaUsageError
-from arcana.core.utils import func_task, path2varname, resolve_class
+from arcana.core.utils import func_task, path2varname, str2class
 
 logger = logging.getLogger("arcana")
 
@@ -39,8 +39,8 @@ class Input:
         return cls(**{f.name: dct.get(f.name) for f in dataclasses.fields(cls)})
 
     def __post_init__(self):
-        if isinstance(self.format, str):
-            self.format = resolve_class(self.format, prefixes=["arcana.data.formats"])
+        if isinstance(self.datatype, str):
+            self.datatype = str2class(self.datatype, prefixes=["arcana.data.formats"])
         if self.name is None:
             self.name = path2varname(self.path)
 
@@ -59,8 +59,8 @@ class Output:
     def __post_init__(self):
         if self.path is None:
             self.path = ""
-        if isinstance(self.format, str):
-            self.format = resolve_class(self.format, prefixes=["arcana.data.formats"])
+        if isinstance(self.datatype, str):
+            self.datatype = str2class(self.datatype, prefixes=["arcana.data.formats"])
 
 
 logger = logging.getLogger("arcana")
@@ -338,7 +338,7 @@ def to_bids(
         fixed_json_edits + list(zip(je_args[::2], je_args[1::2]))
     )
     for inpt in inputs:
-        dataset.add_sink(inpt.name, inpt.format, path=inpt.path)
+        dataset.add_sink(inpt.name, inpt.datatype, path=inpt.path)
     row = dataset.row(row_frequency, id)
     with dataset.store:
         for inpt_name, inpt_value in input_values.items():
@@ -382,7 +382,7 @@ def extract_bids(
     for output in outputs:
         dataset.add_sink(
             output.name,
-            output.format,
+            output.datatype,
             path="derivatives/" + app_name + "/" + output.path,
         )
     with dataset.store:

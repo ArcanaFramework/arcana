@@ -99,7 +99,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
     tmp_dir = Path(mkdtemp())
     for deriv in blueprint.derivatives:
         mutable_xnat_dataset.add_sink(
-            name=deriv.name, format=deriv.format, row_frequency=deriv.row_frequency
+            name=deriv.name, format=deriv.datatype, row_frequency=deriv.row_frequency
         )
         deriv_tmp_dir = tmp_dir / deriv.name
         # Create test files, calculate checksums and recorded expected paths
@@ -130,7 +130,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
             row = next(iter(mutable_xnat_dataset.rows(deriv.row_frequency)))
             item = row[deriv.name]
             item.get_checksums(force_calculate=(access_method == "cs"))
-            assert isinstance(item, deriv.format)
+            assert isinstance(item, deriv.datatype)
             assert item.checksums == all_checksums[deriv.name]
             item.get()
             assert all(p.exists() for p in item.fs_paths)

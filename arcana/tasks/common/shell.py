@@ -3,7 +3,7 @@ import dataclasses
 from pathlib import Path
 from pydra import ShellCommandTask
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
-from arcana.core.utils import resolve_class
+from arcana.core.utils import str2class
 from arcana.core.data.format import FileGroup
 
 
@@ -21,8 +21,8 @@ class Input:
         return cls(**{k: v for k, v in dct.items() if k in field_names})
 
     def __post_init__(self):
-        if isinstance(self.format, str):
-            self.format = resolve_class(self.format, prefixes=["arcana.data.formats"])
+        if isinstance(self.datatype, str):
+            self.datatype = str2class(self.datatype, prefixes=["arcana.data.formats"])
 
 
 @dataclasses.dataclass
@@ -42,8 +42,8 @@ class Output:
         return cls(**{k: v for k, v in dct.items() if k in field_names})
 
     def __post_init__(self):
-        if isinstance(self.format, str):
-            self.format = resolve_class(self.format, prefixes=["arcana.data.formats"])
+        if isinstance(self.datatype, str):
+            self.datatype = str2class(self.datatype, prefixes=["arcana.data.formats"])
 
 
 @dataclasses.dataclass
@@ -63,7 +63,7 @@ class Parameter:
 
     def __post_init__(self):
         if isinstance(self.type, str):
-            self.type = resolve_class(self.type)
+            self.type = str2class(self.type)
 
 
 def shell_cmd(
@@ -126,7 +126,7 @@ def shell_cmd(
     for outpt in outputs:
         metadata = {"help_string": param.description}
         outpt_type = (
-            Path or str if issubclass(outpt.format, FileGroup) else outpt.format
+            Path or str if issubclass(outpt.datatype, FileGroup) else outpt.datatype
         )
         if outpt.output_file_template is not None:
             metadata["output_file_template"] = outpt.output_file_template
@@ -163,7 +163,7 @@ def shell_cmd(
         input_fields.append(
             (
                 inpt.name,
-                Path or str if issubclass(inpt.format, FileGroup) else inpt.format,
+                Path or str if issubclass(inpt.datatype, FileGroup) else inpt.datatype,
                 metadata,
             )
         )

@@ -708,7 +708,7 @@ class Dataset:
         ArcanaUsageError
             if overwrite is false and
         """
-        from arcana.core.pipeline import Pipeline, Input, Output
+        from arcana.core.pipeline.base import Pipeline, Input, Output
 
         row_frequency = self._parse_freq(row_frequency)
 
@@ -721,7 +721,7 @@ class Dataset:
                     parsed.append(conn_type(*spec))
                 else:
                     col_name, field = spec
-                    parsed.append(conn_type(col_name, field, self[col_name].format))
+                    parsed.append(conn_type(col_name, field, self[col_name].datatype))
             return parsed
 
         pipeline = Pipeline(
@@ -768,7 +768,7 @@ class Dataset:
         Sequence[List[DataItem]]
             The derived columns
         """
-        from arcana.core.pipeline import Pipeline
+        from arcana.core.pipeline.base import Pipeline
 
         sinks = [self[s] for s in set(sink_names)]
         for pipeline, _ in Pipeline.stack(*sinks):

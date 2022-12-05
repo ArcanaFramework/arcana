@@ -12,21 +12,20 @@ import attrs
 from attrs.converters import default_if_none
 import pydra.engine.task
 from arcana.core.utils import (
-    path2varname,
-    Dict2NamedObjsConverter,
-    named_objs2dict,
-    format_resolver,
-    task_resolver,
-    class_location,
-    resolve_class,
+    NamedObjectsConverter,
+    named_objects2dict,
+    str2task,
 )
-from arcana.core.pipeline import Input as PipelineInput, Output as PipelineOutput
+from arcana.core.pipeline.interface import (
+    PipelineInput,
+    PipelineOutput,
+    PipelineParameter,
+)
 from arcana.core.utils import show_workflow_errors
 from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.exceptions import ArcanaUsageError
-import arcana.data.formats.common
 from arcana.core.data.space import DataSpace
 
 if ty.TYPE_CHECKING:
@@ -35,128 +34,28 @@ if ty.TYPE_CHECKING:
 logger = logging.getLogger("arcana")
 
 
-@attrs.define
-class CommandInput:
-    name: str  # How the input will be referred to in the XNAT dialog, defaults to the field name
-    description: str  # description of the input
-    format: type = attrs.field(converter=format_resolver)
-    path: str = attrs.field()
-    stored_format: type = attrs.field(
-        converter=format_resolver
-    )  # the format the input is stored in the data store in
-    field: str = attrs.field()  # Must match the name of the Pydra task input
-    row_frequency: DataSpace = None
-
-    @format.default
-    def format_default(self):
-        return arcana.data.formats.common.File
-
-    @stored_format.default
-    def stored_format_default(self):
-        return self.format
-
-    @field.default
-    def field_default(self):
-        return self.name
-
-    @path.default
-    def path_default(self):
-        return self.name
-
-    def command_config_arg(self):
-        """a formatted command argument that can be passed to the
-        `arcana deploy run-in-image` command
-        """
-        return (
-            f"--input-config {self.name} {self.stored_format.class_location()} "
-            f"{self.field} {self.format.class_location()}"
-        )
-
-
-@attrs.define
-class CommandOutput:
-    name: str
-    description: str  # description of the input
-    path: str = attrs.field()  # The path the output is stored at in XNAT
-    format: type = attrs.field(converter=format_resolver)
-    field: str = (
-        attrs.field()
-    )  # Must match the name of the Pydra task output, defaults to the path
-    stored_format: type = attrs.field(
-        converter=format_resolver
-    )  # the format the output is to be stored in the data store in
-
-    @format.default
-    def format_default(self):
-        return arcana.data.formats.common.File
-
-    @stored_format.default
-    def stored_format_default(self):
-        return self.format
-
-    @field.default
-    def field_default(self):
-        return self.name
-
-    @path.default
-    def path_default(self):
-        return self.name
-
-    def command_config_arg(self):
-        """a formatted command argument that can be passed to the
-        `arcana deploy run-in-image` command
-        """
-        return (
-            f"--output-config {self.name} {self.stored_format.class_location()} "
-            f"{self.field} {self.format.class_location()}"
-        )
-
-
-@attrs.define
-class CommandParameter:
-    name: str  # How the input will be referred to in the XNAT dialog, defaults to field name
-    description: str  # description of the parameter
-    type: type = attrs.field(converter=resolve_class)
-    field: str = attrs.field()  # Name of parameter to expose in Pydra task
-    required: bool = False
-    default: ty.Union[str, int, float, bool] = None
-
-    @field.default
-    def field_default(self):
-        return path2varname(self.name)
-
-    def command_config_arg(self):
-        """a formatted command argument that can be passed to the
-        `arcana deploy run-in-image` command
-        """
-        return (
-            f"--parameter-config {self.name} {self.field} "
-            f"{class_location(self.type)} {self.default}"
-        )
-
-
 @attrs.define(kw_only=True)
 class ContainerCommand:
 
     STORE_TYPE = "file"
     DATA_SPACE = None
 
-    task: pydra.engine.task.TaskBase = attrs.field(converter=task_resolver)
+    task: pydra.engine.task.TaskBase = attrs.field(converter=str2task)
     row_frequency: DataSpace = None
-    inputs: list[CommandInput] = attrs.field(
+    inputs: list[PipelineInput] = attrs.field(
         factory=list,
-        converter=Dict2NamedObjsConverter(CommandInput),
-        metadata={"asdict": named_objs2dict},
+        converter=NamedObjectsConverter(PipelineInput),
+        metadata={"asdict": named_objects2dict},
     )
-    outputs: list[CommandOutput] = attrs.field(
+    outputs: list[PipelineOutput] = attrs.field(
         factory=list,
-        converter=Dict2NamedObjsConverter(CommandOutput),
-        metadata={"asdict": named_objs2dict},
+        converter=NamedObjectsConverter(PipelineOutput),
+        metadata={"asdict": named_objects2dict},
     )
-    parameters: list[CommandParameter] = attrs.field(
+    parameters: list[PipelineParameter] = attrs.field(
         factory=list,
-        converter=Dict2NamedObjsConverter(CommandParameter),
-        metadata={"asdict": named_objs2dict},
+        converter=NamedObjectsConverter(PipelineParameter),
+        metadata={"asdict": named_objects2dict},
     )
     configuration: dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(dict)
@@ -310,7 +209,7 @@ class ContainerCommand:
         pipeline_inputs = []
         converter_args = {}  # Arguments passed to converter
         for inpt in self.inputs:
-            if not input_values[inpt.name] and inpt.format != DataRow:
+            if not input_values[inpt.name] and inpt.datatype != DataRow:
                 logger.warning(
                     f"Skipping '{inpt.name}' source column as no input was provided"
                 )
@@ -319,14 +218,14 @@ class ContainerCommand:
                 PipelineInput(
                     col_name=inpt.name,
                     field=inpt.field,
-                    required_format=inpt.format,
+                    required_format=inpt.datatype,
                 )
             )
-            if DataRow in (inpt.stored_format, inpt.format):
-                if (inpt.stored_format, inpt.format) != (DataRow, DataRow):
+            if DataRow in (inpt.stored_format, inpt.datatype):
+                if (inpt.stored_format, inpt.datatype) != (DataRow, DataRow):
                     raise ArcanaUsageError(
                         "Cannot convert to/from built-in data type `DataRow`: "
-                        f"col_format={inpt.stored_format}, format={inpt.format}"
+                        f"col_format={inpt.stored_format}, format={inpt.datatype}"
                     )
                 logger.info(
                     f"No column added for '{inpt.name}' column as it uses built-in "
@@ -361,7 +260,7 @@ class ContainerCommand:
         pipeline_outputs = []
         for output in self.outputs:
             pipeline_outputs.append(
-                PipelineOutput(output.name, output.field, output.format)
+                PipelineOutput(output.name, output.field, output.datatype)
             )
             path, qualifiers = self.extract_qualifiers_from_path(
                 output_values.get(output.name, output.name)

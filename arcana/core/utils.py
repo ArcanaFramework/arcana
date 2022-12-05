@@ -233,9 +233,9 @@ def set_loggers(loglevel, pydra_level="warning", depend_level="warning"):
     logging.basicConfig(level=parse(depend_level))
 
 
-def class_location(cls, strip_prefix=None):
+def class2str(cls, strip_prefix=None):
     """Records the location of a class so it can be loaded later using
-    `resolve_class`, in the format <module-name>:<class-name>"""
+    `str2class`, in the format <module-name>:<class-name>"""
     if not (isclass(cls) or isfunction(cls)):
         cls = type(cls)  # Get the class rather than the object
     module_name = cls.__module__
@@ -246,7 +246,7 @@ def class_location(cls, strip_prefix=None):
     return module_name + ":" + cls.__name__
 
 
-def resolve_class(class_str: str, prefixes: Sequence[str] = ()) -> type:
+def str2class(class_str: str, prefixes: Sequence[str] = ()) -> type:
     """
     Resolves a class from a location string in the format "<module-name>:<class-name>"
 
@@ -645,7 +645,7 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: set = None):
 
     def serialise_class(klass):
         required_modules.add(klass.__module__)
-        return "<" + class_location(klass) + ">"
+        return "<" + class2str(klass) + ">"
 
     def value_asdict(value):
         if isclass(value):
@@ -722,7 +722,7 @@ def fromdict(dct: dict, **kwargs):
     def fromdict(value):
         if isinstance(value, dict):
             if "class" in value:
-                klass = resolve_class(value["class"])
+                klass = str2class(value["class"])
                 if hasattr(klass, "fromdict"):
                     return klass.fromdict(value)
             value = {fromdict(k): fromdict(v) for k, v in value.items()}
@@ -732,16 +732,16 @@ def fromdict(dct: dict, **kwargs):
                 )
         elif isinstance(value, str):
             if match := re.match(r"<(.*)>$", value):  # Class location
-                value = resolve_class(match.group(1))
+                value = str2class(match.group(1))
             elif match := re.match(r"<(.*)>\[(.*)\]$", value):  # Enum
-                value = resolve_class(match.group(1))[match.group(2)]
+                value = str2class(match.group(1))[match.group(2)]
             elif match := re.match(r"file://(.*)", value):
                 value = Path(match.group(1))
         elif isinstance(value, Sequence):
             value = [fromdict(x) for x in value]
         return value
 
-    klass = resolve_class(dct["class"])
+    klass = str2class(dct["class"])
 
     kwargs.update(
         {
@@ -779,7 +779,7 @@ def pydra_asdict(
     dict
         the dictionary containing the contents of the Pydra object
     """
-    dct = {"name": obj.name, "class": "<" + class_location(obj) + ">"}
+    dct = {"name": obj.name, "class": "<" + class2str(obj) + ">"}
     if isinstance(obj, Workflow):
         dct["nodes"] = [
             pydra_asdict(n, required_modules=required_modules, workflow=obj)
@@ -854,7 +854,7 @@ def pydra_fromdict(dct: dict, workflow: Workflow = None, **kwargs) -> TaskBase:
     pydra.engine.core.TaskBase
         the recreated Pydra object
     """
-    klass = resolve_class(dct["class"])
+    klass = str2class(dct["class"])
     # Resolve lazy-field references to workflow fields
     inputs = {}
     for inpt_name, inpt_val in dct["inputs"].items():
@@ -1010,7 +1010,7 @@ class DictConverter:
         return value
 
 
-def named_objs2dict(objs: list, **kwargs) -> dict:
+def named_objects2dict(objs: list, **kwargs) -> dict:
     dct = {}
     for obj in objs:
         obj_dict = attrs.asdict(obj, **kwargs)
@@ -1019,7 +1019,7 @@ def named_objs2dict(objs: list, **kwargs) -> dict:
 
 
 @attrs.define
-class Dict2NamedObjsConverter:
+class NamedObjectsConverter:
 
     klass: type
 
@@ -1057,12 +1057,12 @@ class Dict2NamedObjsConverter:
 #         return converted
 
 
-def format_resolver(format):
+def str2datatype(format):
     from arcana.core.data.format import DataItem
     from arcana.core.data.row import DataRow
 
     if isinstance(format, str):
-        format = resolve_class(format, prefixes=["arcana.data.formats"])
+        format = str2class(format, prefixes=["arcana.data.formats"])
     elif not issubclass(format, (DataItem, DataRow)):
         raise ValueError(f"Cannot resolve {format} to data format")
     return format
@@ -1072,17 +1072,17 @@ def data_space_resolver(space):
     from arcana.core.data.space import DataSpace
 
     if isinstance(space, str):
-        space = resolve_class(space, prefixes=["arcana.data.spaces"])
+        space = str2class(space, prefixes=["arcana.data.spaces"])
     elif not issubclass(space, DataSpace):
         raise ValueError(f"Cannot resolve {space} to data space")
     return space
 
 
-def task_resolver(task):
+def str2task(task):
     from pydra.engine.task import TaskBase
 
     if isinstance(task, str):
-        task = resolve_class(task, prefixes=["arcana.tasks"])
+        task = str2class(task, prefixes=["arcana.tasks"])
     elif not isinstance(task, TaskBase):
         raise ValueError(f"Cannot resolve {task} to data space")
     return task

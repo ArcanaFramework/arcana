@@ -52,8 +52,6 @@ def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
     # dummy_nifti_gz = dummy_nifti + '.gz'
     dummy_json = work_dir / "t1w.json"
 
-    N = 10**6
-
     # Create a random Nifti file to satisfy BIDS parsers
     hdr = nb.Nifti1Header()
     hdr.set_data_shape((10, 10, 10))
@@ -202,8 +200,6 @@ def test_bids_json_edit(json_edit_blueprint: JsonEditBlueprint, work_dir: Path):
         # dummy_nifti_gz = dummy_nifti + '.gz'
         json_fs_path = work_dir / (sf_name + ".json")
 
-        N = 10**6
-
         # Create a random Nifti file to satisfy BIDS parsers
         hdr = nb.Nifti1Header()
         hdr.set_data_shape((10, 10, 10))
@@ -272,7 +268,7 @@ def test_run_bids_app_docker(
     for inpt in BIDS_INPUTS:
         kwargs[inpt.name] = nifti_sample_dir.joinpath(
             *inpt.path.split("/")
-        ).with_suffix("." + inpt.format.ext)
+        ).with_suffix("." + inpt.datatype.ext)
 
     result = task(plugin="serial", **kwargs)
 
@@ -318,7 +314,7 @@ def test_run_bids_app_naked(
     for inpt in BIDS_INPUTS:
         kwargs[inpt.name] = nifti_sample_dir.joinpath(
             *inpt.path.split("/")
-        ).with_suffix("." + inpt.format.ext)
+        ).with_suffix("." + inpt.datatype.ext)
 
     bids_dir = work_dir / "bids"
 

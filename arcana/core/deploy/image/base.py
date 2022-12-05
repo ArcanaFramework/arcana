@@ -19,10 +19,10 @@ from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME
 from arcana.core.utils import (
     set_cwd,
-    Dict2NamedObjsConverter,
-    named_objs2dict,
+    NamedObjectsConverter,
+    named_objects2dict,
     DOCKER_HUB,
-    class_location,
+    class2str,
     # HASH_CHUNK_SIZE,
 )
 from arcana.core.data.space import DataSpace
@@ -38,9 +38,7 @@ def python_package_converter(packages):
     Split out and merge any extras specifications (e.g. "arcana[test]")
     between dependencies of the same package
     """
-    return PipSpec.unique(
-        Dict2NamedObjsConverter(PipSpec)(packages), remove_arcana=True
-    )
+    return PipSpec.unique(NamedObjectsConverter(PipSpec)(packages), remove_arcana=True)
 
 
 @attrs.define(kw_only=True)
@@ -88,13 +86,13 @@ class ContainerImage:
     )
     system_packages: ty.List[SystemPackage] = attrs.field(
         factory=list,
-        converter=Dict2NamedObjsConverter(SystemPackage),
-        metadata={"asdict": named_objs2dict},
+        converter=NamedObjectsConverter(SystemPackage),
+        metadata={"asdict": named_objects2dict},
     )
     package_templates: ty.List[NeurodockerPackage] = attrs.field(
         factory=list,
-        converter=Dict2NamedObjsConverter(NeurodockerPackage),
-        metadata={"asdict": named_objs2dict},
+        converter=NamedObjectsConverter(NeurodockerPackage),
+        metadata={"asdict": named_objects2dict},
     )
     registry: str = DOCKER_HUB
     readme: str = None
@@ -532,7 +530,7 @@ class ContainerImage:
                 # else:
                 value = str(value)
             elif isclass(value) or isfunction(value):
-                value = class_location(value)
+                value = class2str(value)
             return value
 
         return attrs.asdict(self, value_serializer=serializer, filter=filter)

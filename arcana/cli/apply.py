@@ -1,7 +1,7 @@
 import click
 from arcana.core.data.set import Dataset
 from arcana.core.cli import cli
-from arcana.core.utils import resolve_class, parse_value
+from arcana.core.utils import str2class, parse_value
 
 
 @cli.group()
@@ -122,7 +122,7 @@ def apply_pipeline(
 ):
 
     dataset = Dataset.load(dataset_id_str)
-    workflow = resolve_class(workflow_location)(
+    workflow = str2class(workflow_location)(
         name="workflow", **{n: parse_value(v) for n, v in parameter}
     )
 
@@ -182,5 +182,5 @@ def apply_bids_app():
 
 def parse_col_option(option):
     return [
-        (c, p, resolve_class(f, prefixes=["arcana.data.formats"])) for c, p, f in option
+        (c, p, str2class(f, prefixes=["arcana.data.formats"])) for c, p, f in option
     ]
