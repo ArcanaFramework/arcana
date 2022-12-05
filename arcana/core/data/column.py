@@ -20,7 +20,7 @@ class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
 
     name: str = attrs.field()
     path: str = attrs.field()
-    format = attrs.field()
+    datatype = attrs.field()
     row_frequency: DataSpace = attrs.field()
     dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
@@ -80,7 +80,7 @@ class DataSource(DataColumn):
         A regex name_path to match the file_group names with. Must match
         one and only one file_group per <row_frequency>. If None, the name
         is used instead.
-    format : type
+    datatype : type
         File format that data will be
     row_frequency : DataSpace
         The row_frequency of the file-group within the dataset tree, e.g. per
@@ -230,7 +230,7 @@ class DataSink(DataColumn):
     path : str
         The path to the relative location the corresponding data items will be
         stored within the rows of the data tree.
-    format : type
+    datatype : type
         The file format or data type used to store the corresponding items
         in the store dataset.
     row_frequency : DataSpace

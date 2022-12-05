@@ -220,13 +220,13 @@ FORMAT: The data type of the column. Can be a field (int|float|str|bool), field 
     ),
 )
 def add_source(
-    dataset_path, name, format, row_frequency, path, order, quality, is_regex, header
+    dataset_path, name, datatype, row_frequency, path, order, quality, is_regex, header
 ):
     dataset = Dataset.load(dataset_path)
     dataset.add_source(
         name=name,
         path=path,
-        format=str2class(format, prefixes=["arcana.data.formats"]),
+        datatype=str2class(format, prefixes=["arcana.data.formats"]),
         row_frequency=row_frequency,
         quality_threshold=quality,
         order=order,
@@ -284,12 +284,12 @@ format
         "'arcana derive menu'"
     ),
 )
-def add_sink(dataset_path, name, format, row_frequency, path, salience):
+def add_sink(dataset_path, name, datatype, row_frequency, path, salience):
     dataset = Dataset.load(dataset_path)
     dataset.add_sink(
         name=name,
         path=path,
-        format=str2class(format, prefixes=["arcana.data.formats"]),
+        datatype=str2class(format, prefixes=["arcana.data.formats"]),
         row_frequency=row_frequency,
         salience=salience,
     )

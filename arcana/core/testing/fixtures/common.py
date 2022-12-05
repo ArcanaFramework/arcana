@@ -22,7 +22,7 @@ from arcana.core.testing.tasks import (
     concatenate,
     concatenate_reverse,
 )
-from arcana.core.testing.datasets import (
+from arcana.core.testing.data.sets import (
     TestDatasetBlueprint,
     TestDataSpace as TDS,
     Xyz,

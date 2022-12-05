@@ -307,7 +307,7 @@ class Dataset:
         self._root = None
 
     def add_source(
-        self, name, format, path=None, row_frequency=None, overwrite=False, **kwargs
+        self, name, datatype, path=None, row_frequency=None, overwrite=False, **kwargs
     ):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -317,7 +317,7 @@ class Dataset:
         name : str
             The name used to reference the dataset "column" for the
             source
-        format : type
+        datatype : type
             The file-format (for file-groups) or format (for fields)
             that the source will be stored in within the dataset
         path : str, default `name`
@@ -332,12 +332,12 @@ class Dataset:
         row_frequency = self._parse_freq(row_frequency)
         if path is None:
             path = name
-        source = DataSource(name, path, format, row_frequency, dataset=self, **kwargs)
+        source = DataSource(name, path, datatype, row_frequency, dataset=self, **kwargs)
         self._add_spec(name, source, overwrite)
         return source
 
     def add_sink(
-        self, name, format, path=None, row_frequency=None, overwrite=False, **kwargs
+        self, name, datatype, path=None, row_frequency=None, overwrite=False, **kwargs
     ):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -347,7 +347,7 @@ class Dataset:
         name : str
             The name used to reference the dataset "column" for the
             sink
-        format : type
+        datatype : type
             The file-format (for file-groups) or format (for fields)
             that the sink will be stored in within the dataset
         path : str, default `name`
@@ -360,7 +360,7 @@ class Dataset:
         row_frequency = self._parse_freq(row_frequency)
         if path is None:
             path = name
-        sink = DataSink(name, path, format, row_frequency, dataset=self, **kwargs)
+        sink = DataSink(name, path, datatype, row_frequency, dataset=self, **kwargs)
         self._add_spec(name, sink, overwrite)
         return sink
 
@@ -837,7 +837,7 @@ class Dataset:
         #     site_licenses = DataStore.load()
 
         # for lic in download_licenses:
-        #     dataset.add_column(lic.col_name, format=arcana.data.formats.common.File,
+        #     dataset.add_column(lic.col_name, datatype=arcana.data.formats.common.File,
         #                        row_frequency=dataset.root_freq)
         #     try:
         #         lic_path = dataset.root[lic.col_name].fs_path
@@ -849,7 +849,7 @@ class Dataset:
             col_name = License.column_name(lic_name)
             self.add_source(
                 col_name,
-                format=arcana.data.formats.File,
+                datatype=arcana.data.formats.File,
                 row_frequency=self.root_freq,
             )
             license_file = self.root[col_name]

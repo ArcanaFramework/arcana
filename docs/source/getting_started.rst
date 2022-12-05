@@ -117,10 +117,10 @@ Alternatively, the same steps can be performed using the Python API:
                               hierarchy=['subject', 'session'])
 
     # Add source column to select a single T1-weighted image in each session subdirectory
-    my_dataset.add_source('T1w', '.*mprage.*', format=Dicom, is_regex=True)
+    my_dataset.add_source('T1w', '.*mprage.*', datatype=Dicom, is_regex=True)
 
     # Add sink column to store brain mask
-    my_dataset.add_sink('brain_mask', 'derivs/brain_mask', format=NiftiGz)
+    my_dataset.add_sink('brain_mask', 'derivs/brain_mask', datatype=NiftiGz)
 
     # Apply BET Pydra task, connecting it between the source and sink
     my_dataset.apply_pipeline(

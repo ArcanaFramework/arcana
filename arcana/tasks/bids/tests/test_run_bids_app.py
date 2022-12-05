@@ -77,7 +77,7 @@ def test_bids_app_entrypoint(
         )
 
     outputs_config = []
-    for path, _, format, _ in blueprint.derivatives:
+    for path, _, datatype, _ in blueprint.derivatives:
         format_str = class2str(format)
         varname = path2varname(path)
         args.extend(["--output", varname, varname])

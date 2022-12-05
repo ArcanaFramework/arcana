@@ -144,13 +144,13 @@ class DataRow:
             self.dataset.store.find_items(self)
         return self._unresolved
 
-    def resolved(self, format):
+    def resolved(self, datatype):
         """
         Items in the row that are able to be resolved to the given format
 
         Parameters
         ----------
-        format : type
+        datatype : type
             The file format or type to reolve the item to
         """
         matches = []
@@ -253,7 +253,7 @@ class UnresolvedFileGroup(UnresolvedDataType):
     uris : Dict[str, str] | None
         For stores where the name of the file format is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
-        format identification. It is stored here along with URIs corresponding
+        datatype identification. It is stored here along with URIs corresponding
         to each resource
     """
 
@@ -305,7 +305,7 @@ class UnresolvedField(UnresolvedDataType):
         float, int, str, ty.List[float], ty.List[int], ty.List[str]
     ] = attrs.field(default=None)
 
-    # def _resolve(self, format):
+    # def _resolve(self, datatype):
     #     try:
     #         if format._name == 'Sequence':
     #             if len(format.__args__) > 1:

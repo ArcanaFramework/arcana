@@ -41,7 +41,7 @@ def create_tar(
     base_dir=".",
     filter=None,
     compression=None,
-    format=tarfile.DEFAULT_FORMAT,
+    datatype=tarfile.DEFAULT_FORMAT,
     ignore_zeros=False,
     encoding=tarfile.ENCODING,
 ):
@@ -60,7 +60,7 @@ def create_tar(
     with tarfile.open(
         out_file,
         mode=f"w:{compression}",
-        format=format,
+        datatype=format,
         ignore_zeros=ignore_zeros,
         encoding=encoding,
     ) as tfile, set_cwd(base_dir):

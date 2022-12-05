@@ -325,7 +325,7 @@ methods can be used directly to add sources and sinks via the Python API.
     xnat_dataset.add_source(
         name='T1w',
         path=r'.*t1_mprage.*'
-        format=Dicom,
+        datatype=Dicom,
         order=1,
         quality_threshold='usable',
         is_regex=True
@@ -333,7 +333,7 @@ methods can be used directly to add sources and sinks via the Python API.
 
     fs_dataset.add_sink(
         name='brain_template',
-        format=NiftiGz,
+        datatype=NiftiGz,
         row_frequency='group'
     )
 

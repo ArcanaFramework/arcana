@@ -36,7 +36,7 @@ echo 'file2' > $OUTPUTS_DIR/sub-${{SUBJ_ID}}_file2.txt
 @pytest.fixture(scope="session")
 def mock_bids_app_script():
     file_tests = ""
-    for inpt_path, format in [
+    for inpt_path, datatype in [
         ("anat/T1w", NiftiGzX),
         ("anat/T2w", NiftiGzX),
         ("dwi/dwi", NiftiGzX),

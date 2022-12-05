@@ -31,7 +31,7 @@ logger = logging.getLogger("arcana")
 class Input:
 
     path: str
-    format: type
+    datatype: type
     name: str = None
 
     @classmethod
@@ -49,7 +49,7 @@ class Input:
 class Output:
 
     name: str
-    format: type
+    datatype: type
     path: str = None
 
     @classmethod

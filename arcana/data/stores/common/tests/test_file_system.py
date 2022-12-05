@@ -6,7 +6,7 @@ from pathlib import Path
 import operator as op
 from functools import reduce
 from arcana.core.data.set import Dataset
-from arcana.core.testing.datasets import create_test_file
+from arcana.core.testing.data.sets import create_test_file
 
 
 def test_find_rows(dataset: Dataset):
@@ -29,7 +29,7 @@ def test_get_items(dataset: Dataset):
     for fg_name, formats in blueprint.expected_formats.items():
         for format, files in formats:
             source_name = fg_name + format.class_name()
-            dataset.add_source(source_name, path=fg_name, format=format)
+            dataset.add_source(source_name, path=fg_name, datatype=format)
             source_files[source_name] = set(files)
     for row in dataset.rows(dataset.leaf_freq):
         for source_name, files in source_files.items():
@@ -42,8 +42,8 @@ def test_put_items(dataset: Dataset):
     blueprint = dataset.__annotations__["blueprint"]
     all_checksums = {}
     all_fs_paths = {}
-    for name, freq, format, files in blueprint.derivatives:
-        dataset.add_sink(name=name, format=format, row_frequency=freq)
+    for name, freq, datatype, files in blueprint.derivatives:
+        dataset.add_sink(name=name, datatype=format, row_frequency=freq)
         deriv_tmp_dir = Path(mkdtemp())
         # Create test files, calculate checksums and recorded expected paths
         # for inserted files
@@ -67,11 +67,11 @@ def test_put_items(dataset: Dataset):
 
     def check_inserted():
         """Check that the inserted items are present in the dataset"""
-        for name, freq, format, _ in blueprint.derivatives:
+        for name, freq, datatype, _ in blueprint.derivatives:
             for row in dataset.rows(freq):
                 item = row[name]
                 item.get_checksums()
-                assert isinstance(item, format)
+                assert isinstance(item, datatype)
                 assert item.checksums == all_checksums[name]
                 item.get()
                 assert all(p.exists() for p in item.fs_paths)

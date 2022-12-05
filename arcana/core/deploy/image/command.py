@@ -472,7 +472,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
         return klass.load(yml_dct)
 
     @classmethod
-    def _data_format_html(cls, format):
+    def _data_format_html(cls, datatype):
 
         if ext := getattr(format, "ext", None):
             text = f"{format.desc} (`.{ext}`)"

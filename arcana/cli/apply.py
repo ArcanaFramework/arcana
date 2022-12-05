@@ -131,13 +131,13 @@ def apply_pipeline(
     sources = parse_col_option(source)
     sinks = parse_col_option(sink)
 
-    for col_name, field, format in sources:
-        dataset.add_source(col_name, format)
-        inputs.append((col_name, field, format))
+    for col_name, field, datatype in sources:
+        dataset.add_source(col_name, datatype)
+        inputs.append((col_name, field, datatype))
 
-    for col_name, field, format in sinks:
-        dataset.add_sink(col_name, format)
-        outputs.append((col_name, field, format))
+    for col_name, field, datatype in sinks:
+        dataset.add_sink(col_name, datatype)
+        outputs.append((col_name, field, datatype))
 
     dataset.apply_pipeline(
         pipeline_name,

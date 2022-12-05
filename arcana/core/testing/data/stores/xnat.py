@@ -10,7 +10,7 @@ import xnat4tests
 from arcana.data.stores.xnat.api import Xnat
 from arcana.data.stores.xnat.cs import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
-from arcana.core.testing.datasets import create_test_file
+from arcana.core.testing.data.sets import create_test_file
 from arcana.core.exceptions import ArcanaError
 
 
@@ -18,7 +18,7 @@ from arcana.core.exceptions import ArcanaError
 class ResourceBlueprint:
 
     name: str
-    format: type
+    datatype: type
     filenames: ty.List[str]
 
 
@@ -34,7 +34,7 @@ class DerivBlueprint:
 
     name: str
     row_frequency: Clinical
-    format: type
+    datatype: type
     filenames: ty.List[str]
 
 

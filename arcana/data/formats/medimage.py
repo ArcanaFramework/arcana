@@ -167,7 +167,7 @@ class Dicom(Directory, MedicalImage):
     def get_dims(self):
         hdr = self.get_header()
         return np.array(
-            (hdr.Rows, hdr.DataColumns, len(self.dcm_files(self))), format=int
+            (hdr.Rows, hdr.DataColumns, len(self.dcm_files(self))), datatype=int
         )
 
     def extract_id(self):
@@ -427,10 +427,10 @@ class MrtrixImage(NeuroImage):
         for key, value in list(hdr.items()):
             if "," in value:
                 try:
-                    hdr[key] = np.array(value.split(","), format=int)
+                    hdr[key] = np.array(value.split(","), datatype=int)
                 except ValueError:
                     try:
-                        hdr[key] = np.array(value.split(","), format=float)
+                        hdr[key] = np.array(value.split(","), datatype=float)
                     except ValueError:
                         pass
             else:

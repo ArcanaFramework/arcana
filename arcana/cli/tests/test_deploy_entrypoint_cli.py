@@ -2,8 +2,8 @@ from functools import reduce
 from operator import mul
 from arcana.cli.deploy import image_entrypoint
 from arcana.core.testing.utils import show_cli_trace, make_dataset_id_str
-from arcana.core.testing.formats import EncodedText
-from arcana.core.testing.datasets import (
+from arcana.core.testing.data.types import EncodedText
+from arcana.core.testing.data.sets import (
     make_dataset,
     TestDatasetBlueprint,
     TestDataSpace,

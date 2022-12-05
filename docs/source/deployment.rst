@@ -146,15 +146,15 @@ the full configuration required to build an XNAT docker image looks like
         info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
         inputs:
             - name: in_files
-              format: medimage:NiftiGzX
+              datatype: medimage:NiftiGzX
               stored_format: medimage:Dicom
               description: Anatomical image to segment into different tissues
         outputs:
             - name: tissue_classes
-              format: medimage:NiftiGz
+              datatype: medimage:NiftiGz
               path: fast/tissue-classes
             - name: probability_maps
-              format: medimage:NiftiGz
+              datatype: medimage:NiftiGz
               path: fast/probability-map
         parameters:
             - name: use_priors

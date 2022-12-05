@@ -46,7 +46,7 @@ def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
 
     dataset.save_metadata()
 
-    dataset.add_sink("t1w", format=NiftiX, path="anat/T1w")
+    dataset.add_sink("t1w", datatype=NiftiX, path="anat/T1w")
 
     dummy_nifti = work_dir / "t1w.nii"
     # dummy_nifti_gz = dummy_nifti + '.gz'
@@ -87,7 +87,7 @@ def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
     assert bids_success_str in result
 
     reloaded = BidsDataset.load(path)
-    reloaded.add_sink("t1w", format=NiftiX, path="anat/T1w")
+    reloaded.add_sink("t1w", datatype=NiftiX, path="anat/T1w")
 
     assert dataset == reloaded
 
@@ -194,7 +194,7 @@ def test_bids_json_edit(json_edit_blueprint: JsonEditBlueprint, work_dir: Path):
     dataset.save_metadata()
 
     for sf_name, sf_bp in bp.source_niftis.items():
-        dataset.add_sink(sf_name, format=NiftiX, path=sf_bp.path)
+        dataset.add_sink(sf_name, datatype=NiftiX, path=sf_bp.path)
 
         nifti_fs_path = work_dir / (sf_name + ".nii")
         # dummy_nifti_gz = dummy_nifti + '.gz'

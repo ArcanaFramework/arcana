@@ -11,7 +11,7 @@ from arcana.core.data.type import FileGroup
 class Input:
 
     name: str
-    format: type
+    datatype: type
     argstr: str = ""
     description: str = ""
 
@@ -29,7 +29,7 @@ class Input:
 class Output:
 
     name: str
-    format: type
+    datatype: type
     requires: ty.List[ty.Tuple[str, ty.Any]] = None
     argstr: str = ""
     position: int = None

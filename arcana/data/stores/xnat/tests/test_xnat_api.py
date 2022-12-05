@@ -10,7 +10,7 @@ from tempfile import mkdtemp
 from functools import reduce
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.data.set import Dataset
-from arcana.core.testing.datasets import create_test_file
+from arcana.core.testing.data.sets import create_test_file
 
 if sys.platform == "win32":
 
@@ -59,7 +59,7 @@ def test_get_items(xnat_dataset, caplog):
             if resource.format is not None:
                 source_name = scan.name + resource.name
                 xnat_dataset.add_source(
-                    source_name, path=scan.name, format=resource.format
+                    source_name, path=scan.name, datatype=resource.format
                 )
                 expected_files[source_name] = set(resource.filenames)
     with caplog.at_level(logging.INFO, logger="arcana"):
@@ -99,7 +99,7 @@ def test_put_items(mutable_xnat_dataset: Dataset, caplog):
     tmp_dir = Path(mkdtemp())
     for deriv in blueprint.derivatives:
         mutable_xnat_dataset.add_sink(
-            name=deriv.name, format=deriv.datatype, row_frequency=deriv.row_frequency
+            name=deriv.name, datatype=deriv.datatype, row_frequency=deriv.row_frequency
         )
         deriv_tmp_dir = tmp_dir / deriv.name
         # Create test files, calculate checksums and recorded expected paths

@@ -225,7 +225,7 @@ class ContainerCommand:
                 if (inpt.stored_format, inpt.datatype) != (DataRow, DataRow):
                     raise ArcanaUsageError(
                         "Cannot convert to/from built-in data type `DataRow`: "
-                        f"col_format={inpt.stored_format}, format={inpt.datatype}"
+                        f"col_format={inpt.stored_format}, datatype={inpt.datatype}"
                     )
                 logger.info(
                     f"No column added for '{inpt.name}' column as it uses built-in "
@@ -249,7 +249,7 @@ class ContainerCommand:
                 logger.info(f"Adding new source column '{inpt.name}'")
                 dataset.add_source(
                     name=inpt.name,
-                    format=inpt.stored_format,
+                    datatype=inpt.stored_format,
                     path=path,
                     is_regex=True,
                     **source_kwargs,
@@ -281,7 +281,7 @@ class ContainerCommand:
             else:
                 logger.info(f"Adding new source column '{output.name}'")
                 dataset.add_sink(
-                    name=output.name, format=output.stored_format, path=path
+                    name=output.name, datatype=output.stored_format, path=path
                 )
 
         logger.debug("Pipeline outputs: %s", pipeline_outputs)

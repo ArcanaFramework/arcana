@@ -378,7 +378,7 @@ def dir_modtime(dpath):
     return max(os.path.getmtime(d) for d, _, _ in os.walk(dpath))
 
 
-# def parse_single_value(value, format=None):
+# def parse_single_value(value, datatype=None):
 #     """
 #     Tries to convert to int, float and then gives up and assumes the value
 #     is of type string. Useful when excepting values that may be string
@@ -413,7 +413,7 @@ def parse_value(value):
     return value
 
 
-# def parse_value(value, format=None):
+# def parse_value(value, datatype=None):
 #     # Split strings with commas into lists
 #     if isinstance(value, str):
 #         if value.startswith('[') and value.endswith(']'):
@@ -425,7 +425,7 @@ def parse_value(value):
 #         except TypeError:
 #             pass
 #     if isinstance(value, list):
-#         value = [parse_single_value(v, format=format) for v in value]
+#         value = [parse_single_value(v, datatype=format) for v in value]
 #         # Check to see if datatypes are consistent
 #         datatypes = set(type(v) for v in value)
 #         if len(datatypes) > 1:
@@ -433,7 +433,7 @@ def parse_value(value):
 #                 "Inconsistent datatypes in values array ({})"
 #                 .format(value))
 #     else:
-#         value = parse_single_value(value, format=format)
+#         value = parse_single_value(value, datatype=format)
 #     return value
 
 
@@ -1057,15 +1057,15 @@ class NamedObjectsConverter:
 #         return converted
 
 
-def str2datatype(format):
+def str2datatype(datatype):
     from arcana.core.data.type import DataType
     from arcana.core.data.row import DataRow
 
-    if isinstance(format, str):
-        format = str2class(format, prefixes=["arcana.data.formats"])
-    elif not issubclass(format, (DataType, DataRow)):
-        raise ValueError(f"Cannot resolve {format} to data format")
-    return format
+    if isinstance(datatype, str):
+        datatype = str2class(datatype, prefixes=["arcana.data.formats"])
+    elif not issubclass(datatype, (DataType, DataRow)):
+        raise ValueError(f"Cannot resolve {datatype} to data format")
+    return datatype
 
 
 def data_space_resolver(space):

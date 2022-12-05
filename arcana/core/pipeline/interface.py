@@ -18,7 +18,7 @@ logger = logging.getLogger("arcana")
 class PipelineInput:
     name: str  # How the input will be referred to in the XNAT dialog, defaults to the field name
     help_string: str  # description of the input
-    format: type = attrs.field(converter=str2datatype)
+    datatype: type = attrs.field(converter=str2datatype)
     path: str = attrs.field()
     field: str = attrs.field()  # Must match the name of the Pydra task input field
     stored_format: type = attrs.field(
@@ -48,7 +48,7 @@ class PipelineOutput:
     name: str
     help_string: str  # description of the input
     path: str = attrs.field()  # The path the output is stored at in XNAT
-    format: type = attrs.field(converter=str2datatype)
+    datatype: type = attrs.field(converter=str2datatype)
     field: str = (
         attrs.field()
     )  # Must match the name of the Pydra task output, defaults to the path

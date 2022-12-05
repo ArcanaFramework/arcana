@@ -82,9 +82,9 @@ To add a workflow to a dataset via the API use the :meth:`Dataset.apply_pipeline
 
     dataset = Dataset.load('myuni-xnat//myproject:training')
 
-    dataset.add_source('T1w', format=medimage.Dicom, path='.*mprage.*',
+    dataset.add_source('T1w', datatype=medimage.Dicom, path='.*mprage.*',
                        is_regex=True)
-    dataset.add_source('T2w', format=medimage.Dicom, path='.*t2spc.*',
+    dataset.add_source('T2w', datatype=medimage.Dicom, path='.*t2spc.*',
                        is_regex=True)
 
     dataset.add_sink('freesurfer/recon-all', common.Directory)
@@ -139,7 +139,7 @@ back to the dataset.
     # Add sink column with "dataset" row row_frequency
     dataset.add_sink(
         name='vbm_template',
-        format=medimage.NiftiGz
+        datatype=medimage.NiftiGz
         row_frequency='dataset')
 
     # NB: we don't need to add the T1w source as it is automatically detected
@@ -291,12 +291,12 @@ parameters.
   dataset.add_source(
       name='datafile',
       path='a-long-arbitrary-name',
-      format=Zip)
+      datatype=Zip)
 
   dataset.add_source(
       name='metadata',
       path='another-long-arbitrary-name',
-      format=Yaml)  # The format the data is in the dataset, will be automatically converted
+      datatype=Yaml)  # The format the data is in the dataset, will be automatically converted
 
   dataset.apply(
       ExampleAnalysis(
