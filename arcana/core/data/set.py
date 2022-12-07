@@ -708,7 +708,7 @@ class Dataset:
         ArcanaUsageError
             if overwrite is false and
         """
-        from arcana.core.deploy.pipeline import Pipeline
+        from arcana.core.pipeline import Pipeline
 
         row_frequency = self._parse_freq(row_frequency)
 
@@ -734,16 +734,16 @@ class Dataset:
             converter_args=converter_args,
         )
         for outpt in pipeline.outputs:
-            sink = self[outpt.col_name]
+            sink = self[outpt.name]
             if sink.pipeline_name is not None:
                 if overwrite:
                     logger.info(
-                        f"Overwriting pipeline of sink '{outpt.col_name}' "
+                        f"Overwriting pipeline of sink '{outpt.name}' "
                         f"{sink.pipeline_name} with {name}"
                     )
                 else:
                     raise ArcanaUsageError(
-                        f"Attempting to overwrite pipeline of '{outpt.col_name}' "
+                        f"Attempting to overwrite pipeline of '{outpt.name}' "
                         f"sink ({sink.pipeline_name}) with {name}. Use "
                         f"'overwrite' option if this is desired"
                     )
@@ -768,7 +768,7 @@ class Dataset:
         Sequence[List[DataType]]
             The derived columns
         """
-        from arcana.core.deploy.pipeline import Pipeline
+        from arcana.core.pipeline import Pipeline
 
         sinks = [self[s] for s in set(sink_names)]
         for pipeline, _ in Pipeline.stack(*sinks):
@@ -837,10 +837,10 @@ class Dataset:
         #     site_licenses = DataStore.load()
 
         # for lic in download_licenses:
-        #     dataset.add_column(lic.col_name, datatype=arcana.data.types.common.File,
+        #     dataset.add_column(lic.name, datatype=arcana.data.types.common.File,
         #                        row_frequency=dataset.root_freq)
         #     try:
-        #         lic_path = dataset.root[lic.col_name].fs_path
+        #         lic_path = dataset.root[lic.name].fs_path
         #     except:
 
         #     shutil.copyfile(lic_path, lic.destination)

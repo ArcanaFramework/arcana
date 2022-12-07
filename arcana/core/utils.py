@@ -259,7 +259,8 @@ def str2class(class_str: str, prefixes: Sequence[str] = ()) -> type:
         resolved path fails, e.g. ['pydra.tasks'] would allow
         'fsl.preprocess.first.First' to resolve to
         pydra.tasks.fsl.preprocess.first.First
-
+    fallback_to_str : bool
+        whether to fallback to a string if the class module can't be loaded
     Returns
     -------
     type:
@@ -279,7 +280,7 @@ def str2class(class_str: str, prefixes: Sequence[str] = ()) -> type:
                 f"Class location '{class_str}' should contain a ':' unless it is in the "
                 "builtins module"
             ) from None
-    cls = None
+    module = None
     for prefix in [None] + list(prefixes):
         if prefix is not None:
             mod_name = prefix + ("." if prefix[-1] != "." else "") + module_path
@@ -293,17 +294,26 @@ def str2class(class_str: str, prefixes: Sequence[str] = ()) -> type:
         except ModuleNotFoundError:
             continue
         else:
-            try:
-                cls = getattr(module, class_name)
-            except AttributeError:
-                continue
-            else:
-                break
-    if cls is None:
-        raise ArcanaUsageError(
-            "Did not find class at '{}' or any sub paths of '{}'".format(
-                class_str, "', '".join(prefixes)
+            break
+    if module is None:
+        if STR2CLASS_FALLBACK.permit:
+            logger.warning(
+                "Did not find module corresponding to %s, but ignoring as "
+                "arcana.core.utils.permit_str2class_fallback is set to True",
+                class_str,
             )
+            return class_str
+        else:
+            raise ArcanaUsageError(
+                "Did not find class at '{}' or any sub paths of '{}'".format(
+                    class_str, "', '".join(prefixes)
+                )
+            )
+    try:
+        cls = getattr(module, class_name)
+    except AttributeError:
+        raise ArcanaUsageError(
+            f"Did not find '{class_str}' class/function in module '{module.__name__}'"
         )
     return cls
 
@@ -997,9 +1007,9 @@ class ObjectConverter:
     accept_metadata: bool = False
 
     def __call__(self, value):
-        self._make_class(value)
+        self._create_object(value)
 
-    def _make_class(self, value, **kwargs):
+    def _create_object(self, value, **kwargs):
         if value is None:
             if self.allow_none:
                 return None
@@ -1018,7 +1028,7 @@ class ObjectConverter:
                 value_kwargs = value
             value_kwargs.update(kwargs)
             obj = value(**value_kwargs)
-        elif isinstance(value, list):
+        elif isinstance(value, (list, tuple)):
             obj = self.klass(*value, **kwargs)
         elif isinstance(value, self.klass):
             obj = copy(value)
@@ -1030,19 +1040,15 @@ class ObjectConverter:
 
 
 @attrs.define
-class NamedObjectsConverter(ObjectConverter):
+class ObjectListConverter(ObjectConverter):
     def __call__(self, value):
         converted = []
         if isinstance(value, dict):
             for name, item in value.items():
-                converted.append(self._make_class(item, name=name))
+                converted.append(self._create_object(item, name=name))
         else:
             for item in value:
-                if isinstance(item, dict):
-                    item = self.klass(**item)
-                elif not isinstance(item, self.klass):
-                    raise ValueError(f"Cannot convert {item} into {self.klass}")
-                converted.append(item)
+                converted.append(self._create_object(item))
         return converted
 
 
@@ -1073,32 +1079,32 @@ def named_objects2dict(objs: list, **kwargs) -> dict:
 #         return converted
 
 
-def str2datatype(datatype):
+def str2datatype(datatype, **kwargs):
     from arcana.core.data.type import DataType
     from arcana.core.data.row import DataRow
 
     if isinstance(datatype, str):
-        datatype = str2class(datatype, prefixes=["arcana.data.types"])
+        datatype = str2class(datatype, prefixes=["arcana.data.types"], **kwargs)
     elif not issubclass(datatype, (DataType, DataRow)):
         raise ValueError(f"Cannot resolve {datatype} to datatype")
     return datatype
 
 
-def data_space_resolver(space):
+def data_space_resolver(space, **kwargs):
     from arcana.core.data.space import DataSpace
 
     if isinstance(space, str):
-        space = str2class(space, prefixes=["arcana.data.spaces"])
+        space = str2class(space, prefixes=["arcana.data.spaces"], **kwargs)
     elif not issubclass(space, DataSpace):
         raise ValueError(f"Cannot resolve {space} to data space")
     return space
 
 
-def str2task(task):
+def str2task(task, **kwargs):
     from pydra.engine.task import TaskBase
 
     if isinstance(task, str):
-        task = str2class(task, prefixes=["arcana.tasks"])
+        task = str2class(task, prefixes=["arcana.tasks"], **kwargs)
     elif not isinstance(task, TaskBase):
         raise ValueError(f"Cannot resolve {task} to data space")
     return task
@@ -1158,6 +1164,22 @@ MIN_SERIAL_VERSION = "0.0.0"
 
 DOCKER_HUB = "docker.io"
 
+# Global flag to allow references to classes to be missing from the
+
+
+@attrs.define
+class Str2ClassFallbackContext:
+
+    permit: bool = False
+
+    def __enter__(self):
+        self.permit = True
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.permit = False
+
+
+STR2CLASS_FALLBACK = Str2ClassFallbackContext()
 
 package_dir = os.path.join(os.path.dirname(__file__), "..")
 

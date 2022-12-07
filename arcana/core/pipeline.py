@@ -29,7 +29,7 @@ from .utils import (
     pydra_eq,
     path2varname,
     str2datatype,
-    NamedObjectsConverter,
+    ObjectListConverter,
     # named_objects2dict,
 )
 import arcana.data.types.common
@@ -54,11 +54,9 @@ class PipelineField:
 
     name: str
     field: str = attrs.field()
-    datatype: type = attrs.field(converter=str2datatype)
-
-    @datatype.default
-    def datatype_default(self):
-        return arcana.data.types.common.File
+    datatype: type = attrs.field(
+        default=None, converter=lambda t: str2datatype(t) if t is not None else None
+    )
 
     @field.default
     def field_default(self):
@@ -103,10 +101,10 @@ class Pipeline:
     row_frequency: DataSpace = attrs.field()
     workflow: Workflow = attrs.field(eq=attrs.cmp_using(pydra_eq))
     inputs: list[PipelineField] = attrs.field(
-        converter=NamedObjectsConverter(PipelineField)
+        converter=ObjectListConverter(PipelineField)
     )
     outputs: list[PipelineField] = attrs.field(
-        converter=NamedObjectsConverter(PipelineField)
+        converter=ObjectListConverter(PipelineField)
     )
     converter_args: ty.Dict[str, dict] = attrs.field(
         factory=dict, converter=attrs.converters.default_if_none(factory=dict)
@@ -115,15 +113,25 @@ class Pipeline:
         metadata={"asdict": False}, default=None, eq=False, hash=False
     )
 
+    def __attrs_post_init__(self):
+        for field in self.inputs + self.outputs:
+            if field.datatype is None:
+                field.datatype = self.dataset[field.name].datatype
+
     @inputs.validator
-    def inputs_validator(self, _, inputs: list[DataType]):
+    def inputs_validator(self, _, inputs: list[PipelineField]):
         for inpt in inputs:
             if inpt.datatype is arcana.core.data.row.DataRow:  # special case
                 continue
             if self.dataset:
                 column = self.dataset[inpt.name]
-                if inpt.datatype is not column.datatype:
+                # Check that a converter can be found if required
+                if inpt.datatype:
                     inpt.datatype.find_converter(column.datatype)
+            elif inpt.datatype is None:
+                raise ValueError(
+                    f"Datatype must be explicitly set for {inpt.name} in unbound Pipeline"
+                )
             if inpt.field not in self.workflow.input_names:
                 raise ArcanaNameError(
                     inpt.field,
@@ -132,7 +140,7 @@ class Pipeline:
                 )
 
     @outputs.validator
-    def outputs_validator(self, _, outputs):
+    def outputs_validator(self, _, outputs: list[PipelineField]):
         for outpt in outputs:
             if self.dataset:
                 column = self.dataset[outpt.name]
@@ -141,8 +149,13 @@ class Pipeline:
                         f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
                         f"that of '{outpt.name}' output ('{str(self.row_frequency)}')"
                     )
-                if outpt.datatype is not column.datatype:
+                # Check that a converter can be found if required
+                if outpt.datatype:
                     column.datatype.find_converter(outpt.datatype)
+            elif outpt.datatype is None:
+                raise ValueError(
+                    f"Datatype must be explicitly set for {outpt.name} in unbound Pipeline"
+                )
             if outpt.field not in self.workflow.output_names:
                 raise ArcanaNameError(
                     f"{outpt.field} is not in the output spec of '{self.name}' "
@@ -152,14 +165,14 @@ class Pipeline:
     @property
     def input_varnames(self):
         return [
-            i.col_name for i in self.inputs
-        ]  # [path2varname(i.col_name) for i in self.inputs]
+            i.name for i in self.inputs
+        ]  # [path2varname(i.name) for i in self.inputs]
 
     @property
     def output_varnames(self):
         return [
-            o.col_name for o in self.outputs
-        ]  # [path2varname(o.col_name) for o in self.outputs]
+            o.name for o in self.outputs
+        ]  # [path2varname(o.name) for o in self.outputs]
 
     # parameterisation = self.get_parameterisation(kwargs)
     # self.wf.to_process.inputs.parameterisation = parameterisation
@@ -254,8 +267,7 @@ class Pipeline:
 
         # Set the inputs
         sourced = {
-            i.col_name: getattr(wf.per_row.source.lzout, i.col_name)
-            for i in self.inputs
+            i.name: getattr(wf.per_row.source.lzout, i.name) for i in self.inputs
         }
 
         # Do input datatype conversions if required
@@ -295,10 +307,10 @@ class Pipeline:
             func_task(
                 access_paths_and_values,
                 in_fields=[
-                    (i.col_name, ty.Union[DataType, arcana.core.data.row.DataRow])
+                    (i.name, ty.Union[DataType, arcana.core.data.row.DataRow])
                     for i in self.inputs
                 ],
-                out_fields=[(i.col_name, ty.Any) for i in self.inputs],
+                out_fields=[(i.name, ty.Any) for i in self.inputs],
                 name="input_interface",
                 **sourced,
             )
@@ -321,12 +333,12 @@ class Pipeline:
             func_task(
                 encapsulate_paths_and_values,
                 in_fields=[("outputs", list[PipelineField])]
-                + [(o.col_name, ty.Union[str, Path]) for o in self.outputs],
-                out_fields=[(o.col_name, DataType) for o in self.outputs],
+                + [(o.name, ty.Union[str, Path]) for o in self.outputs],
+                out_fields=[(o.name, DataType) for o in self.outputs],
                 name="output_interface",
                 outputs=self.outputs,
                 **{
-                    o.col_name: getattr(
+                    o.name: getattr(
                         getattr(wf.per_row, self.workflow.name).lzout, o.field
                     )
                     for o in self.outputs
@@ -522,24 +534,21 @@ def split_side_car_suffix(name):
 
 
 @pydra.mark.task
-@pydra.mark.annotate(
-    {
-        "dataset": arcana.core.data.set.Dataset,
-        "row_frequency": DataSpace,
-        "outputs": list[PipelineField],
-        "requested_ids": ty.Sequence[str] or None,
-        "parameterisation": ty.Dict[str, ty.Any],
-        "return": {"ids": list[str], "cant_process": list[str]},
-    }
-)
-def to_process(dataset, row_frequency, outputs, requested_ids, parameterisation):
+@pydra.mark.annotate({"return": {"ids": list[str], "cant_process": list[str]}})
+def to_process(
+    dataset: arcana.core.data.set.Dataset,
+    row_frequency: DataSpace,
+    outputs: list[PipelineField],
+    requested_ids: ty.Union[list[str], None],
+    parameterisation: dict[str, ty.Any],
+):
     if requested_ids is None:
         requested_ids = dataset.row_ids(row_frequency)
     ids = []
     cant_process = []
     for row in dataset.rows(row_frequency, ids=requested_ids):
         # TODO: Should check provenance of existing rows to see if it matches
-        not_exist = [not row[o.col_name].exists for o in outputs]
+        not_exist = [not row[o.name].exists for o in outputs]
         if all(not_exist):
             ids.append(row.id)
         elif any(not_exist):

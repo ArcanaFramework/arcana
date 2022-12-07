@@ -24,7 +24,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
     concatenate_spec = {
         "command": command_spec,
         "version": "1.0",
-        "spec_version": "1",
+        "build_iteration": "1",
         "system_packages": [{"name": "vim"}],  # just to test it out
         "python_packages": [{"name": "pytest"}],  # just to test it out
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
@@ -108,7 +108,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
     concatenate_spec = {
         "command": command_spec,
         "version": "1.0",
-        "spec_version": "1",
+        "build_iteration": "1",
         "system_packages": [],
         "python_packages": [],
         "description": "a test image",
@@ -143,7 +143,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         )
 
         # Increment the version number to avoid the clash
-        concatenate_spec["spec_version"] = "2"
+        concatenate_spec["build_iteration"] = "2"
 
         result = build_spec(concatenate_spec)
         assert result.exit_code == 0, show_cli_trace(result)

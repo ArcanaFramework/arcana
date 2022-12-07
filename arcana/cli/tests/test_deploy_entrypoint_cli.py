@@ -16,7 +16,7 @@ def write_spec(name, command, path):
     image_spec = PipelineImage(
         name=name,
         version=1.0,
-        spec_version="1",
+        build_iteration="1",
         system_packages=[],
         python_packages=[],
         description="a test image",

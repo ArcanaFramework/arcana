@@ -121,7 +121,7 @@ the full configuration required to build an XNAT docker image looks like
 
     pkg_name: FSL
     version: &version '6.0.1'
-    spec_version: '1'
+    build_iteration: '1'
     authors:
         - name: Thomas G. Close
           email: thomas.close@sydney.edu.au

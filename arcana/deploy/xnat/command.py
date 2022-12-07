@@ -72,13 +72,15 @@ class XnatCSCommand(ContainerCommand):
             the JSON-like dictionary to specify the command to the XNAT CS
         """
         # Generate the complete configuration JSON
-        spec_version_str = (
-            f" ({self.image.spec_version})" if self.image.spec_version == "0" else ""
+        build_iteration_str = (
+            f" ({self.image.build_iteration})"
+            if self.image.build_iteration is None
+            else ""
         )
 
         cmd_json = {
             "name": self.name,
-            "description": f"{self.name} {self.image.version}{spec_version_str}: {self.image.description}",
+            "description": f"{self.name} {self.image.version}{build_iteration_str}: {self.image.description}",
             "label": self.name,
             "schema-version": "1.0",
             "image": self.image.tag,

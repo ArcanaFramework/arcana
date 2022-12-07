@@ -653,14 +653,17 @@ class FileGroup(DataType, metaclass=ABCMeta):
 
         Returns
         -------
-        function
-            The bound method that adds rows to a given workflow
+        function or NoneType
+            The bound method that adds rows to a given workflow if conversion is required
+            and None if no conversion is required
 
         Raises
         ------
         ArcanaFormatConversionError
             _description_
         """
+        if from_format is cls or issubclass(from_format, cls):
+            return None  # No conversion is required
         converter = None
         for attr_name in dir(cls):
             meth = getattr(cls, attr_name)
@@ -688,7 +691,7 @@ class FileGroup(DataType, metaclass=ABCMeta):
                             )
                     else:
                         converter = meth
-        if not converter:
+        if converter is None:
             raise ArcanaFormatConversionError(
                 f"No converters defined between {from_format} and {cls}"
             )

@@ -59,7 +59,7 @@ def test_pull_xnat_images(
         image_spec = {
             "command": cmd_spec,
             "version": PKG_VERSION,
-            "spec_version": WRAPPER_VERSION,
+            "build_iteration": WRAPPER_VERSION,
             "system_packages": [],
             "python_packages": [],
             "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],

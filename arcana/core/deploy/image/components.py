@@ -8,22 +8,9 @@ import site
 import attrs
 from arcana.__about__ import PACKAGE_NAME
 from arcana.core.exceptions import ArcanaBuildError
+from arcana.core.utils import ObjectListConverter, named_objects2dict
 
 logger = logging.getLogger("arcana")
-
-
-@attrs.define
-class SystemPackage:
-
-    name: str
-    version: str = None
-
-
-@attrs.define
-class NeurodockerPackage:
-
-    name: str
-    version: str
 
 
 @attrs.define
@@ -37,6 +24,18 @@ class ContainerAuthor:
 class KnownIssue:
 
     url: str
+
+
+@attrs.define(kw_only=True)
+class BaseImage:
+
+    name: str = "ubuntu"
+    tag: str = "kinetic"
+    package_manager: str = "apt"
+
+    @property
+    def reference(self):
+        return f"{self.name}:{self.tag}"
 
 
 @attrs.define
@@ -76,7 +75,7 @@ class License:
 
 
 @attrs.define
-class PipSpec:
+class PipPackage:
     """Specification of a Python package"""
 
     name: str
@@ -93,14 +92,14 @@ class PipSpec:
 
         Parameters
         ----------
-        pip_specs : ty.Iterable[PipSpec]
+        pip_specs : ty.Iterable[PipPackage]
             the pip specs to merge
         remove_arcana : bool
             remove arcana if present from the merged list
 
         Returns
         -------
-        list[PipSpec]
+        list[PipPackage]
             the merged pip specs
 
         Raises
@@ -111,7 +110,7 @@ class PipSpec:
         dct = {}
         for pip_spec in pip_specs:
             if isinstance(pip_spec, dict):
-                pip_spec = PipSpec(**pip_spec)
+                pip_spec = PipPackage(**pip_spec)
             if pip_spec.name == PACKAGE_NAME and remove_arcana:
                 continue
             try:
@@ -137,20 +136,20 @@ class PipSpec:
 
         Parameters
         ----------
-        package : [PipSpec]
+        package : [PipPackage]
             the packages (or names of) the versions to detect
         pypi_fallback : bool, optional
             Fallback to PyPI version if requested version isn't installed locally
 
         Returns
         -------
-        PipSpec
+        PipPackage
             the pip specification for the installation location of the package
         """
 
         # if isinstance(pip_spec, str):
         #     parts = pip_spec.split("==")
-        #     pip_spec = PipSpec(
+        #     pip_spec = PipPackage(
         #         name=parts[0], version=(parts[1] if len(parts) == 2 else None)
         #     )
         try:
@@ -194,7 +193,9 @@ class PipSpec:
         if pkg_loc not in site_pkg_locs:
             # Copy package into Docker image and instruct pip to install from
             # that copy
-            local_spec = PipSpec(name=self.name, file_path=pkg_loc, extras=self.extras)
+            local_spec = PipPackage(
+                name=self.name, file_path=pkg_loc, extras=self.extras
+            )
         else:
             # Check to see whether package is installed via "direct URL" instead
             # of through PyPI
@@ -207,7 +208,7 @@ class PipSpec:
                     "vcs_info", url_spec
                 )  # Fallback to trying to find VCS info in the base url-spec dict
                 if url.startswith("file://"):
-                    local_spec = PipSpec(
+                    local_spec = PipPackage(
                         name=self.name,
                         file_path=url[len("file://") :],
                         extras=self.extras,
@@ -218,12 +219,70 @@ class PipSpec:
                         url = vcs_info["vcs"] + "+" + url
                     if "commit_id" in vcs_info:
                         url += "@" + vcs_info["commit_id"]
-                    local_spec = PipSpec(name=self.name, url=url, extras=self.extras)
+                    local_spec = PipPackage(name=self.name, url=url, extras=self.extras)
             else:
-                local_spec = PipSpec(
+                local_spec = PipPackage(
                     name=self.name, version=pkg.version, extras=self.extras
                 )
         return local_spec
+
+
+@attrs.define
+class SystemPackage:
+
+    name: str
+    version: str = None
+
+
+@attrs.define
+class NeurodockerTemplate:
+
+    name: str
+    version: str
+
+
+@attrs.define
+class CondaPackage:
+
+    name: str
+    version: str = None
+
+    REQUIRED = ["numpy", "traits"]  # FIXME: Not sure if traits is actually required
+
+
+def python_package_converter(packages):
+    """
+    Split out and merge any extras specifications (e.g. "arcana[test]")
+    between dependencies of the same package
+    """
+    return PipPackage.unique(
+        ObjectListConverter(PipPackage)(packages), remove_arcana=True
+    )
+
+
+@attrs.define
+class Packages:
+
+    system: list[SystemPackage] = attrs.field(
+        factory=list,
+        converter=ObjectListConverter(SystemPackage),
+        metadata={"asdict": named_objects2dict},
+    )
+    pip: list[PipPackage] = attrs.field(
+        factory=list,
+        converter=python_package_converter,
+        metadata={"asdict": named_objects2dict},
+    )
+    conda: list[CondaPackage] = attrs.field(
+        factory=list,
+        converter=ObjectListConverter(CondaPackage),
+        metadata={"asdict": named_objects2dict},
+    )
+    neurodocker: list[NeurodockerTemplate] = attrs.field(
+        factory=list,
+        converter=ObjectListConverter(NeurodockerTemplate),
+        metadata={"asdict": named_objects2dict},
+    )
 
 
 site_pkg_locs = [Path(p).resolve() for p in site.getsitepackages()]

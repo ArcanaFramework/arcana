@@ -12,7 +12,7 @@ from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.core.utils import (
     ObjectConverter,
-    NamedObjectsConverter,
+    ObjectListConverter,
     named_objects2dict,
     class2str,
     str2class,
@@ -37,11 +37,11 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
         version of the package/pipeline
     org : str
         the organisation the image will be tagged within
-    base_image : str, optional
+    base_image : BaseImage, optional
         the base image to build from
     package_manager : str, optional
         the package manager used to install system packages (should match OS on base image)
-    python_packages:  Iterable[PipSpec or dict[str, str] or tuple[str, str]], optional
+    python_packages:  Iterable[PipPackage or dict[str, str] or tuple[str, str]], optional
         Name and version of the Python PyPI packages to add to the image (in
         addition to Arcana itself)
     system_packages: Iterable[str], optional
@@ -61,7 +61,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
         specification of licenses required by the commands in the container. Each dict
         should contain the 'name' of the license and the 'destination' it should be
         installed inside the container.
-    spec_version : str, optional
+    build_iteration : str, optional
         version of the specification relative to the package version, i.e. if the package
         version hasn't been updated but the specification has been altered, the spec
         version should be updated (otherwise builds will fail). The spec version should
@@ -78,21 +78,20 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
     IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
 
     info_url: str = attrs.field()
-    spec_version: str = attrs.field(default=0, converter=str)
     authors: ty.List[ContainerAuthor] = attrs.field(
-        converter=NamedObjectsConverter(ContainerAuthor),
+        converter=ObjectListConverter(ContainerAuthor),
         metadata={"asdict": named_objects2dict},
     )
     description: str
     command: ContainerCommand = attrs.field(converter=ObjectConverter(ContainerCommand))
     licenses: list[License] = attrs.field(
         factory=dict,
-        converter=NamedObjectsConverter(License),
+        converter=ObjectListConverter(License),
         metadata={"asdict": named_objects2dict},
     )
     known_issues: list[KnownIssue] = attrs.field(
         factory=list,
-        converter=NamedObjectsConverter(KnownIssue),
+        converter=ObjectListConverter(KnownIssue),
         metadata={"asdict": named_objects2dict},
     )
     long_description: str = ""
@@ -111,12 +110,6 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             raise ValueError(
                 f"Could not parse info url '{info_url}', please include URL scheme"
             )
-
-    @property
-    def full_version(self):
-        return (
-            f"{self.version}-{self.spec_version}" if self.spec_version else self.version
-        )
 
     @abstractmethod
     def add_entrypoint(self, dockerfile: DockerRenderer, build_dir: Path):
@@ -359,7 +352,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             tbl_info = MarkdownTable(f, "Key", "Value")
             tbl_info.write_row("Name", self.name)
             tbl_info.write_row("App version", self.version)
-            tbl_info.write_row("Spec version", self.spec_version)
+            tbl_info.write_row("Spec version", self.build_iteration)
             tbl_info.write_row("Base image", escaped_md(self.base_image))
             tbl_info.write_row(
                 "Maintainer", f"{self.authors[0].name} ({self.authors[0].email})"

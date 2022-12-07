@@ -12,7 +12,7 @@ import attrs
 from attrs.converters import default_if_none
 import pydra.engine.task
 from arcana.core.utils import (
-    NamedObjectsConverter,
+    ObjectListConverter,
     ObjectConverter,
     named_objects2dict,
     str2task,
@@ -200,17 +200,17 @@ class ContainerCommand:
     row_frequency: DataSpace = None
     inputs: list[CommandInput] = attrs.field(
         factory=list,
-        converter=NamedObjectsConverter(CommandInput),
+        converter=ObjectListConverter(CommandInput),
         metadata={"asdict": named_objects2dict},
     )
     outputs: list[CommandOutput] = attrs.field(
         factory=list,
-        converter=NamedObjectsConverter(CommandOutput),
+        converter=ObjectListConverter(CommandOutput),
         metadata={"asdict": named_objects2dict},
     )
     parameters: list[CommandParameter] = attrs.field(
         factory=list,
-        converter=NamedObjectsConverter(CommandParameter),
+        converter=ObjectListConverter(CommandParameter),
         metadata={"asdict": named_objects2dict},
     )
     configuration: dict[str, ty.Any] = attrs.field(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import attrs
 from typing import Iterable, Union, List
-from arcana.core.deploy.image.container import ContainerImage
+from arcana.core.deploy.image.components import BaseImage
 
 
 @attrs.define
@@ -15,7 +15,7 @@ class DocsFixture:
 minimal_doc_spec = DocsFixture(
     """
 version: &version '0.16.1'
-spec_version: '1.10'
+build_iteration: '1.10'
 authors:
   - name: author_name
     email: author@email.org
@@ -48,7 +48,7 @@ weight: 10
 |Name|spec|
 |App version|0.16.1|
 |Spec version|1.10|
-|Base image|`{ContainerImage.DEFAULT_BASE_IMAGE}`|
+|Base image|`{BaseImage().reference}`|
 |Maintainer|author_name (author@email.org)|
 |Info URL|https://example.com|
 |Short description|a test specification|
@@ -79,7 +79,7 @@ a test specification
 yaml_constructors_join_spec = DocsFixture(
     """
 version: &version '0.16.1'
-spec_version: '1.10'
+build_iteration: '1.10'
 authors:
   - name: author_name
     email: author@email.org
@@ -144,7 +144,7 @@ a test of the YAML join functionality
 complete_doc_spec = DocsFixture(
     """
 version: &version '0.16.1'
-spec_version: '1.10'
+build_iteration: '1.10'
 authors:
   - name: author_name
     email: author@email.org

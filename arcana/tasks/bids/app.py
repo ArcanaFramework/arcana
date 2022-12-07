@@ -26,7 +26,7 @@ from arcana.core.utils import (
     func_task,
     path2varname,
     str2datatype,
-    NamedObjectsConverter,
+    ObjectListConverter,
 )
 
 logger = logging.getLogger("arcana")
@@ -37,7 +37,7 @@ class AppField:
 
     path: str
     datatype: type = attrs.field(converter=str2datatype)
-    name: str = None
+    name: str = attrs.field()
 
     @name.default
     def name_default(self):
@@ -155,8 +155,8 @@ def bids_app(
         )
 
     # Convert from JSON format inputs/outputs to tuples with resolved data formats
-    inputs = NamedObjectsConverter(AppField)(inputs)
-    outputs = NamedObjectsConverter(AppField)(outputs)
+    inputs = ObjectListConverter(AppField)(inputs)
+    outputs = ObjectListConverter(AppField)(outputs)
 
     # Ensure output paths all start with 'derivatives
     input_names = [i.name for i in inputs]

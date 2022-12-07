@@ -12,7 +12,7 @@ import docker
 from arcana import __version__
 from arcana.data.types import NiftiX
 from arcana.data.stores.bids import BidsDataset
-from arcana.tasks.bids.app import bids_app, Input, Output
+from arcana.tasks.bids.app import bids_app, AppField
 from arcana.data.types.common import Text, Directory
 from arcana.data.types.medimage import NiftiGzX, NiftiGzXFslgrad
 
@@ -235,14 +235,14 @@ def test_bids_json_edit(json_edit_blueprint: JsonEditBlueprint, work_dir: Path):
 
 
 BIDS_INPUTS = [
-    Input("anat/T1w", NiftiGzX),
-    Input("anat/T2w", NiftiGzX),
-    Input("dwi/dwi", NiftiGzXFslgrad),
+    AppField(path="anat/T1w", datatype=NiftiGzX),
+    AppField(path="anat/T2w", datatype=NiftiGzX),
+    AppField(path="dwi/dwi", datatype=NiftiGzXFslgrad),
 ]
 BIDS_OUTPUTS = [
-    Output("whole_dir", Directory),  # whole derivative directory
-    Output("a_file", Text, "file1"),
-    Output("another_file", Text, "file2"),
+    AppField(path="whole_dir", datatype=Directory),  # whole derivative directory
+    AppField(path="a_file", datatype=Text, name="file1"),
+    AppField(path="another_file", datatype=Text, name="file2"),
 ]
 
 

@@ -3,7 +3,7 @@ import attrs
 from pathlib import Path
 from pydra import ShellCommandTask
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
-from arcana.core.utils import str2class, str2datatype, NamedObjectsConverter
+from arcana.core.utils import str2class, str2datatype, ObjectListConverter
 from arcana.core.data.type import FileGroup
 
 
@@ -182,9 +182,9 @@ def shell_cmd(
     pydra.ShellCommmandTask
         A Pydra shell command task that can be deployed using the deployment framework
     """
-    inputs = NamedObjectsConverter(ShellCmdInput)(inputs)
-    outputs = NamedObjectsConverter(ShellCmdInput)(outputs)
-    parameters = NamedObjectsConverter(ShellCmdInput)(parameters)
+    inputs = ObjectListConverter(ShellCmdInput)(inputs)
+    outputs = ObjectListConverter(ShellCmdInput)(outputs)
+    parameters = ObjectListConverter(ShellCmdInput)(parameters)
 
     input_fields = []
     for inpt in inputs + parameters:

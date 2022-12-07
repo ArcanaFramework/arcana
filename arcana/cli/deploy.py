@@ -17,6 +17,7 @@ from arcana.core.utils import (
     pydra_asdict,
     str2class,
     DOCKER_HUB,
+    STR2CLASS_FALLBACK,
 )
 from arcana.core.deploy.image import Metapackage, CommandImage
 from arcana.deploy.xnat.image import XnatCSImage
@@ -233,12 +234,16 @@ def build(
         license_paths[lic_name] = lic_src
 
     # Load image specifications from YAML files stored in directory tree
-    image_specs = target_cls.load_tree(
-        spec_root,
-        registry=registry,
-        license_paths=license_paths,
-        licenses_to_download=set(license_to_download),
-    )
+
+    # Don't error if the modules the task, data stores, data types, etc...
+    # aren't present in the build environment
+    with STR2CLASS_FALLBACK:
+        image_specs = target_cls.load_tree(
+            spec_root,
+            registry=registry,
+            license_paths=license_paths,
+            licenses_to_download=set(license_to_download),
+        )
 
     # Check the target registry to see a) if the images with the same tag
     # already exists and b) whether it was built with the same specs
@@ -249,14 +254,16 @@ def build(
         for image_spec in image_specs:
 
             extracted_dir = extract_file_from_docker_image(
-                image_spec.tag, image_spec.SPEC_PATH
+                image_spec.reference, image_spec.SPEC_PATH
             )
             if extracted_dir is None:
-                logger.info(f"Did not find existing image matching {image_spec.tag}")
+                logger.info(
+                    f"Did not find existing image matching {image_spec.reference}"
+                )
                 changelog = None
             else:
                 logger.info(
-                    f"Comparing build spec with that of existing image {image_spec.tag}"
+                    f"Comparing build spec with that of existing image {image_spec.reference}"
                 )
                 built_spec = image_spec.load(
                     extracted_dir / Path(image_spec.SPEC_PATH).name
@@ -272,7 +279,7 @@ def build(
                     "exists in registry"
                 )
             else:
-                conflicting[image_spec.tag] = changelog
+                conflicting[image_spec.reference] = changelog
 
         if conflicting:
             msg = ""
@@ -316,33 +323,37 @@ def build(
             if raise_errors:
                 raise
             logger.error(
-                "Could not build %s pipeline:\n%s", image_spec.tag, format_exc()
+                "Could not build %s pipeline:\n%s", image_spec.reference, format_exc()
             )
             errors = True
             continue
         else:
-            click.echo(image_spec.tag)
-            logger.info("Successfully built %s pipeline", image_spec.tag)
+            click.echo(image_spec.reference)
+            logger.info("Successfully built %s pipeline", image_spec.reference)
 
         if push:
             try:
-                dc.api.push(image_spec.tag)
+                dc.api.push(image_spec.reference)
             except Exception:
                 if raise_errors:
                     raise
-                logger.error("Could not push '%s':\n\n%s", image_spec.tag, format_exc())
+                logger.error(
+                    "Could not push '%s':\n\n%s", image_spec.reference, format_exc()
+                )
                 errors = True
             else:
-                logger.info("Successfully pushed '%s' to registry", image_spec.tag)
+                logger.info(
+                    "Successfully pushed '%s' to registry", image_spec.reference
+                )
             if clean_up:
-                dc.api.remove_image(image_spec.tag)
+                dc.api.remove_image(image_spec.reference)
                 dc.containers.prune()
                 dc.images.prune(filters={"dangling": False})
                 dc.api.remove_image(image_spec.base_image)
                 dc.images.prune(filters={"dangling": False})
                 logger.info(
                     "Removed '%s' and pruned dangling images to free up disk space",
-                    image_spec.tag,
+                    image_spec.reference,
                 )
 
         if release or save_manifest:
@@ -362,27 +373,27 @@ def build(
         metapkg.make(use_local_packages=use_local_packages)
         if push:
             try:
-                dc.api.push(metapkg.tag)
+                dc.api.push(metapkg.reference)
             except Exception:
                 if raise_errors:
                     raise
                 logger.error(
                     "Could not push release metapackage '%s':\n\n%s",
-                    metapkg.tag,
+                    metapkg.reference,
                     format_exc(),
                 )
                 errors = True
             else:
                 logger.info(
                     "Successfully pushed release metapackage '%s' to registry",
-                    metapkg.tag,
+                    metapkg.reference,
                 )
 
             if tag_latest:
                 # Also push release to "latest" tag
-                image = dc.images.get(metapkg.tag)
+                image = dc.images.get(metapkg.reference)
                 latest_tag = metapkg.path + ":latest"
-                image.tag(latest_tag)
+                image.reference(latest_tag)
 
                 try:
                     dc.api.push(latest_tag)
@@ -434,7 +445,7 @@ def list_images(spec_root, registry):
         spec_root = Path(spec_root.decode("utf-8"))
 
     for image_spec in XnatCSImage.load_tree(spec_root, registry=registry):
-        click.echo(image_spec.tag)
+        click.echo(image_spec.reference)
 
 
 # @deploy.command(
@@ -485,7 +496,10 @@ def build_docs(spec_root, output, registry, flatten, loglevel):
 
     output.mkdir(parents=True, exist_ok=True)
 
-    for image_spec in XnatCSImage.load_tree(spec_root, registry=registry):
+    with STR2CLASS_FALLBACK:
+        image_specs = XnatCSImage.load_tree(spec_root, registry=registry)
+
+    for image_spec in image_specs:
 
         image_spec.autodoc(output, flatten=flatten)
         logging.info("Successfully created docs for %s", image_spec.path)

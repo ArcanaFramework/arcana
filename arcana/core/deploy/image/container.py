@@ -19,26 +19,15 @@ from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME
 from arcana.core.utils import (
     set_cwd,
-    NamedObjectsConverter,
-    named_objects2dict,
     DOCKER_HUB,
     class2str,
-    # HASH_CHUNK_SIZE,
 )
 from arcana.core.data.space import DataSpace
 from arcana.__about__ import python_versions
 from arcana.core.exceptions import ArcanaBuildError
-from .components import PipSpec, SystemPackage, NeurodockerPackage
+from .components import Packages, BaseImage, PipPackage, CondaPackage
 
 logger = logging.getLogger("arcana")
-
-
-def python_package_converter(packages):
-    """
-    Split out and merge any extras specifications (e.g. "arcana[test]")
-    between dependencies of the same package
-    """
-    return PipSpec.unique(NamedObjectsConverter(PipSpec)(packages), remove_arcana=True)
 
 
 @attrs.define(kw_only=True)
@@ -50,13 +39,16 @@ class ContainerImage:
         name of the package/pipeline
     version : str
         version of the package/pipeline
+    build_iteration : str
+        will be appended to the tag of the built images. Used to specify that the build
+        specification has been updated but the underlying software is the same
     org : str
         the organisation the image will be tagged within
-    base_image : str, optional
+    base_image : BaseImage, optional
         the base image to build from
     package_manager : str, optional
         the package manager used to install system packages (should match OS on base image)
-    python_packages:  Iterable[PipSpec or dict[str, str] or tuple[str, str]], optional
+    python_packages:  Iterable[PipPackage or dict[str, str] or tuple[str, str]], optional
         Name and version of the Python PyPI packages to add to the image (in
         addition to Arcana itself)
     system_packages: Iterable[str], optional
@@ -73,38 +65,27 @@ class ContainerImage:
     labels : dict[str, str]
     """
 
-    DEFAULT_BASE_IMAGE = "ubuntu:kinetic"
-    DEFAULT_PACKAGE_MANAGER = "apt"
-
     name: str
     version: str = attrs.field(converter=str)
-    base_image: str = DEFAULT_BASE_IMAGE
-    package_manager: str = DEFAULT_PACKAGE_MANAGER
+    build_iteration: str = None
+    base_image: BaseImage = BaseImage()
+    packages: Packages = Packages()
     org: str = None
-    python_packages: ty.List[PipSpec] = attrs.field(
-        factory=list, converter=python_package_converter
-    )
-    system_packages: ty.List[SystemPackage] = attrs.field(
-        factory=list,
-        converter=NamedObjectsConverter(SystemPackage),
-        metadata={"asdict": named_objects2dict},
-    )
-    package_templates: ty.List[NeurodockerPackage] = attrs.field(
-        factory=list,
-        converter=NamedObjectsConverter(NeurodockerPackage),
-        metadata={"asdict": named_objects2dict},
-    )
     registry: str = DOCKER_HUB
     readme: str = None
     labels: dict[str, str] = None
 
     @property
-    def tag(self):
-        return f"{self.path}:{self.full_version}"
+    def reference(self):
+        return f"{self.path}:{self.tag}"
 
     @property
-    def full_version(self):
-        return self.version
+    def tag(self):
+        return (
+            f"{self.version}-{self.build_iteration}"
+            if self.build_iteration
+            else self.version
+        )
 
     @property
     def path(self):
@@ -134,7 +115,7 @@ class ContainerImage:
         dockerfile = self.construct_dockerfile(build_dir, **kwargs)
 
         if not generate_only:
-            self.build(dockerfile, build_dir, image_tag=self.tag)
+            self.build(dockerfile, build_dir, image_tag=self.reference)
 
     def construct_dockerfile(
         self,
@@ -239,8 +220,9 @@ class ContainerImage:
         logging.info("Successfully built docker image %s", image_tag)
 
     def init_dockerfile(self):
-        dockerfile = DockerRenderer(self.package_manager).from_(self.base_image)
-        dockerfile.install(["git", "ssh-client", "vim"])
+        dockerfile = DockerRenderer(self.base_image.package_manager).from_(
+            self.base_image.reference
+        )
         return dockerfile
 
     def add_labels(self, dockerfile, labels=None):
@@ -283,19 +265,30 @@ class ContainerImage:
         """
 
         pip_strs = []
-        for pip_spec in self.python_packages:
+        for pip_spec in self.packages.pip:
             if use_local_packages:
                 pip_spec = pip_spec.local_package_location(pypi_fallback=pypi_fallback)
             pip_strs.append(self.pip_spec2str(pip_spec, dockerfile, build_dir))
+
+        conda_pkg_names = set(p.name for p in self.packages.conda)
+        conda_strs = []
+        if "python" not in conda_pkg_names:
+            conda_strs.append("python=" + natsorted(python_versions)[-1])
+        for pkg_name in CondaPackage.REQUIRED:
+            if pkg_name not in conda_pkg_names:
+                conda_strs.append(pkg_name)
+
+        conda_strs.extend(
+            f"{p.name}={p.version}" if p.version is not None else p.name
+            for p in self.packages.conda
+        )
 
         dockerfile.add_registered_template(
             "miniconda",
             version="latest",
             env_name=self.CONDA_ENV,
             env_exists=False,
-            conda_install=" ".join(
-                ["python=" + natsorted(python_versions)[-1], "numpy", "traits"]
-            ),
+            conda_install=" ".join(conda_strs),
             pip_install=" ".join(pip_strs),
         )
 
@@ -311,7 +304,7 @@ class ContainerImage:
         """
         pkg_strs = [
             f"{p.name}={p.version}" if p.version else p.name
-            for p in self.system_packages
+            for p in self.packages.system
         ]
         dockerfile.install(pkg_strs)
 
@@ -330,7 +323,8 @@ class ContainerImage:
             dictionary containing the 'name' and 'version' of the template along
             with any additional keyword arguments required by the template
         """
-        for kwds in self.package_templates:
+        for template in self.packages.neurodocker:
+            kwds = attrs.asdict(template)
             kwds = copy(
                 kwds
             )  # so we can pop the name and leave the original dictionary intact
@@ -357,7 +351,7 @@ class ContainerImage:
         use_local_package : bool
             Use local installation of arcana
         """
-        arcana_pip_spec = PipSpec(PACKAGE_NAME, extras=install_extras)
+        arcana_pip_spec = PipPackage(PACKAGE_NAME, extras=install_extras)
         if use_local_package:
             arcana_pip_spec = arcana_pip_spec.local_package_location()
         pip_str = self.pip_spec2str(
@@ -373,7 +367,7 @@ class ContainerImage:
     @classmethod
     def pip_spec2str(
         cls,
-        pip_spec: PipSpec,
+        pip_spec: PipPackage,
         dockerfile: DockerRenderer,
         build_dir: Path,
     ) -> str:
@@ -382,7 +376,7 @@ class ContainerImage:
 
         Parameters
         ----------
-        pip_spec : PipSpec
+        pip_spec : PipPackage
             specification of the package to install
         dockerfile : DockerRenderer
             Neurodocker Docker renderer object used to generate the Dockerfile

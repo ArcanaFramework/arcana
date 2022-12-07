@@ -87,7 +87,7 @@ def test_bids_app_entrypoint(
     image_spec = PipelineImage(
         name="test_bids_app_entrypoint",
         version="1.0",
-        spec_version="1",
+        build_iteration="1",
         system_packages=[],
         python_packages=[],
         description="a test image",
