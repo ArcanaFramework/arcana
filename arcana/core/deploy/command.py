@@ -13,13 +13,13 @@ from attrs.converters import default_if_none
 import pydra.engine.task
 from arcana.core.utils import (
     NamedObjectsConverter,
+    ObjectConverter,
     named_objects2dict,
     str2task,
+    str2datatype,
 )
-from arcana.core.pipeline.interface import (
-    PipelineInput,
-    PipelineOutput,
-    PipelineParameter,
+from arcana.core.pipeline import (
+    PipelineField,
 )
 from arcana.core.utils import show_workflow_errors
 from arcana.core.data.row import DataRow
@@ -31,30 +31,186 @@ from arcana.core.data.space import DataSpace
 if ty.TYPE_CHECKING:
     from .image import CommandImage
 
+
 logger = logging.getLogger("arcana")
+
+
+@attrs.define
+class DefaultColumn:
+    """
+    Values to set the default column of a command input/output
+
+    Parameters
+    ----------
+    path : str
+        path to where the data type will be placed (BIDS only)
+    stored_format : str
+        the type the data items will be stored in (e.g. file-format)
+    row_frequency : DataSpace
+        the "row-frequency" of the input column to be added
+    """
+
+    datatype: type = attrs.field(converter=str2datatype)
+    row_frequency: DataSpace = None
+
+
+@attrs.define(kw_only=True)
+class CommandField(PipelineField):
+    help_string: str
+    configuration: dict[str, ty.Any] = attrs.field(
+        default=False, converter=default_if_none(factory=dict)
+    )
+
+    def config_dict(self):
+        """Returns a dictionary to be passed to the task/workflow in order to configure
+        it to receive input/output
+
+        Parameters
+        ----------
+        configuration : _type_
+            _description_
+        list_name : _type_
+            _description_
+        """
+        if self.configuration is not False:
+            config = {
+                "name": self.name,
+                "datatype": self.datatype,
+            }
+            config.update(self.configuration)
+        else:
+            config = None
+        return config
+
+
+@attrs.define(kw_only=True)
+class CommandInput(CommandField):
+    """Defines an input or output to a command
+
+    Parameters
+    ----------
+    name : str
+        Name of the input and how it will be referred to in UI
+    field : str, optional
+        the name of the pydra input field to connect to, defaults to name
+    datatype : type, optional
+        the type of the items to be passed to the input
+    help_string : str
+        description of the input/output field
+    configuration : dict
+        additional attributes to be used in the configuration of the
+        task/workflow/analysis (e.g. ``bids_path`` or ``argstr``). If the configuration
+        is not explicitly False (i.e. provided in the YAML definition) then it will
+        be passed on as an element in the `inputs` input field to the task/workflow
+    default_columm: DefaultColumn, optional
+        the values to use to configure a default column if the name doesn't match an
+        existing column
+    """
+
+    default_column: DefaultColumn = attrs.field(
+        converter=ObjectConverter(DefaultColumn), default=None
+    )
+
+
+@attrs.define(kw_only=True)
+class CommandOutput(CommandField):
+    """Defines an input or output to a command
+
+    Parameters
+    ----------
+    name : str
+        Name of the input and how it will be referred to in UI
+    field : str, optional
+        the name of the pydra input field to connect to, defaults to name
+    datatype : type, optional
+        the type of the items to be passed to the input
+    help_string : str
+        description of the input/output field
+    configuration : dict
+        additional attributes to be used in the configuration of the
+        task/workflow/analysis (e.g. ``bids_path`` or ``argstr``). If the configuration
+        is not explicitly False (i.e. provided in the YAML definition) then it will
+        be passed on as an element in the `outputs` input field to the task/workflow
+    default_columm: DefaultColumn, optional
+        the values to use to configure a default column if the name doesn't match an
+        existing column
+    """
+
+    default_column: DefaultColumn = attrs.field(
+        converter=ObjectConverter(DefaultColumn), default=None
+    )
+
+
+@attrs.define(kw_only=True)
+class CommandParameter(PipelineField):
+    """Defines a fixed parameter of the task/workflow/analysis to be exposed in the UI
+
+    Parameters
+    ----------
+    name : str
+        Name of the input and how it will be referred to in UI
+    field : str, optional
+        the name of the pydra input field to connect to, defaults to name
+    datatype : type, optional
+        the type of the items to be passed to the input
+    help_string : str
+        description of the input/output field
+    configuration : dict[str, Any]
+        additional attributes to be used in the configuration of the
+        task/workflow/analysis (e.g. ``bids_path`` or ``argstr``). If the configuration
+        is not explicitly False (i.e. provided in the YAML definition) then it will
+        be passed on as an element in the `parameters` input field to the task/workflow
+    required : bool
+        whether the parameter is required or not
+    default : Any
+        the default value for the parameter, must be able to be
+    """
+
+    required: bool = False
+    default: ty.Any = None
 
 
 @attrs.define(kw_only=True)
 class ContainerCommand:
+    """A definition of a command to be run within a container. A command wraps up a
+    task or workflow to provide/configure a UI for convenient launching.
+
+    Parameters
+    ----------
+    task : pydra.engine.task.TaskBase or str
+        the task to run or the location of the class
+    row_frequency: DataSpace, optional
+        the frequency that the command operates on
+    inputs: list[CommandInput]
+        inputs of the command
+    outputs: list[CommandOutput]
+        outputs of the command
+    parameters: list[CommandParameter]
+        parameters of the command
+    configuration: dict[str, ty.Any]
+        constant values used to configure the task/workflow
+    image: CommandImage
+        back-reference to the image the command is installed in
+    """
 
     STORE_TYPE = "file"
     DATA_SPACE = None
 
     task: pydra.engine.task.TaskBase = attrs.field(converter=str2task)
     row_frequency: DataSpace = None
-    inputs: list[PipelineInput] = attrs.field(
+    inputs: list[CommandInput] = attrs.field(
         factory=list,
-        converter=NamedObjectsConverter(PipelineInput),
+        converter=NamedObjectsConverter(CommandInput),
         metadata={"asdict": named_objects2dict},
     )
-    outputs: list[PipelineOutput] = attrs.field(
+    outputs: list[CommandOutput] = attrs.field(
         factory=list,
-        converter=NamedObjectsConverter(PipelineOutput),
+        converter=NamedObjectsConverter(CommandOutput),
         metadata={"asdict": named_objects2dict},
     )
-    parameters: list[PipelineParameter] = attrs.field(
+    parameters: list[CommandParameter] = attrs.field(
         factory=list,
-        converter=NamedObjectsConverter(PipelineParameter),
+        converter=NamedObjectsConverter(CommandParameter),
         metadata={"asdict": named_objects2dict},
     )
     configuration: dict[str, ty.Any] = attrs.field(
@@ -206,7 +362,7 @@ class ContainerCommand:
         output_values = dict(output_values)
         parameter_values = dict(parameter_values)
 
-        pipeline_inputs = []
+        input_configs = []
         converter_args = {}  # Arguments passed to converter
         for inpt in self.inputs:
             if not input_values[inpt.name] and inpt.datatype != DataRow:
@@ -214,19 +370,7 @@ class ContainerCommand:
                     f"Skipping '{inpt.name}' source column as no input was provided"
                 )
                 continue
-            pipeline_inputs.append(
-                PipelineInput(
-                    col_name=inpt.name,
-                    field=inpt.field,
-                    required_format=inpt.datatype,
-                )
-            )
-            if DataRow in (inpt.stored_format, inpt.datatype):
-                if (inpt.stored_format, inpt.datatype) != (DataRow, DataRow):
-                    raise ArcanaUsageError(
-                        "Cannot convert to/from built-in data type `DataRow`: "
-                        f"col_format={inpt.stored_format}, datatype={inpt.datatype}"
-                    )
+            if inpt.datatype is DataRow:
                 logger.info(
                     f"No column added for '{inpt.name}' column as it uses built-in "
                     "type `arcana.core.data.row.DataRow`"
@@ -249,19 +393,18 @@ class ContainerCommand:
                 logger.info(f"Adding new source column '{inpt.name}'")
                 dataset.add_source(
                     name=inpt.name,
-                    datatype=inpt.stored_format,
+                    datatype=inpt.default_column.datatype
+                    if inpt.default_column
+                    else inpt.datatype,
                     path=path,
                     is_regex=True,
                     **source_kwargs,
                 )
+            if input_config := inpt.config_dict():
+                input_configs.append(input_config)
 
-        logger.debug("Pipeline inputs: %s", pipeline_inputs)
-
-        pipeline_outputs = []
+        output_configs = []
         for output in self.outputs:
-            pipeline_outputs.append(
-                PipelineOutput(output.name, output.field, output.datatype)
-            )
             path, qualifiers = self.extract_qualifiers_from_path(
                 output_values.get(output.name, output.name)
             )
@@ -281,17 +424,18 @@ class ContainerCommand:
             else:
                 logger.info(f"Adding new source column '{output.name}'")
                 dataset.add_sink(
-                    name=output.name, datatype=output.stored_format, path=path
+                    name=output.name,
+                    datatype=output.default_column.datatype
+                    if output.default_column
+                    else output.datatype,
+                    path=path,
                 )
-
-        logger.debug("Pipeline outputs: %s", pipeline_outputs)
+            if output_config := output.config_dict():
+                output_configs.append(output_config)
 
         kwargs = copy(self.configuration)
-        if "name" not in kwargs:
-            kwargs["name"] = "workflow_to_run"
 
-        task = self.task(**kwargs)
-
+        param_configs = []
         for param in self.parameters:
             param_value = parameter_values.get(param.name, None)
             logger.info(
@@ -322,7 +466,21 @@ class ContainerCommand:
                     f"Could not convert value passed to '{param.name}' parameter, "
                     f"{param_value}, into {param.type}"
                 )
-            setattr(task.inputs, param.field, param_value)
+            kwargs[param.field] = param_value
+            if param_config := param.config_dict():
+                param_configs.append(param_config)
+
+        if "name" not in kwargs:
+            kwargs["name"] = "pipeline_task"
+
+        if input_configs:
+            kwargs["inputs"] = input_configs
+        if output_configs:
+            kwargs["outputs"] = output_configs
+        if param_configs:
+            kwargs["parameters"] = param_configs
+
+        task = self.task(**kwargs)
 
         if self.name in dataset.pipelines and not overwrite:
             pipeline = dataset.pipelines[self.name]
@@ -336,8 +494,8 @@ class ContainerCommand:
             pipeline = dataset.apply_pipeline(
                 self.name,
                 task,
-                inputs=pipeline_inputs,
-                outputs=pipeline_outputs,
+                inputs=self.inputs,
+                outputs=self.outputs,
                 row_frequency=self.row_frequency,
                 overwrite=overwrite,
                 converter_args=converter_args,

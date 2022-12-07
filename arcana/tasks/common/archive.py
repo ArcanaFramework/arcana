@@ -30,7 +30,7 @@ TAR_COMPRESSION_TYPES = ["", "gz", "bz2", "xz"]
                 "allowed_values": list(TAR_COMPRESSION_TYPES),
             },
         ),
-        "datatype": int,
+        "format": int,
         "ignore_zeros": bool,
         "return": {"out_file": File},
     }
@@ -41,7 +41,7 @@ def create_tar(
     base_dir=".",
     filter=None,
     compression=None,
-    datatype=tarfile.DEFAULT_FORMAT,
+    format=tarfile.DEFAULT_FORMAT,
     ignore_zeros=False,
     encoding=tarfile.ENCODING,
 ):
@@ -60,7 +60,7 @@ def create_tar(
     with tarfile.open(
         out_file,
         mode=f"w:{compression}",
-        datatype=datatype,
+        format=format,
         ignore_zeros=ignore_zeros,
         encoding=encoding,
     ) as tfile, set_cwd(base_dir):

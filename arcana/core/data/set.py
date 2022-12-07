@@ -685,9 +685,9 @@ class Dataset:
         workflow : pydra.Workflow
             pydra workflow to connect to the dataset as a pipeline
         inputs : list[arcana.core.pipeline.Input or tuple[str, str, type] or tuple[str, str]]
-            List of inputs to the pipeline (see `arcana.core.pipeline.Pipeline.Input`)
+            List of inputs to the pipeline (see `arcana.core.pipeline.Pipeline.PipelineInput`)
         outputs : list[arcana.core.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
-            List of outputs of the pipeline (see `arcana.core.pipeline.Pipeline.Output`)
+            List of outputs of the pipeline (see `arcana.core.pipeline.Pipeline.PipelineOutput`)
         row_frequency : str, optional
             the frequency of the data rows the pipeline will be executed over, i.e.
             will it be run once per-session, per-subject or per whole dataset,
@@ -708,29 +708,29 @@ class Dataset:
         ArcanaUsageError
             if overwrite is false and
         """
-        from arcana.core.pipeline.base import Pipeline, Input, Output
+        from arcana.core.deploy.pipeline import Pipeline
 
         row_frequency = self._parse_freq(row_frequency)
 
-        def parsed_conns(lst, conn_type):
-            parsed = []
-            for spec in lst:
-                if isinstance(spec, conn_type):
-                    parsed.append(spec)
-                elif len(spec) == 3:
-                    parsed.append(conn_type(*spec))
-                else:
-                    col_name, field = spec
-                    parsed.append(conn_type(col_name, field, self[col_name].datatype))
-            return parsed
+        # def parsed_conns(lst, conn_type):
+        #     parsed = []
+        #     for spec in lst:
+        #         if isinstance(spec, conn_type):
+        #             parsed.append(spec)
+        #         elif len(spec) == 3:
+        #             parsed.append(conn_type(*spec))
+        #         else:
+        #             col_name, field = spec
+        #             parsed.append(conn_type(col_name, field, self[col_name].datatype))
+        #     return parsed
 
         pipeline = Pipeline(
             name=name,
             dataset=self,
             row_frequency=row_frequency,
             workflow=workflow,
-            inputs=parsed_conns(inputs, Input),
-            outputs=parsed_conns(outputs, Output),
+            inputs=inputs,
+            outputs=outputs,
             converter_args=converter_args,
         )
         for outpt in pipeline.outputs:
@@ -768,7 +768,7 @@ class Dataset:
         Sequence[List[DataType]]
             The derived columns
         """
-        from arcana.core.pipeline.base import Pipeline
+        from arcana.core.deploy.pipeline import Pipeline
 
         sinks = [self[s] for s in set(sink_names)]
         for pipeline, _ in Pipeline.stack(*sinks):

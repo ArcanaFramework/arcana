@@ -1,77 +1,152 @@
 import typing as ty
-import dataclasses
+import attrs
 from pathlib import Path
 from pydra import ShellCommandTask
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
-from arcana.core.utils import str2class
+from arcana.core.utils import str2class, str2datatype, NamedObjectsConverter
 from arcana.core.data.type import FileGroup
 
 
-@dataclasses.dataclass
-class Input:
+@attrs.define(kw_only=True)
+class ShellCmdInput:
+    """Specifies an input field to the shell command
+
+    Parameters
+    ----------
+    name : str
+        the name of the input field
+    datatype : type
+        the type of the input field
+    mandatory (bool, default: False):
+        If True user has to provide a value for the field.
+    sep (str):
+        A separator if a list is provided as a value.
+    argstr (str):
+        A flag or string that is used in the command before the value, e.g. -v or
+        -v {inp_field}, but it could be and empty string, “”. If … are used, e.g. -v…,
+        the flag is used before every element if a list is provided as a value. If no
+        argstr is used the field is not part of the command.
+    position (int):
+        Position of the field in the command, could be nonnegative or negative integer.
+        If nothing is provided the field will be inserted between all fields with
+        nonnegative positions and fields with negative positions.
+    allowed_values (list):
+        List of allowed values for the field.
+    requires (list):
+        List of field names that are required together with the field.
+    xor (list):
+        List of field names that are mutually exclusive with the field.
+    copyfile (bool, default: False):
+        If True, a hard link is created for the input file in the output directory. If
+        hard link not possible, the file is copied to the output directory.
+    container_path (bool, default: False, only for ContainerTask):
+        If True a path will be consider as a path inside the container (and not as a
+        local path).
+    output_file_template (str):
+        If provided, the field is treated also as an output field and it is added to the
+        output spec. The template can use other fields, e.g. {file1}. Used in order to
+        create an output specification.
+    output_field_name (str, used together with output_file_template)
+        If provided the field is added to the output spec with changed name. Used in
+        order to create an output specification.
+    keep_extension (bool, default: True):
+        A flag that specifies if the file extension should be removed from the field
+        value. Used in order to create an output specification.
+    readonly (bool, default: False):
+        If True the input field can’t be provided by the user but it aggregates other
+        input fields (for example the fields with argstr: -o {fldA} {fldB}).
+    formatter (function)
+        If provided the argstr of the field is created using the function. This function
+        can for example be used to combine several inputs into one command argument.
+        The function can take field (this input field will be passed to the function),
+        inputs (entire inputs will be passed) or any input field name (a specific input
+        field will be sent).
+    """
 
     name: str
-    datatype: type
-    argstr: str = ""
-    description: str = ""
-
-    @classmethod
-    def fromdict(cls, dct):
-        field_names = [f.name for f in dataclasses.fields(cls)]
-        return cls(**{k: v for k, v in dct.items() if k in field_names})
-
-    def __post_init__(self):
-        if isinstance(self.datatype, str):
-            self.datatype = str2class(self.datatype, prefixes=["arcana.data.types"])
-
-
-@dataclasses.dataclass
-class Output:
-
-    name: str
-    datatype: type
-    requires: ty.List[ty.Tuple[str, ty.Any]] = None
-    argstr: str = ""
+    datatype: type = attrs.field(converter=str2datatype)
+    sep: str = None
+    argstr: str = None
     position: int = None
+    allowed_values: list = None
+    requires: list = attrs.field(factory=list)
+    xor: list = attrs.field(factory=list)
     output_file_template: str = None
-    description: str = ""
+    output_field_name: str = None
+    copyfile: bool = False
+    mandatory: bool = False
+    keep_extension: bool = True
+    readonly: bool = False
+    formatter: ty.Callable = attrs.field(
+        default=None,
+        converter=str2class,
+    )
 
-    @classmethod
-    def fromdict(cls, dct):
-        field_names = [f.name for f in dataclasses.fields(cls)]
-        return cls(**{k: v for k, v in dct.items() if k in field_names})
 
-    def __post_init__(self):
-        if isinstance(self.datatype, str):
-            self.datatype = str2class(self.datatype, prefixes=["arcana.data.types"])
+@attrs.define(kw_only=True)
+class ShellCmdOutput:
+    """Specifies an input field from the shell command
 
-
-@dataclasses.dataclass
-class Parameter:
+    mandatory : bool, default: False
+        If True the output file has to exist, otherwise an error will be raised.
+    output_file_template : str
+        If provided the output file name (or list of file names) is created using the
+        template. The template can use other fields, e.g. {file1}. The same as in input_spec.
+    output_field_name : str
+        If provided the field is added to the output spec with changed name. The same as in
+        input_spec.
+    keep_extension : bool, default: True
+        A flag that specifies if the file extension should be removed from the field value.
+        The same as in input_spec.
+    requires : list
+        List of field names that are required to create a specific output. The fields do not
+        have to be a part of the output_file_template and if any field from the list is not
+        provided in the input, a NOTHING is returned for the specific output. This has a
+        different meaning than the requires form the input_spec.
+    callable : function
+        If provided the output file name (or list of file names) is created using the
+        function. The function can take field (the specific output field will be passed
+        to the function), output_dir (task output_dir will be used), stdout, stderr
+        (stdout and stderr of the task will be sent) inputs (entire inputs will be
+        passed) or any input field name (a specific input field will be sent).
+    """
 
     name: str
-    type: type = str
-    argstr: str = ""
-    position: int = None
-    default = None
-    description: str = ""
+    datatype: type = attrs.field(converter=str2datatype)
+    mandatory: bool = False
+    output_file_template: str = None
+    output_field_name: str = None
+    keep_extension: bool = True
+    requires: list = None
+    callable: ty.Callable = attrs.field(converter=str2class)
 
-    @classmethod
-    def fromdict(cls, dct):
-        field_names = [f.name for f in dataclasses.fields(cls)]
-        return cls(**{k: v for k, v in dct.items() if k in field_names})
 
-    def __post_init__(self):
-        if isinstance(self.type, str):
-            self.type = str2class(self.type)
+# @dataclasses.dataclass
+# class Parameter:
+
+#     name: str
+#     type: type = str
+#     argstr: str = ""
+#     position: int = None
+#     default = None
+#     description: str = ""
+
+#     @classmethod
+#     def fromdict(cls, dct):
+#         field_names = [f.name for f in dataclasses.fields(cls)]
+#         return cls(**{k: v for k, v in dct.items() if k in field_names})
+
+#     def __post_init__(self):
+#         if isinstance(self.type, str):
+#             self.type = str2class(self.type)
 
 
 def shell_cmd(
     name: str,
-    inputs: ty.List[Input or ty.Dict[str, str]],
-    outputs: ty.List[Output or ty.Dict[str, str]],
+    inputs: list[ty.Union[ShellCmdInput, dict[str, str]]],
+    outputs: list[ty.Union[ShellCmdOutput, dict[str, str]]],
     executable: str = "",  # Use entrypoint of container,
-    parameters: ty.List[Parameter or ty.Dict[str, type]] = None,
+    parameters: list[ty.Union[ShellCmdInput, dict[str, str]]] = None,
 ):
     """Creates a Pydra shell command task which takes file inputs, maps them to
     a BIDS dataset, executes a BIDS app, and then extracts the
@@ -107,27 +182,31 @@ def shell_cmd(
     pydra.ShellCommmandTask
         A Pydra shell command task that can be deployed using the deployment framework
     """
-    inputs = [Input.fromdict(i) if not isinstance(i, Input) else i for i in inputs]
-    outputs = [Output.fromdict(o) if not isinstance(o, Output) else o for o in outputs]
-    parameters = [
-        Parameter.fromdict(p) if not isinstance(p, Parameter) else p for p in parameters
-    ]
+    inputs = NamedObjectsConverter(ShellCmdInput)(inputs)
+    outputs = NamedObjectsConverter(ShellCmdInput)(outputs)
+    parameters = NamedObjectsConverter(ShellCmdInput)(parameters)
 
     input_fields = []
-    positions = set()
-    for param in parameters:
-        metadata = {"help_string": param.description, "argstr": param.argstr}
-        if param.position is not None:
-            metadata["position"] = param.position
-            positions.add(param.position)
-        input_fields.append((param.name, param.type, metadata))
+    for inpt in inputs + parameters:
+        metadata = attrs.asdict(inpt)
+        name = metadata.pop("name")
+        type_ = metadata.pop("datatype")
+        if issubclass(inpt.datatype, FileGroup):
+            type_ = ty.Union[Path, str]
+        input_fields.append(
+            (
+                name,
+                type_,
+                metadata,
+            )
+        )
 
     output_fields = []
     for outpt in outputs:
-        metadata = {"help_string": param.description}
-        outpt_type = (
-            Path or str if issubclass(outpt.datatype, FileGroup) else outpt.datatype
-        )
+        metadata = {}
+        outpt_type = ty.Union[
+            Path, str if issubclass(outpt.datatype, FileGroup) else outpt.datatype
+        ]
         if outpt.output_file_template is not None:
             metadata["output_file_template"] = outpt.output_file_template
         if outpt.position is not None:
@@ -142,28 +221,6 @@ def shell_cmd(
             (
                 outpt.name,
                 outpt_type,
-                metadata,
-            )
-        )
-
-    pos = len(parameters)
-    for inpt in inputs:
-        # Set the position as the next available around explicit output and parameter
-        # positions
-        if pos in positions:
-            pos += 1
-        metadata = {
-            "help_string": inpt.description,
-            "position": pos,
-            "argstr": param.argstr,
-        }
-        positions.add(pos)
-        if inpt.argstr is not None:
-            metadata["argstr"] = inpt.argstr
-        input_fields.append(
-            (
-                inpt.name,
-                Path or str if issubclass(inpt.datatype, FileGroup) else inpt.datatype,
                 metadata,
             )
         )

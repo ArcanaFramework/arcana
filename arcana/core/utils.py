@@ -990,12 +990,16 @@ def show_workflow_errors(
 
 
 @attrs.define
-class DictConverter:
+class ObjectConverter:
 
     klass: type
     allow_none: bool = False
+    accept_metadata: bool = False
 
     def __call__(self, value):
+        self._make_class(value)
+
+    def _make_class(self, value, **kwargs):
         if value is None:
             if self.allow_none:
                 return None
@@ -1003,31 +1007,35 @@ class DictConverter:
                 raise ValueError(
                     f"None values not accepted in automatic conversion to {self.klass}"
                 )
-        if isinstance(value, dict):
-            value = self.klass(**value)
-        elif not isinstance(value, self.klass):
+        elif isinstance(value, dict):
+            if self.accept_metadata:
+                klass_attrs = set(attrs.fields_dict(self.klass))
+                value_kwargs = {k: v for k, v in value.items() if k in klass_attrs}
+                value_kwargs["metadata"] = {
+                    k: v for k, v in value.items() if k not in klass_attrs
+                }
+            else:
+                value_kwargs = value
+            value_kwargs.update(kwargs)
+            obj = value(**value_kwargs)
+        elif isinstance(value, list):
+            obj = self.klass(*value, **kwargs)
+        elif isinstance(value, self.klass):
+            obj = copy(value)
+            for k, v in kwargs.items():
+                setattr(obj, k, v)
+        else:
             raise ValueError(f"Cannot convert {value} into {self.klass}")
-        return value
-
-
-def named_objects2dict(objs: list, **kwargs) -> dict:
-    dct = {}
-    for obj in objs:
-        obj_dict = attrs.asdict(obj, **kwargs)
-        dct[obj_dict.pop("name")] = obj_dict
-    return dct
+        return obj
 
 
 @attrs.define
-class NamedObjectsConverter:
-
-    klass: type
-
+class NamedObjectsConverter(ObjectConverter):
     def __call__(self, value):
         converted = []
         if isinstance(value, dict):
             for name, item in value.items():
-                converted.append(self.klass(name=name, **item))
+                converted.append(self._make_class(item, name=name))
         else:
             for item in value:
                 if isinstance(item, dict):
@@ -1038,8 +1046,16 @@ class NamedObjectsConverter:
         return converted
 
 
+def named_objects2dict(objs: list, **kwargs) -> dict:
+    dct = {}
+    for obj in objs:
+        obj_dict = attrs.asdict(obj, **kwargs)
+        dct[obj_dict.pop("name")] = obj_dict
+    return dct
+
+
 # @attrs.define
-# class DictDictConverter:
+# class DictObjectConverter:
 
 #     klass: type
 

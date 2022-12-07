@@ -1,7 +1,7 @@
 from __future__ import annotations
 import attrs
 from typing import Iterable, Union, List
-from arcana.core.deploy.image.base import ContainerImage
+from arcana.core.deploy.image.container import ContainerImage
 
 
 @attrs.define

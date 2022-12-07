@@ -16,11 +16,11 @@ from arcana.core.exceptions import (
     ArcanaOutputNotProducedException,
     ArcanaDataMatchError,
 )
-from ..data.type import DataType, FileGroup, Field
+from .data.type import DataType, FileGroup, Field
 import arcana.core.data.set
 import arcana.core.data.row
-from ..data.space import DataSpace
-from ..utils import (
+from .data.space import DataSpace
+from .utils import (
     func_task,
     asdict,
     fromdict,
@@ -28,27 +28,44 @@ from ..utils import (
     pydra_fromdict,
     pydra_eq,
     path2varname,
+    str2datatype,
     NamedObjectsConverter,
     # named_objects2dict,
 )
-from .interface import PipelineInput, PipelineOutput
+import arcana.data.types.common
 
 
 logger = logging.getLogger("arcana")
 
 
-# @dataclass
-# class Input:
-#     col_name: str
-#     field: str
-#     required_format: type
+@attrs.define
+class PipelineField:
+    """Defines an input to a pipeline
+
+    Parameters
+    ----------
+    name : str
+        Name of the input and how it will be referred to in UI
+    field : str, optional
+        the name of the pydra input field to connect to, defaults to name
+    datatype : type, optional
+        the type of the items to be passed to the input, arcana.data.types.common.File by default
+    """
+
+    name: str
+    field: str = attrs.field()
+    datatype: type = attrs.field(converter=str2datatype)
+
+    @datatype.default
+    def datatype_default(self):
+        return arcana.data.types.common.File
+
+    @field.default
+    def field_default(self):
+        return self.name
 
 
-# @dataclass
-# class Output:
-#     col_name: str
-#     field: str
-#     produced_format: type
+logger = logging.getLogger("arcana")
 
 
 @attrs.define
@@ -85,11 +102,11 @@ class Pipeline:
     name: str = attrs.field()
     row_frequency: DataSpace = attrs.field()
     workflow: Workflow = attrs.field(eq=attrs.cmp_using(pydra_eq))
-    inputs: ty.List[PipelineInput] = attrs.field(
-        converter=NamedObjectsConverter(PipelineInput)
+    inputs: list[PipelineField] = attrs.field(
+        converter=NamedObjectsConverter(PipelineField)
     )
-    outputs: ty.List[PipelineOutput] = attrs.field(
-        converter=NamedObjectsConverter(PipelineOutput)
+    outputs: list[PipelineField] = attrs.field(
+        converter=NamedObjectsConverter(PipelineField)
     )
     converter_args: ty.Dict[str, dict] = attrs.field(
         factory=dict, converter=attrs.converters.default_if_none(factory=dict)
@@ -99,18 +116,19 @@ class Pipeline:
     )
 
     @inputs.validator
-    def inputs_validator(self, _, inputs: ty.List[DataType]):
+    def inputs_validator(self, _, inputs: list[DataType]):
         for inpt in inputs:
-            if inpt.required_format is arcana.core.data.row.DataRow:  # special case
+            if inpt.datatype is arcana.core.data.row.DataRow:  # special case
                 continue
             if self.dataset:
                 column = self.dataset[inpt.name]
-                if inpt.required_format is not column.datatype:
-                    inpt.required_format.find_converter(column.datatype)
+                if inpt.datatype is not column.datatype:
+                    inpt.datatype.find_converter(column.datatype)
             if inpt.field not in self.workflow.input_names:
                 raise ArcanaNameError(
+                    inpt.field,
                     f"{inpt.field} is not in the input spec of '{self.name}' "
-                    f"pipeline: " + "', '".join(self.workflow.input_names)
+                    f"pipeline: " + "', '".join(self.workflow.input_names),
                 )
 
     @outputs.validator
@@ -123,8 +141,8 @@ class Pipeline:
                         f"Pipeline row_frequency ('{str(self.row_frequency)}') doesn't match "
                         f"that of '{outpt.name}' output ('{str(self.row_frequency)}')"
                     )
-                if outpt.produced_format is not column.datatype:
-                    column.datatype.find_converter(outpt.produced_format)
+                if outpt.datatype is not column.datatype:
+                    column.datatype.find_converter(outpt.datatype)
             if outpt.field not in self.workflow.output_names:
                 raise ArcanaNameError(
                     f"{outpt.field} is not in the output spec of '{self.name}' "
@@ -201,7 +219,7 @@ class Pipeline:
         for inpt in self.inputs:
             # If the row frequency of the column is not a parent of the pipeline
             # then the input will be a sequence of all the child rows
-            if inpt.required_format is arcana.core.data.row.DataRow:
+            if inpt.datatype is arcana.core.data.row.DataRow:
                 dtype = arcana.core.data.row.DataRow
             else:
                 dtype = self.dataset[inpt.name].datatype
@@ -211,7 +229,7 @@ class Pipeline:
                 if not self.dataset[inpt.name].row_frequency.is_parent(
                     self.row_frequency, if_match=True
                 ):
-                    dtype = ty.List[dtype]
+                    dtype = list[dtype]
             source_out_dct[inpt.name] = dtype
         source_out_dct["provenance_"] = ty.Dict[str, ty.Any]
 
@@ -222,7 +240,7 @@ class Pipeline:
                     ("dataset", arcana.core.data.set.Dataset),
                     ("row_frequency", DataSpace),
                     ("id", str),
-                    ("inputs", ty.List[PipelineInput]),
+                    ("inputs", list[PipelineField]),
                     ("parameterisation", ty.Dict[str, ty.Any]),
                 ],
                 out_fields=list(source_out_dct.items()),
@@ -242,21 +260,21 @@ class Pipeline:
 
         # Do input datatype conversions if required
         for inpt in self.inputs:
-            if inpt.required_format == arcana.core.data.row.DataRow:
+            if inpt.datatype == arcana.core.data.row.DataRow:
                 continue
             stored_format = self.dataset[inpt.name].datatype
             if not (
-                inpt.required_format is stored_format
-                or issubclass(stored_format, inpt.required_format)
+                inpt.datatype is stored_format
+                or issubclass(stored_format, inpt.datatype)
             ):
                 logger.info(
                     "Adding implicit conversion for input '%s' " "from %s to %s",
                     inpt.name,
                     stored_format.class_name(),
-                    inpt.required_format.class_name(),
+                    inpt.datatype.class_name(),
                 )
                 source_name = inpt.name
-                converter = inpt.required_format.converter_task(
+                converter = inpt.datatype.converter_task(
                     stored_format,
                     name=f"{source_name}_input_converter",
                     **self.converter_args.get(inpt.name, {}),
@@ -302,7 +320,7 @@ class Pipeline:
         wf.per_row.add(
             func_task(
                 encapsulate_paths_and_values,
-                in_fields=[("outputs", ty.List[PipelineOutput])]
+                in_fields=[("outputs", list[PipelineField])]
                 + [(o.col_name, ty.Union[str, Path]) for o in self.outputs],
                 out_fields=[(o.col_name, DataType) for o in self.outputs],
                 name="output_interface",
@@ -326,19 +344,19 @@ class Pipeline:
         for outpt in self.outputs:
             stored_format = self.dataset[outpt.name].datatype
             if not (
-                outpt.produced_format is stored_format
-                or issubclass(outpt.produced_format, stored_format)
+                outpt.datatype is stored_format
+                or issubclass(outpt.datatype, stored_format)
             ):
                 logger.info(
                     "Adding implicit conversion for output '%s' " "from %s to %s",
                     outpt.name,
-                    outpt.produced_format.class_name(),
+                    outpt.datatype.class_name(),
                     stored_format.class_name(),
                 )
                 # Insert converter
                 sink_name = path2varname(outpt.name)
                 converter = stored_format.converter_task(
-                    outpt.produced_format,
+                    outpt.datatype,
                     name=f"{sink_name}_output_converter",
                     **self.converter_args.get(outpt.name, {}),
                 )
@@ -508,10 +526,10 @@ def split_side_car_suffix(name):
     {
         "dataset": arcana.core.data.set.Dataset,
         "row_frequency": DataSpace,
-        "outputs": ty.List[PipelineOutput],
+        "outputs": list[PipelineField],
         "requested_ids": ty.Sequence[str] or None,
         "parameterisation": ty.Dict[str, ty.Any],
-        "return": {"ids": ty.List[str], "cant_process": ty.List[str]},
+        "return": {"ids": list[str], "cant_process": list[str]},
     }
 )
 def to_process(dataset, row_frequency, outputs, requested_ids, parameterisation):
@@ -534,7 +552,7 @@ def source_items(
     dataset: arcana.core.data.set.Dataset,
     row_frequency: DataSpace,
     id: str,
-    inputs: ty.List[PipelineInput],
+    inputs: list[PipelineField],
     parameterisation: dict,
 ):
     """Selects the items from the dataset corresponding to the input
@@ -561,7 +579,7 @@ def source_items(
         for inpt in inputs:
             # If the required datatype is of type DataRow then provide the whole
             # row to the pipeline input
-            if inpt.required_format == arcana.core.data.row.DataRow:
+            if inpt.datatype == arcana.core.data.row.DataRow:
                 sourced.append(row)
                 continue
             try:
@@ -624,10 +642,10 @@ def encapsulate_paths_and_values(outputs, **kwargs):
     items = []
     for outpt in outputs:
         val = kwargs[outpt.name]
-        if issubclass(outpt.produced_format, FileGroup):
-            obj = outpt.produced_format.from_fs_path(val)
+        if issubclass(outpt.datatype, FileGroup):
+            obj = outpt.datatype.from_fs_path(val)
         else:
-            obj = outpt.produced_format(val)
+            obj = outpt.datatype(val)
         items.append(obj)
     if len(items) > 1:
         return tuple(items)
@@ -650,10 +668,10 @@ def encapsulate_paths_and_values(outputs, **kwargs):
 #     ----------
 #     other : Provenance
 #         The provenance object to compare against
-#     include : ty.List[ty.List[str]] | None
+#     include : list[list[str]] | None
 #         Paths in the provenance to include in the match. If None all are
 #         incluced
-#     exclude : ty.List[ty.List[str]] | None
+#     exclude : list[list[str]] | None
 #         Paths in the provenance to exclude from the match. In None all are
 #         excluded
 #     """

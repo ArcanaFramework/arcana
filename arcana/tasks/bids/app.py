@@ -1,3 +1,4 @@
+from __future__ import annotations
 import attrs
 import re
 from copy import copy
@@ -7,7 +8,6 @@ import typing as ty
 import shutil
 import shlex
 from pathlib import Path
-import dataclasses
 from pydra import Workflow, mark
 from pydra.engine.task import DockerTask, SingularityTask, ShellCommandTask
 from pydra.engine.specs import (
@@ -22,45 +22,44 @@ from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.bids.structure import JsonEdit
 from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.core.exceptions import ArcanaUsageError
-from arcana.core.utils import func_task, path2varname, str2class
+from arcana.core.utils import (
+    func_task,
+    path2varname,
+    str2datatype,
+    NamedObjectsConverter,
+)
 
 logger = logging.getLogger("arcana")
 
 
-@dataclasses.dataclass
-class Input:
+@attrs.define(kw_only=True)
+class AppField:
 
     path: str
-    datatype: type
+    datatype: type = attrs.field(converter=str2datatype)
     name: str = None
 
-    @classmethod
-    def fromdict(cls, dct):
-        return cls(**{f.name: dct.get(f.name) for f in dataclasses.fields(cls)})
-
-    def __post_init__(self):
-        if isinstance(self.datatype, str):
-            self.datatype = str2class(self.datatype, prefixes=["arcana.data.types"])
-        if self.name is None:
-            self.name = path2varname(self.path)
+    @name.default
+    def name_default(self):
+        return path2varname(self.path)
 
 
-@dataclasses.dataclass
-class Output:
+# @attrs.define(kw_only=True)
+# class Output:
 
-    name: str
-    datatype: type
-    path: str = None
+#     name: str
+#     datatype: type
+#     path: str = None
 
-    @classmethod
-    def fromdict(cls, dct):
-        return cls(**{f.name: dct.get(f.name) for f in dataclasses.fields(cls)})
+#     @classmethod
+#     def fromdict(cls, dct):
+#         return cls(**{f.name: dct.get(f.name) for f in dataclasses.fields(cls)})
 
-    def __post_init__(self):
-        if self.path is None:
-            self.path = ""
-        if isinstance(self.datatype, str):
-            self.datatype = str2class(self.datatype, prefixes=["arcana.data.types"])
+#     def __post_init__(self):
+#         if self.path is None:
+#             self.path = ""
+#         if isinstance(self.datatype, str):
+#             self.datatype = str2class(self.datatype, prefixes=["arcana.data.types"])
 
 
 logger = logging.getLogger("arcana")
@@ -68,8 +67,8 @@ logger = logging.getLogger("arcana")
 
 def bids_app(
     name: str,
-    inputs: ty.List[Input or ty.Dict[str, str]],
-    outputs: ty.List[Output or ty.Dict[str, str]],
+    inputs: list[ty.Union[AppField, dict[str, str]]],
+    outputs: list[ty.Union[AppField, dict[str, str]]],
     executable: str = "",  # Use entrypoint of container,
     container_image: str = None,
     parameters: ty.Dict[str, type] = None,
@@ -89,12 +88,12 @@ def bids_app(
     name : str
         Name of the workflow/BIDS app. Will be used to name the 'derivatives'
         sub-directory where the app outputs are stored
-    inputs : list[tuple[str, type] or dict[str, str]]
+    inputs : list[ty.Union[AppField, dict[str, str]]]
         The inputs to be inserted into the BIDS dataset. Should be a list of tuples
         consisting of the the path the file/directory should be stored within a BIDS subject/session,
         e.g. anat/T1w, func/bold, and the DataFormat class it should be stored in, e.g.
         arcana.data.types.bids.NiftiGzX.
-    outputs : list[tuple[str, type] or dict[str, str]]
+    outputs : list[ty.Union[AppField, dict[str, str]]]
         The outputs to be extracted from the derivatives directory. Should be a list of tuples
         consisting of the the path the file/directory is saved by the app within a BIDS subject/session,
         e.g. freesurfer/recon-all, and the DataFormat class it is stored in, e.g.
@@ -156,8 +155,8 @@ def bids_app(
         )
 
     # Convert from JSON format inputs/outputs to tuples with resolved data formats
-    inputs = [Input.fromdict(i) if not isinstance(i, Input) else i for i in inputs]
-    outputs = [Output.fromdict(o) if not isinstance(o, Output) else o for o in outputs]
+    inputs = NamedObjectsConverter(AppField)(inputs)
+    outputs = NamedObjectsConverter(AppField)(outputs)
 
     # Ensure output paths all start with 'derivatives
     input_names = [i.name for i in inputs]

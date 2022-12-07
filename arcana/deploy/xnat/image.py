@@ -5,7 +5,7 @@ import json
 import attrs
 from neurodocker.reproenv import DockerRenderer
 from arcana.data.stores.xnat import XnatViaCS
-from arcana.core.utils import class2str, DictConverter
+from arcana.core.utils import class2str, ObjectConverter
 from arcana.core.data.store import DataStore
 from arcana.core.deploy.image import CommandImage
 from .command import XnatCSCommand
@@ -15,7 +15,7 @@ from .command import XnatCSCommand
 class XnatCSImage(CommandImage):
 
     command: XnatCSCommand = attrs.field(
-        converter=DictConverter(
+        converter=ObjectConverter(
             XnatCSCommand
         )  # Change the command type to XnatCSCommand subclass
     )

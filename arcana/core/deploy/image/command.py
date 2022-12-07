@@ -11,7 +11,7 @@ from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.core.utils import (
-    DictConverter,
+    ObjectConverter,
     NamedObjectsConverter,
     named_objects2dict,
     class2str,
@@ -19,7 +19,7 @@ from arcana.core.utils import (
 )
 from arcana.data.types import Directory
 from ..command import ContainerCommand
-from .base import ContainerImage
+from .container import ContainerImage
 from .components import ContainerAuthor, License, KnownIssue
 
 
@@ -84,7 +84,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
         metadata={"asdict": named_objects2dict},
     )
     description: str
-    command: ContainerCommand = attrs.field(converter=DictConverter(ContainerCommand))
+    command: ContainerCommand = attrs.field(converter=ObjectConverter(ContainerCommand))
     licenses: list[License] = attrs.field(
         factory=dict,
         converter=NamedObjectsConverter(License),
