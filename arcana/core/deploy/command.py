@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 import typing as ty
 import sys
+import builtins
 from collections import defaultdict
 import attrs
 from attrs.converters import default_if_none
@@ -54,11 +55,29 @@ class DefaultColumn:
 
 @attrs.define(kw_only=True)
 class CommandField(PipelineField):
-    help_string: str
-    configuration: dict[str, ty.Any] = attrs.field(
-        default=False, converter=default_if_none(factory=dict)
-    )
+    """An input/output to a command
 
+    Parameters
+    ----------
+    name : str
+        Name of the input and how it will be referred to in UI
+    field : str, optional
+        the name of the pydra input field to connect to, defaults to name
+    datatype : type, optional
+        the type of the items to be passed to the input, arcana.data.types.common.File by default
+    help_string : str
+        short description of the field to be displayed in the UI
+    configuration : dict[str, Any] or bool
+        Arguments that should be passed onto the the command configuration dict in
+        special the ``inputs``, ``outputs`` or ``parameters`` input fields for the given
+        field alongside the name and datatype. Should be set to True if just the name
+        and dataset
+    """
+
+    help_string: str
+    configuration: ty.Union[dict[str, ty.Any], bool] = attrs.field(factory=dict)
+
+    @property
     def config_dict(self):
         """Returns a dictionary to be passed to the task/workflow in order to configure
         it to receive input/output
@@ -70,14 +89,15 @@ class CommandField(PipelineField):
         list_name : _type_
             _description_
         """
-        if self.configuration is not False:
+        if self.configuration:
             config = {
                 "name": self.name,
                 "datatype": self.datatype,
             }
-            config.update(self.configuration)
+            if isinstance(self.configuration, dict):  # Otherwise just True
+                config.update(self.configuration)
         else:
-            config = None
+            config = {}
         return config
 
 
@@ -170,6 +190,9 @@ class CommandParameter(CommandField):
         the default value for the parameter, must be able to be
     """
 
+    datatype: ty.Union[int, float, bool, str] = attrs.field(
+        converter=lambda x: getattr(builtins, x) if isinstance(x, str) else x
+    )
     required: bool = False
     default: ty.Any = None
 
@@ -207,17 +230,17 @@ class ContainerCommand:
     inputs: list[CommandInput] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CommandInput),
-        metadata={"asdict": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.asdict},
     )
     outputs: list[CommandOutput] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CommandOutput),
-        metadata={"asdict": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.asdict},
     )
     parameters: list[CommandParameter] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CommandParameter),
-        metadata={"asdict": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.asdict},
     )
     configuration: dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(dict)
@@ -406,7 +429,7 @@ class ContainerCommand:
                     is_regex=True,
                     **source_kwargs,
                 )
-            if input_config := inpt.config_dict():
+            if input_config := inpt.config_dict:
                 input_configs.append(input_config)
 
         output_configs = []
@@ -436,7 +459,7 @@ class ContainerCommand:
                     else output.datatype,
                     path=path,
                 )
-            if output_config := output.config_dict():
+            if output_config := output.config_dict:
                 output_configs.append(output_config)
 
         kwargs = copy(self.configuration)
@@ -473,7 +496,7 @@ class ContainerCommand:
                     f"{param_value}, into {param.type}"
                 )
             kwargs[param.field] = param_value
-            if param_config := param.config_dict():
+            if param_config := param.config_dict:
                 param_configs.append(param_config)
 
         if "name" not in kwargs:

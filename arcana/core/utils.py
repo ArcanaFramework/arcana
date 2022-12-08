@@ -199,6 +199,8 @@ class ClassResolver:
         return module_name + ":" + klass.__name__
 
     def _check_type(self, klass):
+        if self.FALLBACK.permit and isinstance(klass, str):
+            return
         if self.base_class:
             if isfunction(klass):
                 if ty.Callable in self.alternative_types:
@@ -1037,17 +1039,19 @@ class ObjectConverter:
     accept_metadata: bool = False
 
     def __call__(self, value):
-        self._create_object(value)
+        return self._create_object(value)
 
     def _create_object(self, value, **kwargs):
         if value is None:
-            if self.allow_none:
+            if kwargs:
+                value = {}
+            elif self.allow_none:
                 return self.default_if_none
             else:
                 raise ValueError(
                     f"None values not accepted in automatic conversion to {self.klass}"
                 )
-        elif isinstance(value, dict):
+        if isinstance(value, dict):
             if self.accept_metadata:
                 klass_attrs = set(attrs.fields_dict(self.klass))
                 value_kwargs = {k: v for k, v in value.items() if k in klass_attrs}
@@ -1072,6 +1076,16 @@ class ObjectConverter:
             obj = copy(value)
             for k, v in kwargs.items():
                 setattr(obj, k, v)
+        elif isinstance(value, str):
+            args = []
+            kgs = copy(kwargs)
+            for field_name in attrs.fields_dict(self.klass):
+                try:
+                    args.append(kgs.pop(field_name))
+                except KeyError:
+                    break
+            args.append(value)
+            obj = self.klass(*args, **kgs)
         else:
             raise ValueError(f"Cannot convert {value} into {self.klass}")
         return obj
@@ -1090,7 +1104,7 @@ class ObjectListConverter(ObjectConverter):
         return converted
 
     @classmethod
-    def asdict(objs: list, **kwargs) -> dict:
+    def asdict(cls, objs: list, **kwargs) -> dict:
         dct = {}
         for obj in objs:
             obj_dict = attrs.asdict(obj, **kwargs)

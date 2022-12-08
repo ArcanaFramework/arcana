@@ -134,7 +134,7 @@ class XnatCSCommand(ContainerCommand):
         for inpt in self.inputs:
             replacement_key = f"[{inpt.field.upper()}_INPUT]"
             if issubclass(inpt.datatype, FileGroup):
-                desc = f"Match resource [SCAN_TYPE]: {inpt.description} "
+                desc = f"Match resource [SCAN_TYPE]: {inpt.help_string} "
                 input_type = "string"
             else:
                 desc = f"Match field ({inpt.datatype.dtype}) [FIELD_NAME]: {inpt.description} "
@@ -144,7 +144,7 @@ class XnatCSCommand(ContainerCommand):
                     "name": self.path2xnatname(inpt.name),
                     "description": desc,
                     "type": input_type,
-                    "default-value": inpt.path,
+                    "default-value": inpt.config_dict.get("path", ""),
                     "required": False,
                     "user-settable": True,
                     "replacement-key": replacement_key,
@@ -159,7 +159,7 @@ class XnatCSCommand(ContainerCommand):
         # Add parameters as additional inputs to inputs JSON specification
         cmd_args = []
         for param in self.parameters:
-            desc = f"Parameter ({param.type}): " + param.description
+            desc = f"Parameter ({param.datatype}): " + param.help_string
 
             replacement_key = f"[{param.field.upper()}_PARAM]"
 
@@ -167,7 +167,7 @@ class XnatCSCommand(ContainerCommand):
                 {
                     "name": param.name,
                     "description": desc,
-                    "type": self.COMMAND_INPUT_TYPES.get(param.type, "string"),
+                    "type": self.COMMAND_INPUT_TYPES.get(param.datatype, "string"),
                     "default-value": (param.default if param.default else ""),
                     "required": param.required,
                     "user-settable": True,
@@ -206,7 +206,7 @@ class XnatCSCommand(ContainerCommand):
                     "as-a-child-of": "SESSION",
                     "type": "Resource",
                     "label": label,
-                    "datatype": output.datatype.class_name(),
+                    "format": output.datatype.class_name(),
                 }
             )
             cmd_args.append(f"--output {output.name} '{output.path}'")

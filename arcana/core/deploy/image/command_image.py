@@ -74,19 +74,19 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
     info_url: str = attrs.field()
     authors: ty.List[ContainerAuthor] = attrs.field(
         converter=ObjectListConverter(ContainerAuthor),
-        metadata={"asdict": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.asdict},
     )
     description: str
     command: ContainerCommand = attrs.field(converter=ObjectConverter(ContainerCommand))
     licenses: list[License] = attrs.field(
         factory=dict,
         converter=ObjectListConverter(License),
-        metadata={"asdict": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.asdict},
     )
     known_issues: list[KnownIssue] = attrs.field(
         factory=list,
         converter=ObjectListConverter(KnownIssue),
-        metadata={"asdict": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.asdict},
     )
     long_description: str = ""
     loaded_from: Path = attrs.field(default=None, metadata={"asdict": False})
@@ -346,7 +346,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             tbl_info = MarkdownTable(f, "Key", "Value")
             tbl_info.write_row("Name", self.name)
             tbl_info.write_row("App version", self.version)
-            tbl_info.write_row("Spec version", self.build_iteration)
+            tbl_info.write_row("Build iteration", self.build_iteration)
             tbl_info.write_row("Base image", escaped_md(self.base_image))
             tbl_info.write_row(
                 "Maintainer", f"{self.authors[0].name} ({self.authors[0].email})"

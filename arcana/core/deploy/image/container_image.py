@@ -21,6 +21,7 @@ from arcana.core.utils import (
     set_cwd,
     DOCKER_HUB,
     ClassResolver,
+    ObjectConverter,
 )
 from arcana.core.data.space import DataSpace
 from arcana.__about__ import python_versions
@@ -63,8 +64,12 @@ class ContainerImage:
     name: str
     version: str = attrs.field(converter=str)
     build_iteration: str = None
-    base_image: BaseImage = BaseImage()
-    packages: Packages = Packages()
+    base_image: BaseImage = attrs.field(
+        default=BaseImage(), converter=ObjectConverter(BaseImage)
+    )
+    packages: Packages = attrs.field(
+        default=Packages(), converter=ObjectConverter(Packages)
+    )
     org: str = None
     registry: str = DOCKER_HUB
     readme: str = None
@@ -495,8 +500,8 @@ class ContainerImage:
             )
 
         def serializer(_, attr, value):
-            if attr is not None and "asdict" in attr.metadata:
-                value = attr.metadata["asdict"](
+            if attr is not None and "serializer" in attr.metadata:
+                value = attr.metadata["serializer"](
                     value,
                     value_serializer=serializer,
                     filter=filter,

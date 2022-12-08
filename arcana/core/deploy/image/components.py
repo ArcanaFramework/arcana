@@ -91,13 +91,18 @@ class License:
 
 
 @attrs.define
-class PipPackage:
-    """Specification of a Python package"""
+class BasePackage:
 
     name: str
     version: str = attrs.field(
         default=None, converter=lambda v: str(v) if v is not None else None
     )
+
+
+@attrs.define
+class PipPackage(BasePackage):
+    """Specification of a Python package"""
+
     url: str = None
     file_path: str = None
     extras: ty.List[str] = attrs.field(factory=list)
@@ -162,12 +167,6 @@ class PipPackage:
         PipPackage
             the pip specification for the installation location of the package
         """
-
-        # if isinstance(pip_spec, str):
-        #     parts = pip_spec.split("==")
-        #     pip_spec = PipPackage(
-        #         name=parts[0], version=(parts[1] if len(parts) == 2 else None)
-        #     )
         try:
             pkg = next(
                 p for p in pkg_resources.working_set if p.project_name == self.name
@@ -244,10 +243,15 @@ class PipPackage:
 
 
 @attrs.define
-class SystemPackage:
+class SystemPackage(BasePackage):
 
-    name: str
-    version: str = None
+    pass
+
+
+@attrs.define
+class CondaPackage(BasePackage):
+
+    REQUIRED = ["numpy", "traits"]  # FIXME: Not sure if traits is actually required
 
 
 @attrs.define
@@ -257,22 +261,16 @@ class NeurodockerTemplate:
     version: str
 
 
-@attrs.define
-class CondaPackage:
-
-    name: str
-    version: str = None
-
-    REQUIRED = ["numpy", "traits"]  # FIXME: Not sure if traits is actually required
-
-
 def python_package_converter(packages):
     """
     Split out and merge any extras specifications (e.g. "arcana[test]")
     between dependencies of the same package
     """
     return PipPackage.unique(
-        ObjectListConverter(PipPackage)(packages), remove_arcana=True
+        ObjectListConverter(PipPackage)(
+            packages,
+        ),
+        remove_arcana=True,
     )
 
 
@@ -282,22 +280,22 @@ class Packages:
     system: list[SystemPackage] = attrs.field(
         factory=list,
         converter=ObjectListConverter(SystemPackage),
-        metadata={"asdict": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.asdict},
     )
     pip: list[PipPackage] = attrs.field(
         factory=list,
         converter=python_package_converter,
-        metadata={"asdict": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.asdict},
     )
     conda: list[CondaPackage] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CondaPackage),
-        metadata={"asdict": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.asdict},
     )
     neurodocker: list[NeurodockerTemplate] = attrs.field(
         factory=list,
         converter=ObjectListConverter(NeurodockerTemplate),
-        metadata={"asdict": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.asdict},
     )
 
 
