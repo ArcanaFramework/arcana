@@ -28,7 +28,7 @@ from .utils import (
     pydra_fromdict,
     pydra_eq,
     path2varname,
-    str2datatype,
+    ClassResolver,
     ObjectListConverter,
     # ObjectListConverter.asdict,
 )
@@ -55,7 +55,8 @@ class PipelineField:
     name: str
     field: str = attrs.field()
     datatype: type = attrs.field(
-        default=None, converter=lambda t: str2datatype(t) if t is not None else None
+        default=None,
+        converter=lambda t: ClassResolver(DataType)(t) if t is not None else None,
     )
 
     @field.default
@@ -253,7 +254,7 @@ class Pipeline:
                     ("dataset", arcana.core.data.set.Dataset),
                     ("row_frequency", DataSpace),
                     ("id", str),
-                    ("inputs", list[PipelineField]),
+                    ("inputs", ty.List[PipelineField]),
                     ("parameterisation", ty.Dict[str, ty.Any]),
                 ],
                 out_fields=list(source_out_dct.items()),
@@ -332,7 +333,7 @@ class Pipeline:
         wf.per_row.add(
             func_task(
                 encapsulate_paths_and_values,
-                in_fields=[("outputs", list[PipelineField])]
+                in_fields=[("outputs", ty.List[PipelineField])]
                 + [(o.name, ty.Union[str, Path]) for o in self.outputs],
                 out_fields=[(o.name, DataType) for o in self.outputs],
                 name="output_interface",
@@ -534,11 +535,11 @@ def split_side_car_suffix(name):
 
 
 @pydra.mark.task
-@pydra.mark.annotate({"return": {"ids": list[str], "cant_process": list[str]}})
+@pydra.mark.annotate({"return": {"ids": ty.List[str], "cant_process": ty.List[str]}})
 def to_process(
     dataset: arcana.core.data.set.Dataset,
     row_frequency: DataSpace,
-    outputs: list[PipelineField],
+    outputs: ty.List[PipelineField],
     requested_ids: ty.Union[list[str], None],
     parameterisation: dict[str, ty.Any],
 ):
@@ -561,7 +562,7 @@ def source_items(
     dataset: arcana.core.data.set.Dataset,
     row_frequency: DataSpace,
     id: str,
-    inputs: list[PipelineField],
+    inputs: ty.List[PipelineField],
     parameterisation: dict,
 ):
     """Selects the items from the dataset corresponding to the input

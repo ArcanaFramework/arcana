@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 import re
 import json
+import typing as ty
 from traceback import format_exc
 import tempfile
 import yaml
@@ -515,7 +516,9 @@ def required_packages(task_locations):
 
     required_modules = set()
     for task_location in task_locations:
-        workflow = ClassResolver(TaskBase)(task_location)
+        workflow = ClassResolver(TaskBase, alternative_types=[ty.Callable])(
+            task_location
+        )
         pydra_asdict(workflow, required_modules)
 
     for pkg in package_from_module(required_modules):

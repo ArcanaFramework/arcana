@@ -86,7 +86,7 @@ class XnatCSCommand(ContainerCommand):
             "schema-version": "1.0",
             "image": self.image.tag,
             "index": self.image.registry,
-            "type": "docker",
+            "datatype": "docker",
             # "command-line": cmdline,
             "override-entrypoint": True,
             "mounts": [

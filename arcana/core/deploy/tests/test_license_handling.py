@@ -161,7 +161,7 @@ TEST_IMAGE_SPEC = {
         "parameters": [
             {
                 "name": LICENSE_PATH_PARAM,
-                "type": "str",
+                "datatype": "str",
                 "field": "expected_license_path",
                 "required": True,
                 "help_string": "the expected contents of the license file",

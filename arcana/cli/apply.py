@@ -1,4 +1,5 @@
 import click
+import typing as ty
 from arcana.core.data.set import Dataset
 from arcana.core.cli import cli
 from pydra.engine.core import TaskBase
@@ -124,9 +125,9 @@ def apply_pipeline(
 ):
 
     dataset = Dataset.load(dataset_id_str)
-    workflow = ClassResolver(TaskBase)(workflow_location)(
-        name="workflow", **{n: parse_value(v) for n, v in parameter}
-    )
+    workflow = ClassResolver(TaskBase, alternative_types=[ty.Callable])(
+        workflow_location
+    )(name="workflow", **{n: parse_value(v) for n, v in parameter})
 
     inputs = parse_col_option(input)
     outputs = parse_col_option(output)

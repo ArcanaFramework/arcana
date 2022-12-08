@@ -17,7 +17,7 @@ from arcana.core.utils import (
 )
 from arcana.data.types import Directory
 from ..command import ContainerCommand
-from .container import ContainerImage
+from .container_image import ContainerImage
 from .components import ContainerAuthor, License, KnownIssue
 
 
@@ -199,7 +199,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             path to file to save the spec to
         """
         yml_dct = self.asdict()
-        yml_dct["type"] = ClassResolver.tostr(self)
+        yml_dct["type"] = ClassResolver.tostr(self, strip_prefix=False)
         with open(yml_path, "w") as f:
             yaml.dump(yml_dct, f)
 

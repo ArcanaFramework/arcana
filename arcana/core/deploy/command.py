@@ -46,7 +46,9 @@ class DefaultColumn:
         the "row-frequency" of the input column to be added
     """
 
-    datatype: type = attrs.field(default=None, converter=ClassResolver(DataType))
+    datatype: type = attrs.field(
+        default=None, converter=ClassResolver(DataType, allow_none=True)
+    )
     row_frequency: DataSpace = None
 
 
@@ -144,7 +146,7 @@ class CommandOutput(CommandField):
 
 
 @attrs.define(kw_only=True)
-class CommandParameter(PipelineField):
+class CommandParameter(CommandField):
     """Defines a fixed parameter of the task/workflow/analysis to be exposed in the UI
 
     Parameters
@@ -198,7 +200,9 @@ class ContainerCommand:
     STORE_TYPE = "file"
     DATA_SPACE = None
 
-    task: pydra.engine.task.TaskBase = attrs.field(converter=ClassResolver(TaskBase))
+    task: pydra.engine.task.TaskBase = attrs.field(
+        converter=ClassResolver(TaskBase, alternative_types=[ty.Callable])
+    )
     row_frequency: DataSpace = None
     inputs: list[CommandInput] = attrs.field(
         factory=list,

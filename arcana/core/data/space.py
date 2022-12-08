@@ -1,7 +1,7 @@
 import typing as ty
 import re
 from enum import Enum
-from arcana.core.utils import ClassResolver
+from arcana.core.utils import ClassResolver, classproperty
 
 
 class DataSpace(Enum):
@@ -52,8 +52,6 @@ class DataSpace(Enum):
 
         dataset = 0b000
     """
-
-    DEFAULT_PACKAGE = "arcana.data.spaces"
 
     def __str__(self):
         return self.name
@@ -167,7 +165,7 @@ class DataSpace(Enum):
         return ((self & child) == self) and (child != self or if_match)
 
     def tostr(self):
-        return f"{ClassResolver.tostr(self)}[{str(self)}]"
+        return f"{ClassResolver.tostr(self, strip_prefix=False)}[{str(self)}]"
 
     @classmethod
     def fromstr(cls, s):
@@ -178,3 +176,9 @@ class DataSpace(Enum):
             )
         class_loc, val = match.groups()
         return ClassResolver(class_loc, prefixes=["arcana.data.spaces"])[val]
+
+    @classproperty
+    def DEFAULT_PACKAGE(cls):
+        """Cannot be a regular class attribute because then DataSpace won't be able to
+        be extended"""
+        return "arcana.data.spaces"

@@ -61,7 +61,8 @@ HASH_CHUNK_SIZE = 2**20  # 1MB in calc. checksums to avoid mem. issues
 @attrs.define
 class _FallbackContext:
     """Used to specify that class resolution is permitted to fail within this context
-    and return just a string
+    and return just a string (i.e. in build environments where the required modules
+    aren't installed)
     """
 
     permit: bool = False
@@ -106,7 +107,8 @@ class ClassResolver:
         type:
             The resolved class
         """
-
+        if class_str is None and self.allow_none:
+            return None
         if (
             not self.prefixes
             and self.base_class is not None
@@ -169,9 +171,18 @@ class ClassResolver:
         return klass
 
     @classmethod
-    def tostr(cls, klass):
+    def tostr(cls, klass, strip_prefix: bool = True):
         """Records the location of a class so it can be loaded later using
-        `ClassResolver`, in the format <module-name>:<class-name>"""
+        `ClassResolver`, in the format <module-name>:<class-name>
+
+        Parameters
+        ----------
+        klass : Any
+            the class/function to serialise to a string
+        strip_prefix : bool
+            whether to strip the DEFAULT_PACKAGE prefix from the module path when writing
+            to file
+        """
         if isinstance(klass, str):
             return klass
         if not (isclass(klass) or isfunction(klass)):
@@ -179,19 +190,29 @@ class ClassResolver:
         module_name = klass.__module__
         if module_name == "builtins":
             return klass.__name__
-        if hasattr(klass, "DEFAULT_PACKAGE") and module_name.startswith(
-            klass.DEFAULT_PACKAGE
+        if (
+            strip_prefix
+            and hasattr(klass, "DEFAULT_PACKAGE")
+            and module_name.startswith(klass.DEFAULT_PACKAGE)
         ):
-            module_name = module_name[len(klass.DEFAULT_PACKAGE) :]
+            module_name = module_name[len(klass.DEFAULT_PACKAGE) + 1 :]
         return module_name + ":" + klass.__name__
 
     def _check_type(self, klass):
-        if self.base_class and (
-            not issubclass(klass, self.base_class) or klass in self.alternative_types
-        ):
-            raise ValueError(
-                f"Found {klass}, which is not a subclass of {self.base_class}"
-            )
+        if self.base_class:
+            if isfunction(klass):
+                if ty.Callable in self.alternative_types:
+                    return  # ok
+                else:
+                    raise ValueError(
+                        f"Found callable {klass}, but Callable isn't in alternative_types"
+                    )
+            if klass in self.alternative_types:
+                return  # ok
+            if not isclass(klass) or not issubclass(klass, self.base_class):
+                raise ValueError(
+                    f"Found {klass}, which is not a subclass of {self.base_class}"
+                )
 
     FALLBACK = _FallbackContext()
 
@@ -441,30 +462,6 @@ def dir_modtime(dpath):
     return max(os.path.getmtime(d) for d, _, _ in os.walk(dpath))
 
 
-# def parse_single_value(value, datatype=None):
-#     """
-#     Tries to convert to int, float and then gives up and assumes the value
-#     is of type string. Useful when excepting values that may be string
-#     representations of numerical values
-#     """
-#     if isinstance(value, str):
-#         try:
-#             if value.startswith('"') and value.endswith('"'):
-#                 value = str(value[1:-1])
-#             elif '.' in value:
-#                 value = float(value)
-#             else:
-#                 value = int(value)
-#         except ValueError:
-#             value = str(value)
-#     elif not isinstance(value, (int, float, bool)):
-#         raise ArcanaUsageError(
-#             "Unrecognised type for single value {}".format(value))
-#     if datatype is not None:
-#         value = datatype(value)
-#     return value
-
-
 def parse_value(value):
     """Parses values from string representations"""
     try:
@@ -474,30 +471,6 @@ def parse_value(value):
     except (TypeError, json.decoder.JSONDecodeError):
         pass
     return value
-
-
-# def parse_value(value, datatype=None):
-#     # Split strings with commas into lists
-#     if isinstance(value, str):
-#         if value.startswith('[') and value.endswith(']'):
-#             value = value[1:-1].split(',')
-#     else:
-#         # Cast all iterables (except strings) into lists
-#         try:
-#             value = list(value)
-#         except TypeError:
-#             pass
-#     if isinstance(value, list):
-#         value = [parse_single_value(v, datatype=datatype) for v in value]
-#         # Check to see if datatypes are consistent
-#         datatypes = set(type(v) for v in value)
-#         if len(datatypes) > 1:
-#             raise ArcanaUsageError(
-#                 "Inconsistent datatypes in values array ({})"
-#                 .datatype(value))
-#     else:
-#         value = parse_single_value(value, datatype=datatype)
-#     return value
 
 
 def iscontainer(*items):
@@ -708,7 +681,7 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: set = None):
 
     def serialise_class(klass):
         required_modules.add(klass.__module__)
-        return "<" + ClassResolver.tostr(klass) + ">"
+        return "<" + ClassResolver.tostr(klass, strip_prefix=False) + ">"
 
     def value_asdict(value):
         if isclass(value):
@@ -842,7 +815,10 @@ def pydra_asdict(
     dict
         the dictionary containing the contents of the Pydra object
     """
-    dct = {"name": obj.name, "class": "<" + ClassResolver.tostr(obj) + ">"}
+    dct = {
+        "name": obj.name,
+        "class": "<" + ClassResolver.tostr(obj, strip_prefix=False) + ">",
+    }
     if isinstance(obj, Workflow):
         dct["nodes"] = [
             pydra_asdict(n, required_modules=required_modules, workflow=obj)
@@ -1120,54 +1096,6 @@ class ObjectListConverter(ObjectConverter):
             obj_dict = attrs.asdict(obj, **kwargs)
             dct[obj_dict.pop("name")] = obj_dict
         return dct
-
-
-# @attrs.define
-# class DictObjectConverter:
-
-#     klass: type
-
-#     def __call__(self, dct):
-#         converted = {}
-#         for key, val in dct.items():
-#             if "name" in attrs.fields_dict(self.klass):
-#                 val = copy(val)
-#                 val["name"] = key
-#             if isinstance(val, dict):
-#                 val = self.klass(**val)
-#             elif not isinstance(val, self.klass):
-#                 raise ValueError(f"Cannot convert {val} into {self.klass}")
-#             converted[key] = val
-#         return converted
-
-# def str2datatype(datatype, **kwargs):
-
-
-#     if isinstance(datatype, str):
-#         datatype = ClassResolver(datatype, prefixes=["arcana.data.types"], **kwargs)
-#     elif not issubclass(datatype, (DataType, DataRow)):
-#         raise ValueError(f"Cannot resolve {datatype} to datatype")
-#     return datatype
-
-
-# def data_space_resolver(space, **kwargs):
-#     from arcana.core.data.space import DataSpace
-
-#     if isinstance(space, str):
-#         space = ClassResolver(space, prefixes=["arcana.data.spaces"], **kwargs)
-#     elif not issubclass(space, DataSpace):
-#         raise ValueError(f"Cannot resolve {space} to data space")
-#     return space
-
-
-# def str2task(task, **kwargs):
-#     from pydra.engine.task import TaskBase
-
-#     if isinstance(task, str):
-#         task = ClassResolver(task, prefixes=["arcana.tasks"], **kwargs)
-#     elif not isinstance(task, TaskBase):
-#         raise ValueError(f"Cannot resolve {task} to data space")
-#     return task
 
 
 def extract_file_from_docker_image(

@@ -126,12 +126,10 @@ class DataSource(DataColumn):
         # Get all items that match the data type of the source
         matches = row.resolved(self.datatype)
         if not matches:
-            format_str = ClassResolver.tostr(
-                self.datatype, strip_prefix="arcana.data.types."
-            )
             msg = (
                 f"Did not find any items matching data datatype "
-                f"{format_str} in '{row.id}' {self.row_frequency} for the "
+                f"{ClassResolver.tostr(self.datatype)} in '{row.id}' "
+                f"{self.row_frequency} for the "
                 f"'{self.name}' column, found unresolved items:"
             )
             for item in sorted(row.unresolved, key=attrgetter("path")):
@@ -172,20 +170,19 @@ class DataSource(DataColumn):
         return match
 
     def _error_msg(self, row, matches):
-        format_str = ClassResolver.tostr(self.datatype)
         return (
-            f" attempting to select {format_str} item for the '{row.id}' "
-            f"{row.frequency} in the '{self.name}' column, found:"
+            f" attempting to select {ClassResolver.tostr(self.datatype)} item for "
+            f"the '{row.id}' {row.frequency} in the '{self.name}' column, found:"
             + self._format_matches(matches)
             + self._format_criteria()
         )
 
     def _format_criteria(self):
-        format_str = ClassResolver.tostr(self.datatype)
         return (
             f"\n\n    criteria: {self.path}', is_regex={self.is_regex}, "
-            + f"datatype={format_str}, quality_threshold='{self.quality_threshold}', "
-            + f"header_vals={self.header_vals}, order={self.order}"
+            f"datatype={ClassResolver.tostr(self.datatype)}, "
+            f"quality_threshold='{self.quality_threshold}', "
+            f"header_vals={self.header_vals}, order={self.order}"
         )
 
     def _format_matches(self, matches):

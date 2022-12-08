@@ -63,7 +63,7 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
             "parameters": [
                 {
                     "name": "duplicates",
-                    "type": "int",
+                    "datatype": "int",
                     "default": 2,
                     "help_string": "dummy",
                 }
@@ -153,7 +153,7 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
             "parameters": [
                 {
                     "name": "duplicates",
-                    "type": "int",
+                    "datatype": "int",
                     "default": 2,
                     "help_string": "dummy",
                 }

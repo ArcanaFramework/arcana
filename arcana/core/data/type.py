@@ -12,7 +12,6 @@ import attrs
 from attrs.converters import optional
 from pydra.engine.core import LazyField, Workflow
 from arcana.core.utils import (
-    ClassResolver,
     parse_value,
     func_task,
     path2varname,
@@ -143,26 +142,6 @@ class DataType(metaclass=ABCMeta):
     @classmethod
     def class_name(cls):
         return cls.__name__.lower()
-
-    @classmethod
-    def class2str(cls, relative=True):
-        """Returns a string representation of location of the class definition
-
-        Parameters
-        ----------
-        relative : bool, optional
-            return the module location relative to `arcana.data.types`,
-            if applicable, by default True
-
-        Returns
-        -------
-        str
-            the location of the class definition in <module-path>:<class-name> format
-        """
-        loc = ClassResolver.tostr(cls)
-        if relative and loc.startswith("arcana.data.types."):
-            loc = loc[len("arcana.data.types.") :]
-        return loc
 
 
 @attrs.define
