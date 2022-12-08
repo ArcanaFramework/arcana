@@ -145,25 +145,26 @@ the full configuration required to build an XNAT docker image looks like
         version: 1
         info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
         inputs:
-            - name: in_files
+            in_files:
               datatype: medimage:NiftiGzX
-              stored_format: medimage:Dicom
-              description: Anatomical image to segment into different tissues
+              default_column:
+                datatype: medimage:Dicom
+              help_string: Anatomical image to segment into different tissues
         outputs:
-            - name: tissue_classes
+            tissue_classes:
               datatype: medimage:NiftiGz
               path: fast/tissue-classes
-            - name: probability_maps
+            probability_maps:
               datatype: medimage:NiftiGz
               path: fast/probability-map
         parameters:
-            - name: use_priors
-              description: Use priors in tissue estimation
-            - name: bias_lowpass
-              description: Low-pass filter bias field
+            use_priors:
+              help_string: Use priors in tissue estimation
+            bias_lowpass:
+              help_string: Low-pass filter bias field
         configuration:
-            - output_biasfield: true
-            - bias_lowpass: 5.0
+            output_biasfield: true
+            bias_lowpass: 5.0
         row_frequency: session
 
 where fields in the top-level YAML_ are provided as arguments to
