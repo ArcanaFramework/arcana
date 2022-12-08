@@ -5,7 +5,7 @@ import json
 import attrs
 from neurodocker.reproenv import DockerRenderer
 from arcana.data.stores.xnat import XnatViaCS
-from arcana.core.utils import class2str, ObjectConverter
+from arcana.core.utils import ClassResolver, ObjectConverter
 from arcana.core.data.store import DataStore
 from arcana.core.deploy.image import CommandImage
 from .command import XnatCSCommand
@@ -106,7 +106,7 @@ class XnatCSImage(CommandImage):
             case the server location will be hard-coded rather than rely on the
             XNAT_HOST environment variable passed to the container by the XNAT CS
         """
-        xnat_cs_store_entry = {"class": "<" + class2str(XnatViaCS) + ">"}
+        xnat_cs_store_entry = {"class": "<" + ClassResolver.tostr(XnatViaCS) + ">"}
         if use_test_config:
             if sys.platform == "linux":
                 ip_address = "172.17.0.1"  # Linux + GH Actions

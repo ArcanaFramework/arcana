@@ -58,6 +58,144 @@ ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
 HASH_CHUNK_SIZE = 2**20  # 1MB in calc. checksums to avoid mem. issues
 
 
+@attrs.define
+class _FallbackContext:
+    """Used to specify that class resolution is permitted to fail within this context
+    and return just a string
+    """
+
+    permit: bool = False
+
+    def __enter__(self):
+        self.permit = True
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.permit = False
+
+
+@attrs.define
+class ClassResolver:
+    """
+    Parameters
+    ----------
+    base_class : type
+        the target class to resolve the string representation to
+    prefixes : Sequence[str]
+        List of allowable module prefixes to try to append if the fully
+        resolved path fails, e.g. ['pydra.tasks'] would allow
+        'fsl.preprocess.first.First' to resolve to
+        pydra.tasks.fsl.preprocess.first.First
+    """
+
+    base_class: type = None
+    allow_none: bool = False
+    prefixes: list[str] = attrs.field(factory=list)
+    alternative_types: list[type] = attrs.field(factory=list)
+
+    def __call__(self, class_str: str) -> type:
+        """
+        Resolves a class from a location string in the format "<module-name>:<class-name>"
+
+        Parameters
+        ----------
+        class_str : str
+            Module path and name of class joined by ':', e.g. main_pkg.sub_pkg:MyClass
+
+        Returns
+        -------
+        type:
+            The resolved class
+        """
+
+        if (
+            not self.prefixes
+            and self.base_class is not None
+            and hasattr(self.base_class, "DEFAULT_PACKAGE")
+        ):
+            prefixes = [self.base_class.DEFAULT_PACKAGE]
+        else:
+            prefixes = self.prefixes
+        klass = self.fromstr(class_str, prefixes=prefixes)
+        self._check_type(klass)
+        return klass
+
+    @classmethod
+    def fromstr(cls, class_str, prefixes):
+        if not isinstance(class_str, str):
+            return class_str  # Assume that it is already resolved
+        if class_str.startswith("<") and class_str.endswith(">"):
+            class_str = class_str[1:-1]
+        try:
+            module_path, class_name = class_str.split(":")
+        except ValueError:
+            try:
+                return getattr(builtins, class_str)
+            except AttributeError:
+                raise ValueError(
+                    f"Class location '{class_str}' should contain a ':' unless it is in the "
+                    "builtins module"
+                ) from None
+        module = None
+
+        for prefix in prefixes + [None]:
+            if prefix is not None:
+                mod_name = prefix + ("." if prefix[-1] != "." else "") + module_path
+            else:
+                mod_name = module_path
+            if not mod_name:
+                continue
+            mod_name = mod_name.strip(".")
+            try:
+                module = import_module(mod_name)
+            except ModuleNotFoundError:
+                continue
+            else:
+                break
+        if module is None:
+            if cls.FALLBACK.permit:
+                return class_str
+            else:
+                raise ArcanaUsageError(
+                    "Did not find class at '{}' or any sub paths of '{}'".format(
+                        class_str, "', '".join(prefixes)
+                    )
+                )
+        try:
+            klass = getattr(module, class_name)
+        except AttributeError:
+            raise ArcanaUsageError(
+                f"Did not find '{class_str}' class/function in module '{module.__name__}'"
+            )
+        return klass
+
+    @classmethod
+    def tostr(cls, klass):
+        """Records the location of a class so it can be loaded later using
+        `ClassResolver`, in the format <module-name>:<class-name>"""
+        if isinstance(klass, str):
+            return klass
+        if not (isclass(klass) or isfunction(klass)):
+            klass = type(klass)  # Get the class rather than the object
+        module_name = klass.__module__
+        if module_name == "builtins":
+            return klass.__name__
+        if hasattr(klass, "DEFAULT_PACKAGE") and module_name.startswith(
+            klass.DEFAULT_PACKAGE
+        ):
+            module_name = module_name[len(klass.DEFAULT_PACKAGE) :]
+        return module_name + ":" + klass.__name__
+
+    def _check_type(self, klass):
+        if self.base_class and (
+            not issubclass(klass, self.base_class) or klass in self.alternative_types
+        ):
+            raise ValueError(
+                f"Found {klass}, which is not a subclass of {self.base_class}"
+            )
+
+    FALLBACK = _FallbackContext()
+
+
 def get_home_dir():
     try:
         home_dir = Path(os.environ["ARCANA_HOME"])
@@ -231,91 +369,6 @@ def set_loggers(loglevel, pydra_level="warning", depend_level="warning"):
 
     # set logging format
     logging.basicConfig(level=parse(depend_level))
-
-
-def class2str(cls, strip_prefix=None):
-    """Records the location of a class so it can be loaded later using
-    `str2class`, in the format <module-name>:<class-name>"""
-    if not (isclass(cls) or isfunction(cls)):
-        cls = type(cls)  # Get the class rather than the object
-    module_name = cls.__module__
-    if module_name == "builtins":
-        return cls.__name__
-    if strip_prefix and module_name.startswith(strip_prefix):
-        module_name = module_name[len(strip_prefix) :]
-    return module_name + ":" + cls.__name__
-
-
-def str2class(class_str: str, prefixes: Sequence[str] = ()) -> type:
-    """
-    Resolves a class from a location string in the format "<module-name>:<class-name>"
-
-    Parameters
-    ----------
-    class_str : str
-        Module path and name of class joined by ':', e.g. main_pkg.sub_pkg:MyClass
-    prefixes : Sequence[str]
-        List of allowable module prefixes to try to append if the fully
-        resolved path fails, e.g. ['pydra.tasks'] would allow
-        'fsl.preprocess.first.First' to resolve to
-        pydra.tasks.fsl.preprocess.first.First
-    fallback_to_str : bool
-        whether to fallback to a string if the class module can't be loaded
-    Returns
-    -------
-    type:
-        The resolved class
-    """
-    if not isinstance(class_str, str):
-        return class_str  # Assume that it is already resolved
-    if class_str.startswith("<") and class_str.endswith(">"):
-        class_str = class_str[1:-1]
-    try:
-        module_path, class_name = class_str.split(":")
-    except ValueError:
-        try:
-            return getattr(builtins, class_str)
-        except AttributeError:
-            raise ValueError(
-                f"Class location '{class_str}' should contain a ':' unless it is in the "
-                "builtins module"
-            ) from None
-    module = None
-    for prefix in list(prefixes) + [None]:
-        if prefix is not None:
-            mod_name = prefix + ("." if prefix[-1] != "." else "") + module_path
-        else:
-            mod_name = module_path
-        if not mod_name:
-            continue
-        mod_name = mod_name.strip(".")
-        try:
-            module = import_module(mod_name)
-        except ModuleNotFoundError:
-            continue
-        else:
-            break
-    if module is None:
-        if STR2CLASS_FALLBACK.permit:
-            logger.warning(
-                "Did not find module corresponding to %s, but ignoring as "
-                "arcana.core.utils.permit_str2class_fallback is set to True",
-                class_str,
-            )
-            return class_str
-        else:
-            raise ArcanaUsageError(
-                "Did not find class at '{}' or any sub paths of '{}'".format(
-                    class_str, "', '".join(prefixes)
-                )
-            )
-    try:
-        cls = getattr(module, class_name)
-    except AttributeError:
-        raise ArcanaUsageError(
-            f"Did not find '{class_str}' class/function in module '{module.__name__}'"
-        )
-    return cls
 
 
 def submodules(package):
@@ -655,7 +708,7 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: set = None):
 
     def serialise_class(klass):
         required_modules.add(klass.__module__)
-        return "<" + class2str(klass) + ">"
+        return "<" + ClassResolver.tostr(klass) + ">"
 
     def value_asdict(value):
         if isclass(value):
@@ -732,7 +785,7 @@ def fromdict(dct: dict, **kwargs):
     def fromdict(value):
         if isinstance(value, dict):
             if "class" in value:
-                klass = str2class(value["class"])
+                klass = ClassResolver()(value["class"])
                 if hasattr(klass, "fromdict"):
                     return klass.fromdict(value)
             value = {fromdict(k): fromdict(v) for k, v in value.items()}
@@ -742,16 +795,16 @@ def fromdict(dct: dict, **kwargs):
                 )
         elif isinstance(value, str):
             if match := re.match(r"<(.*)>$", value):  # Class location
-                value = str2class(match.group(1))
+                value = ClassResolver()(match.group(1))
             elif match := re.match(r"<(.*)>\[(.*)\]$", value):  # Enum
-                value = str2class(match.group(1))[match.group(2)]
+                value = ClassResolver()(match.group(1))[match.group(2)]
             elif match := re.match(r"file://(.*)", value):
                 value = Path(match.group(1))
         elif isinstance(value, Sequence):
             value = [fromdict(x) for x in value]
         return value
 
-    klass = str2class(dct["class"])
+    klass = ClassResolver()(dct["class"])
 
     kwargs.update(
         {
@@ -789,7 +842,7 @@ def pydra_asdict(
     dict
         the dictionary containing the contents of the Pydra object
     """
-    dct = {"name": obj.name, "class": "<" + class2str(obj) + ">"}
+    dct = {"name": obj.name, "class": "<" + ClassResolver.tostr(obj) + ">"}
     if isinstance(obj, Workflow):
         dct["nodes"] = [
             pydra_asdict(n, required_modules=required_modules, workflow=obj)
@@ -864,7 +917,7 @@ def pydra_fromdict(dct: dict, workflow: Workflow = None, **kwargs) -> TaskBase:
     pydra.engine.core.TaskBase
         the recreated Pydra object
     """
-    klass = str2class(dct["class"])
+    klass = ClassResolver()(dct["class"])
     # Resolve lazy-field references to workflow fields
     inputs = {}
     for inpt_name, inpt_val in dct["inputs"].items():
@@ -1004,6 +1057,7 @@ class ObjectConverter:
 
     klass: type
     allow_none: bool = False
+    default_if_none: ty.Any = None
     accept_metadata: bool = False
 
     def __call__(self, value):
@@ -1012,7 +1066,7 @@ class ObjectConverter:
     def _create_object(self, value, **kwargs):
         if value is None:
             if self.allow_none:
-                return None
+                return self.default_if_none
             else:
                 raise ValueError(
                     f"None values not accepted in automatic conversion to {self.klass}"
@@ -1027,7 +1081,15 @@ class ObjectConverter:
             else:
                 value_kwargs = value
             value_kwargs.update(kwargs)
-            obj = self.klass(**value_kwargs)
+            try:
+                obj = self.klass(**value_kwargs)
+            except TypeError as e:
+                msg = f"when creating {self.klass} from {value_kwargs}"
+                if hasattr(e, "add_note"):
+                    e.add_note(msg)
+                else:
+                    e.args = (e.args[0] + "\n" + msg,)
+                raise
         elif isinstance(value, (list, tuple)):
             obj = self.klass(*value, **kwargs)
         elif isinstance(value, self.klass):
@@ -1051,13 +1113,13 @@ class ObjectListConverter(ObjectConverter):
                 converted.append(self._create_object(item))
         return converted
 
-
-def named_objects2dict(objs: list, **kwargs) -> dict:
-    dct = {}
-    for obj in objs:
-        obj_dict = attrs.asdict(obj, **kwargs)
-        dct[obj_dict.pop("name")] = obj_dict
-    return dct
+    @classmethod
+    def asdict(objs: list, **kwargs) -> dict:
+        dct = {}
+        for obj in objs:
+            obj_dict = attrs.asdict(obj, **kwargs)
+            dct[obj_dict.pop("name")] = obj_dict
+        return dct
 
 
 # @attrs.define
@@ -1078,36 +1140,34 @@ def named_objects2dict(objs: list, **kwargs) -> dict:
 #             converted[key] = val
 #         return converted
 
-
-def str2datatype(datatype, **kwargs):
-    from arcana.core.data.type import DataType
-    from arcana.core.data.row import DataRow
-
-    if isinstance(datatype, str):
-        datatype = str2class(datatype, prefixes=["arcana.data.types"], **kwargs)
-    elif not issubclass(datatype, (DataType, DataRow)):
-        raise ValueError(f"Cannot resolve {datatype} to datatype")
-    return datatype
+# def str2datatype(datatype, **kwargs):
 
 
-def data_space_resolver(space, **kwargs):
-    from arcana.core.data.space import DataSpace
-
-    if isinstance(space, str):
-        space = str2class(space, prefixes=["arcana.data.spaces"], **kwargs)
-    elif not issubclass(space, DataSpace):
-        raise ValueError(f"Cannot resolve {space} to data space")
-    return space
+#     if isinstance(datatype, str):
+#         datatype = ClassResolver(datatype, prefixes=["arcana.data.types"], **kwargs)
+#     elif not issubclass(datatype, (DataType, DataRow)):
+#         raise ValueError(f"Cannot resolve {datatype} to datatype")
+#     return datatype
 
 
-def str2task(task, **kwargs):
-    from pydra.engine.task import TaskBase
+# def data_space_resolver(space, **kwargs):
+#     from arcana.core.data.space import DataSpace
 
-    if isinstance(task, str):
-        task = str2class(task, prefixes=["arcana.tasks"], **kwargs)
-    elif not isinstance(task, TaskBase):
-        raise ValueError(f"Cannot resolve {task} to data space")
-    return task
+#     if isinstance(space, str):
+#         space = ClassResolver(space, prefixes=["arcana.data.spaces"], **kwargs)
+#     elif not issubclass(space, DataSpace):
+#         raise ValueError(f"Cannot resolve {space} to data space")
+#     return space
+
+
+# def str2task(task, **kwargs):
+#     from pydra.engine.task import TaskBase
+
+#     if isinstance(task, str):
+#         task = ClassResolver(task, prefixes=["arcana.tasks"], **kwargs)
+#     elif not isinstance(task, TaskBase):
+#         raise ValueError(f"Cannot resolve {task} to data space")
+#     return task
 
 
 def extract_file_from_docker_image(
@@ -1166,20 +1226,6 @@ DOCKER_HUB = "docker.io"
 
 # Global flag to allow references to classes to be missing from the
 
-
-@attrs.define
-class Str2ClassFallbackContext:
-
-    permit: bool = False
-
-    def __enter__(self):
-        self.permit = True
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.permit = False
-
-
-STR2CLASS_FALLBACK = Str2ClassFallbackContext()
 
 package_dir = os.path.join(os.path.dirname(__file__), "..")
 

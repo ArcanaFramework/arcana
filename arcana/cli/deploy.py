@@ -11,13 +11,13 @@ import click
 import docker
 import docker.errors
 import xnat as xnatpy
+from pydra.engine.core import TaskBase
 from arcana.core.cli import cli
 from arcana.core.utils import (
     package_from_module,
     pydra_asdict,
-    str2class,
+    ClassResolver,
     DOCKER_HUB,
-    STR2CLASS_FALLBACK,
 )
 from arcana.core.deploy.image import Metapackage, CommandImage
 from arcana.deploy.xnat.image import XnatCSImage
@@ -223,7 +223,7 @@ def build(
 
     temp_dir = tempfile.mkdtemp()
 
-    target_cls = str2class(build_target, prefixes=["arcana.deploy"])
+    target_cls = ClassResolver(CommandImage)(build_target)
 
     dc = docker.from_env()
 
@@ -237,7 +237,7 @@ def build(
 
     # Don't error if the modules the task, data stores, data types, etc...
     # aren't present in the build environment
-    with STR2CLASS_FALLBACK:
+    with ClassResolver.FALLBACK:
         image_specs = target_cls.load_tree(
             spec_root,
             registry=registry,
@@ -496,7 +496,7 @@ def build_docs(spec_root, output, registry, flatten, loglevel):
 
     output.mkdir(parents=True, exist_ok=True)
 
-    with STR2CLASS_FALLBACK:
+    with ClassResolver.FALLBACK:
         image_specs = XnatCSImage.load_tree(spec_root, registry=registry)
 
     for image_spec in image_specs:
@@ -515,7 +515,7 @@ def required_packages(task_locations):
 
     required_modules = set()
     for task_location in task_locations:
-        workflow = str2class(task_location)
+        workflow = ClassResolver(TaskBase)(task_location)
         pydra_asdict(workflow, required_modules)
 
     for pkg in package_from_module(required_modules):

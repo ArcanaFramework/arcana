@@ -59,7 +59,7 @@ class AppField:
 #         if self.path is None:
 #             self.path = ""
 #         if isinstance(self.datatype, str):
-#             self.datatype = str2class(self.datatype, prefixes=["arcana.data.types"])
+#             self.datatype = ClassResolver(self.datatype, prefixes=["arcana.data.types"])
 
 
 logger = logging.getLogger("arcana")

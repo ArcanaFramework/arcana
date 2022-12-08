@@ -11,19 +11,15 @@ from collections import defaultdict
 import attrs
 from attrs.converters import default_if_none
 import pydra.engine.task
-from arcana.core.utils import (
-    ObjectListConverter,
-    ObjectConverter,
-    named_objects2dict,
-    str2task,
-    str2datatype,
-)
+from pydra.engine.core import TaskBase
+from arcana.core.utils import ObjectListConverter, ObjectConverter, ClassResolver
 from arcana.core.pipeline import (
     PipelineField,
 )
 from arcana.core.utils import show_workflow_errors
 from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
+from arcana.core.data.type import DataType
 from arcana.core.data.store import DataStore
 from arcana.core.exceptions import ArcanaUsageError
 from arcana.core.data.space import DataSpace
@@ -50,7 +46,7 @@ class DefaultColumn:
         the "row-frequency" of the input column to be added
     """
 
-    datatype: type = attrs.field(converter=str2datatype)
+    datatype: type = attrs.field(default=None, converter=ClassResolver(DataType))
     row_frequency: DataSpace = None
 
 
@@ -108,7 +104,10 @@ class CommandInput(CommandField):
     """
 
     default_column: DefaultColumn = attrs.field(
-        converter=ObjectConverter(DefaultColumn), default=None
+        converter=ObjectConverter(
+            DefaultColumn, allow_none=True, default_if_none=DefaultColumn()
+        ),
+        default=None,
     )
 
 
@@ -137,7 +136,10 @@ class CommandOutput(CommandField):
     """
 
     default_column: DefaultColumn = attrs.field(
-        converter=ObjectConverter(DefaultColumn), default=None
+        converter=ObjectConverter(
+            DefaultColumn, allow_none=True, default_if_none=DefaultColumn()
+        ),
+        default=None,
     )
 
 
@@ -196,22 +198,22 @@ class ContainerCommand:
     STORE_TYPE = "file"
     DATA_SPACE = None
 
-    task: pydra.engine.task.TaskBase = attrs.field(converter=str2task)
+    task: pydra.engine.task.TaskBase = attrs.field(converter=ClassResolver(TaskBase))
     row_frequency: DataSpace = None
     inputs: list[CommandInput] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CommandInput),
-        metadata={"asdict": named_objects2dict},
+        metadata={"asdict": ObjectListConverter.asdict},
     )
     outputs: list[CommandOutput] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CommandOutput),
-        metadata={"asdict": named_objects2dict},
+        metadata={"asdict": ObjectListConverter.asdict},
     )
     parameters: list[CommandParameter] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CommandParameter),
-        metadata={"asdict": named_objects2dict},
+        metadata={"asdict": ObjectListConverter.asdict},
     )
     configuration: dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(dict)

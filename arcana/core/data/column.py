@@ -6,7 +6,7 @@ from operator import attrgetter
 from attrs.converters import optional
 
 # from arcana.core.data.row import DataRow
-from arcana.core.utils import class2str
+from arcana.core.utils import ClassResolver
 from arcana.core.exceptions import ArcanaDataMatchError
 from ..salience import DataQuality, ColumnSalience
 from .space import DataSpace
@@ -126,7 +126,9 @@ class DataSource(DataColumn):
         # Get all items that match the data type of the source
         matches = row.resolved(self.datatype)
         if not matches:
-            format_str = class2str(self.format, strip_prefix="arcana.data.types.")
+            format_str = ClassResolver.tostr(
+                self.datatype, strip_prefix="arcana.data.types."
+            )
             msg = (
                 f"Did not find any items matching data datatype "
                 f"{format_str} in '{row.id}' {self.row_frequency} for the "
@@ -170,7 +172,7 @@ class DataSource(DataColumn):
         return match
 
     def _error_msg(self, row, matches):
-        format_str = class2str(self.datatype, strip_prefix="arcana.data.types.")
+        format_str = ClassResolver.tostr(self.datatype)
         return (
             f" attempting to select {format_str} item for the '{row.id}' "
             f"{row.frequency} in the '{self.name}' column, found:"
@@ -179,7 +181,7 @@ class DataSource(DataColumn):
         )
 
     def _format_criteria(self):
-        format_str = class2str(self.datatype, strip_prefix="arcana.data.types.")
+        format_str = ClassResolver.tostr(self.datatype)
         return (
             f"\n\n    criteria: {self.path}', is_regex={self.is_regex}, "
             + f"datatype={format_str}, quality_threshold='{self.quality_threshold}', "

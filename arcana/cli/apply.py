@@ -1,7 +1,9 @@
 import click
 from arcana.core.data.set import Dataset
 from arcana.core.cli import cli
-from arcana.core.utils import str2class, parse_value
+from pydra.engine.core import TaskBase
+from arcana.core.utils import ClassResolver, parse_value
+from arcana.core.data.type import DataType
 
 
 @cli.group()
@@ -122,7 +124,7 @@ def apply_pipeline(
 ):
 
     dataset = Dataset.load(dataset_id_str)
-    workflow = str2class(workflow_location)(
+    workflow = ClassResolver(TaskBase)(workflow_location)(
         name="workflow", **{n: parse_value(v) for n, v in parameter}
     )
 
@@ -181,4 +183,4 @@ def apply_bids_app():
 
 
 def parse_col_option(option):
-    return [(c, p, str2class(f, prefixes=["arcana.data.types"])) for c, p, f in option]
+    return [(c, p, ClassResolver(DataType)(f)) for c, p, f in option]

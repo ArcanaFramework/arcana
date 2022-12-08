@@ -3,7 +3,8 @@ import attrs
 from pathlib import Path
 from pydra import ShellCommandTask
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
-from arcana.core.utils import str2class, str2datatype, ObjectListConverter
+from arcana.core.data.type import DataType
+from arcana.core.utils import ClassResolver, ObjectListConverter
 from arcana.core.data.type import FileGroup
 
 
@@ -64,7 +65,7 @@ class ShellCmdInput:
     """
 
     name: str
-    datatype: type = attrs.field(converter=str2datatype)
+    datatype: type = attrs.field(converter=ClassResolver(DataType))
     sep: str = None
     argstr: str = None
     position: int = None
@@ -79,7 +80,7 @@ class ShellCmdInput:
     readonly: bool = False
     formatter: ty.Callable = attrs.field(
         default=None,
-        converter=str2class,
+        converter=ClassResolver(),
     )
 
 
@@ -112,13 +113,13 @@ class ShellCmdOutput:
     """
 
     name: str
-    datatype: type = attrs.field(converter=str2datatype)
+    datatype: type = attrs.field(converter=ClassResolver(DataType))
     mandatory: bool = False
     output_file_template: str = None
     output_field_name: str = None
     keep_extension: bool = True
     requires: list = None
-    callable: ty.Callable = attrs.field(converter=str2class)
+    callable: ty.Callable = attrs.field(converter=ClassResolver())
 
 
 # @dataclasses.dataclass
@@ -138,7 +139,7 @@ class ShellCmdOutput:
 
 #     def __post_init__(self):
 #         if isinstance(self.type, str):
-#             self.type = str2class(self.type)
+#             self.type = ClassResolver(self.type)
 
 
 def shell_cmd(

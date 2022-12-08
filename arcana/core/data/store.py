@@ -31,6 +31,8 @@ class DataStore(metaclass=ABCMeta):
 
     CONFIG_NAME = "stores"
 
+    DEFAULT_PACKAGE = "arcana.data.stores"
+
     @abstractmethod
     def find_rows(self, dataset):
         """

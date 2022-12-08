@@ -12,7 +12,7 @@ import attrs
 from attrs.converters import optional
 from pydra.engine.core import LazyField, Workflow
 from arcana.core.utils import (
-    class2str,
+    ClassResolver,
     parse_value,
     func_task,
     path2varname,
@@ -71,6 +71,8 @@ class DataType(metaclass=ABCMeta):
     exists: bool = attrs.field(default=True)
     provenance: ty.Dict[str, ty.Any] = attrs.field(default=None)
     row: DataRow = attrs.field(default=None)
+
+    DEFAULT_PACKAGE = "arcana.data.types"
 
     @abstractmethod
     def get(self, assume_exists=False):
@@ -157,7 +159,7 @@ class DataType(metaclass=ABCMeta):
         str
             the location of the class definition in <module-path>:<class-name> format
         """
-        loc = class2str(cls)
+        loc = ClassResolver.tostr(cls)
         if relative and loc.startswith("arcana.data.types."):
             loc = loc[len("arcana.data.types.") :]
         return loc

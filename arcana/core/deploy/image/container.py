@@ -20,7 +20,7 @@ from arcana.__about__ import PACKAGE_NAME
 from arcana.core.utils import (
     set_cwd,
     DOCKER_HUB,
-    class2str,
+    ClassResolver,
 )
 from arcana.core.data.space import DataSpace
 from arcana.__about__ import python_versions
@@ -519,7 +519,7 @@ class ContainerImage:
                 # else:
                 value = str(value)
             elif isclass(value) or isfunction(value):
-                value = class2str(value)
+                value = ClassResolver.tostr(value)
             return value
 
         return attrs.asdict(self, value_serializer=serializer, filter=filter)

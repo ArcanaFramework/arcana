@@ -13,9 +13,7 @@ from arcana import __version__
 from arcana.core.utils import (
     ObjectConverter,
     ObjectListConverter,
-    named_objects2dict,
-    class2str,
-    str2class,
+    ClassResolver,
 )
 from arcana.data.types import Directory
 from ..command import ContainerCommand
@@ -71,22 +69,24 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
     SPEC_PATH = "/arcana-spec.yaml"
     IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
 
+    DEFAULT_PACKAGE = "arcana.deploy"
+
     info_url: str = attrs.field()
     authors: ty.List[ContainerAuthor] = attrs.field(
         converter=ObjectListConverter(ContainerAuthor),
-        metadata={"asdict": named_objects2dict},
+        metadata={"asdict": ObjectListConverter.asdict},
     )
     description: str
     command: ContainerCommand = attrs.field(converter=ObjectConverter(ContainerCommand))
     licenses: list[License] = attrs.field(
         factory=dict,
         converter=ObjectListConverter(License),
-        metadata={"asdict": named_objects2dict},
+        metadata={"asdict": ObjectListConverter.asdict},
     )
     known_issues: list[KnownIssue] = attrs.field(
         factory=list,
         converter=ObjectListConverter(KnownIssue),
-        metadata={"asdict": named_objects2dict},
+        metadata={"asdict": ObjectListConverter.asdict},
     )
     long_description: str = ""
     loaded_from: Path = attrs.field(default=None, metadata={"asdict": False})
@@ -199,7 +199,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             path to file to save the spec to
         """
         yml_dct = self.asdict()
-        yml_dct["type"] = class2str(self)
+        yml_dct["type"] = ClassResolver.tostr(self)
         with open(yml_path, "w") as f:
             yaml.dump(yml_dct, f)
 
@@ -379,7 +379,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             # if self.command.configuration is not None:
             #     config = self.command.configuration
             #     # configuration keys are variable depending on the workflow class
-            tbl_cmd.write_row("Task", class2str(self.command.task))
+            tbl_cmd.write_row("Task", ClassResolver.tostr(self.command.task))
             tbl_cmd.write_row("Operates on", self.command.row_frequency.name)
 
             f.write("#### Inputs\n")
@@ -410,7 +410,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
                 for param in self.command.parameters:
                     tbl_params.write_row(
                         escaped_md(param.name),
-                        escaped_md(class2str(param.type)),
+                        escaped_md(ClassResolver.tostr(param.type)),
                         param.description,
                     )
                 f.write("\n")
@@ -455,7 +455,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
     @classmethod
     def load_in_image(cls, spec_path: Path = SPEC_PATH):
         yml_dct = cls._load_yaml(spec_path)
-        klass = str2class(yml_dct.pop("type"))
+        klass = ClassResolver(cls)(yml_dct.pop("type"))
         return klass.load(yml_dct)
 
     @classmethod

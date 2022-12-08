@@ -3,7 +3,7 @@ import traceback
 
 
 def show_cli_trace(result):
-    return "".join(traceback.datatype_exception(*result.exc_info))
+    return "".join(traceback.format_exception(*result.exc_info))
 
 
 def make_dataset_id_str(dataset, name=None):

@@ -30,7 +30,7 @@ from .utils import (
     path2varname,
     str2datatype,
     ObjectListConverter,
-    # named_objects2dict,
+    # ObjectListConverter.asdict,
 )
 import arcana.data.types.common
 

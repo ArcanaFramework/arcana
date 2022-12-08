@@ -8,7 +8,7 @@ import site
 import attrs
 from arcana.__about__ import PACKAGE_NAME
 from arcana.core.exceptions import ArcanaBuildError
-from arcana.core.utils import ObjectListConverter, named_objects2dict
+from arcana.core.utils import ObjectListConverter
 
 logger = logging.getLogger("arcana")
 
@@ -282,22 +282,22 @@ class Packages:
     system: list[SystemPackage] = attrs.field(
         factory=list,
         converter=ObjectListConverter(SystemPackage),
-        metadata={"asdict": named_objects2dict},
+        metadata={"asdict": ObjectListConverter.asdict},
     )
     pip: list[PipPackage] = attrs.field(
         factory=list,
         converter=python_package_converter,
-        metadata={"asdict": named_objects2dict},
+        metadata={"asdict": ObjectListConverter.asdict},
     )
     conda: list[CondaPackage] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CondaPackage),
-        metadata={"asdict": named_objects2dict},
+        metadata={"asdict": ObjectListConverter.asdict},
     )
     neurodocker: list[NeurodockerTemplate] = attrs.field(
         factory=list,
         converter=ObjectListConverter(NeurodockerTemplate),
-        metadata={"asdict": named_objects2dict},
+        metadata={"asdict": ObjectListConverter.asdict},
     )
 
 

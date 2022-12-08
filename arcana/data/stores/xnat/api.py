@@ -93,7 +93,7 @@ class Xnat(DataStore):
             except KeyError:
                 # Create the new resource for the file_group
                 xresource = self.login.classes.ResourceCatalog(
-                    parent=xproject, label=self.METADATA_RESOURCE, datatype="json"
+                    parent=xproject, label=self.METADATA_RESOURCE, format="json"
                 )
             definition_file = Path(tempfile.mkdtemp()) / str(name + ".json")
             with open(definition_file, "w") as f:
