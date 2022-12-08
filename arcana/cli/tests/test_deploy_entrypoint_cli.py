@@ -17,8 +17,6 @@ def write_spec(name, command, path):
         name=name,
         version=1.0,
         build_iteration="1",
-        system_packages=[],
-        python_packages=[],
         description="a test image",
         authors=[{"name": "Some One", "email": "some.one@an.email.org"}],
         info_url="http://concatenate.readthefakedocs.io",
@@ -45,13 +43,13 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
                     "name": "source1",
                     "datatype": "common:Text",
                     "field": "in_file1",
-                    "description": "dummy",
+                    "help_string": "dummy",
                 },
                 {
                     "name": "source2",
                     "datatype": "common:Text",
                     "field": "in_file2",
-                    "description": "dummy",
+                    "help_string": "dummy",
                 },
             ],
             "outputs": [
@@ -59,7 +57,7 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
                     "name": "sink1",
                     "datatype": "common:Text",
                     "field": "out_file",
-                    "description": "dummy",
+                    "help_string": "dummy",
                 }
             ],
             "parameters": [
@@ -67,7 +65,7 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
                     "name": "duplicates",
                     "type": "int",
                     "default": 2,
-                    "description": "dummy",
+                    "help_string": "dummy",
                 }
             ],
         },
@@ -135,13 +133,13 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
                     "name": "source1",
                     "datatype": "common:Text",
                     "field": "in_file1",
-                    "description": "dummy",
+                    "help_string": "dummy",
                 },
                 {
                     "name": "source2",
                     "datatype": "common:Directory",
                     "field": "in_file2",
-                    "description": "dummy",
+                    "help_string": "dummy",
                 },
             ],
             "outputs": [
@@ -149,7 +147,7 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
                     "name": "sink1",
                     "datatype": "common:Text",
                     "field": "out_file",
-                    "description": "dummy",
+                    "help_string": "dummy",
                 }
             ],
             "parameters": [
@@ -157,7 +155,7 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
                     "name": "duplicates",
                     "type": "int",
                     "default": 2,
-                    "description": "dummy",
+                    "help_string": "dummy",
                 }
             ],
         },
@@ -239,7 +237,7 @@ def test_entrypoint_cli_on_row(cli_runner, work_dir):
                     "name": "a_row",
                     "datatype": "arcana.core.data.row:DataRow",
                     "field": "filenumber_row",
-                    "description": "dummy",
+                    "help_string": "dummy",
                 },
             ],
         },
@@ -294,7 +292,7 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
                     "datatype": "arcana.core.testing.formats:EncodedText",
                     "stored_format": "common:Text",
                     "field": "in_file",
-                    "description": "dummy",
+                    "help_string": "dummy",
                 },
             ],
             "outputs": [
@@ -302,14 +300,14 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
                     "name": "sink1",
                     "datatype": "arcana.core.testing.formats:EncodedText",
                     "field": "out",
-                    "description": "dummy",
+                    "help_string": "dummy",
                 },
                 {
                     "name": "sink2",
                     "datatype": "arcana.core.testing.formats:EncodedText",
                     "stored_format": "arcana.core.testing.formats:DecodedText",
                     "field": "out",
-                    "description": "dummy",
+                    "help_string": "dummy",
                 },
             ],
         },

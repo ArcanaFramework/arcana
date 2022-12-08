@@ -225,20 +225,20 @@ def command_spec():
                 "datatype": "common:Text",
                 "field": "in_file1",
                 "row_frequency": "session",
-                "description": "the first file to pass as an input",
+                "help_string": "the first file to pass as an input",
             },
             "second_file": {
                 "datatype": "common:Text",
                 "field": "in_file2",
                 "row_frequency": "session",
-                "description": "the second file to pass as an input",
+                "help_string": "the second file to pass as an input",
             },
         },
         "outputs": {
             "concatenated": {
                 "datatype": "common:Text",
                 "field": "out_file",
-                "description": "an output file",
+                "help_string": "an output file",
             }
         },
         "parameters": {
@@ -247,7 +247,7 @@ def command_spec():
                 "default": 2,
                 "type": "int",
                 "required": True,
-                "description": "a parameter",
+                "help_string": "a parameter",
             }
         },
         "row_frequency": "session",

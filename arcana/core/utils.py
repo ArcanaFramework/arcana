@@ -281,7 +281,7 @@ def str2class(class_str: str, prefixes: Sequence[str] = ()) -> type:
                 "builtins module"
             ) from None
     module = None
-    for prefix in [None] + list(prefixes):
+    for prefix in list(prefixes) + [None]:
         if prefix is not None:
             mod_name = prefix + ("." if prefix[-1] != "." else "") + module_path
         else:
@@ -1027,7 +1027,7 @@ class ObjectConverter:
             else:
                 value_kwargs = value
             value_kwargs.update(kwargs)
-            obj = value(**value_kwargs)
+            obj = self.klass(**value_kwargs)
         elif isinstance(value, (list, tuple)):
             obj = self.klass(*value, **kwargs)
         elif isinstance(value, self.klass):

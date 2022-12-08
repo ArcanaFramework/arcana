@@ -70,7 +70,7 @@ def test_bids_app_entrypoint(
         inputs_config[varname] = {
             "path": path,
             "datatype": format_str,
-            "description": "dummy",
+            "help_string": "dummy",
         }
 
     outputs_config = []
@@ -81,7 +81,7 @@ def test_bids_app_entrypoint(
         outputs_config[varname] = {
             "path": path,
             "datatype": format_str,
-            "description": "dummy",
+            "help_string": "dummy",
         }
 
     image_spec = PipelineImage(

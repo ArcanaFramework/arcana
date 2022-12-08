@@ -44,16 +44,11 @@ class ContainerImage:
         specification has been updated but the underlying software is the same
     org : str
         the organisation the image will be tagged within
-    base_image : BaseImage, optional
+    base_image : arcana.core.deploy.image.components.BaseImage, optional
         the base image to build from
-    package_manager : str, optional
-        the package manager used to install system packages (should match OS on base image)
-    python_packages:  Iterable[PipPackage or dict[str, str] or tuple[str, str]], optional
-        Name and version of the Python PyPI packages to add to the image (in
-        addition to Arcana itself)
-    system_packages: Iterable[str], optional
-        Name and version of operating system packages (see Neurodocker) to add
-        to the image
+    packages : arcana.core.deploy.image.components.Packages
+        System (OS), PyPI, Conda and Neurodocker packages/templates to be installed
+        in the image
     package_templates : Iterable[dict[str, str]]
         Neurodocker package installation templates to be installed inside the image. A
         dictionary containing the 'name' and 'version' of the template along

@@ -35,8 +35,6 @@ def run_spec(
             "command": command_spec,
             "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
             "info_url": "http://concatenate.readthefakedocs.io",
-            "system_packages": [],
-            "python_packages": [],
             "readme": "This is a test README",
             "registry": "a.docker.registry.io",
         }
@@ -61,8 +59,6 @@ def run_spec(
                 {"name": "Some One Else", "email": "some.oneelse@an.email.org"}
             ],
             "info_url": "http://a-bids-app.readthefakedocs.io",
-            "system_packages": [],
-            "python_packages": [],
             "package_manager": "apt",
             "readme": "This is another test README for BIDS app image",
             "registry": "another.docker.registry.io",

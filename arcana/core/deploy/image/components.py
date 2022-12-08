@@ -30,12 +30,28 @@ class KnownIssue:
 class BaseImage:
 
     name: str = "ubuntu"
-    tag: str = "kinetic"
-    package_manager: str = "apt"
+    tag: str = "kinetic"  # FIXME: should revert back to jammy after tests pass
+    package_manager: str = attrs.field()
 
     @property
     def reference(self):
         return f"{self.name}:{self.tag}"
+
+    @package_manager.default
+    def package_manager_default(self):
+        if self.name in ("fedora", "centos"):
+            package_manager = "yum"
+        else:
+            package_manager = "apt"
+        return package_manager
+
+    @package_manager.validator
+    def package_manager_validator(self, _, package_manager):
+        if package_manager not in ("yum", "apt"):
+            raise ValueError(
+                f"Unsupported package manager '{package_manager}' provided. Only 'apt' "
+                "and 'yum' package managers are currently supported"
+            )
 
 
 @attrs.define

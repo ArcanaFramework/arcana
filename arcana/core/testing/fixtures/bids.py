@@ -137,17 +137,17 @@ def bids_command_spec(mock_bids_app_executable):
         "T1w": {
             "path": "anat/T1w",
             "datatype": "medimage:NiftiGzX",
-            "description": "T1-weighted image",
+            "help_string": "T1-weighted image",
         },
         "T2w": {
             "path": "anat/T2w",
             "datatype": "medimage:NiftiGzX",
-            "description": "T2-weighted image",
+            "help_string": "T2-weighted image",
         },
         "DWI": {
             "path": "dwi/dwi",
             "datatype": "medimage:NiftiGzXFslgrad",
-            "description": "DWI-weighted image",
+            "help_string": "DWI-weighted image",
         },
     }
 
@@ -155,12 +155,12 @@ def bids_command_spec(mock_bids_app_executable):
         "file1": {
             "path": "file1",
             "datatype": "common:Text",
-            "description": "an output file",
+            "help_string": "an output file",
         },
         "file2": {
             "path": "file2",
             "datatype": "common:Text",
-            "description": "another output file",
+            "help_string": "another output file",
         },
     }
 

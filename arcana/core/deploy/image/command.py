@@ -39,14 +39,8 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
         the organisation the image will be tagged within
     base_image : BaseImage, optional
         the base image to build from
-    package_manager : str, optional
+    packages : Packages, optional
         the package manager used to install system packages (should match OS on base image)
-    python_packages:  Iterable[PipPackage or dict[str, str] or tuple[str, str]], optional
-        Name and version of the Python PyPI packages to add to the image (in
-        addition to Arcana itself)
-    system_packages: Iterable[str], optional
-        Name and version of operating system packages (see Neurodocker) to add
-        to the image
     registry : str, optional
         the container registry the image is to be installed at
     info_url : str

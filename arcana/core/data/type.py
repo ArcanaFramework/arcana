@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 from pathlib import Path
 import typing as ty
@@ -27,6 +28,9 @@ from arcana.core.exceptions import (
     ArcanaFormatConversionError,
 )
 from ..salience import DataQuality  # @ignore reshadowedImports
+
+if ty.TYPE_CHECKING:
+    from arcana.core.data.row import DataRow
 
 
 logger = logging.getLogger("arcana")
@@ -66,7 +70,7 @@ class DataType(metaclass=ABCMeta):
     quality: DataQuality = attrs.field(default=DataQuality.usable)
     exists: bool = attrs.field(default=True)
     provenance: ty.Dict[str, ty.Any] = attrs.field(default=None)
-    row = attrs.field(default=None)
+    row: DataRow = attrs.field(default=None)
 
     @abstractmethod
     def get(self, assume_exists=False):

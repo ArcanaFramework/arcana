@@ -131,8 +131,6 @@ TEST_IMAGE_SPEC = {
     "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
     "info_url": "http://concatenate.readthefakedocs.io",
     "description": "A test of the license installation",
-    "system_packages": [],
-    "python_packages": [],
     "readme": "This is a test README",
     "licenses": {
         LICENSE_NAME: {
@@ -157,7 +155,7 @@ TEST_IMAGE_SPEC = {
                 "name": LICENSE_OUTPUT_FIELD,
                 "datatype": "common:Text",
                 "field": "out",
-                "description": "the validated license path",
+                "help_string": "the validated license path",
             }
         ],
         "parameters": [
@@ -166,7 +164,7 @@ TEST_IMAGE_SPEC = {
                 "type": "str",
                 "field": "expected_license_path",
                 "required": True,
-                "description": "the expected contents of the license file",
+                "help_string": "the expected contents of the license file",
             }
         ],
     },

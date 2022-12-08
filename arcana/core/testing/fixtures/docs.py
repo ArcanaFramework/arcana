@@ -28,11 +28,11 @@ command:
   inputs:
     - name: in_file
       datatype: common:Text
-      description: the input file
+      help_string: the input file
   outputs:
     - name: out_file
       datatype: common:Text
-      description: the output file
+      help_string: the output file
     """.strip(),
     f"""
 ---
@@ -93,11 +93,11 @@ command:
   inputs:
     - name: in_file
       datatype: common:Text
-      description: the input file
+      help_string: the input file
   outputs:
     - name: out_file
       datatype: common:Text
-      description: the output file
+      help_string: the output file
     """.strip(),
     """
 ---
@@ -178,27 +178,27 @@ command:
         path: anat/T1w
         datatype: medimage:NiftiGzX
         stored_format: medimage:Dicom
-        description: "T1-weighted anatomical scan"
+        help_string: "T1-weighted anatomical scan"
       - name: T2w
         path: anat/T2w
         datatype: medimage:NiftiGzX
         stored_format: medimage:Dicom
-        description: "T2-weighted anatomical scan"
+        help_string: "T2-weighted anatomical scan"
       - name: fMRI
         path: func/task-rest_bold
         datatype: medimage:NiftiGzX
         stored_format: medimage:Dicom
-        description: "functional MRI"
+        help_string: "functional MRI"
     outputs: &outputs
       - name: mriqc
         path: mriqc
         datatype: common:Directory
-        description: "MRIQC output directory"
+        help_string: "MRIQC output directory"
     parameters:
       - name: fmriprep_flags
         field: flags
         type: str
-        description: description of flags param
+        help_string: description of flags param
     row_frequency: session
     configuration:
       inputs: *inputs

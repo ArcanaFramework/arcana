@@ -25,8 +25,10 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         "command": command_spec,
         "version": "1.0",
         "build_iteration": "1",
-        "system_packages": [{"name": "vim"}],  # just to test it out
-        "python_packages": [{"name": "pytest"}],  # just to test it out
+        "packages": {
+            "system": ["vim"],  # just to test it out
+            "pip": [{"pytest": "7.1.2", "click": None}],  # just to test it out
+        },
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
         "info_url": "http://concatenate.readthefakedocs.io",
         "description": "a test image spec",
@@ -109,8 +111,6 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         "command": command_spec,
         "version": "1.0",
         "build_iteration": "1",
-        "system_packages": [],
-        "python_packages": [],
         "description": "a test image",
         "name": "test_deploy_rebuild_cli",
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
