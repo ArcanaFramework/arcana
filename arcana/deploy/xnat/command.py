@@ -6,6 +6,7 @@ from arcana.core.data.type import FileGroup
 from arcana.core.deploy.command import ContainerCommand
 from arcana.data.stores.xnat import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
+from arcana.core.utils import ClassResolver
 
 if ty.TYPE_CHECKING:
     from .image import XnatCSImage
@@ -190,7 +191,7 @@ class XnatCSCommand(ContainerCommand):
             cmd_json["outputs"].append(
                 {
                     "name": output.name,
-                    "description": f"{output.field} ({output.datatype.class2str()})",
+                    "description": f"{output.field} ({ClassResolver.tostr(output.datatype)})",
                     "required": True,
                     "mount": "out",
                     "path": out_fname,
