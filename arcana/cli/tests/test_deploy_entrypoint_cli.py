@@ -289,8 +289,8 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
             "inputs": [
                 {
                     "name": "source",
-                    "datatype": "arcana.core.testing.formats:EncodedText",
-                    "stored_format": "common:Text",
+                    "datatype": "arcana.core.testing.data.types:EncodedText",
+                    "default_column": {"datatype": "common:Text"},
                     "field": "in_file",
                     "help_string": "dummy",
                 },
@@ -298,14 +298,16 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
             "outputs": [
                 {
                     "name": "sink1",
-                    "datatype": "arcana.core.testing.formats:EncodedText",
+                    "datatype": "arcana.core.testing.data.types:EncodedText",
                     "field": "out",
                     "help_string": "dummy",
                 },
                 {
                     "name": "sink2",
-                    "datatype": "arcana.core.testing.formats:EncodedText",
-                    "stored_format": "arcana.core.testing.formats:DecodedText",
+                    "datatype": "arcana.core.testing.data.types:EncodedText",
+                    "default_column": {
+                        "datatype": "arcana.core.testing.data.types:DecodedText"
+                    },
                     "field": "out",
                     "help_string": "dummy",
                 },

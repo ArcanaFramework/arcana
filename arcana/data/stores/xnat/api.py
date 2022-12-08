@@ -340,7 +340,7 @@ class Xnat(DataStore):
                 xresource.delete()
             # Create the new resource for the file_group
             xresource = self.login.classes.ResourceCatalog(
-                parent=xrow, label=escaped_name, datatype=file_group.class_name()
+                parent=xrow, label=escaped_name, format=file_group.class_name()
             )
             # Create cache path
             base_cache_path = self.cache_path(file_group)
@@ -506,7 +506,7 @@ class Xnat(DataStore):
         zip_path = op.join(tmp_dir, "download.zip")
         with open(zip_path, "wb") as f:
             xresource.xnat_session.download_stream(
-                xresource.uri + "/files", f, datatype="zip", verbose=True
+                xresource.uri + "/files", f, format="zip", verbose=True
             )
         checksums = self.get_checksums(file_group)
         # Extract downloaded zip file

@@ -56,10 +56,10 @@ def test_get_items(xnat_dataset, caplog):
     expected_files = {}
     for scan in blueprint.scans:
         for resource in scan.resources:
-            if resource.format is not None:
+            if resource.datatype is not None:
                 source_name = scan.name + resource.name
                 xnat_dataset.add_source(
-                    source_name, path=scan.name, datatype=resource.format
+                    source_name, path=scan.name, datatype=resource.datatype
                 )
                 expected_files[source_name] = set(resource.filenames)
     with caplog.at_level(logging.INFO, logger="arcana"):

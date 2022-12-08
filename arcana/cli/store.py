@@ -116,7 +116,7 @@ def refresh(nickname, user, password):
 def ls():
     click.echo("Built-in stores\n---------------")
     for name, store in sorted(DataStore.singletons().items(), key=itemgetter(0)):
-        click.echo(f"{name} - {ClassResolver.tostr(store)}")
+        click.echo(f"{name} - {ClassResolver.tostr(store, strip_prefix=False)}")
     click.echo("\nSaved stores\n-------------")
     for name, entry in DataStore.load_saved_entries().items():
         store_class = entry.pop("class")

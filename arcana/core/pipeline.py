@@ -56,7 +56,11 @@ class PipelineField:
     field: str = attrs.field()
     datatype: type = attrs.field(
         default=None,
-        converter=lambda t: ClassResolver(DataType)(t) if t is not None else None,
+        converter=ClassResolver(
+            DataType,
+            allow_none=True,
+            alternative_types=[arcana.core.data.row.DataRow],
+        ),
     )
 
     @field.default

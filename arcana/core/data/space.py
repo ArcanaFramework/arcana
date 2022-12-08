@@ -175,7 +175,7 @@ class DataSpace(Enum):
                 f"'{s}' is not a string of the format <data-space-enum>[<value>]"
             )
         class_loc, val = match.groups()
-        return ClassResolver(class_loc, prefixes=["arcana.data.spaces"])[val]
+        return ClassResolver(cls)(class_loc)[val]
 
     @classproperty
     def DEFAULT_PACKAGE(cls):

@@ -39,18 +39,19 @@ class DefaultColumn:
 
     Parameters
     ----------
-    path : str
-        path to where the data type will be placed (BIDS only)
-    stored_format : str
+    datatype : str
         the type the data items will be stored in (e.g. file-format)
     row_frequency : DataSpace
         the "row-frequency" of the input column to be added
+    path : str
+        path to where the data will be placed in the repository
     """
 
     datatype: type = attrs.field(
         default=None, converter=ClassResolver(DataType, allow_none=True)
     )
     row_frequency: DataSpace = None
+    path: str = None
 
 
 @attrs.define(kw_only=True)
@@ -268,6 +269,9 @@ class ContainerCommand:
                 f"Value for row_frequency must be provided to {type(self).__name__}.__init__ "
                 "because it doesn't have a defined DATA_SPACE class attribute"
             )
+        for field in self.inputs + self.outputs:
+            if field.default_column.datatype is None:
+                field.default_column.datatype = field.datatype
 
     @property
     def name(self):
@@ -470,10 +474,10 @@ class ContainerCommand:
             logger.info(
                 "Parameter %s (type %s) passed value %s",
                 param.name,
-                param.type,
+                param.datatype,
                 param_value,
             )
-            if param_value == "" and param.type is not str:
+            if param_value == "" and param.datatype is not str:
                 param_value = None
                 logger.info(
                     "Non-string parameter '%s' passed empty string, setting to NOTHING",
@@ -489,11 +493,11 @@ class ContainerCommand:
 
             # Convert parameter to parameter type
             try:
-                param_value = param.type(param_value)
+                param_value = param.datatype(param_value)
             except ValueError:
                 raise ValueError(
                     f"Could not convert value passed to '{param.name}' parameter, "
-                    f"{param_value}, into {param.type}"
+                    f"{param_value}, into {param.datatype}"
                 )
             kwargs[param.field] = param_value
             if param_config := param.config_dict:

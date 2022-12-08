@@ -386,9 +386,10 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             tbl_inputs = MarkdownTable(f, "Name", "Format", "Description")
             if self.command.inputs is not None:
                 for inpt in self.command.inputs:
+
                     tbl_inputs.write_row(
                         escaped_md(inpt.name),
-                        self._data_format_html(inpt.stored_format),
+                        self._data_format_html(inpt.datatype),
                         inpt.description,
                     )
                 f.write("\n")
@@ -399,7 +400,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
                 for outpt in self.command.outputs:
                     tbl_outputs.write_row(
                         escaped_md(outpt.name),
-                        self._data_format_html(outpt.stored_format),
+                        self._data_format_html(outpt.datatype),
                         outpt.description,
                     )
                 f.write("\n")

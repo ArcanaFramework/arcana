@@ -183,8 +183,7 @@ class XnatCSCommand(ContainerCommand):
         # Set up output handlers and arguments
         cmd_args = []
         for output in self.outputs:
-            label = output.path.split("/")[0]
-            out_fname = output.path + (
+            out_fname = output.name + (
                 "." + output.datatype.ext if output.datatype.ext else ""
             )
             # Set the path to the
@@ -205,11 +204,11 @@ class XnatCSCommand(ContainerCommand):
                     "via-wrapup-command": None,
                     "as-a-child-of": "SESSION",
                     "type": "Resource",
-                    "label": label,
+                    "label": output.name,
                     "format": output.datatype.class_name(),
                 }
             )
-            cmd_args.append(f"--output {output.name} '{output.path}'")
+            cmd_args.append(f"--output {output.name} '{output.name}'")
 
         return cmd_args
 
