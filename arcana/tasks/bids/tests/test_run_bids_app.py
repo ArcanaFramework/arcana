@@ -68,18 +68,22 @@ def test_bids_app_entrypoint(
         varname = path2varname(path)
         args.extend(["--input", varname, varname])
         inputs_config[varname] = {
-            "path": path,
+            "configuration": {
+                "path": path,
+            },
             "datatype": format_str,
             "help_string": "dummy",
         }
 
-    outputs_config = []
+    outputs_config = {}
     for path, _, datatype, _ in blueprint.derivatives:
         format_str = ClassResolver.tostr(datatype)
         varname = path2varname(path)
         args.extend(["--output", varname, varname])
         outputs_config[varname] = {
-            "path": path,
+            "configuration": {
+                "path": path,
+            },
             "datatype": format_str,
             "help_string": "dummy",
         }
@@ -88,8 +92,6 @@ def test_bids_app_entrypoint(
         name="test_bids_app_entrypoint",
         version="1.0",
         build_iteration="1",
-        system_packages=[],
-        python_packages=[],
         description="a test image",
         authors=[{"name": "Some One", "email": "some.one@an.email.org"}],
         info_url="http://concatenate.readthefakedocs.io",
@@ -99,8 +101,6 @@ def test_bids_app_entrypoint(
             "inputs": inputs_config,
             "outputs": outputs_config,
             "configuration": {
-                "inputs": inputs_config,
-                "outputs": outputs_config,
                 "executable": str(mock_bids_app_executable),
             },
         },

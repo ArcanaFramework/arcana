@@ -135,17 +135,23 @@ ENTRYPOINT ["/launch.sh"]"""
 def bids_command_spec(mock_bids_app_executable):
     inputs = {
         "T1w": {
-            "path": "anat/T1w",
+            "configuration": {
+                "path": "anat/T1w",
+            },
             "datatype": "medimage:NiftiGzX",
             "help_string": "T1-weighted image",
         },
         "T2w": {
-            "path": "anat/T2w",
+            "configuration": {
+                "path": "anat/T2w",
+            },
             "datatype": "medimage:NiftiGzX",
             "help_string": "T2-weighted image",
         },
         "DWI": {
-            "path": "dwi/dwi",
+            "configuration": {
+                "path": "dwi/dwi",
+            },
             "datatype": "medimage:NiftiGzXFslgrad",
             "help_string": "DWI-weighted image",
         },
@@ -153,12 +159,16 @@ def bids_command_spec(mock_bids_app_executable):
 
     outputs = {
         "file1": {
-            "path": "file1",
+            "configuration": {
+                "path": "file1",
+            },
             "datatype": "common:Text",
             "help_string": "an output file",
         },
         "file2": {
-            "path": "file2",
+            "configuration": {
+                "path": "file2",
+            },
             "datatype": "common:Text",
             "help_string": "another output file",
         },
