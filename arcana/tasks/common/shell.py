@@ -1,7 +1,7 @@
 import typing as ty
 import attrs
-from pathlib import Path
 from pydra import ShellCommandTask
+import pydra.engine.specs
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
 from arcana.core.data.type import DataType
 from arcana.core.utils import ClassResolver, ObjectListConverter
@@ -9,7 +9,42 @@ from arcana.core.data.type import FileGroup
 
 
 @attrs.define(kw_only=True)
-class ShellCmdInput:
+class ShellCmdField:
+    name: str
+    datatype: type = attrs.field(
+        converter=ClassResolver(DataType, alternative_types=[bool, str, float, int])
+    )
+    help_string: str = ""
+
+    def attrs_metadata(self, skip_fields=None):
+        if skip_fields is None:
+            skip_fields = []
+        skip_fields += ["name", "datatype"]
+        metadata = {
+            n: v
+            for n, v in attrs.asdict(self).items()
+            if n not in skip_fields and v is not None
+        }
+        if issubclass(self.datatype, FileGroup) and "argstr" not in metadata:
+            metadata["argstr"] = ""
+        return metadata
+
+    @property
+    def attrs_type(self):
+        if issubclass(self.datatype, FileGroup):
+            if self.datatype.is_dir:
+                tp = pydra.engine.specs.Directory
+            else:
+                tp = pydra.engine.specs.File
+        elif self.datatype.__module__ == "builtins":
+            tp = self.datatype
+        else:
+            raise ValueError(f"Unsupported shell command input type {self.datatype}")
+        return tp
+
+
+@attrs.define(kw_only=True)
+class ShellCmdInput(ShellCmdField):
     """Specifies an input field to the shell command
 
     Parameters
@@ -64,30 +99,31 @@ class ShellCmdInput:
         field will be sent).
     """
 
-    name: str
-    datatype: type = attrs.field(converter=ClassResolver(DataType))
     sep: str = None
     argstr: str = None
     position: int = None
     allowed_values: list = None
-    requires: list = attrs.field(factory=list)
-    xor: list = attrs.field(factory=list)
-    output_file_template: str = None
-    output_field_name: str = None
-    copyfile: bool = False
-    mandatory: bool = False
-    keep_extension: bool = True
-    readonly: bool = False
+    requires: list = None
+    xor: list = None
+    copyfile: bool = None
+    mandatory: bool = None
+    readonly: bool = None
     formatter: ty.Callable = attrs.field(
         default=None,
-        converter=ClassResolver(),
+        converter=ClassResolver(allow_none=True),
     )
 
 
 @attrs.define(kw_only=True)
-class ShellCmdOutput:
-    """Specifies an input field from the shell command
+class ShellCmdOutput(ShellCmdField):
+    """Specifies an output field from the shell command
 
+    Parameters
+    ----------
+    name : str
+        the name of the input field
+    datatype : type
+        the type of the input field
     mandatory : bool, default: False
         If True the output file has to exist, otherwise an error will be raised.
     output_file_template : str
@@ -112,34 +148,37 @@ class ShellCmdOutput:
         passed) or any input field name (a specific input field will be sent).
     """
 
-    name: str
-    datatype: type = attrs.field(converter=ClassResolver(DataType))
-    mandatory: bool = False
+    argstr: bool = attrs.field(default=None, metadata={"input": True})
+    mandatory: bool = None
+    position: int = attrs.field(default=None, metadata={"input": True})
     output_file_template: str = None
     output_field_name: str = None
-    keep_extension: bool = True
+    keep_extension: bool = attrs.field(default=None, metadata={"input": True})
     requires: list = None
-    callable: ty.Callable = attrs.field(converter=ClassResolver())
+    formatter: ty.Callable = attrs.field(
+        default=None, converter=ClassResolver(allow_none=True), metadata={"input": True}
+    )
+    callable: ty.Callable = attrs.field(
+        default=None, converter=ClassResolver(allow_none=True)
+    )
 
+    @property
+    def input_required(self):
+        input_only_values = [getattr(self, f) for f in self.input_only_fields]
+        return any(v is not None for v in input_only_values)
 
-# @dataclasses.dataclass
-# class Parameter:
+    @property
+    def input_only_fields(self):
+        return [f.name for f in attrs.fields(type(self)) if f.metadata.get("input")]
 
-#     name: str
-#     type: type = str
-#     argstr: str = ""
-#     position: int = None
-#     default = None
-#     description: str = ""
-
-#     @classmethod
-#     def fromdict(cls, dct):
-#         field_names = [f.name for f in dataclasses.fields(cls)]
-#         return cls(**{k: v for k, v in dct.items() if k in field_names})
-
-#     def __post_init__(self):
-#         if isinstance(self.type, str):
-#             self.type = ClassResolver(self.type)
+    @property
+    def attrs_type(self):
+        tp = super().attrs_type
+        # FIXME: this shouldn't be necessary. Pydra should be smart enough that this is
+        # an output file and shouldn't need to exist
+        if tp in (pydra.engine.specs.File, pydra.engine.specs.Directory):
+            tp = str
+        return tp
 
 
 def shell_cmd(
@@ -149,9 +188,8 @@ def shell_cmd(
     executable: str = "",  # Use entrypoint of container,
     parameters: list[ty.Union[ShellCmdInput, dict[str, str]]] = None,
 ):
-    """Creates a Pydra shell command task which takes file inputs, maps them to
-    a BIDS dataset, executes a BIDS app, and then extracts the
-    the derivatives that were stored back in the BIDS dataset by the app
+    """Creates a Pydra shell command task which takes file inputs and runs it on the
+    provided inputs, outputs and parameters
 
     Parameters
     ----------
@@ -184,45 +222,34 @@ def shell_cmd(
         A Pydra shell command task that can be deployed using the deployment framework
     """
     inputs = ObjectListConverter(ShellCmdInput)(inputs)
-    outputs = ObjectListConverter(ShellCmdInput)(outputs)
+    outputs = ObjectListConverter(ShellCmdOutput)(outputs)
     parameters = ObjectListConverter(ShellCmdInput)(parameters)
 
     input_fields = []
     for inpt in inputs + parameters:
-        metadata = attrs.asdict(inpt)
-        name = metadata.pop("name")
-        type_ = metadata.pop("datatype")
-        if issubclass(inpt.datatype, FileGroup):
-            type_ = ty.Union[Path, str]
         input_fields.append(
             (
-                name,
-                type_,
-                metadata,
+                inpt.name,
+                inpt.attrs_type,
+                inpt.attrs_metadata(),
             )
         )
 
     output_fields = []
     for outpt in outputs:
-        metadata = {}
-        outpt_type = ty.Union[
-            Path, str if issubclass(outpt.datatype, FileGroup) else outpt.datatype
-        ]
-        if outpt.output_file_template is not None:
-            metadata["output_file_template"] = outpt.output_file_template
-        if outpt.position is not None:
-            inpt_metadata = {"argstr": outpt.argstr}
-            inpt_metadata.update(metadata)
-            input_fields.append((outpt.name, outpt_type, inpt_metadata))
-            if outpt.output_file_template is None:
-                metadata["output_file_template"] = "{{{outpt.name}}}"
-        if outpt.requires is not None:
-            metadata["requires"] = outpt.requires
+        if outpt.input_required:
+            input_fields.append(
+                (
+                    outpt.name,
+                    outpt.attrs_type,
+                    outpt.attrs_metadata(),
+                )
+            )
         output_fields.append(
             (
                 outpt.name,
-                outpt_type,
-                metadata,
+                outpt.attrs_type,
+                outpt.attrs_metadata(skip_fields=outpt.input_only_fields),
             )
         )
 

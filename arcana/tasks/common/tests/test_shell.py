@@ -3,19 +3,19 @@ from arcana.tasks.common import shell_cmd
 
 def test_shell_cmd(work_dir):
 
-    task = shell_cmd(
+    cp = shell_cmd(
         name="copy",
         executable="cp",
         inputs=[
             {
                 "name": "in_dir",
-                "datatype": "common:Text",
+                "datatype": "common:Directory",
             }
         ],
         outputs=[
             {
                 "name": "out_dir",
-                "datatype": "common:Text",
+                "datatype": "common:Directory",
                 "position": -1,
             }
         ],
@@ -36,11 +36,11 @@ def test_shell_cmd(work_dir):
 
     out_dir = work_dir / "dest-dir"
 
-    result = task(
-        in_dir=in_dir,
-        out_dir=out_dir,
+    result = cp(
+        in_dir=str(in_dir),
+        out_dir=str(out_dir),
         recursive=True,
     )
 
-    assert result.output.out_dir == out_dir
+    assert result.output.out_dir == str(out_dir)
     assert list(p.name for p in out_dir.iterdir()) == ["a-file.txt"]
