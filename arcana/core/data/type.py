@@ -678,7 +678,7 @@ class FileGroup(DataType, metaclass=ABCMeta):
                         converter = meth
         if converter is None:
             raise ArcanaFormatConversionError(
-                f"No converters defined between {from_format} and {cls}"
+                f"No datatype converters are defined from {from_format} to {cls}"
             )
         return converter
 

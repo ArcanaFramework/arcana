@@ -13,7 +13,12 @@ import attrs
 from attrs.converters import default_if_none
 import pydra.engine.task
 from pydra.engine.core import TaskBase
-from arcana.core.utils import ObjectListConverter, ObjectConverter, ClassResolver
+from arcana.core.utils import (
+    ObjectListConverter,
+    ObjectConverter,
+    ClassResolver,
+    add_exc_note,
+)
 from arcana.core.pipeline import (
     PipelineField,
 )
@@ -22,7 +27,7 @@ from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
 from arcana.core.data.type import DataType
 from arcana.core.data.store import DataStore
-from arcana.core.exceptions import ArcanaUsageError
+from arcana.core.exceptions import ArcanaUsageError, ArcanaFormatConversionError
 from arcana.core.data.space import DataSpace
 
 if ty.TYPE_CHECKING:
@@ -128,10 +133,26 @@ class CommandInput(CommandField):
 
     default_column: DefaultColumn = attrs.field(
         converter=ObjectConverter(
-            DefaultColumn, allow_none=True, default_if_none=DefaultColumn()
+            DefaultColumn, allow_none=True, default_if_none=DefaultColumn
         ),
         default=None,
     )
+
+    @default_column.validator
+    def default_column_validator(self, _, default_column: DefaultColumn):
+        if default_column.datatype is not None:
+            try:
+                self.datatype.find_converter(default_column.datatype)
+            except ArcanaFormatConversionError as e:
+                add_exc_note(
+                    e,
+                    f"required to convert from the default column to the '{self.name}' input",
+                )
+                raise
+
+    def __attrs_post_init__(self):
+        if self.default_column.datatype is None:
+            self.default_column.datatype = self.datatype
 
 
 @attrs.define(kw_only=True)
@@ -160,10 +181,26 @@ class CommandOutput(CommandField):
 
     default_column: DefaultColumn = attrs.field(
         converter=ObjectConverter(
-            DefaultColumn, allow_none=True, default_if_none=DefaultColumn()
+            DefaultColumn, allow_none=True, default_if_none=DefaultColumn
         ),
         default=None,
     )
+
+    @default_column.validator
+    def default_column_validator(self, _, default_column: DefaultColumn):
+        if default_column.datatype is not None:
+            try:
+                default_column.datatype.find_converter(self.datatype)
+            except ArcanaFormatConversionError as e:
+                add_exc_note(
+                    e,
+                    f"required to convert to the default column from the '{self.name}' output",
+                )
+                raise
+
+    def __attrs_post_init__(self):
+        if self.default_column.datatype is None:
+            self.default_column.datatype = self.datatype
 
 
 @attrs.define(kw_only=True)
@@ -269,9 +306,6 @@ class ContainerCommand:
                 f"Value for row_frequency must be provided to {type(self).__name__}.__init__ "
                 "because it doesn't have a defined DATA_SPACE class attribute"
             )
-        for field in self.inputs + self.outputs:
-            if field.default_column.datatype is None:
-                field.default_column.datatype = field.datatype
 
     @property
     def name(self):
@@ -426,9 +460,7 @@ class ContainerCommand:
                 logger.info(f"Adding new source column '{inpt.name}'")
                 dataset.add_source(
                     name=inpt.name,
-                    datatype=inpt.default_column.datatype
-                    if inpt.default_column
-                    else inpt.datatype,
+                    datatype=inpt.default_column.datatype,
                     path=path,
                     is_regex=True,
                     **source_kwargs,
@@ -458,9 +490,7 @@ class ContainerCommand:
                 logger.info(f"Adding new source column '{output.name}'")
                 dataset.add_sink(
                     name=output.name,
-                    datatype=output.default_column.datatype
-                    if output.default_column
-                    else output.datatype,
+                    datatype=output.default_column.datatype,
                     path=path,
                 )
             if output_config := output.config_dict:

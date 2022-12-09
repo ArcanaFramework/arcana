@@ -1,7 +1,6 @@
 from __future__ import annotations
 import attrs
 from typing import Iterable, Union, List
-from arcana.core.deploy.image.components import BaseImage
 
 
 @attrs.define
@@ -12,71 +11,71 @@ class DocsFixture:
     licenses_to_provide: list[str] = attrs.field(factory=list)
 
 
+# minimal_doc_spec = DocsFixture(
+#     """
+# version: &version '0.16.1'
+# build_iteration: '9'
+# authors:
+#   - name: author_name
+#     email: author@email.org
+# info_url: https://example.com
+# description: >-
+#   a test specification
+# command:
+#   task: arcana.core.testing.tasks:identity_file
+#   row_frequency: session
+#   inputs:
+#     in_file:
+#       datatype: common:Text
+#       help_string: the input file
+#   outputs:
+#     out_file:
+#       datatype: common:Text
+#       help_string: the output file
+#     """.strip(),
+#     f"""
+# ---
+# source_file: spec.yaml
+# title: spec
+# weight: 10
+
+# ---
+
+# ## Package Info
+# |Key|Value|
+# |---|-----|
+# |Name|spec|
+# |App version|0.16.1|
+# |Build iteration|9|
+# |Base image|`{BaseImage().reference}`|
+# |Maintainer|author_name (author@email.org)|
+# |Info URL|https://example.com|
+# |Short description|a test specification|
+
+# a test specification
+
+# ## Command
+# |Key|Value|
+# |---|-----|
+# |Task|arcana.core.testing.tasks:identity_file|
+# |Operates on|session|
+# #### Inputs
+# |Name|Data type|Stored data type default|Description|
+# |----|---------|------------------------|-----------|
+# |`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the input file|
+
+# #### Outputs
+# |Name|Data type|Stored data type default|Description|
+# |----|---------|------------------------|-----------|
+# |`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the output file|
+
+# #### Parameters
+# |Name|Data type|Description|
+# |----|---------|-----------|
+# """.strip(),
+# )
+
 minimal_doc_spec = DocsFixture(
-    """
-version: &version '0.16.1'
-build_iteration: '9'
-authors:
-  - name: author_name
-    email: author@email.org
-info_url: https://example.com
-description: >-
-  a test specification
-command:
-  task: arcana.core.testing.tasks:identity_file
-  row_frequency: session
-  inputs:
-    in_file:
-      datatype: common:Text
-      help_string: the input file
-  outputs:
-    out_file:
-      datatype: common:Text
-      help_string: the output file
-    """.strip(),
-    f"""
----
-source_file: spec.yaml
-title: spec
-weight: 10
-
----
-
-## Package Info
-|Key|Value|
-|---|-----|
-|Name|spec|
-|App version|0.16.1|
-|Build iteration|9|
-|Base image|`{BaseImage().reference}`|
-|Maintainer|author_name (author@email.org)|
-|Info URL|https://example.com|
-|Short description|a test specification|
-
-a test specification
-
-## Command
-|Key|Value|
-|---|-----|
-|Task|arcana.core.testing.tasks:identity_file|
-|Operates on|session|
-#### Inputs
-|Name|Data type|Stored data type default|Description|
-|----|---------|------------------------|-----------|
-|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the input file|
-
-#### Outputs
-|Name|Data type|Stored data type default|Description|
-|----|---------|------------------------|-----------|
-|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the output file|
-
-#### Parameters
-|Name|Data type|Description|
-|----|---------|-----------|
-""".strip(),
-)
-
-yaml_constructors_join_spec = DocsFixture(
     """
 version: &version '0.16.1'
 authors:
@@ -85,6 +84,7 @@ authors:
 base_image:
   name: abc
   tag: *version
+  package_manager: apt
 info_url: https://example.com
 description: >-
   a test of the YAML join functionality
@@ -152,6 +152,7 @@ authors:
 base_image:
   name: abc
   tag: *version
+  package_manager: yum
 description: a description
 long_description: >-
   a longer description
@@ -161,6 +162,7 @@ info_url: https://example.com
 packages:
   system:
     vim: 99.1
+    git:
   pip:
     - pydra
     - pydra-dcm2niix

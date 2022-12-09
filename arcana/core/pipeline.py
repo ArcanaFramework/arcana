@@ -15,6 +15,7 @@ from arcana.core.exceptions import (
     ArcanaPipelinesStackError,
     ArcanaOutputNotProducedException,
     ArcanaDataMatchError,
+    ArcanaFormatConversionError,
 )
 from .data.type import DataType, FileGroup, Field
 import arcana.core.data.set
@@ -28,6 +29,7 @@ from .utils import (
     pydra_fromdict,
     pydra_eq,
     path2varname,
+    add_exc_note,
     ClassResolver,
     ObjectListConverter,
     # ObjectListConverter.asdict,
@@ -132,7 +134,15 @@ class Pipeline:
                 column = self.dataset[inpt.name]
                 # Check that a converter can be found if required
                 if inpt.datatype:
-                    inpt.datatype.find_converter(column.datatype)
+                    try:
+                        inpt.datatype.find_converter(column.datatype)
+                    except ArcanaFormatConversionError as e:
+                        msg = (
+                            f"required to in conversion of '{inpt.name}' input "
+                            f"to '{self.name}' pipeline"
+                        )
+                        add_exc_note(e, msg)
+                        raise
             elif inpt.datatype is None:
                 raise ValueError(
                     f"Datatype must be explicitly set for {inpt.name} in unbound Pipeline"
@@ -156,7 +166,15 @@ class Pipeline:
                     )
                 # Check that a converter can be found if required
                 if outpt.datatype:
-                    column.datatype.find_converter(outpt.datatype)
+                    try:
+                        column.datatype.find_converter(outpt.datatype)
+                    except ArcanaFormatConversionError as e:
+                        msg = (
+                            f"required to in conversion of '{outpt.name}' output "
+                            f"from '{self.name}' pipeline"
+                        )
+                        add_exc_note(e, msg)
+                        raise
             elif outpt.datatype is None:
                 raise ValueError(
                     f"Datatype must be explicitly set for {outpt.name} in unbound Pipeline"

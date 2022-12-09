@@ -1046,7 +1046,11 @@ class ObjectConverter:
             if kwargs:
                 value = {}
             elif self.allow_none:
-                return self.default_if_none
+                if callable(self.default_if_none):
+                    default = self.default_if_none()
+                else:
+                    default = self.default_if_none
+                return default
             else:
                 raise ValueError(
                     f"None values not accepted in automatic conversion to {self.klass}"
@@ -1065,10 +1069,7 @@ class ObjectConverter:
                 obj = self.klass(**value_kwargs)
             except TypeError as e:
                 msg = f"when creating {self.klass} from {value_kwargs}"
-                if hasattr(e, "add_note"):
-                    e.add_note(msg)
-                else:
-                    e.args = (e.args[0] + "\n" + msg,)
+                add_exc_note(e, msg)
                 raise
         elif isinstance(value, (list, tuple)):
             obj = self.klass(*value, **kwargs)
@@ -1161,6 +1162,28 @@ def extract_file_from_docker_image(
         with tarfile.open(tarfile_path) as f:
             f.extractall(out_path)
     return out_path
+
+
+def add_exc_note(e, note):
+    """Adds a note to an exception in a Python <3.11 compatible way
+
+    Parameters
+    ----------
+    e : Exception
+        the exception to add the note to
+    note : str
+        the note to add
+
+    Returns
+    -------
+    Exception
+        returns the exception again
+    """
+    if hasattr(e, "add_note"):
+        e.add_note(note)
+    else:
+        e.args = (e.args[0] + "\n" + note,)
+    return e
 
 
 # Minimum version of Arcana that this version can read the serialisation from
