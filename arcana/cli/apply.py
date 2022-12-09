@@ -3,7 +3,7 @@ import typing as ty
 from arcana.core.data.set import Dataset
 from arcana.core.cli import cli
 from pydra.engine.core import TaskBase
-from arcana.core.utils import ClassResolver, parse_value
+from arcana.core.utils.serialize import ClassResolver, parse_value
 from arcana.core.data.type import DataType
 
 

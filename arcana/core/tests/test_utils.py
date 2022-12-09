@@ -1,4 +1,5 @@
-from arcana.core.utils import package_from_module, path2varname, varname2path
+from arcana.core.utils.packaging import package_from_module
+from arcana.core.utils.misc import path2varname, varname2path
 
 
 def test_package_from_module():

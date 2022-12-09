@@ -16,7 +16,7 @@ from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical, DataSpace
 from arcana.core.data.store import DataStore
 from arcana.core.data.type import FileGroup
-from arcana.core.utils import ARCANA_HOME_DIR
+from arcana.core.utils.misc import ARCANA_HOME_DIR
 
 
 logger = logging.getLogger("arcana")

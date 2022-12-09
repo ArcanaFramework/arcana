@@ -8,7 +8,7 @@ import shutil
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
-from arcana.core.utils import asdict
+from arcana.core.utils.serialize import asdict
 from arcana.core.exceptions import (
     ArcanaLicenseNotFoundError,
     ArcanaNameError,

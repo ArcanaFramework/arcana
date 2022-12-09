@@ -6,7 +6,7 @@ from arcana.core.data.type import FileGroup
 from arcana.core.deploy.command import ContainerCommand
 from arcana.data.stores.xnat import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
-from arcana.core.utils import ClassResolver
+from arcana.core.utils.serialize import ClassResolver
 
 if ty.TYPE_CHECKING:
     from .image import XnatCSImage

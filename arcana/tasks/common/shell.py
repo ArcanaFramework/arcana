@@ -4,7 +4,7 @@ from pydra import ShellCommandTask
 import pydra.engine.specs
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
 from arcana.core.data.type import DataType
-from arcana.core.utils import ClassResolver, ObjectListConverter
+from arcana.core.utils.misc import ClassResolver, ObjectListConverter
 from arcana.core.data.type import FileGroup
 
 

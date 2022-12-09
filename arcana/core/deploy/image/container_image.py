@@ -17,11 +17,13 @@ import docker
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
 from arcana.__about__ import PACKAGE_NAME
-from arcana.core.utils import (
-    set_cwd,
-    DOCKER_HUB,
+from arcana.core.utils.serialize import (
     ClassResolver,
     ObjectConverter,
+)
+from arcana.core.utils.misc import (
+    set_cwd,
+    DOCKER_HUB,
 )
 from arcana.core.data.space import DataSpace
 from arcana.__about__ import python_versions

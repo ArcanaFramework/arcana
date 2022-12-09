@@ -7,7 +7,7 @@ from pathlib import Path
 import attrs
 from pydra import mark
 from pydra.engine.specs import MultiInputObj, MultiOutputObj, File, Directory
-from arcana.core.utils import set_cwd
+from arcana.core.utils.misc import set_cwd
 from arcana.core.exceptions import ArcanaUsageError
 
 

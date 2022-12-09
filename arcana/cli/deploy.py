@@ -14,16 +14,15 @@ import docker.errors
 import xnat as xnatpy
 from pydra.engine.core import TaskBase
 from arcana.core.cli import cli
-from arcana.core.utils import (
+from arcana.core.utils.serialize import (
     package_from_module,
     pydra_asdict,
     ClassResolver,
-    DOCKER_HUB,
 )
 from arcana.core.deploy.image import Metapackage, CommandImage
 from arcana.deploy.xnat.image import XnatCSImage
 from arcana.core.exceptions import ArcanaBuildError
-from arcana.core.utils import extract_file_from_docker_image
+from arcana.core.utils.misc import extract_file_from_docker_image, DOCKER_HUB
 
 
 PULL_IMAGES_XNAT_HOST_KEY = "XNAT_HOST"

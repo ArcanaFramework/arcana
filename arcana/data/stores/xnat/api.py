@@ -14,7 +14,12 @@ from zipfile import ZipFile, BadZipfile
 import shutil
 import attrs
 import xnat.session
-from arcana.core.utils import JSON_ENCODING
+from arcana.core.utils.misc import (
+    dir_modtime,
+    JSON_ENCODING,
+    path2varname,
+    varname2path,
+)
 from arcana.core.data.store import DataStore
 from arcana.core.data.row import DataRow
 from arcana.core.exceptions import (
@@ -22,9 +27,8 @@ from arcana.core.exceptions import (
     ArcanaUsageError,
     ArcanaWrongRepositoryError,
 )
-from arcana.core.utils import dir_modtime, parse_value
+from arcana.core.utils.serialize import parse_value, asdict
 from arcana.core.data.set import Dataset
-from arcana.core.utils import path2varname, varname2path, asdict
 from arcana.data.spaces.medimage import Clinical
 
 

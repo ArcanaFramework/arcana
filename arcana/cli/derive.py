@@ -4,7 +4,7 @@ import cloudpickle as cp
 import click
 from arcana.core.cli import cli
 from arcana.core.data.set import Dataset
-from arcana.core.utils import set_loggers
+from arcana.core.utils.misc import set_loggers
 
 
 logger = logging.getLogger("arcana")

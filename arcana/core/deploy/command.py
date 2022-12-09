@@ -13,16 +13,15 @@ import attrs
 from attrs.converters import default_if_none
 import pydra.engine.task
 from pydra.engine.core import TaskBase
-from arcana.core.utils import (
+from arcana.core.utils.serialize import (
     ObjectListConverter,
     ObjectConverter,
     ClassResolver,
-    add_exc_note,
 )
 from arcana.core.pipeline import (
     PipelineField,
 )
-from arcana.core.utils import show_workflow_errors
+from arcana.core.utils.misc import show_workflow_errors, add_exc_note
 from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
 from arcana.core.data.type import DataType

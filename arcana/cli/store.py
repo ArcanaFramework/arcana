@@ -2,7 +2,7 @@ from operator import itemgetter
 import click
 from arcana.core.data.store import DataStore
 from arcana.core.cli import cli
-from arcana.core.utils import get_home_dir, ClassResolver
+from arcana.core.utils.serialize import get_home_dir, ClassResolver
 
 
 @cli.group()

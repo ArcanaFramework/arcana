@@ -5,7 +5,8 @@ from arcana.data.types.common import Text
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.types.medimage import NiftiGzX
 from arcana.cli.deploy import image_entrypoint
-from arcana.core.utils import ClassResolver, path2varname
+from arcana.core.utils.serialize import ClassResolver
+from arcana.core.utils.misc import path2varname
 from arcana.core.testing.utils import show_cli_trace
 from arcana.deploy.common import PipelineImage
 

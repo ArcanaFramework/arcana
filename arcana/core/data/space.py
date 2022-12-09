@@ -1,7 +1,8 @@
 import typing as ty
 import re
 from enum import Enum
-from arcana.core.utils import ClassResolver, classproperty
+from arcana.core.utils.serialize import ClassResolver
+from arcana.core.utils.misc import classproperty
 
 
 class DataSpace(Enum):

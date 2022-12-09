@@ -5,7 +5,7 @@ import json
 import attrs
 from neurodocker.reproenv import DockerRenderer
 from arcana.data.stores.xnat import XnatViaCS
-from arcana.core.utils import ClassResolver, ObjectConverter
+from arcana.core.utils.serialize import ClassResolver, ObjectConverter
 from arcana.core.data.store import DataStore
 from arcana.core.deploy.image import CommandImage
 from .command import XnatCSCommand

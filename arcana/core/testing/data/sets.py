@@ -5,7 +5,7 @@ from itertools import product
 import zipfile
 from pathlib import Path
 from dataclasses import dataclass, field as dataclass_field
-from arcana.core.utils import set_cwd, path2varname
+from arcana.core.utils.misc import set_cwd, path2varname
 from arcana.core.data.space import DataSpace
 from arcana.core.data.type import WithSideCars
 from arcana.data.stores.common import FileSystem

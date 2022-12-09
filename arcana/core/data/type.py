@@ -11,8 +11,10 @@ from abc import ABCMeta, abstractmethod
 import attrs
 from attrs.converters import optional
 from pydra.engine.core import LazyField, Workflow
-from arcana.core.utils import (
+from arcana.core.utils.serialize import (
     parse_value,
+)
+from arcana.core.utils.misc import (
     func_task,
     path2varname,
     classproperty,

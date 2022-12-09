@@ -2,7 +2,7 @@ from pathlib import Path
 import cloudpickle as cp
 from pydra import mark, Workflow
 from arcana.core.data.set import Dataset
-from arcana.core.utils import asdict, fromdict
+from arcana.core.utils.serialize import asdict, fromdict
 
 
 def test_dataset_asdict_roundtrip(dataset):

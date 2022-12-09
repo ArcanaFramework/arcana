@@ -23,11 +23,11 @@ from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.bids.structure import JsonEdit
 from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.core.exceptions import ArcanaUsageError
-from arcana.core.utils import (
-    func_task,
+from arcana.core.utils.serialize import (
     ClassResolver,
     ObjectListConverter,
 )
+from arcana.core.utils.misc import func_task
 
 logger = logging.getLogger("arcana")
 

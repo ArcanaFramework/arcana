@@ -6,7 +6,7 @@ from operator import attrgetter
 from attrs.converters import optional
 
 # from arcana.core.data.row import DataRow
-from arcana.core.utils import ClassResolver
+from arcana.core.utils.serialize import ClassResolver
 from arcana.core.exceptions import ArcanaDataMatchError
 from ..salience import DataQuality, ColumnSalience
 from .space import DataSpace

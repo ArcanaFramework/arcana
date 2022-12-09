@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
-from arcana.core.utils import (
+from arcana.core.utils.serialize import (
     ObjectConverter,
     ObjectListConverter,
     ClassResolver,
