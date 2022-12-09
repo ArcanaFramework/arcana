@@ -80,7 +80,7 @@ class BaseImage:
         if package_manager not in ("yum", "apt"):
             raise ValueError(
                 f"Unsupported package manager '{package_manager}' provided. Only 'apt' "
-                "and 'yum' package managers are currently supported"
+                "and 'yum' package managers are currently supported by Neurodocker"
             )
 
 
