@@ -33,7 +33,7 @@ class BaseImage:
     tag: str = attrs.field()
     package_manager: str = attrs.field()
 
-    DEFAULT_UBUNTU_TAG = "kinetic"
+    DEFAULT_UBUNTU_TAG = "kinetic"  # FIXME: Should revert to latest LTS "jammy"
 
     @property
     def reference(self):
