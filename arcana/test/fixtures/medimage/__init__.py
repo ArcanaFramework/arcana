@@ -10,6 +10,7 @@ from .xnat import (
     docker_registry_for_xnat,
     docker_registry_for_xnat_uri,
     dummy_niftix,
+    xnat4tests_config,
 )
 from .dicom import dummy_t1w_dicom
 from .dicom import dummy_magfmap_dicom
