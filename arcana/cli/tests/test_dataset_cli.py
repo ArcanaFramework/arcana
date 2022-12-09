@@ -3,10 +3,10 @@ import os.path
 from unittest.mock import patch
 from arcana.core.data.set import Dataset
 from arcana.core.salience import DataQuality, ColumnSalience
-from arcana.core.testing.data.sets import TestDataSpace
+from arcana.core.utils.testing.data.sets import TestDataSpace
 from arcana.cli.dataset import define, add_source, add_sink, missing_items
 from arcana.data.types.common import Text
-from arcana.core.testing.utils import make_dataset_id_str, show_cli_trace
+from arcana.core.utils.testing import make_dataset_id_str, show_cli_trace
 
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
@@ -173,7 +173,7 @@ def test_define_cli(dataset, cli_runner):
         args.extend(["--include", str(axis), slce])
     for axis, slce in excluded:
         args.extend(["--exclude", str(axis), slce])
-    args.extend(["--space", "arcana.core.testing.data.sets:TestDataSpace"])
+    args.extend(["--space", "arcana.core.utils.testing.data.sets:TestDataSpace"])
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully

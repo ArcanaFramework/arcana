@@ -1,9 +1,9 @@
 from functools import reduce
 from operator import mul
 from arcana.cli.deploy import image_entrypoint
-from arcana.core.testing.utils import show_cli_trace, make_dataset_id_str
-from arcana.core.testing.data.types import EncodedText
-from arcana.core.testing.data.sets import (
+from arcana.core.utils.testing import show_cli_trace, make_dataset_id_str
+from arcana.core.utils.testing.data.types import EncodedText
+from arcana.core.utils.testing.data.sets import (
     make_dataset,
     TestDatasetBlueprint,
     TestDataSpace,
@@ -36,7 +36,7 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
     spec_path = write_spec(
         name="test_entrypoint_cli",
         command={
-            "task": "arcana.core.testing.tasks:" + concatenate_task.__name__,
+            "task": "arcana.core.utils.testing.tasks:" + concatenate_task.__name__,
             "row_frequency": bp.space.default(),
             "inputs": [
                 {
@@ -126,7 +126,7 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
     spec_path = write_spec(
         name="test_entrypoint_cli_fail",
         command={
-            "task": "arcana.core.testing.tasks:" + concatenate_task.__name__,
+            "task": "arcana.core.utils.testing.tasks:" + concatenate_task.__name__,
             "row_frequency": bp.space.default(),
             "inputs": [
                 {
@@ -230,7 +230,7 @@ def test_entrypoint_cli_on_row(cli_runner, work_dir):
     spec_path = write_spec(
         name="test_entrypoint_cli_on_row",
         command={
-            "task": "arcana.core.testing.tasks:plus_10_to_filenumbers",
+            "task": "arcana.core.utils.testing.tasks:plus_10_to_filenumbers",
             "row_frequency": bp.space.default(),
             "inputs": [
                 {
@@ -284,12 +284,12 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
     spec_path = write_spec(
         name="test_entrypoint_cli_fail",
         command={
-            "task": "arcana.core.testing.tasks:identity_file",
+            "task": "arcana.core.utils.testing.tasks:identity_file",
             "row_frequency": bp.space.default(),
             "inputs": [
                 {
                     "name": "source",
-                    "datatype": "arcana.core.testing.data.types:EncodedText",
+                    "datatype": "arcana.core.utils.testing.data.types:EncodedText",
                     "default_column": {"datatype": "common:Text"},
                     "field": "in_file",
                     "help_string": "dummy",
@@ -298,15 +298,15 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
             "outputs": [
                 {
                     "name": "sink1",
-                    "datatype": "arcana.core.testing.data.types:EncodedText",
+                    "datatype": "arcana.core.utils.testing.data.types:EncodedText",
                     "field": "out",
                     "help_string": "dummy",
                 },
                 {
                     "name": "sink2",
-                    "datatype": "arcana.core.testing.data.types:EncodedText",
+                    "datatype": "arcana.core.utils.testing.data.types:EncodedText",
                     "default_column": {
-                        "datatype": "arcana.core.testing.data.types:DecodedText"
+                        "datatype": "arcana.core.utils.testing.data.types:DecodedText"
                     },
                     "field": "out",
                     "help_string": "dummy",

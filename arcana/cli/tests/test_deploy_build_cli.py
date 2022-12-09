@@ -10,8 +10,8 @@ from arcana.cli.deploy import (
     build,
     build_docs,
 )
-from arcana.core.testing.fixtures.docs import all_docs_fixtures, DocsFixture
-from arcana.core.testing.utils import show_cli_trace
+from arcana.core.utils.testing.fixtures.docs import all_docs_fixtures, DocsFixture
+from arcana.core.utils.testing import show_cli_trace
 from arcana.core.exceptions import ArcanaBuildError
 
 

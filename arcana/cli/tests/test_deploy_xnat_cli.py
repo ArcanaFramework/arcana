@@ -15,7 +15,7 @@ from arcana.cli.deploy import (
     PULL_IMAGES_XNAT_USER_KEY,
     PULL_IMAGES_XNAT_PASS_KEY,
 )
-from arcana.core.testing.utils import show_cli_trace
+from arcana.core.utils.testing import show_cli_trace
 
 
 @pytest.mark.xfail(
@@ -42,7 +42,7 @@ def test_pull_xnat_images(
     WRAPPER_VERSION = "1-pullimages"
 
     reverse_command_spec = copy(command_spec)
-    reverse_command_spec["task"] = "arcana.core.testing.tasks:concatenate_reverse"
+    reverse_command_spec["task"] = "arcana.core.utils.testing.tasks:concatenate_reverse"
 
     spec_dir = work_dir / DOCKER_ORG
     pkg_path = spec_dir / IMAGE_GROUP_NAME

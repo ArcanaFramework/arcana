@@ -12,7 +12,7 @@ from arcana.data.types.medimage import (
     MrtrixImage,
 )
 import pytest
-from arcana.core.testing.tasks import (
+from arcana.core.utils.testing.tasks import (
     add,
     path_manip,
     attrs_func,
@@ -22,7 +22,7 @@ from arcana.core.testing.tasks import (
     concatenate,
     concatenate_reverse,
 )
-from arcana.core.testing.data.sets import (
+from arcana.core.utils.testing.data.sets import (
     TestDatasetBlueprint,
     TestDataSpace as TDS,
     Xyz,
@@ -219,7 +219,7 @@ def concatenate_task(request):
 @pytest.fixture(scope="session")
 def command_spec():
     return {
-        "task": "arcana.core.testing.tasks:concatenate",
+        "task": "arcana.core.utils.testing.tasks:concatenate",
         "inputs": {
             "first_file": {
                 "datatype": "common:Text",

@@ -22,7 +22,7 @@ class DocsFixture:
 # description: >-
 #   a test specification
 # command:
-#   task: arcana.core.testing.tasks:identity_file
+#   task: arcana.core.utils.testing.tasks:identity_file
 #   row_frequency: session
 #   inputs:
 #     in_file:
@@ -57,7 +57,7 @@ class DocsFixture:
 # ## Command
 # |Key|Value|
 # |---|-----|
-# |Task|arcana.core.testing.tasks:identity_file|
+# |Task|arcana.core.utils.testing.tasks:identity_file|
 # |Operates on|session|
 # #### Inputs
 # |Name|Data type|Stored data type default|Description|
@@ -89,7 +89,7 @@ info_url: https://example.com
 description: >-
   a test of the YAML join functionality
 command:
-  task: arcana.core.testing.tasks:identity_file
+  task: arcana.core.utils.testing.tasks:identity_file
   row_frequency: session
   inputs:
     in_file:
@@ -124,7 +124,7 @@ a test of the YAML join functionality
 ## Command
 |Key|Value|
 |---|-----|
-|Task|arcana.core.testing.tasks:identity_file|
+|Task|arcana.core.utils.testing.tasks:identity_file|
 |Operates on|session|
 #### Inputs
 |Name|Data type|Stored data type default|Description|
