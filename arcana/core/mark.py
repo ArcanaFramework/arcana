@@ -9,7 +9,7 @@ from .analysis import (
     SubanalysisSpec,
 )
 from .salience import ColumnSalience, ParameterSalience, CheckSalience
-from .utils import (
+from .utils.misc import (
     SWICTH_ANNOTATIONS,
     CHECK_ANNOTATIONS,
     CONVERTER_ANNOTATIONS,

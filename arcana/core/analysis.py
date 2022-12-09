@@ -11,7 +11,7 @@ from .data.space import DataSpace
 from .data.column import DataColumn
 from .data.set import Dataset
 from .salience import CheckSalience, ColumnSalience, ParameterSalience
-from .utils import (
+from .utils.misc import (
     PIPELINE_ANNOTATIONS,
     SWICTH_ANNOTATIONS,
     CHECK_ANNOTATIONS,

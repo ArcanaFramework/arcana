@@ -21,18 +21,19 @@ from .data.type import DataType, FileGroup, Field
 import arcana.core.data.set
 import arcana.core.data.row
 from .data.space import DataSpace
-from .utils import (
+from .utils.misc import (
     func_task,
+    pydra_eq,
+    path2varname,
+    add_exc_note,
+)
+from .utils.serialize import (
     asdict,
     fromdict,
     pydra_asdict,
     pydra_fromdict,
-    pydra_eq,
-    path2varname,
-    add_exc_note,
     ClassResolver,
     ObjectListConverter,
-    # ObjectListConverter.asdict,
 )
 import arcana.data.types.common
 
