@@ -61,14 +61,14 @@ a test specification
 |Task|arcana.core.testing.tasks:identity_file|
 |Operates on|session|
 #### Inputs
-|Name|Format|Description|
-|----|------|-----------|
-|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the input file|
+|Name|Data type|Stored data type default|Description|
+|----|---------|------------------------|-----------|
+|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the input file|
 
 #### Outputs
-|Name|Format|Description|
-|----|------|-----------|
-|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the output file|
+|Name|Data type|Stored data type default|Description|
+|----|---------|------------------------|-----------|
+|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the output file|
 
 #### Parameters
 |Name|Data type|Description|
@@ -114,7 +114,7 @@ weight: 10
 |Name|spec|
 |App version|0.16.1|
 |Build iteration|0|
-|Base image|`abc0.16.1`|
+|Base image|`abc:0.16.1`|
 |Maintainer|author_name (author@email.org)|
 |Info URL|https://example.com|
 |Short description|a test of the YAML join functionality|
@@ -127,14 +127,14 @@ a test of the YAML join functionality
 |Task|arcana.core.testing.tasks:identity_file|
 |Operates on|session|
 #### Inputs
-|Name|Format|Description|
-|----|------|-----------|
-|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the input file|
+|Name|Data type|Stored data type default|Description|
+|----|---------|------------------------|-----------|
+|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the input file|
 
 #### Outputs
-|Name|Format|Description|
-|----|------|-----------|
-|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the output file|
+|Name|Data type|Stored data type default|Description|
+|----|---------|------------------------|-----------|
+|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the output file|
 
 #### Parameters
 |Name|Data type|Description|
@@ -246,16 +246,16 @@ a longer description
 |Task|arcana.tasks.bids.app:bids_app|
 |Operates on|session|
 #### Inputs
-|Name|Format|Description|
-|----|------|-----------|
-|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (Directory)</span>|T1-weighted anatomical scan|
-|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (Directory)</span>|T2-weighted anatomical scan|
-|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (Directory)</span>|functional MRI|
+|Name|Data type|Stored data type default|Description|
+|----|---------|------------------------|-----------|
+|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (`.nii.gz`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (Directory)</span>|T1-weighted anatomical scan|
+|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (`.nii.gz`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (Directory)</span>|T2-weighted anatomical scan|
+|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (`.nii.gz`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (Directory)</span>|functional MRI|
 
 #### Outputs
-|Name|Format|Description|
-|----|------|-----------|
-|`mriqc`|<span data-toggle="tooltip" data-placement="bottom" title="directory" aria-label="directory">directory</span>|MRIQC output directory|
+|Name|Data type|Stored data type default|Description|
+|----|---------|------------------------|-----------|
+|`mriqc`|<span data-toggle="tooltip" data-placement="bottom" title="directory" aria-label="directory">directory</span>|<span data-toggle="tooltip" data-placement="bottom" title="directory" aria-label="directory">directory</span>|MRIQC output directory|
 
 #### Parameters
 |Name|Data type|Description|

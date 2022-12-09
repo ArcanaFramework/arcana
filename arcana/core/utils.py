@@ -1076,7 +1076,10 @@ class ObjectConverter:
             obj = copy(value)
             for k, v in kwargs.items():
                 setattr(obj, k, v)
-        elif isinstance(value, str):
+        elif isinstance(value, (str, int, float, bool)):
+            # If there are kwargs that are in the first N positions of the
+            # argument list, add them in as positional arguments first and then
+            # append the value to the end of the args list
             args = []
             kgs = copy(kwargs)
             for field_name in attrs.fields_dict(self.klass):

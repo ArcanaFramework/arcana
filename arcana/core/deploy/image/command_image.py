@@ -346,8 +346,10 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             tbl_info = MarkdownTable(f, "Key", "Value")
             tbl_info.write_row("Name", self.name)
             tbl_info.write_row("App version", self.version)
-            tbl_info.write_row("Build iteration", self.build_iteration)
-            tbl_info.write_row("Base image", escaped_md(self.base_image))
+            tbl_info.write_row(
+                "Build iteration", self.build_iteration if self.build_iteration else "0"
+            )
+            tbl_info.write_row("Base image", escaped_md(self.base_image.reference))
             tbl_info.write_row(
                 "Maintainer", f"{self.authors[0].name} ({self.authors[0].email})"
             )
@@ -383,25 +385,30 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             tbl_cmd.write_row("Operates on", self.command.row_frequency.name)
 
             f.write("#### Inputs\n")
-            tbl_inputs = MarkdownTable(f, "Name", "Format", "Description")
+            tbl_inputs = MarkdownTable(
+                f, "Name", "Data type", "Stored data type default", "Description"
+            )
             if self.command.inputs is not None:
                 for inpt in self.command.inputs:
-
                     tbl_inputs.write_row(
                         escaped_md(inpt.name),
                         self._data_format_html(inpt.datatype),
-                        inpt.description,
+                        self._data_format_html(inpt.default_column.datatype),
+                        inpt.help_string,
                     )
                 f.write("\n")
 
             f.write("#### Outputs\n")
-            tbl_outputs = MarkdownTable(f, "Name", "Format", "Description")
+            tbl_outputs = MarkdownTable(
+                f, "Name", "Data type", "Stored data type default", "Description"
+            )
             if self.command.outputs is not None:
                 for outpt in self.command.outputs:
                     tbl_outputs.write_row(
                         escaped_md(outpt.name),
                         self._data_format_html(outpt.datatype),
-                        outpt.description,
+                        self._data_format_html(outpt.default_column.datatype),
+                        outpt.help_string,
                     )
                 f.write("\n")
 
@@ -411,8 +418,8 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
                 for param in self.command.parameters:
                     tbl_params.write_row(
                         escaped_md(param.name),
-                        escaped_md(ClassResolver.tostr(param.type)),
-                        param.description,
+                        escaped_md(ClassResolver.tostr(param.datatype)),
+                        param.help_string,
                     )
                 f.write("\n")
 

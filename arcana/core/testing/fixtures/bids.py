@@ -2,7 +2,7 @@ import os
 import pytest
 import docker
 from arcana.data.types.medimage import NiftiGzX
-from arcana.deploy.common import PipelineImage
+from arcana.core.deploy.image.components import BaseImage
 
 
 BIDS_VALIDATOR_DOCKER = "bids/validator:latest"
@@ -102,7 +102,7 @@ def mock_bids_app_image(mock_bids_app_script, build_cache_dir):
         MOCK_BIDS_APP_IMAGE,
         mock_bids_app_script,
         build_cache_dir,
-        base_image=PipelineImage.DEFAULT_BASE_IMAGE,
+        base_image=BaseImage().reference,
     )
 
 
