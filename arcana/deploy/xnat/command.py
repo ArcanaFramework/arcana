@@ -84,7 +84,7 @@ class XnatCSCommand(ContainerCommand):
             "description": f"{self.name} {self.image.version}{build_iteration_str}: {self.image.description}",
             "label": self.name,
             "schema-version": "1.0",
-            "image": self.image.tag,
+            "image": self.image.reference,
             "index": self.image.registry,
             "datatype": "docker",
             # "command-line": cmdline,

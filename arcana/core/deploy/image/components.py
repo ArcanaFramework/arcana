@@ -29,24 +29,54 @@ class KnownIssue:
 @attrs.define(kw_only=True)
 class BaseImage:
 
-    name: str = "ubuntu"
-    tag: str = "kinetic"  # FIXME: should revert back to jammy after tests pass
+    name: str = attrs.field(default="ubuntu")
+    tag: str = attrs.field()
     package_manager: str = attrs.field()
+
+    DEFAULT_UBUNTU_TAG = "kinetic"
 
     @property
     def reference(self):
-        return f"{self.name}:{self.tag}"
+        if self.tag:
+            reference = f"{self.name}:{self.tag}"
+        else:
+            reference = self.name
+        return reference
+
+    @name.validator
+    def name_validator(self, _, name):
+        if name == "alpine":
+            raise ValueError(
+                "Neurodocker (the package used to build the images) does not currently "
+                "support alpine base images"
+            )
+
+    @tag.default
+    def tag_default(self):
+        if self.name == "ubuntu":
+            tag = self.DEFAULT_UBUNTU_TAG
+        else:
+            tag = None
+        return tag
 
     @package_manager.default
     def package_manager_default(self):
-        if self.name in ("fedora", "centos"):
+        if self.name in ("ubuntu", "debian"):
+            package_manager = "apt"
+        elif self.name in ("fedora", "centos"):
             package_manager = "yum"
         else:
-            package_manager = "apt"
+            package_manager = None
         return package_manager
 
     @package_manager.validator
     def package_manager_validator(self, _, package_manager):
+        if package_manager is None:
+            raise ValueError(
+                f"Package manager must be supplied explicitly for unknown base image "
+                f"'{self.name}' (note only 'apt' and 'yum' package managers are "
+                "currently supported)"
+            )
         if package_manager not in ("yum", "apt"):
             raise ValueError(
                 f"Unsupported package manager '{package_manager}' provided. Only 'apt' "

@@ -70,7 +70,7 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
 
     # Create pipeline
     image_name = f"license-buildtime-{run_prefix}"
-    image_tag = f"{REGISTRY}/{ORG}/{image_name}:{IMAGE_VERSION}-0"
+    image_tag = f"{REGISTRY}/{ORG}/{image_name}:{IMAGE_VERSION}"
 
     root_dir = create_spec_file(image_name, work_dir)
 
@@ -147,7 +147,7 @@ TEST_IMAGE_SPEC = {
                 "name": LICENSE_INPUT_FIELD,
                 "datatype": "common:Text",
                 "field": "expected_license_contents",
-                "description": "the path to the license",
+                "help_string": "the path to the license",
             },
         ],
         "outputs": [

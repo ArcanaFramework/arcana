@@ -248,6 +248,7 @@ def install_and_launch_xnat_cs_command(
     assert workflow_id != "To be assigned"
 
     num_attempts = (timeout // poll_interval) + 1
+    max_runtime = num_attempts * poll_interval
 
     for i in range(num_attempts):
         wf_result = xlogin.get(f"/xapi/workflows/{workflow_id}").json()
@@ -255,7 +256,12 @@ def install_and_launch_xnat_cs_command(
             break
         time.sleep(poll_interval)
 
-    max_runtime = num_attempts * poll_interval
+    launch_status = wf_result["status"]
+    if launch_status == "success":
+        raise ValueError(
+            f"Launching {cmd_name} in the XNAT CS failed with status {launch_status} "
+            f"for inputs: \n{launch_json}"
+        )
 
     container_id = wf_result["comments"]
 

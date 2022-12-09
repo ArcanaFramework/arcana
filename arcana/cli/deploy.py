@@ -361,7 +361,7 @@ def build(
             manifest["images"].append(
                 {
                     "name": image_spec.path,
-                    "version": image_spec.full_version,
+                    "version": image_spec.tag,
                 }
             )
     if release:

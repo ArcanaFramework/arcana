@@ -37,6 +37,7 @@ def run_spec(
             "info_url": "http://concatenate.readthefakedocs.io",
             "readme": "This is a test README",
             "registry": "a.docker.registry.io",
+            "packages": {"system": ["git", "vim"]},
         }
         spec["dataset"] = make_mutable_dataset(
             dataset_id="xnat_cs_func",
@@ -53,13 +54,16 @@ def run_spec(
             "name": "bids-app-xnat-cs",
             "version": "1.0",
             "description": "A pipeline to test wrapping of BIDS apps",
-            "base_image": mock_bids_app_image,
+            "base_image": {
+                "name": mock_bids_app_image,
+                "package_manager": "apt",
+            },
+            "packages": {"system": ["git", "vim"]},
             "command": bids_command_spec,
             "authors": [
                 {"name": "Some One Else", "email": "some.oneelse@an.email.org"}
             ],
             "info_url": "http://a-bids-app.readthefakedocs.io",
-            "package_manager": "apt",
             "readme": "This is another test README for BIDS app image",
             "registry": "another.docker.registry.io",
         }

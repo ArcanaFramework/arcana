@@ -108,11 +108,11 @@ Building
 
 Dockerfiles for pipeline images are created using Neurodocker_
 and can therefore work with any Debian/Ubuntu or Red-Hat based images
-(using a value for ``package_manager`` keyword argument of ``"apt"`` for
-Debian based or ``"yum"`` for Red-Hat based). Arcana installs itself into the Docker image
-within an Anaconda_ environment named "arcana". Therefore, it won't typically
-conflict with packages on existing Docker images for third-party pipelines
-unless they are also installed using Anaconda.
+(ensuring that the value for ``base_image>package_manager`` is set to the correct value,
+i.e.  ``"apt"`` for Debian based or ``"yum"`` for Red-Hat based). Arcana installs
+itself into the Docker image within an Anaconda_ environment named "arcana". Therefore,
+it shouldn't conflict with packages on existing Docker images for third-party
+pipelines.
 
 Extending the YAML_ format used to define the command configurations,
 the full configuration required to build an XNAT docker image looks like
@@ -125,25 +125,22 @@ the full configuration required to build an XNAT docker image looks like
     authors:
         - name: Thomas G. Close
           email: thomas.close@sydney.edu.au
-    base_image: !join [ 'brainlife/fsl:', *version ]
+    base_image:
+        name: brainlife/fsl'
+        tag: *version
     info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki
-    package_manager: apt
-    system_packages:
-    package_templates:
-    - name: dcm2niix
-        version: v1.0.20201102
-    python_packages:
-        - name: pydra-dcm2niix
+    packages:
+        neurodocker:
+            dcm2niix: v1.0.20201102
+        pip:
+            pydra-dcm2niix:  # Uses the default version on PyPI
     commands:
-        pipeline_name: fast
         task: pydra.tasks.fsl.preprocess.fast:FAST
         description:
             FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of
             the brain into different tissue types (Grey Matter, White Matter,
             CSF, etc.), whilst also correcting for spatial intensity variations
             (also known as bias field or RF inhomogeneities).
-        version: 1
-        info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
         inputs:
             in_files:
               datatype: medimage:NiftiGzX

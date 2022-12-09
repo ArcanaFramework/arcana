@@ -291,7 +291,7 @@ class DataStore(metaclass=ABCMeta):
                 )
         else:
             entry.update(kwargs)
-            store = fromdict(entry)
+            store = fromdict(entry)  # Would be good to use a class resolver here
         return store
 
     @classmethod

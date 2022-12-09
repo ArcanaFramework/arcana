@@ -106,7 +106,9 @@ class XnatCSImage(CommandImage):
             case the server location will be hard-coded rather than rely on the
             XNAT_HOST environment variable passed to the container by the XNAT CS
         """
-        xnat_cs_store_entry = {"class": "<" + ClassResolver.tostr(XnatViaCS) + ">"}
+        xnat_cs_store_entry = {
+            "class": "<" + ClassResolver.tostr(XnatViaCS, strip_prefix=False) + ">"
+        }
         if use_test_config:
             if sys.platform == "linux":
                 ip_address = "172.17.0.1"  # Linux + GH Actions

@@ -25,7 +25,6 @@ from arcana.data.stores.bids.dataset import BidsDataset
 from arcana.core.exceptions import ArcanaUsageError
 from arcana.core.utils import (
     func_task,
-    path2varname,
     ClassResolver,
     ObjectListConverter,
 )
@@ -34,33 +33,19 @@ logger = logging.getLogger("arcana")
 
 
 @attrs.define(kw_only=True)
-class AppField:
+class BidsInput:
 
+    name: str
     path: str
     datatype: DataType = attrs.field(converter=ClassResolver(DataType))
-    name: str = attrs.field()
-
-    @name.default
-    def name_default(self):
-        return path2varname(self.path)
 
 
-# @attrs.define(kw_only=True)
-# class Output:
+@attrs.define(kw_only=True)
+class BidsOutput:
 
-#     name: str
-#     datatype: type
-#     path: str = None
-
-#     @classmethod
-#     def fromdict(cls, dct):
-#         return cls(**{f.name: dct.get(f.name) for f in dataclasses.fields(cls)})
-
-#     def __post_init__(self):
-#         if self.path is None:
-#             self.path = ""
-#         if isinstance(self.datatype, str):
-#             self.datatype = ClassResolver(self.datatype, prefixes=["arcana.data.types"])
+    name: str
+    datatype: DataType = attrs.field(converter=ClassResolver(DataType))
+    path: str = None
 
 
 logger = logging.getLogger("arcana")
@@ -68,8 +53,8 @@ logger = logging.getLogger("arcana")
 
 def bids_app(
     name: str,
-    inputs: list[ty.Union[AppField, dict[str, str]]],
-    outputs: list[ty.Union[AppField, dict[str, str]]],
+    inputs: list[ty.Union[BidsInput, dict[str, str]]],
+    outputs: list[ty.Union[BidsOutput, dict[str, str]]],
     executable: str = "",  # Use entrypoint of container,
     container_image: str = None,
     parameters: ty.Dict[str, type] = None,
@@ -156,8 +141,8 @@ def bids_app(
         )
 
     # Convert from JSON format inputs/outputs to tuples with resolved data formats
-    inputs = ObjectListConverter(AppField)(inputs)
-    outputs = ObjectListConverter(AppField)(outputs)
+    inputs = ObjectListConverter(BidsInput)(inputs)
+    outputs = ObjectListConverter(BidsOutput)(outputs)
 
     # Ensure output paths all start with 'derivatives
     input_names = [i.name for i in inputs]
@@ -380,10 +365,13 @@ def extract_bids(
     output_paths = []
     row = dataset.row(row_frequency, id)
     for output in outputs:
+        path = "derivatives/" + app_name
+        if output.path:
+            path += "/" + output.path
         dataset.add_sink(
             output.name,
             output.datatype,
-            path="derivatives/" + app_name + "/" + output.path,
+            path=path,
         )
     with dataset.store:
         for output in outputs:

@@ -524,7 +524,7 @@ class ContainerImage:
                 # else:
                 value = str(value)
             elif isclass(value) or isfunction(value):
-                value = ClassResolver.tostr(value)
+                value = ClassResolver.tostr(value, strip_prefix=False)
             return value
 
         return attrs.asdict(self, value_serializer=serializer, filter=filter)
