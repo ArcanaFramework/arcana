@@ -3,7 +3,12 @@ import tempfile
 import shutil
 import filecmp
 import pytest
-from arcana.tasks.common.archive import create_tar, extract_tar, create_zip, extract_zip
+from arcana.analysis.tasks.common.archive import (
+    create_tar,
+    extract_tar,
+    create_zip,
+    extract_zip,
+)
 
 
 TEST_DIR = "__test__"

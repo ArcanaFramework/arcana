@@ -62,7 +62,7 @@ Stores
 Processing
 ----------
 
-.. autoclass:: arcana.core.pipeline.Pipeline
+.. autoclass:: arcana.core.analysis.pipeline.Pipeline
 
 
 Enums

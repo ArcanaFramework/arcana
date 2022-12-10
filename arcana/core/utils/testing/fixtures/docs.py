@@ -175,7 +175,7 @@ licenses:
       license description
     info_url: http://path.to.license.provider.org/licenses
 command:
-    task: arcana.tasks.bids:bids_app
+    task: arcana.analysis.tasks.bids:bids_app
     inputs:
       T1w:
         configuration:
@@ -245,7 +245,7 @@ a longer description
 ## Command
 |Key|Value|
 |---|-----|
-|Task|arcana.tasks.bids.app:bids_app|
+|Task|arcana.analysis.tasks.bids.app:bids_app|
 |Operates on|session|
 #### Inputs
 |Name|Data type|Stored data type default|Description|

@@ -12,7 +12,7 @@ import docker
 from arcana import __version__
 from arcana.data.types import NiftiX
 from arcana.data.stores.bids import BidsDataset
-from arcana.tasks.bids.app import bids_app, BidsInput, BidsOutput
+from arcana.analysis.tasks.bids.app import bids_app, BidsInput, BidsOutput
 from arcana.data.types.common import Text, Directory
 from arcana.data.types.medimage import NiftiGzX, NiftiGzXFslgrad
 

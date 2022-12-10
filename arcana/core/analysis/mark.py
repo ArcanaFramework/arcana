@@ -1,18 +1,17 @@
 from types import MemberDescriptorType
-from .analysis import (
+from .spec import (
     _UnresolvedOp,
-    make_class,
     _Inherited,
     _MappedFrom,
     ColumnSpec,
     Parameter,
     SubanalysisSpec,
 )
+from .make import make
 from .salience import ColumnSalience, ParameterSalience, CheckSalience
-from .utils.misc import (
+from ..utils.misc import (
     SWICTH_ANNOTATIONS,
     CHECK_ANNOTATIONS,
-    CONVERTER_ANNOTATIONS,
     PIPELINE_ANNOTATIONS,
 )
 
@@ -26,7 +25,7 @@ def analysis(space: type):
         The data space the analysis operates on, see"""
 
     def decorator(klass):
-        return make_class(klass, space)
+        return make(klass, space)
 
     return decorator
 
@@ -120,15 +119,6 @@ def check(column, salience=CheckSalience.prudent):
             "column": column,
             "salience": salience,
         }
-        return meth
-
-    return decorator
-
-
-def converter(output_format):
-    def decorator(meth):
-        anot = meth.__annotations__
-        anot[CONVERTER_ANNOTATIONS] = output_format
         return meth
 
     return decorator

@@ -1,4 +1,4 @@
-from arcana.core.cli import cli
+from arcana.core.cli.base import cli
 from .store import store
 from .dataset import dataset
 from .apply import apply

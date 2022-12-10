@@ -11,7 +11,7 @@ from arcana.core.utils.testing.tasks import (
     contents_are_numeric,
     identity_file,
 )
-from arcana.core.mark import (
+from arcana.core.analysis.mark import (
     analysis,
     pipeline,
     parameter,
@@ -24,10 +24,10 @@ from arcana.core.mark import (
     check,
     subanalysis,
 )
-from arcana.core.analysis import Operation, ARCANA_SPEC
+from arcana.core.analysis.spec import Operation, ARCANA_SPEC
 from arcana.data.types.common import Zip, Text
 from arcana.data.stores.common import FileSystem
-from arcana.core.salience import (
+from arcana.core.analysis.salience import (
     CheckStatus,
     ColumnSalience as cs,
     ParameterSalience as ps,

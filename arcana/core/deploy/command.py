@@ -18,7 +18,7 @@ from arcana.core.utils.serialize import (
     ObjectConverter,
     ClassResolver,
 )
-from arcana.core.pipeline import (
+from arcana.core.analysis.pipeline import (
     PipelineField,
 )
 from arcana.core.utils.misc import show_workflow_errors, add_exc_note

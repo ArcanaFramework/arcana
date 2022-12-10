@@ -684,10 +684,10 @@ class Dataset:
             name of the pipeline
         workflow : pydra.Workflow
             pydra workflow to connect to the dataset as a pipeline
-        inputs : list[arcana.core.pipeline.Input or tuple[str, str, type] or tuple[str, str]]
-            List of inputs to the pipeline (see `arcana.core.pipeline.Pipeline.PipelineInput`)
-        outputs : list[arcana.core.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
-            List of outputs of the pipeline (see `arcana.core.pipeline.Pipeline.PipelineOutput`)
+        inputs : list[arcana.core.analysis.pipeline.Input or tuple[str, str, type] or tuple[str, str]]
+            List of inputs to the pipeline (see `arcana.core.analysis.pipeline.Pipeline.PipelineInput`)
+        outputs : list[arcana.core.analysis.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
+            List of outputs of the pipeline (see `arcana.core.analysis.pipeline.Pipeline.PipelineOutput`)
         row_frequency : str, optional
             the frequency of the data rows the pipeline will be executed over, i.e.
             will it be run once per-session, per-subject or per whole dataset,
@@ -708,7 +708,7 @@ class Dataset:
         ArcanaUsageError
             if overwrite is false and
         """
-        from arcana.core.pipeline import Pipeline
+        from arcana.core.analysis.pipeline import Pipeline
 
         row_frequency = self._parse_freq(row_frequency)
 
@@ -768,7 +768,7 @@ class Dataset:
         Sequence[List[DataType]]
             The derived columns
         """
-        from arcana.core.pipeline import Pipeline
+        from arcana.core.analysis.pipeline import Pipeline
 
         sinks = [self[s] for s in set(sink_names)]
         for pipeline, _ in Pipeline.stack(*sinks):

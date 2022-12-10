@@ -28,7 +28,7 @@ from arcana.core.exceptions import (
     ArcanaFileFormatError,
     ArcanaFormatConversionError,
 )
-from ..salience import DataQuality  # @ignore reshadowedImports
+from ..analysis.salience import DataQuality  # @ignore reshadowedImports
 
 if ty.TYPE_CHECKING:
     from arcana.core.data.row import DataRow

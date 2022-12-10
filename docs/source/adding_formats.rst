@@ -99,7 +99,7 @@ to handle the Siemens-variant DICOM format which has '.IMA' extensions.
 
 Defining hierarchical relationships between file formats is most useful when
 defining implicit converters between file formats. This is done by adding
-classmethods to the file format class decorated by :func:`arcana.core.mark.converter`.
+classmethods to the file format class decorated by :func:`arcana.mark.converter`.
 The decorator specifies the format the converter method can specify the
 the conversion *from* into the current class. The converter method adds Pydra_
 nodes to a pipeline argument to perform
@@ -117,7 +117,7 @@ converted file group in the order they appear in ``side_car_exts``.
     from pydra.engine.core import Workflow, LazyField
     from pydra.tasks.dcm2niix import Dcm2niix
     from pydra.tasks.mrtrix3.utils import MRConvert
-    from arcana.core.mark import converter
+    from arcana.mark import converter
     from arcana.data.types.common import File
 
     class Nifti(File):

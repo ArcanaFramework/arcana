@@ -4,7 +4,7 @@ from pathlib import Path
 import logging
 import docker
 import xnat
-from arcana.tasks.tests.fixtures import concatenate
+from arcana.analysis.tasks.tests.fixtures import concatenate
 from arcana.data.stores.medimage.xnat.cs import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.types.common import text

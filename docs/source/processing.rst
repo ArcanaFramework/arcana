@@ -175,12 +175,12 @@ three column placeholders, ``preprocessed``, ``derived_image`` and
 one of the two implemented pipeline builder methods ``preprocess_pipeline``
 (*Line 26*) and ``create_image_pipeline`` (*Line 56*).
 
-The :func:`arcana.core.mark.analysis` decorator is used to specify an
+The :func:`arcana.mark.analysis` decorator is used to specify an
 analysis class (*Line 6*), taking the dataset space that the class operates on
 as an argument. By default, class attributes are assumed to be
-column placeholders of :func:`arcana.core.mark.column` type (*Line 13-17*).
+column placeholders of :func:`arcana.mark.column` type (*Line 13-17*).
 Class attributes can also be free parameters of the analysis by using the
-:func:`arcana.core.mark.parameter` instead (*Line 21*).
+:func:`arcana.mark.parameter` instead (*Line 21*).
 
 The :func:`arca.acore.mark.pipeline` decorator specifies pipeline builder
 methods, and takes the columns the pipeline outputs are connected to as arguments
@@ -192,7 +192,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 
     import pydra
     from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
-    from arcana.core.mark import analysis, pipeline, parameter
+    from arcana.mark import analysis, pipeline, parameter
     from arcana.data.spaces.example import ExampleDataSpace
     from arcana.data.types.common import Zip, Directory, Json, Png, Gif
 

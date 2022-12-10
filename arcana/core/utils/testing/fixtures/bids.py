@@ -175,7 +175,7 @@ def bids_command_spec(mock_bids_app_executable):
     }
 
     return {
-        "task": "arcana.tasks.bids.app:bids_app",
+        "task": "arcana.analysis.tasks.bids.app:bids_app",
         "inputs": inputs,
         "outputs": outputs,
         "row_frequency": "session",

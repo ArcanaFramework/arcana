@@ -11,7 +11,7 @@ from arcana.core.exceptions import (
     ArcanaFileFormatError,
 )
 from .type import DataType
-from ..salience import DataQuality
+from ..analysis.salience import DataQuality
 from .space import DataSpace
 
 

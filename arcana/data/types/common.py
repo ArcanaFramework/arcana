@@ -1,8 +1,13 @@
 from abc import ABCMeta
 import zipfile
 from arcana.core.data.type import FileGroup, BaseFile, BaseDirectory
-from arcana.core.mark import converter
-from arcana.tasks.common.archive import create_tar, extract_tar, create_zip, extract_zip
+from arcana.mark import converter
+from arcana.analysis.tasks.common.archive import (
+    create_tar,
+    extract_tar,
+    create_zip,
+    extract_zip,
+)
 
 
 # Compressed formats

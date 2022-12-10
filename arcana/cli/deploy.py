@@ -13,7 +13,7 @@ import docker
 import docker.errors
 import xnat as xnatpy
 from pydra.engine.core import TaskBase
-from arcana.core.cli import cli
+from arcana.core.cli.base import cli
 from arcana.core.utils.serialize import (
     package_from_module,
     pydra_asdict,
