@@ -4,7 +4,7 @@ from unittest.mock import patch
 from arcana.core.data.set import Dataset
 from arcana.core.analysis.salience import DataQuality, ColumnSalience
 from arcana.core.utils.testing.data.sets import TestDataSpace
-from arcana.cli.dataset import define, add_source, add_sink, missing_items
+from arcana.core.cli.dataset import define, add_source, add_sink, missing_items
 from arcana.data.types.common import Text
 from arcana.core.utils.testing import make_dataset_id_str, show_cli_trace
 

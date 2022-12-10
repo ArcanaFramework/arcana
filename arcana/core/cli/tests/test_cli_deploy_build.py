@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 import pytest
 import docker
-from arcana.cli.deploy import (
+from arcana.core.cli.deploy import (
     build,
     build_docs,
 )

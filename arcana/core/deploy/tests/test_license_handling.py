@@ -4,7 +4,7 @@ import docker
 import docker.errors
 import yaml
 from arcana.core.utils.testing import show_cli_trace
-from arcana.cli.deploy import build
+from arcana.core.cli.deploy import build
 
 
 def create_spec_file(name: str, work_dir: Path):

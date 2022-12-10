@@ -1,6 +1,6 @@
 from functools import reduce
 from operator import mul
-from arcana.cli.deploy import image_entrypoint
+from arcana.core.cli.deploy import image_entrypoint
 from arcana.core.utils.testing import show_cli_trace, make_dataset_id_str
 from arcana.core.utils.testing.data.types import EncodedText
 from arcana.core.utils.testing.data.sets import (

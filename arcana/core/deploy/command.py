@@ -52,7 +52,12 @@ class DefaultColumn:
     """
 
     datatype: type = attrs.field(
-        default=None, converter=ClassResolver(DataType, allow_none=True)
+        default=None,
+        converter=ClassResolver(
+            DataType,
+            allow_none=True,
+            alternative_types=[DataRow],
+        ),
     )
     row_frequency: DataSpace = None
     path: str = None
@@ -139,7 +144,10 @@ class CommandInput(CommandField):
 
     @default_column.validator
     def default_column_validator(self, _, default_column: DefaultColumn):
-        if default_column.datatype is not None:
+        if (
+            default_column.datatype is not None
+            and self.datatype is not default_column.datatype
+        ):
             try:
                 self.datatype.find_converter(default_column.datatype)
             except ArcanaFormatConversionError as e:
@@ -187,7 +195,10 @@ class CommandOutput(CommandField):
 
     @default_column.validator
     def default_column_validator(self, _, default_column: DefaultColumn):
-        if default_column.datatype is not None:
+        if (
+            default_column.datatype is not None
+            and self.datatype is not default_column.datatype
+        ):
             try:
                 default_column.datatype.find_converter(self.datatype)
             except ArcanaFormatConversionError as e:

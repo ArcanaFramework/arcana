@@ -1,9 +1,9 @@
 from operator import itemgetter
 import click
 from arcana.core.data.store import DataStore
-from arcana.core.cli.base import cli
 from arcana.core.utils.serialize import ClassResolver
 from arcana.core.utils.misc import get_home_dir
+from .base import cli
 
 
 @cli.group()

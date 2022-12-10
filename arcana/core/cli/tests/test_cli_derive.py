@@ -1,7 +1,7 @@
 from functools import reduce
 from operator import mul
-from arcana.cli.apply import apply_pipeline
-from arcana.cli.derive import derive_column
+from arcana.core.cli.apply import apply_pipeline
+from arcana.core.cli.derive import derive_column
 from arcana.core.utils.testing import show_cli_trace, make_dataset_id_str
 from arcana.data.types.common import Text
 

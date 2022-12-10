@@ -4,7 +4,7 @@ from arcana.core.utils.testing.fixtures.common import make_dataset, TestDatasetB
 from arcana.data.types.common import Text
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.types.medimage import NiftiGzX
-from arcana.cli.deploy import image_entrypoint
+from arcana.core.cli.deploy import image_entrypoint
 from arcana.core.utils.serialize import ClassResolver
 from arcana.core.utils.misc import path2varname
 from arcana.core.utils.testing import show_cli_trace

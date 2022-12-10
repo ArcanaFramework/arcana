@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pytest
 import docker
 import xnat
-from arcana.cli.deploy import (
-    build,
+from arcana.core.cli.deploy import build
+from arcana.cli.xnat.images import (
     pull_xnat_images,
     xnat_auth_refresh,
     PULL_IMAGES_XNAT_HOST_KEY,

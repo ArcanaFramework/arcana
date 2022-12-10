@@ -1,6 +1,6 @@
 import os
 from unittest.mock import patch
-from arcana.cli.store import add, ls, remove, rename
+from arcana.core.cli.store import add, ls, remove, rename
 from arcana.core.utils.testing import show_cli_trace
 from arcana.core.data.store import DataStore
 
