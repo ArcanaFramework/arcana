@@ -2,8 +2,8 @@ import re
 import json
 import yaml
 import click
-import xnat as xnatpy
-from arcana.core.cli import cli
+import xnat
+from .base import xnat_group
 
 
 PULL_IMAGES_XNAT_HOST_KEY = "XNAT_HOST"
@@ -11,12 +11,7 @@ PULL_IMAGES_XNAT_USER_KEY = "XNAT_USER"
 PULL_IMAGES_XNAT_PASS_KEY = "XNAT_PASS"
 
 
-@cli.group()
-def xnat():
-    pass
-
-
-@xnat.command(
+@xnat_group.command(
     name="pull-images",
     help=f"""Updates the installed pipelines on an XNAT instance from a manifest
 JSON file using the XNAT instance's REST API.
@@ -87,7 +82,7 @@ def pull_xnat_images(manifest_file, server, user, password, filters_file):
             entry["name"],
         )
 
-    with xnatpy.connect(
+    with xnat.connect(
         server=server,
         user=user,
         password=password,
@@ -120,7 +115,7 @@ def pull_xnat_images(manifest_file, server, user, password, filters_file):
     )
 
 
-@xnat.command(
+@xnat_group.command(
     name="auth-refresh",
     help="""Logs into the XNAT instance and regenerates a new authorisation token
 to avoid them expiring (2 days by default)
@@ -135,7 +130,7 @@ def xnat_auth_refresh(config_yaml_file, auth_file_path):
     with open(auth_file_path) as fp:
         auth = json.load(fp)
 
-    with xnatpy.connect(
+    with xnat.connect(
         server=config["server"], user=auth["alias"], password=auth["secret"]
     ) as xlogin:
         alias, secret = xlogin.services.issue_token()

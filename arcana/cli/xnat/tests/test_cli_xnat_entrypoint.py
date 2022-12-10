@@ -1,6 +1,6 @@
 from functools import reduce
 from operator import mul
-from arcana.core.cli.deploy import image_entrypoint
+from arcana.cli.xnat import cs_image_entrypoint
 from arcana.core.utils.testing import show_cli_trace, make_dataset_id_str
 from arcana.core.utils.testing.data.types import EncodedText
 from arcana.core.utils.testing.data.sets import (
@@ -74,7 +74,7 @@ def test_entrypoint_cli(concatenate_task, saved_dataset, cli_runner, work_dir):
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     result = cli_runner(
-        image_entrypoint,
+        cs_image_entrypoint,
         [
             dataset_id_str,
             "--input",
@@ -165,7 +165,7 @@ def test_entrypoint_cli_fail(concatenate_task, saved_dataset, cli_runner, work_d
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     result = cli_runner(
-        image_entrypoint,
+        cs_image_entrypoint,
         [
             dataset_id_str,
             "--input",
@@ -247,7 +247,7 @@ def test_entrypoint_cli_on_row(cli_runner, work_dir):
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     result = cli_runner(
-        image_entrypoint,
+        cs_image_entrypoint,
         [
             dataset_id_str,
             "--input",
@@ -317,7 +317,7 @@ def test_entrypoint_cli_with_converter_args(saved_dataset, cli_runner, work_dir)
     )
 
     result = cli_runner(
-        image_entrypoint,
+        cs_image_entrypoint,
         [
             dataset_id_str,
             "--input",

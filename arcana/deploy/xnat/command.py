@@ -54,11 +54,12 @@ class XnatCSCommand(ContainerCommand):
 
         xnat_input_args = self.add_inputs_from_xnat(cmd_json)
 
-        cmd_json["command-line"] = self.command_line(
-            dataset_id_str="xnat-cs//[PROJECT_ID]",
-            options=(
+        cmd_json["command-line"] = (
+            self.activate_conda_cmd()
+            + "arcana xnat cs-image-entrypoint xnat-cs//[PROJECT_ID] "
+            + " ".join(
                 input_args + output_args + param_args + xnat_input_args + [flag_arg]
-            ),
+            )
         )
 
         return cmd_json

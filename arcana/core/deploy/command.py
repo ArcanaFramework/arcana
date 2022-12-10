@@ -329,36 +329,16 @@ class ContainerCommand:
     def data_space(self):
         return type(self.row_frequency)
 
-    def command_line(
-        self,
-        dataset_id_str: str = None,
-        options: list[str] = (),
-    ):
-        """Generate a command line to run the command from within the container
-
-        Parameters
-        ----------
-        dataset_id_str : str
-            the ID str of a dataset relative to a data store,
-            e.g. file///absolute/path/to/dataset or xnat-cs//MY_PROJECT
-        options : list[str]
-            options to the arcana deploy run-in-image command that are fixed for the
-            given deployment
+    def activate_conda_cmd(self):
+        """Generate the preamble to a command line that activates the conda environment
 
         Returns
         -------
         str
-            generated commandline
+            part of a command line, which activates the conda environment
         """
 
-        cmdline = (
-            f"conda run --no-capture-output -n {self.image.CONDA_ENV} "  # activate conda
-            f"arcana deploy image-entrypoint " + " ".join(options)
-        )
-        if dataset_id_str is not None:
-            cmdline += f" {dataset_id_str} "
-
-        return cmdline
+        return f"conda run --no-capture-output -n {self.image.CONDA_ENV} "  # activate conda
 
     def configuration_args(self):
 
