@@ -6,7 +6,7 @@ from arcana.core.analysis.salience import DataQuality, ColumnSalience
 from arcana.core.utils.testing.data.sets import TestDataSpace
 from arcana.core.cli.dataset import define, add_source, add_sink, missing_items
 from arcana.data.types.common import Text
-from arcana.core.utils.testing import make_dataset_id_str, show_cli_trace
+from arcana.core.utils.testing import make_dataset_locator, show_cli_trace
 
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
@@ -22,7 +22,7 @@ def get_arbitrary_slice(i, dim_length):
 
 
 def test_add_column_cli(saved_dataset, cli_runner):
-    dataset_id_str = make_dataset_id_str(saved_dataset)
+    dataset_locator = make_dataset_locator(saved_dataset)
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     # Add source to loaded dataset
     saved_dataset.add_source(
@@ -39,7 +39,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
     result = cli_runner(
         add_source,
         [
-            dataset_id_str,
+            dataset_locator,
             "a_source",
             "common:Text",
             "--path",
@@ -65,7 +65,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
     result = cli_runner(
         add_sink,
         [
-            dataset_id_str,
+            dataset_locator,
             "a_sink",
             "common:Text",
             "--path",
@@ -79,7 +79,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
-    loaded_dataset = Dataset.load(dataset_id_str)
+    loaded_dataset = Dataset.load(dataset_locator)
     assert saved_dataset.columns == loaded_dataset.columns
 
 
@@ -91,7 +91,7 @@ def test_add_source_xnat(mutable_xnat_dataset, cli_runner, work_dir):
         store_nickname = mutable_xnat_dataset.id + "_store"
         dataset_name = "testing123"
         mutable_xnat_dataset.store.save(store_nickname)
-        dataset_id_str = (
+        dataset_locator = (
             store_nickname + "//" + mutable_xnat_dataset.id + "@" + dataset_name
         )
         mutable_xnat_dataset.save(dataset_name)
@@ -99,7 +99,7 @@ def test_add_source_xnat(mutable_xnat_dataset, cli_runner, work_dir):
         result = cli_runner(
             add_source,
             [
-                dataset_id_str,
+                dataset_locator,
                 "a_source",
                 "common:Text",
                 "--path",
@@ -124,7 +124,7 @@ def test_add_sink_xnat(mutable_xnat_dataset, work_dir, cli_runner):
         store_nickname = mutable_xnat_dataset.id + "_store"
         dataset_name = "testing123"
         mutable_xnat_dataset.store.save(store_nickname)
-        dataset_id_str = (
+        dataset_locator = (
             store_nickname + "//" + mutable_xnat_dataset.id + "@" + dataset_name
         )
         mutable_xnat_dataset.save(dataset_name)
@@ -132,7 +132,7 @@ def test_add_sink_xnat(mutable_xnat_dataset, work_dir, cli_runner):
         result = cli_runner(
             add_sink,
             [
-                dataset_id_str,
+                dataset_locator,
                 "a_sink",
                 "common:Text",
                 "--path",

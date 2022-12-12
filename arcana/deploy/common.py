@@ -13,4 +13,4 @@ class PipelineImage(CommandImage):
             self.command.activate_conda_cmd() + "arcana ext common pipeline-entrypoint"
         )
 
-        dockerfile.entrypoint(shlex.split(command_line()))
+        dockerfile.entrypoint(shlex.split(command_line))

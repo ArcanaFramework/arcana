@@ -19,13 +19,13 @@ def derive():
     help="""Derive data for a data sink column and
 all prerequisite columns.
 
-DATASET_ID_STR string containing the nickname of the data store, the ID of the dataset
+DATASET_LOCATOR string containing the nickname of the data store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
 format <store-nickname>//<dataset-id>[@<dataset-name>]
 
 COLUMNS are the names of the sink columns to derive""",
 )
-@click.argument("dataset_id_str")
+@click.argument("dataset_locator")
 @click.argument("columns", nargs=-1)
 @click.option(
     "--work",
@@ -47,7 +47,7 @@ COLUMNS are the names of the sink columns to derive""",
     default="info",
     help=("The level of detail logging information is presented"),
 )
-def derive_column(dataset_id_str, columns, work, plugin, loglevel):
+def derive_column(dataset_locator, columns, work, plugin, loglevel):
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
@@ -59,7 +59,7 @@ def derive_column(dataset_id_str, columns, work, plugin, loglevel):
         store_cache = None
         pipeline_cache = None
 
-    dataset = Dataset.load(dataset_id_str, cache_dir=store_cache)
+    dataset = Dataset.load(dataset_locator, cache_dir=store_cache)
 
     set_loggers(loglevel)
 

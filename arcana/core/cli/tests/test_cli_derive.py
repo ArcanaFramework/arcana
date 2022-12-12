@@ -2,13 +2,13 @@ from functools import reduce
 from operator import mul
 from arcana.core.cli.apply import apply_pipeline
 from arcana.core.cli.derive import derive_column
-from arcana.core.utils.testing import show_cli_trace, make_dataset_id_str
+from arcana.core.utils.testing import show_cli_trace, make_dataset_locator
 from arcana.data.types.common import Text
 
 
 def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    dataset_id_str = make_dataset_id_str(saved_dataset)
+    dataset_locator = make_dataset_locator(saved_dataset)
     bp = saved_dataset.__annotations__["blueprint"]
     duplicates = 3
     # Start generating the arguments for the CLI
@@ -16,7 +16,7 @@ def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
     result = cli_runner(
         apply_pipeline,
         [
-            dataset_id_str,
+            dataset_locator,
             "a_pipeline",
             "arcana.core.utils.testing.tasks:" + concatenate_task.__name__,
             "--source",
@@ -39,7 +39,7 @@ def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source column to saved dataset
     result = cli_runner(
-        derive_column, [dataset_id_str, "concatenated", "--plugin", "serial"]
+        derive_column, [dataset_locator, "concatenated", "--plugin", "serial"]
     )
     assert result.exit_code == 0, show_cli_trace(result)
     sink = saved_dataset.add_sink("concatenated", Text)

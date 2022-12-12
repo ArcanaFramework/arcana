@@ -148,7 +148,7 @@ class ContainerCommand:
 
     def execute(
         self,
-        dataset_id_str: str,
+        dataset_locator: str,
         input_values: dict[str, str] = None,
         output_values: dict[str, str] = None,
         parameter_values: dict[str, ty.Any] = None,
@@ -225,7 +225,7 @@ class ContainerCommand:
         pipeline_cache_dir = work_dir / "pydra"
 
         dataset = self.load_dataset(
-            dataset_id_str, store_cache_dir, dataset_hierarchy, dataset_name
+            dataset_locator, store_cache_dir, dataset_hierarchy, dataset_name
         )
 
         if single_row is not None:
@@ -467,7 +467,7 @@ class ContainerCommand:
 
     def load_dataset(
         self,
-        dataset_id_str: str,
+        dataset_locator: str,
         cache_dir: Path,
         dataset_hierarchy: str,
         dataset_name: str,
@@ -476,7 +476,7 @@ class ContainerCommand:
 
         Parameters
         ----------
-        dataset_id_str : str
+        dataset_locator : str
             dataset ID str
         cache_dir : Path
             the directory to use for the store cache
@@ -491,10 +491,10 @@ class ContainerCommand:
             _description_
         """
         try:
-            dataset = Dataset.load(dataset_id_str)
+            dataset = Dataset.load(dataset_locator)
         except KeyError:
 
-            store_name, id, name = Dataset.parse_id_str(dataset_id_str)
+            store_name, id, name = Dataset.parse_id_str(dataset_locator)
 
             if dataset_name is not None:
                 name = dataset_name
