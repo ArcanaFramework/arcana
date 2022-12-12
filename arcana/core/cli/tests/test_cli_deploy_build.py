@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import docker
 from arcana.core.cli.deploy import (
-    build,
+    make,
     build_docs,
 )
 from arcana.core.utils.testing.fixtures.docs import all_docs_fixtures, DocsFixture
@@ -43,7 +43,7 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
         yaml.dump(concatenate_spec, f)
 
     result = cli_runner(
-        build,
+        make,
         [
             "xnat:XnatCSImage",
             str(spec_path),
@@ -86,7 +86,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
             yaml.dump(spec, f)
 
         result = cli_runner(
-            build,
+            make,
             [
                 "xnat:XnatCSImage",
                 str(spec_path),

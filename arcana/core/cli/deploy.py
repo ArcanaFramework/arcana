@@ -32,18 +32,19 @@ def deploy():
 
 
 @deploy.command(
-    help="""Build a wrapper image specified in a module
+    help="""Construct and build a dockerfile/apptainer-file for containing a pipeline
 
-BUILD_TARGET is the type of image to build, e.g. arcana.deploy.xnat:XnatCSImage
+SPEC_ROOT is the file system path to the specification to build, or directory
+containing multiple specifications
+
+TARGET is the type of image to build, e.g. arcana.deploy.xnat:XnatCSImage
 the target should resolve to a class deriviing from arcana.core.deploy.CommandImage.
 If it is located under the `arcana.deploy`, then that prefix can be dropped, e.g.
 common:PipelineImage
-
-SPEC_ROOT is the file system path to the specification to build, or directory
-containing multiple specifications"""
+"""
 )
-@click.argument("build_target", type=str)
 @click.argument("spec_root", type=click.Path(exists=True, path_type=Path))
+@click.argument("target", type=str)
 @click.option(
     "--registry",
     default=DOCKER_HUB,
@@ -172,8 +173,8 @@ containing multiple specifications"""
         "Remove built images after they are pushed to the registry (requires --push)"
     ),
 )
-def build(
-    build_target,
+def make(
+    target,
     spec_root,
     registry,
     release,
@@ -217,7 +218,7 @@ def build(
 
     temp_dir = tempfile.mkdtemp()
 
-    target_cls = ClassResolver(CommandImage)(build_target)
+    target_cls = ClassResolver(CommandImage)(target)
 
     dc = docker.from_env()
 

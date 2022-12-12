@@ -7,7 +7,7 @@ from unittest.mock import patch
 import pytest
 import docker
 import xnat
-from arcana.core.cli.deploy import build
+from arcana.core.cli.deploy import make
 from arcana.cli.xnat.update_release import (
     pull_xnat_images,
     xnat_auth_refresh,
@@ -82,7 +82,7 @@ def test_pull_xnat_images(
     manifest_path = work_dir / "manifest.json"
 
     result = cli_runner(
-        build,
+        make,
         [
             "xnat:XnatCSImage",
             str(spec_dir),

@@ -26,7 +26,8 @@ logger = logging.getLogger("arcana")
 
 @attrs.define(kw_only=True)
 class CommandImage(ArcanaImage, metaclass=ABCMeta):
-    """
+    """A container image that contains a command with specific inputs and outputs to run.
+
     Parameters
     ----------
     name : str
@@ -158,21 +159,22 @@ class CommandImage(ArcanaImage, metaclass=ABCMeta):
         license_build_dir = build_dir / "licenses"
         license_build_dir.mkdir()
         for lic in self.licenses:
-            if lic.source:
-                build_path = license_build_dir / lic.name
-                shutil.copyfile(lic.source, build_path)
-                dockerfile.copy(
-                    source=[str(build_path.relative_to(build_dir))],
-                    destination=lic.destination,
-                )
-            else:
-                logger.warning(
-                    "License file for '%s' was not provided, will attempt to download "
-                    "from '%s' dataset-level column or site-wide license dataset at "
-                    "runtime",
-                    lic.name,
-                    lic.column_name(lic.name),
-                )
+            if lic.store_in_image:
+                if lic.source:
+                    build_path = license_build_dir / lic.name
+                    shutil.copyfile(lic.source, build_path)
+                    dockerfile.copy(
+                        source=[str(build_path.relative_to(build_dir))],
+                        destination=lic.destination,
+                    )
+                else:
+                    logger.warning(
+                        "License file for '%s' was not provided, will attempt to download "
+                        "from '%s' dataset-level column or site-wide license dataset at "
+                        "runtime",
+                        lic.name,
+                        lic.column_name(lic.name),
+                    )
 
     def insert_spec(self, dockerfile: DockerRenderer, build_dir):
         """Generate Neurodocker instructions to save the specification inside the built
