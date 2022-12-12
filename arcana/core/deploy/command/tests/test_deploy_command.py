@@ -9,7 +9,7 @@ from arcana.core.utils.testing.data.sets import (
     TestDataSpace,
 )
 from arcana.data.types.common import Text
-from arcana.core.deploy.command import ContainerCommand
+from arcana.core.deploy.command.base import ContainerCommand
 from arcana.exceptions import ArcanaDataMatchError
 
 

@@ -1,6 +1,6 @@
-from arcana.core.cli import cli
+from arcana.core.cli import ext
 
 
-@cli.group(name="xnat")
+@ext.group(name="xnat")
 def xnat_group():
     pass

@@ -1,4 +1,4 @@
-from .base import cli
+from .base import cli, ext
 from .store import store
 from .dataset import dataset
 from .apply import apply

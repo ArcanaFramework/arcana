@@ -561,22 +561,25 @@ def changelog(manifest_json):
 
 
 @deploy.command(
+    name="install-license",
     help="""Installs a license within a store (i.e. site-wide) or dataset (project-specific)
 for use in a deployment pipeline
-
-STORE_OR_DATASET either the "nickname" of a store (as saved by `arcana store add`)
-or the ID of a dataset in form <store-nickname>//<dataset-id>[@<dataset-name>], where the dataset ID
-is either the location of the root directory (for file-system based stores) or the project
-ID for managed data repositories.
 
 LICENSE_NAME the name of the license to upload. Must match the name of the license specified
 in the deployment specification
 
-SOURCE_FILE path to the license file to upload"""
+SOURCE_FILE path to the license file to upload
+
+INSTALL_LOCATIONS a list of installation locations, which are either the "nickname" of a
+store (as saved by `arcana store add`) or the ID of a dataset in form
+<store-nickname>//<dataset-id>[@<dataset-name>], where the dataset ID
+is either the location of the root directory (for file-system based stores) or the
+project ID for managed data repositories.
+""",
 )
-@click.argument("store_or_dataset")
 @click.argument("license_name")
 @click.argument("source_file", type=click.Path(exists=True, path_type=Path))
+@click.argument("install_locations", nargs=-1)
 @click.option(
     "--logfile",
     default=None,
@@ -584,18 +587,22 @@ SOURCE_FILE path to the license file to upload"""
     help="Log output to file instead of stdout",
 )
 @click.option("--loglevel", default="info", help="The level to display logs at")
-def install_licenses(store_or_dataset, license_name, source_file, logfile, loglevel):
+def install_license(install_locations, license_name, source_file, logfile, loglevel):
 
     logging.basicConfig(filename=logfile, level=getattr(logging, loglevel.upper()))
 
-    if "//" in store_or_dataset:
-        dataset = Dataset.load(store_or_dataset)
-        store_name, _, _ = Dataset.parse_id_str(id)
-        msg = f"for '{dataset.name}' dataset on {store_name} store"
-    else:
-        store = DataStore.load(store_or_dataset)
-        dataset = store.site_licenses_dataset()
-        msg = f"site-wide on {store_or_dataset} store"
+    if not install_locations:
+        install_locations = ["file"]
 
-    dataset.install_license(license_name, source_file)
-    logger.info("Successfully installed '%s' license %s", license_name, msg)
+    for install_loc in install_locations:
+        if "//" in install_loc:
+            dataset = Dataset.load(install_loc)
+            store_name, _, _ = Dataset.parse_id_str(id)
+            msg = f"for '{dataset.name}' dataset on {store_name} store"
+        else:
+            store = DataStore.load(install_loc)
+            dataset = store.site_licenses_dataset()
+            msg = f"site-wide on {install_loc} store"
+
+        dataset.install_license(license_name, source_file)
+        logger.info("Successfully installed '%s' license %s", license_name, msg)

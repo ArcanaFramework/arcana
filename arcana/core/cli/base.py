@@ -6,4 +6,9 @@ from arcana import __version__
 @click.group()
 @click.version_option(version=__version__)
 def cli():
-    pass
+    """Base command line group, installed as "arcana"."""
+
+
+@cli.group()
+def ext():
+    """Command-line group for extension hooks"""

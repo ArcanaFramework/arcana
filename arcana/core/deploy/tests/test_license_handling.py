@@ -1,10 +1,12 @@
 import pytest
+import os
+from unittest.mock import patch
 from pathlib import Path
 import docker
 import docker.errors
 import yaml
 from arcana.core.utils.testing import show_cli_trace
-from arcana.core.cli.deploy import build
+from arcana.core.cli.deploy import build, install_license
 
 
 def create_spec_file(name: str, work_dir: Path):
@@ -101,12 +103,81 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
     assert run_license_check(image_tag, work_dir)
 
 
-def test_runtime_license():
-    pass
+def test_site_runtime_license(license_file, run_prefix, work_dir, cli_runner):
+
+    # Build the pipeline without a license installed
+    image_name = f"license-site-runtime-{run_prefix}"
+    image_tag = f"{REGISTRY}/{ORG}/{image_name}:{IMAGE_VERSION}"
+
+    root_dir = create_spec_file(image_name, work_dir)
+    build_dir = work_dir / "build"
+
+    result = cli_runner(
+        build,
+        args=[
+            "common:PipelineImage",
+            str(root_dir),
+            "--build-dir",
+            str(build_dir),
+            "--use-local-packages",
+            "--install-extras",
+            "test",
+            "--raise-errors",
+            "--registry",
+            REGISTRY,
+        ],
+    )
+    assert result.exit_code == 0, show_cli_trace(result)
+    assert result.stdout.strip().splitlines()[-1] == image_tag
+
+    # Install license into the "site-wide" license location (i.e. in $ARCANA_HOME)
+    test_home_dir = work_dir / "test-arcana-home"
+    with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
+
+        result = cli_runner(install_license, args=[LICENSE_NAME, str(license_file)])
+        assert result.exit_code == 0, show_cli_trace(result)
+        assert run_license_check(image_tag, work_dir)
 
 
-def test_site_runtime_license():
-    pass
+def test_dataset_runtime_license(license_file, run_prefix, work_dir, cli_runner):
+
+    # Build the pipeline without a license installed
+    image_name = f"license-dataset-runtime-{run_prefix}"
+    image_tag = f"{REGISTRY}/{ORG}/{image_name}:{IMAGE_VERSION}"
+
+    root_dir = create_spec_file(image_name, work_dir)
+    build_dir = work_dir / "build"
+
+    result = cli_runner(
+        build,
+        args=[
+            "common:PipelineImage",
+            str(root_dir),
+            "--build-dir",
+            str(build_dir),
+            "--use-local-packages",
+            "--install-extras",
+            "test",
+            "--raise-errors",
+            "--registry",
+            REGISTRY,
+        ],
+    )
+
+    assert result.exit_code == 0, show_cli_trace(result)
+    assert result.stdout.strip().splitlines()[-1] == image_tag
+
+    result = cli_runner(
+        install_license,
+        args=[
+            LICENSE_NAME,
+            str(license_file),
+            f"file//{root_dir}",
+        ],
+    )
+
+    assert result.exit_code == 0, show_cli_trace(result)
+    assert run_license_check(image_tag, work_dir)
 
 
 ORG = "arcana-tests"

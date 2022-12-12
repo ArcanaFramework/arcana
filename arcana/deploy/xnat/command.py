@@ -3,7 +3,7 @@ import typing as ty
 import re
 import attrs
 from arcana.core.data.type import FileGroup
-from arcana.core.deploy.command import ContainerCommand
+from arcana.core.deploy.command.base import ContainerCommand
 from arcana.data.stores.xnat import XnatViaCS
 from arcana.data.spaces.medimage import Clinical
 from arcana.core.utils.serialize import ClassResolver
@@ -56,7 +56,7 @@ class XnatCSCommand(ContainerCommand):
 
         cmd_json["command-line"] = (
             self.activate_conda_cmd()
-            + "arcana xnat cs-image-entrypoint xnat-cs//[PROJECT_ID] "
+            + "arcana ext xnat cs-image-entrypoint xnat-cs//[PROJECT_ID] "
             + " ".join(
                 input_args + output_args + param_args + xnat_input_args + [flag_arg]
             )

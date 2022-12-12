@@ -8,4 +8,9 @@ from arcana.core.deploy.image import CommandImage
 @attrs.define
 class PipelineImage(CommandImage):
     def add_entrypoint(self, dockerfile: DockerRenderer, build_dir: Path):
-        dockerfile.entrypoint(shlex.split(self.command.command_line()))
+
+        command_line = (
+            self.command.activate_conda_cmd() + "arcana ext common pipeline-entrypoint"
+        )
+
+        dockerfile.entrypoint(shlex.split(command_line()))

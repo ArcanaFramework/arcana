@@ -16,7 +16,7 @@ from arcana.core.utils.serialize import (
     ClassResolver,
 )
 from arcana.data.types import Directory
-from ..command import ContainerCommand
+from ..command.base import ContainerCommand
 from .base import ArcanaImage
 from .components import ContainerAuthor, License, KnownIssue
 
