@@ -28,9 +28,9 @@ def pipeline_entrypoint(
     **kwargs,
 ):
 
-    image_spec = PipelineImage.load(spec_path=spec_path)
+    image_spec = PipelineImage.load(spec_path)
 
-    image_spec.command.run(
+    image_spec.command.execute(
         dataset_locator,
         **kwargs,
     )
