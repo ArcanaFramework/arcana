@@ -17,7 +17,7 @@ from arcana.core.utils.serialize import (
 )
 from arcana.data.types import Directory
 from ..command import ContainerCommand
-from .container_image import ContainerImage
+from .base import ArcanaImage
 from .components import ContainerAuthor, License, KnownIssue
 
 
@@ -25,7 +25,7 @@ logger = logging.getLogger("arcana")
 
 
 @attrs.define(kw_only=True)
-class CommandImage(ContainerImage, metaclass=ABCMeta):
+class CommandImage(ArcanaImage, metaclass=ABCMeta):
     """
     Parameters
     ----------
@@ -118,7 +118,7 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
             Path to the directory the Dockerfile will be written into copy any local
             files to
         **kwargs
-            Passed onto the ContainerImage.construct_dockerfile() method
+            Passed onto the ArcanaImage.construct_dockerfile() method
 
         Returns
         -------
@@ -460,11 +460,11 @@ class CommandImage(ContainerImage, metaclass=ABCMeta):
         diff = DeepDiff(prep(sdict), prep(odict), ignore_order=True)
         return diff
 
-    @classmethod
-    def load_in_image(cls, spec_path: Path = SPEC_PATH):
-        yml_dct = cls._load_yaml(spec_path)
-        klass = ClassResolver(cls)(yml_dct.pop("type"))
-        return klass.load(yml_dct)
+    # @classmethod
+    # def load_in_image(cls, spec_path: Path = SPEC_PATH):
+    #     yml_dct = cls._load_yaml(spec_path)
+    #     klass = ClassResolver(cls)(yml_dct.pop("type"))
+    #     return klass.load(yml_dct)
 
     @classmethod
     def _data_format_html(cls, datatype):

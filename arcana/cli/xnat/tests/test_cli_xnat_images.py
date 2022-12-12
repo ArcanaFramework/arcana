@@ -8,7 +8,7 @@ import pytest
 import docker
 import xnat
 from arcana.core.cli.deploy import build
-from arcana.cli.xnat.images import (
+from arcana.cli.xnat.update_release import (
     pull_xnat_images,
     xnat_auth_refresh,
     PULL_IMAGES_XNAT_HOST_KEY,

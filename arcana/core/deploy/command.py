@@ -2,6 +2,7 @@ from __future__ import annotations
 import shutil
 import re
 from copy import copy
+import tempfile
 import json
 import logging
 from pathlib import Path
@@ -358,15 +359,19 @@ class ContainerCommand:
                 cmd_args.append(f"--download-license {lic_name} {lic.destination}")
         return cmd_args
 
-    def run(
+    def execute(
         self,
-        dataset: Dataset,
+        dataset_id_str: str,
         input_values: dict[str, str],
         output_values: dict[str, str],
         parameter_values: dict[str, ty.Any],
-        pipeline_cache_dir: Path,
+        work_dir: Path,
+        loglevel,
         plugin: str,
-        ids: list[str],
+        ids: list[str] = None,
+        single_row: str = None,
+        dataset_hierarchy: str = None,
+        dataset_name: str = None,
         overwrite: bool = False,
         export_work: Path = False,
         raise_errors: bool = False,
@@ -408,6 +413,31 @@ class ContainerCommand:
         raise_errors : bool
             raise errors instead of capturing and logging (for debugging)
         """
+
+        if type(export_work) is bytes:
+            export_work = Path(export_work.decode("utf-8"))
+
+        if loglevel != "none":
+            logging.basicConfig(
+                stream=sys.stdout, level=getattr(logging, loglevel.upper())
+            )
+
+        if work_dir is None:
+            work_dir = tempfile.mkdtemp()
+
+        work_dir = Path(work_dir)
+        work_dir.mkdir(parents=True, exist_ok=True)
+
+        store_cache_dir = work_dir / "store-cache"
+        pipeline_cache_dir = work_dir / "pydra"
+
+        dataset = self.load_dataset(
+            dataset_id_str, store_cache_dir, dataset_hierarchy, dataset_name
+        )
+
+        if single_row is not None:
+            # Adds a single row to the dataset (i.e. skips a full scan)
+            dataset.add_leaf(single_row.split(","))
 
         # Install required software licenses from store into container
         licenses_to_download = [
