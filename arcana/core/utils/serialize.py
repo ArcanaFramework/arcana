@@ -130,7 +130,7 @@ class ClassResolver:
             else:
                 break
         if module is None:
-            if cls.FALLBACK.permit:
+            if cls.FALLBACK_TO_STR.permit:
                 return class_str
             else:
                 raise ArcanaUsageError(
@@ -175,7 +175,7 @@ class ClassResolver:
         return module_name + ":" + klass.__name__
 
     def _check_type(self, klass):
-        if self.FALLBACK.permit and isinstance(klass, str):
+        if self.FALLBACK_TO_STR.permit and isinstance(klass, str):
             return
         if self.base_class:
             if isfunction(klass):
@@ -192,7 +192,7 @@ class ClassResolver:
                     f"Found {klass}, which is not a subclass of {self.base_class}"
                 )
 
-    FALLBACK = _FallbackContext()
+    FALLBACK_TO_STR = _FallbackContext()
 
 
 def asdict(obj, omit: ty.Iterable[str] = (), required_modules: set = None):

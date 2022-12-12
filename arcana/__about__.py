@@ -10,6 +10,7 @@ install_requires = [
     "pydra>=0.20",  # @ git+https://github.com/Australian-Imaging-Service/pydra.git@0.19+ais1",
     "docker>=5.0.2",
     "click>=7.1.2",  # 8.1.3",
+    "click-option-group>=0.5.5",
     "PyYAML>=6.0",
     "natsort>=7.1.1",
     "fasteners>=0.7.0",

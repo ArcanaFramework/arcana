@@ -229,7 +229,8 @@ def build(
 
     # Don't error if the modules the task, data stores, data types, etc...
     # aren't present in the build environment
-    with ClassResolver.FALLBACK:
+    # FIXME: need to test for this
+    with ClassResolver.FALLBACK_TO_STR:
         image_specs = target_cls.load_tree(
             spec_root,
             registry=registry,
@@ -488,7 +489,7 @@ def build_docs(spec_root, output, registry, flatten, loglevel):
 
     output.mkdir(parents=True, exist_ok=True)
 
-    with ClassResolver.FALLBACK:
+    with ClassResolver.FALLBACK_TO_STR:
         image_specs = XnatCSImage.load_tree(spec_root, registry=registry)
 
     for image_spec in image_specs:
@@ -557,44 +558,22 @@ def changelog(manifest_json):
         )
 
 
-def entrypoint_inputs_and_outputs(func):
+@deploy.command(
+    help="""Installs a license within a store (i.e. site-wide) or dataset (project-specific)
+for use in a deployment pipeline
 
-    options = [
-        click.option(
-            "--input",
-            "-i",
-            "input_values",
-            nargs=2,
-            default=(),
-            metavar="<col-name> <match-criteria>",
-            multiple=True,
-            type=str,
-            help=("The match criteria to pass to the column"),
-        ),
-        click.option(
-            "--output",
-            "-o",
-            "output_values",
-            nargs=2,
-            default=(),
-            metavar="<col-name> <output-path>",
-            multiple=True,
-            type=str,
-            help=("The path in which to store the output of the pipeline"),
-        ),
-        click.option(
-            "--parameter",
-            "-p",
-            "parameter_values",
-            nargs=2,
-            default=(),
-            metavar="<name> <value>",
-            multiple=True,
-            type=str,
-            help=("free parameters of the workflow to be passed by the pipeline user"),
-        ),
-    ]
-    for opt in reversed(options):
-        func = opt(func)
+STORE_OR_DATASET either the "nickname" of a store (as saved by `arcana store add`)
+or the ID of a dataset in form <store-nickname>//<dataset-id>, where the dataset ID
+is either the location of the root directory (for file-system based stores) or the project
+ID for managed data repositories.
 
-    return func
+LICENSE_NAME the name of the license to upload. Must match the name of the license specified
+in the deployment specification
+
+SOURCE_FILE path to the license file to upload"""
+)
+@click.argument("store_or_dataset")
+@click.argument("license_name")
+@click.argument("source_file", type=click.Path(exists=True, path_type=Path))
+def install_licenses(store_or_dataset, license_name, source_file):
+    pass

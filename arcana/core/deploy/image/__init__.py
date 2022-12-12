@@ -1,3 +1,3 @@
-from .container_image import ContainerImage
+from .base import ArcanaImage
 from .command_image import CommandImage
 from .metapackage import Metapackage

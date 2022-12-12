@@ -2,11 +2,11 @@ import json
 import tempfile
 import attrs
 from pathlib import Path
-from .container_image import ContainerImage
+from .base import ArcanaImage
 
 
 @attrs.define
-class Metapackage(ContainerImage):
+class Metapackage(ArcanaImage):
 
     manifest: dict
 
