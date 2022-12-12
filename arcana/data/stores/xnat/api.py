@@ -423,7 +423,7 @@ class Xnat(DataStore):
         self._check_store(field)
         if field.array:
             if field.datatype is str:
-                value = ['"{}"'.datatype(v) for v in value]
+                value = [f'"{v}"' for v in value]
             value = "[" + ",".join(str(v) for v in value) + "]"
         if field.datatype is str:
             value = '"{}"'.format(value)

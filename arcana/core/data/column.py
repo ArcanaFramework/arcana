@@ -147,7 +147,7 @@ class DataSource(DataColumn):
                 if not filtered:
                     raise ArcanaDataMatchError(
                         "Did not find any items "
-                        + func.__doc__.datatype(arg)
+                        + func.__doc__.format(arg)
                         + self._error_msg(row, matches)
                     )
                 matches = filtered

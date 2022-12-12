@@ -362,20 +362,21 @@ class ContainerCommand:
     def execute(
         self,
         dataset_id_str: str,
-        input_values: dict[str, str],
-        output_values: dict[str, str],
-        parameter_values: dict[str, ty.Any],
-        work_dir: Path,
-        loglevel,
-        plugin: str,
+        input_values: dict[str, str] = None,
+        output_values: dict[str, str] = None,
+        parameter_values: dict[str, ty.Any] = None,
+        work_dir: Path = None,
         ids: list[str] = None,
         single_row: str = None,
         dataset_hierarchy: str = None,
         dataset_name: str = None,
         overwrite: bool = False,
+        loglevel: str = "warning",
+        plugin: str = None,
         export_work: Path = False,
         raise_errors: bool = False,
         keep_running_on_errors=False,
+        pipeline_name: str = None,
     ):
         """Runs the command within the entrypoint of the container image.
 
@@ -412,6 +413,8 @@ class ContainerCommand:
             (e.g. for forensics)
         raise_errors : bool
             raise errors instead of capturing and logging (for debugging)
+        pipeline_name : str
+            the name to give to the pipeline, defaults to the name of the command image
         """
 
         if type(export_work) is bytes:
@@ -424,6 +427,9 @@ class ContainerCommand:
 
         if work_dir is None:
             work_dir = tempfile.mkdtemp()
+
+        if pipeline_name is None:
+            pipeline_name = self.name
 
         work_dir = Path(work_dir)
         work_dir.mkdir(parents=True, exist_ok=True)
@@ -440,14 +446,15 @@ class ContainerCommand:
             dataset.add_leaf(single_row.split(","))
 
         # Install required software licenses from store into container
-        licenses_to_download = [
-            lic.name for lic in self.image.licenses if lic.source is None
-        ]
-        dataset.install_licenses(licenses_to_download)
+        if self.image is not None:
+            licenses_to_download = [
+                lic.name for lic in self.image.licenses if lic.source is None
+            ]
+            dataset.install_licenses(licenses_to_download)
 
-        input_values = dict(input_values)
-        output_values = dict(output_values)
-        parameter_values = dict(parameter_values)
+        input_values = dict(input_values) if input_values else {}
+        output_values = dict(output_values) if output_values else {}
+        parameter_values = dict(parameter_values) if parameter_values else {}
 
         input_configs = []
         converter_args = {}  # Arguments passed to converter
@@ -565,7 +572,7 @@ class ContainerCommand:
 
         task = self.task(**kwargs)
 
-        if self.name in dataset.pipelines and not overwrite:
+        if pipeline_name in dataset.pipelines and not overwrite:
             pipeline = dataset.pipelines[self.name]
             if task != pipeline.workflow:
                 raise RuntimeError(
@@ -575,7 +582,7 @@ class ContainerCommand:
                 )
         else:
             pipeline = dataset.apply_pipeline(
-                self.name,
+                pipeline_name,
                 task,
                 inputs=self.inputs,
                 outputs=self.outputs,
@@ -606,8 +613,8 @@ class ContainerCommand:
                 errors = True
         else:
             logger.info(
-                "Pipeline %s ran successfully for the following data rows:\n%s",
-                self.name,
+                "Pipeline '%s' ran successfully for the following data rows:\n%s",
+                pipeline_name,
                 "\n".join(result.output.processed),
             )
             errors = False

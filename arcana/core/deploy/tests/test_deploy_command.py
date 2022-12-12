@@ -10,9 +10,10 @@ from arcana.core.utils.testing.data.sets import (
 )
 from arcana.data.types.common import Text
 from arcana.core.deploy.command import ContainerCommand
+from arcana.core.exceptions import ArcanaDataMatchError
 
 
-def test_command_execute(concatenate_task, saved_dataset, cli_runner, work_dir):
+def test_command_execute(concatenate_task, saved_dataset, work_dir):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     dataset_id_str = make_dataset_id_str(saved_dataset)
     bp = saved_dataset.__annotations__["blueprint"]
@@ -71,6 +72,7 @@ def test_command_execute(concatenate_task, saved_dataset, cli_runner, work_dir):
         work_dir=str(work_dir),
         loglevel="debug",
         dataset_hierarchy=",".join(str(ln) for ln in bp.hierarchy),
+        pipeline_name="test_pipeline",
     )
     # Add source column to saved dataset
     sink = saved_dataset.add_sink("concatenated", Text)
@@ -86,7 +88,7 @@ def test_command_execute(concatenate_task, saved_dataset, cli_runner, work_dir):
         assert contents == expected_contents
 
 
-def test_command_execute_fail(concatenate_task, saved_dataset, cli_runner, work_dir):
+def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     dataset_id_str = make_dataset_id_str(saved_dataset)
     bp = saved_dataset.__annotations__["blueprint"]
@@ -129,7 +131,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, cli_runner, work_
 
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
-    with pytest.raises():
+    with pytest.raises(ArcanaDataMatchError):
         command_spec.execute(
             dataset_id_str=dataset_id_str,
             input_values=[
@@ -147,6 +149,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, cli_runner, work_
             work_dir=str(work_dir),
             loglevel="debug",
             dataset_hierarchy=",".join(str(ln) for ln in bp.hierarchy),
+            pipeline_name="test_pipeline",
         )
 
 
@@ -204,12 +207,13 @@ def test_command_execute_on_row(cli_runner, work_dir):
         work_dir=str(work_dir),
         loglevel="debug",
         dataset_hierarchy=",".join(str(ln) for ln in bp.hierarchy),
+        pipeline_name="test_pipeline",
     )
 
     assert get_dataset_filenumbers() == [i + 10 for i in filenumbers]
 
 
-def test_command_execute_with_converter_args(saved_dataset, cli_runner, work_dir):
+def test_command_execute_with_converter_args(saved_dataset, work_dir):
     """Test passing arguments to file format converter tasks via input/output
     "qualifiers", e.g. 'converter.shift=3' using the arcana-run-pipeline CLI
     tool (as used in the XNAT CS commands)
@@ -264,6 +268,7 @@ def test_command_execute_with_converter_args(saved_dataset, cli_runner, work_dir
         work_dir=str(work_dir),
         loglevel="debug",
         dataset_hierarchy=",".join(str(ln) for ln in bp.hierarchy),
+        pipeline_name="test_pipeline",
     )
     # Add source column to saved dataset
     saved_dataset.add_sink("sink1", EncodedText, path="encoded")

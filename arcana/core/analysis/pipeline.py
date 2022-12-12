@@ -505,7 +505,7 @@ class Pipeline:
                 raise ArcanaDesignError(
                     f"{pipeline} cannot be a dependency of itself. Call-stack:\n"
                     + "\n".join(
-                        "{} ({})".datatype(p, ", ".join(ro))
+                        "{} ({})".format(p, ", ".join(ro))
                         for p, ro in (
                             [[pipeline, sink.name]] + downstream[: (recur_index + 1)]
                         )
@@ -534,7 +534,7 @@ class Pipeline:
                     except ArcanaPipelinesStackError as e:
                         e.msg += (
                             "\nwhich are required as inputs to the '{}' "
-                            "pipeline to produce '{}'".datatype(
+                            "pipeline to produce '{}'".format(
                                 pipeline.name, "', '".join(s.name for s in to_produce)
                             )
                         )
