@@ -1,5 +1,5 @@
 import click
-from arcana.core.cli import entrypoint_opts
+from arcana.core.deploy.command import entrypoint_opts
 from arcana.deploy.xnat import XnatCSImage
 from .base import xnat_group
 
