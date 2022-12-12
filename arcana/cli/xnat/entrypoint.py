@@ -6,9 +6,9 @@ from .base import xnat_group
 
 @xnat_group.command(
     name="cs-entrypoint",
-    help="""Loads/creates a dataset, then applies and launches a pipeline
-in a single command. To be used within the command configuration of an XNAT
-Container Service ready Docker image.
+    help="""Loads a dataset, or creates one it is not already present, then applies and
+launches a pipeline in a single command. To be used within the command configuration
+of an XNAT Container Service ready Docker image.
 
 DATASET_ID_STR string containing the nickname of the data store, the ID of the
 dataset (e.g. XNAT project ID or file-system directory) and the dataset's name
@@ -22,7 +22,7 @@ in the format <store-nickname>//<dataset-id>[@<dataset-name>]
 @entrypoint_opts.execution
 @entrypoint_opts.debugging
 @entrypoint_opts.dataset_config
-def cs_image_entrypoint(
+def cs_entrypoint(
     dataset_id_str,
     spec_path,
     **kwargs,

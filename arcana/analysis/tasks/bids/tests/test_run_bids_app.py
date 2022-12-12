@@ -4,7 +4,7 @@ from arcana.core.utils.testing.fixtures.common import make_dataset, TestDatasetB
 from arcana.data.types.common import Text
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.types.medimage import NiftiGzX
-from arcana.cli.xnat import cs_image_entrypoint
+from arcana.cli.xnat import cs_entrypoint
 from arcana.core.utils.serialize import ClassResolver
 from arcana.core.utils.misc import path2varname
 from arcana.core.utils.testing import show_cli_trace
@@ -108,7 +108,7 @@ def test_bids_app_entrypoint(
     )
     image_spec.save(spec_path)
 
-    result = cli_runner(cs_image_entrypoint, args)
+    result = cli_runner(cs_entrypoint, args)
     assert result.exit_code == 0, show_cli_trace(result)
     # Add source column to saved dataset
     for fname in ["file1", "file2"]:
