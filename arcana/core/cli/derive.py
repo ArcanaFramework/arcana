@@ -21,7 +21,7 @@ all prerequisite columns.
 
 DATASET_ID_STR string containing the nickname of the data store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
-format <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
+format <store-nickname>//<dataset-id>[@<dataset-name>]
 
 COLUMNS are the names of the sink columns to derive""",
 )

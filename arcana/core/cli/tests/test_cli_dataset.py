@@ -92,7 +92,7 @@ def test_add_source_xnat(mutable_xnat_dataset, cli_runner, work_dir):
         dataset_name = "testing123"
         mutable_xnat_dataset.store.save(store_nickname)
         dataset_id_str = (
-            store_nickname + "//" + mutable_xnat_dataset.id + "::" + dataset_name
+            store_nickname + "//" + mutable_xnat_dataset.id + "@" + dataset_name
         )
         mutable_xnat_dataset.save(dataset_name)
 
@@ -125,7 +125,7 @@ def test_add_sink_xnat(mutable_xnat_dataset, work_dir, cli_runner):
         dataset_name = "testing123"
         mutable_xnat_dataset.store.save(store_nickname)
         dataset_id_str = (
-            store_nickname + "//" + mutable_xnat_dataset.id + "::" + dataset_name
+            store_nickname + "//" + mutable_xnat_dataset.id + "@" + dataset_name
         )
         mutable_xnat_dataset.save(dataset_name)
 

@@ -21,7 +21,7 @@ use by multiple users, if not possible it is stored in the ~/.arcana directory.
 
 ID_STR string containing the nick-name of the store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
-format <NICKNAME>//DATASET_ID:DATASET_NAME
+format <store-nickname>//<dataset-id>[@<dataset-name>]
 
 HIERARCHY the data frequencies that are present in the data tree. For some
 store types this is fixed (e.g. XNAT-> subject > session) but for more flexible

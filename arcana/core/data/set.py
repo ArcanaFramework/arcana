@@ -180,8 +180,7 @@ class Dataset:
         ----------
         id: str
             either the ID of a dataset if `store` keyword arg is provided or a
-            "dataset ID string" in the format
-            <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
+            "dataset ID string" in the format <store-nickname>//<dataset-id>[@<dataset-name>]
         store: DataStore, optional
             the store to load the dataset. If not provided the provided ID
             is interpreted as an ID string
@@ -808,14 +807,14 @@ class Dataset:
             store_name = "file"
         else:
             store_name, id = parts
-        parts = id.split("::")
+        parts = id.split("@")
         if len(parts) == 1:
             name = cls.DEFAULT_NAME
         else:
             id, name = parts
         return store_name, id, name
 
-    def install_licenses(self, licenses: dict[str, Path]):
+    def download_licenses(self, licenses: dict[str, Path]):
         """Install licenses from project-specific location in data store and
         install them at the destination location
 
@@ -831,42 +830,27 @@ class Dataset:
             raised if the license of the given name isn't present in the project-specific
             location to retrieve
         """
-        import arcana.data.types
-
-        # if License.SITE_DATASET_ENV in os.environ:
-        #     site_licenses = DataStore.load()
-
-        # for lic in download_licenses:
-        #     dataset.add_column(lic.name, datatype=arcana.data.types.common.File,
-        #                        row_frequency=dataset.root_freq)
-        #     try:
-        #         lic_path = dataset.root[lic.name].fs_path
-        #     except:
-
-        #     shutil.copyfile(lic_path, lic.destination)
-
-        def get_license_fs_path(lic_name, dataset):
-            col_name = License.column_name(lic_name)
-            self.add_source(
-                col_name,
-                datatype=arcana.data.types.File,
-                row_frequency=self.root_freq,
-            )
-            license_file = self.root[col_name]
-            try:
-                return license_file.fs_path
-            except Exception:
-                return None
 
         site_licenses_dataset = self.store.site_licenses_dataset()
 
         for lic_name, destination in licenses:
 
-            lic_fs_path = get_license_fs_path(lic_name, self)
-            if lic_fs_path is None:
+            license_file = self._get_license_file(lic_name)
+
+            try:
+                lic_fs_path = license_file.fs_path
+            except Exception:
                 if site_licenses_dataset is not None:
-                    lic_fs_path = get_license_fs_path(lic_name, site_licenses_dataset)
-                if lic_fs_path is None:
+                    license_file = self._get_license_file(
+                        lic_name, dataset=site_licenses_dataset
+                    )
+                    try:
+                        lic_fs_path = license_file.fs_path
+                    except Exception:
+                        missing = True
+                else:
+                    missing = True
+                if missing:
                     msg = (
                         f"Did not find a license corresponding to '{lic_name}' at "
                         f"{License.column_name(lic_name)} in {self}"
@@ -877,8 +861,34 @@ class Dataset:
                         lic_name,
                         msg,
                     )
-
             shutil.copyfile(lic_fs_path, destination)
+
+    def install_license(self, name, source_file):
+        """Store project-specific license in dataset
+
+        Parameters
+        ----------
+        name : str
+            name of the license to install
+        source_file : Path
+            path to the license file to install
+        """
+        license_file = self._get_license_file(name)
+        license_file.put(source_file)
+
+    def _get_license_file(self, lic_name, dataset=None):
+        import arcana.data.types
+
+        if dataset is None:
+            dataset = self
+        source = DataSource(
+            f"{lic_name}_license",
+            License.column_path(lic_name),
+            arcana.data.types.common.File,
+            row_frequency=self.root_freq,
+            dataset=self,
+        )
+        return source
 
 
 @attrs.define

@@ -182,12 +182,17 @@ the subject level of the tree sit in special *SUBJECT* branches
             └── bold_rest
 
 
-In the CLI, datasets are referred to by ``<STORE-NAME>//<DATASET-ID>``, where
-*STORE-NAME* is the nickname of the store as saved by ':ref:`arcana store add`'
-(see :ref:`Stores`), and *DATASET-ID* is
+In the CLI, datasets are referred to by ``<store-nickname>//<dataset-id>[@<dataset-name>]``,
+where *<store-name>* is the nickname of the store as saved by ':ref:`arcana store add`'
+(see :ref:`Stores`), and *<dataset-id>* is
 
 * the file-system path to the data directory for file-system (and BIDS) stores
 * the project ID for XNAT stores
+
+*<dataset-id>* is an optional component ("default" by default), which specifies a
+unique namespace for the dataset, and derivatives created within it. This enables
+multiple Arcana datasets to be defined on the same data, with different exclusion
+criteria and analyses applied to them.
 
 For example, a project called "MYXNATPROJECT" stored in
 `XNAT Central <https://central.xnat.org>`__ using the *xnat-central* nickname

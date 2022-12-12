@@ -18,6 +18,8 @@ from arcana.core.utils.serialize import (
 from arcana.core.deploy.image import Metapackage, CommandImage
 from arcana.deploy.xnat.image import XnatCSImage
 from arcana.exceptions import ArcanaBuildError
+from arcana.core.data.set import Dataset
+from arcana.core.data.store import DataStore
 from arcana.core.utils.misc import extract_file_from_docker_image, DOCKER_HUB
 from .base import cli
 
@@ -563,7 +565,7 @@ def changelog(manifest_json):
 for use in a deployment pipeline
 
 STORE_OR_DATASET either the "nickname" of a store (as saved by `arcana store add`)
-or the ID of a dataset in form <store-nickname>//<dataset-id>, where the dataset ID
+or the ID of a dataset in form <store-nickname>//<dataset-id>[@<dataset-name>], where the dataset ID
 is either the location of the root directory (for file-system based stores) or the project
 ID for managed data repositories.
 
@@ -575,5 +577,25 @@ SOURCE_FILE path to the license file to upload"""
 @click.argument("store_or_dataset")
 @click.argument("license_name")
 @click.argument("source_file", type=click.Path(exists=True, path_type=Path))
-def install_licenses(store_or_dataset, license_name, source_file):
-    pass
+@click.option(
+    "--logfile",
+    default=None,
+    type=click.Path(path_type=Path),
+    help="Log output to file instead of stdout",
+)
+@click.option("--loglevel", default="info", help="The level to display logs at")
+def install_licenses(store_or_dataset, license_name, source_file, logfile, loglevel):
+
+    logging.basicConfig(filename=logfile, level=getattr(logging, loglevel.upper()))
+
+    if "//" in store_or_dataset:
+        dataset = Dataset.load(store_or_dataset)
+        store_name, _, _ = Dataset.parse_id_str(id)
+        msg = f"for '{dataset.name}' dataset on {store_name} store"
+    else:
+        store = DataStore.load(store_or_dataset)
+        dataset = store.site_licenses_dataset()
+        msg = f"site-wide on {store_or_dataset} store"
+
+    dataset.install_license(license_name, source_file)
+    logger.info("Successfully installed '%s' license %s", license_name, msg)

@@ -237,7 +237,7 @@ class ContainerCommand:
             licenses_to_download = [
                 lic.name for lic in self.image.licenses if lic.source is None
             ]
-            dataset.install_licenses(licenses_to_download)
+            dataset.download_licenses(licenses_to_download)
 
         input_values = dict(input_values) if input_values else {}
         output_values = dict(output_values) if output_values else {}
