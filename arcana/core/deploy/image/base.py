@@ -27,7 +27,7 @@ from arcana.core.utils.misc import (
 )
 from arcana.core.data.space import DataSpace
 from arcana.__about__ import python_versions
-from arcana.core.exceptions import ArcanaBuildError
+from arcana.exceptions import ArcanaBuildError
 from .components import Packages, BaseImage, PipPackage, CondaPackage
 
 logger = logging.getLogger("arcana")

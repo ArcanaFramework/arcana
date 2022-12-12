@@ -21,7 +21,7 @@ from arcana.core.utils.misc import (
     CONVERTER_ANNOTATIONS,
     HASH_CHUNK_SIZE,
 )
-from arcana.core.exceptions import (
+from arcana.exceptions import (
     ArcanaUsageError,
     ArcanaNameError,
     ArcanaDataNotDerivedYetError,

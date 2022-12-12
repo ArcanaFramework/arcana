@@ -10,7 +10,7 @@ from arcana.core.utils.serialize import (
 )
 from arcana.core.utils.misc import get_config_file_path
 from arcana.core.utils.packaging import list_subclasses
-from arcana.core.exceptions import ArcanaUsageError, ArcanaNameError
+from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
 DS = ty.TypeVar("DS", bound="DataStore")
 

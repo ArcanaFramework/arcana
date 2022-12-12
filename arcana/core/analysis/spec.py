@@ -8,7 +8,7 @@ from attrs.converters import default_if_none
 from ..data.space import DataSpace
 from .salience import CheckSalience, ColumnSalience, ParameterSalience
 from ..utils.misc import ARCANA_SPEC
-from arcana.core.exceptions import ArcanaDesignError
+from arcana.exceptions import ArcanaDesignError
 
 
 @attrs.define

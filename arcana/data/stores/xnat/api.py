@@ -22,7 +22,7 @@ from arcana.core.utils.misc import (
 )
 from arcana.core.data.store import DataStore
 from arcana.core.data.row import DataRow
-from arcana.core.exceptions import (
+from arcana.exceptions import (
     ArcanaError,
     ArcanaUsageError,
     ArcanaWrongRepositoryError,

@@ -33,7 +33,7 @@ from arcana.core.analysis.salience import (
     ParameterSalience as ps,
     CheckSalience as chs,
 )
-from arcana.core.exceptions import ArcanaDesignError
+from arcana.exceptions import ArcanaDesignError
 
 
 def get_contents(fpath):

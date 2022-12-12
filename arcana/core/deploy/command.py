@@ -27,7 +27,7 @@ from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
 from arcana.core.data.type import DataType
 from arcana.core.data.store import DataStore
-from arcana.core.exceptions import ArcanaUsageError, ArcanaFormatConversionError
+from arcana.exceptions import ArcanaUsageError, ArcanaFormatConversionError
 from arcana.core.data.space import DataSpace
 
 if ty.TYPE_CHECKING:

@@ -7,7 +7,7 @@ from inspect import isclass
 import pkg_resources
 from pathlib import Path
 from collections.abc import Iterable
-from arcana.core.exceptions import ArcanaUsageError
+from arcana.exceptions import ArcanaUsageError
 
 
 # Avoid arcana.__version__ causing a circular import

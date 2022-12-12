@@ -17,7 +17,7 @@ from arcana.core.utils.serialize import (
 )
 from arcana.core.deploy.image import Metapackage, CommandImage
 from arcana.deploy.xnat.image import XnatCSImage
-from arcana.core.exceptions import ArcanaBuildError
+from arcana.exceptions import ArcanaBuildError
 from arcana.core.utils.misc import extract_file_from_docker_image, DOCKER_HUB
 from .base import cli
 

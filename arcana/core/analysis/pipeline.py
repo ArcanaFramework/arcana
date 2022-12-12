@@ -8,7 +8,7 @@ from copy import copy, deepcopy
 import attrs.converters
 import pydra.mark
 from pydra.engine.core import Workflow
-from arcana.core.exceptions import (
+from arcana.exceptions import (
     ArcanaNameError,
     ArcanaUsageError,
     ArcanaDesignError,

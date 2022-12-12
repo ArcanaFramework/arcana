@@ -10,7 +10,7 @@ from arcana.core.utils.testing.data.sets import (
 )
 from arcana.data.types.common import Text
 from arcana.core.deploy.command import ContainerCommand
-from arcana.core.exceptions import ArcanaDataMatchError
+from arcana.exceptions import ArcanaDataMatchError
 
 
 def test_command_execute(concatenate_task, saved_dataset, work_dir):

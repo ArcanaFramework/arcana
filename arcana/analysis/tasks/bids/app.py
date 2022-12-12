@@ -22,7 +22,7 @@ from arcana.core.data.type import DataType
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.bids.structure import JsonEdit
 from arcana.data.stores.bids.dataset import BidsDataset
-from arcana.core.exceptions import ArcanaUsageError
+from arcana.exceptions import ArcanaUsageError
 from arcana.core.utils.serialize import (
     ClassResolver,
     ObjectListConverter,

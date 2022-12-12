@@ -12,7 +12,7 @@ from arcana.core.cli.deploy import (
 )
 from arcana.core.utils.testing.fixtures.docs import all_docs_fixtures, DocsFixture
 from arcana.core.utils.testing import show_cli_trace
-from arcana.core.exceptions import ArcanaBuildError
+from arcana.exceptions import ArcanaBuildError
 
 
 def test_deploy_build_cli(command_spec, cli_runner, work_dir):
