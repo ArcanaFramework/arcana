@@ -274,15 +274,19 @@ class CommandImage(ArcanaImage, metaclass=ABCMeta):
 
         image = cls(**yml_dict)
 
+        # Explicitly override directive in loaded spec to store license in the image
+
         if license_paths is not None:
             for lic in image.licenses:
-                try:
-                    lic.source = license_paths[lic.name]
-                except KeyError:
-                    if lic.name not in licenses_to_download:
+                if lic.name in licenses_to_download:
+                    lic.store_in_image = False
+                if lic.store_in_image:
+                    try:
+                        lic.source = license_paths[lic.name]
+                    except KeyError:
                         raise RuntimeError(
-                            f"{lic.name} license has not been provided or specified as "
-                            "being to be downloaded at runtime"
+                            f"{lic.name} license has not been provided when it is "
+                            "specified to be stored in the image"
                         )
 
         return image

@@ -820,7 +820,7 @@ class Dataset:
 
         Parameters
         ----------
-        licenses : dict[str, License]
+        licenses : list[License]
             a list of tuples representing the name of a license and the
             destination location it should be installed
 

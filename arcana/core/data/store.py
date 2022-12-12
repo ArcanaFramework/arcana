@@ -327,21 +327,27 @@ class DataStore(metaclass=ABCMeta):
             Keyword args passed on to the Dataset init method
         """
         if not hierarchy:
-            try:
-                hierarchy = self.DEFAULT_HIERARCHY
-            except AttributeError as e:
-                raise ArcanaUsageError(
-                    "'hierarchy' kwarg must be specified for datasets in "
-                    f"{type(self)} stores"
-                ) from e
+            if space:
+                hierarchy = [space.max()]
+            else:
+                try:
+                    hierarchy = self.DEFAULT_HIERARCHY
+                except AttributeError as e:
+                    raise ArcanaUsageError(
+                        "'hierarchy' kwarg must be specified for datasets in "
+                        f"{type(self)} stores"
+                    ) from e
         if not space:
-            try:
-                space = self.DEFAULT_SPACE
-            except AttributeError as e:
-                raise ArcanaUsageError(
-                    "'space' kwarg must be specified for datasets in "
-                    f"{type(self)} stores"
-                ) from e
+            if hierarchy:
+                space = type(hierarchy[0])
+            else:
+                try:
+                    space = self.DEFAULT_SPACE
+                except AttributeError as e:
+                    raise ArcanaUsageError(
+                        "'space' kwarg must be specified for datasets in "
+                        f"{type(self)} stores"
+                    ) from e
         from arcana.core.data.set import (
             Dataset,
         )  # avoid circular imports it is imported here rather than at the top of the file

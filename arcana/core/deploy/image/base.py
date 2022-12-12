@@ -114,6 +114,7 @@ class ArcanaImage:
         if build_dir is None:
             build_dir = tempfile.mkdtemp()
         build_dir = Path(build_dir)
+        build_dir.mkdir()
 
         dockerfile = self.construct_dockerfile(build_dir, **kwargs)
 

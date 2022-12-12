@@ -160,6 +160,7 @@ def license_file(work_dir) -> Path:
 @pytest.fixture
 def pipeline_image() -> PipelineImage:
     return PipelineImage(
+        name="license_test_pipeline",
         org=ORG,
         version="1.0",
         authors=[{"name": "Some One", "email": "some.one@an.email.org"}],

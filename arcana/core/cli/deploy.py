@@ -603,6 +603,11 @@ def install_license(install_locations, license_name, source_file, logfile, logle
         else:
             store = DataStore.load(install_loc)
             dataset = store.site_licenses_dataset()
+            if dataset is None:
+                raise ValueError(
+                    f"{install_loc} store doesn't support the installation of site-wide "
+                    "licenses, please specify a dataset to install it for"
+                )
             msg = f"site-wide on {install_loc} store"
 
         dataset.install_license(license_name, source_file)

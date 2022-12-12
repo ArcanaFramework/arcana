@@ -16,7 +16,8 @@ from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical, DataSpace
 from arcana.core.data.store import DataStore
 from arcana.core.data.type import FileGroup
-from arcana.core.utils.misc import ARCANA_HOME_DIR
+from arcana.core.utils.misc import get_home_dir
+from arcana.data.spaces.common import Samples
 
 
 logger = logging.getLogger("arcana")
@@ -50,6 +51,7 @@ class FileSystem(DataStore):
     PROV_KEY = "__provenance__"
     VALUE_KEY = "__value__"
     METADATA_DIR = ".arcana"
+    SITE_LICENSES_DIR = "site-licenses"
 
     def new_dataset(self, id, *args, **kwargs):
         if not Path(id).exists():
@@ -281,13 +283,15 @@ class FileSystem(DataStore):
         return self.file_group_path(file_group) + self.PROV_SUFFX
 
     def site_licenses_dataset(self):
-        """Return access to site-wide licenses installed in the 'site-licenses' dataset
-        within the arcana home directory (~/.arcana/site-licenses) by default. Use
-        `arcana deploy install-license` command to"""
+        """Provide a place to store hold site-wide licenses"""
+        dataset_root = get_home_dir() / self.SITE_LICENSES_DIR
+        if not dataset_root.exists():
+            dataset_root.mkdir(parents=True)
         try:
-            return self.load_dataset(self.SITE_LICENSES_DATASET)
+            dataset = self.load_dataset(dataset_root)
         except KeyError:
-            return None
+            dataset = self.new_dataset(dataset_root, space=Samples)
+        return dataset
 
     # def get_provenance(self, item):
     #     if item.is_file_group:
@@ -345,8 +349,6 @@ class FileSystem(DataStore):
             raise ArcanaMissingDataException(
                 "{} does not exist in the local store {}".format(field.name, self)
             )
-
-    SITE_LICENSES_DATASET = ARCANA_HOME_DIR / "site-licenses"
 
 
 def single_dataset(

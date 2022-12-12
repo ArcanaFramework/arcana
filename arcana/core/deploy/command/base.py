@@ -234,10 +234,9 @@ class ContainerCommand:
 
         # Install required software licenses from store into container
         if self.image is not None:
-            licenses_to_download = [
-                lic.name for lic in self.image.licenses if lic.source is None
-            ]
-            dataset.download_licenses(licenses_to_download)
+            dataset.download_licenses(
+                [lic for lic in self.image.licenses if not lic.store_in_image]
+            )
 
         input_values = dict(input_values) if input_values else {}
         output_values = dict(output_values) if output_values else {}
