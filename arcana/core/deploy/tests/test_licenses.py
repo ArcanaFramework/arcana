@@ -30,8 +30,8 @@ def test_buildtime_license(
     result = cli_runner(
         make,
         args=[
-            "common:PipelineImage",
             str(root_dir),
+            "common:PipelineImage",
             "--build-dir",
             str(build_dir),
             "--license",

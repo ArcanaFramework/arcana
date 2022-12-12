@@ -8,7 +8,7 @@ import pytest
 import docker
 from arcana.core.cli.deploy import (
     make,
-    build_docs,
+    make_docs,
 )
 from arcana.core.utils.testing.fixtures.docs import all_docs_fixtures, DocsFixture
 from arcana.core.utils.testing import show_cli_trace
@@ -45,8 +45,8 @@ def test_deploy_build_cli(command_spec, cli_runner, work_dir):
     result = cli_runner(
         make,
         [
-            "xnat:XnatCSImage",
             str(spec_path),
+            "xnat:XnatCSImage",
             "--build-dir",
             str(build_dir),
             "--registry",
@@ -88,8 +88,8 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         result = cli_runner(
             make,
             [
-                "xnat:XnatCSImage",
                 str(spec_path),
+                "xnat:XnatCSImage",
                 "--build-dir",
                 str(build_dir),
                 "--registry",
@@ -154,7 +154,7 @@ def test_deploy_rebuild_cli(command_spec, docker_registry, cli_runner, run_prefi
         dc.images.remove(tag)
 
 
-def _build_docs(
+def _make_docs(
     cli_runner,
     work_dir: Path,
     docs: Union[str, Dict[str, str]],
@@ -176,7 +176,7 @@ def _build_docs(
             path.write_text(content)
 
     result = cli_runner(
-        build_docs,
+        make_docs,
         [
             specs_dir.as_posix(),
             out_dir.as_posix(),
@@ -197,14 +197,14 @@ def _build_docs(
 
 
 @pytest.mark.parametrize("fixture", all_docs_fixtures(), ids=lambda x: x[0])
-def test_build_docs_cli(
+def test_make_docs_cli(
     cli_runner, run_prefix, work_dir: Path, fixture: Tuple[str, DocsFixture]
 ):
     fixture_name, fixture_content = fixture
 
     # TODO handle multiple 'files' in a fixture
     print(f"Processing fixture: {fixture_name!r}")
-    output = _build_docs(cli_runner, work_dir, fixture_content.yaml_src)
+    output = _make_docs(cli_runner, work_dir, fixture_content.yaml_src)
 
     strip_source_file_re = re.compile(r"source_file:.*")
 

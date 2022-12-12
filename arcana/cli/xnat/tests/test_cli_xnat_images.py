@@ -84,8 +84,8 @@ def test_pull_xnat_images(
     result = cli_runner(
         make,
         [
-            "xnat:XnatCSImage",
             str(spec_dir),
+            "xnat:XnatCSImage",
             "--build-dir",
             str(build_dir),
             "--registry",

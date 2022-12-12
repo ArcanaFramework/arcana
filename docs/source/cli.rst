@@ -89,7 +89,7 @@ Commands for deploying arcana pipelines
 .. click:: arcana.cli.deploy:test
    :prog: arcana deploy test
 
-.. click:: arcana.cli.deploy:build_docs
+.. click:: arcana.cli.deploy:make_docs
    :prog: arcana deploy docs
 
 .. click:: arcana.cli.deploy:inspect_docker_exec

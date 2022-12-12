@@ -481,7 +481,7 @@ The generated documentation will be saved to OUTPUT.
 )
 @click.option("--flatten/--no-flatten", default=False)
 @click.option("--loglevel", default="warning", help="The level to display logs at")
-def build_docs(spec_root, output, registry, flatten, loglevel):
+def make_docs(spec_root, output, registry, flatten, loglevel):
     # FIXME: Workaround for click 7.x, which improperly handles path_type
     if type(spec_root) is bytes:
         spec_root = Path(spec_root.decode("utf-8"))
