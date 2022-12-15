@@ -165,7 +165,7 @@ class CommandImage(ArcanaImage, metaclass=ABCMeta):
                     shutil.copyfile(lic.source, build_path)
                     dockerfile.copy(
                         source=[str(build_path.relative_to(build_dir))],
-                        destination=lic.destination,
+                        destination=str(lic.destination),
                     )
                 else:
                     logger.warning(

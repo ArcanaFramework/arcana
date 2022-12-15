@@ -57,7 +57,7 @@ to appropriate columns in the dataset (``T1w``, ``T2w`` and
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
       medimage:Dicom --path '.*t2spc.*' --regex
 
-    $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurver/recon-all \
+    $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurfer/recon-all \
       common:Zip
 
     $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \

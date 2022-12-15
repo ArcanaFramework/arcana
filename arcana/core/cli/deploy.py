@@ -592,6 +592,9 @@ def install_license(install_locations, license_name, source_file, logfile, logle
 
     logging.basicConfig(filename=logfile, level=getattr(logging, loglevel.upper()))
 
+    if isinstance(source_file, bytes):  # FIXME: This shouldn't be necessary
+        source_file = Path(source_file.decode("utf-8"))
+
     if not install_locations:
         install_locations = ["file"]
 

@@ -21,6 +21,7 @@ def test_buildtime_license(
     root_dir.mkdir()
     spec_file = root_dir / (image_name + ".yaml")
 
+    pipeline_image.name = image_name
     pipeline_image.licenses[0].store_in_image = True
     pipeline_image.save(spec_file)
 
@@ -63,6 +64,7 @@ def test_site_runtime_license(
     build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
 
+    pipeline_image.name = image_name
     pipeline_image.make(
         build_dir=build_dir,
         use_local_packages=True,
@@ -80,7 +82,9 @@ def test_site_runtime_license(
         assert run_license_check(image_tag, dataset_dir)
 
 
-def test_dataset_runtime_license(license_file, run_prefix, work_dir, cli_runner):
+def test_dataset_runtime_license(
+    pipeline_image, license_file, run_prefix, work_dir, cli_runner
+):
 
     # Build the pipeline without a license installed
     image_name = f"license-dataset-runtime-{run_prefix}"
@@ -90,6 +94,7 @@ def test_dataset_runtime_license(license_file, run_prefix, work_dir, cli_runner)
     dataset_dir = work_dir / "dataset"
     dataset_dir.mkdir()
 
+    pipeline_image.name = image_name
     pipeline_image.make(
         build_dir=build_dir,
         use_local_packages=True,
@@ -160,7 +165,7 @@ def license_file(work_dir) -> Path:
 @pytest.fixture
 def pipeline_image() -> PipelineImage:
     return PipelineImage(
-        name="license_test_pipeline",
+        name="to_be_overridden",
         org=ORG,
         version="1.0",
         authors=[{"name": "Some One", "email": "some.one@an.email.org"}],

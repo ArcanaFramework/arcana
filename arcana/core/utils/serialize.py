@@ -9,7 +9,7 @@ import re
 import inspect
 from importlib import import_module
 from inspect import isclass, isfunction
-from pathlib import Path
+from pathlib import PurePath, Path
 import logging
 import cloudpickle as cp
 import attrs
@@ -237,7 +237,7 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: set = None):
             value["class"] = value_class
         elif isinstance(value, Enum):
             value = serialise_class(type(value)) + "[" + str(value) + "]"
-        elif isinstance(value, Path):
+        elif isinstance(value, PurePath):
             value = "file://" + str(value.resolve())
         elif isinstance(value, (tuple, list, set, frozenset)):
             value = [value_asdict(x) for x in value]

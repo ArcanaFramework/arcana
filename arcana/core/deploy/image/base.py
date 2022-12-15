@@ -3,7 +3,7 @@ import setuptools.sandbox
 import typing as ty
 
 # import hashlib
-from pathlib import Path
+from pathlib import PurePath, Path
 import json
 import tempfile
 import logging
@@ -114,6 +114,8 @@ class ArcanaImage:
         if build_dir is None:
             build_dir = tempfile.mkdtemp()
         build_dir = Path(build_dir)
+        if build_dir.exists():
+            shutil.rmtree(build_dir)
         build_dir.mkdir()
 
         dockerfile = self.construct_dockerfile(build_dir, **kwargs)
@@ -515,7 +517,7 @@ class ArcanaImage:
                     value = str(value)
                 else:
                     value = value.tostr()
-            elif isinstance(value, Path):
+            elif isinstance(value, PurePath):
                 # TODO: need better handling of saving checksums
                 # if value.exists():
                 #     fhash = hashlib.md5()

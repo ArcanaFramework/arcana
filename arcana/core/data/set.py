@@ -878,17 +878,18 @@ class Dataset:
 
     def _get_license_file(self, lic_name, dataset=None):
         import arcana.data.types
+        import arcana.core.deploy.image.components
 
         if dataset is None:
             dataset = self
-        source = DataSource(
+        license_column = DataSink(
             f"{lic_name}_license",
-            License.column_path(lic_name),
+            arcana.core.deploy.image.components.License.column_path(lic_name),
             arcana.data.types.common.File,
             row_frequency=self.root_freq,
-            dataset=self,
+            dataset=dataset,
         )
-        return source
+        return license_column.match(dataset.root)
 
 
 @attrs.define

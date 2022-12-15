@@ -54,6 +54,9 @@ class TarGz(Tar, Gzip):
 
 
 class File(BaseFile):
+
+    ext = ""
+
     @classmethod
     @converter(Zip)
     def unzip(cls, fs_path):

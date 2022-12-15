@@ -498,7 +498,10 @@ class FileGroup(DataType, metaclass=ABCMeta):
             When no paths match or more than one path matches the given extension"""
         if ext is None:
             ext = cls.ext
-        matches = [str(p) for p in paths if str(p).endswith("." + ext)]
+        if ext:
+            matches = [str(p) for p in paths if str(p).endswith("." + ext)]
+        else:
+            matches = paths
         if not matches:
             paths_str = ", ".join(str(p) for p in paths)
             raise ArcanaFileFormatError(
@@ -506,11 +509,11 @@ class FileGroup(DataType, metaclass=ABCMeta):
                 f"file group {paths_str}"
             )
         elif len(matches) > 1:
-            matches_str = ", ".join(matches)
+            matches_str = ", ".join(str(p) for p in matches)
             raise ArcanaFileFormatError(
                 f"Multiple files with '{ext}' extension found in : {matches_str}"
             )
-        return matches[0]
+        return str(matches[0])
 
     def validate_file_paths(self):
         attrs.validate(self)
@@ -817,6 +820,7 @@ class BaseFile(FileGroup):
                 f"Extension of old path ('{str(old_path)}') does not match that "
                 f"of file, '{cls.ext}'"
             )
+
         return Path(new_path).with_suffix("." + cls.ext)
 
     @classmethod

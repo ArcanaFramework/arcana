@@ -328,7 +328,7 @@ class DataStore(metaclass=ABCMeta):
         """
         if not hierarchy:
             if space:
-                hierarchy = [space.max()]
+                hierarchy = [max(space)]
             else:
                 try:
                     hierarchy = self.DEFAULT_HIERARCHY

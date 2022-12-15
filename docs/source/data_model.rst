@@ -630,17 +630,24 @@ in a way that the data points still lie on a rectangular grid within the
 data space (see :ref:`data_spaces`) so derivatives computed over a given axis
 or axes are drawn from comparable number of data points.
 
-Sections of the data grid can be excluded at any point, or along lines or planes.
-However, it is often advisable to exclude along an axes of data space so the
-grid is rectangular. The ``exclude`` argument is used to
-in the dataspace which takes a dictionary mapping the data dimension to the
-list of IDs to exclude.
+.. note::
+    Somewhat confusingly the "data points" referred to in this section
+    actually correspond to "data rows" in the frames used in analyses.
+    However, you can think of a 2 or 3 (or higher) dimensional grid as
+    being flattened out into a 1D array to form a data frame in the
+    same way as numpy's ``ravel()`` method does to higher dimensional
+    arrays. The different types of data collected at each data point
+    (e.g. imaging session) can then be visuallised as expanding out to
+    form the row of the data frame.
+
+The ``--exclude`` option is used to specify the data points to exclude from
+a dataset.
 
 .. TODO image of excluding points in grid
 
 .. code-block:: console
 
-    $ arcana dataset define 'file///data/imaging/my-project' \
+    $ arcana dataset define 'file///data/imaging/my-project@manually_qcd' \
       medimage:Clinical subject session \
       --exclude member 03,11,27
 
@@ -652,7 +659,7 @@ frequencies.
 
 .. code-block:: console
 
-    $ arcana dataset define 'file///data/imaging/my-project' \
+    $ arcana dataset define 'file///data/imaging/my-project@manually_qcd' \
       medimage:Clinical subject session \
       --exclude member 03,11,27 \
       --include timepoint 1,2
@@ -667,7 +674,7 @@ CLI, append the name to the dataset's ID string separated by '::', e.g.
 
 .. code-block:: console
 
-    $ arcana dataset define 'file///data/imaging/my-project::training' \
+    $ arcana dataset define 'file///data/imaging/my-project@training' \
       medimage:Clinical group subject \
       --include member 10:20
 
