@@ -85,8 +85,8 @@ class BaseFile(FileGroup):
                 f"Extension of old path ('{str(old_path)}') does not match that "
                 f"of file, '{cls.ext}'"
             )
-
-        return Path(new_path).with_suffix("." + cls.ext)
+        suffix = "." + cls.ext if cls.ext is not None else old_path.suffix
+        return Path(new_path).with_suffix(suffix)
 
     @classmethod
     def all_exts(cls):
