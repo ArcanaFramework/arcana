@@ -7,8 +7,8 @@ from arcana.core.utils.serialize import asdict, fromdict
 
 def test_dataset_asdict_roundtrip(dataset):
 
-    dct = asdict(dataset, omit=["store"])
-    undct = fromdict(dct, store=dataset.store)
+    dct = asdict(dataset, omit=["store", "id"])
+    undct = fromdict(dct, store=dataset.store, id=dataset.id)
     assert isinstance(dct, dict)
     assert "store" not in dct
     del dataset.__annotations__["blueprint"]
