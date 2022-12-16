@@ -57,7 +57,7 @@ to appropriate columns in the dataset (``T1w``, ``T2w`` and
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
       medimage:Dicom --path '.*t2spc.*' --regex
 
-    $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurver/recon-all \
+    $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurfer/recon-all \
       common:Zip
 
     $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
@@ -68,8 +68,8 @@ to appropriate columns in the dataset (``T1w``, ``T2w`` and
       --parameter param1 10 \
       --parameter param2 20
 
-If there is a mismatch in the data format (see :ref:`data_formats`) between the
-workflow inputs/outputs and the columns they are connected to, a format conversion
+If there is a mismatch in the data datatype (see :ref:`data_formats`) between the
+workflow inputs/outputs and the columns they are connected to, a datatype conversion
 task will be inserted into the pipeline if converter method between the two
 formats exists (see :ref:`file_formats`).
 
@@ -78,13 +78,13 @@ To add a workflow to a dataset via the API use the :meth:`Dataset.apply_pipeline
 .. code-block:: python
 
     from pydra.tasks.freesurfer import Freesurfer
-    from arcana.data.formats import common, medimage
+    from arcana.data.types import common, medimage
 
     dataset = Dataset.load('myuni-xnat//myproject:training')
 
-    dataset.add_source('T1w', format=medimage.Dicom, path='.*mprage.*',
+    dataset.add_source('T1w', datatype=medimage.Dicom, path='.*mprage.*',
                        is_regex=True)
-    dataset.add_source('T2w', format=medimage.Dicom, path='.*t2spc.*',
+    dataset.add_source('T2w', datatype=medimage.Dicom, path='.*t2spc.*',
                        is_regex=True)
 
     dataset.add_sink('freesurfer/recon-all', common.Directory)
@@ -131,7 +131,7 @@ back to the dataset.
 .. code-block:: python
 
     from myworkflows import vbm_template
-    from arcana.data.formats import common, medimage
+    from arcana.data.types import common, medimage
     from arcana.data.spaces.medimage import Clinical
 
     dataset = Dataset.load('bids///data/openneuro/ds00014')
@@ -139,7 +139,7 @@ back to the dataset.
     # Add sink column with "dataset" row row_frequency
     dataset.add_sink(
         name='vbm_template',
-        format=medimage.NiftiGz
+        datatype=medimage.NiftiGz
         row_frequency='dataset')
 
     # NB: we don't need to add the T1w source as it is automatically detected
@@ -175,12 +175,12 @@ three column placeholders, ``preprocessed``, ``derived_image`` and
 one of the two implemented pipeline builder methods ``preprocess_pipeline``
 (*Line 26*) and ``create_image_pipeline`` (*Line 56*).
 
-The :func:`arcana.core.mark.analysis` decorator is used to specify an
+The :func:`arcana.mark.analysis` decorator is used to specify an
 analysis class (*Line 6*), taking the dataset space that the class operates on
 as an argument. By default, class attributes are assumed to be
-column placeholders of :func:`arcana.core.mark.column` type (*Line 13-17*).
+column placeholders of :func:`arcana.mark.column` type (*Line 13-17*).
 Class attributes can also be free parameters of the analysis by using the
-:func:`arcana.core.mark.parameter` instead (*Line 21*).
+:func:`arcana.mark.parameter` instead (*Line 21*).
 
 The :func:`arca.acore.mark.pipeline` decorator specifies pipeline builder
 methods, and takes the columns the pipeline outputs are connected to as arguments
@@ -192,16 +192,16 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 
     import pydra
     from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
-    from arcana.core.mark import analysis, pipeline, parameter
+    from arcana.mark import analysis, pipeline, parameter
     from arcana.data.spaces.example import ExampleDataSpace
-    from arcana.data.formats.common import Zip, Directory, Json, Png, Gif
+    from arcana.data.types.common import Zip, Directory, Json, Png, Gif
 
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
 
         # Define the columns for the dataset along with their formats.
         # The `column` decorator can be used to specify additional options but
-        # is not required by default. The data formats specify the format
+        # is not required by default. The data formats specify the datatype
         # that the column data will be stored in
         recorded_datafile: Zip  # Not derived by a pipeline, should be linked to existing dataset column
         recorded_metadata: Json  # "     "     "     "
@@ -283,7 +283,7 @@ parameters.
 .. code-block:: python
 
   from arcana.core.data.set import Dataset
-  from arcana.data.formats.common import Yaml
+  from arcana.data.types.common import Yaml
   from arcana.analyses.example import ExampleAnalysis
 
   a_dataset = Dataset.load('file///data/a-dataset')
@@ -291,12 +291,12 @@ parameters.
   dataset.add_source(
       name='datafile',
       path='a-long-arbitrary-name',
-      format=Zip)
+      datatype=Zip)
 
   dataset.add_source(
       name='metadata',
       path='another-long-arbitrary-name',
-      format=Yaml)  # The format the data is in the dataset, will be automatically converted
+      datatype=Yaml)  # The format the data is in the dataset, will be automatically converted
 
   dataset.apply(
       ExampleAnalysis(
@@ -433,21 +433,21 @@ would look like
           // MD5 Checksums for all files in the file group. "." refers to the
           // "primary file" in the file group.
           "T1w_reg_dwi": {
-            "format": "<arcana.data.formats.medimage:NiftiGzX>",
+            "datatype": "<arcana.data.types.medimage:NiftiGzX>",
             "checksums": {
               ".": "4838470888DBBEADEAD91089DD4DFC55",
               "json": "7500099D8BE29EF9057D6DE5D515DFFE"
             }
           },
           "T2w_reg_dwi": {
-            "format": "<arcana.data.formats.medimage:NiftiGzX>",
+            "datatype": "<arcana.data.types.medimage:NiftiGzX>",
             "checksums": {
               ".": "4838470888DBBEADEAD91089DD4DFC55",
               "json": "5625E881E32AE6415E7E9AF9AEC59FD6"
             }
           },
           "dwi_fod": {
-            "format": "<arcana.data.formats.medimage:MrtrixImage>",
+            "datatype": "<arcana.data.types.medimage:MrtrixImage>",
             "checksums": {
               ".": "92EF19B942DD019BF8D32A2CE2A3652F"
             }
@@ -455,9 +455,9 @@ would look like
         },
         "outputs": {
           "wm_tracks": {
-            "pydra_task": "tckgen",
-            "pydra_field": "out_file",
-            "format": "<arcana.data.formats.medimage:MrtrixTrack>",
+            "task": "tckgen",
+            "field": "out_file",
+            "datatype": "<arcana.data.types.medimage:MrtrixTrack>",
             "checksums": {
               ".": "D30073044A7B1239EFF753C85BC1C5B3"
             }
@@ -473,10 +473,10 @@ would look like
               "version": "0.1.1",
               "inputs": {
                 "in_file": {
-                  "pydra_field": "T1w_reg_dwi"
+                  "field": "T1w_reg_dwi"
                 }
                 "t2": {
-                  "pydra_field": "T1w_reg_dwi"
+                  "field": "T1w_reg_dwi"
                 }
                 "sgm_amyg_hipp": true
               },
@@ -491,11 +491,11 @@ would look like
               "version": "0.1.1",
               "inputs": {
                 "in_file": {
-                  "pydra_field": "dwi_fod"
+                  "field": "dwi_fod"
                 },
                 "act": {
-                  "pydra_task": "5ttgen",
-                  "pydra_field": "out_file"
+                  "task": "5ttgen",
+                  "field": "out_file"
                 },
                 "select": 100000000,
               },

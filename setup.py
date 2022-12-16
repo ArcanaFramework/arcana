@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 # Get version from module inside package
 sys.path.insert(0, str(Path(__file__).parent / "arcana"))
-from __about__ import (
+from __about__ import (  # noqa: E402
     PACKAGE_NAME,
     CODE_URL,
     install_requires,
@@ -34,7 +34,6 @@ setup(
     entry_points={
         "console_scripts": [
             "arcana=arcana.cli:cli",
-            "run-arcana-pipeline=arcana.cli.deploy:run_pipeline",
         ]
     },
     extras_require={"test": tests_require, "dev": dev_requires},

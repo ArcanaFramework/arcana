@@ -39,13 +39,13 @@ For instructions on how to add support for new systems see :ref:`alternative_sto
 
 To configure access to a store via the CLI use the ':ref:`arcana store add`' command.
 The store type is specified by the path to the data store sub-class,
-*<module-path>:<class-name>*,  e.g. ``arcana.data.stores.medimage:Xnat``.
-However, if the format is in a submodule of ``arcana.data.stores`` then that
+*<module-path>:<class-name>*,  e.g. ``arcana.data.stores.xnat:Xnat``.
+However, if the store is in a submodule of ``arcana.data.stores`` then that
 prefix can be dropped for convenience, e.g. ``mediamge:Xnat``.
 
 .. code-block:: console
 
-    $ arcana store add xnat-central medimage:Xnat https://central.xnat.org \
+    $ arcana store add xnat-central xnat:Xnat https://central.xnat.org \
       --user user123 --cache /work/xnat-cache
     Password:
 
@@ -182,12 +182,17 @@ the subject level of the tree sit in special *SUBJECT* branches
             └── bold_rest
 
 
-In the CLI, datasets are referred to by ``<STORE-NAME>//<DATASET-ID>``, where
-*STORE-NAME* is the nickname of the store as saved by ':ref:`arcana store add`'
-(see :ref:`Stores`), and *DATASET-ID* is
+In the CLI, datasets are referred to by ``<store-nickname>//<dataset-id>[@<dataset-name>]``,
+where *<store-name>* is the nickname of the store as saved by ':ref:`arcana store add`'
+(see :ref:`Stores`), and *<dataset-id>* is
 
 * the file-system path to the data directory for file-system (and BIDS) stores
 * the project ID for XNAT stores
+
+*<dataset-id>* is an optional component ("default" by default), which specifies a
+unique namespace for the dataset, and derivatives created within it. This enables
+multiple Arcana datasets to be defined on the same data, with different exclusion
+criteria and analyses applied to them.
 
 For example, a project called "MYXNATPROJECT" stored in
 `XNAT Central <https://central.xnat.org>`__ using the *xnat-central* nickname
@@ -206,7 +211,7 @@ corresponding to *MYXNATPROJECT*
 Items
 -----
 
-Atomic items within a dataset are encapsulated by :class:`DataItem` objects.
+Atomic items within a dataset are encapsulated by :class:`DataType` objects.
 There are three types of data items:
 
 * :class:`.FileGroup` (single files, files + header/side-cars or directories)
@@ -215,13 +220,13 @@ There are three types of data items:
 
 Instead of holding the data directly, data items reference files and
 fields stored in the data store. Before data in remote stores
-are accessed they need to be cached locally with :meth:`.DataItem.get`.
+are accessed they need to be cached locally with :meth:`.DataType.get`.
 Newly created and modified data items are placed into the store with
-:meth:`.DataItem.put`.
+:meth:`.DataType.put`.
 
-:class:`.FileGroup` is typically subclassed to specify the format of the
+:class:`.FileGroup` is typically subclassed to specify the datatype of the
 files/directories in the group. For example, there are a number common file
-formats implemented in :mod:`arcana.data.formats.common`, including
+formats implemented in :mod:`arcana.data.types.common`, including
 
 * :class:`.common.Text`
 * :class:`.common.Zip`
@@ -238,8 +243,8 @@ a pipeline and that stored in the data store. See :ref:`adding_formats` for deta
 instructions on how to specify new file formats and converters between them.
 
 As with data stores, file formats are specified in the CLI by *<module-path>:<class-name>*,
-e.g. ``arcana.data.formats.common:Text``. However, if the format is in a submodule of
-``arcana.data.formats`` then that prefix can be dropped for convenience,
+e.g. ``arcana.data.types.common:Text``. However, if the datatype is in a submodule of
+``arcana.data.types`` then that prefix can be dropped for convenience,
 e.g. ``common:Text``.
 
 
@@ -268,7 +273,7 @@ A data frame is defined by adding "source" columns to access existing
 (typically acquired) data, and "sink" columns to define where
 derivatives will be stored within the data tree. The "row frequency" argument
 of the column (e.g. per 'session', 'subject', etc...) specifies which data frame
-the column belongs to. The format of a column's member items (see :ref:`Items`)
+the column belongs to. The datatype of a column's member items (see :ref:`Items`)
 must be consistent and is also specified when the column is created.
 
 The data items (e.g. files, scans) within a source column do not need to have
@@ -320,12 +325,12 @@ methods can be used directly to add sources and sinks via the Python API.
 .. code-block:: python
 
     from arcana.data.spaces.medimage import Clinical
-    from arcana.data.formats.medimage import Dicom, NiftiGz
+    from arcana.data.types.medimage import Dicom, NiftiGz
 
     xnat_dataset.add_source(
         name='T1w',
         path=r'.*t1_mprage.*'
-        format=Dicom,
+        datatype=Dicom,
         order=1,
         quality_threshold='usable',
         is_regex=True
@@ -333,7 +338,7 @@ methods can be used directly to add sources and sinks via the Python API.
 
     fs_dataset.add_sink(
         name='brain_template',
-        format=NiftiGz,
+        datatype=NiftiGz,
         row_frequency='group'
     )
 
@@ -355,7 +360,7 @@ operator
     plt.imshow(t1w['T2', 'sub01'].data[:, :, 30])
 
 
-One of the main benefits of using datasets in BIDS_ format is that the names
+One of the main benefits of using datasets in BIDS_ datatype is that the names
 and file formats of the data are strictly defined. This allows the :class:`.Bids`
 data store object to automatically add sources to the dataset when it is
 initialised.
@@ -625,17 +630,24 @@ in a way that the data points still lie on a rectangular grid within the
 data space (see :ref:`data_spaces`) so derivatives computed over a given axis
 or axes are drawn from comparable number of data points.
 
-Sections of the data grid can be excluded at any point, or along lines or planes.
-However, it is often advisable to exclude along an axes of data space so the
-grid is rectangular. The ``exclude`` argument is used to
-in the dataspace which takes a dictionary mapping the data dimension to the
-list of IDs to exclude.
+.. note::
+    Somewhat confusingly the "data points" referred to in this section
+    actually correspond to "data rows" in the frames used in analyses.
+    However, you can think of a 2 or 3 (or higher) dimensional grid as
+    being flattened out into a 1D array to form a data frame in the
+    same way as numpy's ``ravel()`` method does to higher dimensional
+    arrays. The different types of data collected at each data point
+    (e.g. imaging session) can then be visuallised as expanding out to
+    form the row of the data frame.
+
+The ``--exclude`` option is used to specify the data points to exclude from
+a dataset.
 
 .. TODO image of excluding points in grid
 
 .. code-block:: console
 
-    $ arcana dataset define 'file///data/imaging/my-project' \
+    $ arcana dataset define 'file///data/imaging/my-project@manually_qcd' \
       medimage:Clinical subject session \
       --exclude member 03,11,27
 
@@ -647,7 +659,7 @@ frequencies.
 
 .. code-block:: console
 
-    $ arcana dataset define 'file///data/imaging/my-project' \
+    $ arcana dataset define 'file///data/imaging/my-project@manually_qcd' \
       medimage:Clinical subject session \
       --exclude member 03,11,27 \
       --include timepoint 1,2
@@ -662,7 +674,7 @@ CLI, append the name to the dataset's ID string separated by '::', e.g.
 
 .. code-block:: console
 
-    $ arcana dataset define 'file///data/imaging/my-project::training' \
+    $ arcana dataset define 'file///data/imaging/my-project@training' \
       medimage:Clinical group subject \
       --include member 10:20
 

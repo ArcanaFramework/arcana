@@ -110,23 +110,23 @@ Alternatively, the same steps can be performed using the Python API:
     from pydra.tasks.fsl.preprocess.bet import BET
     from arcana.core.data import Dataset
     from arcana.data.spaces.medimage import Clinical
-    from arcana.data.formats.medimage import Dicom, NiftiGz
+    from arcana.data.types.medimage import Dicom, NiftiGz
 
     # Define dataset
     my_dataset = Dataset.load('file///data/my-dataset', space=Clinical,
                               hierarchy=['subject', 'session'])
 
     # Add source column to select a single T1-weighted image in each session subdirectory
-    my_dataset.add_source('T1w', '.*mprage.*', format=Dicom, is_regex=True)
+    my_dataset.add_source('T1w', '.*mprage.*', datatype=Dicom, is_regex=True)
 
     # Add sink column to store brain mask
-    my_dataset.add_sink('brain_mask', 'derivs/brain_mask', format=NiftiGz)
+    my_dataset.add_sink('brain_mask', 'derivs/brain_mask', datatype=NiftiGz)
 
     # Apply BET Pydra task, connecting it between the source and sink
     my_dataset.apply_pipeline(
         BET(name='brain_extraction'),
         inputs=[('T1w', 'in_file', NiftiGz)],  # Specify required input format
-        outputs=[('brain_mask', 'out_file')])  # Output format matches stored so can be omitted
+        outputs=[('brain_mask', 'out_file')])  # Output datatype matches stored so can be omitted
 
     # Derive brain masks for all imaging sessions in dataset
     my_dataset['brain_mask'].derive()
@@ -170,9 +170,9 @@ Timepoint 'T3' can be plotted.
 .. note::
 
     When referencing objects within the ``arcana`` package from the CLI such
-    as file-format classes or data spaces (see :ref:`data_spaces`), the
+    as file-datatype classes or data spaces (see :ref:`data_spaces`), the
     standard ``arcana.*.`` prefix can be dropped, e.g. ``medimage:Dicom``
-    instead of the full path ``arcana.data.formats.medimage:Dicom``.
+    instead of the full path ``arcana.data.types.medimage:Dicom``.
     Classes installed outside of the Arcana package, should be referred to
     with their full import path.
 

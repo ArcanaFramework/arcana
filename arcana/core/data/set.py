@@ -4,23 +4,26 @@ import typing as ty
 from pathlib import Path
 from itertools import chain
 import re
+import shutil
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
+from arcana.core.utils.serialize import asdict
 from arcana.exceptions import (
+    ArcanaLicenseNotFoundError,
     ArcanaNameError,
     ArcanaDataTreeConstructionError,
     ArcanaUsageError,
     ArcanaBadlyFormattedIDError,
     ArcanaWrongDataSpaceError,
 )
-from arcana.core.utils import asdict
 from .space import DataSpace
 from .column import DataColumn, DataSink, DataSource
 from . import store as datastore
-
 from .row import DataRow
 
+if ty.TYPE_CHECKING:
+    from ..deploy.image.components import License
 
 logger = logging.getLogger("arcana")
 
@@ -109,8 +112,11 @@ class Dataset:
     """
 
     DEFAULT_NAME = "default"
+    LICENSES_PATH = (
+        "LICENSES"  # The resource that project-specifc licenses are expected
+    )
 
-    id: str = attrs.field(converter=str)
+    id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.DataStore = attrs.field()
     hierarchy: ty.List[DataSpace] = attrs.field()
     space: DataSpace = attrs.field(default=None)
@@ -174,8 +180,7 @@ class Dataset:
         ----------
         id: str
             either the ID of a dataset if `store` keyword arg is provided or a
-            "dataset ID string" in the format
-            <STORE-NICKNAME>//<DATASET-ID>:<DATASET-NAME>
+            "dataset ID string" in the format <store-nickname>//<dataset-id>[@<dataset-name>]
         store: DataStore, optional
             the store to load the dataset. If not provided the provided ID
             is interpreted as an ID string
@@ -224,8 +229,8 @@ class Dataset:
         if not hierarchy:
             raise ArcanaUsageError(f"hierarchy provided to {self} cannot be empty")
 
-        not_valid = [f for f in hierarchy if f not in self.space.__members__]
         space = type(hierarchy[0]) if self.space is None else self.space
+        not_valid = [f for f in hierarchy if f not in self.space.__members__]
         if space is str:
             raise ArcanaUsageError(
                 "Either the data space of the set needs to be provided "
@@ -301,7 +306,7 @@ class Dataset:
         self._root = None
 
     def add_source(
-        self, name, format, path=None, row_frequency=None, overwrite=False, **kwargs
+        self, name, datatype, path=None, row_frequency=None, overwrite=False, **kwargs
     ):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -311,8 +316,8 @@ class Dataset:
         name : str
             The name used to reference the dataset "column" for the
             source
-        format : type
-            The file-format (for file-groups) or format (for fields)
+        datatype : type
+            The file-format (for file-groups) or datatype (for fields)
             that the source will be stored in within the dataset
         path : str, default `name`
             The location of the source within the dataset
@@ -326,12 +331,12 @@ class Dataset:
         row_frequency = self._parse_freq(row_frequency)
         if path is None:
             path = name
-        source = DataSource(name, path, format, row_frequency, dataset=self, **kwargs)
+        source = DataSource(name, path, datatype, row_frequency, dataset=self, **kwargs)
         self._add_spec(name, source, overwrite)
         return source
 
     def add_sink(
-        self, name, format, path=None, row_frequency=None, overwrite=False, **kwargs
+        self, name, datatype, path=None, row_frequency=None, overwrite=False, **kwargs
     ):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
@@ -341,8 +346,8 @@ class Dataset:
         name : str
             The name used to reference the dataset "column" for the
             sink
-        format : type
-            The file-format (for file-groups) or format (for fields)
+        datatype : type
+            The file-format (for file-groups) or datatype (for fields)
             that the sink will be stored in within the dataset
         path : str, default `name`
             The location of the sink within the dataset
@@ -354,7 +359,7 @@ class Dataset:
         row_frequency = self._parse_freq(row_frequency)
         if path is None:
             path = name
-        sink = DataSink(name, path, format, row_frequency, dataset=self, **kwargs)
+        sink = DataSink(name, path, datatype, row_frequency, dataset=self, **kwargs)
         self._add_spec(name, sink, overwrite)
         return sink
 
@@ -678,10 +683,10 @@ class Dataset:
             name of the pipeline
         workflow : pydra.Workflow
             pydra workflow to connect to the dataset as a pipeline
-        inputs : list[arcana.core.pipeline.Input or tuple[str, str, type] or tuple[str, str]]
-            List of inputs to the pipeline (see `arcana.core.pipeline.Pipeline.Input`)
-        outputs : list[arcana.core.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
-            List of outputs of the pipeline (see `arcana.core.pipeline.Pipeline.Output`)
+        inputs : list[arcana.core.analysis.pipeline.Input or tuple[str, str, type] or tuple[str, str]]
+            List of inputs to the pipeline (see `arcana.core.analysis.pipeline.Pipeline.PipelineInput`)
+        outputs : list[arcana.core.analysis.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
+            List of outputs of the pipeline (see `arcana.core.analysis.pipeline.Pipeline.PipelineOutput`)
         row_frequency : str, optional
             the frequency of the data rows the pipeline will be executed over, i.e.
             will it be run once per-session, per-subject or per whole dataset,
@@ -702,44 +707,42 @@ class Dataset:
         ArcanaUsageError
             if overwrite is false and
         """
-        from arcana.core.pipeline import Pipeline, Input, Output
+        from arcana.core.analysis.pipeline import Pipeline
 
         row_frequency = self._parse_freq(row_frequency)
 
-        def parsed_conns(lst, conn_type):
-            parsed = []
-            for spec in lst:
-                if isinstance(spec, conn_type):
-                    parsed.append(spec)
-                elif len(spec) == 3:
-                    parsed.append(conn_type(*spec))
-                else:
-                    col_name, pydra_field = spec
-                    parsed.append(
-                        conn_type(col_name, pydra_field, self[col_name].format)
-                    )
-            return parsed
+        # def parsed_conns(lst, conn_type):
+        #     parsed = []
+        #     for spec in lst:
+        #         if isinstance(spec, conn_type):
+        #             parsed.append(spec)
+        #         elif len(spec) == 3:
+        #             parsed.append(conn_type(*spec))
+        #         else:
+        #             col_name, field = spec
+        #             parsed.append(conn_type(col_name, field, self[col_name].datatype))
+        #     return parsed
 
         pipeline = Pipeline(
             name=name,
             dataset=self,
             row_frequency=row_frequency,
             workflow=workflow,
-            inputs=parsed_conns(inputs, Input),
-            outputs=parsed_conns(outputs, Output),
+            inputs=inputs,
+            outputs=outputs,
             converter_args=converter_args,
         )
         for outpt in pipeline.outputs:
-            sink = self[outpt.col_name]
+            sink = self[outpt.name]
             if sink.pipeline_name is not None:
                 if overwrite:
                     logger.info(
-                        f"Overwriting pipeline of sink '{outpt.col_name}' "
+                        f"Overwriting pipeline of sink '{outpt.name}' "
                         f"{sink.pipeline_name} with {name}"
                     )
                 else:
                     raise ArcanaUsageError(
-                        f"Attempting to overwrite pipeline of '{outpt.col_name}' "
+                        f"Attempting to overwrite pipeline of '{outpt.name}' "
                         f"sink ({sink.pipeline_name}) with {name}. Use "
                         f"'overwrite' option if this is desired"
                     )
@@ -761,10 +764,10 @@ class Dataset:
 
         Returns
         -------
-        Sequence[List[DataItem]]
+        Sequence[List[DataType]]
             The derived columns
         """
-        from arcana.core.pipeline import Pipeline
+        from arcana.core.analysis.pipeline import Pipeline
 
         sinks = [self[s] for s in set(sink_names)]
         for pipeline, _ in Pipeline.stack(*sinks):
@@ -804,12 +807,90 @@ class Dataset:
             store_name = "file"
         else:
             store_name, id = parts
-        parts = id.split("::")
+        parts = id.split("@")
         if len(parts) == 1:
             name = cls.DEFAULT_NAME
         else:
             id, name = parts
         return store_name, id, name
+
+    def download_licenses(self, licenses: list[License]):
+        """Install licenses from project-specific location in data store and
+        install them at the destination location
+
+        Parameters
+        ----------
+        licenses : list[License]
+            the list of licenses stored in the dataset or in a site-wide location that
+            need to be downloaded to the local file-system before a pipeline is run
+
+        Raises
+        ------
+        ArcanaLicenseNotFoundError
+            raised if the license of the given name isn't present in the project-specific
+            location to retrieve
+        """
+
+        site_licenses_dataset = self.store.site_licenses_dataset()
+
+        for lic in licenses:
+
+            license_file = self._get_license_file(lic.name)
+
+            try:
+                lic_fs_path = license_file.fs_paths[0]
+            except ArcanaUsageError:
+                missing = False
+                if site_licenses_dataset is not None:
+                    license_file = self._get_license_file(
+                        lic.name, dataset=site_licenses_dataset
+                    )
+                    try:
+                        lic_fs_path = license_file.fs_paths[0]
+                    except ArcanaUsageError:
+                        missing = True
+                else:
+                    missing = True
+                if missing:
+                    msg = (
+                        f"Did not find a license corresponding to '{lic.name}' at "
+                        f"{License.column_name(lic.name)} in {self}"
+                    )
+                    if site_licenses_dataset:
+                        msg += f" or {site_licenses_dataset}"
+                    raise ArcanaLicenseNotFoundError(
+                        lic.name,
+                        msg,
+                    )
+            shutil.copyfile(lic_fs_path, lic.destination)
+
+    def install_license(self, name, source_file):
+        """Store project-specific license in dataset
+
+        Parameters
+        ----------
+        name : str
+            name of the license to install
+        source_file : Path
+            path to the license file to install
+        """
+        license_file = self._get_license_file(name)
+        license_file.put(source_file)
+
+    def _get_license_file(self, lic_name, dataset=None):
+        import arcana.data.types
+        import arcana.core.deploy.image.components
+
+        if dataset is None:
+            dataset = self
+        license_column = DataSink(
+            f"{lic_name}_license",
+            arcana.core.deploy.image.components.License.column_path(lic_name),
+            arcana.data.types.common.File,
+            row_frequency=self.root_freq,
+            dataset=dataset,
+        )
+        return license_column.match(dataset.root)
 
 
 @attrs.define

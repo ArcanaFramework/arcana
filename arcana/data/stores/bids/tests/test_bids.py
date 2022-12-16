@@ -10,11 +10,11 @@ from dataclasses import dataclass
 import pytest
 import docker
 from arcana import __version__
-from arcana.data.formats import NiftiX
+from arcana.data.types import NiftiX
 from arcana.data.stores.bids import BidsDataset
-from arcana.tasks.bids.app import bids_app, Input, Output
-from arcana.data.formats.common import Text, Directory
-from arcana.data.formats.medimage import NiftiGzX, NiftiGzXFslgrad
+from arcana.analysis.tasks.bids.app import bids_app, BidsInput, BidsOutput
+from arcana.data.types.common import Text, Directory
+from arcana.data.types.medimage import NiftiGzX, NiftiGzXFslgrad
 
 
 MOCK_BIDS_APP_NAME = "mockapp"
@@ -46,13 +46,11 @@ def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
 
     dataset.save_metadata()
 
-    dataset.add_sink("t1w", format=NiftiX, path="anat/T1w")
+    dataset.add_sink("t1w", datatype=NiftiX, path="anat/T1w")
 
     dummy_nifti = work_dir / "t1w.nii"
     # dummy_nifti_gz = dummy_nifti + '.gz'
     dummy_json = work_dir / "t1w.json"
-
-    N = 10**6
 
     # Create a random Nifti file to satisfy BIDS parsers
     hdr = nb.Nifti1Header()
@@ -89,7 +87,7 @@ def test_bids_roundtrip(bids_validator_docker, bids_success_str, work_dir):
     assert bids_success_str in result
 
     reloaded = BidsDataset.load(path)
-    reloaded.add_sink("t1w", format=NiftiX, path="anat/T1w")
+    reloaded.add_sink("t1w", datatype=NiftiX, path="anat/T1w")
 
     assert dataset == reloaded
 
@@ -196,13 +194,11 @@ def test_bids_json_edit(json_edit_blueprint: JsonEditBlueprint, work_dir: Path):
     dataset.save_metadata()
 
     for sf_name, sf_bp in bp.source_niftis.items():
-        dataset.add_sink(sf_name, format=NiftiX, path=sf_bp.path)
+        dataset.add_sink(sf_name, datatype=NiftiX, path=sf_bp.path)
 
         nifti_fs_path = work_dir / (sf_name + ".nii")
         # dummy_nifti_gz = dummy_nifti + '.gz'
         json_fs_path = work_dir / (sf_name + ".json")
-
-        N = 10**6
 
         # Create a random Nifti file to satisfy BIDS parsers
         hdr = nb.Nifti1Header()
@@ -239,14 +235,14 @@ def test_bids_json_edit(json_edit_blueprint: JsonEditBlueprint, work_dir: Path):
 
 
 BIDS_INPUTS = [
-    Input("anat/T1w", NiftiGzX),
-    Input("anat/T2w", NiftiGzX),
-    Input("dwi/dwi", NiftiGzXFslgrad),
+    BidsInput(name="T1w", path="anat/T1w", datatype=NiftiGzX),
+    BidsInput(name="T2w", path="anat/T2w", datatype=NiftiGzX),
+    BidsInput(name="dwi", path="dwi/dwi", datatype=NiftiGzXFslgrad),
 ]
 BIDS_OUTPUTS = [
-    Output("whole_dir", Directory),  # whole derivative directory
-    Output("a_file", Text, "file1"),
-    Output("another_file", Text, "file2"),
+    BidsOutput(name="whole_dir", datatype=Directory),  # whole derivative directory
+    BidsOutput(name="a_file", path="file1", datatype=Text),
+    BidsOutput(name="another_file", path="file2", datatype=Text),
 ]
 
 
@@ -272,7 +268,7 @@ def test_run_bids_app_docker(
     for inpt in BIDS_INPUTS:
         kwargs[inpt.name] = nifti_sample_dir.joinpath(
             *inpt.path.split("/")
-        ).with_suffix("." + inpt.format.ext)
+        ).with_suffix("." + inpt.datatype.ext)
 
     result = task(plugin="serial", **kwargs)
 
@@ -318,7 +314,7 @@ def test_run_bids_app_naked(
     for inpt in BIDS_INPUTS:
         kwargs[inpt.name] = nifti_sample_dir.joinpath(
             *inpt.path.split("/")
-        ).with_suffix("." + inpt.format.ext)
+        ).with_suffix("." + inpt.datatype.ext)
 
     bids_dir = work_dir / "bids"
 

@@ -1,7 +1,8 @@
 import typing as ty
 import re
 from enum import Enum
-from arcana.core.utils import class_location, resolve_class
+from arcana.core.utils.serialize import ClassResolver
+from arcana.core.utils.misc import classproperty
 
 
 class DataSpace(Enum):
@@ -165,9 +166,20 @@ class DataSpace(Enum):
         return ((self & child) == self) and (child != self or if_match)
 
     def tostr(self):
-        return f"{class_location(self)}[{str(self)}]"
+        return f"{ClassResolver.tostr(self, strip_prefix=False)}[{str(self)}]"
 
     @classmethod
     def fromstr(cls, s):
-        class_loc, val = re.match(r"(.*)\[([^\]]+)\]", s).groups()
-        return resolve_class(class_loc)[val]
+        match = re.match(r"(.*)\[([^\]]+)\]", s)
+        if match is None:
+            raise ValueError(
+                f"'{s}' is not a string of the format <data-space-enum>[<value>]"
+            )
+        class_loc, val = match.groups()
+        return ClassResolver(cls)(class_loc)[val]
+
+    @classproperty
+    def DEFAULT_PACKAGE(cls):
+        """Cannot be a regular class attribute because then DataSpace won't be able to
+        be extended"""
+        return "arcana.data.spaces"

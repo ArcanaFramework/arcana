@@ -10,8 +10,8 @@ from arcana.exceptions import (
     ArcanaWrongFrequencyError,
     ArcanaFileFormatError,
 )
-from .format import DataItem
-from ..enum import DataQuality
+from .type.base import DataType
+from ..analysis.salience import DataQuality
 from .space import DataSpace
 
 
@@ -50,7 +50,7 @@ class DataRow:
 
         Returns
         -------
-        DataItem
+        DataType
             The item matching the provided name specified by the column name
         """
         if column_name in self._items:
@@ -120,7 +120,7 @@ class DataRow:
 
         Returns
         -------
-        Sequence[DataItem]
+        Sequence[DataType]
             The item matching the provided name specified by the column name
             if the column is of matching or ancestor frequency, or list of
             items if a descendent or unrelated frequency.
@@ -144,19 +144,19 @@ class DataRow:
             self.dataset.store.find_items(self)
         return self._unresolved
 
-    def resolved(self, format):
+    def resolved(self, datatype):
         """
-        Items in the row that are able to be resolved to the given format
+        Items in the row that are able to be resolved to the given datatype
 
         Parameters
         ----------
-        format : type
-            The file format or type to reolve the item to
+        datatype : type
+            The file datatype or type to reolve the item to
         """
         matches = []
         for potential in self.unresolved:
             try:
-                matches.append(format.resolve(potential))
+                matches.append(datatype.resolve(potential))
             except ArcanaFileFormatError:
                 pass
         return matches
@@ -179,7 +179,7 @@ class DataRow:
 
 
 @attrs.define
-class UnresolvedDataItem(metaclass=ABCMeta):
+class UnresolvedDataType(metaclass=ABCMeta):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
@@ -206,7 +206,7 @@ class UnresolvedDataItem(metaclass=ABCMeta):
     order: int = attrs.field(default=None)
     quality: DataQuality = attrs.field(default=DataQuality.usable)
     provenance: ty.Dict[str, ty.Any] = attrs.field(default=None)
-    _matched: ty.Dict[str, DataItem] = attrs.field(factory=dict, init=False)
+    _matched: ty.Dict[str, DataType] = attrs.field(factory=dict, init=False)
 
     @property
     def item_kwargs(self):
@@ -226,7 +226,7 @@ def normalise_paths(file_paths):
 
 
 @attrs.define
-class UnresolvedFileGroup(UnresolvedDataItem):
+class UnresolvedFileGroup(UnresolvedDataType):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
@@ -251,9 +251,9 @@ class UnresolvedFileGroup(UnresolvedDataItem):
     file_paths : Sequence[str] | None
         Path to the file-group in the local cache
     uris : Dict[str, str] | None
-        For stores where the name of the file format is saved with the
+        For stores where the name of the file datatype is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
-        format identification. It is stored here along with URIs corresponding
+        datatype identification. It is stored here along with URIs corresponding
         to each resource
     """
 
@@ -274,7 +274,7 @@ class UnresolvedFileGroup(UnresolvedDataItem):
 
 
 @attrs.define
-class UnresolvedField(UnresolvedDataItem):
+class UnresolvedField(UnresolvedDataType):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
@@ -305,22 +305,22 @@ class UnresolvedField(UnresolvedDataItem):
         float, int, str, ty.List[float], ty.List[int], ty.List[str]
     ] = attrs.field(default=None)
 
-    # def _resolve(self, format):
+    # def _resolve(self, datatype):
     #     try:
-    #         if format._name == 'Sequence':
-    #             if len(format.__args__) > 1:
+    #         if datatype._name == 'Sequence':
+    #             if len(datatype.__args__) > 1:
     #                 raise ArcanaUsageError(
     #                     f"Sequence formats with more than one arg "
-    #                     "are not supported ({format})")
-    #             subtype = format.__args__[0]
+    #                     "are not supported ({datatype})")
+    #             subtype = datatype.__args__[0]
     #             value = [subtype(v)
     #                         for v in self.value[1:-1].split(',')]
     #         else:
-    #             value = format(self.value)
+    #             value = datatype(self.value)
     #     except ValueError as e:
     #         raise ArcanaUnresolvableFormatException(
     #                 f"Could not convert value of {self} ({self.value}) "
-    #                 f"to format {format}") from e
+    #                 f"to datatype {datatype}") from e
     #     else:
-    #         item = DataItem(value=value, **self.item_kwargs)
+    #         item = DataType(value=value, **self.item_kwargs)
     #     return item

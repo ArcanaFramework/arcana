@@ -6,9 +6,9 @@ from operator import attrgetter
 from attrs.converters import optional
 
 # from arcana.core.data.row import DataRow
-from arcana.core.utils import class_location
+from arcana.core.utils.serialize import ClassResolver
 from arcana.exceptions import ArcanaDataMatchError
-from ..enum import DataQuality, ColumnSalience
+from ..analysis.salience import DataQuality, ColumnSalience
 from .space import DataSpace
 
 
@@ -20,7 +20,7 @@ class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
 
     name: str = attrs.field()
     path: str = attrs.field()
-    format = attrs.field()
+    datatype = attrs.field()
     row_frequency: DataSpace = attrs.field()
     dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
@@ -51,7 +51,7 @@ class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
 
         Returns
         -------
-        DataItem
+        DataType
             the data item that matches the criteria/path
 
         Raises
@@ -80,7 +80,7 @@ class DataSource(DataColumn):
         A regex name_path to match the file_group names with. Must match
         one and only one file_group per <row_frequency>. If None, the name
         is used instead.
-    format : type
+    datatype : type
         File format that data will be
     row_frequency : DataSpace
         The row_frequency of the file-group within the dataset tree, e.g. per
@@ -123,15 +123,13 @@ class DataSource(DataColumn):
             (match_quality, self.quality_threshold),
             (match_header_vals, self.header_vals),
         ]
-        # Get all items that match the data format of the source
-        matches = row.resolved(self.format)
+        # Get all items that match the data type of the source
+        matches = row.resolved(self.datatype)
         if not matches:
-            format_str = class_location(
-                self.format, strip_prefix="arcana.data.formats."
-            )
             msg = (
-                f"Did not find any items matching data format "
-                f"{format_str} in '{row.id}' {self.row_frequency} for the "
+                f"Did not find any items matching data datatype "
+                f"{ClassResolver.tostr(self.datatype)} in '{row.id}' "
+                f"{self.row_frequency} for the "
                 f"'{self.name}' column, found unresolved items:"
             )
             for item in sorted(row.unresolved, key=attrgetter("path")):
@@ -172,20 +170,19 @@ class DataSource(DataColumn):
         return match
 
     def _error_msg(self, row, matches):
-        format_str = class_location(self.format, strip_prefix="arcana.data.formats.")
         return (
-            f" attempting to select a {format_str} item for the '{row.id}' "
-            f"{row.frequency} in the '{self.name}' column, found:"
+            f" attempting to select {ClassResolver.tostr(self.datatype)} item for "
+            f"the '{row.id}' {row.frequency} in the '{self.name}' column, found:"
             + self._format_matches(matches)
             + self._format_criteria()
         )
 
     def _format_criteria(self):
-        format_str = class_location(self.format, strip_prefix="arcana.data.formats.")
         return (
-            f"\n\n    criteria: path='{self.path}', is_regex={self.is_regex}, "
-            + f"format={format_str}, quality_threshold='{self.quality_threshold}', "
-            + f"header_vals={self.header_vals}, order={self.order}"
+            f"\n\n    criteria: {self.path}', is_regex={self.is_regex}, "
+            f"datatype={ClassResolver.tostr(self.datatype)}, "
+            f"quality_threshold='{self.quality_threshold}', "
+            f"header_vals={self.header_vals}, order={self.order}"
         )
 
     def _format_matches(self, matches):
@@ -232,8 +229,8 @@ class DataSink(DataColumn):
     path : str
         The path to the relative location the corresponding data items will be
         stored within the rows of the data tree.
-    format : type
-        The file format or data type used to store the corresponding items
+    datatype : type
+        The file datatype or data type used to store the corresponding items
         in the store dataset.
     row_frequency : DataSpace
         The row_frequency of the file-group within the dataset tree, e.g. per
@@ -256,10 +253,10 @@ class DataSink(DataColumn):
     is_sink = True
 
     def match(self, row):
-        matches = [i for i in row.resolved(self.format) if i.path == self.path]
+        matches = [i for i in row.resolved(self.datatype) if i.path == self.path]
         if not matches:
-            # Return a placeholder data item that can be set
-            return self.format(path=self.path, row=row, exists=False)
+            # Return a placeholder data item th.datatypebe set
+            return self.datatype(path=self.path, row=row, exists=False)
         elif len(matches) > 1:
             raise ArcanaDataMatchError(
                 "Found multiple matches " + self._error_msg(row, matches)

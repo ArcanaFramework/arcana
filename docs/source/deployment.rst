@@ -19,12 +19,12 @@ method is used to generate the JSON metadata to be saved in this field.
 There are four key fields that will determine the functionality of the command
 (the rest are metadata fields that are exposed to the XNAT UI):
 
-* ``pydra_task``
+* ``task``
 * ``inputs``
 * ``outputs``
 * ``parameters``
 
-The ``pydra_task`` keyword argument should be the path to an installed
+The ``task`` keyword argument should be the path to an installed
 Python module containing a Pydra task followed by a colon and the name of
 the task, e.g. ``pydra.tasks.fsl.preprocess.fast:Fast``. Note that Arcana
 will attempt to resolve the package that contains the Pydra task and install the
@@ -39,7 +39,7 @@ source columns to the dataset (see :ref:`data_columns`). They are specified by
 4-tuple consisting of
 
 * name of field in the pydra task input interface
-* format required by pydra task
+* datatype required by pydra task
 * description of input that will be exposed to the XNAT UI
 * the row row_frequency of the column (see :ref:`data_spaces` and :ref:`data_columns`)
 
@@ -52,44 +52,47 @@ is run in the container, and consist of a 2-tuple with
 Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 
 * name of field in the pydra task output interface
-* format produced by pydra task
+* datatype produced by pydra task
 * destination path (slashes are permitted interpreted as a relative path from the derivatives root)
 
-.. code-block:: python
+.. .. code-block:: python
 
-    from arcana.data.stores.medimage import XnatViaCS
-    from arcana.data.spaces.medimage import Clinical
-    from arcana.data.formats.medimage import NiftiGz
+..     import json
+..     from arcana.deploy.medimage import XnatCSCommand
+..     from arcana.data.spaces.medimage import Clinical
+..     from arcana.data.types.medimage import NiftiGz
 
+..     xnat_command = XnatCSCommand(
+..         name='example_pipeline',
+..         task='pydra.tasks.fsl.preprocess.fast:FAST',
+..         image_tag='example/0.1',
+..         description=(
+..             "FAST (FMRIB's Automated Segmentation Tool) segments a 3D image of "
+..             "the brain into different tissue types (Grey Matter, White Matter, "
+..             "CSF, etc.), whilst also correcting for spatial intensity variations "
+..             "(also known as bias field or RF inhomogeneities)."),
+..         version='6.0-1',
+..         info_url='https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST',
+..         inputs={
+..             "field": 'in_files', NiftiGz, 'File to segment', 'session'),
+..             ('number_of_classes', int, 'Number of classes', 'session')],
+..         outputs=[
+..             ('tissue_class_files', NiftiGz, 'fast/tissue-classes'),
+..             ('partial_volume_map', NiftiGz, 'fast/partial-volumes'),
+..             ('partial_volume_files', NiftiGz, 'fast/partial-volume-files'),
+..             ('bias_field', NiftiGz, 'fast/bias-field'),
+..             ('probability_maps', NiftiGz, 'fast/probability-map')],
+..         parameters=[
+..             ('use_priors', 'Use priors'),
+..             ('bias_lowpass', 'Low-pass filter bias field')],
+..         configuration=[  # If different from the Pydra task
+..             ('output_biasfield', True),
+..             ('output_biascorrected', True),
+..             ('bias_lowpass', 5.0)],
+..         row_frequency='session')
 
-    xnat_command = XnatViaCS.generate_xnat_command(
-        pipeline_name='example_pipeline',
-        pydra_task='pydra.tasks.fsl.preprocess.fast:FAST',
-        image_tag='example/0.1',
-        description=(
-            "FAST (FMRIB's Automated Segmentation Tool) segments a 3D image of "
-            "the brain into different tissue types (Grey Matter, White Matter, "
-            "CSF, etc.), whilst also correcting for spatial intensity variations "
-            "(also known as bias field or RF inhomogeneities)."),
-        version='6.0-1',
-        info_url='https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST',
-        inputs=[
-            ('in_files', NiftiGz, 'File to segment', 'session'),
-            ('number_of_classes', int, 'Number of classes', 'session')],
-        outputs=[
-            ('tissue_class_files', NiftiGz, 'fast/tissue-classes'),
-            ('partial_volume_map', NiftiGz, 'fast/partial-volumes'),
-            ('partial_volume_files', NiftiGz, 'fast/partial-volume-files'),
-            ('bias_field', NiftiGz, 'fast/bias-field'),
-            ('probability_maps', NiftiGz, 'fast/probability-map')],
-        parameters=[
-            ('use_priors', 'Use priors'),
-            ('bias_lowpass', 'Low-pass filter bias field')],
-        configuration=[  # If different from the Pydra task
-            ('output_biasfield', True),
-            ('output_biascorrected', True),
-            ('bias_lowpass', 5.0)],
-        row_frequency='session')
+..         with open("/path/to/a/file", "w") as f:
+..             json.dump(f, xnat_command.make_json())
 
 When working with the CLI, command configurations are stored in YAML_ format,
 with keys matching the arguments of :meth:`XnatViaCS.generate_xnat_command`.
@@ -105,11 +108,11 @@ Building
 
 Dockerfiles for pipeline images are created using Neurodocker_
 and can therefore work with any Debian/Ubuntu or Red-Hat based images
-(using a value for ``package_manager`` keyword argument of ``"apt"`` for
-Debian based or ``"yum"`` for Red-Hat based). Arcana installs itself into the Docker image
-within an Anaconda_ environment named "arcana". Therefore, it won't typically
-conflict with packages on existing Docker images for third-party pipelines
-unless they are also installed using Anaconda.
+(ensuring that the value for ``base_image>package_manager`` is set to the correct value,
+i.e.  ``"apt"`` for Debian based or ``"yum"`` for Red-Hat based). Arcana installs
+itself into the Docker image within an Anaconda_ environment named "arcana". Therefore,
+it shouldn't conflict with packages on existing Docker images for third-party
+pipelines.
 
 Extending the YAML_ format used to define the command configurations,
 the full configuration required to build an XNAT docker image looks like
@@ -117,50 +120,48 @@ the full configuration required to build an XNAT docker image looks like
 .. code-block:: yaml
 
     pkg_name: FSL
-    pkg_version: &pkg_version '6.0.1'
-    wrapper_version: '1'
+    version: &version '6.0.1'
+    build_iteration: '1'
     authors:
         - name: Thomas G. Close
           email: thomas.close@sydney.edu.au
-    base_image: !join [ 'brainlife/fsl:', *pkg_version ]
+    base_image:
+        name: brainlife/fsl'
+        tag: *version
     info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki
-    package_manager: apt
-    system_packages:
-    package_templates:
-    - name: dcm2niix
-        version: v1.0.20201102
-    python_packages:
-        - name: pydra-dcm2niix
+    packages:
+        neurodocker:
+            dcm2niix: v1.0.20201102
+        pip:
+            pydra-dcm2niix:  # Uses the default version on PyPI
     commands:
-        pipeline_name: fast
-        pydra_task: pydra.tasks.fsl.preprocess.fast:FAST
+        task: pydra.tasks.fsl.preprocess.fast:FAST
         description:
             FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of
             the brain into different tissue types (Grey Matter, White Matter,
             CSF, etc.), whilst also correcting for spatial intensity variations
             (also known as bias field or RF inhomogeneities).
-        version: 1
-        info_url: https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST
         inputs:
-            - name: in_files
-              format: medimage:NiftiGzX
-              stored_format: medimage:Dicom
-              description: Anatomical image to segment into different tissues
+            in_files:
+              datatype: medimage:NiftiGzX
+              default_column:
+                datatype: medimage:Dicom
+              help_string: Anatomical image to segment into different tissues
         outputs:
-            - name: tissue_classes
-              format: medimage:NiftiGz
+            tissue_classes:
+              datatype: medimage:NiftiGz
               path: fast/tissue-classes
-            - name: probability_maps
-              format: medimage:NiftiGz
+            probability_maps:
+              datatype: medimage:NiftiGz
               path: fast/probability-map
         parameters:
-            - name: use_priors
-              description: Use priors in tissue estimation
-            - name: bias_lowpass
-              description: Low-pass filter bias field
+            use_priors:
+              help_string: Use priors in tissue estimation
+            bias_lowpass:
+              help_string: Low-pass filter bias field
         configuration:
-            - output_biasfield: true
-            - bias_lowpass: 5.0
+            output_biasfield: true
+            bias_lowpass: 5.0
         row_frequency: session
 
 where fields in the top-level YAML_ are provided as arguments to

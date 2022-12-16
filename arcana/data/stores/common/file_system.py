@@ -15,7 +15,9 @@ from arcana.exceptions import ArcanaMissingDataException, ArcanaUsageError
 from arcana.core.data.set import Dataset
 from arcana.data.spaces.medimage import Clinical, DataSpace
 from arcana.core.data.store import DataStore
-from arcana.core.data.format import FileGroup
+from arcana.core.data.type.base import FileGroup
+from arcana.core.utils.misc import get_home_dir
+from arcana.data.spaces.common import Samples
 
 
 logger = logging.getLogger("arcana")
@@ -49,6 +51,7 @@ class FileSystem(DataStore):
     PROV_KEY = "__provenance__"
     VALUE_KEY = "__value__"
     METADATA_DIR = ".arcana"
+    SITE_LICENSES_DIR = "site-licenses"
 
     def new_dataset(self, id, *args, **kwargs):
         if not Path(id).exists():
@@ -101,9 +104,9 @@ class FileSystem(DataStore):
         if isinstance(val, dict):
             val = val[self.VALUE_KEY]
         if field.array:
-            val = [field.format(v) for v in val]
+            val = [field.datatype(v) for v in val]
         else:
-            val = field.format(val)
+            val = field.datatype(val)
         return val
 
     def put_file_group_paths(self, file_group: FileGroup, fs_paths: ty.List[Path]):
@@ -278,6 +281,17 @@ class FileSystem(DataStore):
 
     def prov_json_path(self, file_group):
         return self.file_group_path(file_group) + self.PROV_SUFFX
+
+    def site_licenses_dataset(self):
+        """Provide a place to store hold site-wide licenses"""
+        dataset_root = get_home_dir() / self.SITE_LICENSES_DIR
+        if not dataset_root.exists():
+            dataset_root.mkdir(parents=True)
+        try:
+            dataset = self.load_dataset(dataset_root)
+        except KeyError:
+            dataset = self.new_dataset(dataset_root, space=Samples)
+        return dataset
 
     # def get_provenance(self, item):
     #     if item.is_file_group:

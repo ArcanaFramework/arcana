@@ -4,12 +4,12 @@ from pathlib import Path
 import attrs
 import typing as ty
 import yaml
-from arcana.core.utils import (
-    get_config_file_path,
-    list_subclasses,
+from arcana.core.utils.serialize import (
     asdict,
     fromdict,
 )
+from arcana.core.utils.misc import get_config_file_path
+from arcana.core.utils.packaging import list_subclasses
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError
 
 DS = ty.TypeVar("DS", bound="DataStore")
@@ -30,6 +30,8 @@ class DataStore(metaclass=ABCMeta):
     )
 
     CONFIG_NAME = "stores"
+
+    DEFAULT_PACKAGE = "arcana.data.stores"
 
     @abstractmethod
     def find_rows(self, dataset):
@@ -170,7 +172,7 @@ class DataStore(metaclass=ABCMeta):
 
         Parameters
         ----------
-        item: DataItem
+        item: DataType
             The item to store the provenance data for
         provenance: dict[str, Any]
             The provenance data to store"""
@@ -181,7 +183,7 @@ class DataStore(metaclass=ABCMeta):
 
         Parameters
         ----------
-        item: DataItem
+        item: DataType
             The item to store the provenance data for
 
         Returns
@@ -246,6 +248,10 @@ class DataStore(metaclass=ABCMeta):
     def asdict(self, **kwargs):
         return asdict(self, **kwargs)
 
+    def site_licenses_dataset(self):
+        """Can be overridden by subclasses to provide a dataset to hold site-wide licenses"""
+        return None
+
     @classmethod
     def load(cls: ty.Type[DS], name: str, config_path: Path = None, **kwargs) -> DS:
         """Loads a DataStore from that has been saved in the configuration file.
@@ -285,7 +291,7 @@ class DataStore(metaclass=ABCMeta):
                 )
         else:
             entry.update(kwargs)
-            store = fromdict(entry)
+            store = fromdict(entry)  # Would be good to use a class resolver here
         return store
 
     @classmethod
@@ -320,22 +326,30 @@ class DataStore(metaclass=ABCMeta):
         **kwargs:
             Keyword args passed on to the Dataset init method
         """
+        from .space import DataSpace
+
         if not hierarchy:
-            try:
-                hierarchy = self.DEFAULT_HIERARCHY
-            except AttributeError as e:
-                raise ArcanaUsageError(
-                    "'hierarchy' kwarg must be specified for datasets in "
-                    f"{type(self)} stores"
-                ) from e
+            if space:
+                hierarchy = [max(space)]
+            else:
+                try:
+                    hierarchy = self.DEFAULT_HIERARCHY
+                except AttributeError as e:
+                    raise ArcanaUsageError(
+                        "'hierarchy' kwarg must be specified for datasets in "
+                        f"{type(self)} stores"
+                    ) from e
         if not space:
-            try:
-                space = self.DEFAULT_SPACE
-            except AttributeError as e:
-                raise ArcanaUsageError(
-                    "'space' kwarg must be specified for datasets in "
-                    f"{type(self)} stores"
-                ) from e
+            if hierarchy and isinstance(hierarchy[0], DataSpace):
+                space = type(hierarchy[0])
+            else:
+                try:
+                    space = self.DEFAULT_SPACE
+                except AttributeError as e:
+                    raise ArcanaUsageError(
+                        "'space' kwarg must be specified for datasets in "
+                        f"{type(self)} stores"
+                    ) from e
         from arcana.core.data.set import (
             Dataset,
         )  # avoid circular imports it is imported here rather than at the top of the file
@@ -353,7 +367,7 @@ class DataStore(metaclass=ABCMeta):
         dct = self.load_dataset_definition(id, name)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}::{name}'")
-        return fromdict(dct, name=name, store=self)
+        return fromdict(dct, id=id, name=name, store=self)
 
     @classmethod
     def singletons(cls):
