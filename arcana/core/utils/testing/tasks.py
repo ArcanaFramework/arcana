@@ -245,8 +245,13 @@ def check_license(expected_license_path: str, expected_license_contents: Path) -
     expected_license_contents = Path(expected_license_contents)
     with open(expected_license_contents) as f:
         expected_contents = f.read()
-    assert expected_license_path.exists()
+    if not expected_license_path.exists():
+        raise Exception(f"Did not find license file at {expected_license_path}")
     with open(expected_license_path) as f:
         actual_contents = f.read()
-    assert expected_contents == actual_contents
+    if expected_contents != actual_contents:
+        raise Exception(
+            f'License contents "{actual_contents}" did not match '
+            f'expected "{expected_contents}"'
+        )
     return expected_license_contents

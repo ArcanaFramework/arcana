@@ -814,15 +814,15 @@ class Dataset:
             id, name = parts
         return store_name, id, name
 
-    def download_licenses(self, licenses: dict[str, Path]):
+    def download_licenses(self, licenses: list[License]):
         """Install licenses from project-specific location in data store and
         install them at the destination location
 
         Parameters
         ----------
         licenses : list[License]
-            a list of tuples representing the name of a license and the
-            destination location it should be installed
+            the list of licenses stored in the dataset or in a site-wide location that
+            need to be downloaded to the local file-system before a pipeline is run
 
         Raises
         ------
@@ -833,35 +833,36 @@ class Dataset:
 
         site_licenses_dataset = self.store.site_licenses_dataset()
 
-        for lic_name, destination in licenses:
+        for lic in licenses:
 
-            license_file = self._get_license_file(lic_name)
+            license_file = self._get_license_file(lic.name)
 
             try:
-                lic_fs_path = license_file.fs_path
-            except Exception:
+                lic_fs_path = license_file.fs_paths[0]
+            except ArcanaUsageError:
+                missing = False
                 if site_licenses_dataset is not None:
                     license_file = self._get_license_file(
-                        lic_name, dataset=site_licenses_dataset
+                        lic.name, dataset=site_licenses_dataset
                     )
                     try:
-                        lic_fs_path = license_file.fs_path
-                    except Exception:
+                        lic_fs_path = license_file.fs_paths[0]
+                    except ArcanaUsageError:
                         missing = True
                 else:
                     missing = True
                 if missing:
                     msg = (
-                        f"Did not find a license corresponding to '{lic_name}' at "
-                        f"{License.column_name(lic_name)} in {self}"
+                        f"Did not find a license corresponding to '{lic.name}' at "
+                        f"{License.column_name(lic.name)} in {self}"
                     )
                     if site_licenses_dataset:
                         msg += f" or {site_licenses_dataset}"
                     raise ArcanaLicenseNotFoundError(
-                        lic_name,
+                        lic.name,
                         msg,
                     )
-            shutil.copyfile(lic_fs_path, destination)
+            shutil.copyfile(lic_fs_path, lic.destination)
 
     def install_license(self, name, source_file):
         """Store project-specific license in dataset
