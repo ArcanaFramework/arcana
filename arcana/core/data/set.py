@@ -116,7 +116,7 @@ class Dataset:
         "LICENSES"  # The resource that project-specifc licenses are expected
     )
 
-    id: str = attrs.field(converter=str)
+    id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.DataStore = attrs.field()
     hierarchy: ty.List[DataSpace] = attrs.field()
     space: DataSpace = attrs.field(default=None)

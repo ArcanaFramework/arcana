@@ -5,7 +5,6 @@ from pathlib import Path
 import docker
 import docker.errors
 from arcana.core.utils.testing import show_cli_trace
-from arcana.core.utils.misc import add_exc_note
 from arcana.core.cli.deploy import make, install_license
 from arcana.deploy.common import PipelineImage
 from arcana.data.stores.common import FileSystem
@@ -61,6 +60,8 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
         f"--input {LICENSE_INPUT_FIELD} '{LICENSE_INPUT_PATH}' "
         f"--output {LICENSE_OUTPUT_FIELD} '{LICENSE_OUTPUT_PATH}' "
         f"--parameter {LICENSE_PATH_PARAM} '{LICENSE_PATH}' "
+        f"--plugin serial "
+        f"--raise-errors "
     )
 
     dc = docker.from_env()
@@ -69,15 +70,15 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
             image_tag,
             args,
             volumes=[f"{str(dataset_dir)}:/dataset:rw"],
-            remove=True,
+            remove=False,
+            stdout=True,
             stderr=True,
         )
     except docker.errors.ContainerError as e:
-        add_exc_note(
-            e,
-            f"Running {image_tag} failed with args = {args}\n\nstderr:\n{e.stderr.decode('utf-8')}",
+        logs = e.container.logs().decode("utf-8")
+        raise RuntimeError(
+            f"Running {image_tag} failed with args = {args}" f"\n\nlogs:\n{logs}",
         )
-        raise
 
 
 def test_site_runtime_license(license_file, work_dir, cli_runner):
