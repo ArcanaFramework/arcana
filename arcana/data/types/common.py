@@ -1,6 +1,7 @@
 from abc import ABCMeta
 import zipfile
-from arcana.core.data.type import FileGroup, BaseFile, BaseDirectory
+from arcana.core.data.type.base import FileGroup
+from arcana.core.data.type import BaseFile, BaseDirectory
 from arcana.mark import converter
 from arcana.analysis.tasks.common.archive import (
     create_tar,
@@ -54,9 +55,6 @@ class TarGz(Tar, Gzip):
 
 
 class File(BaseFile):
-
-    ext = ""
-
     @classmethod
     @converter(Zip)
     def unzip(cls, fs_path):
@@ -77,9 +75,6 @@ class File(BaseFile):
 
 
 class Directory(BaseDirectory):
-
-    ext = ""
-
     @classmethod
     @converter(Zip)
     def unzip(cls, fs_path):

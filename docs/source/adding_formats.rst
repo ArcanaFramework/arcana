@@ -53,7 +53,7 @@ formats that are expected alongside the "primary file"
 
 .. code-block:: python
 
-    from arcana.core.data.type import WithSideCars
+    from arcana.core.data.type.file import WithSideCars
 
     class AnalyzeHeader(File):
         ext = 'hdr'

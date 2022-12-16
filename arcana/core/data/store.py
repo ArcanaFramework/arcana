@@ -326,6 +326,8 @@ class DataStore(metaclass=ABCMeta):
         **kwargs:
             Keyword args passed on to the Dataset init method
         """
+        from .space import DataSpace
+
         if not hierarchy:
             if space:
                 hierarchy = [max(space)]
@@ -338,7 +340,7 @@ class DataStore(metaclass=ABCMeta):
                         f"{type(self)} stores"
                     ) from e
         if not space:
-            if hierarchy:
+            if hierarchy and isinstance(hierarchy[0], DataSpace):
                 space = type(hierarchy[0])
             else:
                 try:

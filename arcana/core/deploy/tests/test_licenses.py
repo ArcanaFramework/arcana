@@ -7,6 +7,8 @@ import docker.errors
 from arcana.core.utils.testing import show_cli_trace
 from arcana.core.cli.deploy import make, install_license
 from arcana.deploy.common import PipelineImage
+from arcana.data.stores.common import FileSystem
+from arcana.data.spaces.common import Samples
 
 
 def test_buildtime_license(
@@ -27,6 +29,7 @@ def test_buildtime_license(
 
     build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
+    make_dataset(dataset_dir)
 
     result = cli_runner(
         make,
@@ -64,6 +67,8 @@ def test_site_runtime_license(
     build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
 
+    make_dataset(dataset_dir)
+
     pipeline_image.name = image_name
     pipeline_image.make(
         build_dir=build_dir,
@@ -92,7 +97,8 @@ def test_dataset_runtime_license(
 
     build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
-    dataset_dir.mkdir()
+
+    make_dataset(dataset_dir)
 
     pipeline_image.name = image_name
     pipeline_image.make(
@@ -116,26 +122,28 @@ def test_dataset_runtime_license(
     assert run_license_check(image_tag, dataset_dir)
 
 
-def run_license_check(image_tag: str, dataset_dir: Path):
-
-    dc = docker.from_env()
+def make_dataset(dataset_dir):
 
     sample_dir = dataset_dir / "sample1"
     sample_dir.mkdir(parents=True)
 
-    INPUT_NAME = "contents-file"
-    OUTPUT_NAME = "validated-file"
-
-    with open(sample_dir / (INPUT_NAME + ".txt"), "w") as f:
+    with open(sample_dir / (LICENSE_INPUT_PATH + ".txt"), "w") as f:
         f.write(LICENSE_CONTENTS)
+
+    dataset = FileSystem().new_dataset(dataset_dir, space=Samples)
+    dataset.save()
+
+
+def run_license_check(image_tag: str, dataset_dir: Path):
 
     args = (
         "file///dataset "
-        f"--input {LICENSE_INPUT_FIELD} '{INPUT_NAME}' "
-        f"--output {LICENSE_OUTPUT_FIELD} '{OUTPUT_NAME}' "
+        f"--input {LICENSE_INPUT_FIELD} '{LICENSE_INPUT_PATH}' "
+        f"--output {LICENSE_OUTPUT_FIELD} '{LICENSE_OUTPUT_PATH}' "
         f"--parameter {LICENSE_PATH_PARAM} '{LICENSE_PATH}' "
     )
 
+    dc = docker.from_env()
     try:
         result = dc.containers.run(
             image_tag,
@@ -226,3 +234,7 @@ LICENSE_INPUT_FIELD = "license_file"
 LICENSE_OUTPUT_FIELD = "validated_license_file"
 
 LICENSE_PATH_PARAM = "license_contents"
+
+LICENSE_INPUT_PATH = "contents-file"
+
+LICENSE_OUTPUT_PATH = "validated-file"

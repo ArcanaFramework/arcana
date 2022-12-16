@@ -10,7 +10,7 @@ from arcana.core.analysis.pipeline import (
     PipelineField,
 )
 from arcana.core.data.row import DataRow
-from arcana.core.data.type import DataType
+from arcana.core.data.type.base import DataType
 from arcana.exceptions import ArcanaFormatConversionError
 from arcana.core.data.space import DataSpace
 from arcana.core.utils.misc import add_exc_note

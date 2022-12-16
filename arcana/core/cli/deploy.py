@@ -601,7 +601,7 @@ def install_license(install_locations, license_name, source_file, logfile, logle
     for install_loc in install_locations:
         if "//" in install_loc:
             dataset = Dataset.load(install_loc)
-            store_name, _, _ = Dataset.parse_id_str(id)
+            store_name, _, _ = Dataset.parse_id_str(install_loc)
             msg = f"for '{dataset.name}' dataset on {store_name} store"
         else:
             store = DataStore.load(install_loc)

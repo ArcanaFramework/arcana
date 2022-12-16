@@ -13,7 +13,7 @@ from pydra.tasks.dcm2niix import Dcm2Niix
 from pydra.tasks.mrtrix3.utils import MRConvert
 from arcana.mark import converter
 from arcana.exceptions import ArcanaUsageError
-from arcana.core.data.type import WithSideCars
+from arcana.core.data.type.file import WithSideCars
 from arcana.data.types.common import File, Directory
 
 

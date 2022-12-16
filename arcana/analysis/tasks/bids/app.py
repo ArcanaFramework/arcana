@@ -18,7 +18,7 @@ from pydra.engine.specs import (
     ShellOutSpec,
 )
 from arcana.core.data.set import Dataset
-from arcana.core.data.type import DataType
+from arcana.core.data.type.base import DataType
 from arcana.data.spaces.medimage import Clinical
 from arcana.data.stores.bids.structure import JsonEdit
 from arcana.data.stores.bids.dataset import BidsDataset

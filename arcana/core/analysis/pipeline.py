@@ -17,7 +17,7 @@ from arcana.exceptions import (
     ArcanaDataMatchError,
     ArcanaFormatConversionError,
 )
-from ..data.type import DataType, FileGroup, Field
+from ..data.type.base import DataType, FileGroup, Field
 import arcana.core.data.set
 import arcana.core.data.row
 from ..data.space import DataSpace

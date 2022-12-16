@@ -10,7 +10,7 @@ from arcana.exceptions import (
     ArcanaWrongFrequencyError,
     ArcanaFileFormatError,
 )
-from .type import DataType
+from .type.base import DataType
 from ..analysis.salience import DataQuality
 from .space import DataSpace
 
