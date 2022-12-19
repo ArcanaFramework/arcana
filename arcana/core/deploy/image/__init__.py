@@ -1,3 +1,3 @@
 from .base import ArcanaImage
-from .command_image import CommandImage
+from .app import AppImage
 from .metapackage import Metapackage

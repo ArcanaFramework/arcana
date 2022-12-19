@@ -2,7 +2,7 @@ import zipfile
 import tempfile
 from pathlib import Path
 from arcana.data.types.common import Text, Zip
-from arcana.core.utils.testing.data.sets import make_dataset, TestDataSpace
+from arcana.core.utils.testing.sets import make_dataset, TestDataSpace
 from arcana.core.utils.testing.fixtures.common import TEST_DATASET_BLUEPRINTS
 from arcana.core.utils.testing.tasks import concatenate
 

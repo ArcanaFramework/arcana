@@ -5,10 +5,9 @@ from pathlib import Path
 import docker
 import docker.errors
 from arcana.core.utils.testing import show_cli_trace
-from arcana.core.cli.deploy import make, install_license
-from arcana.deploy.common import PipelineImage
-from arcana.data.stores.common import FileSystem
-from arcana.data.spaces.common import Samples
+from arcana.core.cli.deploy import make_app, install_license
+from arcana.core.deploy.image import AppImage
+from arcana.data.common import FileSystem, Samples
 
 
 def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_runner):
@@ -33,10 +32,10 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
     make_dataset(dataset_dir)
 
     result = cli_runner(
-        make,
+        make_app,
         args=[
             str(root_dir),
-            "common:PipelineImage",
+            "common:AppImage",
             "--build-dir",
             str(build_dir),
             "--license",
@@ -145,8 +144,8 @@ def test_dataset_runtime_license(license_file, run_prefix, work_dir, cli_runner)
     )
 
 
-def get_pipeline_image(license_path) -> PipelineImage:
-    return PipelineImage(
+def get_pipeline_image(license_path) -> AppImage:
+    return AppImage(
         name="to_be_overridden",
         org=ORG,
         version="1.0",

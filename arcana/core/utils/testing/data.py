@@ -8,7 +8,6 @@ from dataclasses import dataclass, field as dataclass_field
 from arcana.core.utils.misc import set_cwd, path2varname
 from arcana.core.data.space import DataSpace
 from arcana.core.data.type.file import WithSideCars
-from arcana.data.stores.common import FileSystem
 
 
 class TestDataSpace(DataSpace):
@@ -107,11 +106,9 @@ def create_dataset_data_in_repo(
                 create_test_file(fname, dpath)
 
 
-def access_dataset(blueprint, dataset_path):
-    space = type(blueprint.hierarchy[0])
-    dataset = FileSystem().new_dataset(
+def access_dataset(blueprint, dataset_path, store):
+    dataset = store.new_dataset(
         dataset_path,
-        space=space,
         hierarchy=blueprint.hierarchy,
         id_inference=blueprint.id_inference,
     )

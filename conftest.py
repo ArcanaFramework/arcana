@@ -1,9 +1,10 @@
 import os
 import logging
-import pytest
 from pathlib import Path
-import pkgutil
 from datetime import datetime
+from tempfile import mkdtemp
+import pytest
+from click.testing import CliRunner
 
 # Set DEBUG logging for unittests
 
@@ -19,6 +20,36 @@ sch.setFormatter(formatter)
 logger.addHandler(sch)
 
 PKG_DIR = Path(__file__).parent
+
+
+@pytest.fixture
+def work_dir():
+    # work_dir = Path.home() / '.arcana-tests'
+    # work_dir.mkdir(exist_ok=True)
+    # return work_dir
+    work_dir = mkdtemp()
+    yield Path(work_dir)
+    # shutil.rmtree(work_dir)
+
+
+@pytest.fixture(scope="session")
+def build_cache_dir():
+    # build_cache_dir = Path.home() / '.arcana-test-build-cache'
+    # if build_cache_dir.exists():
+    #     shutil.rmtree(build_cache_dir)
+    # build_cache_dir.mkdir()
+    return Path(mkdtemp())
+    # return build_cache_dir
+
+
+@pytest.fixture
+def cli_runner(catch_cli_exceptions):
+    def invoke(*args, catch_exceptions=catch_cli_exceptions, **kwargs):
+        runner = CliRunner()
+        result = runner.invoke(*args, catch_exceptions=catch_exceptions, **kwargs)
+        return result
+
+    return invoke
 
 
 @pytest.fixture(scope="session")
@@ -52,19 +83,3 @@ else:
 @pytest.fixture
 def catch_cli_exceptions():
     return CATCH_CLI_EXCEPTIONS
-
-
-FIXTURE_PACKAGES = ["arcana.core.utils.testing.fixtures", "arcana.test_fixtures"]
-
-# Load all test fixtures under `arcana.core.utils.testing.fixtures` package
-pytest_plugins = []
-for pkg in FIXTURE_PACKAGES:
-    pytest_plugins.extend(
-        [
-            m.name
-            for m in pkgutil.iter_modules(
-                [str(PKG_DIR.joinpath(*pkg.split(".")))],
-                prefix=pkg + ".",
-            )
-        ]
-    )

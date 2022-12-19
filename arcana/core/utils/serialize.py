@@ -19,12 +19,6 @@ from arcana.exceptions import ArcanaUsageError
 from .packaging import pkg_versions, package_from_module
 from .misc import add_exc_note
 
-# Avoid arcana.__version__ causing a circular import
-from arcana._version import get_versions
-
-__version__ = get_versions()["version"]
-del get_versions
-
 
 logger = logging.getLogger("arcana")
 

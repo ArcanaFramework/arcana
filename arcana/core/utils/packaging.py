@@ -8,13 +8,7 @@ import pkg_resources
 from pathlib import Path
 from collections.abc import Iterable
 from arcana.exceptions import ArcanaUsageError
-
-
-# Avoid arcana.__version__ causing a circular import
-from arcana._version import get_versions
-
-__version__ = get_versions()["version"]
-del get_versions
+from arcana import __version__
 
 
 def submodules(package):
