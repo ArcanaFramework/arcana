@@ -24,3 +24,4 @@ test.log
 /arcana/test/fixtures/medimage/dicom/cache
 /docker-tests
 ~*
+/docs/source/_static/images/logo-square.png
