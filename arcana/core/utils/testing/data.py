@@ -5,9 +5,13 @@ from itertools import product
 import zipfile
 from pathlib import Path
 from dataclasses import dataclass, field as dataclass_field
+from pydra import mark
 from arcana.core.utils.misc import set_cwd, path2varname
 from arcana.core.data.space import DataSpace
 from arcana.core.data.type.file import WithSideCars, BaseFile
+from arcana.common.data import FileSystem
+from arcana.common.data.formats import Text
+from arcana.mark import converter
 
 
 class TestDataSpace(DataSpace):
@@ -106,8 +110,8 @@ def create_dataset_data_in_repo(
                 create_test_file(fname, dpath)
 
 
-def access_dataset(blueprint, dataset_path, store):
-    dataset = store.new_dataset(
+def access_dataset(blueprint, dataset_path):
+    dataset = FileSystem().new_dataset(
         dataset_path,
         hierarchy=blueprint.hierarchy,
         id_inference=blueprint.id_inference,
@@ -191,3 +195,50 @@ class Analyze(WithSideCars, BaseFile):
 class NiftiGzX(NiftiX, NiftiGz):
 
     pass
+
+
+class EncodedText(BaseFile):
+    """A text file where the characters ASCII codes are shifted on conversion
+    from text
+    """
+
+    ext = "enc"
+
+    @classmethod
+    @converter(Text)
+    def encode(cls, fs_path: ty.Union[str, Path], shift: int = 0):
+        shift = int(shift)
+        node = encoder_task(in_file=fs_path, shift=shift)
+        return node, node.lzout.out
+
+
+class DecodedText(Text):
+    @classmethod
+    @converter(EncodedText)
+    def decode(cls, fs_path: Path, shift: int = 0):
+        shift = int(shift)
+        node = encoder_task(
+            in_file=fs_path, shift=-shift, out_file="out_file.txt"
+        )  # Just shift it backwards by the same amount
+        return node, node.lzout.out
+
+
+@mark.task
+def encoder_task(
+    in_file: ty.Union[str, Path],
+    shift: int,
+    out_file: ty.Union[str, Path] = "out_file.enc",
+) -> ty.Union[str, Path]:
+    with open(in_file) as f:
+        contents = f.read()
+    encoded = encode_text(contents, shift)
+    with open(out_file, "w") as f:
+        f.write(encoded)
+    return Path(out_file).absolute()
+
+
+def encode_text(text: str, shift: int) -> str:
+    encoded = []
+    for c in text:
+        encoded.append(chr(ord(c) + shift))
+    return "".join(encoded)

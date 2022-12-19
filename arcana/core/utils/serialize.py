@@ -79,15 +79,15 @@ class ClassResolver:
         """
         if class_str is None and self.allow_none:
             return None
-        if (
-            not self.prefixes
-            and self.base_class is not None
-            and hasattr(self.base_class, "DEFAULT_PACKAGE")
-        ):
-            prefixes = [self.base_class.DEFAULT_PACKAGE]
-        else:
-            prefixes = self.prefixes
-        klass = self.fromstr(class_str, prefixes=prefixes)
+        # if (
+        #     not self.prefixes
+        #     and self.base_class is not None
+        #     and hasattr(self.base_class, "DEFAULT_PACKAGE")
+        # ):
+        #     prefixes = [self.base_class.DEFAULT_PACKAGE]
+        # else:
+        #     prefixes = self.prefixes
+        klass = self.fromstr(class_str, prefixes=["arcana"])
         self._check_type(klass)
         return klass
 

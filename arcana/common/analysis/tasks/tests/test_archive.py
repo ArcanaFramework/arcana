@@ -3,7 +3,7 @@ import tempfile
 import shutil
 import filecmp
 import pytest
-from arcana.analysis.tasks.common.archive import (
+from arcana.common.analysis.tasks.archive import (
     create_tar,
     extract_tar,
     create_zip,

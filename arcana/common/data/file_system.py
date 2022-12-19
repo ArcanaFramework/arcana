@@ -18,7 +18,7 @@ from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.data.type.base import FileGroup
 from arcana.core.utils.misc import get_home_dir
-from arcana.common.data import Samples
+from arcana.common.data.spaces import Samples
 
 
 logger = logging.getLogger("arcana")

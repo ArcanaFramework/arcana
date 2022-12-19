@@ -1,4 +1,4 @@
-from arcana.analysis.tasks.common import shell_cmd
+from arcana.common.analysis.tasks import shell_cmd
 
 
 def test_shell_cmd(work_dir):
