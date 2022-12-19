@@ -7,7 +7,7 @@ import docker.errors
 from arcana.core.utils.testing import show_cli_trace
 from arcana.core.cli.deploy import make_app, install_license
 from arcana.core.deploy.image import AppImage
-from arcana.data.common import FileSystem, Samples
+from arcana.common.data import FileSystem, Samples
 
 
 def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_runner):

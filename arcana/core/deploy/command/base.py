@@ -27,7 +27,7 @@ from .components import CommandInput, CommandOutput, CommandParameter
 
 
 if ty.TYPE_CHECKING:
-    from ..image import CommandImage
+    from ..image import AppImage
 
 
 logger = logging.getLogger("arcana")
@@ -52,7 +52,7 @@ class ContainerCommand:
         parameters of the command
     configuration: dict[str, ty.Any]
         constant values used to configure the task/workflow
-    image: CommandImage
+    image: AppImage
         back-reference to the image the command is installed in
     """
 
@@ -81,7 +81,7 @@ class ContainerCommand:
     configuration: dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(dict)
     )
-    image: CommandImage = None
+    image: AppImage = None
 
     def __attrs_post_init__(self):
         if isinstance(self.row_frequency, DataSpace):

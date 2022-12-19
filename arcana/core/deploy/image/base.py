@@ -11,12 +11,11 @@ from datetime import datetime
 from copy import copy
 import shutil
 from inspect import isclass, isfunction
-from natsort import natsorted
 import attrs
 import docker
 from neurodocker.reproenv import DockerRenderer
 from arcana import __version__
-from arcana.__about__ import PACKAGE_NAME
+from arcana import PACKAGE_NAME
 from arcana.core.utils.serialize import (
     ClassResolver,
     ObjectConverter,
@@ -26,7 +25,6 @@ from arcana.core.utils.misc import (
     DOCKER_HUB,
 )
 from arcana.core.data.space import DataSpace
-from arcana.__about__ import python_versions
 from arcana.exceptions import ArcanaBuildError
 from .components import Packages, BaseImage, PipPackage, CondaPackage
 
@@ -279,7 +277,7 @@ class ArcanaImage:
         conda_pkg_names = set(p.name for p in self.packages.conda)
         conda_strs = []
         if "python" not in conda_pkg_names:
-            conda_strs.append("python=" + natsorted(python_versions)[-1])
+            conda_strs.append("python")
         for pkg_name in CondaPackage.REQUIRED:
             if pkg_name not in conda_pkg_names:
                 conda_strs.append(pkg_name)

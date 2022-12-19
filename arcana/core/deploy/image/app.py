@@ -15,7 +15,7 @@ from arcana.core.utils.serialize import (
     ObjectListConverter,
     ClassResolver,
 )
-from arcana.data.types import Directory
+from arcana.core.data.type import BaseDirectory
 from ..command.base import ContainerCommand
 from .base import ArcanaImage
 from .components import ContainerAuthor, License, KnownIssue
@@ -481,7 +481,7 @@ class AppImage(ArcanaImage):
 
         if ext := getattr(datatype, "ext", None):
             text = f"{datatype.desc} (`.{ext}`)"
-        elif getattr(datatype, "is_dir", None) and datatype is not Directory:
+        elif getattr(datatype, "is_dir", None) and datatype is not BaseDirectory:
             text = f"{datatype.desc} (Directory)"
         else:
             text = datatype.desc

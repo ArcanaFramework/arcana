@@ -163,78 +163,9 @@ class DocsFixture:
     licenses_to_provide: list[str] = attrs.field(factory=list)
 
 
-def all_docs_fixtures() -> Iterable[Union[DocsFixture, List[DocsFixture]]]:
-    from . import docs
-
-    for k, v in docs.__dict__.items():
-        if type(v) is DocsFixture or (type(v) is list and type(v[0]) is DocsFixture):
-            yield k, v
-
-
-@pytest.mark.parametrize("fixture", all_docs_fixtures(), ids=lambda x: x[0])
-def test_make_docs_cli(
-    cli_runner, run_prefix, work_dir: Path, fixture: Tuple[str, DocsFixture]
-):
-    fixture_name, fixture_content = fixture
-
-    # TODO handle multiple 'files' in a fixture
-    print(f"Processing fixture: {fixture_name!r}")
-    output = _make_docs(cli_runner, work_dir, fixture_content.yaml_src)
-
-    strip_source_file_re = re.compile(r"source_file:.*")
-
-    stripped_output = strip_source_file_re.sub("", output)
-    stripped_reference = strip_source_file_re.sub("", fixture_content.markdown)
-
-    assert (
-        stripped_output == stripped_reference
-    ), f"Fixture {fixture_name!r} didn't match output"
-
-
-def _make_docs(
-    cli_runner,
-    work_dir: Path,
-    docs: Union[str, Dict[str, str]],
-    *args,
-    flatten: bool = None,
-) -> Union[str, Dict[str, str]]:
-    out_dir = work_dir / "out"
-    specs_dir = work_dir / "specs"
-    if specs_dir.exists():
-        shutil.rmtree(specs_dir)
-    specs_dir.mkdir()
-
-    if type(docs) is str:
-        (specs_dir / "spec.yaml").write_text(docs)
-    else:
-        for name, content in docs.items():
-            path = specs_dir / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content)
-
-    result = cli_runner(
-        make_docs,
-        [
-            specs_dir.as_posix(),
-            out_dir.as_posix(),
-        ]
-        + (["--flatten" if flatten else "--no-flatten"] if flatten is not None else [])
-        + list(args),
-    )
-
-    assert result.exit_code == 0, show_cli_trace(result)
-
-    if type(docs) is str:
-        return (out_dir / "spec.md").read_text().strip()
-    else:
-        return {
-            file.relative_to(out_dir).as_posix(): file.read_text().strip()
-            for file in out_dir.glob("*.md")
-        }
-
-
-minimal_doc_spec = DocsFixture(
-    """
+docs_fixtures = {
+    "simple": DocsFixture(
+        """
 version: &version '0.16.1'
 authors:
   - name: author_name
@@ -258,7 +189,7 @@ command:
       datatype: common:Text
       help_string: the output file
     """.strip(),
-    """
+        """
 ---
 source_file: spec.yaml
 title: spec
@@ -298,10 +229,9 @@ a test of the YAML join functionality
 |Name|Data type|Description|
 |----|---------|-----------|
 """.strip(),
-)
-
-complete_doc_spec = DocsFixture(
-    """
+    ),
+    "full": DocsFixture(
+        """
 version: &version '0.16.1'
 build_iteration: '10'
 authors:
@@ -373,7 +303,7 @@ command:
       dataset: /work/bids-dataset
       app_output_dir: /work/bids-app-output
     """.strip(),
-    """
+        """
 ---
 source_file: /var/folders/mz/yn83q2fd3s758w1j75d2nnw80000gn/T/tmp47_dxmyq/specs/spec.yaml
 title: spec
@@ -422,5 +352,68 @@ a longer description
 |----|---------|-----------|
 |`fmriprep_flags`|`str`|description of flags param|
 """.strip(),
-    ["freesurfer"],
-)
+        ["freesurfer"],
+    ),
+}
+
+
+@pytest.mark.parametrize("fixture", docs_fixtures, ids=lambda x: x[0])
+def test_make_docs_cli(
+    cli_runner, run_prefix, work_dir: Path, fixture: Tuple[str, DocsFixture]
+):
+    fixture_name, fixture_content = fixture
+
+    # TODO handle multiple 'files' in a fixture
+    print(f"Processing fixture: {fixture_name!r}")
+    output = _make_docs(cli_runner, work_dir, fixture_content.yaml_src)
+
+    strip_source_file_re = re.compile(r"source_file:.*")
+
+    stripped_output = strip_source_file_re.sub("", output)
+    stripped_reference = strip_source_file_re.sub("", fixture_content.markdown)
+
+    assert (
+        stripped_output == stripped_reference
+    ), f"Fixture {fixture_name!r} didn't match output"
+
+
+def _make_docs(
+    cli_runner,
+    work_dir: Path,
+    docs: Union[str, Dict[str, str]],
+    *args,
+    flatten: bool = None,
+) -> Union[str, Dict[str, str]]:
+    out_dir = work_dir / "out"
+    specs_dir = work_dir / "specs"
+    if specs_dir.exists():
+        shutil.rmtree(specs_dir)
+    specs_dir.mkdir()
+
+    if type(docs) is str:
+        (specs_dir / "spec.yaml").write_text(docs)
+    else:
+        for name, content in docs.items():
+            path = specs_dir / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
+
+    result = cli_runner(
+        make_docs,
+        [
+            specs_dir.as_posix(),
+            out_dir.as_posix(),
+        ]
+        + (["--flatten" if flatten else "--no-flatten"] if flatten is not None else [])
+        + list(args),
+    )
+
+    assert result.exit_code == 0, show_cli_trace(result)
+
+    if type(docs) is str:
+        return (out_dir / "spec.md").read_text().strip()
+    else:
+        return {
+            file.relative_to(out_dir).as_posix(): file.read_text().strip()
+            for file in out_dir.glob("*.md")
+        }

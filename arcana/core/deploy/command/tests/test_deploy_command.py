@@ -7,7 +7,7 @@ from arcana.core.utils.testing.data import (
     TestDatasetBlueprint,
     TestDataSpace,
 )
-from arcana.data.common import Text
+from arcana.common.data import Text
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.exceptions import ArcanaDataMatchError
 

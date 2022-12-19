@@ -41,7 +41,7 @@ SPEC_ROOT is the file system path to the specification to build, or directory
 containing multiple specifications
 
 TARGET is the type of image to build, e.g. arcana.deploy.xnat:XnatCSImage
-the target should resolve to a class deriviing from arcana.core.deploy.CommandImage.
+the target should resolve to a class deriviing from arcana.core.deploy.AppImage.
 If it is located under the `arcana.deploy`, then that prefix can be dropped, e.g.
 common:AppImage
 """,

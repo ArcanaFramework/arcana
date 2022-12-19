@@ -25,3 +25,4 @@ test.log
 ~*
 /docs/source/_static/images/logo-square.png
 /arcana/_version.py
+*.venv

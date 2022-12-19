@@ -27,8 +27,8 @@ from ._version import __version__
 from pydra import set_input_validator
 
 set_input_validator(True)
-from .core.data.set import Dataset
-from .core.data.store import DataStore
+# from .core.data.set import Dataset
+# from .core.data.store import DataStore
 
 # Should be set explicitly in all FSL interfaces, but this squashes the warning
 # os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'

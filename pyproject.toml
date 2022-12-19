@@ -3,7 +3,7 @@ requires = ["flit_scm"]
 build-backend = "flit_scm:buildapi"
 
 [project]
-name = "arcana-"
+name = "arcana"
 description = "Abstraction of Repository-Centric ANAlysis (Arcana): A rramework for analysing on file-based datasets \"in-place\" (i.e. without manual download)"
 readme = "README.rst"
 requires-python = ">=3.8"
@@ -44,9 +44,9 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = [
-    "black",
+    # "black",
     "pre-commit",
-    "arcana[test]",
+    # "arcana[test]",
 ]
 doc = [
     "packaging",
@@ -62,30 +62,27 @@ test = [
     "pytest>=5.4.3",
     "pytest-env>=0.6.2",
     "pytest-cov>=2.12.1",
-    "arcana-common >=0.1",
-    "xnat4tests>=0.3.2",
+    # "arcana-common >=0.1",
+    "xnat4tests>=0.3.3",
     "medimages4tests>=0.3",
     "codecov",
 ]
-
-[project.urls]
-documentation = "https://arcana.readthedocs.io"
-homepage = "https://arcana.readthedocs.io"
-repository = "https://github.com/ArcanaFramework/arcana.git"
 
 # Aliases
 tests = ["arcana[test]"]
 docs = ["arcana[doc]"]
 all = ["arcana[doc,dev]"]
 
+[project.urls]
+documentation = "https://arcana.readthedocs.io"
+homepage = "https://arcana.readthedocs.io"
+repository = "https://github.com/ArcanaFramework/arcana.git"
+
 [project.scripts]
 arcana = "arcana.core.cli:cli"
 
 [tool.flit.module]
 name = "arcana"
-
-[tool.flit.metadata]
-namspace = "arcana"
 
 [tool.flit.sdist]
 exclude = [".gitignore"]

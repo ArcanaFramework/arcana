@@ -7,7 +7,7 @@ from pathlib import Path
 from dataclasses import dataclass, field as dataclass_field
 from arcana.core.utils.misc import set_cwd, path2varname
 from arcana.core.data.space import DataSpace
-from arcana.core.data.type.file import WithSideCars
+from arcana.core.data.type.file import WithSideCars, BaseFile
 
 
 class TestDataSpace(DataSpace):
@@ -160,3 +160,34 @@ def save_dataset(work_dir, name=None):
     dataset = make_dataset(blueprint, dataset_path)
     dataset.save(name)
     return dataset
+
+
+class Nifti(BaseFile):
+
+    ext = "nii"
+
+
+class NiftiGz(Nifti):
+
+    ext = "nii.gz"
+
+
+class NiftiX(WithSideCars, Nifti):
+
+    side_car_exts = ("json",)
+
+
+class MrtrixImage(BaseFile):
+
+    ext = "mif"
+
+
+class Analyze(WithSideCars, BaseFile):
+
+    ext = "img"
+    side_car_exts = ("hdr",)
+
+
+class NiftiGzX(NiftiX, NiftiGz):
+
+    pass
