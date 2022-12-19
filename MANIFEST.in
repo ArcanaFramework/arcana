@@ -1,8 +1,0 @@
-# Include the README
-include README.rst
-
-# Include the license file
-include LICENSE
-
-include versioneer.py
-include arcana/_version.py

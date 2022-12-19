@@ -21,7 +21,7 @@ test.log
 .vscode
 *.egg-info
 /test-data/dicom-dataset/
-/arcana/test/fixtures/medimage/dicom/cache
 /docker-tests
 ~*
 /docs/source/_static/images/logo-square.png
+/arcana/_version.py
