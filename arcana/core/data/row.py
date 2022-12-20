@@ -4,7 +4,6 @@ import typing as ty
 import attrs
 from collections import defaultdict
 from abc import ABCMeta
-import arcana.core.data.set
 from arcana.exceptions import (
     ArcanaNameError,
     ArcanaWrongFrequencyError,
@@ -13,6 +12,9 @@ from arcana.exceptions import (
 from .type.base import DataType
 from ..analysis.salience import DataQuality
 from .space import DataSpace
+
+if ty.TYPE_CHECKING:
+    import arcana.core.data.set
 
 
 @attrs.define(auto_detect=True)
