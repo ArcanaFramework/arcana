@@ -1,3 +1,4 @@
+from __future__ import annotations
 import typing as ty
 import inspect
 import itertools
@@ -104,7 +105,8 @@ def make(klass: type, space: type) -> type:
             elif isinstance(attr, SubanalysisSpec):
                 subanalysis_specs.append(attr)
 
-    # Resolve the mappings from through the subanalysis_specs in a separate loop so the column names can be resolved
+    # Resolve the mappings from through the subanalysis_specs in a separate loop so the
+    # column names can be resolved
     for spec in subanalysis_specs:
         resolved_mappings = []
         for (from_, to) in spec.mappings:

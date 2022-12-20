@@ -1,3 +1,4 @@
+from __future__ import annotations
 import subprocess as sp
 import typing as ty
 import re

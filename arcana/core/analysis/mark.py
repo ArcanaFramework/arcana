@@ -1,3 +1,4 @@
+from __future__ import annotations
 from types import MemberDescriptorType
 from .spec import (
     _UnresolvedOp,
@@ -13,6 +14,7 @@ from ..utils.misc import (
     SWICTH_ANNOTATIONS,
     CHECK_ANNOTATIONS,
     PIPELINE_ANNOTATIONS,
+    CONVERTER_ANNOTATIONS,
 )
 
 
@@ -180,3 +182,12 @@ def is_provided(column, in_format: type = None):
             in_format,
         ),
     )
+
+
+def converter(output_format):
+    def decorator(meth):
+        anot = meth.__annotations__
+        anot[CONVERTER_ANNOTATIONS] = output_format
+        return meth
+
+    return decorator

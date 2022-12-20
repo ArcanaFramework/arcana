@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import typing as ty
@@ -18,12 +19,6 @@ from pydra.engine.task import FunctionTask
 from arcana.exceptions import ArcanaUsageError
 from .packaging import pkg_versions, package_from_module
 from .misc import add_exc_note
-
-# Avoid arcana.__version__ causing a circular import
-from arcana._version import get_versions
-
-__version__ = get_versions()["version"]
-del get_versions
 
 
 logger = logging.getLogger("arcana")
@@ -85,15 +80,15 @@ class ClassResolver:
         """
         if class_str is None and self.allow_none:
             return None
-        if (
-            not self.prefixes
-            and self.base_class is not None
-            and hasattr(self.base_class, "DEFAULT_PACKAGE")
-        ):
-            prefixes = [self.base_class.DEFAULT_PACKAGE]
-        else:
-            prefixes = self.prefixes
-        klass = self.fromstr(class_str, prefixes=prefixes)
+        # if (
+        #     not self.prefixes
+        #     and self.base_class is not None
+        #     and hasattr(self.base_class, "DEFAULT_PACKAGE")
+        # ):
+        #     prefixes = [self.base_class.DEFAULT_PACKAGE]
+        # else:
+        #     prefixes = self.prefixes
+        klass = self.fromstr(class_str, prefixes=["arcana"])
         self._check_type(klass)
         return klass
 

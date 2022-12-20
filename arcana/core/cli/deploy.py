@@ -15,13 +15,15 @@ from arcana.core.utils.serialize import (
     pydra_asdict,
     ClassResolver,
 )
-from arcana.core.deploy.image import Metapackage, CommandImage
-from arcana.deploy.xnat.image import XnatCSImage
+from arcana.core.deploy.image import Metapackage, App
+
+# from arcana.deploy.xnat.image import XnatCSImage
 from arcana.exceptions import ArcanaBuildError
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.utils.misc import extract_file_from_docker_image, DOCKER_HUB
 from .base import cli
+from arcana.core.deploy.command import entrypoint_opts
 
 logger = logging.getLogger("arcana")
 
@@ -32,16 +34,17 @@ def deploy():
 
 
 @deploy.command(
+    name="make-app",
     help="""Construct and build a dockerfile/apptainer-file for containing a pipeline
 
 SPEC_ROOT is the file system path to the specification to build, or directory
 containing multiple specifications
 
 TARGET is the type of image to build, e.g. arcana.deploy.xnat:XnatCSImage
-the target should resolve to a class deriviing from arcana.core.deploy.CommandImage.
+the target should resolve to a class deriviing from arcana.core.deploy.App.
 If it is located under the `arcana.deploy`, then that prefix can be dropped, e.g.
-common:PipelineImage
-"""
+common:App
+""",
 )
 @click.argument("spec_root", type=click.Path(exists=True, path_type=Path))
 @click.argument("target", type=str)
@@ -173,7 +176,7 @@ common:PipelineImage
         "Remove built images after they are pushed to the registry (requires --push)"
     ),
 )
-def make(
+def make_app(
     target,
     spec_root,
     registry,
@@ -218,7 +221,7 @@ def make(
 
     temp_dir = tempfile.mkdtemp()
 
-    target_cls = ClassResolver(CommandImage)(target)
+    target_cls = ClassResolver(App)(target)
 
     dc = docker.from_env()
 
@@ -440,7 +443,7 @@ def list_images(spec_root, registry):
     if isinstance(spec_root, bytes):  # FIXME: This shouldn't be necessary
         spec_root = Path(spec_root.decode("utf-8"))
 
-    for image_spec in XnatCSImage.load_tree(spec_root, registry=registry):
+    for image_spec in App.load_tree(spec_root, registry=registry):
         click.echo(image_spec.reference)
 
 
@@ -464,7 +467,7 @@ def list_images(spec_root, registry):
 
 
 @deploy.command(
-    name="docs",
+    name="make-docs",
     help="""Build docs for one or more yaml wrappers
 
 SPEC_ROOT is the path of a YAML spec file or directory containing one or more such files.
@@ -493,7 +496,7 @@ def make_docs(spec_root, output, registry, flatten, loglevel):
     output.mkdir(parents=True, exist_ok=True)
 
     with ClassResolver.FALLBACK_TO_STR:
-        image_specs = XnatCSImage.load_tree(spec_root, registry=registry)
+        image_specs = App.load_tree(spec_root, registry=registry)
 
     for image_spec in image_specs:
 
@@ -615,3 +618,35 @@ def install_license(install_locations, license_name, source_file, logfile, logle
 
         dataset.install_license(license_name, source_file)
         logger.info("Successfully installed '%s' license %s", license_name, msg)
+
+
+@deploy.command(
+    name="pipeline-entrypoint",
+    help="""Loads/creates a dataset, then applies and launches a pipeline
+in a single command. To be used within the command configuration of an XNAT
+Container Service ready Docker image.
+
+DATASET_LOCATOR string containing the nickname of the data store, the ID of the
+dataset (e.g. XNAT project ID or file-system directory) and the dataset's name
+in the format <store-nickname>//<dataset-id>[@<dataset-name>]
+
+""",
+)
+@click.argument("dataset_locator")
+@entrypoint_opts.data_columns
+@entrypoint_opts.parameterisation
+@entrypoint_opts.execution
+@entrypoint_opts.dataset_config
+@entrypoint_opts.debugging
+def pipeline_entrypoint(
+    dataset_locator,
+    spec_path,
+    **kwargs,
+):
+
+    image_spec = App.load(spec_path)
+
+    image_spec.command.execute(
+        dataset_locator,
+        **kwargs,
+    )

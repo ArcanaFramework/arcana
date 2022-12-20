@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 from abc import abstractmethod, ABCMeta
 from pathlib import Path
@@ -8,6 +9,7 @@ from arcana.core.utils.serialize import (
     asdict,
     fromdict,
 )
+import arcana
 from arcana.core.utils.misc import get_config_file_path
 from arcana.core.utils.packaging import list_subclasses
 from arcana.exceptions import ArcanaUsageError, ArcanaNameError
@@ -371,17 +373,16 @@ class DataStore(metaclass=ABCMeta):
 
     @classmethod
     def singletons(cls):
-        """Returns stores in a dictionary indexed by their aliases, for which there only needs to be a single instance"""
+        """Returns stores in a dictionary indexed by their aliases, for which there
+        only needs to be a single instance"""
         try:
             return cls._singletons
         except AttributeError:
             pass
         # If not saved in the configuration file search for sub-classes
         # whose alias matches `name` and can be initialised without params
-        import arcana.data.stores
-
         cls._singletons = {}
-        for store_cls in list_subclasses(arcana.data.stores, DataStore):
+        for store_cls in list_subclasses(arcana, DataStore):
             try:
                 cls._singletons[store_cls.get_alias()] = store_cls()
             except Exception:

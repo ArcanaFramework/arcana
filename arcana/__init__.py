@@ -17,16 +17,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-from ._version import get_versions
+PACKAGE_NAME = "arcana"
+CODE_URL = f"https://github.com/australian-imaging-service/{PACKAGE_NAME}"
 
-__version__ = get_versions()["version"]
-del get_versions
+__authors__ = [("Thomas G. Close", "tom.g.close@gmail.com")]
+
+from ._version import __version__
+
 from pydra import set_input_validator
 
 set_input_validator(True)
-from .__about__ import __authors__
-from .core.data.set import Dataset
-from .core.data.store import DataStore
+# from .core.data.set import Dataset
+# from .core.data.store import DataStore
 
 # Should be set explicitly in all FSL interfaces, but this squashes the warning
 # os.environ['FSLOUTPUTTYPE'] = 'NIFTI_GZ'

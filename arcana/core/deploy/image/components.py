@@ -1,3 +1,4 @@
+from __future__ import annotations
 import typing as ty
 from pathlib import Path, PurePath
 import json
@@ -6,7 +7,7 @@ import logging
 from urllib.parse import urlparse
 import site
 import attrs
-from arcana.__about__ import PACKAGE_NAME
+from arcana import PACKAGE_NAME
 from arcana.exceptions import ArcanaBuildError
 from arcana.core.utils.serialize import ObjectListConverter
 

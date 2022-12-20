@@ -35,7 +35,6 @@ from ..utils.serialize import (
     ClassResolver,
     ObjectListConverter,
 )
-import arcana.data.types.common
 
 
 logger = logging.getLogger("arcana")

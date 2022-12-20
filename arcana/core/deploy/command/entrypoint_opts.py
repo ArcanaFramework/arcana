@@ -1,7 +1,8 @@
+from __future__ import annotations
 from pathlib import Path
 import click
 from click_option_group import optgroup
-from arcana.core.deploy.image import CommandImage
+from arcana.core.deploy.image import App
 
 
 def data_columns(func):
@@ -200,7 +201,7 @@ def debugging(func):
             optgroup.option(
                 "--spec-path",
                 type=click.Path(exists=True, path_type=Path),
-                default=Path(CommandImage.SPEC_PATH),
+                default=Path(App.SPEC_PATH),
                 help=(
                     "Used to specify a different path to the spec path from the one that is written "
                     "to in the image (typically used in debugging/testing)"

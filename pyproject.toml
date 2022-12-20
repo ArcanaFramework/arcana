@@ -1,0 +1,91 @@
+[build-system]
+requires = ["flit_scm"]
+build-backend = "flit_scm:buildapi"
+
+[project]
+name = "arcana"
+description = "Abstraction of Repository-Centric ANAlysis (Arcana): A rramework for analysing on file-based datasets \"in-place\" (i.e. without manual download)"
+readme = "README.rst"
+requires-python = ">=3.8"
+dependencies = [
+    "docker>=5.0.2",
+    "importlib-metadata>=1.4",
+    "click>=7.1.2",  # 8.1.3",
+    "click-option-group>=0.5.5",
+    "PyYAML>=6.0",
+    "build >=0.9",
+    "flit_scm >=1.7.0",
+    "fasteners>=0.7.0",
+    "deepdiff>=3.3",
+    "pydra>=0.20",  # @ git+https://github.com/Australian-Imaging-Service/pydra.git@0.19+ais1",
+    "neurodocker>=0.9.1",
+    "jq>=1.2.2",
+    "pydicom>=1.0.2",
+    "nibabel>=3.2.1",
+    "xnat>=0.3.17",
+    "pydra-dcm2niix>=1.2.0",
+    "pydra-mrtrix3>=0.2",
+]
+license = {file = "LICENSE"}
+authors = [{name = "Thomas G. Close", email = "tom.g.close@gmail.com"}]
+maintainers = [{name = "Thomas G. Close", email = "tom.g.close@gmail.com"}]
+keywords = ["arcana"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+    # "black",
+    "pre-commit",
+    # "arcana[test]",
+]
+doc = [
+    "packaging",
+    "docutils>=0.10",
+    "mock>1.0",
+    "sphinx >=2.1.2",
+    "sphinx-argparse>=0.2.0",
+    "sphinx-click>=3.1",
+    "furo>=2022.2.14.1",
+    "numpydoc>=0.6.0",
+]
+test = [
+    "pytest>=5.4.3",
+    "pytest-env>=0.6.2",
+    "pytest-cov>=2.12.1",
+    # "arcana-common >=0.1",
+    "xnat4tests>=0.3.3",
+    "medimages4tests>=0.3",
+    "codecov",
+]
+
+[project.urls]
+documentation = "https://arcana.readthedocs.io"
+homepage = "https://arcana.readthedocs.io"
+repository = "https://github.com/ArcanaFramework/arcana.git"
+
+[project.scripts]
+arcana = "arcana.core.cli:cli"
+
+[tool.flit.module]
+name = "arcana"
+
+[tool.flit.sdist]
+exclude = [".gitignore"]
+
+[tool.setuptools_scm]
+write_to = "arcana/_version.py"
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+exclude = "_version.py"

@@ -2,13 +2,13 @@ from functools import reduce
 from operator import mul
 import pytest
 from arcana.core.utils.testing import make_dataset_locator
-from arcana.core.utils.testing.data.types import EncodedText
-from arcana.core.utils.testing.data.sets import (
+from arcana.core.utils.testing.data import (
     make_dataset,
     TestDatasetBlueprint,
     TestDataSpace,
 )
-from arcana.data.types.common import Text
+from arcana.common.data import Text
+from arcana.core.utils.testing.data import EncodedText
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.exceptions import ArcanaDataMatchError
 
@@ -229,7 +229,7 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source",
-                "datatype": "arcana.core.utils.testing.data.types:EncodedText",
+                "datatype": "arcana.core.utils.testing.data:EncodedText",
                 "default_column": {"datatype": "common:Text"},
                 "field": "in_file",
                 "help_string": "dummy",
@@ -238,15 +238,15 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "arcana.core.utils.testing.data.types:EncodedText",
+                "datatype": "arcana.core.utils.testing.data:EncodedText",
                 "field": "out",
                 "help_string": "dummy",
             },
             {
                 "name": "sink2",
-                "datatype": "arcana.core.utils.testing.data.types:EncodedText",
+                "datatype": "arcana.core.utils.testing.data:EncodedText",
                 "default_column": {
-                    "datatype": "arcana.core.utils.testing.data.types:DecodedText"
+                    "datatype": "arcana.core.utils.testing.data:DecodedText"
                 },
                 "field": "out",
                 "help_string": "dummy",
