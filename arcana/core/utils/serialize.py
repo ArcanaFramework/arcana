@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import is_dataclass, fields as dataclass_fields
 from typing import Sequence
 import typing as ty
