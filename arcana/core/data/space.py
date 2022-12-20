@@ -176,7 +176,8 @@ class DataSpace(Enum):
                 f"'{s}' is not a string of the format <data-space-enum>[<value>]"
             )
         class_loc, val = match.groups()
-        return ClassResolver(cls)(class_loc)[val]
+        space = ClassResolver(cls)(class_loc)
+        return space[val] if not isinstance(space, str) else s
 
     @classproperty
     def DEFAULT_PACKAGE(cls):

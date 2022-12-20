@@ -110,7 +110,7 @@ def test_define_cli(dataset, cli_runner):
         args.extend(["--include", str(axis), slce])
     for axis, slce in excluded:
         args.extend(["--exclude", str(axis), slce])
-    args.extend(["--space", "arcana.core.utils.testing.data.sets:TestDataSpace"])
+    args.extend(["--space", "arcana.core.utils.testing.data:TestDataSpace"])
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully

@@ -1,6 +1,7 @@
 import typing as ty
 from pathlib import Path
 from itertools import chain
+import re
 import logging
 import shlex
 import shutil
@@ -109,7 +110,7 @@ class App(ArcanaImage):
     def add_entrypoint(self, dockerfile: DockerRenderer, build_dir: Path):
 
         command_line = (
-            self.command.activate_conda_cmd() + "arcana ext common pipeline-entrypoint"
+            self.command.activate_conda_cmd() + "arcana deploy pipeline-entrypoint"
         )
 
         dockerfile.entrypoint(shlex.split(command_line))
@@ -392,7 +393,12 @@ class App(ArcanaImage):
             #     config = self.command.configuration
             #     # configuration keys are variable depending on the workflow class
             tbl_cmd.write_row("Task", ClassResolver.tostr(self.command.task))
-            tbl_cmd.write_row("Operates on", self.command.row_frequency.name)
+            freq_name = (
+                self.command.row_frequency.name
+                if not isinstance(self.command.row_frequency, str)
+                else re.match(r".*\[(\w+)\]", self.command.row_frequency).group(1)
+            )
+            tbl_cmd.write_row("Operates on", freq_name)
 
             f.write("#### Inputs\n")
             tbl_inputs = MarkdownTable(
@@ -479,16 +485,23 @@ class App(ArcanaImage):
     @classmethod
     def _data_format_html(cls, datatype):
 
-        if ext := getattr(datatype, "ext", None):
-            text = f"{datatype.desc} (`.{ext}`)"
-        elif getattr(datatype, "is_dir", None) and datatype is not BaseDirectory:
-            text = f"{datatype.desc} (Directory)"
+        if isinstance(datatype, str):
+            module, name = datatype.split(":")
+            name = name.lower()
+            text = f"{name} (from '{module}' extension)"
         else:
-            text = datatype.desc
+            if ext := getattr(datatype, "ext", None):
+                text = f"{datatype.desc} (`.{ext}`)"
+            elif getattr(datatype, "is_dir", None) and datatype is not BaseDirectory:
+                text = f"{datatype.desc} (directory)"
+            else:
+                text = datatype.desc
+
+            name = datatype.__name__.lower()
 
         return (
-            f'<span data-toggle="tooltip" data-placement="bottom" title="{datatype.desc}" '
-            f'aria-label="{datatype.desc}">{text}</span>'
+            f'<span data-toggle="tooltip" data-placement="bottom" title="{name}" '
+            f'aria-label="{name}">{text}</span>'
         )
 
     DOCKERFILE_README_TEMPLATE = """

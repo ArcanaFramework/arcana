@@ -127,6 +127,9 @@ class CommandInput(CommandField):
         if (
             default_column.datatype is not None
             and self.datatype is not default_column.datatype
+            and not isinstance(
+                self.datatype, str
+            )  # if has fallen back to string in non-build envs
         ):
             try:
                 self.datatype.find_converter(default_column.datatype)

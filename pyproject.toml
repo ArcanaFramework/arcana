@@ -14,6 +14,7 @@ dependencies = [
     "click-option-group>=0.5.5",
     "PyYAML>=6.0",
     "build >=0.9",
+    "flit_scm >=1.7.0",
     "fasteners>=0.7.0",
     "deepdiff>=3.3",
     "pydra>=0.20",  # @ git+https://github.com/Australian-Imaging-Service/pydra.git@0.19+ais1",

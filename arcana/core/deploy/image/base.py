@@ -9,7 +9,7 @@ import logging
 from copy import copy
 import shutil
 from inspect import isclass, isfunction
-from build.__main__ import build_package
+from build import ProjectBuilder
 import attrs
 import docker
 from neurodocker.reproenv import DockerRenderer
@@ -406,8 +406,8 @@ class ArcanaImage:
             # Create a source distribution tarball to be installed within the docker
             # image
             sdist_dir = build_dir / cls.PYTHON_PACKAGE_DIR
-            built = build_package(pip_spec.file_path, sdist_dir, ["sdist"])
-            pkg_build_path = sdist_dir / built[0]
+            builder = ProjectBuilder(pip_spec.file_path)
+            pkg_build_path = Path(builder.build("sdist", sdist_dir))
             pip_str = "/" + cls.PYTHON_PACKAGE_DIR + "/" + pkg_build_path.name
             dockerfile.copy(
                 source=[str(pkg_build_path.relative_to(build_dir))], destination=pip_str
