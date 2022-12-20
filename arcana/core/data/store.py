@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 from abc import abstractmethod, ABCMeta
 from pathlib import Path

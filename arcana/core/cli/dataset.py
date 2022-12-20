@@ -1,3 +1,4 @@
+from __future__ import annotations
 import click
 from .base import cli
 from arcana.core.data.set import Dataset
@@ -156,7 +157,9 @@ DATASET_PATH: The path to the dataset including store and dataset name
 
 NAME: The name the source will be referenced by
 
-FORMAT: The data type of the column. Can be a field (int|float|str|bool), field array (list[int|float|str|bool]) or "file-group" (file, file+header/side-cars or directory)
+FORMAT: The data type of the column. Can be a field (int|float|str|bool),
+field array (list[int|float|str|bool]) or
+"file-group" (file, file+header/side-cars or directory)
 """,
 )
 @click.argument("dataset_path")

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from types import MemberDescriptorType
 from .spec import (
     _UnresolvedOp,
