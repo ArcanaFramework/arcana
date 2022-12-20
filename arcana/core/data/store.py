@@ -33,7 +33,7 @@ class DataStore(metaclass=ABCMeta):
 
     CONFIG_NAME = "stores"
 
-    DEFAULT_PACKAGE = "arcana.data.stores"
+    SUBPACKAGE = "data"
 
     @abstractmethod
     def find_rows(self, dataset):

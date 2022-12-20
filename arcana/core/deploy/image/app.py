@@ -72,7 +72,7 @@ class App(ArcanaImage):
     SPEC_PATH = "/arcana-spec.yaml"
     IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
 
-    DEFAULT_PACKAGE = "arcana.deploy"
+    SUBPACKAGE = "deploy"
 
     info_url: str = attrs.field()
     authors: ty.List[ContainerAuthor] = attrs.field(

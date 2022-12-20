@@ -61,7 +61,6 @@ class ClassResolver:
 
     base_class: type = None
     allow_none: bool = False
-    prefixes: list[str] = attrs.field(factory=list)
     alternative_types: list[type] = attrs.field(factory=list)
 
     def __call__(self, class_str: str) -> type:
@@ -80,24 +79,46 @@ class ClassResolver:
         """
         if class_str is None and self.allow_none:
             return None
-        # if (
-        #     not self.prefixes
-        #     and self.base_class is not None
-        #     and hasattr(self.base_class, "DEFAULT_PACKAGE")
-        # ):
-        #     prefixes = [self.base_class.DEFAULT_PACKAGE]
-        # else:
-        #     prefixes = self.prefixes
-        klass = self.fromstr(class_str, prefixes=["arcana"])
+        if self.base_class is not None and hasattr(self.base_class, "SUBPACKAGE"):
+            subpkg = self.base_class.SUBPACKAGE
+        else:
+            subpkg = None
+        klass = self.fromstr(class_str, subpkg=subpkg)
         self._check_type(klass)
         return klass
 
     @classmethod
-    def fromstr(cls, class_str, prefixes):
+    def fromstr(cls, class_str, subpkg=None):
+        """Resolves a class/function from a string containing its module an its name
+        separated by a ':'
+
+        Parameters
+        ----------
+        class_str : str
+            the string representation to resolve to a class or function
+        subpkg : str, optional
+            the sub-package that the class should belong to within the extension
+
+        Returns
+        -------
+        type or callable
+            the resolved class or function
+
+        Raises
+        ------
+        ValueError
+            raised if the string doesn't contain a ':'
+        ArcanaUsageError
+            raised if the class wasn't found in the sub-package
+        ArcanaUsageError
+            raised if a sub-package couldn't be found
+        """
         if not isinstance(class_str, str):
             return class_str  # Assume that it is already resolved
         if class_str.startswith("<") and class_str.endswith(">"):
             class_str = class_str[1:-1]
+        if class_str.startswith(":"):
+            subpkg = None  # treat the module path as absolute, not relative to the ext subpkg
         try:
             module_path, class_name = class_str.split(":")
         except ValueError:
@@ -110,28 +131,26 @@ class ClassResolver:
                 ) from None
         module = None
 
-        for prefix in prefixes + [None]:
-            if prefix is not None:
-                mod_name = prefix + ("." if prefix[-1] != "." else "") + module_path
-            else:
-                mod_name = module_path
-            if not mod_name:
-                continue
-            mod_name = mod_name.strip(".")
-            try:
-                module = import_module(mod_name)
-            except ModuleNotFoundError:
-                continue
-            else:
-                break
-        if module is None:
+        if subpkg:
+            if "." in module_path:
+                raise ValueError(
+                    f"Invalid name of arcana extension {module_path}, under which to "
+                    f"find '{class_name}' relative to sub-package '{subpkg}'. To "
+                    f"designate an absolute path, prepend a ':' to the path, e.g. "
+                    "':arcana.core.utils.testing.data:TestDataSpace'"
+                )
+            full_mod_path = ".".join("arcana", module_path, subpkg)
+        else:
+            full_mod_path = module_path
+        try:
+            module = import_module(full_mod_path)
+        except ModuleNotFoundError:
             if cls.FALLBACK_TO_STR.permit:
                 return class_str
             else:
                 raise ArcanaUsageError(
-                    "Did not find class at '{}' or any sub paths of '{}'".format(
-                        class_str, "', '".join(prefixes)
-                    )
+                    f"Did not module {full_mod_path}' when resolving {class_str} with "
+                    f"subpkg={subpkg}"
                 )
         try:
             klass = getattr(module, class_name)
@@ -151,7 +170,7 @@ class ClassResolver:
         klass : Any
             the class/function to serialise to a string
         strip_prefix : bool
-            whether to strip the DEFAULT_PACKAGE prefix from the module path when writing
+            whether to strip the SUBPACKAGE prefix from the module path when writing
             to file
         """
         if isinstance(klass, str):
@@ -163,10 +182,10 @@ class ClassResolver:
             return klass.__name__
         if (
             strip_prefix
-            and hasattr(klass, "DEFAULT_PACKAGE")
-            and module_name.startswith(klass.DEFAULT_PACKAGE)
+            and hasattr(klass, "SUBPACKAGE")
+            and module_name.startswith(klass.SUBPACKAGE)
         ):
-            module_name = module_name[len(klass.DEFAULT_PACKAGE) + 1 :]
+            module_name = module_name[len(klass.SUBPACKAGE) + 1 :]
         return module_name + ":" + klass.__name__
 
     def _check_type(self, klass):

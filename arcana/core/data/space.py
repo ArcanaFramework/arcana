@@ -180,7 +180,7 @@ class DataSpace(Enum):
         return space[val] if not isinstance(space, str) else s
 
     @classproperty
-    def DEFAULT_PACKAGE(cls):
+    def SUBPACKAGE(cls):
         """Cannot be a regular class attribute because then DataSpace won't be able to
         be extended"""
-        return "arcana.data.spaces"
+        return "data"

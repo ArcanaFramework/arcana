@@ -76,7 +76,7 @@ class DataType(metaclass=ABCMeta):
     provenance: ty.Dict[str, ty.Any] = attrs.field(default=None)
     row: DataRow = attrs.field(default=None)
 
-    DEFAULT_PACKAGE = "arcana.data.types"
+    SUBPACKAGE = "data"
 
     @abstractmethod
     def get(self, assume_exists=False):
