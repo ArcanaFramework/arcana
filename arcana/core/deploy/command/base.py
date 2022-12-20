@@ -27,7 +27,7 @@ from .components import CommandInput, CommandOutput, CommandParameter
 
 
 if ty.TYPE_CHECKING:
-    from ..image import AppImage
+    from ..image import App
 
 
 logger = logging.getLogger("arcana")
@@ -52,7 +52,7 @@ class ContainerCommand:
         parameters of the command
     configuration: dict[str, ty.Any]
         constant values used to configure the task/workflow
-    image: AppImage
+    image: App
         back-reference to the image the command is installed in
     """
 
@@ -81,7 +81,7 @@ class ContainerCommand:
     configuration: dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(dict)
     )
-    image: AppImage = None
+    image: App = None
 
     def __attrs_post_init__(self):
         if isinstance(self.row_frequency, DataSpace):
@@ -94,7 +94,7 @@ class ContainerCommand:
                     self.row_frequency = self.DATA_SPACE[self.row_frequency]
                 else:
                     raise ValueError(
-                        f"Cannot par'{self.row_frequency}' cannot be resolved to a data space, "
+                        f"'{self.row_frequency}' cannot be resolved to a data space, "
                         "needs to be of form <data-space-enum>[<row-frequency-name>]"
                     )
         elif self.DATA_SPACE:

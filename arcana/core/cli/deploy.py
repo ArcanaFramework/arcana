@@ -15,7 +15,7 @@ from arcana.core.utils.serialize import (
     pydra_asdict,
     ClassResolver,
 )
-from arcana.core.deploy.image import Metapackage, AppImage
+from arcana.core.deploy.image import Metapackage, App
 
 # from arcana.deploy.xnat.image import XnatCSImage
 from arcana.exceptions import ArcanaBuildError
@@ -41,9 +41,9 @@ SPEC_ROOT is the file system path to the specification to build, or directory
 containing multiple specifications
 
 TARGET is the type of image to build, e.g. arcana.deploy.xnat:XnatCSImage
-the target should resolve to a class deriviing from arcana.core.deploy.AppImage.
+the target should resolve to a class deriviing from arcana.core.deploy.App.
 If it is located under the `arcana.deploy`, then that prefix can be dropped, e.g.
-common:AppImage
+common:App
 """,
 )
 @click.argument("spec_root", type=click.Path(exists=True, path_type=Path))
@@ -221,7 +221,7 @@ def make_app(
 
     temp_dir = tempfile.mkdtemp()
 
-    target_cls = ClassResolver(AppImage)(target)
+    target_cls = ClassResolver(App)(target)
 
     dc = docker.from_env()
 
@@ -443,7 +443,7 @@ def list_images(spec_root, registry):
     if isinstance(spec_root, bytes):  # FIXME: This shouldn't be necessary
         spec_root = Path(spec_root.decode("utf-8"))
 
-    for image_spec in AppImage.load_tree(spec_root, registry=registry):
+    for image_spec in App.load_tree(spec_root, registry=registry):
         click.echo(image_spec.reference)
 
 
@@ -496,7 +496,7 @@ def make_docs(spec_root, output, registry, flatten, loglevel):
     output.mkdir(parents=True, exist_ok=True)
 
     with ClassResolver.FALLBACK_TO_STR:
-        image_specs = AppImage.load_tree(spec_root, registry=registry)
+        image_specs = App.load_tree(spec_root, registry=registry)
 
     for image_spec in image_specs:
 
@@ -644,7 +644,7 @@ def pipeline_entrypoint(
     **kwargs,
 ):
 
-    image_spec = AppImage.load(spec_path)
+    image_spec = App.load(spec_path)
 
     image_spec.command.execute(
         dataset_locator,

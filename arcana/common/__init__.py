@@ -12,3 +12,4 @@ from .data.formats import (
     Tsv,
     TextMatrix,
 )
+from arcana.core.deploy.image.app import App

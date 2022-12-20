@@ -25,7 +25,7 @@ logger = logging.getLogger("arcana")
 
 
 @attrs.define(kw_only=True)
-class AppImage(ArcanaImage):
+class App(ArcanaImage):
     """A container image that contains a command with specific inputs and outputs to run.
 
     Parameters

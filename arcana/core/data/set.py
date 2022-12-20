@@ -878,7 +878,7 @@ class Dataset:
         license_file.put(source_file)
 
     def _get_license_file(self, lic_name, dataset=None):
-        import arcana.data.types
+        import arcana.common.data.formats
         import arcana.core.deploy.image.components
 
         if dataset is None:
@@ -886,7 +886,7 @@ class Dataset:
         license_column = DataSink(
             f"{lic_name}_license",
             arcana.core.deploy.image.components.License.column_path(lic_name),
-            arcana.data.types.common.File,
+            arcana.common.data.formats.File,
             row_frequency=self.root_freq,
             dataset=dataset,
         )

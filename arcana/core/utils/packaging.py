@@ -1,7 +1,7 @@
 from typing import Sequence
+import json
 import importlib_metadata
 import pkgutil
-from copy import copy
 from importlib import import_module
 from inspect import isclass
 import pkg_resources
@@ -88,30 +88,72 @@ def package_from_module(module: Sequence[str]):
         module_paths.add(importlib_metadata.PackagePath(module_path.replace(".", "/")))
     packages = set()
     for pkg in pkg_resources.working_set:
-        try:
-            paths = importlib_metadata.files(pkg.key)
-        except importlib_metadata.PackageNotFoundError:
-            continue
-        match = False
-        for path in paths:
-            if path.suffix != ".py":
-                continue
-            path = path.with_suffix("")
-            if path.name == "__init__":
-                path = path.parent
+        if editable_dir := get_editable_dir(pkg):
 
-            for module_path in copy(module_paths):
-                if module_path in ([path] + list(path.parents)):
-                    match = True
-                    module_paths.remove(module_path)
-        if match:
+            def is_in_pkg(module_path):
+                pth = editable_dir.joinpath(module_path)
+                return pth.with_suffix(".py").exists() or (pth / "__init__.py").exists()
+
+        else:
+            installed_paths = installed_module_paths(pkg)
+
+            def is_in_pkg(module_path):
+                return module_path in installed_paths
+
+        if in_pkg := set(m for m in module_paths if is_in_pkg(m)):
             packages.add(pkg)
-            if not module_paths:  # If there are no more modules to find pkgs for
+            module_paths -= in_pkg
+            if not module_paths:  # If there are no more modules to find pkgs for break
                 break
     if module_paths:
         paths_str = "', '".join(str(p) for p in module_paths)
         raise ArcanaUsageError(f"Did not find package for {paths_str}")
     return tuple(packages) if as_tuple else next(iter(packages))
+
+
+def get_editable_dir(pkg: pkg_resources.DistInfoDistribution):
+    """Returns the path to the editable dir to a package if it exists
+
+    Parameters
+    ----------
+    pkg : pkg_resources.DistInfoDistribution
+        the package to get the editable directory for
+
+    Returns
+    ------
+    Path or None
+        the path to the editable file or None if the package isn't installed in editable mode
+    """
+    direct_url_path = Path(pkg.egg_info) / "direct_url.json"
+    if not direct_url_path.exists():
+        return None
+    with open(direct_url_path) as f:
+        url_spec = json.load(f)
+    url = url_spec["url"]
+    if not url_spec["dir_info"].get("editable"):
+        return None
+    assert url.startswith("file://")
+    return Path(url[len("file://") :])
+
+
+def installed_module_paths(pkg: pkg_resources.DistInfoDistribution):
+    """Returns the list of modules that are part of an installed package
+
+    Parameters
+    ----------
+    pkg
+        the package to list the installed modules
+    """
+    try:
+        paths = importlib_metadata.files(pkg.key)
+    except importlib_metadata.PackageNotFoundError:
+        paths = []
+    paths = set(
+        p.parent if p.name == "__init__.py" else p.with_suffix("")
+        for p in paths
+        if p.suffix == ".py"
+    )
+    return paths
 
 
 def pkg_versions(modules):

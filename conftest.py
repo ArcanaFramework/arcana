@@ -308,7 +308,7 @@ def command_spec():
                 "datatype": "common:Text",
                 "field": "in_file1",
                 "default_column": {
-                    "row_frequency": "session",
+                    "row_frequency": "common:Samples[sample]",
                 },
                 "help_string": "the first file to pass as an input",
             },
@@ -316,7 +316,7 @@ def command_spec():
                 "datatype": "common:Text",
                 "field": "in_file2",
                 "default_column": {
-                    "row_frequency": "session",
+                    "row_frequency": "common:Samples[sample]",
                 },
                 "help_string": "the second file to pass as an input",
             },
@@ -337,7 +337,7 @@ def command_spec():
                 "help_string": "a parameter",
             }
         },
-        "row_frequency": "session",
+        "row_frequency": "common:Samples[sample]",
     }
 
 

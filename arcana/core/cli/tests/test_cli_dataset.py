@@ -83,69 +83,6 @@ def test_add_column_cli(saved_dataset, cli_runner):
     assert saved_dataset.columns == loaded_dataset.columns
 
 
-def test_add_source_xnat(mutable_xnat_dataset, cli_runner, work_dir):
-
-    test_home_dir = work_dir / "test-arcana-home"
-
-    with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
-        store_nickname = mutable_xnat_dataset.id + "_store"
-        dataset_name = "testing123"
-        mutable_xnat_dataset.store.save(store_nickname)
-        dataset_locator = (
-            store_nickname + "//" + mutable_xnat_dataset.id + "@" + dataset_name
-        )
-        mutable_xnat_dataset.save(dataset_name)
-
-        result = cli_runner(
-            add_source,
-            [
-                dataset_locator,
-                "a_source",
-                "common:Text",
-                "--path",
-                "file1",
-                "--row-frequency",
-                "session",
-                "--quality",
-                "questionable",
-                "--order",
-                "1",
-                "--no-regex",
-            ],
-        )
-        assert result.exit_code == 0, show_cli_trace(result)
-
-
-def test_add_sink_xnat(mutable_xnat_dataset, work_dir, cli_runner):
-
-    test_home_dir = work_dir / "test-arcana-home"
-
-    with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
-        store_nickname = mutable_xnat_dataset.id + "_store"
-        dataset_name = "testing123"
-        mutable_xnat_dataset.store.save(store_nickname)
-        dataset_locator = (
-            store_nickname + "//" + mutable_xnat_dataset.id + "@" + dataset_name
-        )
-        mutable_xnat_dataset.save(dataset_name)
-
-        result = cli_runner(
-            add_sink,
-            [
-                dataset_locator,
-                "a_sink",
-                "common:Text",
-                "--path",
-                "deriv",
-                "--row-frequency",
-                "session",
-                "--salience",
-                "qa",
-            ],
-        )
-        assert result.exit_code == 0, show_cli_trace(result)
-
-
 @pytest.mark.skip("Not implemented")
 def test_add_missing_items_cli(dataset, cli_runner):
     result = cli_runner(missing_items, [])

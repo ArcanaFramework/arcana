@@ -1,5 +1,4 @@
 from __future__ import annotations
-import setuptools.sandbox
 import typing as ty
 
 # import hashlib
@@ -7,10 +6,10 @@ from pathlib import PurePath, Path
 import json
 import tempfile
 import logging
-from datetime import datetime
 from copy import copy
 import shutil
 from inspect import isclass, isfunction
+from build.__main__ import build_package
 import attrs
 import docker
 from neurodocker.reproenv import DockerRenderer
@@ -21,7 +20,6 @@ from arcana.core.utils.serialize import (
     ObjectConverter,
 )
 from arcana.core.utils.misc import (
-    set_cwd,
     DOCKER_HUB,
 )
 from arcana.core.data.space import DataSpace
@@ -402,9 +400,14 @@ class ArcanaImage:
                 raise ArcanaBuildError(
                     "Cannot specify a package by `file_path`, `version` and/or " "`url`"
                 )
-            pkg_build_path = cls.copy_sdist_into_build_dir(
-                pip_spec.file_path, build_dir
-            )
+            # pkg_build_path = cls.copy_sdist_into_build_dir(
+            #     pip_spec.file_path, build_dir
+            # )
+            # Create a source distribution tarball to be installed within the docker
+            # image
+            sdist_dir = build_dir / cls.PYTHON_PACKAGE_DIR
+            built = build_package(pip_spec.file_path, sdist_dir, ["sdist"])
+            pkg_build_path = sdist_dir / built[0]
             pip_str = "/" + cls.PYTHON_PACKAGE_DIR + "/" + pkg_build_path.name
             dockerfile.copy(
                 source=[str(pkg_build_path.relative_to(build_dir))], destination=pip_str
@@ -423,58 +426,28 @@ class ArcanaImage:
             pip_str += "==" + pip_spec.version
         return pip_str
 
-    @classmethod
-    def copy_sdist_into_build_dir(cls, local_installation: Path, build_dir: Path):
-        """Create a source distribution from a locally installed "editable" python package
-        and copy it into the build dir so it can be installed in the Docker image
+    # @classmethod
+    # def copy_sdist_into_build_dir(cls, local_installation: Path, build_dir: Path):
+    #     """Create a source distribution from a locally installed "editable" python package
+    #     and copy it into the build dir so it can be installed in the Docker image
 
-        Parameters
-        ----------
-        package_name : str
-            the name of the package (how it will be called in the docker image)
-        local_installation : Path
-            path to the local installation
-        build_dir : Path
-            path to the build directory
+    #     Parameters
+    #     ----------
+    #     package_name : str
+    #         the name of the package (how it will be called in the docker image)
+    #     local_installation : Path
+    #         path to the local installation
+    #     build_dir : Path
+    #         path to the build directory
 
-        Returns
-        -------
-        Path
-            the path to the source distribution within the build directory
-        """
-        if not (local_installation / "setup.py").exists():
-            raise ArcanaBuildError(
-                "Can only copy local copy of Python packages that contain a 'setup.py' "
-                f"not {local_installation}"
-            )
-
-        # Move existing 'dist' directory out of the way
-        dist_dir = local_installation / "dist"
-        if dist_dir.exists():
-            moved_dist = local_installation / (
-                "dist." + datetime.strftime(datetime.now(), "%Y%m%d%H%M%S")
-            )
-            shutil.move(local_installation / "dist", moved_dist)
-        else:
-            moved_dist = None
-        try:
-            # Generate source distribution using setuptools
-            with set_cwd(local_installation):
-                setuptools.sandbox.run_setup(
-                    "setup.py", ["sdist", "--formats", "gztar"]
-                )
-            # Copy generated source distribution into build directory
-            sdist_path = next((local_installation / "dist").iterdir())
-            build_dir_pkg_path = build_dir / cls.PYTHON_PACKAGE_DIR / sdist_path.name
-            build_dir_pkg_path.parent.mkdir(exist_ok=True)
-            shutil.copy(sdist_path, build_dir_pkg_path)
-        finally:
-            # Put original 'dist' directory back in its place
-            shutil.rmtree(local_installation / "dist", ignore_errors=True)
-            if moved_dist:
-                shutil.move(moved_dist, local_installation / "dist")
-
-        return build_dir_pkg_path
+    #     Returns
+    #     -------
+    #     Path
+    #         the path to the source distribution within the build directory
+    #     """
+    #     sdist_dir = build_dir / cls.PYTHON_PACKAGE_DIR
+    #     built = build_package(local_installation, sdist_dir, ["sdist"])
+    #     return sdist_dir / built[0]
 
     def write_readme(self, dockerfile: DockerRenderer, build_dir):
         """Generate Neurodocker instructions to install README file inside the docker
