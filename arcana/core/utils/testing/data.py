@@ -4,10 +4,12 @@ import typing as ty
 from itertools import product
 import zipfile
 from pathlib import Path
+import attrs
 from dataclasses import dataclass, field as dataclass_field
 from pydra import mark
 from arcana.core.utils.misc import set_cwd, path2varname
 from arcana.core.data.space import DataSpace
+from arcana.core.data.store import DataStore
 from arcana.core.data.type.file import WithSideCars, BaseFile
 from arcana.common.data import FileSystem
 from arcana.common.data.formats import Text
@@ -242,3 +244,166 @@ def encode_text(text: str, shift: int) -> str:
     for c in text:
         encoded.append(chr(ord(c) + shift))
     return "".join(encoded)
+
+
+@attrs.define
+class MockDataStore(DataStore):
+    """A mock data store to test store CLI. None of the methods do anything, not even
+    return mock objects.
+    """
+
+    alias = "mock"
+
+    server: str
+    user: str
+    password: str
+    cache_dir: str
+
+    def find_rows(self, dataset):
+        """
+        Find all data rows for a dataset in the store and populate the
+        Dataset object using its `add_row` method.
+
+        Parameters
+        ----------
+        dataset : Dataset
+            The dataset to populate with rows
+        """
+
+    def find_items(self, row):
+        """
+        Find all data items within a data row and populate the DataRow object
+        with them using the `add_file_group` and `add_field` methods.
+
+        Parameters
+        ----------
+        row : DataRow
+            The data row to populate with items
+        """
+
+    def get_file_group_paths(self, file_group, cache_only=False):
+        """
+        Cache the file_group locally (if required) and return the locations
+        of the cached primary file and side cars
+
+        Parameters
+        ----------
+        file_group : FileGroup
+            The file_group to cache locally
+        cache_only : bool
+            Whether to attempt to extract the file groups from the local cache
+            (if applicable) and raise an error otherwise
+
+        Returns
+        -------
+        fs_paths : list[str]
+            The file-system path to the cached files
+
+        Raises
+        ------
+        ArcanaCacheError
+            If cache_only is set and there is a mismatch between the cached
+            and remote versions
+        """
+
+    def get_field_value(self, field):
+        """
+        Extract and return the value of the field from the store
+
+        Parameters
+        ----------
+        field : Field
+            The field to retrieve the value for
+
+        Returns
+        -------
+        value : int | float | str | ty.List[int] | ty.List[float] | ty.List[str]
+            The value of the Field
+        """
+
+    def put_file_group_paths(self, file_group, fs_paths):
+        """
+        Inserts or updates the file_group into the store
+
+        Parameters
+        ----------
+        file_group : FileGroup
+            The file_group to insert into the store
+        fs_paths : list[Path]
+            The file-system paths to the files/directories to sync
+
+        Returns
+        -------
+        cached_paths : list[str]
+            The paths of the files where they are cached in the file system
+        """
+
+    def put_field_value(self, field, value):
+        """
+        Inserts or updates the fields into the store
+
+        Parameters
+        ----------
+        field : Field
+            The field to insert into the store
+        """
+
+    def save_dataset_definition(
+        self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
+    ):
+        """Save definition of dataset within the store
+
+        Parameters
+        ----------
+        dataset_id: str
+            The ID/path of the dataset within the store
+        definition: dict[str, Any]
+            A dictionary containing the dct Dataset to be saved. The
+            dictionary is in a format ready to be dumped to file as JSON or
+            YAML.
+        name: str
+            Name for the dataset definition to distinguish it from other
+            definitions for the same directory/project"""
+
+    def load_dataset_definition(
+        self, dataset_id: str, name: str
+    ) -> ty.Dict[str, ty.Any]:
+        """Load definition of a dataset saved within the store
+
+        Parameters
+        ----------
+        dataset_id: str
+            The ID (e.g. file-system path, XNAT project ID) of the project
+        name: str
+            Name for the dataset definition to distinguish it from other
+            definitions for the same directory/project
+
+        Returns
+        -------
+        definition: dict[str, Any]
+            A dct Dataset object that was saved in the data store
+        """
+
+    def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataType
+            The item to store the provenance data for
+        provenance: dict[str, Any]
+            The provenance data to store"""
+
+    def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataType
+            The item to store the provenance data for
+
+        Returns
+        -------
+        provenance: dict[str, Any] or None
+            The provenance data stored in the repository for the data item.
+            None if no provenance data has been stored"""

@@ -4,39 +4,44 @@ from arcana.core.cli.store import add, ls, remove, rename
 from arcana.core.utils.testing import show_cli_trace
 from arcana.core.data.store import DataStore
 
+STORE_URI = "http://dummy.uri"
+STORE_USER = "a_user"
+STORE_PASSWORD = "a-password"
 
-def test_store_cli(xnat_repository, cli_runner, work_dir):
+
+def test_store_cli(cli_runner, work_dir):
     test_home_dir = work_dir / "test-arcana-home"
+    store_name = "test-mock"
     # Create a new home directory so it doesn't conflict with user settings
     with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
         # Add new XNAT configuration
         result = cli_runner(
             add,
             [
-                "test-xnat",
-                "xnat:Xnat",
-                xnat_repository.server,
+                store_name,
+                "arcana.core.utils.testing.data:MockDataStore",
+                STORE_URI,
                 "--user",
-                xnat_repository.user,
+                STORE_USER,
                 "--password",
-                xnat_repository.password,
+                STORE_PASSWORD,
             ],
         )
         assert result.exit_code == 0, show_cli_trace(result)
         # List all saved and built-in stores
         result = cli_runner(ls, [])
         assert result.exit_code == 0, show_cli_trace(result)
-        assert "bids - arcana.data.stores.bids.structure:Bids" in result.output
+        assert "file - arcana.common.data.file_system:FileSystem" in result.output
         assert (
-            "file - arcana.data.stores.common.file_system:FileSystem" in result.output
+            f"{store_name} - arcana.core.utils.testing.data:MockDataStore"
+            in result.output
         )
-        assert "test-xnat - arcana.data.stores.xnat.api:Xnat" in result.output
-        assert "    server: " + xnat_repository.server in result.output
+        assert "    server: " + STORE_URI in result.output
 
 
-def test_store_cli_remove(xnat_repository, cli_runner, work_dir):
+def test_store_cli_remove(cli_runner, work_dir):
     test_home_dir = work_dir / "test-arcana-home"
-    new_store_name = "test-xnat"
+    new_store_name = "a-new-mock"
     # Create a new home directory so it doesn't conflict with user settings
     with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
         # Add new XNAT configuration
@@ -44,12 +49,12 @@ def test_store_cli_remove(xnat_repository, cli_runner, work_dir):
             add,
             [
                 new_store_name,
-                "xnat:Xnat",
-                xnat_repository.server,
+                "arcana.core.utils.testing.data:MockDataStore",
+                STORE_URI,
                 "--user",
-                xnat_repository.user,
+                STORE_USER,
                 "--password",
-                xnat_repository.password,
+                STORE_PASSWORD,
             ],
         )
         # Check store is saved
@@ -62,7 +67,7 @@ def test_store_cli_remove(xnat_repository, cli_runner, work_dir):
         assert new_store_name not in result.output
 
 
-def test_store_cli_rename(xnat_repository, cli_runner, work_dir):
+def test_store_cli_rename(cli_runner, work_dir):
     test_home_dir = work_dir / "test-arcana-home"
     old_store_name = "i123"
     new_store_name = "y456"
@@ -73,46 +78,49 @@ def test_store_cli_rename(xnat_repository, cli_runner, work_dir):
             add,
             [
                 old_store_name,
-                "xnat:Xnat",
-                xnat_repository.server,
+                "arcana.core.utils.testing.data:MockDataStore",
+                STORE_URI,
                 "--user",
-                xnat_repository.user,
+                STORE_USER,
                 "--password",
-                xnat_repository.password,
+                STORE_PASSWORD,
             ],
         )
         # Check store is saved
         result = cli_runner(ls, [])
-        assert "i123 - arcana.data.stores.xnat.api:Xnat" in result.output
+        assert "i123 - arcana.core.utils.testing.data:MockDataStore" in result.output
 
         cli_runner(rename, [old_store_name, new_store_name])
         # Check store is renamed
         result = cli_runner(ls, [])
-        assert "i123 - arcana.data.stores.xnat.api:Xnat" not in result.output
-        assert "y456 - arcana.data.stores.xnat.api:Xnat" in result.output
+        assert (
+            "i123 - arcana.core.utils.testing.data:MockDataStore" not in result.output
+        )
+        assert "y456 - arcana.core.utils.testing.data:MockDataStore" in result.output
 
 
-def test_store_cli_encrypt_credentials(xnat_repository, cli_runner, work_dir):
+def test_store_cli_encrypt_credentials(cli_runner, work_dir):
     test_home_dir = work_dir / "test-arcana-home"
+    store_name = "another-test-mock"
     # Create a new home directory so it doesn't conflict with user settings
     with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
         # Add new XNAT configuration
         result = cli_runner(
             add,
             [
-                "test-xnat",
-                "xnat:Xnat",
-                xnat_repository.server,
+                store_name,
+                "arcana.core.utils.testing.data:MockDataStore",
+                STORE_URI,
                 "--user",
-                xnat_repository.user,
+                STORE_USER,
                 "--password",
-                xnat_repository.password,
+                STORE_PASSWORD,
             ],
         )
         assert result.exit_code == 0, show_cli_trace(result)
         # Check credentials have been encrypted
-        loaded_xnat_repository = DataStore.load("test-xnat")
-        assert loaded_xnat_repository.password != ""
-        assert loaded_xnat_repository.password is not xnat_repository.password
-        assert loaded_xnat_repository.user != ""
-        assert loaded_xnat_repository.user is not xnat_repository.user
+        loaded_store = DataStore.load(store_name)
+        assert loaded_store.password != ""
+        assert loaded_store.password is not STORE_PASSWORD
+        assert loaded_store.user != ""
+        assert loaded_store.user is not STORE_USER
