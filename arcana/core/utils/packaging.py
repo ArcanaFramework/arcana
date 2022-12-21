@@ -8,8 +8,8 @@ from inspect import isclass
 import pkg_resources
 from pathlib import Path
 from collections.abc import Iterable
-from arcana.exceptions import ArcanaUsageError
-from arcana import __version__
+from arcana.core.exceptions import ArcanaUsageError
+from arcana.core import __version__
 
 
 def submodules(package, subpkg=None):

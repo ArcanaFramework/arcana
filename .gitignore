@@ -24,5 +24,5 @@ test.log
 /docker-tests
 ~*
 /docs/source/_static/images/logo-square.png
-/arcana/_version.py
+/arcana/core/_version.py
 *.venv

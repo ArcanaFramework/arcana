@@ -10,7 +10,7 @@ from arcana.core.utils.testing.data import (
 from arcana.common.data import Text
 from arcana.core.utils.testing.data import EncodedText
 from arcana.core.deploy.command.base import ContainerCommand
-from arcana.exceptions import ArcanaDataMatchError
+from arcana.core.exceptions import ArcanaDataMatchError
 
 
 def test_command_execute(concatenate_task, saved_dataset, work_dir):

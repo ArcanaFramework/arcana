@@ -4,7 +4,7 @@ import typing as ty
 import attrs
 from collections import defaultdict
 from abc import ABCMeta
-from arcana.exceptions import (
+from arcana.core.exceptions import (
     ArcanaNameError,
     ArcanaWrongFrequencyError,
     ArcanaFileFormatError,

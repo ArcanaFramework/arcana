@@ -15,7 +15,7 @@ import cloudpickle as cp
 from pydra.engine.core import Workflow, LazyField, TaskBase
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
-from arcana.exceptions import ArcanaUsageError
+from arcana.core.exceptions import ArcanaUsageError
 
 
 logger = logging.getLogger("arcana")

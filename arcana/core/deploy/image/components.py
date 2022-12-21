@@ -7,8 +7,8 @@ import logging
 from urllib.parse import urlparse
 import site
 import attrs
-from arcana import PACKAGE_NAME
-from arcana.exceptions import ArcanaBuildError
+from arcana.core import PACKAGE_NAME
+from arcana.core.exceptions import ArcanaBuildError
 from arcana.core.utils.serialize import ObjectListConverter
 
 logger = logging.getLogger("arcana")

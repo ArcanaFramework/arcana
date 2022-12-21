@@ -13,7 +13,7 @@ from arcana.core.cli.deploy import (
     make_docs,
 )
 from arcana.core.utils.testing import show_cli_trace
-from arcana.exceptions import ArcanaBuildError
+from arcana.core.exceptions import ArcanaBuildError
 
 
 def test_deploy_make_app_cli(command_spec, cli_runner, work_dir):

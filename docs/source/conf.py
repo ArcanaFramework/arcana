@@ -13,15 +13,15 @@
 # serve to show the default.
 from __future__ import print_function
 import sys
-import os
 import os.path as op
 import datetime
-import sphinx_rtd_theme
+
+# import sphinx_rtd_theme
 
 package_path = op.abspath(op.join(op.dirname(op.abspath(__file__)), "..", ".."))
 
 sys.path.insert(0, package_path)
-from arcana import __version__, __authors__  # @UnresolvedImport @IgnorePep8
+from arcana.core import __version__, __authors__  # noqa
 
 # from arcana import *
 
@@ -241,11 +241,11 @@ latex_elements = {
     # The paper size ('letterpaper' or 'a4paper').
     "papersize": "a4paper",
     # The font size ('10pt', '11pt' or '12pt').
-    #'pointsize': '10pt',
+    # 'pointsize': '10pt',
     # Additional stuff for the LaTeX preamble.
-    #'preamble': '',
+    # 'preamble': '',
     # Latex figure (float) alignment
-    #'figure_align': 'htbp',
+    # 'figure_align': 'htbp',
 }
 
 # Grouping the document tree into LaTeX files. List of tuples

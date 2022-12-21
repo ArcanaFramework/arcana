@@ -13,8 +13,8 @@ from build import ProjectBuilder
 import attrs
 import docker
 from neurodocker.reproenv import DockerRenderer
-from arcana import __version__
-from arcana import PACKAGE_NAME
+from arcana.core import __version__
+from arcana.core import PACKAGE_NAME
 from arcana.core.utils.serialize import (
     ClassResolver,
     ObjectConverter,
@@ -23,7 +23,7 @@ from arcana.core.utils.misc import (
     DOCKER_HUB,
 )
 from arcana.core.data.space import DataSpace
-from arcana.exceptions import ArcanaBuildError
+from arcana.core.exceptions import ArcanaBuildError
 from .components import Packages, BaseImage, PipPackage, CondaPackage
 
 logger = logging.getLogger("arcana")

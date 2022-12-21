@@ -12,7 +12,7 @@ from ..utils.misc import (
     SWICTH_ANNOTATIONS,
     CHECK_ANNOTATIONS,
 )
-from arcana.exceptions import ArcanaDesignError
+from arcana.core.exceptions import ArcanaDesignError
 from .spec import (
     BaseAttr,
     ColumnSpec,

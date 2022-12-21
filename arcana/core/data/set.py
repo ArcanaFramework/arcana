@@ -9,7 +9,7 @@ import attrs
 import attrs.filters
 from attrs.converters import default_if_none
 from arcana.core.utils.serialize import asdict
-from arcana.exceptions import (
+from arcana.core.exceptions import (
     ArcanaLicenseNotFoundError,
     ArcanaNameError,
     ArcanaDataTreeConstructionError,

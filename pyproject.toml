@@ -77,7 +77,7 @@ repository = "https://github.com/ArcanaFramework/arcana.git"
 arcana = "arcana.core.cli:cli"
 
 [tool.flit.module]
-name = "arcana"
+name = "arcana.core"
 
 [tool.flit.sdist]
 exclude = [".gitignore"]

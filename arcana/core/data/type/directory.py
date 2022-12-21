@@ -6,7 +6,7 @@ from itertools import chain
 from copy import copy
 import shutil
 import attrs
-from arcana.exceptions import (
+from arcana.core.exceptions import (
     ArcanaUsageError,
     ArcanaFileFormatError,
 )

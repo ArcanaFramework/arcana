@@ -14,7 +14,7 @@ from arcana.core.data.store import DataStore
 from arcana.core.data.type.file import WithSideCars, BaseFile
 from arcana.common.data import FileSystem
 from arcana.common.data.formats import Text
-from arcana.mark import converter
+from arcana.core.mark import converter
 
 
 class TestDataSpace(DataSpace):

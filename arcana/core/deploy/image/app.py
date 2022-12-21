@@ -11,7 +11,7 @@ import yaml
 from urllib.parse import urlparse
 from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
-from arcana import __version__
+from arcana.core import __version__
 from arcana.core.utils.serialize import (
     ObjectConverter,
     ObjectListConverter,

@@ -22,7 +22,7 @@ from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.data.space import DataSpace
-from arcana.exceptions import ArcanaUsageError
+from arcana.core.exceptions import ArcanaUsageError
 from .components import CommandInput, CommandOutput, CommandParameter
 
 
