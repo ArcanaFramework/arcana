@@ -25,10 +25,6 @@ class Metapackage(ArcanaImage):
             dockerfile, build_dir, use_local_packages=use_local_packages
         )
 
-        self.install_arcana(
-            dockerfile, build_dir=build_dir, use_local_package=use_local_packages
-        )
-
         with open(build_dir / "manifest.json", "w") as f:
             json.dump(self.manifest, f)
 

@@ -112,6 +112,7 @@ def test_deploy_remake_app_cli(command_spec, docker_registry, cli_runner, run_pr
         "command": command_spec,
         "version": "1.0",
         "build_iteration": "1",
+        "packages": {"system": ["vim"]},
         "description": "a test image",
         "name": "test_deploy_rebuild_cli",
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],

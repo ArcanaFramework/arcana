@@ -171,16 +171,7 @@ class ArcanaImage:
             build_dir,
             use_local_packages=use_local_packages,
             pypi_fallback=pypi_fallback,
-        )
-
-        # Arcana is installed separately from the other Python packages, partly so
-        # the dependency Docker layer can be cached in dev and partly so it can be
-        # treated differently if required in potential subclasses
-        self.install_arcana(
-            dockerfile,
-            build_dir,
-            install_extras=arcana_install_extras,
-            use_local_package=use_local_packages,
+            arcana_install_extras=arcana_install_extras,
         )
 
         self.write_readme(dockerfile, build_dir)
@@ -238,6 +229,7 @@ class ArcanaImage:
         dockerfile: DockerRenderer,
         build_dir: Path,
         use_local_packages: bool = False,
+        arcana_install_extras: ty.Iterable = (),
         pypi_fallback: bool = False,
     ):
         """Generate Neurodocker instructions to install an appropriate version of
@@ -256,6 +248,9 @@ class ArcanaImage:
             Use the python package versions that are installed within the
             current environment, i.e. instead of defaulting to the release from PyPI.
             Useful during development and testing
+        arcana_install_extras : list[str]
+            list of "install extras" (options) to specify when installing Arcana
+            (e.g. 'test')
         pypi_fallback : bool, optional
             Whether to fall back to PyPI version when local version doesn't match
             requested
@@ -266,8 +261,12 @@ class ArcanaImage:
             neurodocker instructions to install python and required packages
         """
 
+        pip_specs = PipPackage.unique(
+            self.packages.pip + [PipPackage(PACKAGE_NAME, extras=arcana_install_extras)]
+        )
+
         pip_strs = []
-        for pip_spec in self.packages.pip:
+        for pip_spec in pip_specs:
             if use_local_packages:
                 pip_spec = pip_spec.local_package_location(pypi_fallback=pypi_fallback)
             pip_strs.append(self.pip_spec2str(pip_spec, dockerfile, build_dir))
@@ -331,40 +330,6 @@ class ArcanaImage:
                 kwds
             )  # so we can pop the name and leave the original dictionary intact
             dockerfile.add_registered_template(kwds.pop("name"), **kwds)
-
-    def install_arcana(
-        self,
-        dockerfile: DockerRenderer,
-        build_dir: Path,
-        install_extras: ty.Iterable = (),
-        use_local_package: bool = False,
-    ):
-        """Install the Arcana Python package into the Dockerfile
-
-        Parameters
-        ----------
-        dockerfile : DockerRenderer
-            the Neurdocker renderer
-        build_dir : Path
-            the directory the Docker image is built from
-        install_extras : list[str]
-            list of "install extras" (options) to specify when installing Arcana
-            (e.g. 'test')
-        use_local_package : bool
-            Use local installation of arcana
-        """
-        arcana_pip_spec = PipPackage(PACKAGE_NAME, extras=install_extras)
-        if use_local_package:
-            arcana_pip_spec = arcana_pip_spec.local_package_location()
-        pip_str = self.pip_spec2str(
-            arcana_pip_spec,
-            dockerfile,
-            build_dir,
-        )
-        dockerfile.run(
-            f'bash -c "source activate {self.CONDA_ENV} \\\n'
-            f'&& python -m pip install --pre --no-cache-dir {pip_str}"'
-        )
 
     @classmethod
     def pip_spec2str(
