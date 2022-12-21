@@ -79,13 +79,17 @@ class ClassResolver:
         """
         if class_str is None and self.allow_none:
             return None
-        if self.base_class is not None and hasattr(self.base_class, "SUBPACKAGE"):
-            subpkg = self.base_class.SUBPACKAGE
-        else:
-            subpkg = None
-        klass = self.fromstr(class_str, subpkg=subpkg)
+        klass = self.fromstr(class_str, subpkg=self._get_subpkg(self.base_class))
         self._check_type(klass)
         return klass
+
+    @classmethod
+    def _get_subpkg(cls, klass):
+        if klass is not None and klass.__module__.startswith("arcana.core"):
+            subpkg = klass.__module__.split(".")[2]
+        else:
+            subpkg = None
+        return subpkg
 
     @classmethod
     def fromstr(cls, class_str, subpkg=None):
@@ -117,8 +121,6 @@ class ClassResolver:
             return class_str  # Assume that it is already resolved
         if class_str.startswith("<") and class_str.endswith(">"):
             class_str = class_str[1:-1]
-        if class_str.startswith(":"):
-            subpkg = None  # treat the module path as absolute, not relative to the ext subpkg
         try:
             module_path, class_name = class_str.split(":")
         except ValueError:
@@ -129,17 +131,17 @@ class ClassResolver:
                     f"Class location '{class_str}' should contain a ':' unless it is in the "
                     "builtins module"
                 ) from None
+
+        if "." in module_path:
+            # Interpret as an absolute path not a relative path from an extension
+            module_path = module_path.rstrip(
+                "."
+            )  # trailing '.' signifies top-level pkg
+            subpkg = None
         module = None
 
         if subpkg:
-            if "." in module_path:
-                raise ValueError(
-                    f"Invalid name of arcana extension {module_path}, under which to "
-                    f"find '{class_name}' relative to sub-package '{subpkg}'. To "
-                    f"designate an absolute path, prepend a ':' to the path, e.g. "
-                    "':arcana.core.utils.testing.data:TestDataSpace'"
-                )
-            full_mod_path = ".".join("arcana", module_path, subpkg)
+            full_mod_path = ".".join(("arcana", module_path, subpkg))
         else:
             full_mod_path = module_path
         try:
@@ -180,12 +182,13 @@ class ClassResolver:
         module_name = klass.__module__
         if module_name == "builtins":
             return klass.__name__
-        if (
-            strip_prefix
-            and hasattr(klass, "SUBPACKAGE")
-            and module_name.startswith(klass.SUBPACKAGE)
-        ):
-            module_name = module_name[len(klass.SUBPACKAGE) + 1 :]
+        if subpkg := cls._get_subpkg(klass):
+            if match := re.match(r"arcana\.(\w+)\." + subpkg, module_name):
+                module_name = match.group(
+                    1
+                )  # just use the name of the extension module
+            if "." not in module_name:
+                module_name += "."  # To distinguish it from extension module name
         return module_name + ":" + klass.__name__
 
     def _check_type(self, klass):

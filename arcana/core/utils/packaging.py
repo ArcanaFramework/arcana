@@ -12,13 +12,16 @@ from arcana.exceptions import ArcanaUsageError
 from arcana import __version__
 
 
-def submodules(package):
+def submodules(package, subpkg=None):
     """Iterates all modules within the given package
 
     Parameters
     ----------
     package : module
         the package to iterate over
+    subpkg : str, optional
+        the sub-package (of the sub-packages) to return instead of the first level down.
+        e.g. package=arcana, subpkg=data -> arcana.common.data, arcana.xnat.data, etc...
 
     Yields
     ------
@@ -28,10 +31,16 @@ def submodules(package):
     for mod_info in pkgutil.iter_modules(
         [str(Path(package.__file__).parent)], prefix=package.__package__ + "."
     ):
-        yield import_module(mod_info.name)
+        if subpkg is not None:
+            try:
+                yield import_module(mod_info.name + "." + subpkg)
+            except ImportError:
+                continue
+        else:
+            yield import_module(mod_info.name)
 
 
-def list_subclasses(package, base_class):
+def list_subclasses(package, base_class, subpkg=None):
     """List all available subclasses of a base class in modules within the given
     package
 
@@ -41,6 +50,9 @@ def list_subclasses(package, base_class):
         the package to list the subclasses within
     base_class : type
         the base class
+    subpkg : str, optional
+        the sub-package (of the sub-packages) to return instead of the first level down.
+        e.g. package=arcana, subpkg=data -> arcana.common.data, arcana.xnat.data, etc...
 
     Returns
     -------
@@ -48,7 +60,7 @@ def list_subclasses(package, base_class):
         all subclasses of the base-class found with the package
     """
     subclasses = []
-    for module in submodules(package):
+    for module in submodules(package, subpkg=subpkg):
         for obj_name in dir(module):
             obj = getattr(module, obj_name)
             if isclass(obj) and issubclass(obj, base_class) and obj is not base_class:

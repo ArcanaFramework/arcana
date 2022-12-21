@@ -382,7 +382,7 @@ class DataStore(metaclass=ABCMeta):
         # If not saved in the configuration file search for sub-classes
         # whose alias matches `name` and can be initialised without params
         cls._singletons = {}
-        for store_cls in list_subclasses(arcana, DataStore):
+        for store_cls in list_subclasses(arcana, DataStore, subpkg="data"):
             try:
                 cls._singletons[store_cls.get_alias()] = store_cls()
             except Exception:
