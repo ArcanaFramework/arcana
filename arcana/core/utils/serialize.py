@@ -85,11 +85,10 @@ class ClassResolver:
 
     @classmethod
     def _get_subpkg(cls, klass):
-        if klass is not None and klass.__module__.startswith("arcana.core"):
-            subpkg = klass.__module__.split(".")[2]
-        else:
-            subpkg = None
-        return subpkg
+        try:
+            return klass.SUBPACKAGE
+        except AttributeError:
+            return None
 
     @classmethod
     def fromstr(cls, class_str, subpkg=None):
@@ -182,12 +181,13 @@ class ClassResolver:
         module_name = klass.__module__
         if module_name == "builtins":
             return klass.__name__
-        if subpkg := cls._get_subpkg(klass):
+        if strip_prefix and cls._get_subpkg(klass):
+            subpkg = cls._get_subpkg(klass)
             if match := re.match(r"arcana\.(\w+)\." + subpkg, module_name):
                 module_name = match.group(
                     1
                 )  # just use the name of the extension module
-            if "." not in module_name:
+            elif "." not in module_name:
                 module_name += "."  # To distinguish it from extension module name
         return module_name + ":" + klass.__name__
 
