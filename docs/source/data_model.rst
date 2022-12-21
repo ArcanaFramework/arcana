@@ -27,8 +27,8 @@ remote repository, but also how the data are accessed, e.g. whether to assume th
 they are in BIDS format, or whether files in an XNAT archive mount can be
 accessed directly (i.e. as exposed to the container service), or only via the API.
 
-There are four data store classes in the :mod:`arcana.data.stores.common`
-and :mod:`arcana.data.stores.medimage` arcana sub-packages:
+There are four data store classes in the :mod:`arcana.common.data`
+and :mod:`arcana.medimage.data` arcana sub-packages:
 
 * :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system
 * :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__
@@ -39,7 +39,7 @@ For instructions on how to add support for new systems see :ref:`alternative_sto
 
 To configure access to a store via the CLI use the ':ref:`arcana store add`' command.
 The store type is specified by the path to the data store sub-class,
-*<module-path>:<class-name>*,  e.g. ``arcana.data.stores.xnat:Xnat``.
+*<module-path>:<class-name>*,  e.g. ``arcana.xnat.data:Xnat``.
 However, if the store is in a submodule of ``arcana.data.stores`` then that
 prefix can be dropped for convenience, e.g. ``mediamge:Xnat``.
 
@@ -68,7 +68,7 @@ data store classes directly.
 .. code-block:: python
 
     import os
-    from arcana.data.stores.medimage import Xnat
+    from arcana.medimage.data import Xnat
 
     # Initialise the data store object
     xnat_store = Xnat(
@@ -226,7 +226,7 @@ Newly created and modified data items are placed into the store with
 
 :class:`.FileGroup` is typically subclassed to specify the datatype of the
 files/directories in the group. For example, there are a number common file
-formats implemented in :mod:`arcana.data.types.common`, including
+formats implemented in :mod:`arcana.common.data`, including
 
 * :class:`.common.Text`
 * :class:`.common.Zip`
@@ -243,7 +243,7 @@ a pipeline and that stored in the data store. See :ref:`adding_formats` for deta
 instructions on how to specify new file formats and converters between them.
 
 As with data stores, file formats are specified in the CLI by *<module-path>:<class-name>*,
-e.g. ``arcana.data.types.common:Text``. However, if the datatype is in a submodule of
+e.g. ``arcana.common.data:Text``. However, if the datatype is in a submodule of
 ``arcana.data.types`` then that prefix can be dropped for convenience,
 e.g. ``common:Text``.
 
@@ -324,8 +324,8 @@ methods can be used directly to add sources and sinks via the Python API.
 
 .. code-block:: python
 
-    from arcana.data.spaces.medimage import Clinical
-    from arcana.data.types.medimage import Dicom, NiftiGz
+    from arcana.medimage.data import Clinical
+    from arcana.medimage.data import Dicom, NiftiGz
 
     xnat_dataset.add_source(
         name='T1w',
@@ -367,9 +367,9 @@ initialised.
 
 .. code-block:: python
 
-    from arcana.data.stores.bids import Bids
-    from arcana.data.stores.common import FileSystem
-    from arcana.data.spaces.medimage import Clinical
+    from arcana.bids.data import Bids
+    from arcana.common.data import FileSystem
+    from arcana.medimage.data import Clinical
 
     bids_dataset = Bids().dataset(
         id='/data/openneuro/ds00014')
@@ -562,13 +562,13 @@ For stores that support datasets with arbitrary tree structures
 (i.e. :class:`.FileSystem`), the "data space" and the hierarchy of layers
 in the data tree needs to be provided. Data spaces are explained in more
 detail in :ref:`data_spaces`. However, for the majority of datasets in the
-medical imaging field, the :class:`arcana.data.spaces.medimage.Clinical` space is
+medical imaging field, the :class:`arcana.medimage.data.Clinical` space is
 appropriate.
 
 .. code-block:: python
 
-    from arcana.data.stores.common import FileSystem
-    from arcana.data.spaces.medimage import Clinical
+    from arcana.common.data import FileSystem
+    from arcana.medimage.data import Clinical
 
     fs_dataset = FileSystem().dataset(
         id='/data/imaging/my-project',

@@ -16,7 +16,7 @@ added by sub-packages (e.g. ``arcana-common``, ``arcana-medimage``,
 
 * :mod:`arcana.data.spaces` - data space definitions (see :ref:`Spaces`)
 * :mod:`arcana.data.types` - datatype definitions (see :ref:`data_formats`)
-* :mod:`arcana.cli` - command-line tools
+* :mod:`arcana.core.cli` - command-line tools
 * :mod:`arcana.analyses` - Arcana analysis class definitions
 * :mod:`arcana.analysis.tasks` - Pydra tasks required by analysis classes, generic Pydra tasks should be implemented in Pydra sub-packages (see `Pydra tasks template <https://github.com/nipype/pydra-tasks-template>`_)
 

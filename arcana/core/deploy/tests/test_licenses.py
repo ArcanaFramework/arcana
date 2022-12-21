@@ -153,6 +153,9 @@ def get_pipeline_image(license_path) -> App:
         info_url="http://concatenate.readthefakedocs.io",
         description="A test of the license installation",
         readme="This is a test README",
+        packages={
+            "pip": ["arcana-common"],
+        },
         licenses={
             LICENSE_NAME: {
                 "destination": license_path,

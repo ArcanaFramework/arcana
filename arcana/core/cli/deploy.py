@@ -16,8 +16,6 @@ from arcana.core.utils.serialize import (
     ClassResolver,
 )
 from arcana.core.deploy.image import Metapackage, App
-
-# from arcana.deploy.xnat.image import XnatCSImage
 from arcana.core.exceptions import ArcanaBuildError
 from arcana.core.data.set import Dataset
 from arcana.core.data.store import DataStore
@@ -40,7 +38,7 @@ def deploy():
 SPEC_ROOT is the file system path to the specification to build, or directory
 containing multiple specifications
 
-TARGET is the type of image to build, e.g. arcana.deploy.xnat:XnatCSImage
+TARGET is the type of image to build, e.g. arcana.deploy.xnat:XnatApp
 the target should resolve to a class deriviing from arcana.core.deploy.App.
 If it is located under the `arcana.deploy`, then that prefix can be dropped, e.g.
 common:App

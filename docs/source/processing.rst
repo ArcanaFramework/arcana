@@ -132,7 +132,7 @@ back to the dataset.
 
     from myworkflows import vbm_template
     from arcana.data.types import common, medimage
-    from arcana.data.spaces.medimage import Clinical
+    from arcana.medimage.data import Clinical
 
     dataset = Dataset.load('bids///data/openneuro/ds00014')
 
@@ -175,12 +175,12 @@ three column placeholders, ``preprocessed``, ``derived_image`` and
 one of the two implemented pipeline builder methods ``preprocess_pipeline``
 (*Line 26*) and ``create_image_pipeline`` (*Line 56*).
 
-The :func:`arcana.mark.analysis` decorator is used to specify an
+The :func:`arcana.core.mark.analysis` decorator is used to specify an
 analysis class (*Line 6*), taking the dataset space that the class operates on
 as an argument. By default, class attributes are assumed to be
-column placeholders of :func:`arcana.mark.column` type (*Line 13-17*).
+column placeholders of :func:`arcana.core.mark.column` type (*Line 13-17*).
 Class attributes can also be free parameters of the analysis by using the
-:func:`arcana.mark.parameter` instead (*Line 21*).
+:func:`arcana.core.mark.parameter` instead (*Line 21*).
 
 The :func:`arca.acore.mark.pipeline` decorator specifies pipeline builder
 methods, and takes the columns the pipeline outputs are connected to as arguments
@@ -192,9 +192,9 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 
     import pydra
     from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
-    from arcana.mark import analysis, pipeline, parameter
-    from arcana.data.spaces.example import ExampleDataSpace
-    from arcana.data.types.common import Zip, Directory, Json, Png, Gif
+    from arcana.core.mark import analysis, pipeline, parameter
+    from arcana.example.data import ExampleDataSpace
+    from arcana.common.data import Zip, Directory, Json, Png, Gif
 
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
@@ -283,7 +283,7 @@ parameters.
 .. code-block:: python
 
   from arcana.core.data.set import Dataset
-  from arcana.data.types.common import Yaml
+  from arcana.common.data import Yaml
   from arcana.analyses.example import ExampleAnalysis
 
   a_dataset = Dataset.load('file///data/a-dataset')
@@ -415,7 +415,7 @@ would look like
 
   {
     "store": {
-      "class": "<arcana.data.stores.medimage.xnat.api:Xnat>",
+      "class": "<arcana.medimage.data.xnat.api:Xnat>",
       "server": "https://central.xnat.org"
     },
     "dataset": {
@@ -433,21 +433,21 @@ would look like
           // MD5 Checksums for all files in the file group. "." refers to the
           // "primary file" in the file group.
           "T1w_reg_dwi": {
-            "datatype": "<arcana.data.types.medimage:NiftiGzX>",
+            "datatype": "<arcana.medimage.data:NiftiGzX>",
             "checksums": {
               ".": "4838470888DBBEADEAD91089DD4DFC55",
               "json": "7500099D8BE29EF9057D6DE5D515DFFE"
             }
           },
           "T2w_reg_dwi": {
-            "datatype": "<arcana.data.types.medimage:NiftiGzX>",
+            "datatype": "<arcana.medimage.data:NiftiGzX>",
             "checksums": {
               ".": "4838470888DBBEADEAD91089DD4DFC55",
               "json": "5625E881E32AE6415E7E9AF9AEC59FD6"
             }
           },
           "dwi_fod": {
-            "datatype": "<arcana.data.types.medimage:MrtrixImage>",
+            "datatype": "<arcana.medimage.data:MrtrixImage>",
             "checksums": {
               ".": "92EF19B942DD019BF8D32A2CE2A3652F"
             }
@@ -457,7 +457,7 @@ would look like
           "wm_tracks": {
             "task": "tckgen",
             "field": "out_file",
-            "datatype": "<arcana.data.types.medimage:MrtrixTrack>",
+            "datatype": "<arcana.medimage.data:MrtrixTrack>",
             "checksums": {
               ".": "D30073044A7B1239EFF753C85BC1C5B3"
             }

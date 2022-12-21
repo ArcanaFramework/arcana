@@ -185,7 +185,7 @@ class ArcanaRequirementVersionsError(ArcanaError):
     pass
 
 
-class ArcanaXnatCSCommandError(ArcanaRepositoryError):
+class ArcanaXnatCommandError(ArcanaRepositoryError):
     """
     Error in the command file used to access an XNAT repository via the XNAT
     container service.

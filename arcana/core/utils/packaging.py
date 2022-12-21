@@ -29,7 +29,7 @@ def submodules(package, subpkg=None):
         all modules within the package
     """
     for mod_info in pkgutil.iter_modules(
-        [str(Path(package.__file__).parent)], prefix=package.__package__ + "."
+        package.__path__, prefix=package.__package__ + "."
     ):
         if subpkg is not None:
             try:

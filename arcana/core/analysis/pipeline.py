@@ -51,7 +51,7 @@ class PipelineField:
     field : str, optional
         the name of the pydra input field to connect to, defaults to name
     datatype : type, optional
-        the type of the items to be passed to the input, arcana.data.types.common.File by default
+        the type of the items to be passed to the input, arcana.common.data.File by default
     """
 
     name: str

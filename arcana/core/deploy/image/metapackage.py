@@ -42,7 +42,7 @@ class Metapackage(ArcanaImage):
                 "-n",
                 "arcana",
                 "arcana",
-                "deploy",
+                "ext",
                 "xnat",
                 "pull-images",
                 "/manifest.json",

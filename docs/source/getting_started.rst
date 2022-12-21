@@ -109,8 +109,8 @@ Alternatively, the same steps can be performed using the Python API:
     # Import arcana module
     from pydra.tasks.fsl.preprocess.bet import BET
     from arcana.core.data import Dataset
-    from arcana.data.spaces.medimage import Clinical
-    from arcana.data.types.medimage import Dicom, NiftiGz
+    from arcana.medimage.data import Clinical
+    from arcana.medimage.data import Dicom, NiftiGz
 
     # Define dataset
     my_dataset = Dataset.load('file///data/my-dataset', space=Clinical,
@@ -172,7 +172,7 @@ Timepoint 'T3' can be plotted.
     When referencing objects within the ``arcana`` package from the CLI such
     as file-datatype classes or data spaces (see :ref:`data_spaces`), the
     standard ``arcana.*.`` prefix can be dropped, e.g. ``medimage:Dicom``
-    instead of the full path ``arcana.data.types.medimage:Dicom``.
+    instead of the full path ``arcana.medimage.data:Dicom``.
     Classes installed outside of the Arcana package, should be referred to
     with their full import path.
 
