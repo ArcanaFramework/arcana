@@ -38,7 +38,7 @@ def deploy():
 SPEC_ROOT is the file system path to the specification to build, or directory
 containing multiple specifications
 
-TARGET is the type of image to build, e.g. arcana.deploy.xnat:XnatApp
+TARGET is the type of image to build, e.g. arcana.xnat.deploy:XnatApp
 the target should resolve to a class deriviing from arcana.core.deploy.App.
 If it is located under the `arcana.deploy`, then that prefix can be dropped, e.g.
 common:App

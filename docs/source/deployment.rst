@@ -58,7 +58,7 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 .. .. code-block:: python
 
 ..     import json
-..     from arcana.deploy.medimage import XnatCommand
+..     from arcana.xnat.deploy import XnatCommand
 ..     from arcana.medimage.data import Clinical
 ..     from arcana.medimage.data import NiftiGz
 
