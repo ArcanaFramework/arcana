@@ -150,8 +150,8 @@ class ClassResolver:
                 return class_str
             else:
                 raise ArcanaUsageError(
-                    f"Did not module {full_mod_path}' when resolving {class_str} with "
-                    f"subpkg={subpkg}"
+                    f"Did not find module {full_mod_path}' when resolving {class_str} "
+                    f"with subpkg={subpkg}"
                 )
         try:
             klass = getattr(module, class_name)
