@@ -245,7 +245,7 @@ instructions on how to specify new file formats and converters between them.
 As with data stores, file formats are specified in the CLI by *<module-path>:<class-name>*,
 e.g. ``arcana.dirtree.data:Text``. However, if the datatype is in a submodule of
 ``arcana.data.types`` then that prefix can be dropped for convenience,
-e.g. ``common:Text``.
+e.g. ``fileformats.common:Text``.
 
 
 .. _data_columns:

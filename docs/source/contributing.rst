@@ -9,16 +9,18 @@ for details.
 Code structure
 --------------
 
-The Arcana code base is separated into :mod:`arcana.core`, where all the core
-elements of the framework reside, and sub-packages to hold framework implementations
-added by sub-packages (e.g. ``arcana-common``, ``arcana-medimage``,
-``arcana-bids``)
+The core Arcana code base is implemented in the "arcana-core" package, which installs
+in the :mod:`arcana.core` module. Extensions which implement data store connectors
+and analyses are installed in separate namesapces (e.g. ``arcana-xnat``, ``arcana-bids``).
 
-* :mod:`arcana.data.spaces` - data space definitions (see :ref:`Spaces`)
-* :mod:`arcana.data.types` - datatype definitions (see :ref:`data_formats`)
-* :mod:`arcana.core.cli` - command-line tools
-* :mod:`arcana.analyses` - Arcana analysis class definitions
-* :mod:`arcana.analysis.tasks` - Pydra tasks required by analysis classes, generic Pydra tasks should be implemented in Pydra sub-packages (see `Pydra tasks template <https://github.com/nipype/pydra-tasks-template>`_)
+In each extension package, there are four special sub-packages, which will be searched
+by the CLI and enable definitions within them to be specified by the extension name
+alone, e.g. xnat:XnatApp, bids:BidsApp
+
+* :mod:`arcana.*.analysis` - Arcana analysis class definitions
+* :mod:`arcana.*.cli` - data space definitions (see :ref:`Spaces`)
+* :mod:`arcana.*.data` - datatype definitions (see :ref:`data_formats`)
+* :mod:`arcana.*.deploy` - command-line tools
 
 
 Authorship

@@ -58,13 +58,13 @@ to appropriate columns in the dataset (``T1w``, ``T2w`` and
       medimage:Dicom --path '.*t2spc.*' --regex
 
     $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurfer/recon-all \
-      common:Zip
+      fileformats.common:Zip
 
     $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
       --input T1w in_file medimage:NiftiGz \
       --input T2w peel medimage:NiftiGz \
-      --output freesurfer/recon-all out_file common:Directory \
+      --output freesurfer/recon-all out_file fileformats.common:Directory \
       --parameter param1 10 \
       --parameter param2 20
 

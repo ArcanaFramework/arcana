@@ -47,7 +47,7 @@ def test_deploy_make_app_cli(command_spec, cli_runner, work_dir):
         make_app,
         [
             str(spec_path),
-            "common:App",
+            "core:App",
             "--build-dir",
             str(build_dir),
             "--registry",
@@ -90,7 +90,7 @@ def test_deploy_remake_app_cli(command_spec, docker_registry, cli_runner, run_pr
             make_app,
             [
                 str(spec_path),
-                "common:App",
+                "core:App",
                 "--build-dir",
                 str(build_dir),
                 "--registry",
@@ -183,11 +183,11 @@ command:
   row_frequency: common:Samples[sample]
   inputs:
     in_file:
-      datatype: common:Text
+      datatype: fileformats.common:Text
       help_string: the input file
   outputs:
     out_file:
-      datatype: common:Text
+      datatype: fileformats.common:Text
       help_string: the output file
     """.strip(),
         """
@@ -289,7 +289,7 @@ command:
           datatype: medimage:Dicom
     outputs:
       mriqc:
-        datatype: common:Directory
+        datatype: fileformats.common:Directory
         help_string: "MRIQC output directory"
         configuration:
           path: mriqc

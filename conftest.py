@@ -305,25 +305,25 @@ def command_spec():
         "task": "arcana.core.utils.testing.tasks:concatenate",
         "inputs": {
             "first_file": {
-                "datatype": "common:Text",
+                "datatype": "fileformats.common:Text",
                 "field": "in_file1",
                 "default_column": {
-                    "row_frequency": "common:Samples[sample]",
+                    "row_frequency": "spaces:Samples[sample]",
                 },
                 "help_string": "the first file to pass as an input",
             },
             "second_file": {
-                "datatype": "common:Text",
+                "datatype": "fileformats.common:Text",
                 "field": "in_file2",
                 "default_column": {
-                    "row_frequency": "common:Samples[sample]",
+                    "row_frequency": "spaces:Samples[sample]",
                 },
                 "help_string": "the second file to pass as an input",
             },
         },
         "outputs": {
             "concatenated": {
-                "datatype": "common:Text",
+                "datatype": "fileformats.common:Text",
                 "field": "out_file",
                 "help_string": "an output file",
             }
@@ -337,7 +337,7 @@ def command_spec():
                 "help_string": "a parameter",
             }
         },
-        "row_frequency": "common:Samples[sample]",
+        "row_frequency": "spaces:Samples[sample]",
     }
 
 

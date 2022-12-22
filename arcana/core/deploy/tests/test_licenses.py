@@ -36,7 +36,7 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
         make_app,
         args=[
             str(root_dir),
-            "common:App",
+            "core:App",
             "--build-dir",
             str(build_dir),
             "--license",
@@ -155,7 +155,7 @@ def get_pipeline_image(license_path) -> App:
         description="A test of the license installation",
         readme="This is a test README",
         packages={
-            "pip": ["arcana-common"],
+            "pip": ["arcana-spaces", "fileformats-common"],
         },
         licenses={
             LICENSE_NAME: {
@@ -166,11 +166,11 @@ def get_pipeline_image(license_path) -> App:
         },
         command={
             "task": "arcana.core.utils.testing.tasks:check_license",
-            "row_frequency": "common:Samples[sample]",
+            "row_frequency": "spaces:Samples[sample]",
             "inputs": [
                 {
                     "name": LICENSE_INPUT_FIELD,
-                    "datatype": "common:Text",
+                    "datatype": "fileformats.common:Text",
                     "field": "expected_license_contents",
                     "help_string": "the path to the license",
                 },
@@ -178,7 +178,7 @@ def get_pipeline_image(license_path) -> App:
             "outputs": [
                 {
                     "name": LICENSE_OUTPUT_FIELD,
-                    "datatype": "common:Text",
+                    "datatype": "fileformats.common:Text",
                     "field": "out",
                     "help_string": "the validated license path",
                 }

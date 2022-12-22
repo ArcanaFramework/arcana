@@ -25,13 +25,13 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source1",
-                "datatype": "common:Text",
+                "datatype": "fileformats.common:Text",
                 "field": "in_file1",
                 "help_string": "dummy",
             },
             {
                 "name": "source2",
-                "datatype": "common:Text",
+                "datatype": "fileformats.common:Text",
                 "field": "in_file2",
                 "help_string": "dummy",
             },
@@ -39,7 +39,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "common:Text",
+                "datatype": "fileformats.common:Text",
                 "field": "out_file",
                 "help_string": "dummy",
             }
@@ -100,13 +100,13 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source1",
-                "datatype": "common:Text",
+                "datatype": "fileformats.common:Text",
                 "field": "in_file1",
                 "help_string": "dummy",
             },
             {
                 "name": "source2",
-                "datatype": "common:Directory",
+                "datatype": "fileformats.common:Directory",
                 "field": "in_file2",
                 "help_string": "dummy",
             },
@@ -114,7 +114,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "common:Text",
+                "datatype": "fileformats.common:Text",
                 "field": "out_file",
                 "help_string": "dummy",
             }
@@ -230,7 +230,7 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
             {
                 "name": "source",
                 "datatype": "arcana.core.utils.testing.data:EncodedText",
-                "default_column": {"datatype": "common:Text"},
+                "default_column": {"datatype": "fileformats.common:Text"},
                 "field": "in_file",
                 "help_string": "dummy",
             },
