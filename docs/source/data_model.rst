@@ -325,7 +325,7 @@ methods can be used directly to add sources and sinks via the Python API.
 .. code-block:: python
 
     from arcana.medimage.data import Clinical
-    from arcana.medimage.data import Dicom, NiftiGz
+    from fileformats.medimage.data import Dicom, NiftiGz
 
     xnat_dataset.add_source(
         name='T1w',

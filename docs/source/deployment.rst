@@ -60,7 +60,7 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 ..     import json
 ..     from arcana.xnat.deploy import XnatCommand
 ..     from arcana.medimage.data import Clinical
-..     from arcana.medimage.data import NiftiGz
+..     from fileformats.medimage.data import NiftiGz
 
 ..     xnat_command = XnatCommand(
 ..         name='example_pipeline',

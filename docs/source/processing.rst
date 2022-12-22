@@ -433,21 +433,21 @@ would look like
           // MD5 Checksums for all files in the file group. "." refers to the
           // "primary file" in the file group.
           "T1w_reg_dwi": {
-            "datatype": "<arcana.medimage.data:NiftiGzX>",
+            "datatype": "<fileformats.medimage.data:NiftiGzX>",
             "checksums": {
               ".": "4838470888DBBEADEAD91089DD4DFC55",
               "json": "7500099D8BE29EF9057D6DE5D515DFFE"
             }
           },
           "T2w_reg_dwi": {
-            "datatype": "<arcana.medimage.data:NiftiGzX>",
+            "datatype": "<fileformats.medimage.data:NiftiGzX>",
             "checksums": {
               ".": "4838470888DBBEADEAD91089DD4DFC55",
               "json": "5625E881E32AE6415E7E9AF9AEC59FD6"
             }
           },
           "dwi_fod": {
-            "datatype": "<arcana.medimage.data:MrtrixImage>",
+            "datatype": "<fileformats.medimage.data:MrtrixImage>",
             "checksums": {
               ".": "92EF19B942DD019BF8D32A2CE2A3652F"
             }
@@ -457,7 +457,7 @@ would look like
           "wm_tracks": {
             "task": "tckgen",
             "field": "out_file",
-            "datatype": "<arcana.medimage.data:MrtrixTrack>",
+            "datatype": "<fileformats.medimage.data:MrtrixTrack>",
             "checksums": {
               ".": "D30073044A7B1239EFF753C85BC1C5B3"
             }
