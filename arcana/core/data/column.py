@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import abstractmethod, ABCMeta
 import re
 import typing as ty
@@ -14,6 +15,9 @@ from .space import DataSpace
 
 ItemType = ty.TypeVar("ItemType")
 
+if ty.TYPE_CHECKING:
+    from arcana.core.data.set import Dataset
+
 
 @attrs.define
 class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
@@ -22,7 +26,7 @@ class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
     path: str = attrs.field()
     datatype = attrs.field()
     row_frequency: DataSpace = attrs.field()
-    dataset = attrs.field(
+    dataset: Dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
     )
 

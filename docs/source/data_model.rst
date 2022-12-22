@@ -182,14 +182,14 @@ the subject level of the tree sit in special *SUBJECT* branches
             └── bold_rest
 
 
-In the CLI, datasets are referred to by ``<store-nickname>//<dataset-id>[@<dataset-name>]``,
-where *<store-name>* is the nickname of the store as saved by ':ref:`arcana store add`'
-(see :ref:`Stores`), and *<dataset-id>* is
+In the CLI, datasets are referred to by a "dataset locator" in the form
+``<store>//<id>[@<name>]``, where *<store>* is the nickname of the store as saved by
+':ref:`arcana store add`' (see :ref:`Stores`), and *<id>* is
 
-* the file-system path to the data directory for file-system (and BIDS) stores
+* the file-system path to the data directory for file-system stores (DirTree and BIDS)
 * the project ID for XNAT stores
 
-*<dataset-id>* is an optional component ("default" by default), which specifies a
+*<name>* is an optional component ("default" by default), which specifies a
 unique namespace for the dataset, and derivatives created within it. This enables
 multiple Arcana datasets to be defined on the same data, with different exclusion
 criteria and analyses applied to them.
@@ -243,9 +243,9 @@ a pipeline and that stored in the data store. See :ref:`adding_formats` for deta
 instructions on how to specify new file formats and converters between them.
 
 As with data stores, file formats are specified in the CLI by *<module-path>:<class-name>*,
-e.g. ``arcana.dirtree.data:Text``. However, if the datatype is in a submodule of
-``arcana.data.types`` then that prefix can be dropped for convenience,
-e.g. ``common:Text``.
+e.g. ``arcana.dirtree.data:Text``. However, if the datatype is the standard extension
+location, i.e. ``arcana.<extension>.data`` then *<module-path>* can be just the
+extension name, e.g. ``common:Text``.
 
 
 .. _data_columns:
