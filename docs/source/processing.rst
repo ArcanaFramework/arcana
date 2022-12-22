@@ -194,7 +194,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
     from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
     from arcana.core.mark import analysis, pipeline, parameter
     from arcana.example.data import ExampleDataSpace
-    from arcana.common.data import Zip, Directory, Json, Png, Gif
+    from arcana.dirtree.data import Zip, Directory, Json, Png, Gif
 
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
@@ -283,7 +283,7 @@ parameters.
 .. code-block:: python
 
   from arcana.core.data.set import Dataset
-  from arcana.common.data import Yaml
+  from arcana.dirtree.data import Yaml
   from arcana.analyses.example import ExampleAnalysis
 
   a_dataset = Dataset.load('file///data/a-dataset')

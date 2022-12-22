@@ -5,7 +5,7 @@ New formats and spaces
 
 Arcana was initially developed for medical-imaging analysis. Therefore, with
 the notable exceptions of the generic data spaces and file-formats defined in
-:mod:`arcana.common.data`, the
+:mod:`arcana.dirtree.data`, the
 majority of file-formats and data spaces are specific to medical imaging.
 However, new formats and data spaces used in other fields can be implemented as
 required with just a few lines of code.
@@ -37,7 +37,7 @@ to the extension string used to identify the type of file, e.g.
 
 .. code-block:: python
 
-    from arcana.common.data import File
+    from arcana.dirtree.data import File
 
     class Json(File):
         ext = 'json'
@@ -77,7 +77,7 @@ identification.
 
 .. code-block:: python
 
-    from arcana.common.data import Directory, File
+    from arcana.dirtree.data import Directory, File
 
     class DicomFile(File):
         ext = 'dcm'
@@ -118,7 +118,7 @@ converted file group in the order they appear in ``side_car_exts``.
     from pydra.tasks.dcm2niix import Dcm2niix
     from pydra.tasks.mrtrix3.utils import MRConvert
     from arcana.core.mark import converter
-    from arcana.common.data import File
+    from arcana.dirtree.data import File
 
     class Nifti(File):
         ext = 'nii'

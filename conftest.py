@@ -7,7 +7,7 @@ import docker
 from tempfile import mkdtemp
 import pytest
 from click.testing import CliRunner
-from arcana.common.data import Text, Directory, Json
+from arcana.dirtree.data import Text, Directory, Json
 from arcana.core.utils.testing.data import (
     NiftiGz,
     NiftiGzX,

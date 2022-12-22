@@ -12,8 +12,8 @@ from arcana.core.utils.misc import set_cwd, path2varname
 from arcana.core.data.space import DataSpace
 from arcana.core.data.store import DataStore
 from arcana.core.data.type.file import WithSideCars, BaseFile
-from arcana.common.data import FileSystem
-from arcana.common.data.formats import Text
+from arcana.dirtree.data import FileSystem
+from arcana.dirtree.data.formats import Text
 from arcana.core.mark import converter
 
 

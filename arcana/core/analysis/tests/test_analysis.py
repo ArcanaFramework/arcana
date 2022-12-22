@@ -3,7 +3,7 @@ import tempfile
 import attrs
 import pytest
 import pydra
-from arcana.common.data import Samples
+from arcana.dirtree.data import Samples
 from arcana.core.utils.testing.tasks import (
     concatenate,
     concatenate_reverse,
@@ -25,8 +25,8 @@ from arcana.core.analysis.mark import (
     subanalysis,
 )
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
-from arcana.common.data.formats import Zip, Text
-from arcana.common.data.file_system import FileSystem
+from arcana.dirtree.data.formats import Zip, Text
+from arcana.dirtree.data.file_system import FileSystem
 from arcana.core.analysis.salience import (
     CheckStatus,
     ColumnSalience as cs,
@@ -1006,7 +1006,7 @@ def test_analysis_with_subanalyses(
     # analysis.sub2.multiplier = 100
     assert analysis.file1 == test_partial_numeric_dataset["a_column"]
     assert analysis.file2 == test_partial_numeric_dataset["another_column"]
-    assert analysis.common_duplicates == 1
+    assert analysis.dirtree_duplicates == 1
     assert analysis.sub1.file1 == test_partial_numeric_dataset["a_column"]
     assert analysis.sub1.file2 == test_partial_numeric_dataset["another_column"]
     assert analysis.sub2.duplicates == 1
@@ -1038,7 +1038,7 @@ def test_analysis_with_subanalyses(
         wf,
         concatenated=concatenated,
         file3=concat_and_multiplied,
-        duplicates=analysis.common_duplicates,
+        duplicates=analysis.dirtree_duplicates,
     )
     wf.set_output(("doubly_concatenated", doubly_concatenated))
     result = wf(plugin="serial")
@@ -1145,7 +1145,7 @@ def test_analysis_with_nested_subanalyses(
 
     assert analysis.outer_sub1.file1 == test_partial_numeric_dataset["a_column"]
     assert analysis.outer_sub1.file2 == test_partial_numeric_dataset["another_column"]
-    assert analysis.outer_sub1.common_duplicates == 7
+    assert analysis.outer_sub1.dirtree_duplicates == 7
     assert analysis.outer_sub1.concatenated is None
     assert analysis.outer_sub1.sub1.file1 == test_partial_numeric_dataset["a_column"]
     assert (
@@ -1165,7 +1165,7 @@ def test_analysis_with_nested_subanalyses(
 
     assert analysis.outer_sub2.file1 == test_partial_numeric_dataset["another_column"]
     assert analysis.outer_sub2.file2 == test_partial_numeric_dataset["a_column"]
-    assert analysis.outer_sub2.common_duplicates == 3
+    assert analysis.outer_sub2.dirtree_duplicates == 3
     assert analysis.outer_sub2.concatenated is None
     assert (
         analysis.outer_sub2.sub1.file1 == test_partial_numeric_dataset["another_column"]

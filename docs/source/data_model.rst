@@ -27,7 +27,7 @@ remote repository, but also how the data are accessed, e.g. whether to assume th
 they are in BIDS format, or whether files in an XNAT archive mount can be
 accessed directly (i.e. as exposed to the container service), or only via the API.
 
-There are four data store classes in the :mod:`arcana.common.data`
+There are four data store classes in the :mod:`arcana.dirtree.data`
 and :mod:`arcana.medimage.data` arcana sub-packages:
 
 * :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system
@@ -226,12 +226,12 @@ Newly created and modified data items are placed into the store with
 
 :class:`.FileGroup` is typically subclassed to specify the datatype of the
 files/directories in the group. For example, there are a number common file
-formats implemented in :mod:`arcana.common.data`, including
+formats implemented in :mod:`arcana.dirtree.data`, including
 
-* :class:`.common.Text`
-* :class:`.common.Zip`
-* :class:`.common.Json`
-* :class:`.common.Directory`
+* :class:`.dirtree.Text`
+* :class:`.dirtree.Zip`
+* :class:`.dirtree.Json`
+* :class:`.dirtree.Directory`
 
 File-group classes specify the extensions of the expected files/directories,
 converters from alternative file formats, and may
@@ -243,7 +243,7 @@ a pipeline and that stored in the data store. See :ref:`adding_formats` for deta
 instructions on how to specify new file formats and converters between them.
 
 As with data stores, file formats are specified in the CLI by *<module-path>:<class-name>*,
-e.g. ``arcana.common.data:Text``. However, if the datatype is in a submodule of
+e.g. ``arcana.dirtree.data:Text``. However, if the datatype is in a submodule of
 ``arcana.data.types`` then that prefix can be dropped for convenience,
 e.g. ``common:Text``.
 
@@ -368,7 +368,7 @@ initialised.
 .. code-block:: python
 
     from arcana.bids.data import Bids
-    from arcana.common.data import FileSystem
+    from arcana.dirtree.data import FileSystem
     from arcana.medimage.data import Clinical
 
     bids_dataset = Bids().dataset(
@@ -567,7 +567,7 @@ appropriate.
 
 .. code-block:: python
 
-    from arcana.common.data import FileSystem
+    from arcana.dirtree.data import FileSystem
     from arcana.medimage.data import Clinical
 
     fs_dataset = FileSystem().dataset(

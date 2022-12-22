@@ -3,7 +3,7 @@ from arcana.core.utils.misc import path2varname, varname2path
 
 
 def test_package_from_module():
-    assert package_from_module("arcana.common").key == "arcana-common"
+    assert package_from_module("arcana.dirtree").key == "arcana-common"
     assert package_from_module("pydra.tasks.dcm2niix").key == "pydra-dcm2niix"
     assert package_from_module("pydra.engine").key == "pydra"
 
