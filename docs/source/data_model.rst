@@ -30,7 +30,7 @@ accessed directly (i.e. as exposed to the container service), or only via the AP
 There are four data store classes in the :mod:`arcana.dirtree.data`
 and :mod:`arcana.medimage.data` arcana sub-packages:
 
-* :class:`.FileSystem` - access data organised within an arbitrary directory tree on the file system
+* :class:`.SimpleStore` - access data organised within an arbitrary directory tree on the file system
 * :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__
 * :class:`.Xnat` - access data stored in XNAT_ repositories vi its REST API
 * :class:`.XnatViaCS` - access data stored in XNAT_ via its `container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_
@@ -87,7 +87,7 @@ data store classes directly.
 
 .. note::
 
-    Data stores that don't require any parameters such as :class:`.FileSystem` and
+    Data stores that don't require any parameters such as :class:`.SimpleStore` and
     :class:`.Bids` don't need to be configured and can be accessed via their aliases,
     ``file`` and ``bids`` when defining a dataset.
 
@@ -368,7 +368,7 @@ initialised.
 .. code-block:: python
 
     from arcana.bids.data import Bids
-    from arcana.dirtree.data import FileSystem
+    from arcana.core.utils.testing.data import SimpleStore
     from arcana.medimage.data import Clinical
 
     bids_dataset = Bids().dataset(
@@ -559,7 +559,7 @@ axes
 .. and how the layers add to one another
 
 For stores that support datasets with arbitrary tree structures
-(i.e. :class:`.FileSystem`), the "data space" and the hierarchy of layers
+(i.e. :class:`.SimpleStore`), the "data space" and the hierarchy of layers
 in the data tree needs to be provided. Data spaces are explained in more
 detail in :ref:`data_spaces`. However, for the majority of datasets in the
 medical imaging field, the :class:`arcana.medimage.data.Clinical` space is
@@ -567,10 +567,10 @@ appropriate.
 
 .. code-block:: python
 
-    from arcana.dirtree.data import FileSystem
+    from arcana.core.utils.testing.data import SimpleStore
     from arcana.medimage.data import Clinical
 
-    fs_dataset = FileSystem().dataset(
+    fs_dataset = SimpleStore().dataset(
         id='/data/imaging/my-project',
         # Define the hierarchy of the dataset in which imaging session
         # sub-directories are separated into directories via their study group

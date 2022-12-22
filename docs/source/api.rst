@@ -49,7 +49,7 @@ Core
 Stores
 ~~~~~~
 
-.. autoclass:: arcana.dirtree.data.FileSystem
+.. autoclass:: arcana.dirtree.data.SimpleStore
 
 .. autoclass:: arcana.bids.data.Bids
 

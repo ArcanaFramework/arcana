@@ -37,7 +37,7 @@ to the extension string used to identify the type of file, e.g.
 
 .. code-block:: python
 
-    from arcana.dirtree.data import File
+    from fileformats.common import File
 
     class Json(File):
         ext = 'json'
@@ -77,7 +77,7 @@ identification.
 
 .. code-block:: python
 
-    from arcana.dirtree.data import Directory, File
+    from fileformats.common import Directory, File
 
     class DicomFile(File):
         ext = 'dcm'
@@ -118,7 +118,7 @@ converted file group in the order they appear in ``side_car_exts``.
     from pydra.tasks.dcm2niix import Dcm2niix
     from pydra.tasks.mrtrix3.utils import MRConvert
     from arcana.core.mark import converter
-    from arcana.dirtree.data import File
+    from fileformats.common import File
 
     class Nifti(File):
         ext = 'nii'

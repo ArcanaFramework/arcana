@@ -1,6 +1,5 @@
 import pytest
 import os.path
-from unittest.mock import patch
 from arcana.core.data.set import Dataset
 from arcana.core.analysis.salience import DataQuality, ColumnSalience
 from arcana.core.utils.testing.data import TestDataSpace

@@ -52,18 +52,18 @@ to appropriate columns in the dataset (``T1w``, ``T2w`` and
 .. code-block:: console
 
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T1w \
-      medimage:Dicom --path '.*mprage.*' --regex
+      fileformats.medimage:Dicom --path '.*mprage.*' --regex
 
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
-      medimage:Dicom --path '.*t2spc.*' --regex
+      fileformats.medimage:Dicom --path '.*t2spc.*' --regex
 
     $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurfer/recon-all \
       fileformats.common:Zip
 
     $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
-      --input T1w in_file medimage:NiftiGz \
-      --input T2w peel medimage:NiftiGz \
+      --input T1w in_file fileformats.medimage:NiftiGz \
+      --input T2w peel fileformats.medimage:NiftiGz \
       --output freesurfer/recon-all out_file fileformats.common:Directory \
       --parameter param1 10 \
       --parameter param2 20
@@ -194,7 +194,7 @@ methods, and takes the columns the pipeline outputs are connected to as argument
     from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
     from arcana.core.mark import analysis, pipeline, parameter
     from arcana.example.data import ExampleDataSpace
-    from arcana.dirtree.data import Zip, Directory, Json, Png, Gif
+    from fileformats.common import Zip, Directory, Json, Png, Gif
 
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
@@ -283,8 +283,8 @@ parameters.
 .. code-block:: python
 
   from arcana.core.data.set import Dataset
-  from arcana.dirtree.data import Yaml
-  from arcana.analyses.example import ExampleAnalysis
+  from fileformats.common import Yaml
+  from arcana.examples import ExampleAnalysis
 
   a_dataset = Dataset.load('file///data/a-dataset')
 

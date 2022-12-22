@@ -13,7 +13,7 @@ Required methods
 
 When subclassing :class:`.DataStore`, the following abstract methods must be
 overridden to implement the appropriate functionality of the data store. For
-a reference implementation please see :class:`arcana.dirtree.data.FileSystem`.
+a reference implementation please see :class:`arcana.dirtree.data.SimpleStore`.
 
 .. autoclass:: arcana.core.data.store.DataStore
     :noindex:

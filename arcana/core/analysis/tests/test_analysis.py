@@ -26,7 +26,7 @@ from arcana.core.analysis.mark import (
 )
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
 from fileformats.common import Zip, Text
-from arcana.dirtree.data.file_system import FileSystem
+from arcana.core.utils.testing.data import SimpleStore
 from arcana.core.analysis.salience import (
     CheckStatus,
     ColumnSalience as cs,
@@ -102,7 +102,7 @@ def test_numeric_file2(sample_dir2):
 
 @pytest.fixture
 def test_dataset(source_dir, test_file1, test_file2, test_file3):
-    dataset = FileSystem().new_dataset(
+    dataset = SimpleStore().new_dataset(
         source_dir, space=Samples, hierarchy=[Samples.sample]
     )
     dataset.add_source("a_column", Text, "file1")
@@ -115,7 +115,7 @@ def test_dataset(source_dir, test_file1, test_file2, test_file3):
 def test_partial_numeric_dataset(
     source_dir, test_file1, test_file2, test_numeric_file1, test_numeric_file2
 ):
-    dataset = FileSystem().new_dataset(
+    dataset = SimpleStore().new_dataset(
         source_dir, space=Samples, hierarchy=[Samples.sample]
     )
     dataset.add_source("a_column", Text, "file1")

@@ -7,7 +7,7 @@ import docker.errors
 from arcana.core.utils.testing import show_cli_trace
 from arcana.core.cli.deploy import make_app, install_license
 from arcana.core.deploy.image import App
-from arcana.dirtree.data import FileSystem
+from arcana.core.utils.testing.data import SimpleStore
 from arcana.spaces.data import Samples
 
 
@@ -204,7 +204,7 @@ def make_dataset(dataset_dir):
     with open(sample_dir / (LICENSE_INPUT_PATH + ".txt"), "w") as f:
         f.write(LICENSE_CONTENTS)
 
-    dataset = FileSystem().new_dataset(dataset_dir, space=Samples)
+    dataset = SimpleStore().new_dataset(dataset_dir, space=Samples)
     dataset.save()
 
 

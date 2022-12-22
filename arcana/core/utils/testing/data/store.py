@@ -17,11 +17,11 @@ class SimpleStore(DataStore):
 
     alias = "simple"
 
-    server: str  # Not used, just there to test `arcana store add` CLI
-    user: str  # Not used, just there to test `arcana store add` CLI
-    password: str  # Not used, just there to test `arcana store add` CLI
+    server: str = None  # Not used, just there to test `arcana store add` CLI
+    user: str = None  # Not used, just there to test `arcana store add` CLI
+    password: str = None  # Not used, just there to test `arcana store add` CLI
     cache_dir: Path = attrs.field(
-        converter=Path
+        converter=lambda x: Path(x) if x is not None else x, default=None
     )  # Only used to store the site-licenses in
 
     SITE_LICENSES_DIR = "LICENSE"
@@ -187,6 +187,8 @@ class SimpleStore(DataStore):
 
     def site_licenses_dataset(self):
         """Provide a place to store hold site-wide licenses"""
+        if self.cache_dir is None:
+            raise Exception("Cache dir needs to be set")
         dataset_root = self.cache_dir / self.SITE_LICENSES_DIR
         if not dataset_root.exists():
             dataset_root.mkdir(parents=True)
@@ -224,12 +226,12 @@ class SimpleStore(DataStore):
         raise NotImplementedError
 
     @classmethod
-    def get_ids_from_row_name(cls, row_dir):
-        parts = row_dir.split(".")
+    def get_ids_from_row_name(cls, row_dir: Path):
+        parts = row_dir.name.split(".")
         return dict(p.split("=") for p in parts)
 
     @classmethod
-    def get_row_name_from_ids(cls, ids):
+    def get_row_name_from_ids(cls, ids: dict[str, str]):
         return ".".join(f"{k}={v}" for k, v in ids.items())
 
     @classmethod
@@ -260,7 +262,9 @@ class SimpleStore(DataStore):
         return (
             d
             for d in Path(dr).iterdir()
-            if not (d.startswith(".") or any(d.endswith(s) for s in skip_suffixes))
+            if not (
+                d.name.startswith(".") or any(d.name.endswith(s) for s in skip_suffixes)
+            )
         )
 
     def definition_save_path(self, dataset_id, name):

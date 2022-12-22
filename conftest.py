@@ -5,10 +5,11 @@ from datetime import datetime
 import shutil
 import docker
 from tempfile import mkdtemp
+from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 from fileformats.common import Text, Directory, Json
-from arcana.core.utils.testing.data import (
+from arcana.core.utils.testing.data.fileformats import (
     NiftiGz,
     NiftiGzX,
     NiftiX,
@@ -32,6 +33,7 @@ from arcana.core.utils.testing.data import (
     Xyz,
     make_dataset,
     save_dataset,
+    SimpleStore,
 )
 
 # Set DEBUG logging for unittests
@@ -68,6 +70,14 @@ def build_cache_dir():
     # build_cache_dir.mkdir()
     return Path(mkdtemp())
     # return build_cache_dir
+
+
+@pytest.fixture
+def simple_store(work_dir):
+    store = SimpleStore(cache_dir=work_dir / "simple-store-cache")
+    with patch.dict(os.environ, {"ARCANA_HOME": str(work_dir / "arcana-home")}):
+        store.save("simple")
+        yield store
 
 
 @pytest.fixture

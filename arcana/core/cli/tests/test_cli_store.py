@@ -31,7 +31,7 @@ def test_store_cli(cli_runner, work_dir):
         # List all saved and built-in stores
         result = cli_runner(ls, [])
         assert result.exit_code == 0, show_cli_trace(result)
-        assert "file - arcana.dirtree.data.file_system:FileSystem" in result.output
+        assert "file - arcana.dirtree.data.store:SimpleStore" in result.output
         assert (
             f"{store_name} - arcana.core.utils.testing.data:SimpleStore"
             in result.output

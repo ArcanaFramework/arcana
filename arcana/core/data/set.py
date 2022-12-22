@@ -41,10 +41,10 @@ class Dataset:
         store it is stored (e.g. FS directory path or project ID)
     store : Repository
         The store the dataset is stored into. Can be the local file
-        system by providing a FileSystem repo.
+        system by providing a SimpleStore repo.
     hierarchy : Sequence[str]
         The data frequencies that are explicitly present in the data tree.
-        For example, if a FileSystem dataset (i.e. directory) has
+        For example, if a SimpleStore dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
@@ -297,6 +297,18 @@ class Dataset:
             self._set_root()
             self.store.find_rows(self)
         return self._root
+
+    @property
+    def locator(self):
+        if self.store.name is None:
+            raise Exception(
+                f"Must save store {self.store} first before accessing locator for "
+                f"{self}"
+            )
+        locator = f"{self.store.name}//{self.id}"
+        if self.name is not self.DEFAULT_NAME:
+            locator += f"@{self.name}"
+        return locator
 
     def _set_root(self):
         self._root = DataRow({self.root_freq: None}, self.root_freq, self)

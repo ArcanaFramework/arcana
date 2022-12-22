@@ -8,7 +8,7 @@ from pathlib import Path
 from dataclasses import dataclass, field as dataclass_field
 from arcana.core.utils.misc import set_cwd, path2varname
 from arcana.core.data.space import DataSpace
-from arcana.dirtree.data import FileSystem
+from arcana.core.utils.testing.data import SimpleStore
 from .space import TestDataSpace
 
 # -----------------------
@@ -72,7 +72,7 @@ def create_dataset_data_in_repo(
 
 
 def access_dataset(blueprint, dataset_path):
-    dataset = FileSystem().new_dataset(
+    dataset = SimpleStore().new_dataset(
         dataset_path,
         hierarchy=blueprint.hierarchy,
         id_inference=blueprint.id_inference,

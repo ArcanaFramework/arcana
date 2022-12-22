@@ -27,6 +27,7 @@ class DataStore(metaclass=ABCMeta):
     # classes should implement.
     # """
 
+    name: str = None
     _connection_depth = attrs.field(
         default=0, init=False, hash=False, repr=False, eq=False
     )
@@ -226,7 +227,7 @@ class DataStore(metaclass=ABCMeta):
         If a connection session is required to the store manage it here
         """
 
-    def save(self, name: str, config_path: Path = None):
+    def save(self, name: str = None, config_path: Path = None):
         """Saves the configuration of a DataStore in 'stores.yaml'
 
         Parameters
@@ -240,11 +241,19 @@ class DataStore(metaclass=ABCMeta):
             raise ArcanaNameError(
                 name, f"Name '{name}' clashes with built-in type of store"
             )
+        if self.name is None:
+            if name is None:
+                raise ArcanaNameError(
+                    f"Must provide name to save store {self} as as it doesn't have one "
+                    "already"
+                )
+            self.name = name
         entries = self.load_saved_entries()
         # connect to store in case it is needed in the asdict method and to
         # test the connection in general before it is saved
+        dct = self.asdict()
         with self:
-            entries[name] = self.asdict()
+            entries[dct.pop["name"]] = dct
         self.save_entries(entries, config_path=config_path)
 
     def asdict(self, **kwargs):
@@ -293,6 +302,7 @@ class DataStore(metaclass=ABCMeta):
                 )
         else:
             entry.update(kwargs)
+            entry["name"] = name
             store = fromdict(entry)  # Would be good to use a class resolver here
         return store
 
@@ -368,7 +378,7 @@ class DataStore(metaclass=ABCMeta):
             name = Dataset.DEFAULT_NAME
         dct = self.load_dataset_definition(id, name)
         if dct is None:
-            raise KeyError(f"Did not find a dataset '{id}::{name}'")
+            raise KeyError(f"Did not find a dataset '{id}@{name}'")
         return fromdict(dct, id=id, name=name, store=self)
 
     @classmethod
@@ -384,7 +394,7 @@ class DataStore(metaclass=ABCMeta):
         cls._singletons = {}
         for store_cls in list_subclasses(arcana, DataStore, subpkg="data"):
             try:
-                cls._singletons[store_cls.get_alias()] = store_cls()
+                cls._singletons[store_cls.name] = store_cls()
             except Exception:
                 pass
         return cls._singletons
