@@ -508,7 +508,7 @@ class Dataset:
 
         Parameters
         ----------
-        tree_path : Sequence[str]
+        tree_path : list[str]
             The sequence of labels for each layer in the hierarchy of the
             dataset leading to the current row.
         explicit_ids : dict[DataSpace, str]
