@@ -2,6 +2,9 @@ from __future__ import annotations
 import logging
 from abc import abstractmethod, ABCMeta
 from pathlib import Path
+import zipfile
+import shutil
+from itertools import product
 import attrs
 import typing as ty
 import yaml
@@ -10,13 +13,38 @@ from arcana.core.utils.serialize import (
     fromdict,
 )
 import arcana
-from arcana.core.utils.misc import get_config_file_path
+from arcana.core.utils.misc import get_config_file_path, set_cwd, path2varname
 from arcana.core.utils.packaging import list_subclasses
 from arcana.core.exceptions import ArcanaUsageError, ArcanaNameError
 
 DS = ty.TypeVar("DS", bound="DataStore")
 
 logger = logging.getLogger("arcana")
+
+
+if ty.TYPE_CHECKING:
+    from .space import DataSpace
+
+
+@attrs.define
+class TestDatasetBlueprint:
+
+    hierarchy: ty.List[DataSpace]
+    dim_lengths: ty.List[int]  # size of layers a-d respectively
+    files: ty.List[str]  # files present at bottom layer
+    id_inference: ty.List[ty.Tuple[DataSpace, str]] = attrs.field(
+        factory=list
+    )  # id_inference dict
+    expected_formats: ty.Dict[str, ty.Tuple[type, ty.List[str]]] = attrs.field(
+        factory=dict
+    )  # expected formats
+    derivatives: ty.List[ty.Tuple[str, DataSpace, type, ty.List[str]]] = attrs.field(
+        factory=list
+    )  # files to insert as derivatives
+
+    @property
+    def space(self):
+        return type(self.hierarchy[0])
 
 
 @attrs.define
@@ -33,7 +61,6 @@ class DataStore(metaclass=ABCMeta):
     )
 
     CONFIG_NAME = "stores"
-
     SUBPACKAGE = "data"
 
     @abstractmethod
@@ -440,3 +467,107 @@ class DataStore(metaclass=ABCMeta):
         except AttributeError:
             alias = cls.__name__.lower()
         return alias
+
+    @classmethod
+    def create_test_data_item(cls, fname: str, dpath: Path, source_data: Path = None):
+        """For use in test routines, this classmethod creates a simple text file
+        or nested directory at the given path
+
+        Parameters
+        ----------
+        fname : str
+            name of the file to create, a file or directory will be created depending
+            on the name given
+        dpath : Path
+            the path at which to create the file/directory
+        source_data : Path, optional
+            path to a directory containing source data to use instead of the dummy
+            data
+
+        Returns
+        -------
+        Path
+            path to the created file/directory
+        """
+        dpath = Path(dpath)
+        dpath.mkdir(parents=True, exist_ok=True)
+        if source_data is not None:
+            src_path = source_data.joinpath(*fname.split("/"))
+            parts = fname.split(".")
+            fpath = dpath / (path2varname(parts[0]) + "." + ".".join(parts[1:]))
+            fpath.parent.mkdir(exist_ok=True)
+            if src_path.is_dir():
+                shutil.copytree(src_path, fpath)
+            else:
+                shutil.copyfile(src_path, fpath, follow_symlinks=True)
+        else:
+            next_part = fname
+            if next_part.endswith(".zip"):
+                next_part = next_part.strip(".zip")
+            fpath = Path(next_part)
+            # Make double dir
+            if next_part.startswith("doubledir"):
+                (dpath / fpath).mkdir(exist_ok=True)
+                next_part = "dir"
+                fpath /= next_part
+            if next_part.startswith("dir"):
+                (dpath / fpath).mkdir(exist_ok=True)
+                next_part = "test.txt"
+                fpath /= next_part
+            if not fpath.suffix:
+                fpath = fpath.with_suffix(".txt")
+            with open(dpath / fpath, "w") as f:
+                f.write(f"{fname}")
+            if fname.endswith(".zip"):
+                with zipfile.ZipFile(dpath / fname, mode="w") as zfile, set_cwd(dpath):
+                    zfile.write(fpath)
+                (dpath / fpath).unlink()
+                fpath = Path(fname)
+        return fpath
+
+    def make_test_dataset(
+        self,
+        blueprint: TestDatasetBlueprint,
+        dataset_path: Path,
+        source_data: Path = None,
+    ):
+        """For use in tests, this method creates a test dataset from the provided
+        blueprint"""
+        self.create_test_dataset_data(blueprint, dataset_path, source_data=source_data)
+        return self.access_test_dataset(blueprint, dataset_path)
+
+    def create_test_dataset_data(
+        self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
+    ):
+        """Creates the test data in the store, from the provided blueprint, which
+        can be used to run test routines against
+
+        Parameters
+        ----------
+        blueprint
+            the test dataset blueprint
+        dataset_path : Path
+            the pat
+        """
+        raise NotImplementedError(
+            f"'create_test_dataset_data' method hasn't been implemented for {type(self)} "
+            "class please create it to use 'make_test_dataset' method in your test "
+            "routines"
+        )
+
+    def access_test_dataset(self, blueprint, dataset_path):
+        dataset = self.new_dataset(
+            dataset_path,
+            hierarchy=blueprint.hierarchy,
+            id_inference=blueprint.id_inference,
+        )
+        dataset.__annotations__["blueprint"] = blueprint
+        return dataset
+
+    @classmethod
+    def iter_test_blueprint(cls, blueprint: TestDatasetBlueprint):
+        """Iterate all leaves of the data tree specified by the test blueprint"""
+        return (
+            dict(zip(blueprint.space.axes(), id_tple))
+            for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths))
+        )

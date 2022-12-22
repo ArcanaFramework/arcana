@@ -1,10 +1,9 @@
 from functools import reduce
 from operator import mul
 import pytest
+from arcana.core.data.store import TestDatasetBlueprint
 from arcana.core.utils.testing import make_dataset_locator
 from arcana.core.utils.testing.data import (
-    make_dataset,
-    TestDatasetBlueprint,
     TestDataSpace,
 )
 from fileformats.common import Text
@@ -153,7 +152,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         )
 
 
-def test_command_execute_on_row(cli_runner, work_dir):
+def test_command_execute_on_row(simple_store, cli_runner, work_dir):
 
     # Create test dataset consisting of a single row with a range of filenames
     # from 0 to 4
@@ -169,7 +168,7 @@ def test_command_execute_on_row(cli_runner, work_dir):
         [],
     )
     dataset_path = work_dir / "numbered_dataset"
-    dataset = make_dataset(bp, dataset_path)
+    dataset = simple_store.make_test_dataset(bp, dataset_path)
     dataset.save()
 
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')

@@ -27,12 +27,10 @@ from arcana.core.utils.testing.tasks import (
     concatenate,
     concatenate_reverse,
 )
+from arcana.core.data.store import TestDatasetBlueprint
 from arcana.core.utils.testing.data import (
-    TestDatasetBlueprint,
     TestDataSpace as TDS,
     Xyz,
-    make_dataset,
-    save_dataset,
     SimpleStore,
 )
 
@@ -277,18 +275,31 @@ def test_dataspace_location():
 
 
 @pytest.fixture(params=GOOD_DATASETS)
-def dataset(work_dir, request):
+def dataset(simple_store, work_dir, request):
     dataset_name = request.param
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_path = work_dir / dataset_name
-    dataset = make_dataset(blueprint, dataset_path)
+    dataset = simple_store.make_test_dataset(blueprint, dataset_path)
     yield dataset
     # shutil.rmtree(dataset.id)
 
 
 @pytest.fixture
-def saved_dataset(work_dir):
-    return save_dataset(work_dir)
+def saved_dataset(simple_store, work_dir):
+    blueprint = TestDatasetBlueprint(
+        [
+            TDS.abcd
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        [1, 1, 1, 1],
+        ["file1.txt", "file2.txt"],
+        {},
+        {},
+        [],
+    )
+    dataset_path = work_dir / "saved-dataset"
+    dataset = simple_store.make_test_dataset(blueprint, dataset_path)
+    dataset.save()
+    return dataset
 
 
 @pytest.fixture

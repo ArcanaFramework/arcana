@@ -2,20 +2,30 @@ from __future__ import annotations
 import typing as ty
 import json
 import shutil
+from copy import copy
 from pathlib import Path
 import attrs
 import yaml
-from arcana.core.data.store import DataStore
+from arcana.core.data.store import DataStore, TestDatasetBlueprint
 from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
+from arcana.core.data.space import DataSpace
 from .space import TestDataSpace
 
 
 @attrs.define
 class SimpleStore(DataStore):
-    """A simple data store to test store CLI."""
+    """A simple data store to test store CLI.
 
-    alias = "simple"
+    Each data node is stored in a separate sub-directories of the dataset id, with
+    each part of the node id "<base-freq>=<id-part>" separated by '.', e.g.
+
+    /path/to/dataset/a=1.b=3.c=10.d=7
+
+    Under the row directory, items are stored in a directory named by their path, e.g.
+
+    /path/to/dataset/a=1.b=3.c=10.d=7/scan1
+    """
 
     server: str = None  # Not used, just there to test `arcana store add` CLI
     user: str = None  # Not used, just there to test `arcana store add` CLI
@@ -38,7 +48,7 @@ class SimpleStore(DataStore):
             The dataset to populate with rows
         """
         for row_dir in self.iterdir(dataset.id):
-            ids = self.get_ids_from_row_name(row_dir)
+            ids = self.get_ids_from_row_dirname(row_dir)
             dataset.add_leaf([ids[str(h)] for h in dataset.hierarchy])
 
     def find_items(self, row: DataRow):
@@ -51,7 +61,9 @@ class SimpleStore(DataStore):
         row : DataRow
             The data row to populate with items
         """
-        row_path = Path(row.dataset.id) / self.get_row_name_from_ids(row.ids)
+        row_path = Path(row.dataset.id) / self.get_row_dirname_from_ids(
+            row.ids, row.dataset.hierarchy
+        )
         for item_path in self.iterdir(row_path, skip_suffixes=(".json")):
             prov_path = item_path.with_suffix(".json")
             if prov_path.exists():
@@ -226,19 +238,23 @@ class SimpleStore(DataStore):
         raise NotImplementedError
 
     @classmethod
-    def get_ids_from_row_name(cls, row_dir: Path):
+    def get_ids_from_row_dirname(cls, row_dir: Path):
         parts = row_dir.name.split(".")
         return dict(p.split("=") for p in parts)
 
     @classmethod
-    def get_row_name_from_ids(cls, ids: dict[str, str]):
-        return ".".join(f"{k}={v}" for k, v in ids.items())
+    def get_row_dirname_from_ids(cls, ids: dict[str, str], hierarchy: list[DataSpace]):
+        ids = copy(ids)
+        row_dirname = ".".join(f"{h}={ids.pop(h)}" for h in hierarchy)
+        if ids:
+            raise Exception(f"Unrecognised ids {ids}")
+        return row_dirname
 
     @classmethod
     def get_item_dir(cls, item):
         return (
             Path(item.row.dataset.id)
-            / cls.get_row_name_from_ids(item.row.ids)
+            / cls.get_row_dirname_from_ids(item.row.ids, item.row.dataset.hierarchy)
             / item.path
         )
 
@@ -269,3 +285,15 @@ class SimpleStore(DataStore):
 
     def definition_save_path(self, dataset_id, name):
         return Path(dataset_id) / self.METADATA_DIR / (name + ".yml")
+
+    def create_test_dataset_data(
+        self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
+    ):
+        """Create test data within store for test routines"""
+        dataset_id = Path(dataset_id)
+        dataset_id.mkdir(exist_ok=True, parents=True)
+        for ids in self.iter_test_blueprint(blueprint):
+            dpath = dataset_id / self.get_row_dirname_from_ids(ids, blueprint.hierarchy)
+            dpath.mkdir(parents=True)
+            for fname in blueprint.files:
+                self.create_test_data_item(fname, dpath, source_data=source_data)
