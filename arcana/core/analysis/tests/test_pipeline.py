@@ -1,7 +1,7 @@
 import zipfile
 import tempfile
 from pathlib import Path
-from arcana.dirtree.data import Text, Zip
+from fileformats.common import Text, Zip
 from arcana.core.utils.testing.data import make_dataset, TestDataSpace
 from conftest import TEST_DATASET_BLUEPRINTS
 from arcana.core.utils.testing.tasks import concatenate

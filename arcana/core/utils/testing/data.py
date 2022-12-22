@@ -13,7 +13,7 @@ from arcana.core.data.space import DataSpace
 from arcana.core.data.store import DataStore
 from arcana.core.data.type.file import WithSideCars, BaseFile
 from arcana.dirtree.data import FileSystem
-from arcana.dirtree.data.formats import Text
+from fileformats.common import Text
 from arcana.core.mark import converter
 
 
