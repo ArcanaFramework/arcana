@@ -135,7 +135,7 @@ def test_deploy_remake_app_cli(command_spec, docker_registry, cli_runner, run_pr
         # Modify the spec so it doesn't match the original that has just been
         # built (but don't increment the version number -> image tag so there
         # is a clash)
-        concatenate_spec["packages"] = {"system": ["vim"]}
+        concatenate_spec["packages"] = {"system": ["vim", "git"]}
 
         with pytest.raises(ArcanaBuildError) as excinfo:
             build_spec(concatenate_spec, catch_exceptions=False)
