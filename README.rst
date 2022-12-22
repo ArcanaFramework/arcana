@@ -40,7 +40,7 @@ Quick Installation
 
 Arcana can be installed for Python 3 using *pip*::
 
-    $ pip3 install arcana>=2.0b
+    $ pip3 install arcana-core
 
 .. _Arcana: http://arcana.readthedocs.io
 .. _Pydra: http://pydra.readthedocs.io
