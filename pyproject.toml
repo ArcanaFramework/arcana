@@ -3,7 +3,7 @@ requires = ["flit_scm"]
 build-backend = "flit_scm:buildapi"
 
 [project]
-name = "arcana"
+name = "arcana-core"
 description = "Abstraction of Repository-Centric ANAlysis (Arcana): A rramework for analysing on file-based datasets \"in-place\" (i.e. without manual download)"
 readme = "README.rst"
 requires-python = ">=3.8"
@@ -15,16 +15,9 @@ dependencies = [
     "PyYAML>=6.0",
     "build >=0.9",
     "flit_scm >=1.7.0",
-    "fasteners>=0.7.0",
     "deepdiff>=3.3",
     "pydra>=0.20",
     "neurodocker>=0.9.1",
-    "jq>=1.2.2",
-    "pydicom>=1.0.2",
-    "nibabel>=3.2.1",
-    "xnat>=0.3.17",
-    "pydra-dcm2niix>=1.2.0",
-    "pydra-mrtrix3>=0.2",
 ]
 license = {file = "LICENSE"}
 authors = [{name = "Thomas G. Close", email = "tom.g.close@gmail.com"}]
@@ -46,7 +39,6 @@ dynamic = ["version"]
 dev = [
     # "black",
     "pre-commit",
-    # "arcana[test]",
 ]
 doc = [
     "packaging",
@@ -62,9 +54,8 @@ test = [
     "pytest>=5.4.3",
     "pytest-env>=0.6.2",
     "pytest-cov>=2.12.1",
-    "arcana-common >=0.1",
-    "xnat4tests>=0.3.3",
-    "medimages4tests>=0.3",
+    "arcana-dirtree >=0.1",
+    "arcana-spaces >=0.1",
     "codecov",
 ]
 
