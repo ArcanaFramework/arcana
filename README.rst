@@ -1,9 +1,9 @@
 Arcana
 ======
-.. image:: https://github.com/australian-imaging-service/arcana-core/actions/workflows/tests.yml/badge.svg
-   :target: https://github.com/australian-imaging-service/arcana-core/actions/workflows/tests.yml
-.. image:: https://codecov.io/gh/australian-imaging-service/arcana-core/branch/main/graph/badge.svg?token=UIS0OGPST7
-   :target: https://codecov.io/gh/australian-imaging-service-core/arcana
+.. image:: https://github.com/ArcanaFramework/arcana-core/actions/workflows/tests.yml/badge.svg
+   :target: https://github.com/ArcanaFramework/arcana-core/actions/workflows/tests.yml
+.. image:: https://codecov.io/gh/ArcanaFramework/arcana-core/branch/main/graph/badge.svg?token=UIS0OGPST7
+   :target: https://codecov.io/gh/ArcanaFramework/arcana
 .. .. image:: https://img.shields.io/pypi/pyversions/arcana-core.svg
 ..    :target: https://pypi.python.org/pypi/arcana-core/
 ..    :alt: Supported Python versions
