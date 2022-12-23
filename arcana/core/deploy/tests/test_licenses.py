@@ -58,7 +58,7 @@ def test_buildtime_license(
     assert result.stdout.strip().splitlines()[-1] == image_tag
 
     args = (
-        "file///dataset "
+        "simple///dataset "
         f"--input {LICENSE_INPUT_FIELD} '{LICENSE_INPUT_PATH}' "
         f"--output {LICENSE_OUTPUT_FIELD} '{LICENSE_OUTPUT_PATH}' "
         f"--parameter {LICENSE_PATH_PARAM} '{LICENSE_PATH}' "
@@ -71,7 +71,10 @@ def test_buildtime_license(
         result = dc.containers.run(
             image_tag,
             args,
-            volumes=[f"{str(dataset_dir)}:/dataset:rw"],
+            volumes=[
+                f"{str(dataset_dir)}:/dataset:rw",
+                f"{os.environ['HOME']}:/arcana-home",
+            ],
             remove=False,
             stdout=True,
             stderr=True,
@@ -88,8 +91,6 @@ def test_site_runtime_license(simple_store, license_file, work_dir, cli_runner):
     # build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
 
-    dataset = make_dataset(simple_store, dataset_dir)
-
     LICENSE_PATH = work_dir / "license_location"
 
     pipeline_image = get_pipeline_image(LICENSE_PATH)
@@ -98,7 +99,13 @@ def test_site_runtime_license(simple_store, license_file, work_dir, cli_runner):
     test_home_dir = work_dir / "test-arcana-home"
     with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
 
-        result = cli_runner(install_license, args=[LICENSE_NAME, str(license_file)])
+        # Save it into the new home directory
+        simple_store.save()
+        dataset = make_dataset(simple_store, dataset_dir)
+
+        result = cli_runner(
+            install_license, args=[LICENSE_NAME, str(license_file), simple_store.name]
+        )
         assert result.exit_code == 0, show_cli_trace(result)
 
         pipeline_image.command.execute(

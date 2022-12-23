@@ -221,7 +221,7 @@ class SimpleStore(DataStore):
             raise Exception("Cache dir needs to be set")
         dataset_root = self.cache_dir / self.SITE_LICENSES_DIR
         if not dataset_root.exists():
-            dataset_root.mkdir(parents=True)
+            (dataset_root / self.LEAVES_DIR).mkdir(parents=True)
         try:
             dataset = self.load_dataset(dataset_root)
         except KeyError:
