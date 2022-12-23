@@ -59,7 +59,7 @@ class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
         ArcanaDataMatchError
             if none or multiple items match the criteria/path of the column
             within the row
-        ArcanaFileFormatError
+        FileFormatError
             if there are no files matching the format of the column in the row"""
 
     def assume_exists(self):

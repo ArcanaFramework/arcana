@@ -11,7 +11,7 @@ from arcana.core.analysis.pipeline import (
 )
 from arcana.core.data.row import DataRow
 from arcana.core.data.type.base import DataType
-from arcana.core.exceptions import ArcanaFormatConversionError
+from arcana.core.exceptions import FileFormatConversionError
 from arcana.core.data.space import DataSpace
 from arcana.core.utils.misc import add_exc_note
 
@@ -133,7 +133,7 @@ class CommandInput(CommandField):
         ):
             try:
                 self.datatype.find_converter(default_column.datatype)
-            except ArcanaFormatConversionError as e:
+            except FileFormatConversionError as e:
                 add_exc_note(
                     e,
                     f"required to convert from the default column to the '{self.name}' input",
@@ -184,7 +184,7 @@ class CommandOutput(CommandField):
         ):
             try:
                 default_column.datatype.find_converter(self.datatype)
-            except ArcanaFormatConversionError as e:
+            except FileFormatConversionError as e:
                 add_exc_note(
                     e,
                     f"required to convert to the default column from the '{self.name}' output",

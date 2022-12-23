@@ -1,6 +1,6 @@
 from operator import mul
 from functools import reduce
-from arcana.core.data.type.base import FileGroup
+from fileformats.core.base import FileGroup
 
 
 def test_column_api_access(dataset):

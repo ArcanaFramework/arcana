@@ -84,10 +84,6 @@ class ArcanaIndexError(ArcanaError):
         self.index = index
 
 
-class ArcanaDataNotDerivedYetError(NamedArcanaError, ArcanaDesignError):
-    pass
-
-
 class ArcanaDataMatchError(ArcanaUsageError):
     pass
 
@@ -108,10 +104,6 @@ class ArcanaOutputNotProducedException(ArcanaPipelinesStackError):
 
 
 class ArcanaInsufficientRepoDepthError(ArcanaError):
-    pass
-
-
-class ArcanaFileFormatError(ArcanaError):
     pass
 
 
@@ -158,10 +150,6 @@ class ArcanaFileFormatClashError(ArcanaError):
     Used when two mismatching data formats are registered with the same
     name or extension
     """
-
-
-class ArcanaFormatConversionError(ArcanaError):
-    "No converters exist between formats"
 
 
 class ArcanaConverterNotAvailableError(ArcanaError):

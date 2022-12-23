@@ -7,7 +7,7 @@ from abc import ABCMeta
 from arcana.core.exceptions import (
     ArcanaNameError,
     ArcanaWrongFrequencyError,
-    ArcanaFileFormatError,
+    FileFormatError,
 )
 from .type.base import DataType
 from ..analysis.salience import DataQuality
@@ -159,7 +159,7 @@ class DataRow:
         for potential in self.unresolved:
             try:
                 matches.append(datatype.resolve(potential))
-            except ArcanaFileFormatError:
+            except FileFormatError:
                 pass
         return matches
 
