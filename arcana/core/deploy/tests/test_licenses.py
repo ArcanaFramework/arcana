@@ -73,7 +73,7 @@ def test_buildtime_license(
             args,
             volumes=[
                 f"{str(dataset_dir)}:/dataset:rw",
-                f"{os.environ['HOME']}:/arcana-home",
+                f"{os.environ['ARCANA_HOME']}:/arcana-home",
             ],
             remove=False,
             stdout=True,

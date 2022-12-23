@@ -212,7 +212,6 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
     tool (as used in the XNAT CS commands)
     """
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    dataset_locator = make_dataset_locator(saved_dataset)
     bp = saved_dataset.__annotations__["blueprint"]
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
