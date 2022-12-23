@@ -8,6 +8,7 @@ import shutil
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
+from fileformats.core.exceptions import FilePathsNotSetException
 from arcana.core.utils.serialize import asdict
 from arcana.core.exceptions import (
     ArcanaLicenseNotFoundError,
@@ -41,10 +42,10 @@ class Dataset:
         store it is stored (e.g. FS directory path or project ID)
     store : Repository
         The store the dataset is stored into. Can be the local file
-        system by providing a FileSystem repo.
+        system by providing a SimpleStore repo.
     hierarchy : Sequence[str]
         The data frequencies that are explicitly present in the data tree.
-        For example, if a FileSystem dataset (i.e. directory) has
+        For example, if a SimpleStore dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
@@ -298,6 +299,18 @@ class Dataset:
             self.store.find_rows(self)
         return self._root
 
+    @property
+    def locator(self):
+        if self.store.name is None:
+            raise Exception(
+                f"Must save store {self.store} first before accessing locator for "
+                f"{self}"
+            )
+        locator = f"{self.store.name}//{self.id}"
+        if self.name is not self.DEFAULT_NAME:
+            locator += f"@{self.name}"
+        return locator
+
     def _set_root(self):
         self._root = DataRow({self.root_freq: None}, self.root_freq, self)
 
@@ -508,7 +521,7 @@ class Dataset:
 
         Parameters
         ----------
-        tree_path : Sequence[str]
+        tree_path : list[str]
             The sequence of labels for each layer in the hierarchy of the
             dataset leading to the current row.
         explicit_ids : dict[DataSpace, str]
@@ -603,9 +616,9 @@ class Dataset:
                         id = id[0]
                     ids[freq] = id
         # TODO: filter row based on dataset include & exclude attrs
-        return self.add_row(ids, row_frequency)
+        return self._add_row(ids, row_frequency)
 
-    def add_row(self, ids, row_frequency):
+    def _add_row(self, ids, row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows
         (e.g. for each subject, group or timepoint) where required
 
@@ -649,7 +662,7 @@ class Dataset:
                         for f, i in row.ids.items()
                         if (f.is_parent(parent_freq) or f == parent_freq)
                     }
-                    parent_row = self.add_row(parent_ids, parent_freq)
+                    parent_row = self._add_row(parent_ids, parent_freq)
                 # Set reference to level row in new row
                 diff_id = row.ids[diff_freq]
                 children_dict = parent_row.children[row_frequency]
@@ -839,7 +852,7 @@ class Dataset:
 
             try:
                 lic_fs_path = license_file.fs_paths[0]
-            except ArcanaUsageError:
+            except FilePathsNotSetException:
                 missing = False
                 if site_licenses_dataset is not None:
                     license_file = self._get_license_file(
@@ -847,7 +860,7 @@ class Dataset:
                     )
                     try:
                         lic_fs_path = license_file.fs_paths[0]
-                    except ArcanaUsageError:
+                    except FilePathsNotSetException:
                         missing = True
                 else:
                     missing = True
@@ -878,7 +891,7 @@ class Dataset:
         license_file.put(source_file)
 
     def _get_license_file(self, lic_name, dataset=None):
-        from arcana.core.data.type import BaseFile
+        from fileformats.core.file import BaseFile
         from arcana.core.deploy.image.components import License
 
         if dataset is None:

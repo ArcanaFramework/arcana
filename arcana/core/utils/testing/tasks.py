@@ -141,9 +141,8 @@ def concatenate_reverse(name="concatenate_reverse", **kwargs):
 
 @mark.task
 def plus_10_to_filenumbers(filenumber_row: DataRow) -> None:
-    """Renames all the files it finds in the data row (unresolved), assumes their
-    stems are convertible to an integer, and renames the file so this integer
-    is +10. Used in the test_run_pipeline_on_row_cli test.
+    """Alters the item paths within the data row (unresolved), by converting them to
+    an int and adding 10. Used in the test_run_pipeline_on_row_cli test.
 
     Parameters
     ----------
@@ -151,10 +150,9 @@ def plus_10_to_filenumbers(filenumber_row: DataRow) -> None:
         the data row to modify
     """
     for item in filenumber_row.unresolved:
-        fs_path = item.file_paths[0]
-        filenumber = int(fs_path.stem)
-        new_path = (fs_path.parent / str(filenumber + 10)).with_suffix(fs_path.suffix)
-        shutil.move(fs_path, new_path)
+        item_fspath = item.file_paths[0].parent
+        new_item_path = str(int(item.path) + 10)
+        shutil.move(item_fspath, item_fspath.parent / new_item_path)
 
 
 @mark.task

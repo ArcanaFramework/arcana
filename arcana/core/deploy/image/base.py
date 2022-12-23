@@ -60,6 +60,8 @@ class ArcanaImage:
     labels : dict[str, str]
     """
 
+    IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
+
     name: str
     version: str = attrs.field(converter=str)
     build_iteration: str = None
@@ -177,6 +179,10 @@ class ArcanaImage:
         self.write_readme(dockerfile, build_dir)
 
         self.add_labels(dockerfile)
+
+        # Create Arcana Home directory
+        dockerfile.run(f"mkdir {self.IN_DOCKER_ARCANA_HOME_DIR}")
+        dockerfile.env(ARCANA_HOME=self.IN_DOCKER_ARCANA_HOME_DIR)
 
         return dockerfile
 

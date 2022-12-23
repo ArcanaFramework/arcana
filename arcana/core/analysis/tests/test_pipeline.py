@@ -2,16 +2,13 @@ import zipfile
 import tempfile
 from pathlib import Path
 from fileformats.common import Text, Zip
-from arcana.core.utils.testing.data import make_dataset, TestDataSpace
+from arcana.core.utils.testing.data import TestDataSpace
 from conftest import TEST_DATASET_BLUEPRINTS
 from arcana.core.utils.testing.tasks import concatenate
 
-# from pydra.tasks.fsl.preprocess.bet import BET
-# from fileformats.medimage.data import Dicom, NiftiGz
 
-
-def test_pipeline(work_dir):
-    dataset = make_dataset(
+def test_pipeline(simple_store, work_dir):
+    dataset = simple_store.make_test_dataset(
         TEST_DATASET_BLUEPRINTS["concatenate_test"], work_dir / "dataset"
     )
 
@@ -40,10 +37,10 @@ def test_pipeline(work_dir):
         assert contents == "\n".join(["file1.txt", "file2.txt"] * 2)
 
 
-def test_pipeline_with_implicit_conversion(work_dir):
+def test_pipeline_with_implicit_conversion(simple_store, work_dir):
     """Input files are converted from zip to Text, concatenated and then
     written back as zip files into the data store"""
-    dataset = make_dataset(
+    dataset = simple_store.make_test_dataset(
         TEST_DATASET_BLUEPRINTS["concatenate_zip_test"], work_dir / "dataset"
     )
 

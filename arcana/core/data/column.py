@@ -8,7 +8,8 @@ from attrs.converters import optional
 # from arcana.core.data.row import DataRow
 from arcana.core.utils.serialize import ClassResolver
 from arcana.core.exceptions import ArcanaDataMatchError
-from ..analysis.salience import DataQuality, ColumnSalience
+from ..analysis.salience import ColumnSalience
+from fileformats.core.quality import DataQuality
 from .space import DataSpace
 
 
@@ -59,7 +60,7 @@ class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
         ArcanaDataMatchError
             if none or multiple items match the criteria/path of the column
             within the row
-        ArcanaFileFormatError
+        FileFormatError
             if there are no files matching the format of the column in the row"""
 
     def assume_exists(self):

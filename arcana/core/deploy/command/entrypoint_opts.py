@@ -201,7 +201,7 @@ def debugging(func):
             optgroup.option(
                 "--spec-path",
                 type=click.Path(exists=True, path_type=Path),
-                default=Path(App.SPEC_PATH),
+                default=Path(App.IN_DOCKER_SPEC_PATH),
                 help=(
                     "Used to specify a different path to the spec path from the one that is written "
                     "to in the image (typically used in debugging/testing)"

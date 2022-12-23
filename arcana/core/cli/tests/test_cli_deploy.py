@@ -28,7 +28,7 @@ def test_deploy_make_app_cli(command_spec, cli_runner, work_dir):
         "build_iteration": "1",
         "packages": {
             "system": ["vim"],  # just to test it out
-            "pip": {"click": None},  # just to test it out
+            "pip": {"pydra": None},  # just to test it out
         },
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
         "info_url": "http://concatenate.readthefakedocs.io",

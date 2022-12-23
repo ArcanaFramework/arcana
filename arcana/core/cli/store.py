@@ -53,7 +53,9 @@ def add(nickname, type, location, varargs, cache, user, password):
         cache = get_home_dir() / "cache" / nickname
         cache.mkdir(parents=True, exist_ok=True)
     store_cls = ClassResolver(DataStore)(type)
-    store = store_cls(location, *varargs, cache_dir=cache, user=user, password=password)
+    store = store_cls(
+        nickname, location, *varargs, cache_dir=cache, user=user, password=password
+    )
     store.save(nickname)
 
 
@@ -115,7 +117,7 @@ def refresh(nickname, user, password):
 
 @store.command(help="""List available stores that have been saved""")
 def ls():
-    click.echo("Built-in stores\n---------------")
+    click.echo("Default stores\n---------------")
     for name, store in sorted(DataStore.singletons().items(), key=itemgetter(0)):
         click.echo(f"{name} - {ClassResolver.tostr(store, strip_prefix=False)}")
     click.echo("\nSaved stores\n-------------")

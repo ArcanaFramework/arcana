@@ -11,7 +11,7 @@ STORE_PASSWORD = "a-password"
 
 def test_store_cli(cli_runner, work_dir):
     test_home_dir = work_dir / "test-arcana-home"
-    store_name = "test-mock"
+    store_name = "test-simple"
     # Create a new home directory so it doesn't conflict with user settings
     with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
         # Add new XNAT configuration
@@ -19,7 +19,7 @@ def test_store_cli(cli_runner, work_dir):
             add,
             [
                 store_name,
-                "arcana.core.utils.testing.data:MockDataStore",
+                "arcana.core.utils.testing.data:SimpleStore",
                 STORE_URI,
                 "--user",
                 STORE_USER,
@@ -31,9 +31,8 @@ def test_store_cli(cli_runner, work_dir):
         # List all saved and built-in stores
         result = cli_runner(ls, [])
         assert result.exit_code == 0, show_cli_trace(result)
-        assert "file - arcana.dirtree.data.file_system:FileSystem" in result.output
         assert (
-            f"{store_name} - arcana.core.utils.testing.data:MockDataStore"
+            f"{store_name} - arcana.core.utils.testing.data.store:SimpleStore"
             in result.output
         )
         assert "    server: " + STORE_URI in result.output
@@ -49,7 +48,7 @@ def test_store_cli_remove(cli_runner, work_dir):
             add,
             [
                 new_store_name,
-                "arcana.core.utils.testing.data:MockDataStore",
+                "arcana.core.utils.testing.data:SimpleStore",
                 STORE_URI,
                 "--user",
                 STORE_USER,
@@ -78,7 +77,7 @@ def test_store_cli_rename(cli_runner, work_dir):
             add,
             [
                 old_store_name,
-                "arcana.core.utils.testing.data:MockDataStore",
+                "arcana.core.utils.testing.data:SimpleStore",
                 STORE_URI,
                 "--user",
                 STORE_USER,
@@ -88,15 +87,20 @@ def test_store_cli_rename(cli_runner, work_dir):
         )
         # Check store is saved
         result = cli_runner(ls, [])
-        assert "i123 - arcana.core.utils.testing.data:MockDataStore" in result.output
+        assert (
+            "i123 - arcana.core.utils.testing.data.store:SimpleStore" in result.output
+        )
 
         cli_runner(rename, [old_store_name, new_store_name])
         # Check store is renamed
         result = cli_runner(ls, [])
         assert (
-            "i123 - arcana.core.utils.testing.data:MockDataStore" not in result.output
+            "i123 - arcana.core.utils.testing.data.store:SimpleStore"
+            not in result.output
         )
-        assert "y456 - arcana.core.utils.testing.data:MockDataStore" in result.output
+        assert (
+            "y456 - arcana.core.utils.testing.data.store:SimpleStore" in result.output
+        )
 
 
 def test_store_cli_encrypt_credentials(cli_runner, work_dir):
@@ -109,7 +113,7 @@ def test_store_cli_encrypt_credentials(cli_runner, work_dir):
             add,
             [
                 store_name,
-                "arcana.core.utils.testing.data:MockDataStore",
+                "arcana.core.utils.testing.data:SimpleStore",
                 STORE_URI,
                 "--user",
                 STORE_USER,

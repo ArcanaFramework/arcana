@@ -251,7 +251,7 @@ def make_app(
         for image_spec in image_specs:
 
             extracted_dir = extract_file_from_docker_image(
-                image_spec.reference, image_spec.SPEC_PATH
+                image_spec.reference, image_spec.IN_DOCKER_SPEC_PATH
             )
             if extracted_dir is None:
                 logger.info(
@@ -263,7 +263,7 @@ def make_app(
                     f"Comparing build spec with that of existing image {image_spec.reference}"
                 )
                 built_spec = image_spec.load(
-                    extracted_dir / Path(image_spec.SPEC_PATH).name
+                    extracted_dir / Path(image_spec.IN_DOCKER_SPEC_PATH).name
                 )
 
                 changelog = image_spec.compare_specs(built_spec, check_version=True)

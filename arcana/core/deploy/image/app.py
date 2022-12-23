@@ -17,7 +17,7 @@ from arcana.core.utils.serialize import (
     ObjectListConverter,
     ClassResolver,
 )
-from arcana.core.data.type import BaseDirectory
+from fileformats.core.directory import BaseDirectory
 from ..command.base import ContainerCommand
 from .base import ArcanaImage
 from .components import ContainerAuthor, License, KnownIssue
@@ -69,8 +69,7 @@ class App(ArcanaImage):
         the file the spec was loaded from, if applicable
     """
 
-    SPEC_PATH = "/arcana-spec.yaml"
-    IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
+    IN_DOCKER_SPEC_PATH = "/arcana-spec.yaml"
 
     SUBPACKAGE = "deploy"
 
@@ -196,7 +195,9 @@ class App(ArcanaImage):
             path to build dir
         """
         self.save(build_dir / "arcana-spec.yaml")
-        dockerfile.copy(source=["./arcana-spec.yaml"], destination=self.SPEC_PATH)
+        dockerfile.copy(
+            source=["./arcana-spec.yaml"], destination=self.IN_DOCKER_SPEC_PATH
+        )
 
     def save(self, yml_path: Path):
         """Saves the specification to a YAML file that can be loaded again
@@ -478,7 +479,7 @@ class App(ArcanaImage):
         return diff
 
     # @classmethod
-    # def load_in_image(cls, spec_path: Path = SPEC_PATH):
+    # def load_in_image(cls, spec_path: Path = IN_DOCKER_SPEC_PATH):
     #     yml_dct = cls._load_yaml(spec_path)
     #     klass = ClassResolver(cls)(yml_dct.pop("type"))
     #     return klass.load(yml_dct)

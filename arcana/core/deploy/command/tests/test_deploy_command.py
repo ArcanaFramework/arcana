@@ -1,10 +1,8 @@
 from functools import reduce
 from operator import mul
 import pytest
-from arcana.core.utils.testing import make_dataset_locator
+from arcana.core.data.store import TestDatasetBlueprint
 from arcana.core.utils.testing.data import (
-    make_dataset,
-    TestDatasetBlueprint,
     TestDataSpace,
 )
 from fileformats.common import Text
@@ -15,7 +13,6 @@ from arcana.core.exceptions import ArcanaDataMatchError
 
 def test_command_execute(concatenate_task, saved_dataset, work_dir):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    dataset_locator = make_dataset_locator(saved_dataset)
     bp = saved_dataset.__annotations__["blueprint"]
     duplicates = 1
 
@@ -56,7 +53,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     command_spec.execute(
-        dataset_locator=dataset_locator,
+        dataset_locator=saved_dataset.locator,
         input_values=[
             ("source1", "file1"),
             ("source2", "file2"),
@@ -90,7 +87,6 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
 
 def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    dataset_locator = make_dataset_locator(saved_dataset)
     bp = saved_dataset.__annotations__["blueprint"]
     duplicates = 1
 
@@ -133,7 +129,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
     # Add source to loaded dataset
     with pytest.raises(ArcanaDataMatchError):
         command_spec.execute(
-            dataset_locator=dataset_locator,
+            dataset_locator=saved_dataset.locator,
             input_values=[
                 ("source1", "bad-file-path"),
                 ("source2", "file2"),
@@ -153,7 +149,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         )
 
 
-def test_command_execute_on_row(cli_runner, work_dir):
+def test_command_execute_on_row(simple_store, cli_runner, work_dir):
 
     # Create test dataset consisting of a single row with a range of filenames
     # from 0 to 4
@@ -169,11 +165,8 @@ def test_command_execute_on_row(cli_runner, work_dir):
         [],
     )
     dataset_path = work_dir / "numbered_dataset"
-    dataset = make_dataset(bp, dataset_path)
+    dataset = simple_store.make_test_dataset(bp, dataset_path)
     dataset.save()
-
-    # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    dataset_locator = make_dataset_locator(dataset)
 
     def get_dataset_filenumbers():
         dataset.refresh()
@@ -198,7 +191,7 @@ def test_command_execute_on_row(cli_runner, work_dir):
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     command_spec.execute(
-        dataset_locator=dataset_locator,
+        dataset_locator=dataset.locator,
         input_values=[
             ("a_row", ""),
         ],
@@ -219,7 +212,6 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
     tool (as used in the XNAT CS commands)
     """
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    dataset_locator = make_dataset_locator(saved_dataset)
     bp = saved_dataset.__annotations__["blueprint"]
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
@@ -255,7 +247,7 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
     )
 
     command_spec.execute(
-        dataset_locator=dataset_locator,
+        dataset_locator=saved_dataset.locator,
         input_values=[
             ("source", "file1 converter.shift=3"),
         ],

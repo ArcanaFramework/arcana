@@ -5,16 +5,17 @@ from datetime import datetime
 import shutil
 import docker
 from tempfile import mkdtemp
+from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 from fileformats.common import Text, Directory, Json
-from arcana.core.utils.testing.data import (
-    NiftiGz,
-    NiftiGzX,
-    NiftiX,
-    Nifti,
-    Analyze,
-    MrtrixImage,
+from arcana.core.utils.testing.data.fileformats import (
+    MyFormatGz,
+    MyFormatGzX,
+    MyFormatX,
+    MyFormat,
+    ImageWithHeader,
+    YourFormat,
 )
 from arcana.core.utils.testing.tasks import (
     add,
@@ -26,12 +27,11 @@ from arcana.core.utils.testing.tasks import (
     concatenate,
     concatenate_reverse,
 )
+from arcana.core.data.store import TestDatasetBlueprint
 from arcana.core.utils.testing.data import (
-    TestDatasetBlueprint,
     TestDataSpace as TDS,
     Xyz,
-    make_dataset,
-    save_dataset,
+    SimpleStore,
 )
 
 # Set DEBUG logging for unittests
@@ -68,6 +68,14 @@ def build_cache_dir():
     # build_cache_dir.mkdir()
     return Path(mkdtemp())
     # return build_cache_dir
+
+
+@pytest.fixture
+def simple_store(work_dir):
+    store = SimpleStore(cache_dir=work_dir / "simple-store-cache")
+    with patch.dict(os.environ, {"ARCANA_HOME": str(work_dir / "arcana-home")}):
+        store.save("simple")
+        yield store
 
 
 @pytest.fixture
@@ -151,11 +159,11 @@ TEST_DATASET_BLUEPRINTS = {
     "full": TestDatasetBlueprint(  # dataset name
         [TDS.a, TDS.b, TDS.c, TDS.d],
         [2, 3, 4, 5],
-        ["file1.txt", "file2.nii.gz", "dir1"],
+        ["file1.txt", "file2.my.gz", "dir1"],
         [],
         {
             "file1": [(Text, ["file1.txt"])],
-            "file2": [(NiftiGz, ["file2.nii.gz"])],
+            "file2": [(MyFormatGz, ["file2.my.gz"])],
             "dir1": [(Directory, ["dir1"])],
         },
         [
@@ -167,24 +175,24 @@ TEST_DATASET_BLUEPRINTS = {
     "one_layer": TestDatasetBlueprint(
         [TDS.abcd],
         [1, 1, 1, 5],
-        ["file1.nii.gz", "file1.json", "file2.nii", "file2.json"],
+        ["file1.my.gz", "file1.json", "file2.my", "file2.json"],
         [],
         {
             "file1": [
-                (NiftiGzX, ["file1.nii.gz", "file1.json"]),
-                (NiftiGz, ["file1.nii.gz"]),
+                (MyFormatGzX, ["file1.my.gz", "file1.json"]),
+                (MyFormatGz, ["file1.my.gz"]),
                 (Json, ["file1.json"]),
             ],
             "file2": [
-                (NiftiX, ["file2.nii", "file2.json"]),
-                (Nifti, ["file2.nii"]),
+                (MyFormatX, ["file2.my", "file2.json"]),
+                (MyFormat, ["file2.my"]),
                 (Json, ["file2.json"]),
             ],
         },
         [
             ("deriv1", TDS.abcd, Json, ["file1.json"]),
             ("deriv2", TDS.bc, Xyz, ["file1.x", "file1.y", "file1.z"]),
-            ("deriv3", TDS._, MrtrixImage, ["file1.mif"]),
+            ("deriv3", TDS._, YourFormat, ["file1.yr"]),
         ],
     ),
     "skip_single": TestDatasetBlueprint(
@@ -201,11 +209,11 @@ TEST_DATASET_BLUEPRINTS = {
     "skip_with_inference": TestDatasetBlueprint(
         [TDS.bc, TDS.ad],
         [2, 3, 2, 4],
-        ["file1.img", "file1.hdr", "file2.mif"],
+        ["file1.img", "file1.hdr", "file2.yr"],
         [(TDS.bc, r"b(?P<b>\d+)c(?P<c>\d+)"), (TDS.ad, r"a(?P<a>\d+)d(?P<d>\d+)")],
         {
-            "file1": [(Analyze, ["file1.hdr", "file1.img"])],
-            "file2": [(MrtrixImage, ["file2.mif"])],
+            "file1": [(ImageWithHeader, ["file1.hdr", "file1.img"])],
+            "file2": [(YourFormat, ["file2.yr"])],
         },
         [],
     ),
@@ -267,18 +275,31 @@ def test_dataspace_location():
 
 
 @pytest.fixture(params=GOOD_DATASETS)
-def dataset(work_dir, request):
+def dataset(simple_store, work_dir, request):
     dataset_name = request.param
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_path = work_dir / dataset_name
-    dataset = make_dataset(blueprint, dataset_path)
+    dataset = simple_store.make_test_dataset(blueprint, dataset_path)
     yield dataset
     # shutil.rmtree(dataset.id)
 
 
 @pytest.fixture
-def saved_dataset(work_dir):
-    return save_dataset(work_dir)
+def saved_dataset(simple_store, work_dir):
+    blueprint = TestDatasetBlueprint(
+        [
+            TDS.abcd
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        [1, 1, 1, 1],
+        ["file1.txt", "file2.txt"],
+        {},
+        {},
+        [],
+    )
+    dataset_path = work_dir / "saved-dataset"
+    dataset = simple_store.make_test_dataset(blueprint, dataset_path)
+    dataset.save()
+    return dataset
 
 
 @pytest.fixture
@@ -308,7 +329,7 @@ def command_spec():
                 "datatype": "fileformats.common:Text",
                 "field": "in_file1",
                 "default_column": {
-                    "row_frequency": "spaces:Samples[sample]",
+                    "row_frequency": "core:Samples[sample]",
                 },
                 "help_string": "the first file to pass as an input",
             },
@@ -316,7 +337,7 @@ def command_spec():
                 "datatype": "fileformats.common:Text",
                 "field": "in_file2",
                 "default_column": {
-                    "row_frequency": "spaces:Samples[sample]",
+                    "row_frequency": "core:Samples[sample]",
                 },
                 "help_string": "the second file to pass as an input",
             },
@@ -337,7 +358,7 @@ def command_spec():
                 "help_string": "a parameter",
             }
         },
-        "row_frequency": "spaces:Samples[sample]",
+        "row_frequency": "core:Samples[sample]",
     }
 
 
