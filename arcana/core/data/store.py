@@ -268,8 +268,8 @@ class DataStore(metaclass=ABCMeta):
             raise ArcanaNameError(
                 name, f"Name '{name}' clashes with built-in type of store"
             )
-        if self.name is None:
-            if name is None:
+        if name is None:
+            if self.name is None:
                 raise ArcanaNameError(
                     f"Must provide name to save store {self} as as it doesn't have one "
                     "already"

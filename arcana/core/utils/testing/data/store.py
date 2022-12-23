@@ -57,7 +57,7 @@ class SimpleStore(DataStore):
         """
         for row_dir in self.iterdir(Path(dataset.id) / self.LEAVES_DIR):
             ids = self.get_ids_from_row_dirname(row_dir)
-            dataset.add_leaf(ids)
+            dataset.add_leaf([ids[str(h)] for h in dataset.hierarchy])
 
     def find_items(self, row: DataRow):
         """
@@ -69,24 +69,13 @@ class SimpleStore(DataStore):
         row : DataRow
             The data row to populate with items
         """
-        dataset_path = Path(row.dataset.id)
-        if row.frequency == row.dataset.space.max():
-            row_path = (
-                dataset_path
-                / self.LEAVES_DIR
-                / self.get_row_dirname_from_ids(row.ids, row.dataset.hierarchy)
-            )
-        else:
-            row_path = (
-                dataset_path
-                / self.NODES_DIR
-                / self.get_row_dirname_from_ids(row.ids, row.frequency.span())
-            )
-        for item_path in self.iterdir(row_path, skip_suffixes=(".json")):
+        for item_path in self.iterdir(self.get_row_path(row), skip_suffixes=(".json")):
             prov_path = item_path.with_suffix(".json")
             if prov_path.exists():
                 with open(prov_path) as f:
                     provenance = json.load(f)
+            else:
+                provenance = None
             row.add_file_group(
                 path=item_path.name,
                 file_paths=list(self.iterdir(item_path)),
@@ -117,7 +106,7 @@ class SimpleStore(DataStore):
             If cache_only is set and there is a mismatch between the cached
             and remote versions
         """
-        return self.iterdir(self.get_item_dir(file_group))
+        return list(self.iterdir(self.get_item_path(file_group)))
 
     def put_file_group_paths(self, file_group, fs_paths: list[Path]):
         """
@@ -135,9 +124,14 @@ class SimpleStore(DataStore):
         cached_paths : list[str]
             The paths of the files where they are cached in the file system
         """
-        item_dir = self.get_item_dir(file_group)
+        item_dir = self.get_item_path(file_group)
+        cached_paths = []
         for fs_path in fs_paths:
-            shutil.copyfile(fs_path, item_dir / fs_path.name)
+            dst_path = item_dir / fs_path.name
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(fs_path, dst_path)
+            cached_paths.append(dst_path)
+        return cached_paths
 
     def save_dataset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
@@ -186,6 +180,9 @@ class SimpleStore(DataStore):
             definition = None
         return definition
 
+    def definition_save_path(self, dataset_id, name):
+        return Path(dataset_id) / self.METADATA_DIR / (name + ".yml")
+
     def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
         """Stores provenance information for a given data item in the store
 
@@ -195,7 +192,7 @@ class SimpleStore(DataStore):
             The item to store the provenance data for
         provenance: dict[str, Any]
             The provenance data to store"""
-        with open(self.get_item_dir(self, item) / ".json", "w") as f:
+        with open(self.get_item_path(self, item) / ".json", "w") as f:
             json.dump(provenance, f)
 
     def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
@@ -211,7 +208,7 @@ class SimpleStore(DataStore):
         provenance: dict[str, Any] or None
             The provenance data stored in the repository for the data item.
             None if no provenance data has been stored"""
-        with open(self.get_item_dir(self, item) / ".json") as f:
+        with open(self.get_item_path(self, item) / ".json") as f:
             provenance = json.load(f)
         return provenance
 
@@ -256,28 +253,40 @@ class SimpleStore(DataStore):
         raise NotImplementedError
 
     @classmethod
-    def get_ids_from_row_dirname(cls, row_dir: Path):
-        parts = row_dir.name.split(".")
-        return dict(p.split("=") for p in parts)
+    def get_row_path(cls, row: DataRow):
+        dataset_path = Path(row.dataset.id)
+        if row.frequency == max(row.dataset.space):
+            row_path = (
+                dataset_path
+                / cls.LEAVES_DIR
+                / cls.get_row_dirname_from_ids(row.ids, row.dataset.hierarchy)
+            )
+        else:
+            row_path = (
+                dataset_path
+                / cls.NODES_DIR
+                / cls.get_row_dirname_from_ids(row.ids, row.frequency.span())
+            )
+        return row_path
 
     @classmethod
     def get_row_dirname_from_ids(
         cls, ids: dict[ty.Union[str, DataSpace], str], hierarchy: list[DataSpace]
     ):
         space = type(hierarchy[0])
+        # Ensure that ID keys are DataSpace enums not strings
         ids = {space[str(f)]: i for f, i in ids.items()}
-        row_dirname = ".".join(f"{h}={ids.pop(h)}" for h in hierarchy)
-        if ids:
-            raise Exception(f"Unrecognised ids {ids}")
+        row_dirname = ".".join(f"{h}={ids[h]}" for h in hierarchy)
         return row_dirname
 
     @classmethod
-    def get_item_dir(cls, item):
-        return (
-            Path(item.row.dataset.id)
-            / cls.get_row_dirname_from_ids(item.row.ids, item.row.dataset.hierarchy)
-            / item.path
-        )
+    def get_ids_from_row_dirname(cls, row_dir: Path):
+        parts = row_dir.name.split(".")
+        return dict(p.split("=") for p in parts)
+
+    @classmethod
+    def get_item_path(cls, item):
+        return cls.get_row_path(item.row) / item.path
 
     @classmethod
     def iterdir(cls, dr, skip_suffixes=()):
@@ -304,9 +313,6 @@ class SimpleStore(DataStore):
             )
         )
 
-    def definition_save_path(self, dataset_id, name):
-        return Path(dataset_id) / self.METADATA_DIR / (name + ".yml")
-
     def create_test_dataset_data(
         self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
     ):
@@ -314,7 +320,10 @@ class SimpleStore(DataStore):
         dataset_path = Path(dataset_id) / self.LEAVES_DIR
         dataset_path.mkdir(parents=True)
         for ids in self.iter_test_blueprint(blueprint):
-            dpath = dataset_id / self.get_row_dirname_from_ids(ids, blueprint.hierarchy)
-            dpath.mkdir(parents=True)
+            row_path = dataset_path / self.get_row_dirname_from_ids(
+                ids, blueprint.hierarchy
+            )
+            row_path.mkdir(parents=True)
             for fname in blueprint.files:
-                self.create_test_data_item(fname, dpath, source_data=source_data)
+                cell_path = row_path / fname.split(".")[0]
+                self.create_test_data_item(fname, cell_path, source_data=source_data)
