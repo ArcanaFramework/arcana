@@ -19,6 +19,8 @@ dependencies = [
     "deepdiff>=3.3",
     "pydra>=0.20",
     "neurodocker>=0.9.1",
+    "fileformats-core >=0.1",
+    "fileformats-common >=0.1",
 ]
 license = {file = "LICENSE"}
 authors = [{name = "Thomas G. Close", email = "tom.g.close@gmail.com"}]
