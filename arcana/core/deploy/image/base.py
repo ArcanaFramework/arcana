@@ -180,6 +180,8 @@ class ArcanaImage:
 
         self.add_labels(dockerfile)
 
+        # Create Arcana Home directory
+        dockerfile.run(f"mkdir {self.IN_DOCKER_ARCANA_HOME_DIR}")
         dockerfile.env(ARCANA_HOME=self.IN_DOCKER_ARCANA_HOME_DIR)
 
         return dockerfile

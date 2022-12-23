@@ -139,6 +139,8 @@ class App(ArcanaImage):
             build_dir,
         )
 
+        self.insert_spec(dockerfile, build_dir)
+
         self.add_entrypoint(dockerfile, build_dir)
 
         return dockerfile
