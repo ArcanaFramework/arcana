@@ -13,33 +13,33 @@ class Xyz(WithSideCars):
     side_car_exts = ("y", "z")
 
 
-class Nifti(BaseFile):
+class MyFormat(BaseFile):
 
-    ext = "nii"
-
-
-class NiftiGz(Nifti):
-
-    ext = "nii.gz"
+    ext = "my"
 
 
-class NiftiX(WithSideCars, Nifti):
+class MyFormatGz(MyFormat):
+
+    ext = "my.gz"
+
+
+class MyFormatX(WithSideCars, MyFormat):
 
     side_car_exts = ("json",)
 
 
-class MrtrixImage(BaseFile):
+class YourFormat(BaseFile):
 
-    ext = "mif"
+    ext = "yr"
 
 
-class Analyze(WithSideCars, BaseFile):
+class ImageWithHeader(WithSideCars, BaseFile):
 
     ext = "img"
     side_car_exts = ("hdr",)
 
 
-class NiftiGzX(NiftiX, NiftiGz):
+class MyFormatGzX(MyFormatX, MyFormatGz):
 
     pass
 

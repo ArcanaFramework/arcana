@@ -1,12 +1,12 @@
 from .space import TestDataSpace
 from .fileformats import (
     Xyz,
-    Nifti,
-    NiftiGz,
-    NiftiX,
-    MrtrixImage,
-    Analyze,
-    NiftiGzX,
+    MyFormat,
+    MyFormatGz,
+    MyFormatX,
+    YourFormat,
+    ImageWithHeader,
+    MyFormatGzX,
     EncodedText,
     DecodedText,
 )

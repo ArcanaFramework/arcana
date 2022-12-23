@@ -6,9 +6,6 @@ from arcana.core.utils.testing.data import TestDataSpace
 from conftest import TEST_DATASET_BLUEPRINTS
 from arcana.core.utils.testing.tasks import concatenate
 
-# from pydra.tasks.fsl.preprocess.bet import BET
-# from fileformats.medimage.data import Dicom, NiftiGz
-
 
 def test_pipeline(simple_store, work_dir):
     dataset = simple_store.make_test_dataset(

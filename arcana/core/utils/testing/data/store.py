@@ -69,7 +69,10 @@ class SimpleStore(DataStore):
         row : DataRow
             The data row to populate with items
         """
-        for item_path in self.iterdir(self.get_row_path(row), skip_suffixes=(".json")):
+        row_dir = self.get_row_path(row)
+        if not row_dir.exists():
+            return
+        for item_path in self.iterdir(row_dir, skip_suffixes=[".json"]):
             prov_path = item_path.with_suffix(".json")
             if prov_path.exists():
                 with open(prov_path) as f:
@@ -262,11 +265,13 @@ class SimpleStore(DataStore):
                 / cls.get_row_dirname_from_ids(row.ids, row.dataset.hierarchy)
             )
         else:
-            row_path = (
-                dataset_path
-                / cls.NODES_DIR
-                / cls.get_row_dirname_from_ids(row.ids, row.frequency.span())
-            )
+            if not row.frequency:  # root frequency
+                row_dirname = str(row.frequency)
+            else:
+                row_dirname = cls.get_row_dirname_from_ids(
+                    row.ids, row.frequency.span()
+                )
+            row_path = dataset_path / cls.NODES_DIR / row_dirname
         return row_path
 
     @classmethod

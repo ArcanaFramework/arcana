@@ -10,12 +10,12 @@ import pytest
 from click.testing import CliRunner
 from fileformats.common import Text, Directory, Json
 from arcana.core.utils.testing.data.fileformats import (
-    NiftiGz,
-    NiftiGzX,
-    NiftiX,
-    Nifti,
-    Analyze,
-    MrtrixImage,
+    MyFormatGz,
+    MyFormatGzX,
+    MyFormatX,
+    MyFormat,
+    ImageWithHeader,
+    YourFormat,
 )
 from arcana.core.utils.testing.tasks import (
     add,
@@ -159,11 +159,11 @@ TEST_DATASET_BLUEPRINTS = {
     "full": TestDatasetBlueprint(  # dataset name
         [TDS.a, TDS.b, TDS.c, TDS.d],
         [2, 3, 4, 5],
-        ["file1.txt", "file2.nii.gz", "dir1"],
+        ["file1.txt", "file2.my.gz", "dir1"],
         [],
         {
             "file1": [(Text, ["file1.txt"])],
-            "file2": [(NiftiGz, ["file2.nii.gz"])],
+            "file2": [(MyFormatGz, ["file2.my.gz"])],
             "dir1": [(Directory, ["dir1"])],
         },
         [
@@ -175,24 +175,24 @@ TEST_DATASET_BLUEPRINTS = {
     "one_layer": TestDatasetBlueprint(
         [TDS.abcd],
         [1, 1, 1, 5],
-        ["file1.nii.gz", "file1.json", "file2.nii", "file2.json"],
+        ["file1.my.gz", "file1.json", "file2.my", "file2.json"],
         [],
         {
             "file1": [
-                (NiftiGzX, ["file1.nii.gz", "file1.json"]),
-                (NiftiGz, ["file1.nii.gz"]),
+                (MyFormatGzX, ["file1.my.gz", "file1.json"]),
+                (MyFormatGz, ["file1.my.gz"]),
                 (Json, ["file1.json"]),
             ],
             "file2": [
-                (NiftiX, ["file2.nii", "file2.json"]),
-                (Nifti, ["file2.nii"]),
+                (MyFormatX, ["file2.my", "file2.json"]),
+                (MyFormat, ["file2.my"]),
                 (Json, ["file2.json"]),
             ],
         },
         [
             ("deriv1", TDS.abcd, Json, ["file1.json"]),
             ("deriv2", TDS.bc, Xyz, ["file1.x", "file1.y", "file1.z"]),
-            ("deriv3", TDS._, MrtrixImage, ["file1.mif"]),
+            ("deriv3", TDS._, YourFormat, ["file1.yr"]),
         ],
     ),
     "skip_single": TestDatasetBlueprint(
@@ -209,11 +209,11 @@ TEST_DATASET_BLUEPRINTS = {
     "skip_with_inference": TestDatasetBlueprint(
         [TDS.bc, TDS.ad],
         [2, 3, 2, 4],
-        ["file1.img", "file1.hdr", "file2.mif"],
+        ["file1.img", "file1.hdr", "file2.yr"],
         [(TDS.bc, r"b(?P<b>\d+)c(?P<c>\d+)"), (TDS.ad, r"a(?P<a>\d+)d(?P<d>\d+)")],
         {
-            "file1": [(Analyze, ["file1.hdr", "file1.img"])],
-            "file2": [(MrtrixImage, ["file2.mif"])],
+            "file1": [(ImageWithHeader, ["file1.hdr", "file1.img"])],
+            "file2": [(YourFormat, ["file2.yr"])],
         },
         [],
     ),

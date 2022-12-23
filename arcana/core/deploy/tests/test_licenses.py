@@ -7,11 +7,13 @@ import docker.errors
 from arcana.core.utils.testing import show_cli_trace
 from arcana.core.cli.deploy import make_app, install_license
 from arcana.core.deploy.image import App
-from arcana.core.utils.testing.data import SimpleStore
+from arcana.core.data.set import Dataset
 from arcana.spaces.data import Samples
 
 
-def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_runner):
+def test_buildtime_license(
+    simple_store, license_file, run_prefix: str, work_dir: Path, cli_runner
+):
 
     # Create pipeline
     image_name = f"license-buildtime-{run_prefix}"
@@ -30,7 +32,7 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
 
     build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
-    make_dataset(dataset_dir)
+    dataset = make_dataset(simple_store, dataset_dir)
 
     result = cli_runner(
         make_app,
@@ -81,12 +83,12 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
         )
 
 
-def test_site_runtime_license(license_file, work_dir, cli_runner):
+def test_site_runtime_license(simple_store, license_file, work_dir, cli_runner):
 
     # build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
 
-    make_dataset(dataset_dir)
+    dataset = make_dataset(simple_store, dataset_dir)
 
     LICENSE_PATH = work_dir / "license_location"
 
@@ -100,7 +102,7 @@ def test_site_runtime_license(license_file, work_dir, cli_runner):
         assert result.exit_code == 0, show_cli_trace(result)
 
         pipeline_image.command.execute(
-            f"file//{dataset_dir}",
+            dataset.locator,
             input_values={LICENSE_INPUT_FIELD: LICENSE_INPUT_PATH},
             output_values={LICENSE_OUTPUT_FIELD: LICENSE_OUTPUT_PATH},
             parameter_values={LICENSE_PATH_PARAM: LICENSE_PATH},
@@ -111,30 +113,31 @@ def test_site_runtime_license(license_file, work_dir, cli_runner):
         )
 
 
-def test_dataset_runtime_license(license_file, run_prefix, work_dir, cli_runner):
+def test_dataset_runtime_license(
+    simple_store, license_file, run_prefix, work_dir, cli_runner
+):
 
     # build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
 
-    make_dataset(dataset_dir)
+    dataset = make_dataset(simple_store, dataset_dir)
 
     LICENSE_PATH = work_dir / "license_location"
     pipeline_image = get_pipeline_image(LICENSE_PATH)
-    dataset_locator = f"file//{dataset_dir}"
 
     result = cli_runner(
         install_license,
         args=[
             LICENSE_NAME,
             str(license_file),
-            dataset_locator,
+            dataset.locator,
         ],
     )
 
     assert result.exit_code == 0, show_cli_trace(result)
 
     pipeline_image.command.execute(
-        f"file//{dataset_dir}",
+        dataset.locator,
         input_values={LICENSE_INPUT_FIELD: LICENSE_INPUT_PATH},
         output_values={LICENSE_OUTPUT_FIELD: LICENSE_OUTPUT_PATH},
         parameter_values={LICENSE_PATH_PARAM: LICENSE_PATH},
@@ -196,16 +199,19 @@ def get_pipeline_image(license_path) -> App:
     )
 
 
-def make_dataset(dataset_dir):
+def make_dataset(simple_store, dataset_dir) -> Dataset:
 
-    sample_dir = dataset_dir / "sample1"
-    sample_dir.mkdir(parents=True)
+    contents_dir = (
+        dataset_dir / simple_store.LEAVES_DIR / "sample=sample1" / LICENSE_INPUT_PATH
+    )
+    contents_dir.mkdir(parents=True)
 
-    with open(sample_dir / (LICENSE_INPUT_PATH + ".txt"), "w") as f:
+    with open(contents_dir / (LICENSE_INPUT_PATH + ".txt"), "w") as f:
         f.write(LICENSE_CONTENTS)
 
-    dataset = SimpleStore().new_dataset(dataset_dir, space=Samples)
+    dataset = simple_store.new_dataset(dataset_dir, space=Samples)
     dataset.save()
+    return dataset
 
 
 @pytest.fixture

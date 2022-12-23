@@ -66,7 +66,7 @@ class BaseFile(FileGroup):
     @classmethod
     def copy_ext(cls, old_path, new_path):
         """Copy extension from the old path to the new path, ensuring that all
-        of the extension is used (e.g. 'nii.gz' instead of 'gz')
+        of the extension is used (e.g. 'my.gz' instead of 'gz')
 
         Parameters
         ----------
@@ -222,7 +222,7 @@ class WithSideCars(BaseFile):
     @classmethod
     def copy_ext(cls, old_path, new_path):
         """Copy extension from the old path to the new path, ensuring that all
-        of the extension is used (e.g. 'nii.gz' instead of 'gz'). If the old
+        of the extension is used (e.g. 'my.gz' instead of 'gz'). If the old
         path extension doesn't match the primary path, the methods loops through
         all side-car extensions and selects the longest matching.
 
