@@ -8,7 +8,7 @@ from arcana.core.utils.testing import show_cli_trace
 from arcana.core.cli.deploy import make_app, install_license
 from arcana.core.deploy.image import App
 from arcana.core.data.set import Dataset
-from arcana.spaces.data import Samples
+from arcana.core.data import Samples
 
 
 def test_buildtime_license(
@@ -165,7 +165,7 @@ def get_pipeline_image(license_path) -> App:
         description="A test of the license installation",
         readme="This is a test README",
         packages={
-            "pip": ["arcana-spaces", "fileformats-common"],
+            "pip": ["fileformats-core", "fileformats-common"],
         },
         licenses={
             LICENSE_NAME: {
@@ -176,7 +176,7 @@ def get_pipeline_image(license_path) -> App:
         },
         command={
             "task": "arcana.core.utils.testing.tasks:check_license",
-            "row_frequency": "spaces:Samples[sample]",
+            "row_frequency": "core:Samples[sample]",
             "inputs": [
                 {
                     "name": LICENSE_INPUT_FIELD,
