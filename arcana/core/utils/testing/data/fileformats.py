@@ -2,9 +2,9 @@ from __future__ import annotations
 import typing as ty
 from pathlib import Path
 from pydra import mark
-from arcana.core.data.type.file import WithSideCars, BaseFile
+from fileformats.core import WithSideCars, BaseFile
 from fileformats.common import Text
-from arcana.core.mark import converter
+from fileformats.core.mark import converter
 
 
 class Xyz(WithSideCars):

@@ -7,10 +7,10 @@ from abc import ABCMeta
 from arcana.core.exceptions import (
     ArcanaNameError,
     ArcanaWrongFrequencyError,
-    FileFormatError,
 )
-from .type.base import DataType
-from ..analysis.salience import DataQuality
+from fileformats.core.exceptions import FileFormatError
+from fileformats.core.base import DataType
+from fileformats.core.quality import DataQuality
 from .space import DataSpace
 
 if ty.TYPE_CHECKING:

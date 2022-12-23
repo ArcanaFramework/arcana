@@ -17,7 +17,7 @@ from arcana.core.utils.serialize import (
     ObjectListConverter,
     ClassResolver,
 )
-from arcana.core.data.type import BaseDirectory
+from fileformats.core.directory import BaseDirectory
 from ..command.base import ContainerCommand
 from .base import ArcanaImage
 from .components import ContainerAuthor, License, KnownIssue

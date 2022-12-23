@@ -1,7 +1,8 @@
 import pytest
 import os.path
 from arcana.core.data.set import Dataset
-from arcana.core.analysis.salience import DataQuality, ColumnSalience
+from arcana.core.analysis.salience import ColumnSalience
+from fileformats.core.quality import DataQuality
 from arcana.core.utils.testing.data import TestDataSpace
 from arcana.core.cli.dataset import define, add_source, add_sink, missing_items
 from fileformats.common import Text
