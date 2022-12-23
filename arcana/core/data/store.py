@@ -55,7 +55,7 @@ class DataStore(metaclass=ABCMeta):
     # classes should implement.
     # """
 
-    name: str = None
+    # name: str = None
     _connection_depth = attrs.field(
         default=0, init=False, hash=False, repr=False, eq=False
     )
@@ -274,13 +274,14 @@ class DataStore(metaclass=ABCMeta):
                     f"Must provide name to save store {self} as as it doesn't have one "
                     "already"
                 )
+        else:
             self.name = name
         entries = self.load_saved_entries()
         # connect to store in case it is needed in the asdict method and to
         # test the connection in general before it is saved
         dct = self.asdict()
         with self:
-            entries[dct.pop["name"]] = dct
+            entries[dct.pop("name")] = dct
         self.save_entries(entries, config_path=config_path)
 
     def asdict(self, **kwargs):
@@ -346,7 +347,7 @@ class DataStore(metaclass=ABCMeta):
         del entries[name]
         cls.save_entries(entries)
 
-    def new_dataset(self, id, hierarchy=None, space=None, **kwargs):
+    def new_dataset(self, id, space=None, hierarchy=None, **kwargs):
         """
         Returns a dataset from the XNAT repository
 
@@ -421,9 +422,11 @@ class DataStore(metaclass=ABCMeta):
         cls._singletons = {}
         for store_cls in list_subclasses(arcana, DataStore, subpkg="data"):
             try:
-                cls._singletons[store_cls.name] = store_cls()
+                store = store_cls()
             except Exception:
                 pass
+            else:
+                cls._singletons[store.name] = store
         return cls._singletons
 
     @classmethod
@@ -567,7 +570,9 @@ class DataStore(metaclass=ABCMeta):
     @classmethod
     def iter_test_blueprint(cls, blueprint: TestDatasetBlueprint):
         """Iterate all leaves of the data tree specified by the test blueprint"""
-        return (
-            dict(zip(blueprint.space.axes(), id_tple))
-            for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths))
-        )
+        for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
+            base_ids = dict(zip(blueprint.space.axes(), id_tple))
+            ids = {}
+            for layer in blueprint.hierarchy:
+                ids[layer] = "".join(f"{b}{base_ids[b]}" for b in layer.span())
+            yield ids

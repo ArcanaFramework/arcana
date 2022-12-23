@@ -1,12 +1,11 @@
 from arcana.core.data.set import Dataset
 from fileformats.common import Text
 from arcana.core.cli.apply import apply_pipeline
-from arcana.core.utils.testing import show_cli_trace, make_dataset_locator
+from arcana.core.utils.testing import show_cli_trace
 
 
-def test_apply_pipeline_cli(saved_dataset, concatenate_task, cli_runner):
+def test_apply_pipeline_cli(saved_dataset: Dataset, concatenate_task, cli_runner):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    dataset_locator = make_dataset_locator(saved_dataset)
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     duplicates = 5
@@ -23,7 +22,7 @@ def test_apply_pipeline_cli(saved_dataset, concatenate_task, cli_runner):
     result = cli_runner(
         apply_pipeline,
         [
-            dataset_locator,
+            saved_dataset.locator,
             "a_pipeline",
             "arcana.core.utils.testing.tasks:" + concatenate_task.__name__,
             "--source",
@@ -44,5 +43,5 @@ def test_apply_pipeline_cli(saved_dataset, concatenate_task, cli_runner):
         ],
     )
     assert result.exit_code == 0, show_cli_trace(result)
-    loaded_dataset = Dataset.load(dataset_locator)
+    loaded_dataset = Dataset.load(saved_dataset.locator)
     assert saved_dataset.pipelines == loaded_dataset.pipelines

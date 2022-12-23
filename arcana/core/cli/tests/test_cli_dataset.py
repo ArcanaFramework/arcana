@@ -5,7 +5,7 @@ from arcana.core.analysis.salience import DataQuality, ColumnSalience
 from arcana.core.utils.testing.data import TestDataSpace
 from arcana.core.cli.dataset import define, add_source, add_sink, missing_items
 from fileformats.common import Text
-from arcana.core.utils.testing import make_dataset_locator, show_cli_trace
+from arcana.core.utils.testing import show_cli_trace
 
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
@@ -21,7 +21,6 @@ def get_arbitrary_slice(i, dim_length):
 
 
 def test_add_column_cli(saved_dataset, cli_runner):
-    dataset_locator = make_dataset_locator(saved_dataset)
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     # Add source to loaded dataset
     saved_dataset.add_source(
@@ -38,7 +37,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
     result = cli_runner(
         add_source,
         [
-            dataset_locator,
+            saved_dataset.locator,
             "a_source",
             "fileformats.common:Text",
             "--path",
@@ -64,7 +63,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
     result = cli_runner(
         add_sink,
         [
-            dataset_locator,
+            saved_dataset.locator,
             "a_sink",
             "fileformats.common:Text",
             "--path",
@@ -78,20 +77,20 @@ def test_add_column_cli(saved_dataset, cli_runner):
     assert result.exit_code == 0, show_cli_trace(result)
     # Reload the saved dataset and check the parameters were saved/loaded
     # correctly
-    loaded_dataset = Dataset.load(dataset_locator)
+    loaded_dataset = Dataset.load(saved_dataset.locator)
     assert saved_dataset.columns == loaded_dataset.columns
 
 
 @pytest.mark.skip("Not implemented")
-def test_add_missing_items_cli(dataset, cli_runner):
+def test_add_missing_items_cli(saved_dataset, cli_runner):
     result = cli_runner(missing_items, [])
     assert result.exit_code == 0, show_cli_trace(result)
 
 
-def test_define_cli(dataset, cli_runner):
+def test_define_cli(dataset: Dataset, cli_runner):
     blueprint = dataset.__annotations__["blueprint"]
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
-    path = "file//" + os.path.abspath(dataset.id)
+    path = dataset.locator
     # Start generating the arguments for the CLI
     args = [str(h) for h in blueprint.hierarchy]
     # Generate "arbitrary" values for included and excluded from dim length

@@ -2,7 +2,6 @@ from __future__ import annotations
 import typing as ty
 import json
 import shutil
-from copy import copy
 from pathlib import Path
 import attrs
 import yaml
@@ -17,16 +16,23 @@ from .space import TestDataSpace
 class SimpleStore(DataStore):
     """A simple data store to test store CLI.
 
-    Each data node is stored in a separate sub-directories of the dataset id, with
-    each part of the node id "<base-freq>=<id-part>" separated by '.', e.g.
+    "Leaf" rows are stored in a separate sub-directories of the dataset id, with
+    each part of the row id "<base-freq>=<id-part>" separated by '.', e.g.
 
-    /path/to/dataset/a=1.b=3.c=10.d=7
+    /path/to/dataset/leaves/a=a1.bc=b3c1.d=d7
 
     Under the row directory, items are stored in a directory named by their path, e.g.
 
-    /path/to/dataset/a=1.b=3.c=10.d=7/scan1
+    /path/to/dataset/leaves/a=a1.bc=b3c1.d=d7/scan1
+
+    Non-leaf "rows" (e.g. higher up in the data hierarchy) are stored in a separate
+    base directory and are stored by the "span" of their frequency in the dataspace, e.g.
+    a row of frequency TestDataSpace.abc, would be stored at
+
+    /path/to/dataset/nodes/a=1.b=3.c=1/
     """
 
+    name: str = None
     server: str = None  # Not used, just there to test `arcana store add` CLI
     user: str = None  # Not used, just there to test `arcana store add` CLI
     password: str = None  # Not used, just there to test `arcana store add` CLI
@@ -36,6 +42,8 @@ class SimpleStore(DataStore):
 
     SITE_LICENSES_DIR = "LICENSE"
     METADATA_DIR = ".definition"
+    LEAVES_DIR = "leaves"
+    NODES_DIR = "nodes"
 
     def find_rows(self, dataset: Dataset):
         """
@@ -47,9 +55,9 @@ class SimpleStore(DataStore):
         dataset : Dataset
             The dataset to populate with rows
         """
-        for row_dir in self.iterdir(dataset.id):
+        for row_dir in self.iterdir(Path(dataset.id) / self.LEAVES_DIR):
             ids = self.get_ids_from_row_dirname(row_dir)
-            dataset.add_leaf([ids[str(h)] for h in dataset.hierarchy])
+            dataset.add_leaf(ids)
 
     def find_items(self, row: DataRow):
         """
@@ -61,9 +69,19 @@ class SimpleStore(DataStore):
         row : DataRow
             The data row to populate with items
         """
-        row_path = Path(row.dataset.id) / self.get_row_dirname_from_ids(
-            row.ids, row.dataset.hierarchy
-        )
+        dataset_path = Path(row.dataset.id)
+        if row.frequency == row.dataset.space.max():
+            row_path = (
+                dataset_path
+                / self.LEAVES_DIR
+                / self.get_row_dirname_from_ids(row.ids, row.dataset.hierarchy)
+            )
+        else:
+            row_path = (
+                dataset_path
+                / self.NODES_DIR
+                / self.get_row_dirname_from_ids(row.ids, row.frequency.span())
+            )
         for item_path in self.iterdir(row_path, skip_suffixes=(".json")):
             prov_path = item_path.with_suffix(".json")
             if prov_path.exists():
@@ -243,8 +261,11 @@ class SimpleStore(DataStore):
         return dict(p.split("=") for p in parts)
 
     @classmethod
-    def get_row_dirname_from_ids(cls, ids: dict[str, str], hierarchy: list[DataSpace]):
-        ids = copy(ids)
+    def get_row_dirname_from_ids(
+        cls, ids: dict[ty.Union[str, DataSpace], str], hierarchy: list[DataSpace]
+    ):
+        space = type(hierarchy[0])
+        ids = {space[str(f)]: i for f, i in ids.items()}
         row_dirname = ".".join(f"{h}={ids.pop(h)}" for h in hierarchy)
         if ids:
             raise Exception(f"Unrecognised ids {ids}")
@@ -290,8 +311,8 @@ class SimpleStore(DataStore):
         self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
     ):
         """Create test data within store for test routines"""
-        dataset_id = Path(dataset_id)
-        dataset_id.mkdir(exist_ok=True, parents=True)
+        dataset_path = Path(dataset_id) / self.LEAVES_DIR
+        dataset_path.mkdir(parents=True)
         for ids in self.iter_test_blueprint(blueprint):
             dpath = dataset_id / self.get_row_dirname_from_ids(ids, blueprint.hierarchy)
             dpath.mkdir(parents=True)

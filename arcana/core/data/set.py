@@ -615,9 +615,9 @@ class Dataset:
                         id = id[0]
                     ids[freq] = id
         # TODO: filter row based on dataset include & exclude attrs
-        return self.add_row(ids, row_frequency)
+        return self._add_row(ids, row_frequency)
 
-    def add_row(self, ids, row_frequency):
+    def _add_row(self, ids, row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows
         (e.g. for each subject, group or timepoint) where required
 
@@ -661,7 +661,7 @@ class Dataset:
                         for f, i in row.ids.items()
                         if (f.is_parent(parent_freq) or f == parent_freq)
                     }
-                    parent_row = self.add_row(parent_ids, parent_freq)
+                    parent_row = self._add_row(parent_ids, parent_freq)
                 # Set reference to level row in new row
                 diff_id = row.ids[diff_freq]
                 children_dict = parent_row.children[row_frequency]

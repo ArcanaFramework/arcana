@@ -40,7 +40,7 @@ def test_pipeline(simple_store, work_dir):
         assert contents == "\n".join(["file1.txt", "file2.txt"] * 2)
 
 
-def test_pipeline_with_implicit_conversion(work_dir):
+def test_pipeline_with_implicit_conversion(simple_store, work_dir):
     """Input files are converted from zip to Text, concatenated and then
     written back as zip files into the data store"""
     dataset = simple_store.make_test_dataset(
