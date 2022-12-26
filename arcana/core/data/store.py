@@ -26,7 +26,23 @@ if ty.TYPE_CHECKING:
     from .space import DataSpace
 
 
-@attrs.define
+@attrs.define(kw_only=True)
+class ExpDatatypeBlueprint:
+
+    datatype: type
+    filenames: list[str]
+
+
+@attrs.define(kw_only=True)
+class DerivBlueprint:
+
+    name: str
+    row_frequency: DataSpace
+    datatype: type
+    filenames: ty.List[str]
+
+
+@attrs.define(slots=False, kw_only=True)
 class TestDatasetBlueprint:
 
     hierarchy: ty.List[DataSpace]
@@ -35,10 +51,10 @@ class TestDatasetBlueprint:
     id_inference: ty.List[ty.Tuple[DataSpace, str]] = attrs.field(
         factory=list
     )  # id_inference dict
-    expected_formats: ty.Dict[str, ty.Tuple[type, ty.List[str]]] = attrs.field(
+    expected_datatypes: ty.Dict[str, ExpDatatypeBlueprint] = attrs.field(
         factory=dict
     )  # expected formats
-    derivatives: ty.List[ty.Tuple[str, DataSpace, type, ty.List[str]]] = attrs.field(
+    derivatives: ty.List[DerivBlueprint] = attrs.field(
         factory=list
     )  # files to insert as derivatives
 
@@ -471,6 +487,25 @@ class DataStore(metaclass=ABCMeta):
             alias = cls.__name__.lower()
         return alias
 
+    def create_test_dataset_data(
+        self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
+    ):
+        """Creates the test data in the store, from the provided blueprint, which
+        can be used to run test routines against
+
+        Parameters
+        ----------
+        blueprint
+            the test dataset blueprint
+        dataset_path : Path
+            the pat
+        """
+        raise NotImplementedError(
+            f"'create_test_dataset_data' method hasn't been implemented for {type(self)} "
+            "class please create it to use 'make_test_dataset' method in your test "
+            "routines"
+        )
+
     @classmethod
     def create_test_data_item(cls, fname: str, dpath: Path, source_data: Path = None):
         """For use in test routines, this classmethod creates a simple text file
@@ -531,36 +566,20 @@ class DataStore(metaclass=ABCMeta):
     def make_test_dataset(
         self,
         blueprint: TestDatasetBlueprint,
-        dataset_path: Path,
+        dataset_id: str,
         source_data: Path = None,
+        **kwargs,
     ):
         """For use in tests, this method creates a test dataset from the provided
         blueprint"""
-        self.create_test_dataset_data(blueprint, dataset_path, source_data=source_data)
-        return self.access_test_dataset(blueprint, dataset_path)
-
-    def create_test_dataset_data(
-        self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
-    ):
-        """Creates the test data in the store, from the provided blueprint, which
-        can be used to run test routines against
-
-        Parameters
-        ----------
-        blueprint
-            the test dataset blueprint
-        dataset_path : Path
-            the pat
-        """
-        raise NotImplementedError(
-            f"'create_test_dataset_data' method hasn't been implemented for {type(self)} "
-            "class please create it to use 'make_test_dataset' method in your test "
-            "routines"
+        self.create_test_dataset_data(
+            blueprint, dataset_id, source_data=source_data, **kwargs
         )
+        return self.access_test_dataset(blueprint, dataset_id)
 
-    def access_test_dataset(self, blueprint, dataset_path):
+    def access_test_dataset(self, blueprint, dataset_id):
         dataset = self.new_dataset(
-            dataset_path,
+            dataset_id,
             hierarchy=blueprint.hierarchy,
             id_inference=blueprint.id_inference,
         )

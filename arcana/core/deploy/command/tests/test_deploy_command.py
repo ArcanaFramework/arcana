@@ -155,14 +155,11 @@ def test_command_execute_on_row(simple_store, cli_runner, work_dir):
     # from 0 to 4
     filenumbers = list(range(5))
     bp = TestDatasetBlueprint(
-        [
+        hierarchy=[
             TestDataSpace.abcd
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [1, 1, 1, 1],
-        [f"{i}.txt" for i in filenumbers],
-        {},
-        {},
-        [],
+        dim_lengths=[1, 1, 1, 1],
+        files=[f"{i}.txt" for i in filenumbers],
     )
     dataset_path = work_dir / "numbered_dataset"
     dataset = simple_store.make_test_dataset(bp, dataset_path)

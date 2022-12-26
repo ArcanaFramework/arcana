@@ -7,10 +7,10 @@ def test_column_api_access(dataset):
 
     bp = dataset.__annotations__["blueprint"]
 
-    for col_name, formats in bp.expected_formats.items():
-        data_format, files = formats[0]
+    for col_name, exp_datatypes in bp.expected_datatypes.items():
+        exp = exp_datatypes[0]
 
-        dataset.add_source(col_name, data_format)
+        dataset.add_source(col_name, exp.datatype)
 
         col = dataset[col_name]
 
@@ -20,6 +20,6 @@ def test_column_api_access(dataset):
         # Access file-group via leaf IDs
         for id_ in col.ids:
             item = col[id_]
-            assert isinstance(item, data_format)
-            if issubclass(data_format, FileGroup):
-                assert sorted(p.name for p in item.fs_paths) == sorted(files)
+            assert isinstance(item, exp.datatype)
+            if issubclass(exp.datatype, FileGroup):
+                assert sorted(p.name for p in item.fs_paths) == sorted(exp.filenames)

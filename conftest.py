@@ -27,7 +27,11 @@ from arcana.core.utils.testing.tasks import (
     concatenate,
     concatenate_reverse,
 )
-from arcana.core.data.store import TestDatasetBlueprint
+from arcana.core.data.store import (
+    TestDatasetBlueprint,
+    DerivBlueprint,
+    ExpDatatypeBlueprint,
+)
 from arcana.core.utils.testing.data import (
     TestDataSpace as TDS,
     Xyz,
@@ -157,102 +161,164 @@ def pydra_task(request):
 
 TEST_DATASET_BLUEPRINTS = {
     "full": TestDatasetBlueprint(  # dataset name
-        [TDS.a, TDS.b, TDS.c, TDS.d],
-        [2, 3, 4, 5],
-        ["file1.txt", "file2.my.gz", "dir1"],
-        [],
-        {
-            "file1": [(Text, ["file1.txt"])],
-            "file2": [(MyFormatGz, ["file2.my.gz"])],
-            "dir1": [(Directory, ["dir1"])],
+        hierarchy=[TDS.a, TDS.b, TDS.c, TDS.d],
+        dim_lengths=[2, 3, 4, 5],
+        files=["file1.txt", "file2.my.gz", "dir1"],
+        id_inference=[],
+        expected_datatypes={
+            "file1": [ExpDatatypeBlueprint(datatype=Text, filenames=["file1.txt"])],
+            "file2": [
+                ExpDatatypeBlueprint(datatype=MyFormatGz, filenames=["file2.my.gz"])
+            ],
+            "dir1": [ExpDatatypeBlueprint(datatype=Directory, filenames=["dir1"])],
         },
-        [
-            ("deriv1", TDS.abcd, Text, ["file1.txt"]),  # Derivatives to insert
-            ("deriv2", TDS.c, Directory, ["dir"]),
-            ("deriv3", TDS.bd, Text, ["file1.txt"]),
+        derivatives=[
+            DerivBlueprint(
+                name="deriv1",
+                row_frequency=TDS.abcd,
+                datatype=Text,
+                filenames=["file1.txt"],
+            ),  # Derivatives to insert
+            DerivBlueprint(
+                name="deriv2",
+                row_frequency=TDS.c,
+                datatype=Directory,
+                filenames=["dir"],
+            ),
+            DerivBlueprint(
+                name="deriv3",
+                row_frequency=TDS.bd,
+                datatype=Text,
+                filenames=["file1.txt"],
+            ),
         ],
     ),
     "one_layer": TestDatasetBlueprint(
-        [TDS.abcd],
-        [1, 1, 1, 5],
-        ["file1.my.gz", "file1.json", "file2.my", "file2.json"],
-        [],
-        {
+        hierarchy=[TDS.abcd],
+        dim_lengths=[1, 1, 1, 5],
+        files=["file1.my.gz", "file1.json", "file2.my", "file2.json"],
+        id_inference=[],
+        expected_datatypes={
             "file1": [
-                (MyFormatGzX, ["file1.my.gz", "file1.json"]),
-                (MyFormatGz, ["file1.my.gz"]),
-                (Json, ["file1.json"]),
+                ExpDatatypeBlueprint(
+                    datatype=MyFormatGzX, filenames=["file1.my.gz", "file1.json"]
+                ),
+                ExpDatatypeBlueprint(datatype=MyFormatGz, filenames=["file1.my.gz"]),
+                ExpDatatypeBlueprint(datatype=Json, filenames=["file1.json"]),
             ],
             "file2": [
-                (MyFormatX, ["file2.my", "file2.json"]),
-                (MyFormat, ["file2.my"]),
-                (Json, ["file2.json"]),
+                ExpDatatypeBlueprint(
+                    datatype=MyFormatX, filenames=["file2.my", "file2.json"]
+                ),
+                ExpDatatypeBlueprint(datatype=MyFormat, filenames=["file2.my"]),
+                ExpDatatypeBlueprint(datatype=Json, filenames=["file2.json"]),
             ],
         },
-        [
-            ("deriv1", TDS.abcd, Json, ["file1.json"]),
-            ("deriv2", TDS.bc, Xyz, ["file1.x", "file1.y", "file1.z"]),
-            ("deriv3", TDS._, YourFormat, ["file1.yr"]),
+        derivatives=[
+            DerivBlueprint(
+                name="deriv1",
+                row_frequency=TDS.abcd,
+                datatype=Json,
+                filenames=["file1.json"],
+            ),
+            DerivBlueprint(
+                name="deriv2",
+                row_frequency=TDS.bc,
+                datatype=Xyz,
+                filenames=["file1.x", "file1.y", "file1.z"],
+            ),
+            DerivBlueprint(
+                name="deriv3",
+                row_frequency=TDS._,
+                datatype=YourFormat,
+                filenames=["file1.yr"],
+            ),
         ],
     ),
     "skip_single": TestDatasetBlueprint(
-        [TDS.a, TDS.bc, TDS.d],
-        [2, 1, 2, 3],
-        ["doubledir1", "doubledir2"],
-        [],
-        {
-            "doubledir1": [(Directory, ["doubledir1"])],
-            "doubledir2": [(Directory, ["doubledir2"])],
+        hierarchy=[TDS.a, TDS.bc, TDS.d],
+        dim_lengths=[2, 1, 2, 3],
+        files=["doubledir1", "doubledir2"],
+        id_inference=[],
+        expected_datatypes={
+            "doubledir1": [
+                ExpDatatypeBlueprint(datatype=Directory, filenames=["doubledir1"])
+            ],
+            "doubledir2": [
+                ExpDatatypeBlueprint(datatype=Directory, filenames=["doubledir2"])
+            ],
         },
-        [("deriv1", TDS.ad, Json, ["file1.json"])],
+        derivatives=[
+            DerivBlueprint(
+                name="deriv1",
+                row_frequency=TDS.ad,
+                datatype=Json,
+                filenames=["file1.json"],
+            )
+        ],
     ),
     "skip_with_inference": TestDatasetBlueprint(
-        [TDS.bc, TDS.ad],
-        [2, 3, 2, 4],
-        ["file1.img", "file1.hdr", "file2.yr"],
-        [(TDS.bc, r"b(?P<b>\d+)c(?P<c>\d+)"), (TDS.ad, r"a(?P<a>\d+)d(?P<d>\d+)")],
-        {
-            "file1": [(ImageWithHeader, ["file1.hdr", "file1.img"])],
-            "file2": [(YourFormat, ["file2.yr"])],
+        hierarchy=[TDS.bc, TDS.ad],
+        dim_lengths=[2, 3, 2, 4],
+        files=["file1.img", "file1.hdr", "file2.yr"],
+        id_inference=[
+            (TDS.bc, r"b(?P<b>\d+)c(?P<c>\d+)"),
+            (TDS.ad, r"a(?P<a>\d+)d(?P<d>\d+)"),
+        ],
+        expected_datatypes={
+            "file1": [
+                ExpDatatypeBlueprint(
+                    datatype=ImageWithHeader, filenames=["file1.hdr", "file1.img"]
+                )
+            ],
+            "file2": [
+                ExpDatatypeBlueprint(datatype=YourFormat, filenames=["file2.yr"])
+            ],
         },
-        [],
     ),
     "redundant": TestDatasetBlueprint(
-        [
+        hierarchy=[
             TDS.abc,
             TDS.abcd,
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [3, 4, 5, 6],
-        ["doubledir", "file1.x", "file1.y", "file1.z"],
-        [
+        dim_lengths=[3, 4, 5, 6],
+        files=["doubledir", "file1.x", "file1.y", "file1.z"],
+        id_inference=[
             (TDS.abc, r"a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)"),
             (TDS.abcd, r"a\d+b\d+c\d+d(?P<d>\d+)"),
         ],
-        {
-            "doubledir": [(Directory, ["doubledir"])],
-            "file1": [(Xyz, ["file1.x", "file1.y", "file1.z"])],
+        expected_datatypes={
+            "doubledir": [
+                ExpDatatypeBlueprint(datatype=Directory, filenames=["doubledir"])
+            ],
+            "file1": [
+                ExpDatatypeBlueprint(
+                    datatype=Xyz, filenames=["file1.x", "file1.y", "file1.z"]
+                )
+            ],
         },
-        [("deriv1", TDS.d, Json, ["file1.json"])],
+        derivatives=[
+            DerivBlueprint(
+                name="deriv1",
+                row_frequency=TDS.d,
+                datatype=Json,
+                filenames=["file1.json"],
+            )
+        ],
     ),
     "concatenate_test": TestDatasetBlueprint(
-        [
+        hierarchy=[
             TDS.abcd
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [1, 1, 1, 2],
-        ["file1.txt", "file2.txt"],
-        {},
-        {},
-        [],
+        dim_lengths=[1, 1, 1, 2],
+        files=["file1.txt", "file2.txt"],
     ),
     "concatenate_zip_test": TestDatasetBlueprint(
-        [
+        hierarchy=[
             TDS.abcd
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [1, 1, 1, 1],
-        ["file1.zip", "file2.zip"],
-        {},
-        {},
-        [],
+        dim_lengths=[1, 1, 1, 1],
+        files=["file1.zip", "file2.zip"],
     ),
 }
 
@@ -287,14 +353,11 @@ def dataset(simple_store, work_dir, request):
 @pytest.fixture
 def saved_dataset(simple_store, work_dir):
     blueprint = TestDatasetBlueprint(
-        [
+        hierarchy=[
             TDS.abcd
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [1, 1, 1, 1],
-        ["file1.txt", "file2.txt"],
-        {},
-        {},
-        [],
+        dim_lengths=[1, 1, 1, 1],
+        files=["file1.txt", "file2.txt"],
     )
     dataset_path = work_dir / "saved-dataset"
     dataset = simple_store.make_test_dataset(blueprint, dataset_path)
