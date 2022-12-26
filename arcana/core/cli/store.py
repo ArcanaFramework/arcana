@@ -28,7 +28,7 @@ location
     Parameters that are specific to the 'type' of storage class to be added
 """
 )
-@click.argument("nickname")
+@click.argument("name")
 @click.argument("type")
 @click.argument("location")
 @click.argument("varargs", nargs=-1)
@@ -48,15 +48,15 @@ location
     default=None,
     help="The location of a cache dir to download local copies of remote data",
 )
-def add(nickname, type, location, varargs, cache, user, password):
+def add(name, type, location, varargs, cache, user, password):
     if cache is None:
-        cache = get_home_dir() / "cache" / nickname
+        cache = get_home_dir() / "cache" / name
         cache.mkdir(parents=True, exist_ok=True)
     store_cls = ClassResolver(DataStore)(type)
     store = store_cls(
-        nickname, location, *varargs, cache_dir=cache, user=user, password=password
+        location, *varargs, name=name, cache_dir=cache, user=user, password=password
     )
-    store.save(nickname)
+    store.save(name)
 
 
 @store.command(

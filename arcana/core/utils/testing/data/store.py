@@ -32,8 +32,8 @@ class SimpleStore(DataStore):
     /path/to/dataset/nodes/a=1.b=3.c=1/
     """
 
-    name: str = None
     server: str = None  # Not used, just there to test `arcana store add` CLI
+    name: str = None
     user: str = None  # Not used, just there to test `arcana store add` CLI
     password: str = None  # Not used, just there to test `arcana store add` CLI
     cache_dir: Path = attrs.field(
