@@ -22,6 +22,8 @@ def submodules(package, subpkg=None):
     subpkg : str, optional
         the sub-package (of the sub-packages) to return instead of the first level down.
         e.g. package=arcana, subpkg=data -> arcana.dirtree.data, arcana.xnat.data, etc...
+    skip : list[str], optional
+        submodules to skip
 
     Yields
     ------
@@ -31,6 +33,8 @@ def submodules(package, subpkg=None):
     for mod_info in pkgutil.iter_modules(
         package.__path__, prefix=package.__package__ + "."
     ):
+        if mod_info.name == "core":
+            continue
         if subpkg is not None:
             try:
                 yield import_module(mod_info.name + "." + subpkg)
