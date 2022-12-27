@@ -1,5 +1,5 @@
-Arcana
-======
+Arcana - Core
+=============
 .. image:: https://github.com/ArcanaFramework/arcana-core/actions/workflows/tests.yml/badge.svg
    :target: https://github.com/ArcanaFramework/arcana-core/actions/workflows/tests.yml
 .. image:: https://codecov.io/gh/ArcanaFramework/arcana-core/branch/main/graph/badge.svg?token=UIS0OGPST7
