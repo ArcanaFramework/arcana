@@ -4,12 +4,12 @@ Arcana - Core
    :target: https://github.com/ArcanaFramework/arcana-core/actions/workflows/tests.yml
 .. image:: https://codecov.io/gh/ArcanaFramework/arcana-core/branch/main/graph/badge.svg?token=UIS0OGPST7
    :target: https://codecov.io/gh/ArcanaFramework/arcana
-.. .. image:: https://img.shields.io/pypi/pyversions/arcana-core.svg
-..    :target: https://pypi.python.org/pypi/arcana-core/
-..    :alt: Supported Python versions
-.. .. image:: https://img.shields.io/pypi/v/arcana-core.svg
-..    :target: https://pypi.python.org/pypi/arcana-core/
-..    :alt: Latest Version
+.. image:: https://img.shields.io/pypi/pyversions/arcana-core.svg
+   :target: https://pypi.python.org/pypi/arcana-core/
+   :alt: Supported Python versions
+.. image:: https://img.shields.io/pypi/v/arcana-core.svg
+   :target: https://pypi.python.org/pypi/arcana-core/
+   :alt: Latest Version
 .. image:: https://readthedocs.org/projects/arcana/badge/?version=latest
   :target: http://arcana.readthedocs.io/en/latest/?badge=latest
   :alt: Documentation Status
