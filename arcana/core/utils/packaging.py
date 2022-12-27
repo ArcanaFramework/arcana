@@ -167,6 +167,8 @@ def installed_module_paths(pkg: pkg_resources.DistInfoDistribution):
         paths = importlib_metadata.files(pkg.key)
     except importlib_metadata.PackageNotFoundError:
         paths = []
+    if paths is None:
+        paths = []
     paths = set(
         p.parent if p.name == "__init__.py" else p.with_suffix("")
         for p in paths
