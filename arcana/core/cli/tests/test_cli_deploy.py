@@ -298,7 +298,7 @@ command:
         field: flags
         datatype: str
         help_string: description of flags param
-    row_frequency: fileformats.medimage:Clinical[session]
+    row_frequency: core:Clinical[session]
     configuration:
       executable: /usr/local/miniconda/bin/mriqc
       dataset: /work/bids-dataset
@@ -339,9 +339,9 @@ a longer description
 #### Inputs
 |Name|Data type|Stored data type default|Description|
 |----|---------|------------------------|-----------|
-|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (from 'medimage' extension)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (from 'medimage' extension)</span>|T1-weighted anatomical scan|
-|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (from 'medimage' extension)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (from 'medimage' extension)</span>|T2-weighted anatomical scan|
-|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (from 'medimage' extension)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (from 'medimage' extension)</span>|functional MRI|
+|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (from 'fileformats.medimage' extension)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (from 'fileformats.medimage' extension)</span>|T1-weighted anatomical scan|
+|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (from 'fileformats.medimage' extension)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (from 'fileformats.medimage' extension)</span>|T2-weighted anatomical scan|
+|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (from 'fileformats.medimage' extension)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (from 'fileformats.medimage' extension)</span>|functional MRI|
 
 #### Outputs
 |Name|Data type|Stored data type default|Description|
