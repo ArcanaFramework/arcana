@@ -1,15 +1,7 @@
 from pathlib import Path
-import click
-import arcana
-import arcana.core as core
+import arcana.core
 from arcana.core.utils.packaging import submodules
-
-
-# Define the base CLI entrypoint
-@click.group()
-@click.version_option(version=core.__version__)
-def cli():
-    """Base command line group, installed as "arcana"."""
+from .base import cli
 
 
 @cli.group()
@@ -17,7 +9,7 @@ def ext():
     """Command-line group for extension hooks"""
 
 
-CLI_EXT_PKG = Path(core.__file__).parent / "cli"
+CLI_EXT_PKG = Path(arcana.core.__file__).parent / "cli"
 
 # Ensure that all sub-packages under CLI are loaded so they are added to the
 # base command

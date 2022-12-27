@@ -73,7 +73,7 @@ can be arbitrarily specified. dimensions"""
 )
 @click.option(
     "--space",
-    default="medimage:Clinical",
+    default="core:Clinical",
     help=(
         "The enum that specifies the data dimensions of the dataset. "
         "Defaults to `Clinical`, which "
@@ -172,7 +172,7 @@ field array (list[int|float|str|bool]) or
     help=(
         "The row-frequency that items appear in the dataset (e.g. per "
         "'session', 'subject', 'timepoint', 'group', 'dataset' for "
-        "medimage:Clinical data dimensions"
+        "core:Clinical data dimensions"
     ),
     show_default="highest",
 )
@@ -218,7 +218,7 @@ field array (list[int|float|str|bool]) or
     help=(
         "Match on specific header value. This option is only valid for "
         "select formats that the implement the 'header_val()' method "
-        "(e.g. medimage:dicom)."
+        "(e.g. medimage/Dicom)."
     ),
 )
 def add_source(
@@ -266,7 +266,7 @@ datatype
     help=(
         "The row-frequency that items appear in the dataset (e.g. per "
         "'session', 'subject', 'timepoint', 'group', 'dataset' for "
-        "medimage:Clinical data dimensions"
+        "Clinical data dimensions"
     ),
     show_default="highest",
 )

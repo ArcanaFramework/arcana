@@ -269,24 +269,24 @@ command:
       T1w:
         configuration:
           path: anat/T1w
-        datatype: medimage:NiftiGzX
+        datatype: fileformats.medimage:NiftiGzX
         help_string: "T1-weighted anatomical scan"
         default_column:
-          datatype: medimage:Dicom
+          datatype: fileformats.medimage:Dicom
       T2w:
         configuration:
           path: anat/T2w
-        datatype: medimage:NiftiGzX
+        datatype: fileformats.medimage:NiftiGzX
         help_string: "T2-weighted anatomical scan"
         default_column:
-          datatype: medimage:Dicom
+          datatype: fileformats.medimage:Dicom
       fMRI:
-        datatype: medimage:NiftiGzX
+        datatype: fileformats.medimage:NiftiGzX
         help_string: "functional MRI"
         configuration:
           path: func/task-rest_bold
         default_column:
-          datatype: medimage:Dicom
+          datatype: fileformats.medimage:Dicom
     outputs:
       mriqc:
         datatype: fileformats.common:Directory
@@ -298,7 +298,7 @@ command:
         field: flags
         datatype: str
         help_string: description of flags param
-    row_frequency: medimage:Clinical[session]
+    row_frequency: fileformats.medimage:Clinical[session]
     configuration:
       executable: /usr/local/miniconda/bin/mriqc
       dataset: /work/bids-dataset
