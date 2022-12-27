@@ -141,6 +141,8 @@ def get_editable_dir(pkg: pkg_resources.DistInfoDistribution):
     Path or None
         the path to the editable file or None if the package isn't installed in editable mode
     """
+    if pkg.egg_info is None:
+        return None
     direct_url_path = Path(pkg.egg_info) / "direct_url.json"
     if not direct_url_path.exists():
         return None
