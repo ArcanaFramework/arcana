@@ -149,7 +149,7 @@ def get_editable_dir(pkg: pkg_resources.DistInfoDistribution):
     with open(direct_url_path) as f:
         url_spec = json.load(f)
     url = url_spec["url"]
-    if not url_spec["dir_info"].get("editable"):
+    if "dir_info" not in url_spec or not url_spec["dir_info"].get("editable"):
         return None
     assert url.startswith("file://")
     return Path(url[len("file://") :])
