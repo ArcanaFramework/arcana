@@ -15,30 +15,18 @@ Arcana - Core
   :alt: Documentation Status
 
 
-Abstraction of Repository-Centric ANAlysis (Arcana_) is Python framework
-for "repository-centric" analyses of study groups (e.g. NeuroImaging
-studies) built on the Pydra_ dataflow engine.
-
-Arcana_ interacts closely with a data store (e.g. XNAT repository or BIDS dataset),
-storing intermediate outputs, along with the parameters used to derive them,
-for reuse by subsequent analyses.
-
-Analysis workflows are constructed and executed using the Pydra_
-package, and can either be run locally or submitted to HPC
-schedulers using Pydra_'s execution plugins. For a requested analysis
-output, Arcana determines the required processing steps by querying
-the repository to check for missing intermediate outputs before
-constructing the workflow graph.
+Core package of the `Arcana Framework`_ containing all base classes used in the
+implementation of repository-centric analysis workflows.
 
 Documentation
 -------------
 
-Detailed documentation on Arcana can be found at https://arcana.readthedocs.io
+Detailed documentation on the Arcana framework can be found at https://arcana.readthedocs.io
 
 Quick Installation
 ------------------
 
-Arcana can be installed for Python 3 using *pip*::
+Arcana-core can be installed for Python 3 using *pip*::
 
     $ pip3 install arcana-core
 
