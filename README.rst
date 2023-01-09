@@ -15,7 +15,7 @@ Arcana - Core
   :alt: Documentation Status
 
 
-Core package of the `Arcana Framework`__ containing all base classes used in the
+Core package of the `Arcana Framework`_ containing all base classes used in the
 implementation of repository-centric analysis workflows.
 
 Documentation
@@ -30,11 +30,7 @@ Arcana-core can be installed for Python 3 using *pip*::
 
     $ pip3 install arcana-core
 
-.. _Arcana: http://arcana.readthedocs.io
-.. _Pydra: http://pydra.readthedocs.io
-.. _XNAT: http://xnat.org
-.. _BIDS: http://bids.neuroimaging.io/
-.. _`Environment Modules`: http://modules.sourceforge.net
+.. _Arcana Framework: http://arcana.readthedocs.io
 
 
 License
