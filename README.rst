@@ -15,7 +15,7 @@ Arcana - Core
   :alt: Documentation Status
 
 
-Core package of the `Arcana Framework`_ containing all base classes used in the
+Core package of the `Arcana Framework`__ containing all base classes used in the
 implementation of repository-centric analysis workflows.
 
 Documentation
