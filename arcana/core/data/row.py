@@ -189,7 +189,7 @@ class UnresolvedDataType(metaclass=ABCMeta):
     Parameters
     ----------
     path : str
-        The name_path to the relative location of the file group, i.e. excluding
+        The name_path to the relative location of the file set, i.e. excluding
         information about which row in the data tree it belongs to
     order : int | None
         The ID of the fileset in the session. To be used to
@@ -236,7 +236,7 @@ class UnresolvedFileSet(UnresolvedDataType):
     Parameters
     ----------
     name_path : str
-        The name_path to the relative location of the file group, i.e. excluding
+        The name_path to the relative location of the file set, i.e. excluding
         information about which row in the data tree it belongs to
     order : int | None
         The ID of the fileset in the session. To be used to
@@ -284,11 +284,11 @@ class UnresolvedField(UnresolvedDataType):
     Parameters
     ----------
     path : str
-        The name_path to the relative location of the file group, i.e. excluding
+        The name_path to the relative location of the file set, i.e. excluding
         information about which row in the data tree it belongs to
     value : str
         The value assigned to the unresolved data item (for fields instead of
-        file groups)
+        file sets)
     order : int | None
         The ID of the fileset in the session. To be used to
         distinguish multiple filesets with the same scan type in the

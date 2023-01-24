@@ -222,7 +222,7 @@ def match_header_vals(item, header_vals):
 @attrs.define
 class DataSink(DataColumn):
     """
-    A specification for a file group within a analysis to be derived from a
+    A specification for a file set within a analysis to be derived from a
     processing pipeline.
 
     Parameters

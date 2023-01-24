@@ -114,7 +114,7 @@ class DataStore(metaclass=ABCMeta):
         fileset : FileSet
             The fileset to cache locally
         cache_only : bool
-            Whether to attempt to extract the file groups from the local cache
+            Whether to attempt to extract the file sets from the local cache
             (if applicable) and raise an error otherwise
 
         Returns
