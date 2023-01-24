@@ -5,199 +5,18 @@ New formats and spaces
 
 Arcana was initially developed for medical-imaging analysis. Therefore, with
 the notable exceptions of the generic data spaces and file-formats defined in
-:mod:`arcana.dirtree.data`, the
+:mod:`arcana.core.standard`, the
 majority of file-formats and data spaces are specific to medical imaging.
 However, new formats and data spaces used in other fields can be implemented as
 required with just a few lines of code.
-
 
 .. _file_formats:
 
 File formats
 ------------
 
-File formats are defined by subclasses of the :class:`.FileGroup` base class.
-"File group" is a catch-all term that encompasses three sub-types, each with
-their own :class:`.FileGroup` subclass:
-
-* :class:`.File` - single files
-* :class:`.WithSideCars` - files + side car files (e.g. separate headers/JSON files)
-* :class:`.Directory` - single directories containing specific
-
-New datatype classes should extend one of these classes or an existing file
-datatype class (or both) as they include methods to interact with the data
-store. Note that :class:`.File` is a base class of :class:`.WithSideCars`
-so multiple inheritance is possible where a datatype with side cars inherits from
-the same datatype without side-cars (e.g. Nifti -> NiftiX), but in this case
-ensure that :class:`.WithSideCars` appears before the other class to be
-extended in the bases list, e.g. ``NiftiX(WithSideCars, Nifti)``.
-
-:class:`.File` subclasses typically only need to set an ``ext`` attribute
-to the extension string used to identify the type of file, e.g.
-
-.. code-block:: python
-
-    from fileformats.generic import File
-
-    class Json(File):
-        ext = 'json'
-
-.. note::
-    If the file datatype doesn't have an identifiable extension it is possible to
-    override :meth:`File.set_fs_paths` to peak inside the contents of the
-    file to determine its type, but this shouldn't be necessary in most cases.
-
-:class:`.WithSideCars` subclasses can set the ``ext`` and ``side_car_types``
-attributes. The ``side_car_types`` attribute is a tuple of the side cars
-formats that are expected alongside the "primary file"
-
-.. code-block:: python
-
-    from arcana.core.data.type.file import WithSideCars
-
-    class AnalyzeHeader(File):
-        ext = 'hdr'
-
-    class Analyze(WithSideCars):
-        ext = 'img'
-        side_car_types = (AnalyzeHeader,)
-
-.. note::
-    When using a file + side-cars datatype in a workflow, the side car files can
-    be assumed to have the same name-stem, just different extensions
-    (e.g. ``/path/to/data/myfile.nii.gz`` and ``/path/to/data/myfile.json``).
-    Also when setting paths, if side-car paths are not explicitly provided they
-    will be assumed to have the same name-stem.
-
-:class:`.Directory` subclasses can define the ``content_types`` attribute,
-a tuple of the file formats, that are expected within the directory. The list is not
-exclusive, so additional files inside the directory will not effect its
-identification.
-
-
-.. code-block:: python
-
-    from fileformats.generic import Directory, File
-
-    class DicomFile(File):
-        ext = 'dcm'
-
-    class Dicom(Directory):
-        content_types = (DicomFile,)
-
-It is a good idea to make use of class inheritance when defining related
-formats to capture the relationship between them. For example, adding a datatype
-to handle the Siemens-variant DICOM format which has '.IMA' extensions.
-
-.. code-block:: python
-
-    class SiemensDicomFile(DicomFile):
-        ext = 'IMA'
-
-    class SiemensDicom(Dicom):
-        content_types = (SiemensDicomFile,)
-
-Defining hierarchical relationships between file formats is most useful when
-defining implicit converters between file formats. This is done by adding
-classmethods to the file format class decorated by :func:`arcana.core.mark.converter`.
-The decorator specifies the format the converter method can specify the
-the conversion *from* into the current class. The converter method adds Pydra_
-nodes to a pipeline argument to perform
-
-The first argument for converter methods should be the fs_path followed by
-any side cars as keyword arguments. Converter methods should return the Pydra_
-that performs the conversion followed by a lazy field that points to the
-``fs_path`` of the converted file-group. If the datatype to convert to has side
-cars, then the method should return the task followed by a tuple consisting of
-lazy fields that point to the ``fs_path`` and then side-car files in the
-converted file group in the order they appear in ``side_car_exts``.
-
-.. code-block:: python
-
-    from pydra.engine.core import Workflow, LazyField
-    from pydra.tasks.dcm2niix import Dcm2niix
-    from pydra.tasks.mrtrix3.utils import MRConvert
-    from arcana.core.mark import converter
-    from fileformats.generic import File
-
-    class Nifti(File):
-        ext = 'nii'
-
-        @classmethod
-        @converter(Dicom)
-        def dcm2niix(cls, fs_path: LazyField):
-            node = Dcm2niix(
-                name=node_name,
-                in_file=dicom,
-                compress='n')
-            return node, node.lzout.out_file
-
-        @classmethod
-        @converter(Analyze)
-        def mrconvert(cls, fs_path: LazyField, hdr: LazyField):
-            node = MRConvert(
-                name=node_name,
-                in_file=analyze,
-                out_file='out.' + cls.ext)
-            return node, node.lzout.out_file
-
-If the class to convert to is a :class:`.WithSideCars` subclass then the return value
-should be a tuple consisting the primary path followed by side-car paths in the
-same order they are defined in the class. To remove a converter in a specialised
-subclass (which the converter isn't able to convert to) simply override the
-converter method with an arbitrary value.
-
-
-.. code-block:: python
-
-    class NiftiX(WithSideCars, Nifti):
-        ext = 'nii'
-        side_car_types = (Json,)
-
-        @classmethod
-        @converter(Dicom)
-        def dcm2niix(cls, fs_path: LazyField):
-            node, out_file = super().dcm2niix(fs_path)
-            return node, (out_file, node.lzout.out_json)
-
-        mrconvert = None  # Only dcm2niix produces the required JSON files for NiftiX
-
-
-Use dummy base classes in order to avoid circular reference issues when defining
-two-way conversions between formats
-
-
-.. code-block:: python
-
-    class ExampleFormat2Base(File):
-        pass
-
-    class ExampleFormat1(File):
-        ext = 'exm1'
-
-        @classmethod
-        @converter(ExampleFormat2Base)
-        def from_example1(cls, fs_path: LazyField):
-            node = Converter2to1(
-                in_file=example1)
-            return node, node.lzout.out_file
-
-    class ExampleFormat2(ExampleFormat2Base):
-        ext = 'exm2'
-
-        @classmethod
-        @converter(ExampleFormat1)
-        def from_example1(cls, pipeline: Pipeline, node_name: str, example1: LazyField):
-            node = Converter1to2(
-                in_file=example1)
-            return node, node.lzout.out_file
-
-While not necessary, it can be convenient to add methods for accessing
-file-group data within Python. This makes it possible to write generic methods
-to generate publication outputs. Some suggested methods are
-
-* ``data`` - access data array, particularly relevant for imaging data
-* ``metadata`` - access a dictionary containing metadata extracted from a header or side-car
+File formats are specified using the FileFormats_ package. Please refer to its documentation
+on how to add new file formats
 
 
 Data spaces
@@ -282,3 +101,4 @@ axes for the date and weather station of the recordings, with the following code
     All permutations of *N*-D binary strings need to be named within the enum.
 
 .. _Pydra: http://pydra.readthedocs.io
+.. _FileFormats: https://arcanaframework.github.io/fileformats
