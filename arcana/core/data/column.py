@@ -84,7 +84,7 @@ class DataSource(DataColumn):
     datatype : type
         File format that data will be
     row_frequency : DataSpace
-        The row_frequency of the file-group within the dataset tree, e.g. per
+        The row_frequency of the file-set within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
     quality_threshold : DataQuality
         The acceptable quality (or above) that should be considered. Data items
@@ -234,10 +234,10 @@ class DataSink(DataColumn):
         The file datatype or data type used to store the corresponding items
         in the store dataset.
     row_frequency : DataSpace
-        The row_frequency of the file-group within the dataset tree, e.g. per
+        The row_frequency of the file-set within the dataset tree, e.g. per
         'session', 'subject', 'timepoint', 'group', 'dataset'
     salience : Salience
-        The salience of the specified file-group, i.e. whether it would be
+        The salience of the specified file-set, i.e. whether it would be
         typically of interest for publication outputs or whether it is just
         a temporary file in a workflow, and stages in between
     pipeline_name : str

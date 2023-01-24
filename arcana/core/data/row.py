@@ -19,7 +19,7 @@ if ty.TYPE_CHECKING:
 
 @attrs.define(auto_detect=True)
 class DataRow:
-    """A "row" in a dataset "frame" where file-groups and fields can be placed, e.g.
+    """A "row" in a dataset "frame" where file-sets and fields can be placed, e.g.
     a session or subject.
 
     Parameters
@@ -182,7 +182,7 @@ class DataRow:
 
 @attrs.define
 class UnresolvedDataType(metaclass=ABCMeta):
-    """A file-group stored in, potentially multiple, unknown file formats.
+    """A file-set stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
 
@@ -199,7 +199,7 @@ class UnresolvedDataType(metaclass=ABCMeta):
     quality : DataQuality
         The quality label assigned to the fileset (e.g. as is saved on XNAT)
     provenance : Provenance | None
-        The provenance for the pipeline that generated the file-group,
+        The provenance for the pipeline that generated the file-set,
         if applicable
     """
 
@@ -229,7 +229,7 @@ def normalise_paths(file_paths):
 
 @attrs.define
 class UnresolvedFileSet(UnresolvedDataType):
-    """A file-group stored in, potentially multiple, unknown file formats.
+    """A file-set stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
 
@@ -246,12 +246,12 @@ class UnresolvedFileSet(UnresolvedDataType):
     quality : DataQuality
         The quality label assigned to the fileset (e.g. as is saved on XNAT)
     provenance : Provenance | None
-        The provenance for the pipeline that generated the file-group,
+        The provenance for the pipeline that generated the file-set,
         if applicable
     row : DataRow
         The data row that the field belongs to
     file_paths : Sequence[str] | None
-        Path to the file-group in the local cache
+        Path to the file-set in the local cache
     uris : Dict[str, str] | None
         For stores where the name of the file datatype is saved with the
         data (i.e. XNAT), the name of the resource enables straightforward
@@ -277,7 +277,7 @@ class UnresolvedFileSet(UnresolvedDataType):
 
 @attrs.define
 class UnresolvedField(UnresolvedDataType):
-    """A file-group stored in, potentially multiple, unknown file formats.
+    """A file-set stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
 
@@ -297,7 +297,7 @@ class UnresolvedField(UnresolvedDataType):
     quality : DataQuality
         The quality label assigned to the fileset (e.g. as is saved on XNAT)
     provenance : Provenance | None
-        The provenance for the pipeline that generated the file-group,
+        The provenance for the pipeline that generated the file-set,
         if applicable
     row : DataRow
         The data row that the field belongs to

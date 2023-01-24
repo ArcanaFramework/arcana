@@ -159,7 +159,7 @@ NAME: The name the source will be referenced by
 
 FORMAT: The data type of the column. Can be a field (int|float|str|bool),
 field array (list[int|float|str|bool]) or
-"file-group" (file, file+header/side-cars or directory)
+"file-set" (file, file+header/side-cars or directory)
 """,
 )
 @click.argument("dataset_path")
@@ -252,7 +252,7 @@ name
     The name the source will be referenced by
 datatype
     The data type of the column. Can be a field (int|float|str|bool),
-    field array (list[int|float|str|bool]) or "file-group"
+    field array (list[int|float|str|bool]) or "file-set"
     (file, file+header/side-cars or directory)
 """,
 )

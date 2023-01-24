@@ -17,7 +17,7 @@ def test_column_api_access(dataset):
         # Check length of column
         assert len(col) == reduce(mul, bp.dim_lengths)
 
-        # Access file-group via leaf IDs
+        # Access file-set via leaf IDs
         for id_ in col.ids:
             item = col[id_]
             assert isinstance(item, exp.datatype)
