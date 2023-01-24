@@ -167,10 +167,10 @@ class DataRow:
     def ids_tuple(self):
         return self.dataset.ids_tuple(self.ids)
 
-    def add_file_group(self, path, **kwargs):
+    def add_fileset(self, path, **kwargs):
         if self._unresolved is None:
             self._unresolved = []
-        self._unresolved.append(UnresolvedFileGroup(path=path, row=self, **kwargs))
+        self._unresolved.append(UnresolvedFileSet(path=path, row=self, **kwargs))
 
     def add_field(self, path, value, **kwargs):
         if self._unresolved is None:
@@ -192,12 +192,12 @@ class UnresolvedDataType(metaclass=ABCMeta):
         The name_path to the relative location of the file group, i.e. excluding
         information about which row in the data tree it belongs to
     order : int | None
-        The ID of the file_group in the session. To be used to
-        distinguish multiple file_groups with the same scan type in the
+        The ID of the fileset in the session. To be used to
+        distinguish multiple filesets with the same scan type in the
         same session, e.g. scans taken before and after a task. For
         datasets where this isn't stored (i.e. Local), id can be None
     quality : DataQuality
-        The quality label assigned to the file_group (e.g. as is saved on XNAT)
+        The quality label assigned to the fileset (e.g. as is saved on XNAT)
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
@@ -228,7 +228,7 @@ def normalise_paths(file_paths):
 
 
 @attrs.define
-class UnresolvedFileGroup(UnresolvedDataType):
+class UnresolvedFileSet(UnresolvedDataType):
     """A file-group stored in, potentially multiple, unknown file formats.
     File formats are resolved by providing a list of candidates to the
     'resolve' method
@@ -239,12 +239,12 @@ class UnresolvedFileGroup(UnresolvedDataType):
         The name_path to the relative location of the file group, i.e. excluding
         information about which row in the data tree it belongs to
     order : int | None
-        The ID of the file_group in the session. To be used to
-        distinguish multiple file_groups with the same scan type in the
+        The ID of the fileset in the session. To be used to
+        distinguish multiple filesets with the same scan type in the
         same session, e.g. scans taken before and after a task. For
         datasets where this isn't stored (i.e. Local), id can be None
     quality : DataQuality
-        The quality label assigned to the file_group (e.g. as is saved on XNAT)
+        The quality label assigned to the fileset (e.g. as is saved on XNAT)
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable
@@ -290,12 +290,12 @@ class UnresolvedField(UnresolvedDataType):
         The value assigned to the unresolved data item (for fields instead of
         file groups)
     order : int | None
-        The ID of the file_group in the session. To be used to
-        distinguish multiple file_groups with the same scan type in the
+        The ID of the fileset in the session. To be used to
+        distinguish multiple filesets with the same scan type in the
         same session, e.g. scans taken before and after a task. For
         datasets where this isn't stored (i.e. Local), id can be None
     quality : DataQuality
-        The quality label assigned to the file_group (e.g. as is saved on XNAT)
+        The quality label assigned to the fileset (e.g. as is saved on XNAT)
     provenance : Provenance | None
         The provenance for the pipeline that generated the file-group,
         if applicable

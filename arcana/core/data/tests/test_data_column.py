@@ -1,6 +1,6 @@
 from operator import mul
 from functools import reduce
-from fileformats.core.base import FileGroup
+from fileformats.core.base import FileSet
 
 
 def test_column_api_access(dataset):
@@ -21,5 +21,5 @@ def test_column_api_access(dataset):
         for id_ in col.ids:
             item = col[id_]
             assert isinstance(item, exp.datatype)
-            if issubclass(exp.datatype, FileGroup):
+            if issubclass(exp.datatype, FileSet):
                 assert sorted(p.name for p in item.fs_paths) == sorted(exp.filenames)

@@ -95,7 +95,7 @@ class DataStore(metaclass=ABCMeta):
     def find_items(self, row):
         """
         Find all data items within a data row and populate the DataRow object
-        with them using the `add_file_group` and `add_field` methods.
+        with them using the `add_fileset` and `add_field` methods.
 
         Parameters
         ----------
@@ -104,15 +104,15 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get_file_group_paths(self, file_group, cache_only=False):
+    def get_fileset_paths(self, fileset, cache_only=False):
         """
-        Cache the file_group locally (if required) and return the locations
+        Cache the fileset locally (if required) and return the locations
         of the cached primary file and side cars
 
         Parameters
         ----------
-        file_group : FileGroup
-            The file_group to cache locally
+        fileset : FileSet
+            The fileset to cache locally
         cache_only : bool
             Whether to attempt to extract the file groups from the local cache
             (if applicable) and raise an error otherwise
@@ -146,14 +146,14 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_file_group_paths(self, file_group, fs_paths):
+    def put_fileset_paths(self, fileset, fs_paths):
         """
-        Inserts or updates the file_group into the store
+        Inserts or updates the fileset into the store
 
         Parameters
         ----------
-        file_group : FileGroup
-            The file_group to insert into the store
+        fileset : FileSet
+            The fileset to insert into the store
         fs_paths : list[Path]
             The file-system paths to the files/directories to sync
 
@@ -238,7 +238,7 @@ class DataStore(metaclass=ABCMeta):
             The provenance data stored in the repository for the data item.
             None if no provenance data has been stored"""
 
-    def get_checksums(self, file_group):
+    def get_checksums(self, fileset):
         """
         Override this method to return checksums for files that are stored
         with remote files (e.g. in XNAT). If no checksums are stored in the
@@ -247,18 +247,18 @@ class DataStore(metaclass=ABCMeta):
 
         Parameters
         ----------
-        file_group : FileGroup
-            The file_group to return the checksums for
+        fileset : FileSet
+            The fileset to return the checksums for
 
         Returns
         -------
         checksums : dct[str, str]
             A dictionary with keys corresponding to the relative paths of all
-            files in the file_group from the base path and values equal to the
+            files in the fileset from the base path and values equal to the
             MD5 hex digest. The primary file in the file-set (i.e. the one that
             the path points to) should be specified by '.'.
         """
-        return file_group.calculate_checksums()
+        return fileset.calculate_checksums()
 
     def connect(self):
         """

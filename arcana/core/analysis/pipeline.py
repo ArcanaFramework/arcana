@@ -16,7 +16,7 @@ from arcana.core.exceptions import (
     ArcanaOutputNotProducedException,
     ArcanaDataMatchError,
 )
-from fileformats.core.base import DataType, FileGroup, Field
+from fileformats.core.base import DataType, FileSet, Field
 from fileformats.core.exceptions import FileFormatConversionError
 import arcana.core.data.set
 import arcana.core.data.row
@@ -657,7 +657,7 @@ def access_paths_and_values(**data_items):
     logger.debug("Extracting paths/values from %s", data_items)
     values = []
     for name, item in data_items.items():
-        if isinstance(item, FileGroup):
+        if isinstance(item, FileSet):
             cpy = item.copy_to(Path.cwd() / name, symlink=True)
             values.append(cpy.fs_path)
         elif isinstance(item, Field):
@@ -674,7 +674,7 @@ def encapsulate_paths_and_values(outputs, **kwargs):
     items = []
     for outpt in outputs:
         val = kwargs[outpt.name]
-        if issubclass(outpt.datatype, FileGroup):
+        if issubclass(outpt.datatype, FileSet):
             obj = outpt.datatype.from_fs_path(val)
         else:
             obj = outpt.datatype(val)

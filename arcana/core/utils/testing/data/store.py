@@ -62,7 +62,7 @@ class FlatDirStore(DataStore):
     def find_items(self, row: DataRow):
         """
         Find all data items within a data row and populate the DataRow object
-        with them using the `add_file_group` and `add_field` methods.
+        with them using the `add_fileset` and `add_field` methods.
 
         Parameters
         ----------
@@ -79,21 +79,21 @@ class FlatDirStore(DataStore):
                     provenance = json.load(f)
             else:
                 provenance = None
-            row.add_file_group(
+            row.add_fileset(
                 path=item_path.name,
                 file_paths=list(self.iterdir(item_path)),
                 provenance=provenance,
             )
 
-    def get_file_group_paths(self, file_group, cache_only=False):
+    def get_fileset_paths(self, fileset, cache_only=False):
         """
-        Cache the file_group locally (if required) and return the locations
+        Cache the fileset locally (if required) and return the locations
         of the cached primary file and side cars
 
         Parameters
         ----------
-        file_group : FileGroup
-            The file_group to cache locally
+        fileset : FileSet
+            The fileset to cache locally
         cache_only : bool
             Whether to attempt to extract the file groups from the local cache
             (if applicable) and raise an error otherwise
@@ -109,16 +109,16 @@ class FlatDirStore(DataStore):
             If cache_only is set and there is a mismatch between the cached
             and remote versions
         """
-        return list(self.iterdir(self.get_item_path(file_group)))
+        return list(self.iterdir(self.get_item_path(fileset)))
 
-    def put_file_group_paths(self, file_group, fs_paths: list[Path]):
+    def put_fileset_paths(self, fileset, fs_paths: list[Path]):
         """
-        Inserts or updates the file_group into the store
+        Inserts or updates the fileset into the store
 
         Parameters
         ----------
-        file_group : FileGroup
-            The file_group to insert into the store
+        fileset : FileSet
+            The fileset to insert into the store
         fs_paths : list[Path]
             The file-system paths to the files/directories to sync
 
@@ -127,7 +127,7 @@ class FlatDirStore(DataStore):
         cached_paths : list[str]
             The paths of the files where they are cached in the file system
         """
-        item_dir = self.get_item_path(file_group)
+        item_dir = self.get_item_path(fileset)
         cached_paths = []
         for fs_path in fs_paths:
             dst_path = item_dir / fs_path.name

@@ -78,8 +78,8 @@ class DataSource(DataColumn):
     Parameters
     ----------
     path : str
-        A regex name_path to match the file_group names with. Must match
-        one and only one file_group per <row_frequency>. If None, the name
+        A regex name_path to match the fileset names with. Must match
+        one and only one fileset per <row_frequency>. If None, the name
         is used instead.
     datatype : type
         File format that data will be
@@ -90,8 +90,8 @@ class DataSource(DataColumn):
         The acceptable quality (or above) that should be considered. Data items
         will be considered missing
     order : int | None
-        To be used to distinguish multiple file_groups that match the
-        name_path in the same session. The order of the file_group within the
+        To be used to distinguish multiple filesets that match the
+        name_path in the same session. The order of the fileset within the
         session (0-indexed). Based on the scan ID but is more robust to small
         changes to the IDs within the session if for example there are
         two scans of the same type taken before and after a task.

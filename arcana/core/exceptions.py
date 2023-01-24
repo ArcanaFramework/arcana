@@ -115,7 +115,7 @@ class ArcanaUnresolvableFormatException(ArcanaException):
     pass
 
 
-class ArcanaFileGroupNotCachedException(ArcanaException):
+class ArcanaFileSetNotCachedException(ArcanaException):
     pass
 
 
