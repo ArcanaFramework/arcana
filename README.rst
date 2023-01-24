@@ -1,14 +1,14 @@
-Arcana - Core
-=============
-.. image:: https://github.com/ArcanaFramework/arcana-core/actions/workflows/tests.yml/badge.svg
-   :target: https://github.com/ArcanaFramework/arcana-core/actions/workflows/tests.yml
-.. image:: https://codecov.io/gh/ArcanaFramework/arcana-core/branch/main/graph/badge.svg?token=UIS0OGPST7
+Arcana
+======
+.. image:: https://github.com/ArcanaFramework/arcana/actions/workflows/tests.yml/badge.svg
+   :target: https://github.com/ArcanaFramework/arcana/actions/workflows/tests.yml
+.. image:: https://codecov.io/gh/ArcanaFramework/arcana/branch/main/graph/badge.svg?token=UIS0OGPST7
    :target: https://codecov.io/gh/ArcanaFramework/arcana
-.. image:: https://img.shields.io/pypi/pyversions/arcana-core.svg
-   :target: https://pypi.python.org/pypi/arcana-core/
+.. image:: https://img.shields.io/pypi/pyversions/arcana.svg
+   :target: https://pypi.python.org/pypi/arcana/
    :alt: Supported Python versions
-.. image:: https://img.shields.io/pypi/v/arcana-core.svg
-   :target: https://pypi.python.org/pypi/arcana-core/
+.. image:: https://img.shields.io/pypi/v/arcana.svg
+   :target: https://pypi.python.org/pypi/arcana/
    :alt: Latest Version
 .. image:: https://readthedocs.org/projects/arcana/badge/?version=latest
   :target: http://arcana.readthedocs.io/en/latest/?badge=latest
@@ -18,19 +18,19 @@ Arcana - Core
 Core package of the `Arcana Framework`_ containing all base classes used in the
 implementation of repository-centric analysis workflows.
 
+
 Documentation
 -------------
 
 Detailed documentation on the Arcana framework can be found at https://arcana.readthedocs.io
+
 
 Quick Installation
 ------------------
 
 Arcana-core can be installed for Python 3 using *pip*::
 
-    $ pip3 install arcana-core
-
-.. _Arcana Framework: http://arcana.readthedocs.io
+    $ python3 -m pip install arcana
 
 
 License
@@ -43,3 +43,18 @@ This work is licensed under a
   :target: http://creativecommons.org/licenses/by-nc-sa/4.0/
   :alt: Creative Commons License: Attribution-NonCommercial-ShareAlike 4.0 International
 
+|
+
+*Note: For the legacy version of Arcana as described in
+Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `<10.1007/s12021-019-09430-1>`_
+*please see* `<https://github.com/MonashBI/arcana-legacy>`_.
+*Conceptually, the legacy version and the versions in this repository are similar.
+However, instead of Nipype, later versions use the Pydra dataflow engine (Nipype's successor)
+and the syntax has been rewritten from scratch to make it more streamlined and intuitive.*
+
+
+.. _Arcana: http://arcana.readthedocs.io
+.. _Pydra: http://pydra.readthedocs.io
+.. _XNAT: http://xnat.org
+.. _BIDS: http://bids.neuroimaging.io/
+.. _`Environment Modules`: http://modules.sourceforge.net

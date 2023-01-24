@@ -8,8 +8,10 @@ from tempfile import mkdtemp
 from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
-from fileformats.common import Text, Directory, Json
-from arcana.core.utils.testing.data.fileformats import (
+from fileformats.generic import Directory
+from fileformats.text import Plain as Text
+from fileformats.serialization import Json
+from arcana.core.utils.testing.data import (
     MyFormatGz,
     MyFormatGzX,
     MyFormatX,
@@ -37,6 +39,8 @@ from arcana.core.utils.testing.data import (
     Xyz,
     FlatDirStore,
 )
+from arcana.dirtree.data import DirTree
+
 
 # Set DEBUG logging for unittests
 
@@ -341,7 +345,35 @@ def test_dataspace_location():
 
 
 @pytest.fixture(params=GOOD_DATASETS)
-def dataset(simple_store, work_dir, request):
+def dataset(work_dir, request):
+    dataset_name = request.param
+    blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
+    dataset_path = work_dir / dataset_name
+    dataset = DirTree().make_test_dataset(blueprint, dataset_path)
+    yield dataset
+    # shutil.rmtree(dataset.id)
+
+
+@pytest.fixture
+def saved_dataset(work_dir):
+    blueprint = TestDatasetBlueprint(
+        [
+            TDS.abcd
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        [1, 1, 1, 1],
+        ["file1.txt", "file2.txt"],
+        {},
+        {},
+        [],
+    )
+    dataset_path = work_dir / "saved-dataset"
+    dataset = DirTree().make_test_dataset(blueprint, dataset_path)
+    dataset.save()
+    return dataset
+
+
+@pytest.fixture(params=GOOD_DATASETS)
+def dirtree_dataset(simple_store, work_dir, request):
     dataset_name = request.param
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_path = work_dir / dataset_name
@@ -351,7 +383,7 @@ def dataset(simple_store, work_dir, request):
 
 
 @pytest.fixture
-def saved_dataset(simple_store, work_dir):
+def saved_dirtree_dataset(simple_store, work_dir):
     blueprint = TestDatasetBlueprint(
         hierarchy=[
             TDS.abcd
