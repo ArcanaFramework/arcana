@@ -1,41 +1,45 @@
 from __future__ import annotations
-import typing as ty
 from pathlib import Path
 from pydra import mark
-from fileformats.core import WithSideCars, BaseFile
-from fileformats.common import Text
+from fileformats.generic import File
+from fileformats.core.mixin import WithSideCar
+from fileformats.text import Plain as Text
 from fileformats.core.mark import converter
 
 
-class Xyz(WithSideCars):
-
-    ext = "x"
-    side_car_exts = ("y", "z")
+class Y(File):
+    ext = "..y"
 
 
-class MyFormat(BaseFile):
+class Xyz(WithSideCar):
 
-    ext = "my"
+    ext = ".x"
+    side_car_type = Y
+
+
+class MyFormat(File):
+
+    ext = ".my"
 
 
 class MyFormatGz(MyFormat):
 
-    ext = "my.gz"
+    ext = ".my.gz"
 
 
-class MyFormatX(WithSideCars, MyFormat):
+class MyFormatX(WithSideCar, MyFormat):
 
     side_car_exts = ("json",)
 
 
-class YourFormat(BaseFile):
+class YourFormat(File):
 
-    ext = "yr"
+    ext = ".yr"
 
 
-class ImageWithHeader(WithSideCars, BaseFile):
+class ImageWithHeader(WithSideCar, File):
 
-    ext = "img"
+    ext = ".img"
     side_car_exts = ("hdr",)
 
 
@@ -44,38 +48,38 @@ class MyFormatGzX(MyFormatX, MyFormatGz):
     pass
 
 
-class EncodedText(BaseFile):
+class EncodedText(File):
     """A text file where the characters ASCII codes are shifted on conversion
     from text
     """
 
-    ext = "enc"
-
-    @classmethod
-    @converter(Text)
-    def encode(cls, fspath: ty.Union[str, Path], shift: int = 0):
-        shift = int(shift)
-        node = encoder_task(in_file=fspath, shift=shift)
-        return node, node.lzout.out
+    ext = ".enc"
 
 
-class DecodedText(Text):
-    @classmethod
-    @converter(EncodedText)
-    def decode(cls, fspath: Path, shift: int = 0):
-        shift = int(shift)
-        node = encoder_task(
-            in_file=fspath, shift=-shift, out_file="out_file.txt"
-        )  # Just shift it backwards by the same amount
-        return node, node.lzout.out
+# @converter(Text)
+# def encode(cls, fspath: ty.Union[str, Path], shift: int = 0):
+#     shift = int(shift)
+#     node = encoder_task(in_file=fspath, shift=shift)
+#     return node, node.lzout.out
 
 
+# @converter(EncodedText)
+# def decode(cls, fspath: Path, shift: int = 0):
+#     shift = int(shift)
+#     node = encoder_task(
+#         in_file=fspath, shift=-shift, out_file="out_file.txt"
+#     )  # Just shift it backwards by the same amount
+#     return node, node.lzout.out
+
+
+@converter(source_format=EncodedText, target_format=Text, out_file="out_file.txt")
+@converter(source_format=Text, target_format=EncodedText, out_file="out_file.enc")
 @mark.task
 def encoder_task(
-    in_file: ty.Union[str, Path],
-    shift: int,
-    out_file: ty.Union[str, Path] = "out_file.enc",
-) -> ty.Union[str, Path]:
+    in_file: File,
+    out_file: str,
+    shift: int = 0,
+) -> File:
     with open(in_file) as f:
         contents = f.read()
     encoded = encode_text(contents, shift)

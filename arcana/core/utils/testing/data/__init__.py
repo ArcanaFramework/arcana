@@ -8,6 +8,5 @@ from .fileformats import (
     ImageWithHeader,
     MyFormatGzX,
     EncodedText,
-    DecodedText,
 )
 from .store import FlatDirStore

@@ -8,9 +8,9 @@ from arcana.core.exceptions import (
     ArcanaNameError,
     ArcanaWrongFrequencyError,
 )
-from fileformats.core.exceptions import FileFormatError
-from fileformats.core.base import DataType
-from fileformats.core.quality import DataQuality
+from fileformats.core.exceptions import FormatMismatchError
+from fileformats.core import DataType
+from .quality import DataQuality
 from .space import DataSpace
 
 if ty.TYPE_CHECKING:
@@ -159,7 +159,7 @@ class DataRow:
         for potential in self.unresolved:
             try:
                 matches.append(datatype.resolve(potential))
-            except FileFormatError:
+            except FormatMismatchError:
                 pass
         return matches
 
