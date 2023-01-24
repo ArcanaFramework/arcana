@@ -659,7 +659,7 @@ def access_paths_and_values(**data_items):
     for name, item in data_items.items():
         if isinstance(item, FileSet):
             cpy = item.copy_to(Path.cwd() / name, symlink=True)
-            values.append(cpy.fs_path)
+            values.append(cpy.fspath)
         elif isinstance(item, Field):
             values.append(item.value)
         else:
@@ -675,7 +675,7 @@ def encapsulate_paths_and_values(outputs, **kwargs):
     for outpt in outputs:
         val = kwargs[outpt.name]
         if issubclass(outpt.datatype, FileSet):
-            obj = outpt.datatype.from_fs_path(val)
+            obj = outpt.datatype.from_fspath(val)
         else:
             obj = outpt.datatype(val)
         items.append(obj)

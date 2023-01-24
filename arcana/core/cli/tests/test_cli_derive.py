@@ -49,6 +49,6 @@ def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
     expected_contents = "\n".join(fnames * duplicates)
     for item in sink:
         item.get(assume_exists=True)
-        with open(item.fs_path) as f:
+        with open(item.fspath) as f:
             contents = f.read()
         assert contents == expected_contents

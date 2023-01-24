@@ -851,7 +851,7 @@ class Dataset:
             license_file = self._get_license_file(lic.name)
 
             try:
-                lic_fs_path = license_file.fs_paths[0]
+                lic_fspath = license_file.fspaths[0]
             except FilePathsNotSetException:
                 missing = False
                 if site_licenses_dataset is not None:
@@ -859,7 +859,7 @@ class Dataset:
                         lic.name, dataset=site_licenses_dataset
                     )
                     try:
-                        lic_fs_path = license_file.fs_paths[0]
+                        lic_fspath = license_file.fspaths[0]
                     except FilePathsNotSetException:
                         missing = True
                 else:
@@ -875,7 +875,7 @@ class Dataset:
                         lic.name,
                         msg,
                     )
-            shutil.copyfile(lic_fs_path, lic.destination)
+            shutil.copyfile(lic_fspath, lic.destination)
 
     def install_license(self, name, source_file):
         """Store project-specific license in dataset

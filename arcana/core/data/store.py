@@ -119,7 +119,7 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        fs_paths : list[str]
+        fspaths : list[str]
             The file-system path to the cached files
 
         Raises
@@ -146,7 +146,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_fileset_paths(self, fileset, fs_paths):
+    def put_fileset_paths(self, fileset, fspaths):
         """
         Inserts or updates the fileset into the store
 
@@ -154,7 +154,7 @@ class DataStore(metaclass=ABCMeta):
         ----------
         fileset : FileSet
             The fileset to insert into the store
-        fs_paths : list[Path]
+        fspaths : list[Path]
             The file-system paths to the files/directories to sync
 
         Returns

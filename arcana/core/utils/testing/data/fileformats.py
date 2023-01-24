@@ -53,19 +53,19 @@ class EncodedText(BaseFile):
 
     @classmethod
     @converter(Text)
-    def encode(cls, fs_path: ty.Union[str, Path], shift: int = 0):
+    def encode(cls, fspath: ty.Union[str, Path], shift: int = 0):
         shift = int(shift)
-        node = encoder_task(in_file=fs_path, shift=shift)
+        node = encoder_task(in_file=fspath, shift=shift)
         return node, node.lzout.out
 
 
 class DecodedText(Text):
     @classmethod
     @converter(EncodedText)
-    def decode(cls, fs_path: Path, shift: int = 0):
+    def decode(cls, fspath: Path, shift: int = 0):
         shift = int(shift)
         node = encoder_task(
-            in_file=fs_path, shift=-shift, out_file="out_file.txt"
+            in_file=fspath, shift=-shift, out_file="out_file.txt"
         )  # Just shift it backwards by the same amount
         return node, node.lzout.out
 

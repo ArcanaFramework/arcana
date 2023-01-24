@@ -32,7 +32,7 @@ def test_pipeline(simple_store, work_dir):
     dataset.refresh()  # Reset cached values
 
     for item in dataset["deriv"]:
-        with open(item.fs_path) as f:
+        with open(item.fspath) as f:
             contents = f.read()
         assert contents == "\n".join(["file1.txt", "file2.txt"] * 2)
 
@@ -65,7 +65,7 @@ def test_pipeline_with_implicit_conversion(simple_store, work_dir):
 
     for item in dataset["deriv"]:
         tmp_dir = Path(tempfile.mkdtemp())
-        with zipfile.ZipFile(item.fs_path) as zfile:
+        with zipfile.ZipFile(item.fspath) as zfile:
             zfile.extractall(path=tmp_dir)
         with open(tmp_dir / "out_u_file.txt") as f:
             contents = f.read()

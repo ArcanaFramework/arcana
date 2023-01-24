@@ -22,4 +22,4 @@ def test_column_api_access(dataset):
             item = col[id_]
             assert isinstance(item, exp.datatype)
             if issubclass(exp.datatype, FileSet):
-                assert sorted(p.name for p in item.fs_paths) == sorted(exp.filenames)
+                assert sorted(p.name for p in item.fspaths) == sorted(exp.filenames)

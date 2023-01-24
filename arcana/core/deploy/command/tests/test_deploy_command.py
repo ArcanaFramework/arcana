@@ -80,7 +80,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
     expected_contents = "\n".join(fnames * duplicates)
     for item in sink:
         item.get(assume_exists=True)
-        with open(item.fs_path) as f:
+        with open(item.fspath) as f:
             contents = f.read()
         assert contents == expected_contents
 
@@ -271,9 +271,9 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         dec_item = row["sink2"]
         enc_item.get(assume_exists=True)
         dec_item.get(assume_exists=True)
-        with open(enc_item.fs_path) as f:
+        with open(enc_item.fspath) as f:
             enc_contents = f.read()
-        with open(dec_item.fs_path) as f:
+        with open(dec_item.fspath) as f:
             dec_contents = f.read()
         assert enc_contents == encoded_contents
         assert dec_contents == unencoded_contents

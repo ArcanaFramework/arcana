@@ -100,7 +100,7 @@ class FlatDirStore(DataStore):
 
         Returns
         -------
-        fs_paths : list[str]
+        fspaths : list[str]
             The file-system path to the cached files
 
         Raises
@@ -111,7 +111,7 @@ class FlatDirStore(DataStore):
         """
         return list(self.iterdir(self.get_item_path(fileset)))
 
-    def put_fileset_paths(self, fileset, fs_paths: list[Path]):
+    def put_fileset_paths(self, fileset, fspaths: list[Path]):
         """
         Inserts or updates the fileset into the store
 
@@ -119,7 +119,7 @@ class FlatDirStore(DataStore):
         ----------
         fileset : FileSet
             The fileset to insert into the store
-        fs_paths : list[Path]
+        fspaths : list[Path]
             The file-system paths to the files/directories to sync
 
         Returns
@@ -129,10 +129,10 @@ class FlatDirStore(DataStore):
         """
         item_dir = self.get_item_path(fileset)
         cached_paths = []
-        for fs_path in fs_paths:
-            dst_path = item_dir / fs_path.name
+        for fspath in fspaths:
+            dst_path = item_dir / fspath.name
             dst_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(fs_path, dst_path)
+            shutil.copyfile(fspath, dst_path)
             cached_paths.append(dst_path)
         return cached_paths
 
