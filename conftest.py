@@ -357,14 +357,11 @@ def dataset(work_dir, request):
 @pytest.fixture
 def saved_dataset(work_dir):
     blueprint = TestDatasetBlueprint(
-        [
+        hierarchy=[
             TDS.abcd
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        [1, 1, 1, 1],
-        ["file1.txt", "file2.txt"],
-        {},
-        {},
-        [],
+        dim_lengths=[1, 1, 1, 1],
+        files=["file1.txt", "file2.txt"],
     )
     dataset_path = work_dir / "saved-dataset"
     dataset = DirTree().make_test_dataset(blueprint, dataset_path)
