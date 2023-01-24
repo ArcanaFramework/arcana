@@ -207,3 +207,17 @@ class ArcanaEmptyDatasetError(ArcanaException):
 
 class ArcanaBuildError(ArcanaError):
     pass
+
+
+class NamedError(Exception):
+    def __init__(self, name, msg):
+        super().__init__(msg)
+        self.name = name
+
+
+class NameError(NamedError):
+    pass
+
+
+class DataNotDerivedYetError(NamedError):
+    pass
