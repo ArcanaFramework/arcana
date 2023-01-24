@@ -54,6 +54,7 @@ class DataCell:
     quality: DataQuality = attrs.field(default=DataQuality.usable)
     provenance: ty.Dict[str, ty.Any] = attrs.field(default=None)
     uri: str = attrs.field(default=None)
+    _checksums: ty.Dict[str, str] = attrs.field(default=None, repr=False, init=False)
 
     @property
     def recorded_checksums(self):
