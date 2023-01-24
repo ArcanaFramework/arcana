@@ -135,7 +135,7 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if inpt.datatype:
                     try:
-                        inpt.datatype.find_converter(column.datatype)
+                        inpt.datatype.get_converter(column.datatype)
                     except FileFormatConversionError as e:
                         msg = (
                             f"required to in conversion of '{inpt.name}' input "
@@ -167,7 +167,7 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if outpt.datatype:
                     try:
-                        column.datatype.find_converter(outpt.datatype)
+                        column.datatype.get_converter(outpt.datatype)
                     except FileFormatConversionError as e:
                         msg = (
                             f"required to in conversion of '{outpt.name}' output "
