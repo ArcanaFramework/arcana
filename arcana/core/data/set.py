@@ -8,7 +8,9 @@ import shutil
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
-from fileformats.core.exceptions import FilePathsNotSetException
+
+from fileformats.core.exceptions import FileFormatsError
+from fileformats.generic import File
 from arcana.core.utils.serialize import asdict
 from arcana.core.exceptions import (
     ArcanaLicenseNotFoundError,
@@ -852,7 +854,7 @@ class Dataset:
 
             try:
                 lic_fspath = license_file.fspaths[0]
-            except FilePathsNotSetException:
+            except FileFormatsError:
                 missing = False
                 if site_licenses_dataset is not None:
                     license_file = self._get_license_file(
@@ -860,7 +862,7 @@ class Dataset:
                     )
                     try:
                         lic_fspath = license_file.fspaths[0]
-                    except FilePathsNotSetException:
+                    except FileFormatsError:
                         missing = True
                 else:
                     missing = True
@@ -891,7 +893,6 @@ class Dataset:
         license_file.put(source_file)
 
     def _get_license_file(self, lic_name, dataset=None):
-        from fileformats.core.file import BaseFile
         from arcana.core.deploy.image.components import License
 
         if dataset is None:
@@ -899,7 +900,7 @@ class Dataset:
         license_column = DataSink(
             f"{lic_name}_license",
             License.column_path(lic_name),
-            BaseFile,
+            File,
             row_frequency=self.root_freq,
             dataset=dataset,
         )

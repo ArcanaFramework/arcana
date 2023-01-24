@@ -1,7 +1,8 @@
 import zipfile
 import tempfile
 from pathlib import Path
-from fileformats.common import Text, Zip
+from fileformats.text import Plain as Text
+from fileformats.archive import Zip
 from arcana.core.utils.testing.data import TestDataSpace
 from conftest import TEST_DATASET_BLUEPRINTS
 from arcana.core.utils.testing.tasks import concatenate

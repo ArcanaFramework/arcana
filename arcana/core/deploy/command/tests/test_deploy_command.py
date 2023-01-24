@@ -5,7 +5,7 @@ from arcana.core.data.store import TestDatasetBlueprint
 from arcana.core.utils.testing.data import (
     TestDataSpace,
 )
-from fileformats.common import Text
+from fileformats.text import Plain as Text
 from arcana.core.utils.testing.data import EncodedText
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.core.exceptions import ArcanaDataMatchError
@@ -22,13 +22,13 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source1",
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "in_file1",
                 "help_string": "dummy",
             },
             {
                 "name": "source2",
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "in_file2",
                 "help_string": "dummy",
             },
@@ -36,7 +36,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "out_file",
                 "help_string": "dummy",
             }
@@ -96,13 +96,13 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source1",
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "in_file1",
                 "help_string": "dummy",
             },
             {
                 "name": "source2",
-                "datatype": "fileformats.common:Directory",
+                "datatype": "fileformats.generic:Directory",
                 "field": "in_file2",
                 "help_string": "dummy",
             },
@@ -110,7 +110,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "out_file",
                 "help_string": "dummy",
             }
@@ -219,7 +219,7 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
             {
                 "name": "source",
                 "datatype": "arcana.core.utils.testing.data:EncodedText",
-                "default_column": {"datatype": "fileformats.common:Text"},
+                "default_column": {"datatype": "fileformats.text:Plain"},
                 "field": "in_file",
                 "help_string": "dummy",
             },

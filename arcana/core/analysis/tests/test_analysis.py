@@ -25,7 +25,8 @@ from arcana.core.analysis.mark import (
     subanalysis,
 )
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
-from fileformats.common import Zip, Text
+from fileformats.text import Plain as Text
+from fileformats.archive import Zip
 from arcana.core.utils.testing.data import FlatDirStore
 from arcana.core.analysis.salience import (
     CheckStatus,

@@ -3,7 +3,7 @@ from operator import mul
 from arcana.core.cli.apply import apply_pipeline
 from arcana.core.cli.derive import derive_column
 from arcana.core.utils.testing import show_cli_trace
-from fileformats.common import Text
+from fileformats.text import Plain as Text
 
 
 def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
@@ -21,15 +21,15 @@ def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
             "--source",
             "file1",
             "in_file1",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--source",
             "file2",
             "in_file2",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--sink",
             "concatenated",
             "out_file",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--parameter",
             "duplicates",
             str(duplicates),

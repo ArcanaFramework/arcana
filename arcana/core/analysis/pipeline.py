@@ -16,8 +16,9 @@ from arcana.core.exceptions import (
     ArcanaOutputNotProducedException,
     ArcanaDataMatchError,
 )
-from fileformats.core.base import DataType, FileSet, Field
-from fileformats.core.exceptions import FileFormatConversionError
+from fileformats.core.base import DataType, FileSet
+from fileformats.fields import Field
+from fileformats.core.exceptions import FormatMismatchError
 import arcana.core.data.set
 import arcana.core.data.row
 from ..data.space import DataSpace
@@ -136,7 +137,7 @@ class Pipeline:
                 if inpt.datatype:
                     try:
                         inpt.datatype.get_converter(column.datatype)
-                    except FileFormatConversionError as e:
+                    except FormatMismatchError as e:
                         msg = (
                             f"required to in conversion of '{inpt.name}' input "
                             f"to '{self.name}' pipeline"
@@ -168,7 +169,7 @@ class Pipeline:
                 if outpt.datatype:
                     try:
                         column.datatype.get_converter(outpt.datatype)
-                    except FileFormatConversionError as e:
+                    except FormatMismatchError as e:
                         msg = (
                             f"required to in conversion of '{outpt.name}' output "
                             f"from '{self.name}' pipeline"

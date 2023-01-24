@@ -9,7 +9,7 @@ from attrs.converters import optional
 from arcana.core.utils.serialize import ClassResolver
 from arcana.core.exceptions import ArcanaDataMatchError
 from ..analysis.salience import ColumnSalience
-from fileformats.core.quality import DataQuality
+from .quality import DataQuality
 from .space import DataSpace
 
 

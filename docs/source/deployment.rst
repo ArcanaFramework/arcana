@@ -60,7 +60,7 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 ..     import json
 ..     from arcana.xnat.deploy import XnatCommand
 ..     from arcana.medimage.data import Clinical
-..     from fileformats.medimage.data import NiftiGz
+..     from fileformats.medimage.data import Nifti_Gzip
 
 ..     xnat_command = XnatCommand(
 ..         name='example_pipeline',
@@ -74,14 +74,14 @@ Outputs do not show up in the XNAT dialog and are specified by a 3-tuple:
 ..         version='6.0-1',
 ..         info_url='https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FAST',
 ..         inputs={
-..             "field": 'in_files', NiftiGz, 'File to segment', 'session'),
+..             "field": 'in_files', Nifti_Gzip, 'File to segment', 'session'),
 ..             ('number_of_classes', int, 'Number of classes', 'session')],
 ..         outputs=[
-..             ('tissue_class_files', NiftiGz, 'fast/tissue-classes'),
-..             ('partial_volume_map', NiftiGz, 'fast/partial-volumes'),
-..             ('partial_volume_files', NiftiGz, 'fast/partial-volume-files'),
-..             ('bias_field', NiftiGz, 'fast/bias-field'),
-..             ('probability_maps', NiftiGz, 'fast/probability-map')],
+..             ('tissue_class_files', Nifti_Gzip, 'fast/tissue-classes'),
+..             ('partial_volume_map', Nifti_Gzip, 'fast/partial-volumes'),
+..             ('partial_volume_files', Nifti_Gzip, 'fast/partial-volume-files'),
+..             ('bias_field', Nifti_Gzip, 'fast/bias-field'),
+..             ('probability_maps', Nifti_Gzip, 'fast/probability-map')],
 ..         parameters=[
 ..             ('use_priors', 'Use priors'),
 ..             ('bias_lowpass', 'Low-pass filter bias field')],
@@ -143,16 +143,16 @@ the full configuration required to build an XNAT docker image looks like
             (also known as bias field or RF inhomogeneities).
         inputs:
             in_files:
-              datatype: medimage:NiftiGzX
+              datatype: medimage:Nifti_Gzip_Bids
               default_column:
                 datatype: medimage:Dicom
               help_string: Anatomical image to segment into different tissues
         outputs:
             tissue_classes:
-              datatype: medimage:NiftiGz
+              datatype: medimage:Nifti_Gzip
               path: fast/tissue-classes
             probability_maps:
-              datatype: medimage:NiftiGz
+              datatype: medimage:Nifti_Gzip
               path: fast/probability-map
         parameters:
             use_priors:

@@ -236,7 +236,7 @@ formats implemented in :mod:`arcana.dirtree.data`, including
 File-group classes specify the extensions of the expected files/directories,
 converters from alternative file formats, and may
 also contain methods for accessing the headers and the contents of files
-where applicable (e.g. :class:`.medimage.Dicom` and :class:`.medimage.NiftiGzX`).
+where applicable (e.g. :class:`.medimage.Dicom` and :class:`.medimage.Nifti_Gzip_Bids`).
 Where a converter is specified from an alternative file format is specified,
 Arcana will automatically run the conversion between the format required by
 a pipeline and that stored in the data store. See :ref:`adding_formats` for detailed
@@ -245,7 +245,7 @@ instructions on how to specify new file formats and converters between them.
 As with data stores, file formats are specified in the CLI by *<module-path>:<class-name>*,
 e.g. ``arcana.dirtree.data:Text``. However, if the datatype is in a submodule of
 ``arcana.data.types`` then that prefix can be dropped for convenience,
-e.g. ``fileformats.common:Text``.
+e.g. ``fileformats.text:Plain``.
 
 
 .. _data_columns:
@@ -316,7 +316,7 @@ commands to add columns to a dataset using the CLI.
       --order 1 --quality usable --regex
 
     $ arcana dataset add-sink 'file///data/imaging/my-project' fmri_activation_map \
-      medimage:NiftiGz --row-frequency group
+      medimage:Nifti_Gzip --row-frequency group
 
 
 Alternatively, the :meth:`.Dataset.add_source` and :meth:`.Dataset.add_sink`
@@ -325,7 +325,7 @@ methods can be used directly to add sources and sinks via the Python API.
 .. code-block:: python
 
     from arcana.medimage.data import Clinical
-    from fileformats.medimage.data import Dicom, NiftiGz
+    from fileformats.medimage.data import Dicom, Nifti_Gzip
 
     xnat_dataset.add_source(
         name='T1w',
@@ -338,7 +338,7 @@ methods can be used directly to add sources and sinks via the Python API.
 
     fs_dataset.add_sink(
         name='brain_template',
-        datatype=NiftiGz,
+        datatype=Nifti_Gzip,
         row_frequency='group'
     )
 

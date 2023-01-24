@@ -58,13 +58,13 @@ to appropriate columns in the dataset (``T1w``, ``T2w`` and
       fileformats.medimage:Dicom --path '.*t2spc.*' --regex
 
     $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurfer/recon-all \
-      fileformats.common:Zip
+      fileformats.archive:Zip
 
     $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
-      --input T1w in_file fileformats.medimage:NiftiGz \
-      --input T2w peel fileformats.medimage:NiftiGz \
-      --output freesurfer/recon-all out_file fileformats.common:Directory \
+      --input T1w in_file fileformats.medimage:Nifti_Gzip \
+      --input T2w peel fileformats.medimage:Nifti_Gzip \
+      --output freesurfer/recon-all out_file fileformats.generic:Directory \
       --parameter param1 10 \
       --parameter param2 20
 
@@ -94,8 +94,8 @@ To add a workflow to a dataset via the API use the :meth:`Dataset.apply_pipeline
             name='freesurfer,
             param1=10.0,
             param2=20.0),
-        inputs=[('T1w', 'in_file', medimage.NiftiGz),
-                ('T2w', 'peel', medimage.NiftiGz)],
+        inputs=[('T1w', 'in_file', medimage.Nifti_Gzip),
+                ('T2w', 'peel', medimage.Nifti_Gzip)],
         outputs=[('freesurfer/recon-all', 'out_file', common.Directory)])
 
     dataset.save()
@@ -108,8 +108,8 @@ can all add the sources and sinks in one step
 
     $ arcana apply pipeline 'file///data/enigma/alzheimers:test' segmentation \
       pydra.tasks.fsl.preprocess.fast:FAST \
-      --source T1w in_file medimage:NiftiGz \
-      --sink fast/gm gm medimage:NiftiGz \
+      --source T1w in_file medimage:Nifti_Gzip \
+      --sink fast/gm gm medimage:Nifti_Gzip \
       --parameter method a-method
 
 
@@ -139,7 +139,7 @@ back to the dataset.
     # Add sink column with "dataset" row row_frequency
     dataset.add_sink(
         name='vbm_template',
-        datatype=medimage.NiftiGz
+        datatype=medimage.Nifti_Gzip
         row_frequency='dataset')
 
     # NB: we don't need to add the T1w source as it is automatically detected
@@ -194,7 +194,10 @@ methods, and takes the columns the pipeline outputs are connected to as argument
     from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
     from arcana.core.mark import analysis, pipeline, parameter
     from arcana.example.data import ExampleDataSpace
-    from fileformats.common import Zip, Directory, Json, Png, Gif
+    from fileformats.archive import Zip
+    from fileformats.generic import Directory
+    from fileformats.serialization import Json
+    from fileformats.image import Png, Gif
 
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
@@ -283,7 +286,7 @@ parameters.
 .. code-block:: python
 
   from arcana.core.data.set import Dataset
-  from fileformats.common import Yaml
+  from fileformats.serialization import Yaml
   from arcana.examples import ExampleAnalysis
 
   a_dataset = Dataset.load('file///data/a-dataset')
@@ -433,14 +436,14 @@ would look like
           // MD5 Checksums for all files in the file group. "." refers to the
           // "primary file" in the file group.
           "T1w_reg_dwi": {
-            "datatype": "<fileformats.medimage.data:NiftiGzX>",
+            "datatype": "<fileformats.medimage.data:Nifti_Gzip_Bids>",
             "checksums": {
               ".": "4838470888DBBEADEAD91089DD4DFC55",
               "json": "7500099D8BE29EF9057D6DE5D515DFFE"
             }
           },
           "T2w_reg_dwi": {
-            "datatype": "<fileformats.medimage.data:NiftiGzX>",
+            "datatype": "<fileformats.medimage.data:Nifti_Gzip_Bids>",
             "checksums": {
               ".": "4838470888DBBEADEAD91089DD4DFC55",
               "json": "5625E881E32AE6415E7E9AF9AEC59FD6"

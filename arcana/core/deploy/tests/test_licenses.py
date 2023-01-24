@@ -180,7 +180,7 @@ def get_pipeline_image(license_path) -> App:
             "inputs": [
                 {
                     "name": LICENSE_INPUT_FIELD,
-                    "datatype": "fileformats.common:Text",
+                    "datatype": "fileformats.text:Plain",
                     "field": "expected_license_contents",
                     "help_string": "the path to the license",
                 },
@@ -188,7 +188,7 @@ def get_pipeline_image(license_path) -> App:
             "outputs": [
                 {
                     "name": LICENSE_OUTPUT_FIELD,
-                    "datatype": "fileformats.common:Text",
+                    "datatype": "fileformats.text:Plain",
                     "field": "out",
                     "help_string": "the validated license path",
                 }

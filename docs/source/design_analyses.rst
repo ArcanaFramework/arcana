@@ -154,7 +154,7 @@ files can be accessed as attributes of the primary ``LazyField``, e.g.
             salience=ds.debug)
 
         @pipeline(repetition_time, slice_timing_interval)
-        def preprocess_pipeline(self, wf, primary_image: NiftiGzX):
+        def preprocess_pipeline(self, wf, primary_image: Nifti_Gzip_Bids):
 
             wf.add(
                 ExtractFromJson(

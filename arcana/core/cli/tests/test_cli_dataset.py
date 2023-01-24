@@ -1,11 +1,10 @@
 import pytest
-import os.path
 from arcana.core.data.set import Dataset
 from arcana.core.analysis.salience import ColumnSalience
-from fileformats.core.quality import DataQuality
+from arcana.core.data.quality import DataQuality
 from arcana.core.utils.testing.data import TestDataSpace
 from arcana.core.cli.dataset import define, add_source, add_sink, missing_items
-from fileformats.common import Text
+from fileformats.text import Plain as Text
 from arcana.core.utils.testing import show_cli_trace
 
 
@@ -40,7 +39,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
         [
             saved_dataset.locator,
             "a_source",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--path",
             "file1",
             "--row-frequency",
@@ -66,7 +65,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
         [
             saved_dataset.locator,
             "a_sink",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--path",
             "deriv",
             "--row-frequency",

@@ -183,11 +183,11 @@ command:
   row_frequency: common:Samples[sample]
   inputs:
     in_file:
-      datatype: fileformats.common:Text
+      datatype: fileformats.text:Plain
       help_string: the input file
   outputs:
     out_file:
-      datatype: fileformats.common:Text
+      datatype: fileformats.text:Plain
       help_string: the output file
     """.strip(),
         """
@@ -269,19 +269,19 @@ command:
       T1w:
         configuration:
           path: anat/T1w
-        datatype: fileformats.medimage:NiftiGzX
+        datatype: fileformats.medimage:Nifti_Gzip_Bids
         help_string: "T1-weighted anatomical scan"
         default_column:
           datatype: fileformats.medimage:Dicom
       T2w:
         configuration:
           path: anat/T2w
-        datatype: fileformats.medimage:NiftiGzX
+        datatype: fileformats.medimage:Nifti_Gzip_Bids
         help_string: "T2-weighted anatomical scan"
         default_column:
           datatype: fileformats.medimage:Dicom
       fMRI:
-        datatype: fileformats.medimage:NiftiGzX
+        datatype: fileformats.medimage:Nifti_Gzip_Bids
         help_string: "functional MRI"
         configuration:
           path: func/task-rest_bold
@@ -289,7 +289,7 @@ command:
           datatype: fileformats.medimage:Dicom
     outputs:
       mriqc:
-        datatype: fileformats.common:Directory
+        datatype: fileformats.generic:Directory
         help_string: "MRIQC output directory"
         configuration:
           path: mriqc
