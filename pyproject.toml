@@ -27,7 +27,7 @@ authors = [{name = "Thomas G. Close", email = "tom.g.close@gmail.com"}]
 maintainers = [{name = "Thomas G. Close", email = "tom.g.close@gmail.com"}]
 keywords = ["arcana"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
