@@ -35,7 +35,7 @@ from arcana.core.data.store import (
 from arcana.core.utils.testing.data import (
     TestDataSpace as TDS,
     Xyz,
-    SimpleStore,
+    FlatDirStore,
 )
 
 # Set DEBUG logging for unittests
@@ -76,7 +76,7 @@ def build_cache_dir():
 
 @pytest.fixture
 def simple_store(work_dir):
-    store = SimpleStore(cache_dir=work_dir / "simple-store-cache")
+    store = FlatDirStore(cache_dir=work_dir / "simple-store-cache")
     with patch.dict(os.environ, {"ARCANA_HOME": str(work_dir / "arcana-home")}):
         store.save("simple")
         yield store

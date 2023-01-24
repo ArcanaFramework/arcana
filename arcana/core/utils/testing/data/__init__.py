@@ -10,4 +10,4 @@ from .fileformats import (
     EncodedText,
     DecodedText,
 )
-from .store import SimpleStore
+from .store import FlatDirStore

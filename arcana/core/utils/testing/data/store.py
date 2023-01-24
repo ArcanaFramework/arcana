@@ -13,7 +13,7 @@ from .space import TestDataSpace
 
 
 @attrs.define
-class SimpleStore(DataStore):
+class FlatDirStore(DataStore):
     """A simple data store to test store CLI.
 
     "Leaf" rows are stored in a separate sub-directories of the dataset id, with
