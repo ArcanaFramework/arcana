@@ -3,17 +3,15 @@ import os.path as op
 from pathlib import Path
 import re
 import errno
-from collections import defaultdict
-import shutil
-import typing as ty
 import logging
 import json
 import attrs
 import yaml
 from fasteners import InterProcessLock
-from fileformats.core.base import FileSet
+from fileformats.core.base import DataType, FileSet, Field
 from arcana.core.exceptions import ArcanaMissingDataException, ArcanaUsageError
 from arcana.core.data.set import Dataset
+from arcana.core.data.cell import DataCell
 from arcana.core.data.store import DataStore, TestDatasetBlueprint
 from arcana.core.utils.misc import get_home_dir
 from arcana.core.data import Samples
@@ -45,8 +43,8 @@ class DirTree(DataStore):
 
     PROV_SUFFIX = ".prov"
     FIELDS_FNAME = "__fields__.json"
+    FIELDS_PROV_FNAME = "__fields_prov__.json"
     LOCK_SUFFIX = ".lock"
-    PROV_KEY = "__provenance__"
     VALUE_KEY = "__value__"
     METADATA_DIR = ".arcana"
     SITE_LICENSES_DIR = "site-licenses"
@@ -74,107 +72,7 @@ class DirTree(DataStore):
         return definition
 
     def definition_save_path(self, dataset_id, name):
-        return Path(dataset_id) / self.METADATA_DIR / (name + ".yml")
-
-    def get_fileset_paths(self, fileset: FileSet):
-        """
-        Set the path of the fileset from the store
-        """
-        # Don't need to cache fileset as it is already local as long
-        # as the path is set
-        stem_path = self.fileset_stem_path(fileset)
-        # Get all paths that match the stem path (but with different extensions)
-        matches = [
-            p for p in stem_path.parent.iterdir() if str(p).startswith(str(stem_path))
-        ]
-        if not matches:
-            raise ArcanaMissingDataException(
-                f"No files/sub-dirs matching '{fileset.path}' path found in "
-                f"{str(self.absolute_row_path(fileset.row))} directory"
-            )
-        return matches
-
-    def get_field_value(self, field):
-        """
-        Update the value of the field from the store
-        """
-        self.cast_value(self.get_field_val(field))
-
-    def cast_value(self, val, field):
-        if isinstance(val, dict):
-            val = val[self.VALUE_KEY]
-        if field.array:
-            val = [field.datatype(v) for v in val]
-        else:
-            val = field.datatype(val)
-        return val
-
-    def put_fileset_paths(self, fileset: FileSet, fspaths: ty.List[Path]):
-        """
-        Inserts or updates a fileset in the store
-        """
-        stem_path = self.fileset_stem_path(fileset)
-        # Create target directory if it doesn't exist already
-        stem_path.parent.mkdir(exist_ok=True, parents=True)
-        cached_paths = []
-        for fspath in fspaths:
-            if fspath.is_dir():
-                target_path = stem_path
-                if target_path.exists():
-                    shutil.rmtree(target_path)
-                shutil.copytree(fspath, target_path)
-            else:
-                target_path = fileset.copy_ext(fspath, stem_path)
-                shutil.copyfile(str(fspath), str(target_path))
-            cached_paths.append(target_path)
-        return cached_paths
-
-    def fileset_stem_path(self, fileset):
-        """The path to the stem of the paths (i.e. the path without
-        file extension) where the files are saved in the file-system.
-        NB: this method is overridden in Bids store.
-
-        Parameters
-        ----------
-        fileset: FileSet
-            the file set stored or to be stored
-        """
-        row_path = self.absolute_row_path(fileset.row)
-        return row_path.joinpath(*fileset.path.split("/"))
-
-    def put_field_value(self, field, value):
-        """
-        Inserts or updates a field in the store
-        """
-        fpath = self.fields_json_path(field)
-        # Open fields JSON, locking to prevent other processes
-        # reading or writing
-        with InterProcessLock(fpath + self.LOCK_SUFFIX, logger=logger):
-            try:
-                with open(fpath, "r") as f:
-                    dct = json.load(f)
-            except IOError as e:
-                if e.errno == errno.ENOENT:
-                    dct = {}
-                else:
-                    raise
-            if field.array:
-                value = list(value)
-            dct[field.path] = {
-                self.VALUE_KEY: value,
-                self.PROV_KEY: field.provenance.dct,
-            }
-            with open(fpath, "w") as f:
-                json.dump(dct, f, indent=2)
-
-    def put_provenance(self, item, provenance):
-        with open(self.prov_json_path(item), "w") as f:
-            json.dump(provenance, f)
-
-    def get_provenance(self, item):
-        with open(self.prov_json_path(item)) as f:
-            provenance = json.load(f)
-        return provenance
+        return Path(dataset_id) / self.METADATA_DIR / (name + ".yaml")
 
     def find_rows(self, dataset: Dataset):
         """
@@ -200,11 +98,54 @@ class DirTree(DataStore):
                 continue
             dataset.add_leaf(tree_path)
 
-    def find_items(self, row):
+    def find_cells(self, row):
         # First ID can be omitted
-        self.find_items_in_dir(self.root_dir(row) / self.row_path(row), row)
+        self.find_cells_from_dir(self.root_dir(row) / self.row_path(row), row)
 
-    def find_items_in_dir(self, dpath, row):
+    def get(self, cell: DataCell):
+        if cell.datatype.is_fileset:
+            item = self.get_fileset_path(cell, ext=cell.datatype.ext)
+        elif cell.datatype.is_field:
+            item = self.read_from_json(self.get_fields_path(cell), cell.id)
+        else:
+            raise RuntimeError(
+                f"Don't know how to retrieve {cell.datatype} data from {type(self)} stores"
+            )
+        return item
+
+    def put(self, cell: DataCell, item: DataType, provenance: dict):
+        if cell.datatype.is_fileset:
+            self._put_fileset(cell, item)
+        elif cell.datatype.is_field:
+            self._put_field(cell, item)
+        else:
+            raise RuntimeError(
+                f"Don't know how to store {cell.datatype} data in {type(self)} stores"
+            )
+
+    def _put_fileset(self, cell: DataCell, fileset: FileSet, provenance: dict = None):
+        """
+        Inserts or updates a fileset in the store
+        """
+        fileset_path = self.get_fileset_path(cell)
+        # Create target directory if it doesn't exist already
+        copied_fileset = fileset.copy_to(
+            dest_dir=fileset_path.parent, stem=fileset_path.name, make_dirs=True
+        )
+        if provenance:
+            with open(self.get_fileset_prov_path(cell), "w") as f:
+                json.dump(cell.provenance, f)
+        return copied_fileset
+
+    def _put_field(self, cell: DataCell, value, provenance: dict = None):
+        """
+        Inserts or updates a field in the store
+        """
+        self.update_json(self.get_fields_path(cell), cell.id, value)
+        if provenance:
+            self.update_json(self.get_fields_prov_path(cell), cell.id, provenance)
+
+    def find_cells_from_dir(self, dpath, row):
         if not op.exists(dpath):
             return
         # Filter contents of directory to omit fields JSON and provenance
@@ -216,38 +157,45 @@ class DirTree(DataStore):
                 or subpath.name.endswith(self.PROV_SUFFIX)
             ):
                 filtered.append(subpath.name)
-        # Group files and sub-dirs that match except for extensions
-        matching = defaultdict(set)
+        # Add data cells corresponding to files. We add a new cell for each possible
+        # extension (including no extension) to handle cases where "." periods are used
+        # as part of the filename
+        file_stems = set()
         for fname in filtered:
-            basename = fname.split(".")[0]
-            matching[basename].add(fname)
-        # Add file sets
-        for bname, fnames in matching.items():
-            prov_path = dpath / (bname + self.PROV_SUFFIX)
+            fname_parts = fname.split(".")
+            for i in range(len(fname_parts)):
+                file_stems.add(".".join(fname_parts[: (i + 1)]))
+
+        for path in file_stems:
+            prov_path = dpath / (path + self.PROV_SUFFIX)
             if prov_path.exists():
                 with open(prov_path) as f:
                     provenance = json.load(f)
             else:
                 provenance = {}
-            row.add_fileset(
-                path=bname,
-                file_paths=[op.join(dpath, f) for f in fnames],
+            row.add_cell(
+                path=path,
                 provenance=provenance,
+                datatype=FileSet,
             )
         # Add fields
         try:
-            with open(op.join(dpath, self.FIELDS_FNAME), "r") as f:
-                dct = json.load(f)
+            with open(op.join(dpath, self.FIELDS_PROV_FNAME)) as f:
+                fields_prov_dict = json.load(f)
+        except FileNotFoundError:
+            fields_prov_dict = {}
+        try:
+            with open(op.join(dpath, self.FIELDS_FNAME)) as f:
+                fields_dict = json.load(f)
         except FileNotFoundError:
             pass
         else:
-            for name, value in dct.items():
-                if isinstance(value, dict):
-                    prov = value[self.PROV_KEY]
-                    value = value[self.VALUE_KEY]
-                else:
-                    prov = None
-                row.add_field(name_path=name, value=value, provenance=prov)
+            for name in fields_dict:
+                row.add_cell(
+                    name_path=name,
+                    provenance=fields_prov_dict.get(name),
+                    datatype=Field,
+                )
 
     def row_path(self, row):
         path = Path()
@@ -276,11 +224,32 @@ class DirTree(DataStore):
     def absolute_row_path(cls, row) -> Path:
         return cls().root_dir(row) / cls().row_path(row)
 
-    def fields_json_path(self, field):
+    def get_fileset_path(self, cell: DataCell, ext=None):
+        """The path to the stem of the paths (i.e. the path without
+        file extension) where the files are saved in the file-system.
+        NB: this method is overridden in Bids store.
+
+        Parameters
+        ----------
+        fileset: FileSet
+            the file set stored or to be stored
+        """
+        row_path = self.absolute_row_path(cell.row)
+        fileset_path = row_path.joinpath(*cell.path.split("/"))
+        if ext:
+            fileset_path += ext
+        return fileset_path
+
+    def get_fields_path(self, field):
         return self.root_dir(field.row) / self.row_path(field.row) / self.FIELDS_FNAME
 
-    def prov_json_path(self, fileset):
-        return self.fileset_path(fileset) + self.PROV_SUFFX
+    def get_fields_prov_path(self, field):
+        return (
+            self.root_dir(field.row) / self.row_path(field.row) / self.FIELDS_PROV_FNAME
+        )
+
+    def get_fileset_prov_path(self, fileset):
+        return self.get_fileset_path(fileset) + self.PROV_SUFFX
 
     def site_licenses_dataset(self):
         """Provide a place to store hold site-wide licenses"""
@@ -293,51 +262,36 @@ class DirTree(DataStore):
             dataset = self.new_dataset(dataset_root, space=Samples)
         return dataset
 
-    # def get_provenance(self, item):
-    #     if item.is_fileset:
-    #         prov = self._get_fileset_provenance(item)
-    #     else:
-    #         prov = self._get_field_provenance(item)
-    #     return prov
+    def update_json(self, fpath: Path, key, value):
+        """Updates a JSON file in a multi-process safe way"""
+        # Open fields JSON, locking to prevent other processes
+        # reading or writing
+        with InterProcessLock(fpath + self.LOCK_SUFFIX, logger=logger):
+            try:
+                with open(fpath) as f:
+                    dct = json.load(f)
+            except IOError as e:
+                if e.errno == errno.ENOENT:
+                    dct = {}
+                else:
+                    raise
+            dct[key] = value
+            with open(fpath, "w") as f:
+                json.dump(dct, f, indent=4)
 
-    # def _get_fileset_provenance(self, fileset):
-    #     if fileset.fspath is not None:
-    #         prov_path = self.prov_json_path(fileset)
-    #         if prov_path.exists():
-    #             with open(prov_path) as f:
-    #                 provenance = json.load(f)
-    #         else:
-    #             provenance = {}
-    #     else:
-    #         provenance = None
-    #     return provenance
-
-    # def _get_field_provenance(self, field):
-    #     """
-    #     Loads the fields provenance from the JSON dictionary
-    #     """
-    #     val_dct = self.get_field_val(field)
-    #     if isinstance(val_dct, dict):
-    #         prov = val_dct.get(self.PROV_KEY)
-    #     else:
-    #         prov = None
-    #     return prov
-
-    def get_field_val(self, field):
+    def read_from_json(self, fpath, key):
         """
         Load fields JSON, locking to prevent read/write conflicts
         Would be better if only checked if locked to allow
         concurrent reads but not possible with multi-process
         locks (in my understanding at least).
         """
-        json_path = self.fields_json_path(field)
         try:
-            with InterProcessLock(json_path + self.LOCK_SUFFIX, logger=logger), open(
-                json_path, "r"
+            with InterProcessLock(fpath + self.LOCK_SUFFIX, logger=logger), open(
+                fpath, "r"
             ) as f:
                 dct = json.load(f)
-            val_dct = dct[field.name]
-            return val_dct
+            return dct[key]
         except (KeyError, IOError) as e:
             try:
                 # Check to see if the IOError wasn't just because of a
@@ -347,7 +301,7 @@ class DirTree(DataStore):
             except AttributeError:
                 pass
             raise ArcanaMissingDataException(
-                "{} does not exist in the local store {}".format(field.name, self)
+                "{} does not exist in the local store {}".format(key, self)
             )
 
     def create_test_dataset_data(
@@ -370,23 +324,3 @@ class DirTree(DataStore):
             dpath.mkdir(parents=True)
             for fname in blueprint.files:
                 self.create_test_data_item(fname, dpath, source_data=source_data)
-
-
-# def single_dataset(
-#     path: str, tree_dimensions: DataSpace = Clinical, **kwargs
-# ) -> Dataset:
-#     """
-#     Creates a Dataset from a file system path to a directory
-
-#     Parameters
-#     ----------
-#     path : str
-#         Path to directory containing the dataset
-#     tree_dimensions : type
-#         The enum class that defines the directory tree dimensions of the
-#         stores
-#     """
-
-#     return DirTree(op.join(path, ".."), **kwargs).dataset(
-#         op.basename(path), tree_dimensions
-#     )

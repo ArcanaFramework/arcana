@@ -24,6 +24,7 @@ logger = logging.getLogger("arcana")
 
 if ty.TYPE_CHECKING:
     from .space import DataSpace
+    from .cell import DataCell
 
 
 @attrs.define(kw_only=True)
@@ -92,7 +93,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def find_items(self, row):
+    def find_cells(self, row) -> list[DataCell]:
         """
         Find all data items within a data row and populate the DataRow object
         with them using the `add_fileset` and `add_field` methods.
@@ -436,7 +437,7 @@ class DataStore(metaclass=ABCMeta):
         # If not saved in the configuration file search for sub-classes
         # whose alias matches `name` and can be initialised without params
         cls._singletons = {}
-        for store_cls in list_subclasses(arcana, DataStore, subpkg="data"):
+        for store_cls in list_subclasses(arcana, DataStore):
             try:
                 store = store_cls()
             except Exception:

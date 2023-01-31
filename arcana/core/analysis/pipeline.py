@@ -17,8 +17,8 @@ from arcana.core.exceptions import (
     ArcanaDataMatchError,
 )
 from fileformats.core.base import DataType, FileSet
-from fileformats.fields import Field
-from fileformats.core.exceptions import FormatMismatchError
+from fileformats.field import Field
+from fileformats.core.exceptions import FormatConversionError
 import arcana.core.data.set
 import arcana.core.data.row
 from ..data.space import DataSpace
@@ -136,8 +136,8 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if inpt.datatype:
                     try:
-                        inpt.datatype.get_converter(column.datatype)
-                    except FormatMismatchError as e:
+                        inpt.datatype.get_converter(column.datatype, name="dummy")
+                    except FormatConversionError as e:
                         msg = (
                             f"required to in conversion of '{inpt.name}' input "
                             f"to '{self.name}' pipeline"
@@ -168,8 +168,8 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if outpt.datatype:
                     try:
-                        column.datatype.get_converter(outpt.datatype)
-                    except FormatMismatchError as e:
+                        column.datatype.get_converter(outpt.datatype, name="dummy")
+                    except FormatConversionError as e:
                         msg = (
                             f"required to in conversion of '{outpt.name}' output "
                             f"from '{self.name}' pipeline"
@@ -299,31 +299,27 @@ class Pipeline:
             if inpt.datatype == arcana.core.data.row.DataRow:
                 continue
             stored_format = self.dataset[inpt.name].datatype
-            if not (
-                inpt.datatype is stored_format
-                or issubclass(stored_format, inpt.datatype)
-            ):
+            converter = inpt.datatype.get_converter(
+                stored_format,
+                name=f"{inpt.name}_input_converter",
+                **self.converter_args.get(inpt.name, {}),
+            )
+            if converter is not None:  # None if no conversion required
                 logger.info(
                     "Adding implicit conversion for input '%s' " "from %s to %s",
                     inpt.name,
                     stored_format.class_name(),
                     inpt.datatype.class_name(),
                 )
-                source_name = inpt.name
-                converter = inpt.datatype.converter_task(
-                    stored_format,
-                    name=f"{source_name}_input_converter",
-                    **self.converter_args.get(inpt.name, {}),
-                )
-                converter.inputs.to_convert = sourced.pop(source_name)
-                if issubclass(source_out_dct[source_name], ty.Sequence):
+                converter.inputs.in_file = sourced.pop(inpt.name)
+                if issubclass(source_out_dct[inpt.name], ty.Sequence):
                     # Iterate over all items in the sequence and convert them
                     # separately
                     converter.split("to_convert")
                 # Insert converter
                 wf.per_row.add(converter)
                 # Map converter output to input_interface
-                sourced[source_name] = converter.lzout.converted
+                sourced[inpt.name] = converter.lzout.out_file
 
         # Create identity row to accept connections from user-defined rows
         # via `set_output` method
@@ -379,10 +375,13 @@ class Pipeline:
         # Do output datatype conversions if required
         for outpt in self.outputs:
             stored_format = self.dataset[outpt.name].datatype
-            if not (
-                outpt.datatype is stored_format
-                or issubclass(outpt.datatype, stored_format)
-            ):
+            sink_name = path2varname(outpt.name)
+            converter = stored_format.get_converter(
+                outpt.datatype,
+                name=f"{sink_name}_output_converter",
+                **self.converter_args.get(outpt.name, {}),
+            )
+            if converter:
                 logger.info(
                     "Adding implicit conversion for output '%s' " "from %s to %s",
                     outpt.name,
@@ -390,16 +389,10 @@ class Pipeline:
                     stored_format.class_name(),
                 )
                 # Insert converter
-                sink_name = path2varname(outpt.name)
-                converter = stored_format.converter_task(
-                    outpt.datatype,
-                    name=f"{sink_name}_output_converter",
-                    **self.converter_args.get(outpt.name, {}),
-                )
-                converter.inputs.to_convert = to_sink.pop(sink_name)
+                converter.inputs.in_file = to_sink.pop(sink_name)
                 wf.per_row.add(converter)
                 # Map converter output to workflow output
-                to_sink[sink_name] = converter.lzout.converted
+                to_sink[sink_name] = converter.lzout.out_file
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments

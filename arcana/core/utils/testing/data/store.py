@@ -5,9 +5,11 @@ import shutil
 from pathlib import Path
 import attrs
 import yaml
+from fileformats.core.base import FileSet
 from arcana.core.data.store import DataStore, TestDatasetBlueprint
 from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
+from arcana.core.data.cell import DataCell
 from arcana.core.data.space import DataSpace
 from .space import TestDataSpace
 
@@ -59,7 +61,7 @@ class FlatDirStore(DataStore):
             ids = self.get_ids_from_row_dirname(row_dir)
             dataset.add_leaf([ids[str(h)] for h in dataset.hierarchy])
 
-    def find_items(self, row: DataRow):
+    def find_cells(self, row: DataRow) -> list[DataCell]:
         """
         Find all data items within a data row and populate the DataRow object
         with them using the `add_fileset` and `add_field` methods.
@@ -72,18 +74,18 @@ class FlatDirStore(DataStore):
         row_dir = self.get_row_path(row)
         if not row_dir.exists():
             return
-        for item_path in self.iterdir(row_dir, skip_suffixes=[".json"]):
-            prov_path = item_path.with_suffix(".json")
+        cells = []
+        for cell_id in self.iterdir(row_dir, skip_suffixes=[".json"]):
+            prov_path = cell_id.with_suffix(".json")
             if prov_path.exists():
                 with open(prov_path) as f:
                     provenance = json.load(f)
             else:
                 provenance = None
-            row.add_fileset(
-                path=item_path.name,
-                file_paths=list(self.iterdir(item_path)),
-                provenance=provenance,
+            cells.append(
+                DataCell(id=cell_id, datatype=FileSet, row=row, provenance=provenance)
             )
+        return cells
 
     def get_fileset_paths(self, fileset, cache_only=False):
         """

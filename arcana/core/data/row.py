@@ -142,8 +142,7 @@ class DataRow:
     @property
     def unresolved(self):
         if self._unresolved is None:
-            self._unresolved = []
-            self.dataset.store.find_items(self)
+            self._unresolved = self.dataset.store.find_cells(self)
         return self._unresolved
 
     def resolved(self, datatype):
@@ -166,18 +165,6 @@ class DataRow:
     @property
     def ids_tuple(self):
         return self.dataset.ids_tuple(self.ids)
-
-    def add_fileset(self, path, **kwargs):
-        if self._unresolved is None:
-            self._unresolved = []
-        self._unresolved.append(UnresolvedFileSet(path=path, row=self, **kwargs))
-
-    def add_field(self, path, value, **kwargs):
-        if self._unresolved is None:
-            self._unresolved = []
-        self._unresolved.append(
-            UnresolvedField(path=path, row=self, value=value, **kwargs)
-        )
 
 
 @attrs.define

@@ -17,7 +17,7 @@ a reference implementation please see :class:`arcana.dirtree.data.SimpleStore`.
 
 .. autoclass:: arcana.core.data.store.DataStore
     :noindex:
-    :members: find_rows, find_items, get_file_group_paths, get_field_value, put_file_group_paths, put_field_value, save_dataset_definition, load_dataset_definition
+    :members: find_rows, find_cells, get_file_group_paths, get_field_value, put_file_group_paths, put_field_value, save_dataset_definition, load_dataset_definition
 
 Optional methods
 ----------------
