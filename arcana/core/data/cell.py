@@ -1,19 +1,12 @@
 from __future__ import annotations
 import typing as ty
-from pathlib import Path
-import hashlib
 import attrs
-from arcana.core.exceptions import (
-    NameError,
-)
-from .quality import DataQuality  # @ignore reshadowedImports
-from arcana.core.utils.misc import (
-    HASH_CHUNK_SIZE,
-)
+from fileformats.core.base import DataType
 
 if ty.TYPE_CHECKING:
     from .row import DataRow
     from .column import DataColumn
+    from .entry import DataEntry
 
 
 @attrs.define
@@ -50,15 +43,9 @@ class DataCell:
         logic to conveniently access the cells contents
     """
 
-    id: str = attrs.field()
     row: DataRow = attrs.field()
     column: DataColumn = attrs.field()
-    is_empty: bool = False
-    order: int = attrs.field(default=None)
-    quality: DataQuality = attrs.field(default=DataQuality.usable)
-    provenance: ty.Dict[str, ty.Any] = attrs.field(default=None)
-    uri: str = attrs.field(default=None)
-    _checksums: ty.Dict[str, str] = attrs.field(default=None, repr=False, init=False)
+    entry: DataEntry = None
 
     @property
     def datatype(self):
@@ -71,80 +58,13 @@ class DataCell:
         else:
             return self.provenance.outputs[self.name_path]
 
-    @provenance.validator
-    def check_provenance(self, _, provenance):
-        "Checks that the data item path is present in the provenance"
-        if provenance is not None:
-            if self.id not in provenance.outputs:
-                raise NameError(
-                    self.id,
-                    f"{self.id} was not found in outputs "
-                    f"{provenance.outputs.keys()} of provenance provenance "
-                    f"{provenance}",
-                )
-
     @property
-    def checksums(self):
-        if self._checksums is None:
-            self.get_checksums()
-        return self._checksums
+    def item(self) -> DataType:
+        return self.entry.item
 
-    def get_checksums(self, force_calculate=False):
-        self._check_exists()
-        # Load checksums from store (e.g. via API)
-        if self.row is not None and not force_calculate:
-            self._checksums = self.row.dataset.store.get_checksums(self)
-        # If the store cannot calculate the checksums do them manually
-        else:
-            self._checksums = self.calculate_checksums()
-
-    def calculate_checksums(self):
-        self._check_exists()
-        checksums = {}
-        for fpath in self.all_file_paths():
-            fhash = hashlib.md5()
-            with open(fpath, "rb") as f:
-                # Calculate hash in chunks so we don't run out of memory for
-                # large files.
-                for chunk in iter(lambda: f.read(HASH_CHUNK_SIZE), b""):
-                    fhash.update(chunk)
-            checksums[fpath] = fhash.hexdigest()
-        checksums = self.generalise_checksum_keys(checksums)
-        return checksums
-
-    def generalise_checksum_keys(
-        self, checksums: ty.Dict[str, str], base_path: Path = None
-    ):
-        """Generalises the paths used for the file paths in a checksum dictionary
-        so that they are the same irrespective of that the top-level file-system
-        paths are
-
-        Parameters
-        ----------
-        checksums: dict[str, str]
-            The checksum dict mapping relative file paths to checksums
-
-        Returns
-        -------
-        dict[str, str]
-            The checksum dict with file paths generalised"""
-        if base_path is None:
-            base_path = self.fspath
-        return {str(Path(k).relative_to(base_path)): v for k, v in checksums.items()}
-
-    def contents_equal(self, other, **kwargs):
-        """
-        Test the equality of the fileset contents with another fileset.
-        If the fileset's format implements a 'contents_equal' method than
-        that is used to determine the equality, otherwise a straight comparison
-        of the checksums is used.
-
-        Parameters
-        ----------
-        other : FileSet
-            The other fileset to compare to
-        """
-        return self.checksums == other.checksums
+    @item.setter
+    def item(self, item):
+        self.entry.item = item
 
     # @classmethod
     # def resolve(cls, unresolved):

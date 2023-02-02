@@ -13,7 +13,13 @@ from arcana.core.utils.serialize import (
     fromdict,
 )
 import arcana
-from arcana.core.utils.misc import get_config_file_path, set_cwd, path2varname
+from fileformats.core import DataType
+from arcana.core.utils.misc import (
+    get_config_file_path,
+    set_cwd,
+    path2varname,
+    NestedContext,
+)
 from arcana.core.utils.packaging import list_subclasses
 from arcana.core.exceptions import ArcanaUsageError, ArcanaNameError
 
@@ -24,7 +30,9 @@ logger = logging.getLogger("arcana")
 
 if ty.TYPE_CHECKING:
     from .space import DataSpace
-    from .cell import DataCell
+    from .set import DataTree
+    from .entry import DataEntry
+    from .row import DataRow
 
 
 @attrs.define(kw_only=True)
@@ -65,6 +73,23 @@ class TestDatasetBlueprint:
 
 
 @attrs.define
+class ConnectionManager(NestedContext):
+
+    store: ty.Any = None
+    _connection: ty.Any = attrs.field(default=None, init=False)
+
+    def __getattr__(self, attr_name):
+        return getattr(self._connection, attr_name)
+
+    def enter(self):
+        self._connection = self.store.connect()
+
+    def disconnect(self):
+        self.store.disconnect(self._connection)
+        self._connection = None
+
+
+@attrs.define
 class DataStore(metaclass=ABCMeta):
     # """
     # Abstract base class for all Repository systems, DaRIS, XNAT and
@@ -73,107 +98,15 @@ class DataStore(metaclass=ABCMeta):
     # """
 
     # name: str = None
-    _connection_depth = attrs.field(
-        default=0, init=False, hash=False, repr=False, eq=False
+    connection: ConnectionManager = attrs.field(
+        factory=ConnectionManager, init=False, hash=False, repr=False, eq=False
     )
+
+    def __attrs_post_init__(self):
+        self.connection.store = self
 
     CONFIG_NAME = "stores"
     SUBPACKAGE = "data"
-
-    @abstractmethod
-    def find_rows(self, dataset):
-        """
-        Find all data rows for a dataset in the store and populate the
-        Dataset object using its `add_row` method.
-
-        Parameters
-        ----------
-        dataset : Dataset
-            The dataset to populate with rows
-        """
-
-    @abstractmethod
-    def find_cells(self, row) -> list[DataCell]:
-        """
-        Find all data items within a data row and populate the DataRow object
-        with them using the `add_fileset` and `add_field` methods.
-
-        Parameters
-        ----------
-        row : DataRow
-            The data row to populate with items
-        """
-
-    @abstractmethod
-    def get_fileset_paths(self, fileset, cache_only=False):
-        """
-        Cache the fileset locally (if required) and return the locations
-        of the cached primary file and side cars
-
-        Parameters
-        ----------
-        fileset : FileSet
-            The fileset to cache locally
-        cache_only : bool
-            Whether to attempt to extract the file sets from the local cache
-            (if applicable) and raise an error otherwise
-
-        Returns
-        -------
-        fspaths : list[str]
-            The file-system path to the cached files
-
-        Raises
-        ------
-        ArcanaCacheError
-            If cache_only is set and there is a mismatch between the cached
-            and remote versions
-        """
-
-    @abstractmethod
-    def get_field_value(self, field):
-        """
-        Extract and return the value of the field from the store
-
-        Parameters
-        ----------
-        field : Field
-            The field to retrieve the value for
-
-        Returns
-        -------
-        value : int | float | str | ty.List[int] | ty.List[float] | ty.List[str]
-            The value of the Field
-        """
-
-    @abstractmethod
-    def put_fileset_paths(self, fileset, fspaths):
-        """
-        Inserts or updates the fileset into the store
-
-        Parameters
-        ----------
-        fileset : FileSet
-            The fileset to insert into the store
-        fspaths : list[Path]
-            The file-system paths to the files/directories to sync
-
-        Returns
-        -------
-        cached_paths : list[str]
-            The paths of the files where they are cached in the file system
-        """
-
-    @abstractmethod
-    def put_field_value(self, field, value):
-        """
-        Inserts or updates the fields into the store
-
-        Parameters
-        ----------
-        field : Field
-            The field to insert into the store
-        """
 
     @abstractmethod
     def save_dataset_definition(
@@ -214,52 +147,97 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
-        """Stores provenance information for a given data item in the store
+    def populate_tree(self, tree: DataTree):
+        """
+        Populates the nodes of the data tree with those found in the dataset
 
         Parameters
         ----------
-        item: DataType
-            The item to store the provenance data for
-        provenance: dict[str, Any]
-            The provenance data to store"""
+        tree : DataTree
+            The tree to populate with nodes via the ``DataTree.add_leaf`` method
+        """
 
     @abstractmethod
-    def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
-        """Stores provenance information for a given data item in the store
+    def populate_row(self, row: DataRow):
+        """
+        Populate a row with all data entries found in the corresponding node in the data
+        store (e.g. files within a directory, scans within an XNAT session).
 
         Parameters
         ----------
-        item: DataType
-            The item to store the provenance data for
-
-        Returns
-        -------
-        provenance: dict[str, Any] or None
-            The provenance data stored in the repository for the data item.
-            None if no provenance data has been stored"""
-
-    def get_checksums(self, fileset):
+        row : DataRow
+            The row to populate with entries using the ``DataRow.add_entry`` method
         """
-        Override this method to return checksums for files that are stored
-        with remote files (e.g. in XNAT). If no checksums are stored in the
-        store then just leave this method to just access the file and
-        recalculate them.
+
+    @abstractmethod
+    def get(self, entry: DataEntry) -> DataType:
+        """
+        Cache the fileset locally (if required) and return the locations
+        of the cached primary file and side cars
 
         Parameters
         ----------
         fileset : FileSet
-            The fileset to return the checksums for
+            The fileset to cache locally
+        cache_only : bool
+            Whether to attempt to extract the file sets from the local cache
+            (if applicable) and raise an error otherwise
 
         Returns
         -------
-        checksums : dct[str, str]
-            A dictionary with keys corresponding to the relative paths of all
-            files in the fileset from the base path and values equal to the
-            MD5 hex digest. The primary file in the file-set (i.e. the one that
-            the path points to) should be specified by '.'.
+        fspaths : list[str]
+            The file-system path to the cached files
+
+        Raises
+        ------
+        ArcanaCacheError
+            If cache_only is set and there is a mismatch between the cached
+            and remote versions
         """
-        return fileset.calculate_checksums()
+
+    @abstractmethod
+    def put(self, entry: DataEntry, item: DataType):
+        """
+        Inserts or updates the fileset into the store
+
+        Parameters
+        ----------
+        fileset : FileSet
+            The fileset to insert into the store
+        fspaths : list[Path]
+            The file-system paths to the files/directories to sync
+
+        Returns
+        -------
+        cached_paths : list[str]
+            The paths of the files where they are cached in the file system
+        """
+
+    # @abstractmethod
+    # def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
+    #     """Stores provenance information for a given data item in the store
+
+    #     Parameters
+    #     ----------
+    #     item: DataType
+    #         The item to store the provenance data for
+    #     provenance: dict[str, Any]
+    #         The provenance data to store"""
+
+    # @abstractmethod
+    # def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
+    #     """Stores provenance information for a given data item in the store
+
+    #     Parameters
+    #     ----------
+    #     item: DataType
+    #         The item to store the provenance data for
+
+    #     Returns
+    #     -------
+    #     provenance: dict[str, Any] or None
+    #         The provenance data stored in the repository for the data item.
+    #         None if no provenance data has been stored"""
 
     def connect(self):
         """
@@ -269,6 +247,31 @@ class DataStore(metaclass=ABCMeta):
     def disconnect(self):
         """
         If a connection session is required to the store manage it here
+        """
+
+    def site_licenses_dataset(self):
+        """Can be overridden by subclasses to provide a dataset to hold site-wide licenses"""
+        return None
+
+    def get_checksums(self, entry: DataEntry):
+        """
+        Override this method to return checksums for files that are stored
+        with remote files (e.g. in XNAT). If no checksums are stored in the
+        store then just leave this method to just access the file and
+        recalculate them.
+
+        Parameters
+        ----------
+        entry : DataEntry
+            The entry to return the checksums for
+
+        Returns
+        -------
+        checksums : dct[str, str]
+            A dictionary with keys corresponding to the relative paths of all
+            files in the fileset from the base path and values equal to the
+            MD5 hex digest. The primary file in the file-set (i.e. the one that
+            the path points to) should be specified by '.'.
         """
 
     def save(self, name: str = None, config_path: Path = None):
@@ -304,12 +307,10 @@ class DataStore(metaclass=ABCMeta):
     def asdict(self, **kwargs):
         return asdict(self, **kwargs)
 
-    def site_licenses_dataset(self):
-        """Can be overridden by subclasses to provide a dataset to hold site-wide licenses"""
-        return None
-
     @classmethod
-    def load(cls: ty.Type[DS], name: str, config_path: Path = None, **kwargs) -> DS:
+    def load(
+        cls: DataStore, name: str, config_path: Path = None, **kwargs
+    ) -> DataStore:
         """Loads a DataStore from that has been saved in the configuration file.
         If no entry is saved under that name, then it searches for DataStore
         sub-classes with aliases matching `name` and checks whether they can
@@ -464,29 +465,21 @@ class DataStore(metaclass=ABCMeta):
         with open(config_path, "w") as f:
             yaml.dump(entries, f)
 
-    def __enter__(self):
-        # This allows the store to be used within nested contexts
-        # but still only use one connection. This is useful for calling
-        # methods that need connections, and therefore control their
-        # own connection, in batches using the same connection by
-        # placing the batch calls within an outer context.
-        if self._connection_depth == 0:
-            self.connect()
-        self._connection_depth += 1
-        return self
+    # def __enter__(self):
+    #     # This allows the store to be used within nested contexts
+    #     # but still only use one connection. This is useful for calling
+    #     # methods that need connections, and therefore control their
+    #     # own connection, in batches using the same connection by
+    #     # placing the batch calls within an outer context.
+    #     if self._connection_depth == 0:
+    #         self.connect()
+    #     self._connection_depth += 1
+    #     return self
 
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._connection_depth -= 1
-        if self._connection_depth == 0:
-            self.disconnect()
-
-    @classmethod
-    def get_alias(cls):
-        try:
-            alias = cls.alias
-        except AttributeError:
-            alias = cls.__name__.lower()
-        return alias
+    # def __exit__(self, exception_type, exception_value, traceback):
+    #     self._connection_depth -= 1
+    #     if self._connection_depth == 0:
+    #         self.disconnect()
 
     def create_test_dataset_data(
         self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None

@@ -600,7 +600,7 @@ def source_items(
     provenance = copy(parameterisation)
     sourced = []
     row = dataset.row(row_frequency, id)
-    with dataset.store:
+    with dataset.store.connection:
         missing_inputs = {}
         for inpt in inputs:
             # If the required datatype is of type DataRow then provide the whole
@@ -638,7 +638,7 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
     """
     logger.debug("Sinking %s", to_sink)
     row = dataset.row(row_frequency, id)
-    with dataset.store:
+    with dataset.store.connection:
         for outpt_name, output in to_sink.items():
             row_item = row[outpt_name]
             row_item.put(output.value)  # Store value/path

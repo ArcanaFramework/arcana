@@ -3,7 +3,6 @@ import logging
 import typing as ty
 from pathlib import Path
 from itertools import chain
-import re
 import shutil
 import attrs
 import attrs.filters
@@ -15,15 +14,14 @@ from arcana.core.utils.serialize import asdict
 from arcana.core.exceptions import (
     ArcanaLicenseNotFoundError,
     ArcanaNameError,
-    ArcanaDataTreeConstructionError,
     ArcanaUsageError,
-    ArcanaBadlyFormattedIDError,
     ArcanaWrongDataSpaceError,
 )
 from .space import DataSpace
 from .column import DataColumn, DataSink, DataSource
 from . import store as datastore
-from .row import DataRow
+from .tree import DataTree
+
 
 if ty.TYPE_CHECKING:
     from ..deploy.image.components import License
@@ -139,9 +137,10 @@ class Dataset:
     pipelines: ty.Dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    _root: DataRow = attrs.field(default=None, init=False, repr=False, eq=False)
+    cache: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
 
     def __attrs_post_init__(self):
+        self.cache.dataset = self
         # Ensure that hierarchy items are in the DataSpace enums not strings
         # or set the space from the provided enums
         if self.space is not None:
@@ -289,17 +288,18 @@ class Dataset:
 
     @property
     def root(self):
-        """Lazily loads the data tree from the store on demand
+        """Lazily loads the data tree from the store on demand and return root
 
         Returns
         -------
         DataRow
             The root row of the data tree
         """
-        if self._root is None:
-            self._set_root()
-            self.store.find_rows(self)
-        return self._root
+        # Build the tree cache and return the tree root. Note that if there is a
+        # "with <this-dataset>.cache" statement further up the call stack then the
+        # cache won't be broken down until the highest cache statement exits
+        with self.cache:
+            return self.cache.root
 
     @property
     def locator(self):
@@ -312,13 +312,6 @@ class Dataset:
         if self.name is not self.DEFAULT_NAME:
             locator += f"@{self.name}"
         return locator
-
-    def _set_root(self):
-        self._root = DataRow({self.root_freq: None}, self.root_freq, self)
-
-    def refresh(self):
-        """Refresh the dataset rows"""
-        self._root = None
 
     def add_source(
         self, name, datatype, path=None, row_frequency=None, overwrite=False, **kwargs
@@ -419,7 +412,6 @@ class Dataset:
         ArcanaNameError
             If there is no row corresponding to the given ids
         """
-        row = self.root
         # Parse str to row_frequency enums
         if not row_frequency:
             if id is not None:
@@ -432,7 +424,8 @@ class Dataset:
                     f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
                     f"provided to `row` method of {self}"
                 )
-            # Convert to the DataSpace of the dataset
+            # Iterate through the tree to find the row (i.e. tree node) matching the
+            # provided IDs
             row = self.root
             for freq, id in id_kwargs.items():
                 try:
@@ -516,169 +509,6 @@ class Dataset:
             the column object
         """
         return self.columns[name]
-
-    def add_leaf(self, tree_path, explicit_ids=None):
-        """Creates a new row at a the path down the tree of the dataset as
-        well as all "parent" rows upstream in the data tree
-
-        Parameters
-        ----------
-        tree_path : list[str]
-            The sequence of labels for each layer in the hierarchy of the
-            dataset leading to the current row.
-        explicit_ids : dict[DataSpace, str]
-            IDs for frequencies not in the dataset hierarchy that are to be
-            set explicitly
-
-        Raises
-        ------
-        ArcanaBadlyFormattedIDError
-            raised if one of the IDs doesn't match the pattern in the
-            `id_inference`
-        ArcanaDataTreeConstructionError
-            raised if one of the groups specified in the ID inference reg-ex
-            doesn't match a valid row_frequency in the data dimensions
-        """
-        if self._root is None:
-            self._set_root()
-        if explicit_ids is None:
-            explicit_ids = {}
-        # Get basis frequencies covered at the given depth of the
-        if len(tree_path) != len(self.hierarchy):
-            raise ArcanaDataTreeConstructionError(
-                f"Tree path ({tree_path}) should have the same length as "
-                f"the hierarchy ({self.hierarchy}) of {self}"
-            )
-        # Set a default ID of None for all parent frequencies that could be
-        # inferred from a row at this depth
-        ids = {f: None for f in self.space}
-        # Calculate the combined freqs after each layer is added
-        row_frequency = self.space(0)
-        for layer, label in zip(self.hierarchy, tree_path):
-            ids[layer] = label
-            regexes = [r for ln, r in self.id_inference if ln == layer]
-            if not regexes:
-                # If the layer introduces completely new axes then the axis
-                # with the least significant bit (the order of the bits in the
-                # DataSpace class should be arranged to account for this)
-                # can be considered be considered to be equivalent to the label.
-                # E.g. Given a hierarchy of ['subject', 'session']
-                # no groups are assumed to be present by default (although this
-                # can be overridden by the `id_inference` attr) and the `member`
-                # ID is assumed to be equivalent to the `subject` ID. Conversely,
-                # the timepoint can't be inferred from the `session` ID, since
-                # the session ID could be expected to contain the `member` and
-                # `group` ID in it, and should be explicitly extracted by
-                # providing a regex to `id_inference`, e.g.
-                #
-                #       session ID: MRH010_CONTROL03_MR02
-                #
-                # with the '02' part representing as the timepoint can be
-                # extracted with the
-                #
-                #       id_inference={
-                #           'session': r'.*(?P<timepoint>0-9+)$'}
-                if not (layer & row_frequency):
-                    ids[layer.span()[-1]] = label
-            else:
-                for regex in regexes:
-                    match = re.match(regex, label)
-                    if match is None:
-                        raise ArcanaBadlyFormattedIDError(
-                            f"{layer} label '{label}', does not match ID inference"
-                            f" pattern '{regex}'"
-                        )
-                    new_freqs = (layer ^ row_frequency) & layer
-                    for target_freq, target_id in match.groupdict().items():
-                        target_freq = self.space[target_freq]
-                        if (target_freq & new_freqs) != target_freq:
-                            raise ArcanaUsageError(
-                                f"Inferred ID target, {target_freq}, is not a "
-                                f"data row_frequency added by layer {layer}"
-                            )
-                        if ids[target_freq] is not None:
-                            raise ArcanaUsageError(
-                                f"ID '{target_freq}' is specified twice in the ID "
-                                f"inference of {tree_path} ({ids[target_freq]} "
-                                f"and {target_id} from {regex}"
-                            )
-                        ids[target_freq] = target_id
-            row_frequency |= layer
-        assert row_frequency == max(self.space)
-        # Set or override any inferred IDs within the ones that have been
-        # explicitly provided
-        ids.update(explicit_ids)
-        # Create composite IDs for non-basis frequencies if they are not
-        # explicitly in the layer dimensions
-        for freq in set(self.space) - set(row_frequency.span()):
-            if ids[freq] is None:
-                id = tuple(ids[b] for b in freq.span() if ids[b] is not None)
-                if id:
-                    if len(id) == 1:
-                        id = id[0]
-                    ids[freq] = id
-        # TODO: filter row based on dataset include & exclude attrs
-        return self._add_row(ids, row_frequency)
-
-    def _add_row(self, ids, row_frequency):
-        """Adds a row to the dataset, creating all parent "aggregate" rows
-        (e.g. for each subject, group or timepoint) where required
-
-        Parameters
-        ----------
-        row: DataRow
-            The row to add into the data tree
-
-        Raises
-        ------
-        ArcanaDataTreeConstructionError
-            If inserting a multiple IDs of the same class within the tree if
-            one of their ids is None
-        """
-        logger.debug("Adding new %s row to %s dataset: %s", row_frequency, self.id, ids)
-        row_frequency = self._parse_freq(row_frequency)
-        row = DataRow(ids, row_frequency, self)
-        # Create new data row
-        row_dict = self.root.children[row.frequency]
-        if row.id in row_dict:
-            raise ArcanaDataTreeConstructionError(
-                f"ID clash ({row.id}) between rows inserted into data " "tree"
-            )
-        row_dict[row.id] = row
-        # Insert root row
-        # Insert parent rows if not already present and link them with
-        # inserted row
-        for parent_freq, parent_id in row.ids.items():
-            if not parent_freq:
-                continue  # Don't need to insert root row again
-            diff_freq = (row.frequency ^ parent_freq) & row.frequency
-            if diff_freq:
-                # logger.debug(f'Linking parent {parent_freq}: {parent_id}')
-                try:
-                    parent_row = self.row(parent_freq, parent_id)
-                except ArcanaNameError:
-                    # logger.debug(
-                    #     f'Parent {parent_freq}:{parent_id} not found, adding')
-                    parent_ids = {
-                        f: i
-                        for f, i in row.ids.items()
-                        if (f.is_parent(parent_freq) or f == parent_freq)
-                    }
-                    parent_row = self._add_row(parent_ids, parent_freq)
-                # Set reference to level row in new row
-                diff_id = row.ids[diff_freq]
-                children_dict = parent_row.children[row_frequency]
-                if diff_id in children_dict:
-                    raise ArcanaDataTreeConstructionError(
-                        f"ID clash ({diff_id}) between rows inserted into "
-                        f"data tree in {diff_freq} children of {parent_row} "
-                        f"({children_dict[diff_id]} and {row}). You may "
-                        f"need to set the `id_inference` attr of the dataset "
-                        "to disambiguate ID components (e.g. how to extract "
-                        "the timepoint ID from a session label)"
-                    )
-                children_dict[diff_id] = row
-        return row
 
     def apply_pipeline(
         self,

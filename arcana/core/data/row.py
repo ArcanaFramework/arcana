@@ -8,13 +8,14 @@ from arcana.core.exceptions import (
     ArcanaNameError,
     ArcanaWrongFrequencyError,
 )
-from fileformats.core.exceptions import FormatMismatchError
 from fileformats.core import DataType
 from .quality import DataQuality
 from .space import DataSpace
 
 if ty.TYPE_CHECKING:
     import arcana.core.data.set
+    from .entry import DataEntry
+    from .cell import DataCell
 
 
 @attrs.define(auto_detect=True)
@@ -37,12 +38,12 @@ class DataRow:
     frequency: DataSpace = attrs.field()
     dataset: arcana.core.data.set.Dataset = attrs.field(repr=False)
     children: ty.DefaultDict[
-        DataSpace, ty.Dict[ty.Union[str, ty.Tuple[str]], str]
+        DataSpace, dict[ty.Union[str, tuple[str]], str]
     ] = attrs.field(factory=lambda: defaultdict(dict), repr=False)
-    _unresolved = attrs.field(default=None, repr=False)
-    _items = attrs.field(factory=dict, init=False, repr=False)
+    _entries: dict[str, DataEntry] = attrs.field(default=dict, init=False, repr=False)
+    _cells: dict[str, DataCell] = attrs.field(factory=dict, init=False, repr=False)
 
-    def __getitem__(self, column_name):
+    def __getitem__(self, column_name: str) -> DataType:
         """Gets the item for the current row
 
         Parameters
@@ -55,33 +56,61 @@ class DataRow:
         DataType
             The item matching the provided name specified by the column name
         """
-        if column_name in self._items:
-            return self._items[column_name]
-        else:
-            try:
-                spec = self.dataset[column_name]
-            except KeyError as e:
-                raise ArcanaNameError(
-                    column_name,
-                    f"{column_name} is not the name of a column in "
-                    f"{self.dataset.id} dataset ('"
-                    + "', '".join(self.dataset.columns)
-                    + "')",
-                ) from e
-            if spec.row_frequency != self.frequency:
-                return ArcanaWrongFrequencyError(
-                    column_name,
-                    f"'column_name' ({column_name}) is of {spec.row_frequency} "
-                    f"frequency and therefore not in rows of {self.frequency}"
-                    " frequency",
-                )
-            item = self._items[column_name] = spec.match(self)
-            return item
+        cell = self.cell(column_name)
+        if cell.is_empty:
+            raise RuntimeError(f"Cannot access item of empty cell: {cell}")
+        return cell.entry.item
 
-    def __setitem__(self, column_name, value):
-        item = self[column_name]
-        item.put(value)
-        return item
+    def __setitem__(self, column_name: str, value: DataType):
+        cell = self.cell(column_name)
+        if cell.is_empty:
+            cell.create_entry()
+        cell.entry.item = value
+        return self
+
+    def entry(self, id: str) -> DataEntry:
+        return self._entries_dict[id]
+
+    def cell(self, column_name: str) -> DataCell:
+        try:
+            return self._cells[column_name]
+        except KeyError:
+            pass
+        try:
+            column = self.dataset[column_name]
+        except KeyError as e:
+            raise ArcanaNameError(
+                column_name,
+                f"{column_name} is not the name of a column in "
+                f"{self.dataset.id} dataset ('"
+                + "', '".join(self.dataset.columns)
+                + "')",
+            ) from e
+        if column.row_frequency != self.frequency:
+            return ArcanaWrongFrequencyError(
+                column_name,
+                f"'column_name' ({column_name}) is of {column.row_frequency} "
+                f"frequency and therefore not in rows of {self.frequency}"
+                " frequency",
+            )
+        cell = DataCell(column, self)
+        self._cells[column_name] = cell
+        return cell
+
+    @property
+    def cells(self) -> ty.Iterable[DataCell]:
+        for column in self.dataset.columns:
+            yield self.cell(column.name)
+
+    @property
+    def entries(self) -> ty.Iterable[DataEntry]:
+        return self._entries_dict.values()
+
+    @property
+    def _entries_dict(self) -> dict[str, DataEntry]:
+        if self._entries is None:
+            self.dataset.store.populate_row(self)
+        return self._entries
 
     def __repr__(self):
         return f"{type(self).__name__}(id={self.id}, frequency={self.frequency})"
@@ -145,26 +174,73 @@ class DataRow:
             self._unresolved = self.dataset.store.find_cells(self)
         return self._unresolved
 
-    def resolved(self, datatype):
-        """
-        Items in the row that are able to be resolved to the given datatype
+    # def resolved(self, datatype):
+    #     """
+    #     Items in the row that are able to be resolved to the given datatype
 
-        Parameters
-        ----------
-        datatype : type
-            The file datatype or type to reolve the item to
-        """
-        matches = []
-        for potential in self.unresolved:
-            try:
-                matches.append(datatype.resolve(potential))
-            except FormatMismatchError:
-                pass
-        return matches
+    #     Parameters
+    #     ----------
+    #     datatype : type
+    #         The file datatype or type to reolve the item to
+    #     """
+    #     matches = []
+    #     for potential in self.entries:
+    #         if datatype
+    #         try:
+    #             matches.append(datatype.resolve(potential))
+    #         except FormatMismatchError:
+    #             pass
+    #     return matches
 
     @property
     def ids_tuple(self):
         return self.dataset.ids_tuple(self.ids)
+
+    def add_entry(
+        self,
+        id: str,
+        datatype: type,
+        uri: str,
+        item_metadata: dict = None,
+        order: int = None,
+        quality: DataQuality = DataQuality.usable,
+        provenance: dict[str, ty.Any] = None,
+        checksums: dict[str, str] = None,
+    ):
+        """Adds an data entry to a row. An entry defines the location of a data item
+        (i.e. file-set or field) within a dataset and related metadata
+
+        Parameters
+        ----------
+        id : str
+            the ID of the entry within the node
+        datatype : type (subclass of DataType)
+            the type of the data entry
+        uri : str, optional
+            a URI uniquely identifying the data entry
+        item_metadata : dict[str, Any]
+            metadata associated with the data item itself (e.g. pulled from a file header).
+            Can be supplied either when the entry is initialised (i.e. from previously extracted
+            fields stored within the data store), or read from the item itself.
+        order : int, optional
+            the order in which the entry appears in the node (where applicable)
+        provenance : dict, optional
+            the provenance associated with the derivation of the entry by Arcana
+            (only applicable to derivatives not source data)
+        checksums : dict[str, str], optional
+            checksums for all of the files in the data entry
+        """
+        self._entries[id] = DataEntry(
+            id=id,
+            datatype=datatype,
+            row=self,
+            uri=uri,
+            item_metadata=item_metadata,
+            order=order,
+            quality=quality,
+            provenance=provenance,
+            checksums=checksums,
+        )
 
 
 @attrs.define

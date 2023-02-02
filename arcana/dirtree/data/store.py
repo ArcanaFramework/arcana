@@ -10,8 +10,9 @@ import yaml
 from fasteners import InterProcessLock
 from fileformats.core.base import DataType, FileSet, Field
 from arcana.core.exceptions import ArcanaMissingDataException, ArcanaUsageError
-from arcana.core.data.set import Dataset
+from arcana.core.data.set import DataTree
 from arcana.core.data.cell import DataCell
+from arcana.core.data.entry import DataEntry
 from arcana.core.data.store import DataStore, TestDatasetBlueprint
 from arcana.core.utils.misc import get_home_dir
 from arcana.core.data import Samples
@@ -74,33 +75,32 @@ class DirTree(DataStore):
     def definition_save_path(self, dataset_id, name):
         return Path(dataset_id) / self.METADATA_DIR / (name + ".yaml")
 
-    def find_rows(self, dataset: Dataset):
+    def populate_tree(self, tree: DataTree):
         """
         Find all rows within the dataset stored in the store and
-        construct the data tree within the dataset
+        populate the data tree within the dataset
 
         Parameters
         ----------
         dataset : Dataset
             The dataset to construct the tree dimensions for
         """
-        if not os.path.exists(dataset.id):
+        if not os.path.exists(tree.dataset_id):
             raise ArcanaUsageError(
-                f"Could not find a directory at '{dataset.id}' to be the "
+                f"Could not find a directory at '{tree.dataset_id}' to be the "
                 "root row of the dataset"
             )
-
-        for dpath, _, _ in os.walk(dataset.id):
-            tree_path = Path(dpath).relative_to(dataset.id).parts
-            if len(tree_path) != len(dataset.hierarchy):
+        for dpath, _, _ in os.walk(tree.dataset_id):
+            tree_path = tuple(Path(dpath).relative_to(tree.dataset_id).parts)
+            if len(tree_path) != len(tree.hierarchy):
                 continue
             if special_dir_re.match(tree_path[-1]):
                 continue
-            dataset.add_leaf(tree_path)
+            tree.add_leaf(tree_path)
 
-    def find_cells(self, row):
+    def populate_row(self, row):
         # First ID can be omitted
-        self.find_cells_from_dir(self.root_dir(row) / self.row_path(row), row)
+        return self.add_entries_from_dir(self.root_dir(row) / self.row_path(row), row)
 
     def get(self, cell: DataCell):
         if cell.datatype.is_fileset:
@@ -123,29 +123,29 @@ class DirTree(DataStore):
                 f"Don't know how to store {cell.datatype} data in {type(self)} stores"
             )
 
-    def _put_fileset(self, cell: DataCell, fileset: FileSet, provenance: dict = None):
+    def _put_fileset(self, entry: DataEntry, fileset: FileSet, provenance: dict = None):
         """
         Inserts or updates a fileset in the store
         """
-        fileset_path = self.get_fileset_path(cell)
+        fileset_path = self.get_fileset_path(entry)
         # Create target directory if it doesn't exist already
         copied_fileset = fileset.copy_to(
             dest_dir=fileset_path.parent, stem=fileset_path.name, make_dirs=True
         )
         if provenance:
-            with open(self.get_fileset_prov_path(cell), "w") as f:
-                json.dump(cell.provenance, f)
+            with open(self.get_fileset_prov_path(entry), "w") as f:
+                json.dump(entry.provenance, f)
         return copied_fileset
 
-    def _put_field(self, cell: DataCell, value, provenance: dict = None):
+    def _put_field(self, entry: DataEntry, value, provenance: dict = None):
         """
         Inserts or updates a field in the store
         """
-        self.update_json(self.get_fields_path(cell), cell.id, value)
+        self.update_json(self.get_fields_path(entry), entry.id, value)
         if provenance:
-            self.update_json(self.get_fields_prov_path(cell), cell.id, provenance)
+            self.update_json(self.get_fields_prov_path(entry), entry.id, provenance)
 
-    def find_cells_from_dir(self, dpath, row):
+    def add_entries_from_dir(self, dpath, row):
         if not op.exists(dpath):
             return
         # Filter contents of directory to omit fields JSON and provenance
@@ -173,7 +173,7 @@ class DirTree(DataStore):
                     provenance = json.load(f)
             else:
                 provenance = {}
-            row.add_cell(
+            row.add_entry(
                 path=path,
                 provenance=provenance,
                 datatype=FileSet,
@@ -191,7 +191,7 @@ class DirTree(DataStore):
             pass
         else:
             for name in fields_dict:
-                row.add_cell(
+                row.add_entry(
                     name_path=name,
                     provenance=fields_prov_dict.get(name),
                     datatype=Field,

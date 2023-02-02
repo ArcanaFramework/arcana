@@ -9,6 +9,7 @@ import tarfile
 import logging
 import docker
 import os.path
+import attrs
 from contextlib import contextmanager
 from collections.abc import Iterable
 import cloudpickle as cp
@@ -38,6 +39,48 @@ ARCANA_HOME_DIR = Path.home() / ".arcana"
 ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
 
 HASH_CHUNK_SIZE = 2**20  # 1MB in calc. checksums to avoid mem. issues
+
+
+@attrs.define
+class NestedContext:
+    """Base class for "nested contexts", which can be used in "with" statements at
+    at multiple points in the API, and ensures that the context is only entered at most
+    once at any one point. This allows low level calls to ensure that they are executing
+    within an appropriate context, while also enabling high level calls to maintain a
+    context over multiple low-level calls, and thereby not take the performance hit of
+    continually setting up and breaking down the context.
+
+    Parameters
+    -----------
+    _type_
+        _description_
+    """
+
+    depth: int = attrs.field(default=0, init=False)
+
+    def __enter__(self):
+        # This allows the store to be used within nested contexts
+        # but still only use one connection. This is useful for calling
+        # methods that need connections, and therefore control their
+        # own connection, in batches using the same connection by
+        # placing the batch calls within an outer context.
+        if self.depth == 0:
+            self.enter()
+        self.depth += 1
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.depth -= 1
+        if self.depth == 0:
+            self.exit()
+
+    def enter():
+        "To be overridden in subclasses as necessary"
+        pass
+
+    def exit():
+        "To be overridden in subclasses as necessary"
+        pass
 
 
 def get_home_dir():
