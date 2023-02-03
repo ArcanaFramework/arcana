@@ -16,7 +16,6 @@ from arcana.core.exceptions import (
     DatatypeUnsupportedByStoreError,
 )
 from arcana.core.data.set import DataTree
-from arcana.core.data.cell import DataCell
 from arcana.core.data.row import DataRow
 from arcana.core.data.entry import DataEntry
 from arcana.core.data.store import DataStore, TestDatasetBlueprint
@@ -100,14 +99,14 @@ class DirTree(DataStore):
         # First ID can be omitted
         return self.add_entries_from_dir(self.root_dir(row) / self.row_path(row), row)
 
-    def get(self, cell: DataCell):
-        if cell.datatype.is_fileset:
-            item = self.get_fileset_path(cell, ext=cell.datatype.ext)
-        elif cell.datatype.is_field:
-            item = self.read_from_json(self.get_fields_path(cell), cell.id)
+    def get(self, entry: DataEntry) -> DataType:
+        if entry.datatype.is_fileset:
+            item = self.get_fileset(entry)
+        elif entry.datatype.is_field:
+            item = self.get_field(entry)
         else:
             raise RuntimeError(
-                f"Don't know how to retrieve {cell.datatype} data from {type(self)} stores"
+                f"Don't know how to retrieve {entry.datatype} data from {type(self)} stores"
             )
         return item
 
@@ -122,9 +121,14 @@ class DirTree(DataStore):
             )
 
     def post(self, item: DataType, id: str, datatype: type, row: DataRow) -> DataEntry:
-        entry = row.add_entry(id=id, datatype=datatype)
-        self.put(item, entry)
-        return entry
+        if datatype.is_fileset:
+            self.post_fileset(item, id, datatype, row)
+        elif datatype.is_field:
+            self.put_field(item, id, datatype, row)
+        else:
+            raise RuntimeError(
+                f"Don't know how to store {datatype} data in {type(self)} stores"
+            )
 
     def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
         if entry.datatype.is_fileset:
@@ -147,14 +151,26 @@ class DirTree(DataStore):
         else:
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
 
-    def put_fileset(self, entry: DataEntry, fileset: FileSet):
+    def get_field(self, entry: DataEntry) -> Field:
+        return entry.datatype(self.read_from_json(*entry.uri.split("@")))
+
+    def get_fileset(self, entry: DataEntry) -> FileSet:
+        fileset_path = self.get_fileset_path(entry)
+        return entry.datatype(
+            (
+                p
+                for p in fileset_path.parent.iterdir()
+                if p.name.startswith(fileset_path.name)
+            )
+        )
+
+    def put_fileset(self, entry: DataEntry, fileset: FileSet) -> FileSet:
         """
         Inserts or updates a fileset in the store
         """
-        fileset_path = self.get_fileset_path(entry)
         # Create target directory if it doesn't exist already
         copied_fileset = fileset.copy_to(
-            dest_dir=fileset_path.parent, stem=fileset_path.name, make_dirs=True
+            dest_dir=entry.uri.parent, stem=entry.uri.name, make_dirs=True
         )
         return copied_fileset
 
@@ -163,6 +179,24 @@ class DirTree(DataStore):
         Inserts or updates a field in the store
         """
         self.update_json(self.get_fields_path(entry), entry.id, value)
+
+    def post_fileset(
+        self, fileset: FileSet, id: str, datatype: type, row: DataRow
+    ) -> DataEntry:
+        entry = row.add_entry(
+            id=id, datatype=datatype, uri=self.get_fileset_path(id, row)
+        )
+        self.put(fileset, entry)
+        return entry
+
+    def post_field(
+        self, field: Field, id: str, datatype: type, row: DataRow
+    ) -> DataEntry:
+        entry = row.add_entry(
+            id=id, datatype=datatype, uri=self.get_fields_path(row) + "@" + id
+        )
+        self.put(field, entry)
+        return entry
 
     def add_entries_from_dir(self, dpath: Path, row: DataRow):
         if not op.exists(dpath):
@@ -227,7 +261,7 @@ class DirTree(DataStore):
     def absolute_row_path(cls, row) -> Path:
         return cls().root_dir(row) / cls().row_path(row)
 
-    def get_fileset_path(self, cell: DataCell, ext=None):
+    def get_fileset_path(self, id: str, row: DataRow) -> Path:
         """The path to the stem of the paths (i.e. the path without
         file extension) where the files are saved in the file-system.
         NB: this method is overridden in Bids store.
@@ -237,19 +271,15 @@ class DirTree(DataStore):
         fileset: FileSet
             the file set stored or to be stored
         """
-        row_path = self.absolute_row_path(cell.row)
-        fileset_path = row_path.joinpath(*cell.path.split("/"))
-        if ext:
-            fileset_path += ext
+        row_path = self.absolute_row_path(row)
+        fileset_path = row_path.joinpath(*id.split("/"))
         return fileset_path
 
-    def get_fields_path(self, field):
-        return self.root_dir(field.row) / self.row_path(field.row) / self.FIELDS_FNAME
+    def get_fields_path(self, row):
+        return self.root_dir(row) / self.row_path(row) / self.FIELDS_FNAME
 
-    def get_fields_prov_path(self, field):
-        return (
-            self.root_dir(field.row) / self.row_path(field.row) / self.FIELDS_PROV_FNAME
-        )
+    def get_fields_prov_path(self, row):
+        return self.root_dir(row) / self.row_path(row) / self.FIELDS_PROV_FNAME
 
     def get_fileset_prov_path(self, fileset):
         return self.get_fileset_path(fileset) + self.PROV_SUFFX
