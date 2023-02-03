@@ -19,7 +19,7 @@ def test_store_cli(cli_runner, work_dir):
             add,
             [
                 store_name,
-                "arcana.core.utils.testing.data:FlatDirStore",
+                "arcana.core.utils.testing.data:FlatDir",
                 STORE_URI,
                 "--user",
                 STORE_USER,
@@ -32,7 +32,7 @@ def test_store_cli(cli_runner, work_dir):
         result = cli_runner(ls, [])
         assert result.exit_code == 0, show_cli_trace(result)
         assert (
-            f"{store_name} - arcana.core.utils.testing.data.store:FlatDirStore"
+            f"{store_name} - arcana.core.utils.testing.data.store:FlatDir"
             in result.output
         )
         assert "    server: " + STORE_URI in result.output
@@ -48,7 +48,7 @@ def test_store_cli_remove(cli_runner, work_dir):
             add,
             [
                 new_store_name,
-                "arcana.core.utils.testing.data:FlatDirStore",
+                "arcana.core.utils.testing.data:FlatDir",
                 STORE_URI,
                 "--user",
                 STORE_USER,
@@ -77,7 +77,7 @@ def test_store_cli_rename(cli_runner, work_dir):
             add,
             [
                 old_store_name,
-                "arcana.core.utils.testing.data:FlatDirStore",
+                "arcana.core.utils.testing.data:FlatDir",
                 STORE_URI,
                 "--user",
                 STORE_USER,
@@ -87,20 +87,15 @@ def test_store_cli_rename(cli_runner, work_dir):
         )
         # Check store is saved
         result = cli_runner(ls, [])
-        assert (
-            "i123 - arcana.core.utils.testing.data.store:FlatDirStore" in result.output
-        )
+        assert "i123 - arcana.core.utils.testing.data.store:FlatDir" in result.output
 
         cli_runner(rename, [old_store_name, new_store_name])
         # Check store is renamed
         result = cli_runner(ls, [])
         assert (
-            "i123 - arcana.core.utils.testing.data.store:FlatDirStore"
-            not in result.output
+            "i123 - arcana.core.utils.testing.data.store:FlatDir" not in result.output
         )
-        assert (
-            "y456 - arcana.core.utils.testing.data.store:FlatDirStore" in result.output
-        )
+        assert "y456 - arcana.core.utils.testing.data.store:FlatDir" in result.output
 
 
 def test_store_cli_encrypt_credentials(cli_runner, work_dir):
@@ -113,7 +108,7 @@ def test_store_cli_encrypt_credentials(cli_runner, work_dir):
             add,
             [
                 store_name,
-                "arcana.core.utils.testing.data:FlatDirStore",
+                "arcana.core.utils.testing.data:FlatDir",
                 STORE_URI,
                 "--user",
                 STORE_USER,

@@ -81,13 +81,12 @@ class DataEntry:
     id: str
     datatype: type
     row: DataRow
-    uri: str = None
+    uri: str
     item_metadata: ItemMetadata = attrs.field(
         factory=dict, converter=ItemMetadata, repr=False, kw_only=True
     )
-    order: int = attrs.field(default=None)
-    quality: DataQuality = attrs.field(default=DataQuality.usable)
-    provenance: ty.Dict[str, ty.Any] = attrs.field(default=None, repr=False, eq=False)
+    order: int = None
+    quality: DataQuality = DataQuality.usable
     checksums: dict[str, ty.Union[str, dict]] = attrs.field(
         default=None, repr=False, eq=False
     )
@@ -104,3 +103,10 @@ class DataEntry:
         item = self.datatype(item)
         item.validate()
         self.row.dataset.store.put(self, item)
+
+    @property
+    def recorded_checksums(self):
+        if self.provenance is None:
+            return None
+        else:
+            return self.provenance.outputs[self.id]

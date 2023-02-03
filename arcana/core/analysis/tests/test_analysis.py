@@ -27,7 +27,7 @@ from arcana.core.analysis.mark import (
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
 from fileformats.text import Plain as Text
 from fileformats.archive import Zip
-from arcana.core.utils.testing.data import FlatDirStore
+from arcana.core.utils.testing.data import FlatDir
 from arcana.core.analysis.salience import (
     CheckStatus,
     ColumnSalience as cs,
@@ -103,7 +103,7 @@ def test_numeric_file2(sample_dir2):
 
 @pytest.fixture
 def test_dataset(source_dir, test_file1, test_file2, test_file3):
-    dataset = FlatDirStore().new_dataset(
+    dataset = FlatDir().new_dataset(
         source_dir, space=Samples, hierarchy=[Samples.sample]
     )
     dataset.add_source("a_column", Text, "file1")
@@ -116,7 +116,7 @@ def test_dataset(source_dir, test_file1, test_file2, test_file3):
 def test_partial_numeric_dataset(
     source_dir, test_file1, test_file2, test_numeric_file1, test_numeric_file2
 ):
-    dataset = FlatDirStore().new_dataset(
+    dataset = FlatDir().new_dataset(
         source_dir, space=Samples, hierarchy=[Samples.sample]
     )
     dataset.add_source("a_column", Text, "file1")

@@ -6,7 +6,7 @@ from pathlib import Path
 import operator as op
 from functools import reduce
 from arcana.core.data.set import Dataset
-from arcana.dirtree.data import DirTree
+from arcana.file_system import DirTree
 from arcana.core.data.store import DataStore
 
 

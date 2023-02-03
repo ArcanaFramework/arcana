@@ -5,17 +5,18 @@ import shutil
 from pathlib import Path
 import attrs
 import yaml
-from fileformats.core.base import FileSet
+from fileformats.core.base import FileSet, DataType, Field
 from arcana.core.data.store import DataStore, TestDatasetBlueprint
 from arcana.core.data.row import DataRow
-from arcana.core.data.set import Dataset
-from arcana.core.data.cell import DataCell
+from arcana.core.data.tree import DataTree
+from arcana.core.data.cell import DataEntry
 from arcana.core.data.space import DataSpace
-from .space import TestDataSpace
+from ...core.utils.testing.space import TestDataSpace
+from arcana.core.exceptions import DatatypeUnsupportedByStoreError
 
 
 @attrs.define
-class FlatDirStore(DataStore):
+class FlatDir(DataStore):
     """A simple data store to test store CLI.
 
     "Leaf" rows are stored in a separate sub-directories of the dataset id, with
@@ -46,8 +47,9 @@ class FlatDirStore(DataStore):
     METADATA_DIR = ".definition"
     LEAVES_DIR = "leaves"
     NODES_DIR = "nodes"
+    FIELDS_FILE = "__FIELD__"
 
-    def find_rows(self, dataset: Dataset):
+    def populate_tree(self, tree: DataTree):
         """
         Find all data rows for a dataset in the store and populate the
         Dataset object using its `add_row` method.
@@ -57,11 +59,11 @@ class FlatDirStore(DataStore):
         dataset : Dataset
             The dataset to populate with rows
         """
-        for row_dir in self.iterdir(Path(dataset.id) / self.LEAVES_DIR):
+        for row_dir in self.iterdir(Path(tree.dataset_id) / self.LEAVES_DIR):
             ids = self.get_ids_from_row_dirname(row_dir)
-            dataset.add_leaf([ids[str(h)] for h in dataset.hierarchy])
+            tree.add_leaf([ids[str(h)] for h in tree.hierarchy])
 
-    def find_cells(self, row: DataRow) -> list[DataCell]:
+    def populate_row(self, row: DataRow):
         """
         Find all data items within a data row and populate the DataRow object
         with them using the `add_fileset` and `add_field` methods.
@@ -74,46 +76,30 @@ class FlatDirStore(DataStore):
         row_dir = self.get_row_path(row)
         if not row_dir.exists():
             return
-        cells = []
-        for cell_id in self.iterdir(row_dir, skip_suffixes=[".json"]):
-            prov_path = cell_id.with_suffix(".json")
-            if prov_path.exists():
-                with open(prov_path) as f:
-                    provenance = json.load(f)
-            else:
-                provenance = None
-            cells.append(
-                DataCell(id=cell_id, datatype=FileSet, row=row, provenance=provenance)
+        for entry_path in self.iterdir(row_dir, skip_suffixes=[".json"]):
+            datatype = (
+                Field
+                if entry_path / self.FIELDS_FILE in entry_path.iterdir()
+                else FileSet
             )
-        return cells
+            row.add_entry(
+                id=entry_path.name,
+                datatype=datatype,
+                row=row,
+                uri=entry_path,
+            )
 
-    def get_fileset_paths(self, fileset, cache_only=False):
-        """
-        Cache the fileset locally (if required) and return the locations
-        of the cached primary file and side cars
+    def get(self, entry: DataEntry) -> DataType:
+        if entry.datatype.is_fileset:
+            value = self.iterdir(entry.uri)
+        elif entry.datatype.is_field:
+            with open(entry.uri / self.FIELDS_FILE) as f:
+                value = f.read()
+        else:
+            raise DatatypeUnsupportedByStoreError(entry.datatype, self)
+        return entry.datatype(value)
 
-        Parameters
-        ----------
-        fileset : FileSet
-            The fileset to cache locally
-        cache_only : bool
-            Whether to attempt to extract the file sets from the local cache
-            (if applicable) and raise an error otherwise
-
-        Returns
-        -------
-        fspaths : list[str]
-            The file-system path to the cached files
-
-        Raises
-        ------
-        ArcanaCacheError
-            If cache_only is set and there is a mismatch between the cached
-            and remote versions
-        """
-        return list(self.iterdir(self.get_item_path(fileset)))
-
-    def put_fileset_paths(self, fileset, fspaths: list[Path]):
+    def put(self, item: DataType, entry: DataEntry) -> DataType:
         """
         Inserts or updates the fileset into the store
 
@@ -129,14 +115,38 @@ class FlatDirStore(DataStore):
         cached_paths : list[str]
             The paths of the files where they are cached in the file system
         """
-        item_dir = self.get_item_path(fileset)
-        cached_paths = []
-        for fspath in fspaths:
-            dst_path = item_dir / fspath.name
-            dst_path.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(fspath, dst_path)
-            cached_paths.append(dst_path)
-        return cached_paths
+        if entry.datatype.is_fileset:
+            if entry.uri.exists():
+                shutil.rmtree(entry.uri)
+            cpy = item.copy_to(entry.uri, make_dirs=True)
+        elif entry.datatype.is_field:
+            with open(entry.uri / self.FIELDS_FILE, "w") as f:
+                f.write(str(item))
+            cpy = item
+        else:
+            raise DatatypeUnsupportedByStoreError(entry.datatype, self)
+        return cpy
+
+    def post(self, item: DataType, id: str, datatype: type, row: DataRow) -> DataEntry:
+        entry = DataEntry(
+            id=id, datatype=datatype, row=row, uri=self.get_row_path(row) / item.id
+        )
+        self.put(item, entry)
+        return entry
+
+    def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
+        prov_path = entry.uri.with_suffix(".json")
+        if prov_path.exists():
+            with open(prov_path) as f:
+                provenance = json.load(f)
+        else:
+            provenance = None
+        return provenance
+
+    def put_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+        prov_path = entry.uri.with_suffix(".json")
+        with open(prov_path, "w") as f:
+            json.dumps(provenance, f)
 
     def save_dataset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
@@ -188,35 +198,6 @@ class FlatDirStore(DataStore):
     def definition_save_path(self, dataset_id, name):
         return Path(dataset_id) / self.METADATA_DIR / (name + ".yml")
 
-    def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
-        """Stores provenance information for a given data item in the store
-
-        Parameters
-        ----------
-        item: DataType
-            The item to store the provenance data for
-        provenance: dict[str, Any]
-            The provenance data to store"""
-        with open(self.get_item_path(self, item) / ".json", "w") as f:
-            json.dump(provenance, f)
-
-    def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
-        """Stores provenance information for a given data item in the store
-
-        Parameters
-        ----------
-        item: DataType
-            The item to store the provenance data for
-
-        Returns
-        -------
-        provenance: dict[str, Any] or None
-            The provenance data stored in the repository for the data item.
-            None if no provenance data has been stored"""
-        with open(self.get_item_path(self, item) / ".json") as f:
-            provenance = json.load(f)
-        return provenance
-
     def site_licenses_dataset(self):
         """Provide a place to store hold site-wide licenses"""
         if self.cache_dir is None:
@@ -225,7 +206,7 @@ class FlatDirStore(DataStore):
         if not dataset_root.exists():
             (dataset_root / self.LEAVES_DIR).mkdir(parents=True)
         try:
-            dataset = self.load_dataset(dataset_root)
+            dataset = self.load_dataset_definition(dataset_root)
         except KeyError:
             dataset = self.new_dataset(dataset_root, space=TestDataSpace)
         return dataset
@@ -290,10 +271,6 @@ class FlatDirStore(DataStore):
     def get_ids_from_row_dirname(cls, row_dir: Path):
         parts = row_dir.name.split(".")
         return dict(p.split("=") for p in parts)
-
-    @classmethod
-    def get_item_path(cls, item):
-        return cls.get_row_path(item.row) / item.path
 
     @classmethod
     def iterdir(cls, dr, skip_suffixes=()):

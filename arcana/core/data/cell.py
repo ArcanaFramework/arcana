@@ -2,6 +2,7 @@ from __future__ import annotations
 import typing as ty
 import attrs
 from fileformats.core.base import DataType
+from arcana.core.exceptions import ArcanaError
 
 if ty.TYPE_CHECKING:
     from .row import DataRow
@@ -17,54 +18,63 @@ class DataCell:
 
     Parameters
     ----------
-    id : str
-        The id used to locate the cell within a data row
     row : DataRow
-        The row the cell belongs to
+        the row the cell belongs to
     column : DataColumn
-        The column the cell belongs to
-    is_empty : bool
-        Whether the cell refers to an existing data item in the dataset or not. For example,
-        a cell is empty when the cell is just a placeholder for a derivative data item
-        that hasn't been created yet.
-    order : int | None
-        The order in which the data cell appears in the row it belongs to
-        (starting at 0). Typically corresponds to the acquisition order for
-        scans within an imaging session. Can be used to distinguish between
-        scans with the same series description (e.g. multiple BOLD or T1w
-        scans) in the same imaging sessions.
-    quality : str
-        The quality label assigned to the fileset (e.g. as is saved on XNAT)
+        the column the cell belongs to
+    entry : DataEntry or None
+        the entry in the row that matches the column
     provenance : Provenance | None
         The recorded provenance for the item stored within the data cell,
         if applicable
-    uri : str
-        a universal resource identifier, which can be used by in DataStore implementation
-        logic to conveniently access the cells contents
     """
 
-    row: DataRow = attrs.field()
-    column: DataColumn = attrs.field()
-    entry: DataEntry = None
+    row: DataRow
+    column: DataColumn
+    entry: DataEntry
+    provenance: dict[str, ty.Any] = None
 
     @property
     def datatype(self):
         return self.column.datatype
 
     @property
-    def recorded_checksums(self):
-        if self.provenance is None:
-            return None
-        else:
-            return self.provenance.outputs[self.name_path]
+    def is_empty(self):
+        return self.entry is None
 
     @property
     def item(self) -> DataType:
+        if self.is_empty:
+            raise ArcanaError(f"Cannot access item of empty cell, {self}")
         return self.entry.item
 
     @item.setter
-    def item(self, item):
-        self.entry.item = item
+    def item(self, item: DataType):
+        if not self.column.is_sink:
+            raise ArcanaError(
+                f"Cannot set data items ({item}) into source column cell {self}"
+            )
+        item = self.datatype(item)
+        if self.is_empty:
+            entry = self.row.dataset.store.post(
+                item=item, id=self.column.name, datatype=self.datatype, row=self.row
+            )
+            self.row.entries[entry.id] = entry
+            self.entry = entry
+        else:
+            self.entry.item = item
+
+    @classmethod
+    def intersection(
+        cls, column: DataColumn, row: DataRow, allow_empty: bool = None
+    ) -> DataCell:
+        if allow_empty is None:
+            allow_empty = column.is_sink
+        return cls(
+            row=row,
+            column=column,
+            entry=column.entry(row, allow_none=allow_empty),
+        )
 
     # @classmethod
     # def resolve(cls, unresolved):

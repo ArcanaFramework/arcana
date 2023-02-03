@@ -2,6 +2,7 @@ import os
 import os.path as op
 from pathlib import Path
 import re
+import typing as ty
 import errno
 import logging
 import json
@@ -9,9 +10,14 @@ import attrs
 import yaml
 from fasteners import InterProcessLock
 from fileformats.core.base import DataType, FileSet, Field
-from arcana.core.exceptions import ArcanaMissingDataException, ArcanaUsageError
+from arcana.core.exceptions import (
+    ArcanaMissingDataException,
+    ArcanaUsageError,
+    DatatypeUnsupportedByStoreError,
+)
 from arcana.core.data.set import DataTree
 from arcana.core.data.cell import DataCell
+from arcana.core.data.row import DataRow
 from arcana.core.data.entry import DataEntry
 from arcana.core.data.store import DataStore, TestDatasetBlueprint
 from arcana.core.utils.misc import get_home_dir
@@ -52,11 +58,6 @@ class DirTree(DataStore):
 
     name: str = "file"  # Name is constant, as there is only ever one store, which covers whole FS
 
-    def new_dataset(self, id, *args, **kwargs):
-        if not Path(id).exists():
-            raise ArcanaUsageError(f"Path to dataset root '{id}'' does not exist")
-        return super().new_dataset(id, *args, **kwargs)
-
     def save_dataset_definition(self, dataset_id, definition, name):
         definition_path = self.definition_save_path(dataset_id, name)
         definition_path.parent.mkdir(exist_ok=True)
@@ -71,9 +72,6 @@ class DirTree(DataStore):
         else:
             definition = None
         return definition
-
-    def definition_save_path(self, dataset_id, name):
-        return Path(dataset_id) / self.METADATA_DIR / (name + ".yaml")
 
     def populate_tree(self, tree: DataTree):
         """
@@ -113,17 +111,43 @@ class DirTree(DataStore):
             )
         return item
 
-    def put(self, cell: DataCell, item: DataType, provenance: dict):
-        if cell.datatype.is_fileset:
-            self._put_fileset(cell, item)
-        elif cell.datatype.is_field:
-            self._put_field(cell, item)
+    def put(self, item: DataType, entry: DataEntry):
+        if entry.datatype.is_fileset:
+            self.put_fileset(item, entry)
+        elif entry.datatype.is_field:
+            self.put_field(item, entry)
         else:
             raise RuntimeError(
-                f"Don't know how to store {cell.datatype} data in {type(self)} stores"
+                f"Don't know how to store {entry.datatype} data in {type(self)} stores"
             )
 
-    def _put_fileset(self, entry: DataEntry, fileset: FileSet, provenance: dict = None):
+    def post(self, item: DataType, id: str, datatype: type, row: DataRow) -> DataEntry:
+        entry = row.add_entry(id=id, datatype=datatype)
+        self.put(item, entry)
+        return entry
+
+    def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
+        if entry.datatype.is_fileset:
+            with open(self.get_fileset_prov_path(entry)) as f:
+                provenance = json.load(f)
+        elif entry.datatype.is_field:
+            with open(self.get_fields_prov_path(entry)) as f:
+                fields_provenance = json.load(f)
+            provenance = fields_provenance[entry.id]
+        else:
+            raise DatatypeUnsupportedByStoreError(entry.datatype, self)
+        return provenance
+
+    def put_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+        if entry.datatype.is_fileset:
+            with open(self.get_fileset_prov_path(entry), "w") as f:
+                json.dump(provenance, f)
+        elif entry.datatype.is_field:
+            self.update_json(self.get_fields_prov_path(entry), entry.id, provenance)
+        else:
+            raise DatatypeUnsupportedByStoreError(entry.datatype, self)
+
+    def put_fileset(self, entry: DataEntry, fileset: FileSet):
         """
         Inserts or updates a fileset in the store
         """
@@ -132,20 +156,15 @@ class DirTree(DataStore):
         copied_fileset = fileset.copy_to(
             dest_dir=fileset_path.parent, stem=fileset_path.name, make_dirs=True
         )
-        if provenance:
-            with open(self.get_fileset_prov_path(entry), "w") as f:
-                json.dump(entry.provenance, f)
         return copied_fileset
 
-    def _put_field(self, entry: DataEntry, value, provenance: dict = None):
+    def put_field(self, entry: DataEntry, value):
         """
         Inserts or updates a field in the store
         """
         self.update_json(self.get_fields_path(entry), entry.id, value)
-        if provenance:
-            self.update_json(self.get_fields_prov_path(entry), entry.id, provenance)
 
-    def add_entries_from_dir(self, dpath, row):
+    def add_entries_from_dir(self, dpath: Path, row: DataRow):
         if not op.exists(dpath):
             return
         # Filter contents of directory to omit fields JSON and provenance
@@ -166,24 +185,9 @@ class DirTree(DataStore):
             for i in range(len(fname_parts)):
                 file_stems.add(".".join(fname_parts[: (i + 1)]))
 
-        for path in file_stems:
-            prov_path = dpath / (path + self.PROV_SUFFIX)
-            if prov_path.exists():
-                with open(prov_path) as f:
-                    provenance = json.load(f)
-            else:
-                provenance = {}
-            row.add_entry(
-                path=path,
-                provenance=provenance,
-                datatype=FileSet,
-            )
+        for stem in file_stems:
+            row.add_entry(id=stem, datatype=FileSet, uri=dpath / stem)
         # Add fields
-        try:
-            with open(op.join(dpath, self.FIELDS_PROV_FNAME)) as f:
-                fields_prov_dict = json.load(f)
-        except FileNotFoundError:
-            fields_prov_dict = {}
         try:
             with open(op.join(dpath, self.FIELDS_FNAME)) as f:
                 fields_dict = json.load(f)
@@ -193,7 +197,6 @@ class DirTree(DataStore):
             for name in fields_dict:
                 row.add_entry(
                     name_path=name,
-                    provenance=fields_prov_dict.get(name),
                     datatype=Field,
                 )
 
@@ -324,3 +327,11 @@ class DirTree(DataStore):
             dpath.mkdir(parents=True)
             for fname in blueprint.files:
                 self.create_test_data_item(fname, dpath, source_data=source_data)
+
+    def definition_save_path(self, dataset_id, name):
+        return Path(dataset_id) / self.METADATA_DIR / (name + ".yaml")
+
+    def new_dataset(self, id, *args, **kwargs):
+        if not Path(id).exists():
+            raise ArcanaUsageError(f"Path to dataset root '{id}'' does not exist")
+        return super().new_dataset(id, *args, **kwargs)

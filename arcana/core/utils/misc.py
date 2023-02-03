@@ -2,6 +2,7 @@ from __future__ import annotations
 import subprocess as sp
 import typing as ty
 import re
+import difflib
 from itertools import zip_longest
 from pathlib import Path, PosixPath
 import tempfile
@@ -584,6 +585,35 @@ def add_exc_note(e, note):
     else:
         e.args = (e.args[0] + "\n" + note,)
     return e
+
+
+def dict_diff(dict1, dict2, label1="dict1", label2="dict2"):
+    """Create a human readable diff between two dictionaries
+
+    Parameters
+    ----------
+    dict1 : dict
+        first dictionary to compare
+    dict2 : dict
+        second dictionary to compare
+    label1 : str
+        label to give first dictionary in diff
+    label2 : str
+        label to give second dictionary in diff
+
+    Returns
+    -------
+    diff : str
+        the unified diff between the two dictionaries
+    """
+    diff = difflib.unified_diff(
+        sorted(dict1.items()),
+        sorted(dict2.items()),
+        fromfile=label1,
+        tofile=label2,
+        lineterm="\n",
+    )
+    return "\n".join(diff)
 
 
 # Minimum version of Arcana that this version can read the serialisation from

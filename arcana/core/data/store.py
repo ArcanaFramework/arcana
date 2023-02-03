@@ -76,17 +76,17 @@ class TestDatasetBlueprint:
 class ConnectionManager(NestedContext):
 
     store: ty.Any = None
-    _connection: ty.Any = attrs.field(default=None, init=False)
+    session: ty.Any = attrs.field(default=None, init=False)
 
     def __getattr__(self, attr_name):
-        return getattr(self._connection, attr_name)
+        return getattr(self.session, attr_name)
 
     def enter(self):
-        self._connection = self.store.connect()
+        self.session = self.store.connect()
 
     def disconnect(self):
-        self.store.disconnect(self._connection)
-        self._connection = None
+        self.store.disconnect(self.session)
+        self.session = None
 
 
 @attrs.define
@@ -107,6 +107,110 @@ class DataStore(metaclass=ABCMeta):
 
     CONFIG_NAME = "stores"
     SUBPACKAGE = "data"
+
+    @abstractmethod
+    def populate_tree(self, tree: DataTree):
+        """
+        Populates the nodes of the data tree with those found in the dataset
+
+        Parameters
+        ----------
+        tree : DataTree
+            The tree to populate with nodes via the ``DataTree.add_leaf`` method
+        """
+
+    @abstractmethod
+    def populate_row(self, row: DataRow):
+        """
+        Populate a row with all data entries found in the corresponding node in the data
+        store (e.g. files within a directory, scans within an XNAT session).
+
+        Parameters
+        ----------
+        row : DataRow
+            The row to populate with entries using the ``DataRow.add_entry`` method
+        """
+
+    @abstractmethod
+    def get(self, entry: DataEntry) -> DataType:
+        """
+        Gets the data item corresponding to the given entry
+
+        Parameters
+        ----------
+        entry: DataEntry
+            the data entry to update
+
+        Returns
+        -------
+        item : DataType
+            the item stored within the specified entry
+        """
+
+    @abstractmethod
+    def put(self, item: DataType, entry: DataEntry) -> DataType:
+        """
+        Updates the item in the data store corresponding to the given data entry
+
+        Parameters
+        ----------
+        item : DataType
+            the item to replace the current item in the data store
+        entry: DataEntry
+            the data entry to update
+
+        Returns
+        -------
+        cached : DataType
+            returns the cached version of the item, if applicable
+        """
+
+    @abstractmethod
+    def post(self, item: DataType, id: str, datatype: type, row: DataRow) -> DataEntry:
+        """Inserts the item within a newly created entry in the data store
+
+        Parameters
+        ----------
+        item : DataType
+            the item to insert
+        id : str
+            the id of the entry within the data row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the data row to insert the entry into
+
+        Returns
+        -------
+        entry : DataEntry
+            the inserted entry
+        """
+
+    @abstractmethod
+    def put_provenance(self, entry: DataEntry, provenance: dict[str, ty.Any]):
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataType
+            The item to store the provenance data for
+        provenance: dict[str, Any]
+            The provenance data to store"""
+
+    @abstractmethod
+    def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataType
+            The item to store the provenance data for
+
+        Returns
+        -------
+        provenance: dict[str, Any] or None
+            The provenance data stored in the repository for the data item.
+            None if no provenance data has been stored"""
 
     @abstractmethod
     def save_dataset_definition(
@@ -146,99 +250,6 @@ class DataStore(metaclass=ABCMeta):
             A dct Dataset object that was saved in the data store
         """
 
-    @abstractmethod
-    def populate_tree(self, tree: DataTree):
-        """
-        Populates the nodes of the data tree with those found in the dataset
-
-        Parameters
-        ----------
-        tree : DataTree
-            The tree to populate with nodes via the ``DataTree.add_leaf`` method
-        """
-
-    @abstractmethod
-    def populate_row(self, row: DataRow):
-        """
-        Populate a row with all data entries found in the corresponding node in the data
-        store (e.g. files within a directory, scans within an XNAT session).
-
-        Parameters
-        ----------
-        row : DataRow
-            The row to populate with entries using the ``DataRow.add_entry`` method
-        """
-
-    @abstractmethod
-    def get(self, entry: DataEntry) -> DataType:
-        """
-        Cache the fileset locally (if required) and return the locations
-        of the cached primary file and side cars
-
-        Parameters
-        ----------
-        fileset : FileSet
-            The fileset to cache locally
-        cache_only : bool
-            Whether to attempt to extract the file sets from the local cache
-            (if applicable) and raise an error otherwise
-
-        Returns
-        -------
-        fspaths : list[str]
-            The file-system path to the cached files
-
-        Raises
-        ------
-        ArcanaCacheError
-            If cache_only is set and there is a mismatch between the cached
-            and remote versions
-        """
-
-    @abstractmethod
-    def put(self, entry: DataEntry, item: DataType):
-        """
-        Inserts or updates the fileset into the store
-
-        Parameters
-        ----------
-        fileset : FileSet
-            The fileset to insert into the store
-        fspaths : list[Path]
-            The file-system paths to the files/directories to sync
-
-        Returns
-        -------
-        cached_paths : list[str]
-            The paths of the files where they are cached in the file system
-        """
-
-    # @abstractmethod
-    # def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
-    #     """Stores provenance information for a given data item in the store
-
-    #     Parameters
-    #     ----------
-    #     item: DataType
-    #         The item to store the provenance data for
-    #     provenance: dict[str, Any]
-    #         The provenance data to store"""
-
-    # @abstractmethod
-    # def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
-    #     """Stores provenance information for a given data item in the store
-
-    #     Parameters
-    #     ----------
-    #     item: DataType
-    #         The item to store the provenance data for
-
-    #     Returns
-    #     -------
-    #     provenance: dict[str, Any] or None
-    #         The provenance data stored in the repository for the data item.
-    #         None if no provenance data has been stored"""
-
     def connect(self):
         """
         If a connection session is required to the store manage it here
@@ -252,27 +263,6 @@ class DataStore(metaclass=ABCMeta):
     def site_licenses_dataset(self):
         """Can be overridden by subclasses to provide a dataset to hold site-wide licenses"""
         return None
-
-    def get_checksums(self, entry: DataEntry):
-        """
-        Override this method to return checksums for files that are stored
-        with remote files (e.g. in XNAT). If no checksums are stored in the
-        store then just leave this method to just access the file and
-        recalculate them.
-
-        Parameters
-        ----------
-        entry : DataEntry
-            The entry to return the checksums for
-
-        Returns
-        -------
-        checksums : dct[str, str]
-            A dictionary with keys corresponding to the relative paths of all
-            files in the fileset from the base path and values equal to the
-            MD5 hex digest. The primary file in the file-set (i.e. the one that
-            the path points to) should be specified by '.'.
-        """
 
     def save(self, name: str = None, config_path: Path = None):
         """Saves the configuration of a DataStore in 'stores.yaml'
@@ -464,22 +454,6 @@ class DataStore(metaclass=ABCMeta):
             config_path = get_config_file_path(cls.CONFIG_NAME)
         with open(config_path, "w") as f:
             yaml.dump(entries, f)
-
-    # def __enter__(self):
-    #     # This allows the store to be used within nested contexts
-    #     # but still only use one connection. This is useful for calling
-    #     # methods that need connections, and therefore control their
-    #     # own connection, in batches using the same connection by
-    #     # placing the batch calls within an outer context.
-    #     if self._connection_depth == 0:
-    #         self.connect()
-    #     self._connection_depth += 1
-    #     return self
-
-    # def __exit__(self, exception_type, exception_value, traceback):
-    #     self._connection_depth -= 1
-    #     if self._connection_depth == 0:
-    #         self.disconnect()
 
     def create_test_dataset_data(
         self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None

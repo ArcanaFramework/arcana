@@ -42,10 +42,10 @@ class Dataset:
         store it is stored (e.g. FS directory path or project ID)
     store : Repository
         The store the dataset is stored into. Can be the local file
-        system by providing a FlatDirStore repo.
+        system by providing a FlatDir repo.
     hierarchy : Sequence[str]
         The data frequencies that are explicitly present in the data tree.
-        For example, if a FlatDirStore dataset (i.e. directory) has
+        For example, if a FlatDir dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
@@ -467,12 +467,13 @@ class Dataset:
         Sequence[DataRow]
             The sequence of the data row within the dataset
         """
+        root = self.root
         if frequency is None:
-            return chain(*(d.values() for d in self.root.children.values()))
+            return chain(*(d.values() for d in root.children.values()))
         frequency = self._parse_freq(frequency)
         if frequency == self.root_freq:
-            return [self.root]
-        rows = self.root.children[frequency].values()
+            return [root]
+        rows = root.children[frequency].values()
         if ids is not None:
             rows = (n for n in rows if n.id in set(ids))
         return rows

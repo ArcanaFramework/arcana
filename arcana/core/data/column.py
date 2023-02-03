@@ -14,33 +14,62 @@ from .space import DataSpace
 if ty.TYPE_CHECKING:
     from .row import DataRow
     from .entry import DataEntry
+    from .cell import DataCell
+    from .set import Dataset
 
 
 @attrs.define
 class DataColumn(metaclass=ABCMeta):
 
-    name: str = attrs.field()
-    path: str = attrs.field()
-    datatype = attrs.field()
-    row_frequency: DataSpace = attrs.field()
-    dataset = attrs.field(
+    name: str
+    datatype: type
+    row_frequency: DataSpace
+    _path: str = None
+    dataset: Dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
     )
 
-    def __iter__(self):
-        return (n[self.name] for n in self.dataset.rows(self.row_frequency))
+    is_sink = False
+
+    def __iter__(self) -> ty.Iterable[DataType]:
+        "Iterator over all items in the column, requires none of the cells to be empty"
+        return (row[self.name] for row in self.dataset.rows(self.row_frequency))
 
     def __getitem__(self, id) -> DataType:
         return self.dataset.row(id=id, row_frequency=self.row_frequency)[self.name]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(list(self.dataset.rows(self.row_frequency)))
 
+    def cells(self, allow_empty: bool = None) -> ty.Iterable[DataCell]:
+        """Return an iterator over all cells in the column.
+
+        Parameters
+        ----------
+        allow_empty : bool, optional
+            whether to allow cells to be empty (i.e. if they don't match to an entry
+            in the corresponding dataset row). If None, then cells of sink columns can
+            be empty (i.e. not derived yet) and source columns can't, by default None
+
+        Returns
+        -------
+        cells : Iterable[DataCell]
+            an iterator over all cells in the column
+        """
+        return (
+            row.cell(self.name, allow_empty=allow_empty)
+            for row in self.dataset.rows(self.row_frequency)
+        )
+
     @property
-    def ids(self):
+    def ids(self) -> list[str]:
         return [n.id for n in self.dataset.rows(self.row_frequency)]
 
-    def match_entry(self, row: DataRow) -> DataEntry:
+    @property
+    def path(self) -> str:
+        return self._path
+
+    def entry(self, row: DataRow, allow_none: bool = False) -> DataEntry:
         """Selects a single entry from a data row that matches the
         criteria/path of the column.
 
@@ -48,10 +77,12 @@ class DataColumn(metaclass=ABCMeta):
         ----------
         row: DataRow
             the row to match the item from
+        allow_none: bool
+            whether to return None if there are not matches
 
         Returns
         -------
-        DataType
+        DataType or None
             the data item that matches the criteria/path
 
         Raises
@@ -60,44 +91,51 @@ class DataColumn(metaclass=ABCMeta):
             if none or multiple items match the criteria/path of the column
             within the row
         """
-        matches = row.entries
-        for method in self.criteria:
+        matches = row.entries.values()
+        for method in self.criteria():
             filtered = [m for m in matches if method(m)]
             if not filtered:
-                raise ArcanaDataMatchError(
-                    "Did not find any items "
-                    + method.__doc__.format(self)
-                    + self._error_msg(row, matches)
-                )
+                if allow_none:
+                    return None
+                else:
+                    raise ArcanaDataMatchError(
+                        "Did not find any entries "
+                        + method.__doc__.format(self)
+                        + self._error_msg(row, matches)
+                    )
             matches = filtered
         return self.select_entry_from_matches(row, matches)
 
     @abstractmethod
-    def criteria(self):
+    def criteria(self) -> list[ty.Callable]:
         """returns all methods used to filter out potential matches"""
 
     @abstractmethod
-    def format_criteria(self):
+    def format_criteria(self) -> str:
         """Formats the criteria used to match entries for use in informative error messages"""
 
-    def match_path(self, entry: DataEntry) -> bool:
-        "at the path '{self.path}'"
-        return entry.id == self.path
+    def matches_path(self, entry: DataEntry) -> bool:
+        "that match the path '{self.path}'"
+        id_parts = entry.id.split("/")
+        path_parts = self.path.split("/")
+        return id_parts[: len(path_parts)] == path_parts
 
-    def match_datatype(self, entry: DataEntry) -> bool:
+    def matches_datatype(self, entry: DataEntry) -> bool:
         "that matched the datatype {self.datatype}"
-        return issubclass(self.datatype, type(entry)) and self.datatype.matches(
-            entry.item
+        return self.datatype is entry.datatype or (
+            issubclass(self.datatype, type(entry)) and self.datatype.matches(entry.item)
         )
 
-    def select_entry_from_matches(self, row, matches):
+    def select_entry_from_matches(
+        self, row: DataRow, matches: list[DataEntry]
+    ) -> DataEntry:
         if len(matches) > 1:
             raise ArcanaDataMatchError(
                 "Found multiple matches " + self._error_msg(row, matches)
             )
         return matches[0]
 
-    def _error_msg(self, row, matches):
+    def _error_msg(self, row: DataRow, matches: list[DataEntry]) -> str:
         return (
             f" attempting to select '{self.datatype.mime_like}' item for "
             f"the '{row.id}' {row.frequency} in the '{self.name}' column\n\n  Found:"
@@ -105,7 +143,7 @@ class DataColumn(metaclass=ABCMeta):
             + self._format_criteria()
         )
 
-    def _format_matches(self, matches):
+    def _format_matches(self, matches: list[DataEntry]) -> str:
         out_str = ""
         for match in sorted(matches, key=attrgetter("path")):
             out_str += "\n    "
@@ -162,23 +200,21 @@ class DataSource(DataColumn):
         converter=lambda x: x.lower() == "true" if isinstance(x, str) else x,
     )
 
-    is_sink = False
-
-    def criteria(self):
+    def criteria(self) -> list[ty.Callable]:
         criteria = []
         if self.path is not None:
             if self.is_regex:
-                criteria.append(self.match_path_regex)
+                criteria.append(self.matches_path_regex)
             else:
-                criteria.append(self.match_path)
+                criteria.append(self.matches_path)
         if self.quality_threshold is not None:
-            criteria.append(self.match_quality)
+            criteria.append(self.matches_quality)
         if self.required_metadata is not None:
-            criteria.append(self.match_metadata)
-        criteria.append(self.match_datatype)
+            criteria.append(self.matches_metadata)
+        criteria.append(self.matches_datatype)
         return criteria
 
-    def _format_criteria(self):
+    def _format_criteria(self) -> str:
         msg = "\n\n  Criteria: "
         if self.path:
             msg += f"\n    path='{self.path}'"
@@ -193,22 +229,26 @@ class DataSource(DataColumn):
             msg += f"\n    order={self.order}"
         return msg
 
-    def match_path_regex(self, entry: DataEntry) -> bool:
+    def matches_path_regex(self, entry: DataEntry) -> bool:
         "that matched the path pattern '{self.path}'"
         pattern = self.path
         if not pattern.endswith("$"):
             pattern += "$"
         return re.match(pattern, entry.id)
 
-    def match_quality(self, entry: DataEntry) -> bool:
+    def matches_quality(self, entry: DataEntry) -> bool:
         "with an acceptable quality '{self.quality_threshold}'"
         return entry.quality >= self.quality_threshold
 
-    def match_metadata(self, entry: DataEntry) -> bool:
+    def matches_metadata(self, entry: DataEntry) -> bool:
         "with the required metadata '{self.required_metadata}'"
-        return all(entry.metadata[k] == v for k, v in self.required_metadata.items())
+        return all(
+            entry.item_metadata[k] == v for k, v in self.required_metadata.items()
+        )
 
-    def select_entry_from_matches(self, row, matches):
+    def select_entry_from_matches(
+        self, row: DataRow, matches: list[DataEntry]
+    ) -> DataEntry:
         # Select a single item from the ones that match the criteria
         if self.order is not None:
             try:
@@ -257,11 +297,17 @@ class DataSink(DataColumn):
 
     is_sink = True
 
-    def derive(self, ids=None):
+    @property
+    def path(self) -> str:
+        if self.path is None:
+            path = f"{self.dataset.name}/{self.name}"
+        return path
+
+    def derive(self, ids: list[str] = None):
         self.dataset.derive(self.name, ids=ids)
 
     def criteria(self):
-        return [self.match_path, self.match_datatype]
+        return [self.matches_path, self.matches_datatype]
 
     def _format_criteria(self):
         return (
