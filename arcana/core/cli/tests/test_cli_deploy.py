@@ -269,19 +269,19 @@ command:
       T1w:
         configuration:
           path: anat/T1w
-        datatype: fileformats.medimage:Nifti_Gzip_Bids
+        datatype: fileformats.medimage:NiftiGzX
         help_string: "T1-weighted anatomical scan"
         default_column:
           datatype: fileformats.medimage:Dicom
       T2w:
         configuration:
           path: anat/T2w
-        datatype: fileformats.medimage:Nifti_Gzip_Bids
+        datatype: fileformats.medimage:NiftiGzX
         help_string: "T2-weighted anatomical scan"
         default_column:
           datatype: fileformats.medimage:Dicom
       fMRI:
-        datatype: fileformats.medimage:Nifti_Gzip_Bids
+        datatype: fileformats.medimage:NiftiGzX
         help_string: "functional MRI"
         configuration:
           path: func/task-rest_bold

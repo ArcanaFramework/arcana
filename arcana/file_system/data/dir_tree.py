@@ -155,14 +155,7 @@ class DirTree(DataStore):
         return entry.datatype(self.read_from_json(*entry.uri.split("@")))
 
     def get_fileset(self, entry: DataEntry) -> FileSet:
-        fileset_path = self.get_fileset_path(entry)
-        return entry.datatype(
-            (
-                p
-                for p in fileset_path.parent.iterdir()
-                if p.name.startswith(fileset_path.name)
-            )
-        )
+        return entry.datatype(self.get_all_fileset_paths(self.get_fileset_path(entry)))
 
     def put_fileset(self, entry: DataEntry, fileset: FileSet) -> FileSet:
         """
@@ -274,6 +267,9 @@ class DirTree(DataStore):
         row_path = self.absolute_row_path(row)
         fileset_path = row_path.joinpath(*id.split("/"))
         return fileset_path
+
+    def get_all_fileset_paths(self, fspath: Path):
+        return (p for p in fspath.parent.iterdir() if p.name.startswith(fspath.name))
 
     def get_fields_path(self, row):
         return self.root_dir(row) / self.row_path(row) / self.FIELDS_FNAME

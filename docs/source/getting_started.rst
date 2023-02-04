@@ -85,12 +85,12 @@ over all sessions using the command line interface
     $ arcana dataset add-source 'file///data/my-dataset' T1w '.*mprage.*' medimage:Dicom --regex
 
     # Add sink column to store brain mask
-    $ arcana dataset add-sink 'file///data/my-dataset' brain_mask medimage:Nifti_Gzip
+    $ arcana dataset add-sink 'file///data/my-dataset' brain_mask medimage:NiftiGz
 
     # Apply BET Pydra task, connecting it between the source and sink
     $ arcana apply pipeline 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
       --arg name brain_extraction \
-      --input T1w in_file medimage:Nifti_Gzip \
+      --input T1w in_file medimage:NiftiGz \
       --output brain_mask out_file .
 
     # Derive brain masks for all imaging sessions in dataset
@@ -110,7 +110,7 @@ Alternatively, the same steps can be performed using the Python API:
     from pydra.tasks.fsl.preprocess.bet import BET
     from arcana.core.data import Dataset
     from arcana.medimage.data import Clinical
-    from fileformats.medimage.data import Dicom, Nifti_Gzip
+    from fileformats.medimage.data import Dicom, NiftiGz
 
     # Define dataset
     my_dataset = Dataset.load('file///data/my-dataset', space=Clinical,
@@ -120,12 +120,12 @@ Alternatively, the same steps can be performed using the Python API:
     my_dataset.add_source('T1w', '.*mprage.*', datatype=Dicom, is_regex=True)
 
     # Add sink column to store brain mask
-    my_dataset.add_sink('brain_mask', 'derivs/brain_mask', datatype=Nifti_Gzip)
+    my_dataset.add_sink('brain_mask', 'derivs/brain_mask', datatype=NiftiGz)
 
     # Apply BET Pydra task, connecting it between the source and sink
     my_dataset.apply_pipeline(
         BET(name='brain_extraction'),
-        inputs=[('T1w', 'in_file', Nifti_Gzip)],  # Specify required input format
+        inputs=[('T1w', 'in_file', NiftiGz)],  # Specify required input format
         outputs=[('brain_mask', 'out_file')])  # Output datatype matches stored so can be omitted
 
     # Derive brain masks for all imaging sessions in dataset

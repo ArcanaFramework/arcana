@@ -22,14 +22,21 @@ if ty.TYPE_CHECKING:
 class DataColumn(metaclass=ABCMeta):
 
     name: str
-    datatype: type
-    row_frequency: DataSpace
+    datatype: type = attrs.field()
+    row_frequency: DataSpace = attrs.field(
+        validator=attrs.validators.instance_of(DataSpace)
+    )
     _path: str = None
     dataset: Dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
     )
 
     is_sink = False
+
+    @datatype.validator
+    def datatype_validator(self, _, datatype):
+        if not issubclass(datatype, DataType):
+            raise TypeError(f"Datatype ({datatype}) must be a subclass of {DataType}")
 
     def __iter__(self) -> ty.Iterable[DataType]:
         "Iterator over all items in the column, requires none of the cells to be empty"
@@ -214,7 +221,7 @@ class DataSource(DataColumn):
         criteria.append(self.matches_datatype)
         return criteria
 
-    def _format_criteria(self) -> str:
+    def format_criteria(self) -> str:
         msg = "\n\n  Criteria: "
         if self.path:
             msg += f"\n    path='{self.path}'"
@@ -309,7 +316,7 @@ class DataSink(DataColumn):
     def criteria(self):
         return [self.matches_path, self.matches_datatype]
 
-    def _format_criteria(self):
+    def format_criteria(self):
         return (
             "\n\n  Criteria: "
             f"\n    path='{self.path}' "

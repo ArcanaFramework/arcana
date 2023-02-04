@@ -9,7 +9,7 @@ from fileformats.core.base import FileSet, DataType, Field
 from arcana.core.data.store import DataStore, TestDatasetBlueprint
 from arcana.core.data.row import DataRow
 from arcana.core.data.tree import DataTree
-from arcana.core.data.cell import DataEntry
+from arcana.core.data.entry import DataEntry
 from arcana.core.data.space import DataSpace
 from ...core.utils.testing.space import TestDataSpace
 from arcana.core.exceptions import DatatypeUnsupportedByStoreError

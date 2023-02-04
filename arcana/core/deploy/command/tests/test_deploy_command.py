@@ -2,11 +2,11 @@ from functools import reduce
 from operator import mul
 import pytest
 from arcana.core.data.store import TestDatasetBlueprint
-from arcana.core.utils.testing.data import (
+from arcana.core.utils.testing.space import (
     TestDataSpace,
 )
 from fileformats.text import Plain as Text
-from arcana.core.utils.testing.data import EncodedText
+from arcana.core.utils.testing.fileformats import EncodedText
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.core.exceptions import ArcanaDataMatchError
 

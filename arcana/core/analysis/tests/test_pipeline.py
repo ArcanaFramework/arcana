@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 from fileformats.text import Plain as Text
 from fileformats.archive import Zip
-from arcana.core.utils.testing.data import TestDataSpace
+from arcana.core.utils.testing.space import TestDataSpace
 from conftest import TEST_DATASET_BLUEPRINTS
 from arcana.core.utils.testing.tasks import concatenate
 

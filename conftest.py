@@ -11,7 +11,7 @@ from click.testing import CliRunner
 from fileformats.generic import Directory
 from fileformats.text import Plain as Text
 from fileformats.serialization import Json
-from arcana.core.utils.testing.data import (
+from arcana.core.utils.testing.fileformats import (
     MyFormatGz,
     MyFormatGzX,
     MyFormatX,
@@ -34,12 +34,9 @@ from arcana.core.data.store import (
     DerivBlueprint,
     ExpDatatypeBlueprint,
 )
-from arcana.core.utils.testing.data import (
-    TestDataSpace as TDS,
-    Xyz,
-    FlatDir,
-)
-from arcana.dirtree.data import DirTree
+from arcana.core.utils.testing.space import TestDataSpace as TDS
+from arcana.core.utils.testing.fileformats import Xyz
+from arcana.file_system import DirTree, FlatDir
 
 
 # Set DEBUG logging for unittests

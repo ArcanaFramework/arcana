@@ -2,7 +2,7 @@ import pytest
 from arcana.core.data.set import Dataset
 from arcana.core.analysis.salience import ColumnSalience
 from arcana.core.data.quality import DataQuality
-from arcana.core.utils.testing.data import TestDataSpace
+from arcana.core.utils.testing.space import TestDataSpace
 from arcana.core.cli.dataset import define, add_source, add_sink, missing_items
 from fileformats.text import Plain as Text
 from arcana.core.utils.testing import show_cli_trace

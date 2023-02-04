@@ -27,7 +27,7 @@ from arcana.core.analysis.mark import (
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
 from fileformats.text import Plain as Text
 from fileformats.archive import Zip
-from arcana.core.utils.testing.data import FlatDir
+from arcana.file_system import FlatDir
 from arcana.core.analysis.salience import (
     CheckStatus,
     ColumnSalience as cs,

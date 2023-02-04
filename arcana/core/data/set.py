@@ -339,7 +339,14 @@ class Dataset:
         row_frequency = self._parse_freq(row_frequency)
         if path is None:
             path = name
-        source = DataSource(name, path, datatype, row_frequency, dataset=self, **kwargs)
+        source = DataSource(
+            name=name,
+            datatype=datatype,
+            row_frequency=row_frequency,
+            path=path,
+            dataset=self,
+            **kwargs,
+        )
         self._add_spec(name, source, overwrite)
         return source
 
@@ -367,7 +374,14 @@ class Dataset:
         row_frequency = self._parse_freq(row_frequency)
         if path is None:
             path = name
-        sink = DataSink(name, path, datatype, row_frequency, dataset=self, **kwargs)
+        sink = DataSink(
+            name=name,
+            datatype=datatype,
+            row_frequency=row_frequency,
+            path=path,
+            dataset=self,
+            **kwargs,
+        )
         self._add_spec(name, sink, overwrite)
         return sink
 
