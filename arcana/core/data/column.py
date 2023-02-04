@@ -26,7 +26,7 @@ class DataColumn(metaclass=ABCMeta):
     row_frequency: DataSpace = attrs.field(
         validator=attrs.validators.instance_of(DataSpace)
     )
-    _path: str = None
+    path: str = None
     dataset: Dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
     )
@@ -190,7 +190,7 @@ class DataSource(DataColumn):
     required_metadata : dict[str, ty.Any]
         Required metadata, which can be used to distinguish multiple items that match all
         other criteria. The provided dictionary contains metadata values that must match
-        the stored header_vals exactly.
+        the stored required_metadata exactly.
     is_regex : bool
         Flags whether the name_path is a regular expression or not
     """
@@ -296,6 +296,7 @@ class DataSink(DataColumn):
         for the sink
     """
 
+    path = attrs.field()
     salience: ColumnSalience = attrs.field(
         default=ColumnSalience.supplementary,
         converter=lambda s: ColumnSalience[str(s)] if s is not None else None,
@@ -304,11 +305,9 @@ class DataSink(DataColumn):
 
     is_sink = True
 
-    @property
-    def path(self) -> str:
-        if self.path is None:
-            path = f"{self.dataset.name}/{self.name}"
-        return path
+    @path.default
+    def path_default(self):
+        return f"{self.dataset.name}/{self.name}"
 
     def derive(self, ids: list[str] = None):
         self.dataset.derive(self.name, ids=ids)

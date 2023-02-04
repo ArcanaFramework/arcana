@@ -368,7 +368,6 @@ initialised.
 .. code-block:: python
 
     from arcana.bids.data import Bids
-    from arcana.core.utils.testing.data import SimpleStore
     from arcana.medimage.data import Clinical
 
     bids_dataset = Bids().dataset(
@@ -559,7 +558,7 @@ axes
 .. and how the layers add to one another
 
 For stores that support datasets with arbitrary tree structures
-(i.e. :class:`.SimpleStore`), the "data space" and the hierarchy of layers
+(i.e. :class:`.DirTree`), the "data space" and the hierarchy of layers
 in the data tree needs to be provided. Data spaces are explained in more
 detail in :ref:`data_spaces`. However, for the majority of datasets in the
 medical imaging field, the :class:`arcana.medimage.data.Clinical` space is
@@ -567,10 +566,10 @@ appropriate.
 
 .. code-block:: python
 
-    from arcana.core.utils.testing.data import SimpleStore
+    from arcana.file_system import DirTree
     from arcana.medimage.data import Clinical
 
-    fs_dataset = SimpleStore().dataset(
+    fs_dataset = DirTree().dataset(
         id='/data/imaging/my-project',
         # Define the hierarchy of the dataset in which imaging session
         # sub-directories are separated into directories via their study group

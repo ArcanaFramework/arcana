@@ -232,7 +232,7 @@ def add_source(
         row_frequency=row_frequency,
         quality_threshold=quality,
         order=order,
-        header_vals=dict(header),
+        required_metadata=dict(header),
         is_regex=is_regex,
     )
     dataset.save()

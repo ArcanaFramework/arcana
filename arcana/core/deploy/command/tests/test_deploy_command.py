@@ -218,7 +218,7 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source",
-                "datatype": "arcana.core.utils.testing.data:EncodedText",
+                "datatype": "arcana.core.utils.testing:EncodedText",
                 "default_column": {"datatype": "fileformats.text:Plain"},
                 "field": "in_file",
                 "help_string": "dummy",
@@ -227,16 +227,14 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "arcana.core.utils.testing.data:EncodedText",
+                "datatype": "arcana.core.utils.testing:EncodedText",
                 "field": "out",
                 "help_string": "dummy",
             },
             {
                 "name": "sink2",
-                "datatype": "arcana.core.utils.testing.data:EncodedText",
-                "default_column": {
-                    "datatype": "arcana.core.utils.testing.data:DecodedText"
-                },
+                "datatype": "arcana.core.utils.testing:EncodedText",
+                "default_column": {"datatype": "arcana.core.utils.testing:DecodedText"},
                 "field": "out",
                 "help_string": "dummy",
             },

@@ -30,7 +30,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
         row_frequency=TestDataSpace.d,
         quality_threshold=DataQuality.questionable,
         order=1,
-        header_vals={},
+        required_metadata={},
         is_regex=False,
     )
     # Add source column to saved dataset
@@ -108,7 +108,7 @@ def test_define_cli(dataset: Dataset, cli_runner):
         args.extend(["--include", str(axis), slce])
     for axis, slce in excluded:
         args.extend(["--exclude", str(axis), slce])
-    args.extend(["--space", "arcana.core.utils.testing.data:TestDataSpace"])
+    args.extend(["--space", "arcana.core.utils.testing.space:TestDataSpace"])
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully

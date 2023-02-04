@@ -251,6 +251,7 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: set = None):
                 filter=filter,
                 value_serializer=lambda i, f, v: value_asdict(v),
             )
+            _replace_hidden(value)
             value["class"] = value_class
         elif isinstance(value, Enum):
             value = serialise_class(type(value)) + "[" + str(value) + "]"
@@ -273,11 +274,20 @@ def asdict(obj, omit: ty.Iterable[str] = (), required_modules: set = None):
         value_serializer=lambda i, f, v: value_asdict(v),
     )
 
+    _replace_hidden(dct)
+
     dct["class"] = serialise_class(type(obj))
     if include_versions:
         dct["pkg_versions"] = pkg_versions(required_modules)
 
     return dct
+
+
+def _replace_hidden(dct):
+    "Replace hidden attributes (those starting with '_') with non-hidden"
+    for key in list(dct):
+        if key.startswith("_"):
+            dct[key[1:]] = dct.pop(key)
 
 
 def fromdict(dct: dict, **kwargs):
