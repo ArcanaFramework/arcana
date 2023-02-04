@@ -120,11 +120,13 @@ class DirTree(DataStore):
                 f"Don't know how to store {entry.datatype} data in {type(self)} stores"
             )
 
-    def post(self, item: DataType, id: str, datatype: type, row: DataRow) -> DataEntry:
+    def post(
+        self, item: DataType, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
         if datatype.is_fileset:
-            self.post_fileset(item, id, datatype, row)
+            self.post_fileset(item, path, datatype, row)
         elif datatype.is_field:
-            self.put_field(item, id, datatype, row)
+            self.put_field(item, path, datatype, row)
         else:
             raise RuntimeError(
                 f"Don't know how to store {datatype} data in {type(self)} stores"
@@ -137,7 +139,7 @@ class DirTree(DataStore):
         elif entry.datatype.is_field:
             with open(self.get_fields_prov_path(entry)) as f:
                 fields_provenance = json.load(f)
-            provenance = fields_provenance[entry.id]
+            provenance = fields_provenance[entry.path]
         else:
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return provenance
@@ -147,7 +149,7 @@ class DirTree(DataStore):
             with open(self.get_fileset_prov_path(entry), "w") as f:
                 json.dump(provenance, f)
         elif entry.datatype.is_field:
-            self.update_json(self.get_fields_prov_path(entry), entry.id, provenance)
+            self.update_json(self.get_fields_prov_path(entry), entry.path, provenance)
         else:
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
 
@@ -171,14 +173,15 @@ class DirTree(DataStore):
         """
         Inserts or updates a field in the store
         """
-        self.update_json(self.get_fields_path(entry), entry.id, value)
+        self.update_json(self.get_fields_path(entry), entry.path, value)
 
     def post_fileset(
-        self, fileset: FileSet, id: str, datatype: type, row: DataRow
+        self, fileset: FileSet, path: str, datatype: type, row: DataRow
     ) -> DataEntry:
-        entry = row.add_entry(
-            id=id, datatype=datatype, uri=self.get_fileset_path(id, row)
-        )
+        entry = row.add_entry(path=path, datatype=datatype, uri=None)
+        # Need to wait until the entry is created so we can use the get_fileset_path
+        # to determine the URI
+        entry.uri = self.get_fileset_path(entry)
         self.put(fileset, entry)
         return entry
 
@@ -186,7 +189,7 @@ class DirTree(DataStore):
         self, field: Field, id: str, datatype: type, row: DataRow
     ) -> DataEntry:
         entry = row.add_entry(
-            id=id, datatype=datatype, uri=self.get_fields_path(row) + "@" + id
+            path=id, datatype=datatype, uri=self.get_fields_path(row) + "@" + id
         )
         self.put(field, entry)
         return entry
@@ -213,7 +216,7 @@ class DirTree(DataStore):
                 file_stems.add(".".join(fname_parts[: (i + 1)]))
 
         for stem in file_stems:
-            row.add_entry(id=stem, datatype=FileSet, uri=dpath / stem)
+            row.add_entry(path=stem, datatype=FileSet, uri=dpath / stem)
         # Add fields
         try:
             with open(op.join(dpath, self.FIELDS_FNAME)) as f:
@@ -222,10 +225,7 @@ class DirTree(DataStore):
             pass
         else:
             for name in fields_dict:
-                row.add_entry(
-                    name_path=name,
-                    datatype=Field,
-                )
+                row.add_entry(path=name, datatype=Field, uri=None)
 
     def row_path(self, row):
         path = Path()
@@ -254,7 +254,7 @@ class DirTree(DataStore):
     def absolute_row_path(cls, row) -> Path:
         return cls().root_dir(row) / cls().row_path(row)
 
-    def get_fileset_path(self, id: str, row: DataRow) -> Path:
+    def get_fileset_path(self, entry: DataEntry) -> Path:
         """The path to the stem of the paths (i.e. the path without
         file extension) where the files are saved in the file-system.
         NB: this method is overridden in Bids store.
@@ -264,21 +264,21 @@ class DirTree(DataStore):
         fileset: FileSet
             the file set stored or to be stored
         """
-        row_path = self.absolute_row_path(row)
-        fileset_path = row_path.joinpath(*id.split("/"))
+        row_path = self.absolute_row_path(entry.row)
+        fileset_path = row_path.joinpath(*entry.path.split("/"))
         return fileset_path
 
-    def get_all_fileset_paths(self, fspath: Path):
+    def get_all_fileset_paths(self, fspath: Path) -> ty.Iterable[Path]:
         return (p for p in fspath.parent.iterdir() if p.name.startswith(fspath.name))
 
-    def get_fields_path(self, row):
+    def get_fields_path(self, row) -> Path:
         return self.root_dir(row) / self.row_path(row) / self.FIELDS_FNAME
 
-    def get_fields_prov_path(self, row):
+    def get_fields_prov_path(self, row) -> Path:
         return self.root_dir(row) / self.row_path(row) / self.FIELDS_PROV_FNAME
 
-    def get_fileset_prov_path(self, fileset):
-        return self.get_fileset_path(fileset) + self.PROV_SUFFX
+    def get_fileset_prov_path(self, entry: DataEntry) -> Path:
+        return self.get_fileset_path(entry) + self.PROV_SUFFIX
 
     def site_licenses_dataset(self):
         """Provide a place to store hold site-wide licenses"""

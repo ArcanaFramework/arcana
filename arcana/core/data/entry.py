@@ -80,7 +80,7 @@ class DataEntry:
         checksums for all of the files in the data entry
     """
 
-    id: str
+    path: str
     datatype: type
     row: DataRow
     uri: str
@@ -111,4 +111,4 @@ class DataEntry:
         if self.provenance is None:
             return None
         else:
-            return self.provenance.outputs[self.id]
+            return self.provenance.outputs[self.path]

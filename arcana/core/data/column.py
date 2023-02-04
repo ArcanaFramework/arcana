@@ -122,15 +122,16 @@ class DataColumn(metaclass=ABCMeta):
         """Formats the criteria used to match entries for use in informative error messages"""
 
     def matches_path(self, entry: DataEntry) -> bool:
-        "that match the path '{self.path}'"
-        id_parts = entry.id.split("/")
+        "that matched the path '{self.path}'"
+        id_parts = entry.path.split("/")
         path_parts = self.path.split("/")
         return id_parts[: len(path_parts)] == path_parts
 
     def matches_datatype(self, entry: DataEntry) -> bool:
-        "that matched the datatype {self.datatype}"
+        "that matched the datatype '{self.datatype.mime_like}'"
         return self.datatype is entry.datatype or (
-            issubclass(self.datatype, type(entry)) and self.datatype.matches(entry.item)
+            issubclass(self.datatype, entry.datatype)
+            and self.datatype.matches(entry.item)
         )
 
     def select_entry_from_matches(
@@ -144,8 +145,8 @@ class DataColumn(metaclass=ABCMeta):
 
     def _error_msg(self, row: DataRow, matches: list[DataEntry]) -> str:
         return (
-            f" attempting to select '{self.datatype.mime_like}' item for "
-            f"the '{row.id}' {row.frequency} in the '{self.name}' column\n\n  Found:"
+            f" attempting to select an item for the '{self.name}' column"
+            f"in the '{row.id}' {row.frequency} row\n\n  Found:"
             + self._format_matches(matches)
             + self.format_criteria()
         )
@@ -241,7 +242,7 @@ class DataSource(DataColumn):
         pattern = self.path
         if not pattern.endswith("$"):
             pattern += "$"
-        return re.match(pattern, entry.id)
+        return re.match(pattern, entry.path)
 
     def matches_quality(self, entry: DataEntry) -> bool:
         "with an acceptable quality '{self.quality_threshold}'"

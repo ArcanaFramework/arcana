@@ -83,7 +83,7 @@ class FlatDir(DataStore):
                 else FileSet
             )
             row.add_entry(
-                id=entry_path.name,
+                path=entry_path.name,
                 datatype=datatype,
                 row=row,
                 uri=entry_path,
@@ -127,9 +127,11 @@ class FlatDir(DataStore):
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return cpy
 
-    def post(self, item: DataType, id: str, datatype: type, row: DataRow) -> DataEntry:
+    def post(
+        self, item: DataType, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
         entry = DataEntry(
-            id=id, datatype=datatype, row=row, uri=self.get_row_path(row) / item.id
+            path=path, datatype=datatype, row=row, uri=self.get_row_path(row) / item.id
         )
         self.put(item, entry)
         return entry

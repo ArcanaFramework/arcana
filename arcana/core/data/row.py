@@ -160,7 +160,7 @@ class DataRow:
 
     def add_entry(
         self,
-        id: str,
+        path: str,
         datatype: type,
         uri: str,
         item_metadata: dict = None,
@@ -198,7 +198,7 @@ class DataRow:
         if self._entries is None:
             self._entries = {}
         entry = DataEntry(
-            id=id,
+            path=path,
             datatype=datatype,
             row=self,
             uri=uri,
@@ -207,12 +207,12 @@ class DataRow:
             quality=quality,
             checksums=checksums,
         )
-        if id in self._entries:
+        if path in self._entries:
             raise KeyError(
-                f"Attempting to add multiple entries with the same ID ('{id}') to "
-                f"{self}, {self._entries[id]} and {entry}"
+                f"Attempting to add multiple entries with the same ID ('{path}') to "
+                f"{self}, {self._entries[path]} and {entry}"
             )
-        self._entries[id] = entry
+        self._entries[path] = entry
         return entry
 
 

@@ -166,15 +166,17 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def post(self, item: DataType, id: str, datatype: type, row: DataRow) -> DataEntry:
+    def post(
+        self, item: DataType, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
         """Inserts the item within a newly created entry in the data store
 
         Parameters
         ----------
         item : DataType
             the item to insert
-        id : str
-            the id of the entry within the data row
+        path : str
+            the path to the entry relative to the data row
         datatype : type
             the datatype of the entry
         row : DataRow

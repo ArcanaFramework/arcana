@@ -613,12 +613,9 @@ def source_items(
                 sourced.append(row)
                 continue
             try:
-                item = row[inpt.name]
+                sourced.append(row[inpt.name])
             except ArcanaDataMatchError as e:
                 missing_inputs[inpt.name] = str(e)
-            else:
-                item.get()  # download to host if required
-                sourced.append(item)
         if missing_inputs:
             raise ArcanaDataMatchError("\n\n" + "\n\n".join(missing_inputs.values()))
     return tuple(sourced) + (provenance,)
