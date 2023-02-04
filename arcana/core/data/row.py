@@ -9,11 +9,12 @@ from arcana.core.exceptions import (
 from fileformats.core import DataType
 from .quality import DataQuality
 from .space import DataSpace
+from .cell import DataCell
+from .entry import DataEntry
+
 
 if ty.TYPE_CHECKING:
-    import arcana.core.data.set
-    from .entry import DataEntry
-    from .cell import DataCell
+    from .set import Dataset
 
 
 @attrs.define(auto_detect=True)
@@ -34,11 +35,11 @@ class DataRow:
 
     ids: ty.Dict[DataSpace, str] = attrs.field()
     frequency: DataSpace = attrs.field()
-    dataset: arcana.core.data.set.Dataset = attrs.field(repr=False)
+    dataset: Dataset = attrs.field(repr=False)
     children: ty.DefaultDict[
         DataSpace, dict[ty.Union[str, tuple[str]], str]
     ] = attrs.field(factory=lambda: defaultdict(dict), repr=False)
-    _entries: dict[str, DataEntry] = attrs.field(default=dict, init=False, repr=False)
+    _entries: dict[str, DataEntry] = attrs.field(default=None, init=False, repr=False)
     _cells: dict[str, DataCell] = attrs.field(factory=dict, init=False, repr=False)
 
     def __getitem__(self, column_name: str) -> DataType:
@@ -165,7 +166,6 @@ class DataRow:
         item_metadata: dict = None,
         order: int = None,
         quality: DataQuality = DataQuality.usable,
-        provenance: dict[str, ty.Any] = None,
         checksums: dict[str, str] = None,
     ):
         """Adds an data entry to a row that has been found while scanning the row in the
@@ -195,6 +195,8 @@ class DataRow:
         checksums : dict[str, str], optional
             checksums for all of the files in the data entry
         """
+        if self._entries is None:
+            self._entries = {}
         entry = DataEntry(
             id=id,
             datatype=datatype,
@@ -203,7 +205,6 @@ class DataRow:
             item_metadata=item_metadata,
             order=order,
             quality=quality,
-            provenance=provenance,
             checksums=checksums,
         )
         if id in self._entries:

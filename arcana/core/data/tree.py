@@ -27,8 +27,8 @@ class DataTree(NestedContext):
     root: DataRow = None
 
     def enter(self):
-        assert self.root is None
-        self.dataset.store.build_tree(self)
+        self.root is None
+        self.dataset.store.populate_tree(self)
 
     def exit(self):
         self.root = None
@@ -159,9 +159,11 @@ class DataTree(NestedContext):
             If inserting a multiple IDs of the same class within the tree if
             one of their ids is None
         """
-        logger.debug("Adding new %s row to %s dataset: %s", row_frequency, self.id, ids)
-        row_frequency = self._parse_freq(row_frequency)
-        row = DataRow(ids, row_frequency, self)
+        logger.debug(
+            "Adding new %s row to %s dataset: %s", row_frequency, self.dataset_id, ids
+        )
+        row_frequency = self.dataset.parse_frequency(row_frequency)
+        row = DataRow(ids, row_frequency, self.dataset)
         # Create new data row
         row_dict = self.root.children[row.frequency]
         if row.id in row_dict:
@@ -179,7 +181,7 @@ class DataTree(NestedContext):
             if diff_freq:
                 # logger.debug(f'Linking parent {parent_freq}: {parent_id}')
                 try:
-                    parent_row = self.row(parent_freq, parent_id)
+                    parent_row = self.dataset.row(parent_freq, parent_id)
                 except ArcanaNameError:
                     # logger.debug(
                     #     f'Parent {parent_freq}:{parent_id} not found, adding')
@@ -205,6 +207,6 @@ class DataTree(NestedContext):
         return row
 
     def _set_root(self):
-        self._root = DataRow(
+        self.root = DataRow(
             {self.dataset.root_freq: None}, self.dataset.root_freq, self
         )

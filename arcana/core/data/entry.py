@@ -14,7 +14,9 @@ class ItemMetadata:
     easily extracted from the data store), or lazily loaded from the entry's item if the
     entry datatype"""
 
-    loaded: dict = attrs.field(factory=dict, converter=dict)
+    loaded: dict = attrs.field(
+        default=None, converter=lambda x: dict(x) if x is not None else {}
+    )
     _entry: DataEntry = attrs.field(default=None, init=False, repr=False)
     _has_been_loaded: bool = attrs.field(default=False, init=False, repr=False)
 
@@ -83,7 +85,7 @@ class DataEntry:
     row: DataRow
     uri: str
     item_metadata: ItemMetadata = attrs.field(
-        factory=dict, converter=ItemMetadata, repr=False, kw_only=True
+        default=None, converter=ItemMetadata, repr=False, kw_only=True
     )
     order: int = None
     quality: DataQuality = DataQuality.usable

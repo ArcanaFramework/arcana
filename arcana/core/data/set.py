@@ -336,7 +336,7 @@ class Dataset:
         **kwargs : ty.Dict[str, Any]
             Additional kwargs to pass to DataSource.__init__
         """
-        row_frequency = self._parse_freq(row_frequency)
+        row_frequency = self.parse_frequency(row_frequency)
         if path is None:
             path = name
         source = DataSource(
@@ -371,7 +371,7 @@ class Dataset:
         overwrite : bool
             Whether to overwrite an existing sink
         """
-        row_frequency = self._parse_freq(row_frequency)
+        row_frequency = self.parse_frequency(row_frequency)
         if path is None:
             path = name
         sink = DataSink(
@@ -431,7 +431,7 @@ class Dataset:
             if id is not None:
                 raise ArcanaUsageError(f"Root rows don't have any IDs ({id})")
             return self.root
-        row_frequency = self._parse_freq(row_frequency)
+        row_frequency = self.parse_frequency(row_frequency)
         if id_kwargs:
             if id is not None:
                 raise ArcanaUsageError(
@@ -484,7 +484,7 @@ class Dataset:
         root = self.root
         if frequency is None:
             return chain(*(d.values() for d in root.children.values()))
-        frequency = self._parse_freq(frequency)
+        frequency = self.parse_frequency(frequency)
         if frequency == self.root_freq:
             return [root]
         rows = root.children[frequency].values()
@@ -505,7 +505,7 @@ class Dataset:
         Sequence[str]
             The IDs of the rows
         """
-        row_frequency = self._parse_freq(row_frequency)
+        row_frequency = self.parse_frequency(row_frequency)
         if row_frequency == self.root_freq:
             return [None]
         return self.root.children[row_frequency].keys()
@@ -569,7 +569,7 @@ class Dataset:
         """
         from arcana.core.analysis.pipeline import Pipeline
 
-        row_frequency = self._parse_freq(row_frequency)
+        row_frequency = self.parse_frequency(row_frequency)
 
         # def parsed_conns(lst, conn_type):
         #     parsed = []
@@ -640,7 +640,7 @@ class Dataset:
         for sink in sinks:
             sink.assume_exists()
 
-    def _parse_freq(self, freq):
+    def parse_frequency(self, freq):
         """Parses the data row_frequency, converting from string if necessary and
         checks it matches the dimensions of the dataset"""
         if freq is None:

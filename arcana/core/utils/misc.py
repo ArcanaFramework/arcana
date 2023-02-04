@@ -65,9 +65,9 @@ class NestedContext:
         # methods that need connections, and therefore control their
         # own connection, in batches using the same connection by
         # placing the batch calls within an outer context.
-        if self.depth == 0:
-            self.enter()
         self.depth += 1
+        if self.depth == 1:
+            self.enter()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
@@ -75,11 +75,11 @@ class NestedContext:
         if self.depth == 0:
             self.exit()
 
-    def enter():
+    def enter(self):
         "To be overridden in subclasses as necessary"
         pass
 
-    def exit():
+    def exit(self):
         "To be overridden in subclasses as necessary"
         pass
 

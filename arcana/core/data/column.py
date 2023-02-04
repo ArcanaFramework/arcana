@@ -107,7 +107,7 @@ class DataColumn(metaclass=ABCMeta):
                 else:
                     raise ArcanaDataMatchError(
                         "Did not find any entries "
-                        + method.__doc__.format(self)
+                        + method.__doc__.format(self=self)
                         + self._error_msg(row, matches)
                     )
             matches = filtered
@@ -147,7 +147,7 @@ class DataColumn(metaclass=ABCMeta):
             f" attempting to select '{self.datatype.mime_like}' item for "
             f"the '{row.id}' {row.frequency} in the '{self.name}' column\n\n  Found:"
             + self._format_matches(matches)
-            + self._format_criteria()
+            + self.format_criteria()
         )
 
     def _format_matches(self, matches: list[DataEntry]) -> str:

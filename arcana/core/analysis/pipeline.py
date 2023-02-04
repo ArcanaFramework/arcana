@@ -565,12 +565,16 @@ def to_process(
     cant_process = []
     for row in dataset.rows(row_frequency, ids=requested_ids):
         # TODO: Should check provenance of existing rows to see if it matches
-        not_exist = [not row[o.name].exists for o in outputs]
-        if all(not_exist):
+        empty = [row.cell(o.name).is_empty for o in outputs]
+        if all(empty):
             ids.append(row.id)
-        elif any(not_exist):
+        elif any(empty):
             cant_process.append(row.id)
-    logger.debug("Found %s ids to process, and can't process %s", ids, cant_process)
+    logger.debug(
+        "Found %s ids to process, and can't process %s due to partially present outputs",
+        ids,
+        cant_process,
+    )
     return ids, cant_process
 
 
