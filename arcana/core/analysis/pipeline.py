@@ -641,8 +641,7 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
     row = dataset.row(row_frequency, id)
     with dataset.store.connection:
         for outpt_name, output in to_sink.items():
-            row_item = row[outpt_name]
-            row_item.put(output.value)  # Store value/path
+            row.cell(outpt_name).item = output
     return id
 
 
@@ -653,8 +652,8 @@ def access_paths_and_values(**data_items):
     values = []
     for name, item in data_items.items():
         if isinstance(item, FileSet):
-            cpy = item.copy_to(Path.cwd() / name, symlink=True)
-            values.append(cpy.fspath)
+            cpy = item.copy_to(Path.cwd() / name, symlink=True, make_dirs=True)
+            values.append(cpy)
         elif isinstance(item, Field):
             values.append(item.value)
         else:
@@ -669,11 +668,7 @@ def encapsulate_paths_and_values(outputs, **kwargs):
     items = []
     for outpt in outputs:
         val = kwargs[outpt.name]
-        if issubclass(outpt.datatype, FileSet):
-            obj = outpt.datatype.from_fspath(val)
-        else:
-            obj = outpt.datatype(val)
-        items.append(obj)
+        items.append(outpt.datatype(val))
     if len(items) > 1:
         return tuple(items)
     elif items:

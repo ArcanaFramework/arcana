@@ -636,9 +636,6 @@ class Dataset:
             # dilate the IDs that need to be run when summarising over different
             # data axes
             pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
-        # Update local cache of sink paths
-        for sink in sinks:
-            sink.assume_exists()
 
     def parse_frequency(self, freq):
         """Parses the data row_frequency, converting from string if necessary and

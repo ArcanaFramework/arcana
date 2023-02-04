@@ -112,25 +112,27 @@ class DirTree(DataStore):
 
     def put(self, item: DataType, entry: DataEntry):
         if entry.datatype.is_fileset:
-            self.put_fileset(item, entry)
+            cpy = self.put_fileset(item, entry)
         elif entry.datatype.is_field:
-            self.put_field(item, entry)
+            cpy = self.put_field(item, entry)
         else:
             raise RuntimeError(
                 f"Don't know how to store {entry.datatype} data in {type(self)} stores"
             )
+        return cpy
 
     def post(
         self, item: DataType, path: str, datatype: type, row: DataRow
     ) -> DataEntry:
         if datatype.is_fileset:
-            self.post_fileset(item, path, datatype, row)
+            entry = self.post_fileset(item, path, datatype, row)
         elif datatype.is_field:
-            self.put_field(item, path, datatype, row)
+            entry = self.put_field(item, path, datatype, row)
         else:
             raise RuntimeError(
                 f"Don't know how to store {datatype} data in {type(self)} stores"
             )
+        return entry
 
     def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
         if entry.datatype.is_fileset:
@@ -159,7 +161,7 @@ class DirTree(DataStore):
     def get_fileset(self, entry: DataEntry) -> FileSet:
         return entry.datatype(self.get_all_fileset_paths(self.get_fileset_path(entry)))
 
-    def put_fileset(self, entry: DataEntry, fileset: FileSet) -> FileSet:
+    def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         """
         Inserts or updates a fileset in the store
         """
@@ -169,11 +171,11 @@ class DirTree(DataStore):
         )
         return copied_fileset
 
-    def put_field(self, entry: DataEntry, value):
+    def put_field(self, field: Field, entry: DataEntry):
         """
         Inserts or updates a field in the store
         """
-        self.update_json(self.get_fields_path(entry), entry.path, value)
+        self.update_json(self.get_fields_path(entry), entry.path, field)
 
     def post_fileset(
         self, fileset: FileSet, path: str, datatype: type, row: DataRow
