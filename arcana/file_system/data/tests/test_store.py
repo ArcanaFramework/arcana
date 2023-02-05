@@ -84,4 +84,5 @@ def test_put_items(dataset: Dataset):
 
 
 def test_singletons():
-    assert sorted(DataStore.singletons()) == ["file"]
+    standard = set(("flat", "tree"))
+    assert set(DataStore.singletons()) & standard == standard

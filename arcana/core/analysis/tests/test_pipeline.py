@@ -30,8 +30,6 @@ def test_pipeline(simple_store, work_dir):
     workflow = pipeline(cache_dir=work_dir / "pipeline-cache")
     workflow(ids=IDS, plugin="serial")
 
-    dataset.refresh()  # Reset cached values
-
     for item in dataset["deriv"]:
         with open(item.fspath) as f:
             contents = f.read()

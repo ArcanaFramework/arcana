@@ -129,8 +129,8 @@ class FlatDir(DataStore):
     def post(
         self, item: DataType, path: str, datatype: type, row: DataRow
     ) -> DataEntry:
-        entry = DataEntry(
-            path=path, datatype=datatype, row=row, uri=self.get_row_path(row) / item.id
+        entry = row.add_entry(
+            path=path, datatype=datatype, uri=self.get_row_path(row) / path
         )
         self.put(item, entry)
         return entry
