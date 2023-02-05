@@ -292,7 +292,7 @@ class DataStore(metaclass=ABCMeta):
         # connect to store in case it is needed in the asdict method and to
         # test the connection in general before it is saved
         dct = self.asdict()
-        with self:
+        with self.connection:
             entries[dct.pop("name")] = dct
         self.save_entries(entries, config_path=config_path)
 

@@ -8,6 +8,7 @@ from functools import reduce
 from arcana.core.data.set import Dataset
 from arcana.file_system import DirTree
 from arcana.core.data.store import DataStore
+from arcana.core.utils.misc import path2varname
 
 
 def test_find_rows(dataset: Dataset):
@@ -29,7 +30,7 @@ def test_get_items(dataset: Dataset):
     source_files = {}
     for fg_name, exp_datatypes in blueprint.expected_datatypes.items():
         for exp in exp_datatypes:
-            source_name = fg_name + exp.datatype.class_name()
+            source_name = fg_name + path2varname(exp.datatype.mime_like)
             dataset.add_source(source_name, path=fg_name, datatype=exp.datatype)
             source_files[source_name] = set(exp.filenames)
     for row in dataset.rows(dataset.leaf_freq):
@@ -65,8 +66,7 @@ def test_put_items(dataset: Dataset):
             fspaths.append(deriv_tmp_dir / test_file.parts[0])
         # Test inserting the new item into the store
         for row in dataset.rows(deriv.row_frequency):
-            item = row[deriv.name]
-            item.put(*fspaths)
+            row[deriv.name] = fspaths
 
     def check_inserted():
         """Check that the inserted items are present in the dataset"""
@@ -80,7 +80,6 @@ def test_put_items(dataset: Dataset):
                 assert all(p.exists() for p in item.fspaths)
 
     check_inserted()  # Check that cached objects have been updated
-    dataset.refresh()  # Clear object cache
     check_inserted()  # Check that objects can be recreated from store
 
 

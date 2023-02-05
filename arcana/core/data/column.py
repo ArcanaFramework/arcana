@@ -98,7 +98,7 @@ class DataColumn(metaclass=ABCMeta):
             if none or multiple items match the criteria/path of the column
             within the row
         """
-        matches = row.entries.values()
+        matches = row.entries
         for method in self.criteria():
             filtered = [m for m in matches if method(m)]
             if not filtered:

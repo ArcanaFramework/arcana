@@ -114,7 +114,7 @@ class DataTree(NestedContext):
                         )
                     new_freqs = (layer ^ row_frequency) & layer
                     for target_freq, target_id in match.groupdict().items():
-                        target_freq = self.space[target_freq]
+                        target_freq = self.dataset.space[target_freq]
                         if (target_freq & new_freqs) != target_freq:
                             raise ArcanaUsageError(
                                 f"Inferred ID target, {target_freq}, is not a "

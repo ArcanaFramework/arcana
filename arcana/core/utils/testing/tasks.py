@@ -149,9 +149,9 @@ def plus_10_to_filenumbers(filenumber_row: DataRow) -> None:
     row : DataRow
         the data row to modify
     """
-    for item in filenumber_row.unresolved:
-        item_fspath = item.file_paths[0].parent
-        new_item_path = str(int(item.path) + 10)
+    for entry in filenumber_row.entries:
+        item_fspath = next(iter(entry.item.fspaths)).parent
+        new_item_path = str(int(entry.path) + 10)
         shutil.move(item_fspath, item_fspath.parent / new_item_path)
 
 

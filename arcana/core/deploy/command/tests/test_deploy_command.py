@@ -166,9 +166,8 @@ def test_command_execute_on_row(simple_store, cli_runner, work_dir):
     dataset.save()
 
     def get_dataset_filenumbers():
-        dataset.refresh()
         row = next(dataset.rows())
-        return sorted(int(i.path) for i in row.unresolved)
+        return sorted(int(i.path) for i in row.entries)
 
     assert get_dataset_filenumbers() == filenumbers
 

@@ -59,7 +59,6 @@ class DataCell:
             entry = self.row.dataset.store.post(
                 item=item, path=self.column.name, datatype=self.datatype, row=self.row
             )
-            self.row.entries[entry.path] = entry
             self.entry = entry
         else:
             self.entry.item = item

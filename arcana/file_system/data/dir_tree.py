@@ -55,7 +55,7 @@ class DirTree(DataStore):
     METADATA_DIR = ".arcana"
     SITE_LICENSES_DIR = "site-licenses"
 
-    name: str = "file"  # Name is constant, as there is only ever one store, which covers whole FS
+    name: str = "tree"  # Name is constant, as there is only ever one store, which covers whole FS
 
     def save_dataset_definition(self, dataset_id, definition, name):
         definition_path = self.definition_save_path(dataset_id, name)

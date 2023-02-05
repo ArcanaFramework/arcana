@@ -39,7 +39,9 @@ class DataRow:
     children: ty.DefaultDict[
         DataSpace, dict[ty.Union[str, tuple[str]], str]
     ] = attrs.field(factory=lambda: defaultdict(dict), repr=False)
-    _entries: dict[str, DataEntry] = attrs.field(default=None, init=False, repr=False)
+    _entries_dict: dict[str, DataEntry] = attrs.field(
+        default=None, init=False, repr=False
+    )
     _cells: dict[str, DataCell] = attrs.field(factory=dict, init=False, repr=False)
 
     def __getitem__(self, column_name: str) -> DataType:
@@ -94,9 +96,10 @@ class DataRow:
 
     @property
     def entries(self) -> ty.Iterable[DataEntry]:
-        if self._entries is None:
+        if self._entries_dict is None:
+            self._entries_dict = {}
             self.dataset.store.populate_row(self)
-        return self._entries
+        return self._entries_dict.values()
 
     def __repr__(self):
         return f"{type(self).__name__}(id={self.id}, frequency={self.frequency})"
@@ -195,8 +198,8 @@ class DataRow:
         checksums : dict[str, str], optional
             checksums for all of the files in the data entry
         """
-        if self._entries is None:
-            self._entries = {}
+        if self._entries_dict is None:
+            self._entries_dict = {}
         entry = DataEntry(
             path=path,
             datatype=datatype,
@@ -207,12 +210,12 @@ class DataRow:
             quality=quality,
             checksums=checksums,
         )
-        if path in self._entries:
+        if path in self._entries_dict:
             raise KeyError(
-                f"Attempting to add multiple entries with the same ID ('{path}') to "
-                f"{self}, {self._entries[path]} and {entry}"
+                f"Attempting to add multiple entries with the same path, '{path}', to "
+                f"{self}, {self._entries_dict[path]} and {entry}"
             )
-        self._entries[path] = entry
+        self._entries_dict[path] = entry
         return entry
 
 

@@ -36,7 +36,7 @@ class FlatDir(DataStore):
     """
 
     server: str = None  # Not used, just there to test `arcana store add` CLI
-    name: str = None
+    name: str = "flat"
     user: str = None  # Not used, just there to test `arcana store add` CLI
     password: str = None  # Not used, just there to test `arcana store add` CLI
     cache_dir: Path = attrs.field(
@@ -85,7 +85,6 @@ class FlatDir(DataStore):
             row.add_entry(
                 path=entry_path.name,
                 datatype=datatype,
-                row=row,
                 uri=entry_path,
             )
 
