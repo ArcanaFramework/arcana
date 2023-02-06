@@ -59,7 +59,13 @@ class FlatDir(DataStore):
         dataset : Dataset
             The dataset to populate with rows
         """
-        for row_dir in self.iterdir(Path(tree.dataset_id) / self.LEAVES_DIR):
+        leaves_dir = Path(tree.dataset_id) / self.LEAVES_DIR
+        if not leaves_dir.exists():
+            raise RuntimeError(
+                f"Leaves dir {leaves_dir} for flat-dir data store doesn't exist, which "
+                "means it hasn't been initialised properly"
+            )
+        for row_dir in self.iterdir(leaves_dir):
             ids = self.get_ids_from_row_dirname(row_dir)
             tree.add_leaf([ids[str(h)] for h in tree.hierarchy])
 

@@ -427,44 +427,45 @@ class Dataset:
         ArcanaNameError
             If there is no row corresponding to the given ids
         """
-        # Parse str to row_frequency enums
-        if not row_frequency:
-            if id is not None:
-                raise ArcanaUsageError(f"Root rows don't have any IDs ({id})")
-            return self.root
-        row_frequency = self.parse_frequency(row_frequency)
-        if id_kwargs:
-            if id is not None:
-                raise ArcanaUsageError(
-                    f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
-                    f"provided to `row` method of {self}"
-                )
-            # Iterate through the tree to find the row (i.e. tree node) matching the
-            # provided IDs
-            row = self.root
-            for freq, id in id_kwargs.items():
+        with self.cache:
+            # Parse str to row_frequency enums
+            if not row_frequency:
+                if id is not None:
+                    raise ArcanaUsageError(f"Root rows don't have any IDs ({id})")
+                return self.root
+            row_frequency = self.parse_frequency(row_frequency)
+            if id_kwargs:
+                if id is not None:
+                    raise ArcanaUsageError(
+                        f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
+                        f"provided to `row` method of {self}"
+                    )
+                # Iterate through the tree to find the row (i.e. tree node) matching the
+                # provided IDs
+                row = self.root
+                for freq, id in id_kwargs.items():
+                    try:
+                        children_dict = row.children[self.space[freq]]
+                    except KeyError as e:
+                        raise ArcanaNameError(
+                            freq, f"{freq} is not a child row_frequency of {row}"
+                        ) from e
+                    try:
+                        row = children_dict[id]
+                    except KeyError as e:
+                        raise ArcanaNameError(
+                            id, f"{id} ({freq}) not a child row of {row}"
+                        ) from e
+                return row
+            else:
                 try:
-                    children_dict = row.children[self.space[freq]]
+                    return self.root.children[row_frequency][id]
                 except KeyError as e:
                     raise ArcanaNameError(
-                        freq, f"{freq} is not a child row_frequency of {row}"
+                        id,
+                        f"{id} not present in data tree "
+                        f"({list(self.row_ids(row_frequency))})",
                     ) from e
-                try:
-                    row = children_dict[id]
-                except KeyError as e:
-                    raise ArcanaNameError(
-                        id, f"{id} ({freq}) not a child row of {row}"
-                    ) from e
-            return row
-        else:
-            try:
-                return self.root.children[row_frequency][id]
-            except KeyError as e:
-                raise ArcanaNameError(
-                    id,
-                    f"{id} not present in data tree "
-                    f"({list(self.row_ids(row_frequency))})",
-                ) from e
 
     def rows(self, frequency=None, ids=None):
         """Return all the IDs in the dataset for a given frequency
@@ -482,16 +483,16 @@ class Dataset:
         Sequence[DataRow]
             The sequence of the data row within the dataset
         """
-        root = self.root
-        if frequency is None:
-            return chain(*(d.values() for d in root.children.values()))
-        frequency = self.parse_frequency(frequency)
-        if frequency == self.root_freq:
-            return [root]
-        rows = root.children[frequency].values()
-        if ids is not None:
-            rows = (n for n in rows if n.id in set(ids))
-        return rows
+        with self.cache:
+            if frequency is None:
+                return chain(*(d.values() for d in self.root.children.values()))
+            frequency = self.parse_frequency(frequency)
+            if frequency == self.root_freq:
+                return [self.root]
+            rows = self.root.children[frequency].values()
+            if ids is not None:
+                rows = (n for n in rows if n.id in set(ids))
+            return rows
 
     def row_ids(self, row_frequency):
         """Return all the IDs in the dataset for a given row_frequency
@@ -506,10 +507,11 @@ class Dataset:
         Sequence[str]
             The IDs of the rows
         """
-        row_frequency = self.parse_frequency(row_frequency)
-        if row_frequency == self.root_freq:
-            return [None]
-        return self.root.children[row_frequency].keys()
+        with self.cache:
+            row_frequency = self.parse_frequency(row_frequency)
+            if row_frequency == self.root_freq:
+                return [None]
+            return self.root.children[row_frequency].keys()
 
     def __getitem__(self, name):
         """Return all data items across the dataset for a given source or sink
@@ -636,7 +638,8 @@ class Dataset:
             # FIXME: Should combine the pipelines into a single workflow and
             # dilate the IDs that need to be run when summarising over different
             # data axes
-            pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
+            with self.cache:
+                pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
 
     def parse_frequency(self, freq):
         """Parses the data row_frequency, converting from string if necessary and

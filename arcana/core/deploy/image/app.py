@@ -17,7 +17,6 @@ from arcana.core.utils.serialize import (
     ObjectListConverter,
     ClassResolver,
 )
-from fileformats.generic import Directory
 from ..command.base import ContainerCommand
 from .base import ArcanaImage
 from .components import ContainerAuthor, License, KnownIssue
@@ -404,7 +403,11 @@ class App(ArcanaImage):
 
             f.write("#### Inputs\n")
             tbl_inputs = MarkdownTable(
-                f, "Name", "Data type", "Stored data type default", "Description"
+                f,
+                "Name",
+                "Required data-type",
+                "Default column data-type",
+                "Description",
             )
             if self.command.inputs is not None:
                 for inpt in self.command.inputs:
@@ -418,7 +421,11 @@ class App(ArcanaImage):
 
             f.write("#### Outputs\n")
             tbl_outputs = MarkdownTable(
-                f, "Name", "Data type", "Stored data type default", "Description"
+                f,
+                "Name",
+                "Required data-type",
+                "Default column data-type",
+                "Description",
             )
             if self.command.outputs is not None:
                 for outpt in self.command.outputs:
@@ -487,23 +494,11 @@ class App(ArcanaImage):
     @classmethod
     def _data_format_html(cls, datatype):
 
-        if isinstance(datatype, str):
-            module, name = datatype.split(":")
-            name = name.lower()
-            text = f"{name} (from '{module}' extension)"
-        else:
-            if ext := getattr(datatype, "ext", None):
-                text = f"{datatype.desc} (`.{ext}`)"
-            elif getattr(datatype, "is_dir", None) and datatype is not Directory:
-                text = f"{datatype.desc} (directory)"
-            else:
-                text = datatype.desc
-
-            name = datatype.__name__.lower()
+        datatype_str = datatype.mime_like if not isinstance(datatype, str) else datatype
 
         return (
-            f'<span data-toggle="tooltip" data-placement="bottom" title="{name}" '
-            f'aria-label="{name}">{text}</span>'
+            f'<span data-toggle="tooltip" data-placement="bottom" title="{datatype_str}" '
+            f'aria-label="{datatype_str}">{datatype_str}</span>'
         )
 
     DOCKERFILE_README_TEMPLATE = """

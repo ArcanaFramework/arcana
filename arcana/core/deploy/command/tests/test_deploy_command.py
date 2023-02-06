@@ -79,8 +79,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         fnames = [f[::-1] for f in fnames]
     expected_contents = "\n".join(fnames * duplicates)
     for item in sink:
-        item.get(assume_exists=True)
-        with open(item.fspath) as f:
+        with open(item) as f:
             contents = f.read()
         assert contents == expected_contents
 

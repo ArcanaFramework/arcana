@@ -35,7 +35,7 @@ def test_get_items(dataset: Dataset):
             source_files[source_name] = set(exp.filenames)
     for row in dataset.rows(dataset.leaf_freq):
         for source_name, files in source_files.items():
-            item = row[source_name]
+            item = row[source_name].trim_paths()
             assert set(p.name for p in item.fspaths) == files
 
 

@@ -217,14 +217,14 @@ a test of the YAML join functionality
 |Task|arcana.testing.analysis.tasks:identity_file|
 |Operates on|sample|
 #### Inputs
-|Name|Data type|Stored data type default|Description|
-|----|---------|------------------------|-----------|
-|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the input file|
+|Name|Required data-type|Default column data-type|Description|
+|----|------------------|------------------------|-----------|
+|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|the input file|
 
 #### Outputs
-|Name|Data type|Stored data type default|Description|
-|----|---------|------------------------|-----------|
-|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|<span data-toggle="tooltip" data-placement="bottom" title="text" aria-label="text">text (`.txt`)</span>|the output file|
+|Name|Required data-type|Default column data-type|Description|
+|----|------------------|------------------------|-----------|
+|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|the output file|
 
 #### Parameters
 |Name|Data type|Description|
@@ -337,16 +337,16 @@ a longer description
 |Task|bids:bids_app|
 |Operates on|session|
 #### Inputs
-|Name|Data type|Stored data type default|Description|
-|----|---------|------------------------|-----------|
-|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (from 'fileformats.medimage' extension)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (from 'fileformats.medimage' extension)</span>|T1-weighted anatomical scan|
-|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (from 'fileformats.medimage' extension)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (from 'fileformats.medimage' extension)</span>|T2-weighted anatomical scan|
-|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="niftigzx" aria-label="niftigzx">niftigzx (from 'fileformats.medimage' extension)</span>|<span data-toggle="tooltip" data-placement="bottom" title="dicom" aria-label="dicom">dicom (from 'fileformats.medimage' extension)</span>|functional MRI|
+|Name|Required data-type|Default column data-type|Description|
+|----|------------------|------------------------|-----------|
+|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom" aria-label="medimage/dicom">medimage/dicom</span>|T1-weighted anatomical scan|
+|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom" aria-label="medimage/dicom">medimage/dicom</span>|T2-weighted anatomical scan|
+|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom" aria-label="medimage/dicom">medimage/dicom</span>|functional MRI|
 
 #### Outputs
-|Name|Data type|Stored data type default|Description|
-|----|---------|------------------------|-----------|
-|`mriqc`|<span data-toggle="tooltip" data-placement="bottom" title="directory" aria-label="directory">directory (directory)</span>|<span data-toggle="tooltip" data-placement="bottom" title="directory" aria-label="directory">directory (directory)</span>|MRIQC output directory|
+|Name|Required data-type|Default column data-type|Description|
+|----|------------------|------------------------|-----------|
+|`mriqc`|<span data-toggle="tooltip" data-placement="bottom" title="generic/directory" aria-label="generic/directory">generic/directory</span>|<span data-toggle="tooltip" data-placement="bottom" title="generic/directory" aria-label="generic/directory">generic/directory</span>|MRIQC output directory|
 
 #### Parameters
 |Name|Data type|Description|

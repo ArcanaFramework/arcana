@@ -27,7 +27,7 @@ from arcana.core.analysis.mark import (
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
 from fileformats.text import Plain as Text
 from fileformats.archive import Zip
-from arcana.file_system import FlatDir
+from arcana.file_system import DirTree
 from arcana.core.analysis.salience import (
     CheckStatus,
     ColumnSalience as cs,
@@ -103,7 +103,7 @@ def test_numeric_file2(sample_dir2):
 
 @pytest.fixture
 def test_dataset(source_dir, test_file1, test_file2, test_file3):
-    dataset = FlatDir().new_dataset(
+    dataset = DirTree().new_dataset(
         source_dir, space=Samples, hierarchy=[Samples.sample]
     )
     dataset.add_source("a_column", Text, "file1")
@@ -1494,7 +1494,7 @@ def test_pipeline_overrides():
     assert "['y'] outputs are missing from 'a_pipeline'" in e.value.msg
 
 
-def test_parameter_bounds_validation():
+def test_parameter_bounds_validation(test_dataset):
     @analysis(Samples)
     class A:
         x: Text = column("a reserved attribute", salience=cs.primary)
@@ -1515,7 +1515,7 @@ def test_parameter_bounds_validation():
             return wf.identity.lzout.out_file
 
     with pytest.raises(ValueError) as e:
-        A(dataset=test_dataset, x="file1", a=1, required="choice1")
+        A(dataset=test_dataset, x="a_column", a=1, required="choice1")
 
     assert "Value of 'a' (1) is not within the specified bounds" in str(e.value)
 
@@ -1561,3 +1561,8 @@ def test_parameter_bounds_validation():
             a: int = parameter("bad default", default=100, upper_bound=99)
 
     assert "is higher than upper bound" in str(e.value)
+
+
+def test_test_dataset(test_dataset):
+
+    list(test_dataset["a_column"])
