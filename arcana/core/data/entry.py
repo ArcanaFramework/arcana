@@ -103,7 +103,6 @@ class DataEntry:
     @item.setter
     def item(self, item):
         item = self.datatype(item)
-        item.validate()
         self.row.dataset.store.put(self, item)
 
     @property

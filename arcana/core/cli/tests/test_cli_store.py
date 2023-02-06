@@ -11,7 +11,7 @@ STORE_PASSWORD = "a-password"
 
 def test_store_cli(cli_runner, work_dir):
     test_home_dir = work_dir / "test-arcana-home"
-    store_name = "test-simple"
+    store_name = "test-flat"
     # Create a new home directory so it doesn't conflict with user settings
     with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
         # Add new XNAT configuration

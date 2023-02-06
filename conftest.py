@@ -76,10 +76,10 @@ def build_cache_dir():
 
 
 @pytest.fixture
-def simple_store(work_dir):
-    store = FlatDir(cache_dir=work_dir / "simple-store-cache")
+def flat_dir_store(work_dir):
+    store = FlatDir(cache_dir=work_dir / "flat-dir-store-cache")
     with patch.dict(os.environ, {"ARCANA_HOME": str(work_dir / "arcana-home")}):
-        store.save("simple")
+        store.save("custom-flat")
         yield store
 
 
@@ -365,17 +365,17 @@ def saved_dataset(work_dir):
 
 
 @pytest.fixture(params=GOOD_DATASETS)
-def dirtree_dataset(simple_store, work_dir, request):
+def dirtree_dataset(flat_dir_store, work_dir, request):
     dataset_name = request.param
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_path = work_dir / dataset_name
-    dataset = simple_store.make_test_dataset(blueprint, dataset_path)
+    dataset = flat_dir_store.make_test_dataset(blueprint, dataset_path)
     yield dataset
     # shutil.rmtree(dataset.id)
 
 
 @pytest.fixture
-def saved_dirtree_dataset(simple_store, work_dir):
+def saved_dirtree_dataset(flat_dir_store, work_dir):
     blueprint = TestDatasetBlueprint(
         hierarchy=[
             TDS.abcd
@@ -384,7 +384,7 @@ def saved_dirtree_dataset(simple_store, work_dir):
         files=["file1.txt", "file2.txt"],
     )
     dataset_path = work_dir / "saved-dataset"
-    dataset = simple_store.make_test_dataset(blueprint, dataset_path)
+    dataset = flat_dir_store.make_test_dataset(blueprint, dataset_path)
     dataset.save()
     return dataset
 
