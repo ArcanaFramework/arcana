@@ -36,8 +36,7 @@ def test_get_items(dataset: Dataset):
     for row in dataset.rows(dataset.leaf_freq):
         for source_name, files in source_files.items():
             item = row[source_name]
-            item.get()
-            assert set(os.path.basename(p) for p in item.fspaths) == files
+            assert set(p.name for p in item.fspaths) == files
 
 
 def test_put_items(dataset: Dataset):
