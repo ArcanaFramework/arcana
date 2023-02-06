@@ -12,7 +12,7 @@ from arcana.core.cli.deploy import (
     make_app,
     make_docs,
 )
-from arcana.core.utils.testing import show_cli_trace
+from arcana.core.utils.misc import show_cli_trace
 from arcana.core.exceptions import ArcanaBuildError
 
 
@@ -179,7 +179,7 @@ info_url: https://example.com
 description: >-
   a test of the YAML join functionality
 command:
-  task: arcana.core.utils.testing.tasks:identity_file
+  task: arcana.testing.analysis.tasks:identity_file
   row_frequency: common:Samples[sample]
   inputs:
     in_file:
@@ -214,7 +214,7 @@ a test of the YAML join functionality
 ## Command
 |Key|Value|
 |---|-----|
-|Task|arcana.core.utils.testing.tasks:identity_file|
+|Task|arcana.testing.analysis.tasks:identity_file|
 |Operates on|sample|
 #### Inputs
 |Name|Data type|Stored data type default|Description|

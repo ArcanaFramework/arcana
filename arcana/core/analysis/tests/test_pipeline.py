@@ -3,9 +3,9 @@ import tempfile
 from pathlib import Path
 from fileformats.text import Plain as Text
 from fileformats.archive import Zip
-from arcana.core.utils.testing.space import TestDataSpace
+from arcana.testing.data.space import TestDataSpace
 from conftest import TEST_DATASET_BLUEPRINTS
-from arcana.core.utils.testing.tasks import concatenate
+from arcana.testing.analysis.tasks import concatenate
 
 
 def test_pipeline(simple_store, work_dir):

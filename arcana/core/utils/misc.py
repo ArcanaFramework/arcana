@@ -2,6 +2,7 @@ from __future__ import annotations
 import subprocess as sp
 import typing as ty
 import re
+import traceback
 import difflib
 from itertools import zip_longest
 from pathlib import Path, PosixPath
@@ -614,6 +615,11 @@ def dict_diff(dict1, dict2, label1="dict1", label2="dict2"):
         lineterm="\n",
     )
     return "\n".join(diff)
+
+
+def show_cli_trace(result):
+    "Used in testing to show traceback of CLI output"
+    return "".join(traceback.format_exception(*result.exc_info))
 
 
 # Minimum version of Arcana that this version can read the serialisation from

@@ -4,7 +4,7 @@ from unittest.mock import patch
 from pathlib import Path
 import docker
 import docker.errors
-from arcana.core.utils.testing import show_cli_trace
+from arcana.core.utils.misc import show_cli_trace
 from arcana.core.cli.deploy import make_app, install_license
 from arcana.core.deploy.image import App
 from arcana.core.data.set import Dataset
@@ -175,7 +175,7 @@ def get_pipeline_image(license_path) -> App:
             }
         },
         command={
-            "task": "arcana.core.utils.testing.tasks:check_license",
+            "task": "arcana.testing.analysis.tasks:check_license",
             "row_frequency": "core:Samples[sample]",
             "inputs": [
                 {

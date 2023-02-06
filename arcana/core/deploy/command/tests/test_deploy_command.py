@@ -2,11 +2,11 @@ from functools import reduce
 from operator import mul
 import pytest
 from arcana.core.data.store import TestDatasetBlueprint
-from arcana.core.utils.testing.space import (
+from arcana.testing.data.space import (
     TestDataSpace,
 )
 from fileformats.text import Plain as Text
-from arcana.core.utils.testing.fileformats import EncodedText
+from fileformats.testing import EncodedText
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.core.exceptions import ArcanaDataMatchError
 
@@ -17,7 +17,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
     duplicates = 1
 
     command_spec = ContainerCommand(
-        task="arcana.core.utils.testing.tasks:" + concatenate_task.__name__,
+        task="arcana.testing.analysis.tasks:" + concatenate_task.__name__,
         row_frequency=bp.space.default(),
         inputs=[
             {
@@ -91,7 +91,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
     duplicates = 1
 
     command_spec = ContainerCommand(
-        task="arcana.core.utils.testing.tasks:" + concatenate_task.__name__,
+        task="arcana.testing.analysis.tasks:" + concatenate_task.__name__,
         row_frequency=bp.space.default(),
         inputs=[
             {
@@ -172,7 +172,7 @@ def test_command_execute_on_row(simple_store, cli_runner, work_dir):
     assert get_dataset_filenumbers() == filenumbers
 
     command_spec = ContainerCommand(
-        task="arcana.core.utils.testing.tasks:plus_10_to_filenumbers",
+        task="arcana.testing.analysis.tasks:plus_10_to_filenumbers",
         row_frequency=bp.space.default(),
         inputs=[
             {
@@ -212,12 +212,12 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     command_spec = ContainerCommand(
-        task="arcana.core.utils.testing.tasks:identity_file",
+        task="arcana.testing.analysis.tasks:identity_file",
         row_frequency=bp.space.default(),
         inputs=[
             {
                 "name": "source",
-                "datatype": "arcana.core.utils.testing:EncodedText",
+                "datatype": "testing:EncodedText",
                 "default_column": {"datatype": "fileformats.text:Plain"},
                 "field": "in_file",
                 "help_string": "dummy",
@@ -226,14 +226,14 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "arcana.core.utils.testing:EncodedText",
+                "datatype": "testing:EncodedText",
                 "field": "out",
                 "help_string": "dummy",
             },
             {
                 "name": "sink2",
-                "datatype": "arcana.core.utils.testing:EncodedText",
-                "default_column": {"datatype": "arcana.core.utils.testing:DecodedText"},
+                "datatype": "testing:EncodedText",
+                "default_column": {"datatype": "testing:DecodedText"},
                 "field": "out",
                 "help_string": "dummy",
             },

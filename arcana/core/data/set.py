@@ -2,16 +2,16 @@ from __future__ import annotations
 import logging
 import typing as ty
 from pathlib import Path
-from itertools import chain
 import shutil
+from itertools import chain
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
 
-from fileformats.core.exceptions import FileFormatsError
 from fileformats.generic import File
 from arcana.core.utils.serialize import asdict
 from arcana.core.exceptions import (
+    ArcanaDataMatchError,
     ArcanaLicenseNotFoundError,
     ArcanaNameError,
     ArcanaUsageError,
@@ -25,6 +25,7 @@ from .tree import DataTree
 
 if ty.TYPE_CHECKING:
     from ..deploy.image.components import License
+    from .entry import DataEntry
 
 logger = logging.getLogger("arcana")
 
@@ -687,66 +688,70 @@ class Dataset:
             raised if the license of the given name isn't present in the project-specific
             location to retrieve
         """
+        from arcana.core.deploy.image.components import License
 
         site_licenses_dataset = self.store.site_licenses_dataset()
 
         for lic in licenses:
 
-            license_file = self._get_license_file(lic.name)
-
+            missing = False
             try:
-                lic_fspath = license_file.fspaths[0]
-            except FileFormatsError:
-                missing = False
+                license_file = self._get_license_file(lic.name)
+            except ArcanaDataMatchError:
                 if site_licenses_dataset is not None:
-                    license_file = self._get_license_file(
-                        lic.name, dataset=site_licenses_dataset
-                    )
                     try:
-                        lic_fspath = license_file.fspaths[0]
-                    except FileFormatsError:
+                        license_file = self._get_license_file(
+                            lic.name, dataset=site_licenses_dataset
+                        )
+                    except ArcanaDataMatchError:
                         missing = True
                 else:
                     missing = True
-                if missing:
-                    msg = (
-                        f"Did not find a license corresponding to '{lic.name}' at "
-                        f"{License.column_name(lic.name)} in {self}"
-                    )
-                    if site_licenses_dataset:
-                        msg += f" or {site_licenses_dataset}"
-                    raise ArcanaLicenseNotFoundError(
-                        lic.name,
-                        msg,
-                    )
-            shutil.copyfile(lic_fspath, lic.destination)
+            if missing:
+                msg = (
+                    f"Did not find a license corresponding to '{lic.name}' at "
+                    f"{License.column_path(lic.name)} in {self}"
+                )
+                if site_licenses_dataset:
+                    msg += f" or {site_licenses_dataset}"
+                raise ArcanaLicenseNotFoundError(
+                    lic.name,
+                    msg,
+                )
+            shutil.copyfile(license_file, lic.destination)
 
-    def install_license(self, name, source_file):
+    def install_license(self, name: str, source_file: File):
         """Store project-specific license in dataset
 
         Parameters
         ----------
         name : str
             name of the license to install
-        source_file : Path
+        source_file : File
             path to the license file to install
         """
-        license_file = self._get_license_file(name)
-        license_file.put(source_file)
+        from arcana.core.deploy.image.components import License
 
-    def _get_license_file(self, lic_name, dataset=None):
+        self.store.post(
+            item=File(source_file),
+            path=License.column_path(name),
+            datatype=File,
+            row=self.root,
+        )
+
+    def _get_license_file(self, name, dataset=None) -> DataEntry:
         from arcana.core.deploy.image.components import License
 
         if dataset is None:
             dataset = self
-        license_column = DataSink(
-            f"{lic_name}_license",
-            License.column_path(lic_name),
-            File,
+        column = DataSink(
+            name=f"{name}_license",
+            datatype=File,
             row_frequency=self.root_freq,
             dataset=dataset,
+            path=License.column_path(name),
         )
-        return license_column.match(dataset.root)
+        return File(column.entry(dataset.root).item)
 
 
 @attrs.define

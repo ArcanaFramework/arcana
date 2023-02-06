@@ -11,7 +11,7 @@ from arcana.core.data.row import DataRow
 from arcana.core.data.tree import DataTree
 from arcana.core.data.entry import DataEntry
 from arcana.core.data.space import DataSpace
-from ...core.utils.testing.space import TestDataSpace
+from arcana.testing.data.space import TestDataSpace
 from arcana.core.exceptions import DatatypeUnsupportedByStoreError
 
 
@@ -207,7 +207,7 @@ class FlatDir(DataStore):
         if not dataset_root.exists():
             (dataset_root / self.LEAVES_DIR).mkdir(parents=True)
         try:
-            dataset = self.load_dataset_definition(dataset_root)
+            dataset = self.load_dataset_definition(dataset_root, name="site_licenses")
         except KeyError:
             dataset = self.new_dataset(dataset_root, space=TestDataSpace)
         return dataset
@@ -311,4 +311,4 @@ class FlatDir(DataStore):
             row_path.mkdir(parents=True)
             for fname in blueprint.files:
                 cell_path = row_path / fname.split(".")[0]
-                self.create_test_data_item(fname, cell_path, source_data=source_data)
+                self.create_test_fsobject(fname, cell_path, source_data=source_data)

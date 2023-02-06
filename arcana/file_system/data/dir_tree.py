@@ -55,7 +55,7 @@ class DirTree(DataStore):
     METADATA_DIR = ".arcana"
     SITE_LICENSES_DIR = "site-licenses"
 
-    name: str = "tree"  # Name is constant, as there is only ever one store, which covers whole FS
+    name: str = "file"  # Name is constant, as there is only ever one store, which covers whole FS
 
     def save_dataset_definition(self, dataset_id, definition, name):
         definition_path = self.definition_save_path(dataset_id, name)
@@ -354,7 +354,7 @@ class DirTree(DataStore):
             dpath = dataset_path.joinpath(*[ids[h] for h in blueprint.hierarchy])
             dpath.mkdir(parents=True)
             for fname in blueprint.files:
-                self.create_test_data_item(fname, dpath, source_data=source_data)
+                self.create_test_fsobject(fname, dpath, source_data=source_data)
 
     def definition_save_path(self, dataset_id, name):
         return Path(dataset_id) / self.METADATA_DIR / (name + ".yaml")

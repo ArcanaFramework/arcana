@@ -4,7 +4,7 @@ import attrs
 import pytest
 import pydra
 from arcana.core.data import Samples
-from arcana.core.utils.testing.tasks import (
+from arcana.testing.analysis.tasks import (
     concatenate,
     concatenate_reverse,
     multiply_contents,

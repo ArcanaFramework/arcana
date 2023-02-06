@@ -18,7 +18,7 @@ if ty.TYPE_CHECKING:
     from .set import Dataset
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class DataColumn(metaclass=ABCMeta):
 
     name: str
@@ -145,7 +145,7 @@ class DataColumn(metaclass=ABCMeta):
 
     def _error_msg(self, row: DataRow, matches: list[DataEntry]) -> str:
         return (
-            f" attempting to select an item for the '{self.name}' column"
+            f", when attempting to match an entry to the '{self.name}' column "
             f"in the '{row.id}' {row.frequency} row\n\n  Found:"
             + self._format_matches(matches)
             + self.format_criteria()
@@ -162,7 +162,7 @@ class DataColumn(metaclass=ABCMeta):
         return out_str
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class DataSource(DataColumn):
     """
     Specifies the criteria by which an item is selected from a data row to
@@ -170,15 +170,20 @@ class DataSource(DataColumn):
 
     Parameters
     ----------
+    name: str
+        the name of the column
+    datatype : type
+        the data type of items in the column
+    row_frequency : DataSpace
+        the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
+        ``Clinical`` data spce the row frequency can be per 'session', 'subject',
+        'timepoint', 'group', 'dataset', et...
+    dataset: Dataset
+        the dataset the column belongs to
     path : str
         A regex name_path to match the fileset names with. Must match
         one and only one fileset per <row_frequency>. If None, the name
         is used instead.
-    datatype : type
-        File format that data will be
-    row_frequency : DataSpace
-        The row_frequency of the file-set within the dataset tree, e.g. per
-        'session', 'subject', 'timepoint', 'group', 'dataset'
     quality_threshold : DataQuality
         The acceptable quality (or above) that should be considered. Data items
         will be considered missing
@@ -271,7 +276,7 @@ class DataSource(DataColumn):
             return super().select_entry_from_matches(row, matches)
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class DataSink(DataColumn):
     """
     A specification for a file set within a analysis to be derived from a
@@ -279,15 +284,20 @@ class DataSink(DataColumn):
 
     Parameters
     ----------
-    path : str
-        The path to the relative location the corresponding data items will be
-        stored within the rows of the data tree.
+    name: str
+        the name of the column
     datatype : type
-        The file datatype or data type used to store the corresponding items
-        in the store dataset.
+        the data type of items in the column
     row_frequency : DataSpace
-        The row_frequency of the file-set within the dataset tree, e.g. per
-        'session', 'subject', 'timepoint', 'group', 'dataset'
+        the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
+        ``Clinical`` data spce the row frequency can be per 'session', 'subject',
+        'timepoint', 'group', 'dataset', et...
+    dataset: Dataset
+        the dataset the column belongs to
+    path : str
+        A regex name_path to match the fileset names with. Must match
+        one and only one fileset per <row_frequency>. If None, the name
+        is used instead.
     salience : Salience
         The salience of the specified file-set, i.e. whether it would be
         typically of interest for publication outputs or whether it is just
@@ -297,7 +307,7 @@ class DataSink(DataColumn):
         for the sink
     """
 
-    path = attrs.field()
+    path = attrs.field()  # i.e. make mandatory
     salience: ColumnSalience = attrs.field(
         default=ColumnSalience.supplementary,
         converter=lambda s: ColumnSalience[str(s)] if s is not None else None,

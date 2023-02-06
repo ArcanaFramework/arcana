@@ -477,9 +477,9 @@ class DataStore(metaclass=ABCMeta):
         )
 
     @classmethod
-    def create_test_data_item(cls, fname: str, dpath: Path, source_data: Path = None):
-        """For use in test routines, this classmethod creates a simple text file
-        or nested directory at the given path
+    def create_test_fsobject(cls, fname: str, dpath: Path, source_data: Path = None):
+        """For use in test routines, this classmethod creates a simple text file,
+        zip file or nested directory at the given path
 
         Parameters
         ----------
@@ -502,36 +502,39 @@ class DataStore(metaclass=ABCMeta):
         if source_data is not None:
             src_path = source_data.joinpath(*fname.split("/"))
             parts = fname.split(".")
-            fpath = dpath / (path2varname(parts[0]) + "." + ".".join(parts[1:]))
-            fpath.parent.mkdir(exist_ok=True)
+            out_path = dpath / (path2varname(parts[0]) + "." + ".".join(parts[1:]))
             if src_path.is_dir():
-                shutil.copytree(src_path, fpath)
+                shutil.copytree(src_path, out_path)
             else:
-                shutil.copyfile(src_path, fpath, follow_symlinks=True)
+                shutil.copyfile(src_path, out_path, follow_symlinks=True)
         else:
+            out_path = dpath / fname
             next_part = fname
             if next_part.endswith(".zip"):
                 next_part = next_part.strip(".zip")
-            fpath = Path(next_part)
+            next_path = Path(next_part)
             # Make double dir
             if next_part.startswith("doubledir"):
-                (dpath / fpath).mkdir(exist_ok=True)
+                (dpath / next_path).mkdir(exist_ok=True)
                 next_part = "dir"
-                fpath /= next_part
+                next_path /= next_part
             if next_part.startswith("dir"):
-                (dpath / fpath).mkdir(exist_ok=True)
+                (dpath / next_path).mkdir(exist_ok=True)
                 next_part = "test.txt"
-                fpath /= next_part
-            if not fpath.suffix:
-                fpath = fpath.with_suffix(".txt")
-            with open(dpath / fpath, "w") as f:
-                f.write(f"{fname}")
+                next_path /= next_part
+            if not next_path.suffix:
+                next_path = next_path.with_suffix(".txt")
+            if next_path.suffix == ".json":
+                contents = '{"a": 1.0}'
+            else:
+                contents = fname
+            with open(dpath / next_path, "w") as f:
+                f.write(contents)
             if fname.endswith(".zip"):
-                with zipfile.ZipFile(dpath / fname, mode="w") as zfile, set_cwd(dpath):
-                    zfile.write(fpath)
-                (dpath / fpath).unlink()
-                fpath = Path(fname)
-        return fpath
+                with zipfile.ZipFile(out_path, mode="w") as zfile, set_cwd(dpath):
+                    zfile.write(next_path)
+                (dpath / next_path).unlink()
+        return out_path
 
     def make_test_dataset(
         self,

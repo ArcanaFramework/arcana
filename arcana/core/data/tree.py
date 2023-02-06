@@ -208,5 +208,5 @@ class DataTree(NestedContext):
 
     def _set_root(self):
         self.root = DataRow(
-            {self.dataset.root_freq: None}, self.dataset.root_freq, self
+            {self.dataset.root_freq: None}, self.dataset.root_freq, self.dataset
         )

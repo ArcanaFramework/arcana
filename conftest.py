@@ -11,7 +11,7 @@ from click.testing import CliRunner
 from fileformats.generic import Directory
 from fileformats.text import Plain as Text
 from fileformats.serialization import Json
-from arcana.core.utils.testing.fileformats import (
+from fileformats.testing import (
     MyFormatGz,
     MyFormatGzX,
     MyFormatX,
@@ -19,7 +19,7 @@ from arcana.core.utils.testing.fileformats import (
     ImageWithHeader,
     YourFormat,
 )
-from arcana.core.utils.testing.tasks import (
+from arcana.testing.analysis.tasks import (
     add,
     path_manip,
     attrs_func,
@@ -34,8 +34,8 @@ from arcana.core.data.store import (
     DerivBlueprint,
     ExpDatatypeBlueprint,
 )
-from arcana.core.utils.testing.space import TestDataSpace as TDS
-from arcana.core.utils.testing.fileformats import Xyz
+from arcana.testing.data.space import TestDataSpace as TDS
+from fileformats.testing import Xy
 from arcana.file_system import DirTree, FlatDir
 
 
@@ -225,8 +225,8 @@ TEST_DATASET_BLUEPRINTS = {
             DerivBlueprint(
                 name="deriv2",
                 row_frequency=TDS.bc,
-                datatype=Xyz,
-                filenames=["file1.x", "file1.y", "file1.z"],
+                datatype=Xy,
+                filenames=["file1.x", "file1.y"],
             ),
             DerivBlueprint(
                 name="deriv3",
@@ -293,9 +293,7 @@ TEST_DATASET_BLUEPRINTS = {
                 ExpDatatypeBlueprint(datatype=Directory, filenames=["doubledir"])
             ],
             "file1": [
-                ExpDatatypeBlueprint(
-                    datatype=Xyz, filenames=["file1.x", "file1.y", "file1.z"]
-                )
+                ExpDatatypeBlueprint(datatype=Xy, filenames=["file1.x", "file1.y"])
             ],
         },
         derivatives=[
@@ -412,7 +410,7 @@ def concatenate_task(request):
 @pytest.fixture(scope="session")
 def command_spec():
     return {
-        "task": "arcana.core.utils.testing.tasks:concatenate",
+        "task": "arcana.testing.analysis.tasks:concatenate",
         "inputs": {
             "first_file": {
                 "datatype": "fileformats.text:Plain",

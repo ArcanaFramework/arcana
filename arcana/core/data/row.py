@@ -44,6 +44,13 @@ class DataRow:
     )
     _cells: dict[str, DataCell] = attrs.field(factory=dict, init=False, repr=False)
 
+    @dataset.validator
+    def dataset_validator(self, _, dataset):
+        from .set import Dataset
+
+        if not isinstance(dataset, Dataset):
+            raise ValueError(f"provided dataset {dataset} is not of type {Dataset}")
+
     def __getitem__(self, column_name: str) -> DataType:
         """Gets the item for the current row
 
