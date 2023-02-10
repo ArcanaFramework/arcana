@@ -27,7 +27,7 @@ from arcana.core.analysis.mark import (
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
 from fileformats.text import Plain as Text
 from fileformats.archive import Zip
-from arcana.file_system import DirTree
+from arcana.file_system import DirTree, FlatDir
 from arcana.core.analysis.salience import (
     CheckStatus,
     ColumnSalience as cs,
@@ -129,7 +129,7 @@ def Concat():
     @analysis(Samples)
     class _Concat:
 
-        file1: Zip = column("an arbitrary text file", salience=cs.primary)
+        file1: Zip[Text] = column("an arbitrary text file", salience=cs.primary)
         file2: Text = column("another arbitrary text file", salience=cs.primary)
         concatenated: Text = column("the output of concatenating file1 and file2")
 
@@ -404,7 +404,7 @@ def test_analysis_basic(Concat, test_file1, test_file2, test_dataset):
     assert duplicates.defined_in == (Concat,)
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip
+    assert file1.type is Zip[Text]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     assert file1.defined_in == (Concat,)
@@ -494,7 +494,7 @@ def test_analysis_extended(
     assert duplicates.modified == ((("default", 2),),)
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip
+    assert file1.type is Zip[Text]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     assert file1.defined_in == (Concat,)
@@ -614,7 +614,7 @@ def test_analysis_with_check(
     assert duplicates.defined_in == (Concat,)
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip
+    assert file1.type is Zip[Text]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     assert file1.defined_in == (Concat,)
@@ -705,7 +705,7 @@ def test_analysis_override(
     assert list(analysis_spec.subanalysis_names) == []
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip
+    assert file1.type is Zip[Text]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     assert file1.defined_in == (Concat,)
@@ -816,7 +816,7 @@ def test_analysis_switch(
     assert list(analysis_spec.subanalysis_names) == []
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip
+    assert file1.type is Zip[Text]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     assert file1.defined_in == (Concat,)
@@ -952,7 +952,7 @@ def test_analysis_with_subanalyses(
     # assert common_duplicates.defined_in == (ConcatWithSubanalyses,)
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip
+    assert file1.type is Zip[Text]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     # assert file1.defined_in == (Concat,)
@@ -1087,14 +1087,14 @@ def test_analysis_with_nested_subanalyses(
     # assert common_duplicates.defined_in == (ConcatWithSubanalyses,)
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip
+    assert file1.type is Zip[Text]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     # assert file1.defined_in == (Concat,)
     assert file1.mapped_from == ("basic_sub", "file1")
 
     file2 = analysis_spec.column_spec("file2")
-    assert file2.type is Zip
+    assert file2.type is Zip[Text]
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
     # assert file2.defined_in == (Concat,)
@@ -1283,7 +1283,7 @@ def test_change_of_type_errors():
 
         @analysis(Samples)
         class B(A):
-            x: Zip = inherit()
+            x: Zip[Text] = inherit()
 
     assert "Cannot change datatype" in e.value.msg
 
