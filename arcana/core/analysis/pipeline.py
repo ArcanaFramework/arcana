@@ -308,8 +308,8 @@ class Pipeline:
                 logger.info(
                     "Adding implicit conversion for input '%s' " "from %s to %s",
                     inpt.name,
-                    stored_format.class_name(),
-                    inpt.datatype.class_name(),
+                    stored_format.mime_like,
+                    inpt.datatype.mime_like,
                 )
                 converter.inputs.in_file = sourced.pop(inpt.name)
                 if issubclass(source_out_dct[inpt.name], ty.Sequence):
@@ -385,8 +385,8 @@ class Pipeline:
                 logger.info(
                     "Adding implicit conversion for output '%s' " "from %s to %s",
                     outpt.name,
-                    outpt.datatype.class_name(),
-                    stored_format.class_name(),
+                    outpt.datatype.mime_like,
+                    stored_format.mime_like,
                 )
                 # Insert converter
                 converter.inputs.in_file = to_sink.pop(sink_name)

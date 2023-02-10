@@ -45,12 +45,12 @@ in the ``desc`` keyword arg.
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
 
-        recorded_datafile: Zip  = column(
+        recorded_datafile: Zip[Text]  = column(
             desc=("Datafile acquired from an example scanner. Contains key "
                   "data to analyse"))
         recorded_metadata: Json = column(
             desc="Metadata accompanying the recorded data")
-        preprocessed: Zip = column(
+        preprocessed: Zip[Text] = column(
             desc="Preprocessed data file, corrected for distortions")
         derived_image: Png = column(
             desc="Map of the processed data")
@@ -439,7 +439,7 @@ the ``reverse_concat_pipeline`` by setting the value of the ``order`` parameter.
     class OverridenConcat(Concat):
 
         # Source columns
-        file1: Zip = inherit()
+        file1: Zip[Text] = inherit()
         file2: Text = inherit()
 
         # Sinks columns
@@ -490,7 +490,7 @@ determined by the ``inputs_are_numeric`` switch.
     class ConcatWithSwitch(Concat):
 
         # Source columns
-        file1: Zip = inherit()
+        file1: Zip[Text] = inherit()
         file2: Text = inherit()
 
         # Sink columns
