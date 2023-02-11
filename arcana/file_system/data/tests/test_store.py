@@ -1,7 +1,4 @@
-import os
-import os.path
 from tempfile import mkdtemp
-import hashlib
 from pathlib import Path
 import operator as op
 from functools import reduce

@@ -35,7 +35,7 @@ from arcana.core.data.store import (
     ExpDatatypeBlueprint,
 )
 from arcana.testing.data.space import TestDataSpace as TDS
-from fileformats.testing import Xy
+from fileformats.testing import Xyz
 from arcana.file_system import DirTree, FlatDir
 
 
@@ -225,8 +225,8 @@ TEST_DATASET_BLUEPRINTS = {
             DerivBlueprint(
                 name="deriv2",
                 row_frequency=TDS.bc,
-                datatype=Xy,
-                filenames=["file1.x", "file1.y"],
+                datatype=Xyz,
+                filenames=["file1.x", "file1.y", "file1.z"],
             ),
             DerivBlueprint(
                 name="deriv3",
@@ -293,7 +293,9 @@ TEST_DATASET_BLUEPRINTS = {
                 ExpDatatypeBlueprint(datatype=Directory, filenames=["doubledir"])
             ],
             "file1": [
-                ExpDatatypeBlueprint(datatype=Xy, filenames=["file1.x", "file1.y"])
+                ExpDatatypeBlueprint(
+                    datatype=Xyz, filenames=["file1.x", "file1.y", "file1.z"]
+                )
             ],
         },
         derivatives=[
