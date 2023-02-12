@@ -27,7 +27,8 @@ class DataTree(NestedContext):
     root: DataRow = None
 
     def enter(self):
-        self.root is None
+        assert self.root is None
+        self._set_root()
         self.dataset.store.populate_tree(self)
 
     def exit(self):
