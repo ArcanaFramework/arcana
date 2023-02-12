@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "arcana"
 description = "Abstraction of Repository-Centric ANAlysis (Arcana): A rramework for analysing on file-based datasets \"in-place\" (i.e. without manual download)"
 readme = "README.rst"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 dependencies = [
     "attrs>=22.1.0",
     "build >=0.9",
