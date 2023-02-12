@@ -37,6 +37,9 @@ from arcana.core.data.store import (
 from arcana.testing.data.space import TestDataSpace as TDS
 from fileformats.testing import Xyz
 from arcana.file_system import DirTree, FlatDir
+from pydra import set_input_validator
+
+set_input_validator(True)
 
 
 # Set DEBUG logging for unittests

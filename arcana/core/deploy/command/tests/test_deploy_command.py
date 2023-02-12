@@ -216,7 +216,7 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source",
-                "datatype": "testing:EncodedText",
+                "datatype": "fileformats.testing:EncodedText",
                 "default_column": {"datatype": "fileformats.text:Plain"},
                 "field": "in_file",
                 "help_string": "dummy",
@@ -225,14 +225,14 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "testing:EncodedText",
+                "datatype": "fileformats.testing:EncodedText",
                 "field": "out",
                 "help_string": "dummy",
             },
             {
                 "name": "sink2",
-                "datatype": "testing:EncodedText",
-                "default_column": {"datatype": "testing:DecodedText"},
+                "datatype": "fileformats.testing:EncodedText",
+                "default_column": {"datatype": "fileformats.text:Plain"},
                 "field": "out",
                 "help_string": "dummy",
             },
@@ -246,7 +246,7 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         ],
         output_values=[
             ("sink1", "encoded"),
-            ("sink2", "decoded converter.shift=3"),
+            ("sink2", "decoded converter.shift=-3"),
         ],
         raise_errors=True,
         plugin="serial",
@@ -265,11 +265,9 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
     for row in saved_dataset.rows(frequency="abcd"):
         enc_item = row["sink1"]
         dec_item = row["sink2"]
-        enc_item.get(assume_exists=True)
-        dec_item.get(assume_exists=True)
-        with open(enc_item.fspath) as f:
+        with open(enc_item) as f:
             enc_contents = f.read()
-        with open(dec_item.fspath) as f:
+        with open(dec_item) as f:
             dec_contents = f.read()
         assert enc_contents == encoded_contents
         assert dec_contents == unencoded_contents

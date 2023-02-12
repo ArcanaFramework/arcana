@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 import attrs
 import typing as ty
 from collections import OrderedDict
@@ -327,7 +328,10 @@ class Pipeline:
             func_task(
                 access_paths_and_values,
                 in_fields=[
-                    (i.name, ty.Union[DataType, arcana.core.data.row.DataRow])
+                    (
+                        i.name,
+                        ty.Union[DataType, arcana.core.data.row.DataRow, os.PathLike],
+                    )
                     for i in self.inputs
                 ],
                 out_fields=[(i.name, ty.Any) for i in self.inputs],
@@ -406,7 +410,10 @@ class Pipeline:
                         ("id", str),
                         ("provenance", ty.Dict[str, ty.Any]),
                     ]
-                    + [(s, DataType) for s in to_sink]
+                    + [
+                        (s, ty.Union[DataType, str, bytes, os.PathLike])
+                        for s in to_sink
+                    ]
                 ),
                 out_fields=[("id", str)],
                 name="sink",
