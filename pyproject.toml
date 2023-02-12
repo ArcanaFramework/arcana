@@ -66,6 +66,7 @@ test = [
     "arcana-testing",
     "codecov",
     "fileformats-testing",
+    "fileformats-medimage",
     "pytest>=5.4.3",
     "pytest-cov>=2.12.1",
     "pytest-env>=0.6.2",
