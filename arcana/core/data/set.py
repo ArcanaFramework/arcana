@@ -754,7 +754,7 @@ class Dataset:
             dataset=dataset,
             path=License.column_path(name),
         )
-        return File(column.entry(dataset.root).item)
+        return File(column.match_entry(dataset.root).item)
 
 
 @attrs.define

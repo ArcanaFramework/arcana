@@ -72,7 +72,7 @@ class DataCell:
         return cls(
             row=row,
             column=column,
-            entry=column.entry(row, allow_none=allow_empty),
+            entry=column.match_entry(row, allow_none=allow_empty),
         )
 
     # @classmethod

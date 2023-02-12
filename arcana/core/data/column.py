@@ -10,11 +10,11 @@ from arcana.core.exceptions import ArcanaDataMatchError
 from ..analysis.salience import ColumnSalience
 from .quality import DataQuality
 from .space import DataSpace
+from .cell import DataCell
 
 if ty.TYPE_CHECKING:
     from .row import DataRow
     from .entry import DataEntry
-    from .cell import DataCell
     from .set import Dataset
 
 
@@ -40,13 +40,21 @@ class DataColumn(metaclass=ABCMeta):
 
     def __iter__(self) -> ty.Iterable[DataType]:
         "Iterator over all items in the column, requires none of the cells to be empty"
-        return (row[self.name] for row in self.dataset.rows(self.row_frequency))
+        return (cell.item for cell in self.cells(allow_empty=False))
 
     def __getitem__(self, id) -> DataType:
-        return self.dataset.row(id=id, row_frequency=self.row_frequency)[self.name]
+        # TODO: could be nice to expand this to be a slice of ids
+        return self.cell(id, allow_empty=False).item
 
     def __len__(self) -> int:
         return len(list(self.dataset.rows(self.row_frequency)))
+
+    def cell(self, id, allow_empty: bool = True) -> DataCell:
+        return DataCell.intersection(
+            self,
+            self.dataset.row(id=id, row_frequency=self.row_frequency),
+            allow_empty=allow_empty,
+        )
 
     def cells(self, allow_empty: bool = None) -> ty.Iterable[DataCell]:
         """Return an iterator over all cells in the column.
@@ -64,7 +72,7 @@ class DataColumn(metaclass=ABCMeta):
             an iterator over all cells in the column
         """
         return (
-            row.cell(self.name, allow_empty=allow_empty)
+            DataCell.intersection(self, row, allow_empty=allow_empty)
             for row in self.dataset.rows(self.row_frequency)
         )
 
@@ -76,9 +84,9 @@ class DataColumn(metaclass=ABCMeta):
     def path(self) -> str:
         return self._path
 
-    def entry(self, row: DataRow, allow_none: bool = False) -> DataEntry:
-        """Selects a single entry from a data row that matches the
-        criteria/path of the column.
+    def match_entry(self, row: DataRow, allow_none: bool = False) -> DataEntry:
+        """Matches a single entry from a data row against the selection criteria
+        defined in the column.
 
         Parameters
         ----------
@@ -332,3 +340,6 @@ class DataSink(DataColumn):
             f"\n    path='{self.path}' "
             f"\n    datatype='{self.datatype}' "
         )
+
+    def __setitem__(self, id, value: DataType):
+        self.cell(id, allow_empty=True).item = value
