@@ -117,9 +117,7 @@ def test_site_runtime_license(license_file, work_dir, cli_runner):
         )
 
 
-def test_dataset_runtime_license(
-    flat_dir_store, license_file, run_prefix, work_dir, cli_runner
-):
+def test_dataset_runtime_license(license_file, run_prefix, work_dir, cli_runner):
 
     # build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
@@ -177,7 +175,7 @@ def get_pipeline_image(license_path) -> App:
             "inputs": [
                 {
                     "name": LICENSE_INPUT_FIELD,
-                    "datatype": "fileformats.generic:File",
+                    "datatype": "fileformats.text:Plain",
                     "field": "expected_license_contents",
                     "help_string": "the path to the license",
                 },
@@ -185,7 +183,7 @@ def get_pipeline_image(license_path) -> App:
             "outputs": [
                 {
                     "name": LICENSE_OUTPUT_FIELD,
-                    "datatype": "fileformats.generic:File",
+                    "datatype": "fileformats.text:Plain",
                     "field": "out",
                     "help_string": "the validated license path",
                 }
@@ -205,7 +203,7 @@ def get_pipeline_image(license_path) -> App:
 
 def make_dataset(dataset_dir) -> Dataset:
 
-    contents_dir = dataset_dir / "sample1" / LICENSE_INPUT_PATH
+    contents_dir = dataset_dir / "sample1"
     contents_dir.mkdir(parents=True)
 
     with open(contents_dir / (LICENSE_INPUT_PATH + ".txt"), "w") as f:
