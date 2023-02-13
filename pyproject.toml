@@ -52,7 +52,9 @@ dev = [
     "flake8-pyproject",
     "pre-commit",
 ]
-doc = [
+
+docs = [
+    "packaging",
     "docutils>=0.10",
     "furo>=2022.2.14.1",
     "mock>1.0",
