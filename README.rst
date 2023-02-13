@@ -12,9 +12,6 @@ Arcana
 .. image:: https://img.shields.io/pypi/v/arcana.svg
    :target: https://pypi.python.org/pypi/arcana/
    :alt: Latest Version
-.. image:: https://img.shields.io/github/stars/ArcanaFramework/arcana.svg?label=github
-   :target: https://github.com/ArcanaFramework/arcana
-   :alt: GitHub   
 .. image:: https://github.com/ArcanaFramework/arcana/actions/workflows/docs.yml/badge.svg
    :target: http://arcana.readthedocs.io/en/latest/?badge=latest
    :alt: Docs
