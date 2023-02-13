@@ -2,18 +2,22 @@ Arcana
 ======
 .. image:: https://github.com/ArcanaFramework/arcana/actions/workflows/tests.yml/badge.svg
    :target: https://github.com/ArcanaFramework/arcana/actions/workflows/tests.yml
+   :alt: Tests
 .. image:: https://codecov.io/gh/ArcanaFramework/arcana/branch/main/graph/badge.svg?token=UIS0OGPST7
    :target: https://codecov.io/gh/ArcanaFramework/arcana
+   :alt: Codecov
 .. image:: https://img.shields.io/pypi/pyversions/arcana.svg
    :target: https://pypi.python.org/pypi/arcana/
-   :alt: Supported Python versions
+   :alt: Python versions
 .. image:: https://img.shields.io/pypi/v/arcana.svg
    :target: https://pypi.python.org/pypi/arcana/
    :alt: Latest Version
-.. image:: https://readthedocs.org/projects/arcana/badge/?version=latest
-  :target: http://arcana.readthedocs.io/en/latest/?badge=latest
-  :alt: Documentation Status
-
+.. image:: https://img.shields.io/github/stars/ArcanaFramework/arcana.svg
+   :target: https://github.com/ArcanaFramework/arcana
+   :alt: GitHub   
+.. image:: https://github.com/ArcanaFramework/arcana/actions/workflows/docs.yml/badge.svg
+   :target: http://arcana.readthedocs.io/en/latest/?badge=latest
+   :alt: Docs
 
 Abstraction of Repository-Centric ANAlysis (Arcana_) is Python framework
 for "repository-centric" analyses of study groups (e.g. NeuroImaging
