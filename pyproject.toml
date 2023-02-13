@@ -52,7 +52,6 @@ dev = [
     "flake8-pyproject",
     "pre-commit",
 ]
-
 docs = [
     "packaging",
     "docutils>=0.10",
