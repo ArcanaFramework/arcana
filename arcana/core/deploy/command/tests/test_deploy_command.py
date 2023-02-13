@@ -2,11 +2,11 @@ from functools import reduce
 from operator import mul
 import pytest
 from arcana.core.data.store import TestDatasetBlueprint
-from arcana.core.utils.testing.data import (
+from arcana.testing.data.space import (
     TestDataSpace,
 )
-from fileformats.common import Text
-from arcana.core.utils.testing.data import EncodedText
+from fileformats.text import Plain as Text
+from fileformats.testing import EncodedText
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.core.exceptions import ArcanaDataMatchError
 
@@ -17,18 +17,18 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
     duplicates = 1
 
     command_spec = ContainerCommand(
-        task="arcana.core.utils.testing.tasks:" + concatenate_task.__name__,
+        task="arcana.testing.analysis.tasks:" + concatenate_task.__name__,
         row_frequency=bp.space.default(),
         inputs=[
             {
                 "name": "source1",
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "in_file1",
                 "help_string": "dummy",
             },
             {
                 "name": "source2",
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "in_file2",
                 "help_string": "dummy",
             },
@@ -36,7 +36,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "out_file",
                 "help_string": "dummy",
             }
@@ -79,8 +79,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         fnames = [f[::-1] for f in fnames]
     expected_contents = "\n".join(fnames * duplicates)
     for item in sink:
-        item.get(assume_exists=True)
-        with open(item.fs_path) as f:
+        with open(item) as f:
             contents = f.read()
         assert contents == expected_contents
 
@@ -91,18 +90,18 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
     duplicates = 1
 
     command_spec = ContainerCommand(
-        task="arcana.core.utils.testing.tasks:" + concatenate_task.__name__,
+        task="arcana.testing.analysis.tasks:" + concatenate_task.__name__,
         row_frequency=bp.space.default(),
         inputs=[
             {
                 "name": "source1",
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "in_file1",
                 "help_string": "dummy",
             },
             {
                 "name": "source2",
-                "datatype": "fileformats.common:Directory",
+                "datatype": "fileformats.generic:Directory",
                 "field": "in_file2",
                 "help_string": "dummy",
             },
@@ -110,7 +109,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "out_file",
                 "help_string": "dummy",
             }
@@ -149,7 +148,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         )
 
 
-def test_command_execute_on_row(simple_store, cli_runner, work_dir):
+def test_command_execute_on_row(flat_dir_store, cli_runner, work_dir):
 
     # Create test dataset consisting of a single row with a range of filenames
     # from 0 to 4
@@ -162,18 +161,17 @@ def test_command_execute_on_row(simple_store, cli_runner, work_dir):
         files=[f"{i}.txt" for i in filenumbers],
     )
     dataset_path = work_dir / "numbered_dataset"
-    dataset = simple_store.make_test_dataset(bp, dataset_path)
+    dataset = flat_dir_store.make_test_dataset(bp, dataset_path)
     dataset.save()
 
     def get_dataset_filenumbers():
-        dataset.refresh()
         row = next(dataset.rows())
-        return sorted(int(i.path) for i in row.unresolved)
+        return sorted(int(i.path) for i in row.entries)
 
     assert get_dataset_filenumbers() == filenumbers
 
     command_spec = ContainerCommand(
-        task="arcana.core.utils.testing.tasks:plus_10_to_filenumbers",
+        task="arcana.testing.analysis.tasks:plus_10_to_filenumbers",
         row_frequency=bp.space.default(),
         inputs=[
             {
@@ -213,13 +211,13 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     command_spec = ContainerCommand(
-        task="arcana.core.utils.testing.tasks:identity_file",
+        task="arcana.testing.analysis.tasks:identity_file",
         row_frequency=bp.space.default(),
         inputs=[
             {
                 "name": "source",
-                "datatype": "arcana.core.utils.testing.data:EncodedText",
-                "default_column": {"datatype": "fileformats.common:Text"},
+                "datatype": "fileformats.testing:EncodedText",
+                "default_column": {"datatype": "fileformats.text:Plain"},
                 "field": "in_file",
                 "help_string": "dummy",
             },
@@ -227,16 +225,14 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "arcana.core.utils.testing.data:EncodedText",
+                "datatype": "fileformats.testing:EncodedText",
                 "field": "out",
                 "help_string": "dummy",
             },
             {
                 "name": "sink2",
-                "datatype": "arcana.core.utils.testing.data:EncodedText",
-                "default_column": {
-                    "datatype": "arcana.core.utils.testing.data:DecodedText"
-                },
+                "datatype": "fileformats.testing:EncodedText",
+                "default_column": {"datatype": "fileformats.text:Plain"},
                 "field": "out",
                 "help_string": "dummy",
             },
@@ -250,7 +246,7 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         ],
         output_values=[
             ("sink1", "encoded"),
-            ("sink2", "decoded converter.shift=3"),
+            ("sink2", "decoded converter.shift=-3"),
         ],
         raise_errors=True,
         plugin="serial",
@@ -269,11 +265,9 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
     for row in saved_dataset.rows(frequency="abcd"):
         enc_item = row["sink1"]
         dec_item = row["sink2"]
-        enc_item.get(assume_exists=True)
-        dec_item.get(assume_exists=True)
-        with open(enc_item.fs_path) as f:
+        with open(enc_item) as f:
             enc_contents = f.read()
-        with open(dec_item.fs_path) as f:
+        with open(dec_item) as f:
             dec_contents = f.read()
         assert enc_contents == encoded_contents
         assert dec_contents == unencoded_contents

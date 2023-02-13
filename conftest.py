@@ -8,8 +8,10 @@ from tempfile import mkdtemp
 from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
-from fileformats.common import Text, Directory, Json
-from arcana.core.utils.testing.data.fileformats import (
+from fileformats.generic import Directory
+from fileformats.text import Plain as Text
+from fileformats.serialization import Json
+from fileformats.testing import (
     MyFormatGz,
     MyFormatGzX,
     MyFormatX,
@@ -17,7 +19,7 @@ from arcana.core.utils.testing.data.fileformats import (
     ImageWithHeader,
     YourFormat,
 )
-from arcana.core.utils.testing.tasks import (
+from arcana.testing.analysis.tasks import (
     add,
     path_manip,
     attrs_func,
@@ -32,11 +34,13 @@ from arcana.core.data.store import (
     DerivBlueprint,
     ExpDatatypeBlueprint,
 )
-from arcana.core.utils.testing.data import (
-    TestDataSpace as TDS,
-    Xyz,
-    SimpleStore,
-)
+from arcana.testing.data.space import TestDataSpace as TDS
+from fileformats.testing import Xyz
+from arcana.file_system import DirTree, FlatDir
+from pydra import set_input_validator
+
+set_input_validator(True)
+
 
 # Set DEBUG logging for unittests
 
@@ -75,10 +79,10 @@ def build_cache_dir():
 
 
 @pytest.fixture
-def simple_store(work_dir):
-    store = SimpleStore(cache_dir=work_dir / "simple-store-cache")
+def flat_dir_store(work_dir):
+    store = FlatDir(cache_dir=work_dir / "flat-dir-store-cache")
     with patch.dict(os.environ, {"ARCANA_HOME": str(work_dir / "arcana-home")}):
-        store.save("simple")
+        store.save("custom-flat")
         yield store
 
 
@@ -341,17 +345,17 @@ def test_dataspace_location():
 
 
 @pytest.fixture(params=GOOD_DATASETS)
-def dataset(simple_store, work_dir, request):
+def dataset(work_dir, request):
     dataset_name = request.param
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_path = work_dir / dataset_name
-    dataset = simple_store.make_test_dataset(blueprint, dataset_path)
+    dataset = DirTree().make_test_dataset(blueprint, dataset_path)
     yield dataset
     # shutil.rmtree(dataset.id)
 
 
 @pytest.fixture
-def saved_dataset(simple_store, work_dir):
+def saved_dataset(work_dir):
     blueprint = TestDatasetBlueprint(
         hierarchy=[
             TDS.abcd
@@ -360,7 +364,32 @@ def saved_dataset(simple_store, work_dir):
         files=["file1.txt", "file2.txt"],
     )
     dataset_path = work_dir / "saved-dataset"
-    dataset = simple_store.make_test_dataset(blueprint, dataset_path)
+    dataset = DirTree().make_test_dataset(blueprint, dataset_path)
+    dataset.save()
+    return dataset
+
+
+@pytest.fixture(params=GOOD_DATASETS)
+def dirtree_dataset(flat_dir_store, work_dir, request):
+    dataset_name = request.param
+    blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
+    dataset_path = work_dir / dataset_name
+    dataset = flat_dir_store.make_test_dataset(blueprint, dataset_path)
+    yield dataset
+    # shutil.rmtree(dataset.id)
+
+
+@pytest.fixture
+def saved_dirtree_dataset(flat_dir_store, work_dir):
+    blueprint = TestDatasetBlueprint(
+        hierarchy=[
+            TDS.abcd
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        dim_lengths=[1, 1, 1, 1],
+        files=["file1.txt", "file2.txt"],
+    )
+    dataset_path = work_dir / "saved-dataset"
+    dataset = flat_dir_store.make_test_dataset(blueprint, dataset_path)
     dataset.save()
     return dataset
 
@@ -386,10 +415,10 @@ def concatenate_task(request):
 @pytest.fixture(scope="session")
 def command_spec():
     return {
-        "task": "arcana.core.utils.testing.tasks:concatenate",
+        "task": "arcana.testing.analysis.tasks:concatenate",
         "inputs": {
             "first_file": {
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "in_file1",
                 "default_column": {
                     "row_frequency": "core:Samples[sample]",
@@ -397,7 +426,7 @@ def command_spec():
                 "help_string": "the first file to pass as an input",
             },
             "second_file": {
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "in_file2",
                 "default_column": {
                     "row_frequency": "core:Samples[sample]",
@@ -407,7 +436,7 @@ def command_spec():
         },
         "outputs": {
             "concatenated": {
-                "datatype": "fileformats.common:Text",
+                "datatype": "fileformats.text:Plain",
                 "field": "out_file",
                 "help_string": "an output file",
             }

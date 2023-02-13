@@ -5,7 +5,7 @@ from pydra import ShellCommandTask
 import pydra.engine.specs
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
 from arcana.core.utils.serialize import ClassResolver, ObjectListConverter
-from fileformats.core.base import FileGroup, DataType
+from fileformats.core.base import FileSet, DataType
 
 
 @attrs.define(kw_only=True)
@@ -25,13 +25,13 @@ class ShellCmdField:
             for n, v in attrs.asdict(self).items()
             if n not in skip_fields and v is not None
         }
-        if issubclass(self.datatype, FileGroup) and "argstr" not in metadata:
+        if issubclass(self.datatype, FileSet) and "argstr" not in metadata:
             metadata["argstr"] = ""
         return metadata
 
     @property
     def attrs_type(self):
-        if issubclass(self.datatype, FileGroup):
+        if issubclass(self.datatype, FileSet):
             if self.datatype.is_dir:
                 tp = pydra.engine.specs.Directory
             else:

@@ -4,16 +4,15 @@ from unittest.mock import patch
 from pathlib import Path
 import docker
 import docker.errors
-from arcana.core.utils.testing import show_cli_trace
+from arcana.core.utils.misc import show_cli_trace
 from arcana.core.cli.deploy import make_app, install_license
 from arcana.core.deploy.image import App
 from arcana.core.data.set import Dataset
 from arcana.core.data import Samples
+from arcana.file_system import DirTree
 
 
-def test_buildtime_license(
-    simple_store, license_file, run_prefix: str, work_dir: Path, cli_runner
-):
+def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_runner):
 
     # Create pipeline
     image_name = f"license-buildtime-{run_prefix}"
@@ -32,7 +31,7 @@ def test_buildtime_license(
 
     build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
-    dataset = make_dataset(simple_store, dataset_dir)
+    make_dataset(dataset_dir)
 
     result = cli_runner(
         make_app,
@@ -58,7 +57,7 @@ def test_buildtime_license(
     assert result.stdout.strip().splitlines()[-1] == image_tag
 
     args = (
-        "simple///dataset "
+        "file///dataset "
         f"--input {LICENSE_INPUT_FIELD} '{LICENSE_INPUT_PATH}' "
         f"--output {LICENSE_OUTPUT_FIELD} '{LICENSE_OUTPUT_PATH}' "
         f"--parameter {LICENSE_PATH_PARAM} '{LICENSE_PATH}' "
@@ -73,7 +72,6 @@ def test_buildtime_license(
             args,
             volumes=[
                 f"{str(dataset_dir)}:/dataset:rw",
-                f"{os.environ['ARCANA_HOME']}:/arcana-home",
             ],
             remove=False,
             stdout=True,
@@ -86,7 +84,7 @@ def test_buildtime_license(
         )
 
 
-def test_site_runtime_license(simple_store, license_file, work_dir, cli_runner):
+def test_site_runtime_license(license_file, work_dir, cli_runner):
 
     # build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
@@ -100,11 +98,10 @@ def test_site_runtime_license(simple_store, license_file, work_dir, cli_runner):
     with patch.dict(os.environ, {"ARCANA_HOME": str(test_home_dir)}):
 
         # Save it into the new home directory
-        simple_store.save()
-        dataset = make_dataset(simple_store, dataset_dir)
+        dataset = make_dataset(dataset_dir)
 
         result = cli_runner(
-            install_license, args=[LICENSE_NAME, str(license_file), simple_store.name]
+            install_license, args=[LICENSE_NAME, str(license_file), "file"]
         )
         assert result.exit_code == 0, show_cli_trace(result)
 
@@ -120,14 +117,12 @@ def test_site_runtime_license(simple_store, license_file, work_dir, cli_runner):
         )
 
 
-def test_dataset_runtime_license(
-    simple_store, license_file, run_prefix, work_dir, cli_runner
-):
+def test_dataset_runtime_license(license_file, run_prefix, work_dir, cli_runner):
 
     # build_dir = work_dir / "build"
     dataset_dir = work_dir / "dataset"
 
-    dataset = make_dataset(simple_store, dataset_dir)
+    dataset = make_dataset(dataset_dir)
 
     LICENSE_PATH = work_dir / "license_location"
     pipeline_image = get_pipeline_image(LICENSE_PATH)
@@ -165,7 +160,7 @@ def get_pipeline_image(license_path) -> App:
         description="A test of the license installation",
         readme="This is a test README",
         packages={
-            "pip": ["fileformats-core", "fileformats-common"],
+            "pip": ["arcana-testing", "fileformats"],
         },
         licenses={
             LICENSE_NAME: {
@@ -175,12 +170,12 @@ def get_pipeline_image(license_path) -> App:
             }
         },
         command={
-            "task": "arcana.core.utils.testing.tasks:check_license",
+            "task": "arcana.testing.analysis.tasks:check_license",
             "row_frequency": "core:Samples[sample]",
             "inputs": [
                 {
                     "name": LICENSE_INPUT_FIELD,
-                    "datatype": "fileformats.common:Text",
+                    "datatype": "fileformats.text:Plain",
                     "field": "expected_license_contents",
                     "help_string": "the path to the license",
                 },
@@ -188,7 +183,7 @@ def get_pipeline_image(license_path) -> App:
             "outputs": [
                 {
                     "name": LICENSE_OUTPUT_FIELD,
-                    "datatype": "fileformats.common:Text",
+                    "datatype": "fileformats.text:Plain",
                     "field": "out",
                     "help_string": "the validated license path",
                 }
@@ -206,17 +201,15 @@ def get_pipeline_image(license_path) -> App:
     )
 
 
-def make_dataset(simple_store, dataset_dir) -> Dataset:
+def make_dataset(dataset_dir) -> Dataset:
 
-    contents_dir = (
-        dataset_dir / simple_store.LEAVES_DIR / "sample=sample1" / LICENSE_INPUT_PATH
-    )
+    contents_dir = dataset_dir / "sample1"
     contents_dir.mkdir(parents=True)
 
     with open(contents_dir / (LICENSE_INPUT_PATH + ".txt"), "w") as f:
         f.write(LICENSE_CONTENTS)
 
-    dataset = simple_store.new_dataset(dataset_dir, space=Samples)
+    dataset = DirTree().new_dataset(dataset_dir, space=Samples)
     dataset.save()
     return dataset
 

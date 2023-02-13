@@ -26,7 +26,7 @@ format <store-nickname>//<dataset-id>[@<dataset-name>]
 
 HIERARCHY the data frequencies that are present in the data tree. For some
 store types this is fixed (e.g. XNAT-> subject > session) but for more flexible
-(e.g. SimpleStore), which dimension each layer of sub-directories corresponds to
+(e.g. FlatDir), which dimension each layer of sub-directories corresponds to
 can be arbitrarily specified. dimensions"""
     ),
 )
@@ -159,7 +159,7 @@ NAME: The name the source will be referenced by
 
 FORMAT: The data type of the column. Can be a field (int|float|str|bool),
 field array (list[int|float|str|bool]) or
-"file-group" (file, file+header/side-cars or directory)
+"file-set" (file, file+header/side-cars or directory)
 """,
 )
 @click.argument("dataset_path")
@@ -232,7 +232,7 @@ def add_source(
         row_frequency=row_frequency,
         quality_threshold=quality,
         order=order,
-        header_vals=dict(header),
+        required_metadata=dict(header),
         is_regex=is_regex,
     )
     dataset.save()
@@ -252,7 +252,7 @@ name
     The name the source will be referenced by
 datatype
     The data type of the column. Can be a field (int|float|str|bool),
-    field array (list[int|float|str|bool]) or "file-group"
+    field array (list[int|float|str|bool]) or "file-set"
     (file, file+header/side-cars or directory)
 """,
 )

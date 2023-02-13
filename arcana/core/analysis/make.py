@@ -370,7 +370,7 @@ def _get_args_automagically(column_specs, parameters, method, index_start=2):
             column_spec = next(c for c in column_specs if c.name == arg)
             if required_type is not None and required_type is not column_spec.type:
                 # Check to see whether conversion is possible
-                required_type.find_converter(column_spec.type)
+                required_type.get_converter(column_spec.type, name="dummy")
             inputs.append(arg)
         elif arg in param_names:
             used_parameters.append(arg)

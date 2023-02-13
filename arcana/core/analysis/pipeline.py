@@ -1,4 +1,5 @@
 from __future__ import annotations
+import os
 import attrs
 import typing as ty
 from collections import OrderedDict
@@ -16,8 +17,9 @@ from arcana.core.exceptions import (
     ArcanaOutputNotProducedException,
     ArcanaDataMatchError,
 )
-from fileformats.core.base import DataType, FileGroup, Field
-from fileformats.core.exceptions import FileFormatConversionError
+from fileformats.core.base import DataType, FileSet
+from fileformats.field import Field
+from fileformats.core.exceptions import FormatConversionError
 import arcana.core.data.set
 import arcana.core.data.row
 from ..data.space import DataSpace
@@ -135,8 +137,8 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if inpt.datatype:
                     try:
-                        inpt.datatype.find_converter(column.datatype)
-                    except FileFormatConversionError as e:
+                        inpt.datatype.get_converter(column.datatype, name="dummy")
+                    except FormatConversionError as e:
                         msg = (
                             f"required to in conversion of '{inpt.name}' input "
                             f"to '{self.name}' pipeline"
@@ -167,8 +169,8 @@ class Pipeline:
                 # Check that a converter can be found if required
                 if outpt.datatype:
                     try:
-                        column.datatype.find_converter(outpt.datatype)
-                    except FileFormatConversionError as e:
+                        column.datatype.get_converter(outpt.datatype, name="dummy")
+                    except FormatConversionError as e:
                         msg = (
                             f"required to in conversion of '{outpt.name}' output "
                             f"from '{self.name}' pipeline"
@@ -298,31 +300,27 @@ class Pipeline:
             if inpt.datatype == arcana.core.data.row.DataRow:
                 continue
             stored_format = self.dataset[inpt.name].datatype
-            if not (
-                inpt.datatype is stored_format
-                or issubclass(stored_format, inpt.datatype)
-            ):
+            converter = inpt.datatype.get_converter(
+                stored_format,
+                name=f"{inpt.name}_input_converter",
+                **self.converter_args.get(inpt.name, {}),
+            )
+            if converter is not None:  # None if no conversion required
                 logger.info(
                     "Adding implicit conversion for input '%s' " "from %s to %s",
                     inpt.name,
-                    stored_format.class_name(),
-                    inpt.datatype.class_name(),
+                    stored_format.mime_like,
+                    inpt.datatype.mime_like,
                 )
-                source_name = inpt.name
-                converter = inpt.datatype.converter_task(
-                    stored_format,
-                    name=f"{source_name}_input_converter",
-                    **self.converter_args.get(inpt.name, {}),
-                )
-                converter.inputs.to_convert = sourced.pop(source_name)
-                if issubclass(source_out_dct[source_name], ty.Sequence):
+                converter.inputs.in_file = sourced.pop(inpt.name)
+                if issubclass(source_out_dct[inpt.name], ty.Sequence):
                     # Iterate over all items in the sequence and convert them
                     # separately
                     converter.split("to_convert")
                 # Insert converter
                 wf.per_row.add(converter)
                 # Map converter output to input_interface
-                sourced[source_name] = converter.lzout.converted
+                sourced[inpt.name] = converter.lzout.out_file
 
         # Create identity row to accept connections from user-defined rows
         # via `set_output` method
@@ -330,7 +328,10 @@ class Pipeline:
             func_task(
                 access_paths_and_values,
                 in_fields=[
-                    (i.name, ty.Union[DataType, arcana.core.data.row.DataRow])
+                    (
+                        i.name,
+                        ty.Union[DataType, arcana.core.data.row.DataRow, os.PathLike],
+                    )
                     for i in self.inputs
                 ],
                 out_fields=[(i.name, ty.Any) for i in self.inputs],
@@ -378,27 +379,24 @@ class Pipeline:
         # Do output datatype conversions if required
         for outpt in self.outputs:
             stored_format = self.dataset[outpt.name].datatype
-            if not (
-                outpt.datatype is stored_format
-                or issubclass(outpt.datatype, stored_format)
-            ):
+            sink_name = path2varname(outpt.name)
+            converter = stored_format.get_converter(
+                outpt.datatype,
+                name=f"{sink_name}_output_converter",
+                **self.converter_args.get(outpt.name, {}),
+            )
+            if converter:
                 logger.info(
                     "Adding implicit conversion for output '%s' " "from %s to %s",
                     outpt.name,
-                    outpt.datatype.class_name(),
-                    stored_format.class_name(),
+                    outpt.datatype.mime_like,
+                    stored_format.mime_like,
                 )
                 # Insert converter
-                sink_name = path2varname(outpt.name)
-                converter = stored_format.converter_task(
-                    outpt.datatype,
-                    name=f"{sink_name}_output_converter",
-                    **self.converter_args.get(outpt.name, {}),
-                )
-                converter.inputs.to_convert = to_sink.pop(sink_name)
+                converter.inputs.in_file = to_sink.pop(sink_name)
                 wf.per_row.add(converter)
                 # Map converter output to workflow output
-                to_sink[sink_name] = converter.lzout.converted
+                to_sink[sink_name] = converter.lzout.out_file
 
         # Can't use a decorated function as we need to allow for dynamic
         # arguments
@@ -412,7 +410,10 @@ class Pipeline:
                         ("id", str),
                         ("provenance", ty.Dict[str, ty.Any]),
                     ]
-                    + [(s, DataType) for s in to_sink]
+                    + [
+                        (s, ty.Union[DataType, str, bytes, os.PathLike])
+                        for s in to_sink
+                    ]
                 ),
                 out_fields=[("id", str)],
                 name="sink",
@@ -571,12 +572,16 @@ def to_process(
     cant_process = []
     for row in dataset.rows(row_frequency, ids=requested_ids):
         # TODO: Should check provenance of existing rows to see if it matches
-        not_exist = [not row[o.name].exists for o in outputs]
-        if all(not_exist):
+        empty = [row.cell(o.name).is_empty for o in outputs]
+        if all(empty):
             ids.append(row.id)
-        elif any(not_exist):
+        elif any(empty):
             cant_process.append(row.id)
-    logger.debug("Found %s ids to process, and can't process %s", ids, cant_process)
+    logger.debug(
+        "Found %s ids to process, and can't process %s due to partially present outputs",
+        ids,
+        cant_process,
+    )
     return ids, cant_process
 
 
@@ -606,7 +611,7 @@ def source_items(
     provenance = copy(parameterisation)
     sourced = []
     row = dataset.row(row_frequency, id)
-    with dataset.store:
+    with dataset.store.connection:
         missing_inputs = {}
         for inpt in inputs:
             # If the required datatype is of type DataRow then provide the whole
@@ -615,12 +620,9 @@ def source_items(
                 sourced.append(row)
                 continue
             try:
-                item = row[inpt.name]
+                sourced.append(row[inpt.name])
             except ArcanaDataMatchError as e:
                 missing_inputs[inpt.name] = str(e)
-            else:
-                item.get()  # download to host if required
-                sourced.append(item)
         if missing_inputs:
             raise ArcanaDataMatchError("\n\n" + "\n\n".join(missing_inputs.values()))
     return tuple(sourced) + (provenance,)
@@ -644,10 +646,9 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
     """
     logger.debug("Sinking %s", to_sink)
     row = dataset.row(row_frequency, id)
-    with dataset.store:
+    with dataset.store.connection:
         for outpt_name, output in to_sink.items():
-            row_item = row[outpt_name]
-            row_item.put(output.value)  # Store value/path
+            row.cell(outpt_name).item = output
     return id
 
 
@@ -657,9 +658,9 @@ def access_paths_and_values(**data_items):
     logger.debug("Extracting paths/values from %s", data_items)
     values = []
     for name, item in data_items.items():
-        if isinstance(item, FileGroup):
-            cpy = item.copy_to(Path.cwd() / name, symlink=True)
-            values.append(cpy.fs_path)
+        if isinstance(item, FileSet):
+            cpy = item.copy_to(Path.cwd() / name, symlink=True, make_dirs=True)
+            values.append(cpy)
         elif isinstance(item, Field):
             values.append(item.value)
         else:
@@ -674,11 +675,7 @@ def encapsulate_paths_and_values(outputs, **kwargs):
     items = []
     for outpt in outputs:
         val = kwargs[outpt.name]
-        if issubclass(outpt.datatype, FileGroup):
-            obj = outpt.datatype.from_fs_path(val)
-        else:
-            obj = outpt.datatype(val)
-        items.append(obj)
+        items.append(outpt.datatype(val))
     if len(items) > 1:
         return tuple(items)
     elif items:

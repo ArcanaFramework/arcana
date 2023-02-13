@@ -2,8 +2,8 @@ from functools import reduce
 from operator import mul
 from arcana.core.cli.apply import apply_pipeline
 from arcana.core.cli.derive import derive_column
-from arcana.core.utils.testing import show_cli_trace
-from fileformats.common import Text
+from arcana.core.utils.misc import show_cli_trace
+from fileformats.text import Plain as Text
 
 
 def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
@@ -17,19 +17,19 @@ def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
         [
             saved_dataset.locator,
             "a_pipeline",
-            "arcana.core.utils.testing.tasks:" + concatenate_task.__name__,
+            "arcana.testing.analysis.tasks:" + concatenate_task.__name__,
             "--source",
             "file1",
             "in_file1",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--source",
             "file2",
             "in_file2",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--sink",
             "concatenated",
             "out_file",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--parameter",
             "duplicates",
             str(duplicates),
@@ -48,7 +48,6 @@ def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
         fnames = [f[::-1] for f in fnames]
     expected_contents = "\n".join(fnames * duplicates)
     for item in sink:
-        item.get(assume_exists=True)
-        with open(item.fs_path) as f:
+        with open(item) as f:
             contents = f.read()
         assert contents == expected_contents

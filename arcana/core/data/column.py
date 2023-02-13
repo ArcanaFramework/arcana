@@ -1,58 +1,103 @@
+from __future__ import annotations
 from abc import abstractmethod, ABCMeta
 import re
 import typing as ty
 import attrs
 from operator import attrgetter
 from attrs.converters import optional
-
-# from arcana.core.data.row import DataRow
-from arcana.core.utils.serialize import ClassResolver
+from fileformats.core import DataType
 from arcana.core.exceptions import ArcanaDataMatchError
 from ..analysis.salience import ColumnSalience
-from fileformats.core.quality import DataQuality
+from .quality import DataQuality
 from .space import DataSpace
+from .cell import DataCell
+
+if ty.TYPE_CHECKING:
+    from .row import DataRow
+    from .entry import DataEntry
+    from .set import Dataset
 
 
-ItemType = ty.TypeVar("ItemType")
+@attrs.define(kw_only=True)
+class DataColumn(metaclass=ABCMeta):
 
-
-@attrs.define
-class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
-
-    name: str = attrs.field()
-    path: str = attrs.field()
-    datatype = attrs.field()
-    row_frequency: DataSpace = attrs.field()
-    dataset = attrs.field(
+    name: str
+    datatype: type = attrs.field()
+    row_frequency: DataSpace = attrs.field(
+        validator=attrs.validators.instance_of(DataSpace)
+    )
+    path: str = None
+    dataset: Dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
     )
 
-    def __iter__(self):
-        return (n[self.name] for n in self.dataset.rows(self.row_frequency))
+    is_sink = False
 
-    def __getitem__(self, id) -> ItemType:
-        return self.dataset.row(id=id, row_frequency=self.row_frequency)[self.name]
+    @datatype.validator
+    def datatype_validator(self, _, datatype):
+        if not issubclass(datatype, DataType):
+            raise TypeError(f"Datatype ({datatype}) must be a subclass of {DataType}")
 
-    def __len__(self):
+    def __iter__(self) -> ty.Iterable[DataType]:
+        "Iterator over all items in the column, requires none of the cells to be empty"
+        return (cell.item for cell in self.cells(allow_empty=False))
+
+    def __getitem__(self, id) -> DataType:
+        # TODO: could be nice to expand this to be a slice of ids
+        return self.cell(id, allow_empty=False).item
+
+    def __len__(self) -> int:
         return len(list(self.dataset.rows(self.row_frequency)))
 
+    def cell(self, id, allow_empty: bool = True) -> DataCell:
+        return DataCell.intersection(
+            self,
+            self.dataset.row(id=id, row_frequency=self.row_frequency),
+            allow_empty=allow_empty,
+        )
+
+    def cells(self, allow_empty: bool = None) -> ty.Iterable[DataCell]:
+        """Return an iterator over all cells in the column.
+
+        Parameters
+        ----------
+        allow_empty : bool, optional
+            whether to allow cells to be empty (i.e. if they don't match to an entry
+            in the corresponding dataset row). If None, then cells of sink columns can
+            be empty (i.e. not derived yet) and source columns can't, by default None
+
+        Returns
+        -------
+        cells : Iterable[DataCell]
+            an iterator over all cells in the column
+        """
+        return (
+            DataCell.intersection(self, row, allow_empty=allow_empty)
+            for row in self.dataset.rows(self.row_frequency)
+        )
+
     @property
-    def ids(self):
+    def ids(self) -> list[str]:
         return [n.id for n in self.dataset.rows(self.row_frequency)]
 
-    @abstractmethod
-    def match(self, row):
-        """Selects a single item from a data row that matches the
-        criteria/path of the column.
+    @property
+    def path(self) -> str:
+        return self._path
+
+    def match_entry(self, row: DataRow, allow_none: bool = False) -> DataEntry:
+        """Matches a single entry from a data row against the selection criteria
+        defined in the column.
 
         Parameters
         ----------
         row: DataRow
             the row to match the item from
+        allow_none: bool
+            whether to return None if there are not matches
 
         Returns
         -------
-        DataType
+        DataType or None
             the data item that matches the criteria/path
 
         Raises
@@ -60,133 +105,61 @@ class DataColumn(ty.Generic[ItemType], metaclass=ABCMeta):
         ArcanaDataMatchError
             if none or multiple items match the criteria/path of the column
             within the row
-        FileFormatError
-            if there are no files matching the format of the column in the row"""
-
-    def assume_exists(self):
-        # Update local cache of sink paths
-        for item in self:
-            item.get(assume_exists=True)
-
-
-@attrs.define
-class DataSource(DataColumn):
-    """
-    Specifies the criteria by which an item is selected from a data row to
-    be a data source.
-
-    Parameters
-    ----------
-    path : str
-        A regex name_path to match the file_group names with. Must match
-        one and only one file_group per <row_frequency>. If None, the name
-        is used instead.
-    datatype : type
-        File format that data will be
-    row_frequency : DataSpace
-        The row_frequency of the file-group within the dataset tree, e.g. per
-        'session', 'subject', 'timepoint', 'group', 'dataset'
-    quality_threshold : DataQuality
-        The acceptable quality (or above) that should be considered. Data items
-        will be considered missing
-    order : int | None
-        To be used to distinguish multiple file_groups that match the
-        name_path in the same session. The order of the file_group within the
-        session (0-indexed). Based on the scan ID but is more robust to small
-        changes to the IDs within the session if for example there are
-        two scans of the same type taken before and after a task.
-    header_vals : Dict[str, str]
-        To be used to distinguish multiple items that match the
-        the other criteria. The provided dictionary contains
-        header values that must match the stored header_vals exactly.
-    is_regex : bool
-        Flags whether the name_path is a regular expression or not
-    """
-
-    quality_threshold: DataQuality = attrs.field(
-        default=None, converter=optional(lambda q: DataQuality[str(q)])
-    )
-    order: int = attrs.field(
-        default=None, converter=lambda x: int(x) if x is not None else None
-    )
-    header_vals: ty.Dict[str, ty.Any] = attrs.field(default=None)
-    is_regex: bool = attrs.field(
-        default=False,
-        converter=lambda x: x.lower() == "true" if isinstance(x, str) else x,
-    )
-
-    is_sink = False
-
-    def match(self, row):
-        criteria = [
-            (match_path, self.path if not self.is_regex else None),
-            (match_path_regex, self.path if self.is_regex else None),
-            (match_quality, self.quality_threshold),
-            (match_header_vals, self.header_vals),
-        ]
-        # Get all items that match the data type of the source
-        matches = row.resolved(self.datatype)
-        if not matches:
-            msg = (
-                f"Did not find any items matching data datatype "
-                f"{ClassResolver.tostr(self.datatype)} in '{row.id}' "
-                f"{self.row_frequency} for the "
-                f"'{self.name}' column, found unresolved items:"
-            )
-            for item in sorted(row.unresolved, key=attrgetter("path")):
-                msg += (
-                    f"\n    {item.path}: paths="
-                    + ",".join(p.name for p in item.file_paths)
-                    + ((", uris=" + ",".join(item.uris.keys())) if item.uris else "")
-                )
-            msg += self._format_criteria()
-            raise ArcanaDataMatchError(msg)
-        # Apply all filters to find items that match criteria
-        for func, arg in criteria:
-            if arg is not None:
-                filtered = [m for m in matches if func(m, arg)]
-                if not filtered:
+        """
+        matches = row.entries
+        for method in self.criteria():
+            filtered = [m for m in matches if method(m)]
+            if not filtered:
+                if allow_none:
+                    return None
+                else:
                     raise ArcanaDataMatchError(
-                        "Did not find any items "
-                        + func.__doc__.format(arg)
+                        "Did not find any entries "
+                        + method.__doc__.format(self=self)
                         + self._error_msg(row, matches)
                     )
-                matches = filtered
-        # Select a single item from the ones that match the criteria
-        if self.order is not None:
-            try:
-                match = matches[self.order - 1]
-            except IndexError as e:
-                raise ArcanaDataMatchError(
-                    "Not enough matching items to select one at index "
-                    f"{self.order} (starting from 1), found:"
-                    + self._format_matches(matches)
-                ) from e
-        elif len(matches) > 1:
+            matches = filtered
+        return self.select_entry_from_matches(row, matches)
+
+    @abstractmethod
+    def criteria(self) -> list[ty.Callable]:
+        """returns all methods used to filter out potential matches"""
+
+    @abstractmethod
+    def format_criteria(self) -> str:
+        """Formats the criteria used to match entries for use in informative error messages"""
+
+    def matches_path(self, entry: DataEntry) -> bool:
+        "that matched the path '{self.path}'"
+        id_parts = entry.path.split("/")
+        path_parts = self.path.split("/")
+        return id_parts[: len(path_parts)] == path_parts
+
+    def matches_datatype(self, entry: DataEntry) -> bool:
+        "that matched the datatype '{self.datatype.mime_like}'"
+        return self.datatype is entry.datatype or (
+            issubclass(self.datatype, entry.datatype)
+            and self.datatype.matches(entry.item)
+        )
+
+    def select_entry_from_matches(
+        self, row: DataRow, matches: list[DataEntry]
+    ) -> DataEntry:
+        if len(matches) > 1:
             raise ArcanaDataMatchError(
                 "Found multiple matches " + self._error_msg(row, matches)
             )
-        else:
-            match = matches[0]
-        return match
+        return matches[0]
 
-    def _error_msg(self, row, matches):
+    def _error_msg(self, row: DataRow, matches: list[DataEntry]) -> str:
         return (
-            f" attempting to select {ClassResolver.tostr(self.datatype)} item for "
-            f"the '{row.id}' {row.frequency} in the '{self.name}' column, found:"
+            f", when attempting to match an entry to the '{self.name}' column "
+            f"in the '{row.id}' {row.frequency} row\n\n  Found:"
             + self._format_matches(matches)
-            + self._format_criteria()
+            + self.format_criteria()
         )
 
-    def _format_criteria(self):
-        return (
-            f"\n\n    criteria: {self.path}', is_regex={self.is_regex}, "
-            f"datatype={ClassResolver.tostr(self.datatype)}, "
-            f"quality_threshold='{self.quality_threshold}', "
-            f"header_vals={self.header_vals}, order={self.order}"
-        )
-
-    def _format_matches(self, matches):
+    def _format_matches(self, matches: list[DataEntry]) -> str:
         out_str = ""
         for match in sorted(matches, key=attrgetter("path")):
             out_str += "\n    "
@@ -197,47 +170,144 @@ class DataSource(DataColumn):
         return out_str
 
 
-def match_path(item, path):
-    "at the path '{}'"
-    return item.path == path
+@attrs.define(kw_only=True)
+class DataSource(DataColumn):
+    """
+    Specifies the criteria by which an item is selected from a data row to
+    be a data source.
+
+    Parameters
+    ----------
+    name: str
+        the name of the column
+    datatype : type
+        the data type of items in the column
+    row_frequency : DataSpace
+        the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
+        ``Clinical`` data spce the row frequency can be per 'session', 'subject',
+        'timepoint', 'group', 'dataset', et...
+    dataset: Dataset
+        the dataset the column belongs to
+    path : str
+        A regex name_path to match the fileset names with. Must match
+        one and only one fileset per <row_frequency>. If None, the name
+        is used instead.
+    quality_threshold : DataQuality
+        The acceptable quality (or above) that should be considered. Data items
+        will be considered missing
+    order : int | None
+        To be used to distinguish multiple filesets that match the
+        name_path in the same session. The order of the fileset within the
+        session (0-indexed). Based on the scan ID but is more robust to small
+        changes to the IDs within the session if for example there are
+        two scans of the same type taken before and after a task.
+    required_metadata : dict[str, ty.Any]
+        Required metadata, which can be used to distinguish multiple items that match all
+        other criteria. The provided dictionary contains metadata values that must match
+        the stored required_metadata exactly.
+    is_regex : bool
+        Flags whether the name_path is a regular expression or not
+    """
+
+    quality_threshold: DataQuality = attrs.field(
+        default=None, converter=optional(lambda q: DataQuality[str(q)])
+    )
+    order: int = attrs.field(
+        default=None, converter=lambda x: int(x) if x is not None else None
+    )
+    required_metadata: dict[str, ty.Any] = attrs.field(default=None)
+    is_regex: bool = attrs.field(
+        default=False,
+        converter=lambda x: x.lower() == "true" if isinstance(x, str) else x,
+    )
+
+    def criteria(self) -> list[ty.Callable]:
+        criteria = []
+        if self.path is not None:
+            if self.is_regex:
+                criteria.append(self.matches_path_regex)
+            else:
+                criteria.append(self.matches_path)
+        if self.quality_threshold is not None:
+            criteria.append(self.matches_quality)
+        if self.required_metadata is not None:
+            criteria.append(self.matches_metadata)
+        criteria.append(self.matches_datatype)
+        return criteria
+
+    def format_criteria(self) -> str:
+        msg = "\n\n  Criteria: "
+        if self.path:
+            msg += f"\n    path='{self.path}'"
+            if self.is_regex:
+                msg += " (regular-expression)" if self.is_regex else ""
+        if self.quality_threshold:
+            msg += f"\n    quality_threshold='{self.quality_threshold}'"
+        if self.required_metadata:
+            msg += f"\n    required_metadata={self.required_metadata}"
+        msg += f"\n    datatype='{self.datatype.mime_like}'"
+        if self.order:
+            msg += f"\n    order={self.order}"
+        return msg
+
+    def matches_path_regex(self, entry: DataEntry) -> bool:
+        "that matched the path pattern '{self.path}'"
+        pattern = self.path
+        if not pattern.endswith("$"):
+            pattern += "$"
+        return re.match(pattern, entry.path)
+
+    def matches_quality(self, entry: DataEntry) -> bool:
+        "with an acceptable quality '{self.quality_threshold}'"
+        return entry.quality >= self.quality_threshold
+
+    def matches_metadata(self, entry: DataEntry) -> bool:
+        "with the required metadata '{self.required_metadata}'"
+        return all(
+            entry.item_metadata[k] == v for k, v in self.required_metadata.items()
+        )
+
+    def select_entry_from_matches(
+        self, row: DataRow, matches: list[DataEntry]
+    ) -> DataEntry:
+        # Select a single item from the ones that match the criteria
+        if self.order is not None:
+            try:
+                return matches[self.order - 1]
+            except IndexError as e:
+                raise ArcanaDataMatchError(
+                    f"Not enough matching items in row {row.id} {row.frequency} in the "
+                    f"'{self.name}' column to select one at index {self.order} "
+                    "(starting from 1), found:" + self._format_matches(matches)
+                ) from e
+        else:
+            return super().select_entry_from_matches(row, matches)
 
 
-def match_path_regex(item, pattern):
-    "that matched the path pattern '{}'"
-    if not pattern.endswith("$"):
-        pattern += "$"
-    return re.match(pattern, item.path)
-
-
-def match_quality(item, threshold):
-    "with an acceptable quality '{}'"
-    return item.quality >= threshold
-
-
-def match_header_vals(item, header_vals):
-    "with the header values '{}'"
-    return all(item.header(k) == v for k, v in header_vals.items())
-
-
-@attrs.define
+@attrs.define(kw_only=True)
 class DataSink(DataColumn):
     """
-    A specification for a file group within a analysis to be derived from a
+    A specification for a file set within a analysis to be derived from a
     processing pipeline.
 
     Parameters
     ----------
-    path : str
-        The path to the relative location the corresponding data items will be
-        stored within the rows of the data tree.
+    name: str
+        the name of the column
     datatype : type
-        The file datatype or data type used to store the corresponding items
-        in the store dataset.
+        the data type of items in the column
     row_frequency : DataSpace
-        The row_frequency of the file-group within the dataset tree, e.g. per
-        'session', 'subject', 'timepoint', 'group', 'dataset'
+        the frequency of the "rows" (data nodes) within the dataset tree, e.g. for the
+        ``Clinical`` data spce the row frequency can be per 'session', 'subject',
+        'timepoint', 'group', 'dataset', et...
+    dataset: Dataset
+        the dataset the column belongs to
+    path : str
+        A regex name_path to match the fileset names with. Must match
+        one and only one fileset per <row_frequency>. If None, the name
+        is used instead.
     salience : Salience
-        The salience of the specified file-group, i.e. whether it would be
+        The salience of the specified file-set, i.e. whether it would be
         typically of interest for publication outputs or whether it is just
         a temporary file in a workflow, and stages in between
     pipeline_name : str
@@ -245,6 +315,7 @@ class DataSink(DataColumn):
         for the sink
     """
 
+    path = attrs.field()  # i.e. make mandatory
     salience: ColumnSalience = attrs.field(
         default=ColumnSalience.supplementary,
         converter=lambda s: ColumnSalience[str(s)] if s is not None else None,
@@ -253,16 +324,22 @@ class DataSink(DataColumn):
 
     is_sink = True
 
-    def match(self, row):
-        matches = [i for i in row.resolved(self.datatype) if i.path == self.path]
-        if not matches:
-            # Return a placeholder data item th.datatypebe set
-            return self.datatype(path=self.path, row=row, exists=False)
-        elif len(matches) > 1:
-            raise ArcanaDataMatchError(
-                "Found multiple matches " + self._error_msg(row, matches)
-            )
-        return matches[0]
+    @path.default
+    def path_default(self):
+        return f"{self.dataset.name}/{self.name}"
 
-    def derive(self, ids=None):
+    def derive(self, ids: list[str] = None):
         self.dataset.derive(self.name, ids=ids)
+
+    def criteria(self):
+        return [self.matches_path, self.matches_datatype]
+
+    def format_criteria(self):
+        return (
+            "\n\n  Criteria: "
+            f"\n    path='{self.path}' "
+            f"\n    datatype='{self.datatype}' "
+        )
+
+    def __setitem__(self, id, value: DataType):
+        self.cell(id, allow_empty=True).item = value

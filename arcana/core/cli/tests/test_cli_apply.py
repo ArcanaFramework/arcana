@@ -1,7 +1,7 @@
 from arcana.core.data.set import Dataset
-from fileformats.common import Text
+from fileformats.text import Plain as Text
 from arcana.core.cli.apply import apply_pipeline
-from arcana.core.utils.testing import show_cli_trace
+from arcana.core.utils.misc import show_cli_trace
 
 
 def test_apply_pipeline_cli(saved_dataset: Dataset, concatenate_task, cli_runner):
@@ -24,19 +24,19 @@ def test_apply_pipeline_cli(saved_dataset: Dataset, concatenate_task, cli_runner
         [
             saved_dataset.locator,
             "a_pipeline",
-            "arcana.core.utils.testing.tasks:" + concatenate_task.__name__,
+            "arcana.testing.analysis.tasks:" + concatenate_task.__name__,
             "--source",
             "file1",
             "in_file1",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--source",
             "file2",
             "in_file2",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--sink",
             "concatenated",
             "out_file",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--parameter",
             "duplicates",
             str(duplicates),

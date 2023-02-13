@@ -13,7 +13,13 @@ from arcana.core.utils.serialize import (
     fromdict,
 )
 import arcana
-from arcana.core.utils.misc import get_config_file_path, set_cwd, path2varname
+from fileformats.core import DataType
+from arcana.core.utils.misc import (
+    get_config_file_path,
+    set_cwd,
+    path2varname,
+    NestedContext,
+)
 from arcana.core.utils.packaging import list_subclasses
 from arcana.core.exceptions import ArcanaUsageError, ArcanaNameError
 
@@ -24,6 +30,9 @@ logger = logging.getLogger("arcana")
 
 if ty.TYPE_CHECKING:
     from .space import DataSpace
+    from .set import DataTree
+    from .entry import DataEntry
+    from .row import DataRow
 
 
 @attrs.define(kw_only=True)
@@ -64,6 +73,23 @@ class TestDatasetBlueprint:
 
 
 @attrs.define
+class ConnectionManager(NestedContext):
+
+    store: ty.Any = None
+    session: ty.Any = attrs.field(default=None, init=False)
+
+    def __getattr__(self, attr_name):
+        return getattr(self.session, attr_name)
+
+    def enter(self):
+        self.session = self.store.connect()
+
+    def disconnect(self):
+        self.store.disconnect(self.session)
+        self.session = None
+
+
+@attrs.define
 class DataStore(metaclass=ABCMeta):
     # """
     # Abstract base class for all Repository systems, DaRIS, XNAT and
@@ -72,107 +98,121 @@ class DataStore(metaclass=ABCMeta):
     # """
 
     # name: str = None
-    _connection_depth = attrs.field(
-        default=0, init=False, hash=False, repr=False, eq=False
+    connection: ConnectionManager = attrs.field(
+        factory=ConnectionManager, init=False, hash=False, repr=False, eq=False
     )
+
+    def __attrs_post_init__(self):
+        self.connection.store = self
 
     CONFIG_NAME = "stores"
     SUBPACKAGE = "data"
 
     @abstractmethod
-    def find_rows(self, dataset):
+    def populate_tree(self, tree: DataTree):
         """
-        Find all data rows for a dataset in the store and populate the
-        Dataset object using its `add_row` method.
+        Populates the nodes of the data tree with those found in the dataset
 
         Parameters
         ----------
-        dataset : Dataset
-            The dataset to populate with rows
+        tree : DataTree
+            The tree to populate with nodes via the ``DataTree.add_leaf`` method
         """
 
     @abstractmethod
-    def find_items(self, row):
+    def populate_row(self, row: DataRow):
         """
-        Find all data items within a data row and populate the DataRow object
-        with them using the `add_file_group` and `add_field` methods.
+        Populate a row with all data entries found in the corresponding node in the data
+        store (e.g. files within a directory, scans within an XNAT session).
 
         Parameters
         ----------
         row : DataRow
-            The data row to populate with items
+            The row to populate with entries using the ``DataRow.add_entry`` method
         """
 
     @abstractmethod
-    def get_file_group_paths(self, file_group, cache_only=False):
+    def get(self, entry: DataEntry) -> DataType:
         """
-        Cache the file_group locally (if required) and return the locations
-        of the cached primary file and side cars
+        Gets the data item corresponding to the given entry
 
         Parameters
         ----------
-        file_group : FileGroup
-            The file_group to cache locally
-        cache_only : bool
-            Whether to attempt to extract the file groups from the local cache
-            (if applicable) and raise an error otherwise
+        entry: DataEntry
+            the data entry to update
 
         Returns
         -------
-        fs_paths : list[str]
-            The file-system path to the cached files
-
-        Raises
-        ------
-        ArcanaCacheError
-            If cache_only is set and there is a mismatch between the cached
-            and remote versions
+        item : DataType
+            the item stored within the specified entry
         """
 
     @abstractmethod
-    def get_field_value(self, field):
+    def put(self, item: DataType, entry: DataEntry) -> DataType:
         """
-        Extract and return the value of the field from the store
+        Updates the item in the data store corresponding to the given data entry
 
         Parameters
         ----------
-        field : Field
-            The field to retrieve the value for
+        item : DataType
+            the item to replace the current item in the data store
+        entry: DataEntry
+            the data entry to update
 
         Returns
         -------
-        value : int | float | str | ty.List[int] | ty.List[float] | ty.List[str]
-            The value of the Field
+        cached : DataType
+            returns the cached version of the item, if applicable
         """
 
     @abstractmethod
-    def put_file_group_paths(self, file_group, fs_paths):
-        """
-        Inserts or updates the file_group into the store
+    def post(
+        self, item: DataType, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
+        """Inserts the item within a newly created entry in the data store
 
         Parameters
         ----------
-        file_group : FileGroup
-            The file_group to insert into the store
-        fs_paths : list[Path]
-            The file-system paths to the files/directories to sync
+        item : DataType
+            the item to insert
+        path : str
+            the path to the entry relative to the data row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the data row to insert the entry into
 
         Returns
         -------
-        cached_paths : list[str]
-            The paths of the files where they are cached in the file system
+        entry : DataEntry
+            the inserted entry
         """
 
     @abstractmethod
-    def put_field_value(self, field, value):
-        """
-        Inserts or updates the fields into the store
+    def put_provenance(self, entry: DataEntry, provenance: dict[str, ty.Any]):
+        """Stores provenance information for a given data item in the store
 
         Parameters
         ----------
-        field : Field
-            The field to insert into the store
-        """
+        item: DataType
+            The item to store the provenance data for
+        provenance: dict[str, Any]
+            The provenance data to store"""
+
+    @abstractmethod
+    def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
+        """Stores provenance information for a given data item in the store
+
+        Parameters
+        ----------
+        item: DataType
+            The item to store the provenance data for
+
+        Returns
+        -------
+        provenance: dict[str, Any] or None
+            The provenance data stored in the repository for the data item.
+            None if no provenance data has been stored"""
 
     @abstractmethod
     def save_dataset_definition(
@@ -212,54 +252,6 @@ class DataStore(metaclass=ABCMeta):
             A dct Dataset object that was saved in the data store
         """
 
-    @abstractmethod
-    def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
-        """Stores provenance information for a given data item in the store
-
-        Parameters
-        ----------
-        item: DataType
-            The item to store the provenance data for
-        provenance: dict[str, Any]
-            The provenance data to store"""
-
-    @abstractmethod
-    def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
-        """Stores provenance information for a given data item in the store
-
-        Parameters
-        ----------
-        item: DataType
-            The item to store the provenance data for
-
-        Returns
-        -------
-        provenance: dict[str, Any] or None
-            The provenance data stored in the repository for the data item.
-            None if no provenance data has been stored"""
-
-    def get_checksums(self, file_group):
-        """
-        Override this method to return checksums for files that are stored
-        with remote files (e.g. in XNAT). If no checksums are stored in the
-        store then just leave this method to just access the file and
-        recalculate them.
-
-        Parameters
-        ----------
-        file_group : FileGroup
-            The file_group to return the checksums for
-
-        Returns
-        -------
-        checksums : dct[str, str]
-            A dictionary with keys corresponding to the relative paths of all
-            files in the file_group from the base path and values equal to the
-            MD5 hex digest. The primary file in the file-set (i.e. the one that
-            the path points to) should be specified by '.'.
-        """
-        return file_group.calculate_checksums()
-
     def connect(self):
         """
         If a connection session is required to the store manage it here
@@ -269,6 +261,10 @@ class DataStore(metaclass=ABCMeta):
         """
         If a connection session is required to the store manage it here
         """
+
+    def site_licenses_dataset(self):
+        """Can be overridden by subclasses to provide a dataset to hold site-wide licenses"""
+        return None
 
     def save(self, name: str = None, config_path: Path = None):
         """Saves the configuration of a DataStore in 'stores.yaml'
@@ -296,19 +292,17 @@ class DataStore(metaclass=ABCMeta):
         # connect to store in case it is needed in the asdict method and to
         # test the connection in general before it is saved
         dct = self.asdict()
-        with self:
+        with self.connection:
             entries[dct.pop("name")] = dct
         self.save_entries(entries, config_path=config_path)
 
     def asdict(self, **kwargs):
         return asdict(self, **kwargs)
 
-    def site_licenses_dataset(self):
-        """Can be overridden by subclasses to provide a dataset to hold site-wide licenses"""
-        return None
-
     @classmethod
-    def load(cls: ty.Type[DS], name: str, config_path: Path = None, **kwargs) -> DS:
+    def load(
+        cls: DataStore, name: str, config_path: Path = None, **kwargs
+    ) -> DataStore:
         """Loads a DataStore from that has been saved in the configuration file.
         If no entry is saved under that name, then it searches for DataStore
         sub-classes with aliases matching `name` and checks whether they can
@@ -436,7 +430,7 @@ class DataStore(metaclass=ABCMeta):
         # If not saved in the configuration file search for sub-classes
         # whose alias matches `name` and can be initialised without params
         cls._singletons = {}
-        for store_cls in list_subclasses(arcana, DataStore, subpkg="data"):
+        for store_cls in list_subclasses(arcana, DataStore):
             try:
                 store = store_cls()
             except Exception:
@@ -463,30 +457,6 @@ class DataStore(metaclass=ABCMeta):
         with open(config_path, "w") as f:
             yaml.dump(entries, f)
 
-    def __enter__(self):
-        # This allows the store to be used within nested contexts
-        # but still only use one connection. This is useful for calling
-        # methods that need connections, and therefore control their
-        # own connection, in batches using the same connection by
-        # placing the batch calls within an outer context.
-        if self._connection_depth == 0:
-            self.connect()
-        self._connection_depth += 1
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self._connection_depth -= 1
-        if self._connection_depth == 0:
-            self.disconnect()
-
-    @classmethod
-    def get_alias(cls):
-        try:
-            alias = cls.alias
-        except AttributeError:
-            alias = cls.__name__.lower()
-        return alias
-
     def create_test_dataset_data(
         self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
     ):
@@ -507,9 +477,9 @@ class DataStore(metaclass=ABCMeta):
         )
 
     @classmethod
-    def create_test_data_item(cls, fname: str, dpath: Path, source_data: Path = None):
-        """For use in test routines, this classmethod creates a simple text file
-        or nested directory at the given path
+    def create_test_fsobject(cls, fname: str, dpath: Path, source_data: Path = None):
+        """For use in test routines, this classmethod creates a simple text file,
+        zip file or nested directory at the given path
 
         Parameters
         ----------
@@ -532,36 +502,39 @@ class DataStore(metaclass=ABCMeta):
         if source_data is not None:
             src_path = source_data.joinpath(*fname.split("/"))
             parts = fname.split(".")
-            fpath = dpath / (path2varname(parts[0]) + "." + ".".join(parts[1:]))
-            fpath.parent.mkdir(exist_ok=True)
+            out_path = dpath / (path2varname(parts[0]) + "." + ".".join(parts[1:]))
             if src_path.is_dir():
-                shutil.copytree(src_path, fpath)
+                shutil.copytree(src_path, out_path)
             else:
-                shutil.copyfile(src_path, fpath, follow_symlinks=True)
+                shutil.copyfile(src_path, out_path, follow_symlinks=True)
         else:
+            out_path = dpath / fname
             next_part = fname
             if next_part.endswith(".zip"):
                 next_part = next_part.strip(".zip")
-            fpath = Path(next_part)
+            next_path = Path(next_part)
             # Make double dir
             if next_part.startswith("doubledir"):
-                (dpath / fpath).mkdir(exist_ok=True)
+                (dpath / next_path).mkdir(exist_ok=True)
                 next_part = "dir"
-                fpath /= next_part
+                next_path /= next_part
             if next_part.startswith("dir"):
-                (dpath / fpath).mkdir(exist_ok=True)
+                (dpath / next_path).mkdir(exist_ok=True)
                 next_part = "test.txt"
-                fpath /= next_part
-            if not fpath.suffix:
-                fpath = fpath.with_suffix(".txt")
-            with open(dpath / fpath, "w") as f:
-                f.write(f"{fname}")
+                next_path /= next_part
+            if not next_path.suffix:
+                next_path = next_path.with_suffix(".txt")
+            if next_path.suffix == ".json":
+                contents = '{"a": 1.0}'
+            else:
+                contents = fname
+            with open(dpath / next_path, "w") as f:
+                f.write(contents)
             if fname.endswith(".zip"):
-                with zipfile.ZipFile(dpath / fname, mode="w") as zfile, set_cwd(dpath):
-                    zfile.write(fpath)
-                (dpath / fpath).unlink()
-                fpath = Path(fname)
-        return fpath
+                with zipfile.ZipFile(out_path, mode="w") as zfile, set_cwd(dpath):
+                    zfile.write(next_path)
+                (dpath / next_path).unlink()
+        return out_path
 
     def make_test_dataset(
         self,

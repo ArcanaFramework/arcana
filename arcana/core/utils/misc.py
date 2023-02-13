@@ -2,6 +2,8 @@ from __future__ import annotations
 import subprocess as sp
 import typing as ty
 import re
+import traceback
+import difflib
 from itertools import zip_longest
 from pathlib import Path, PosixPath
 import tempfile
@@ -9,6 +11,7 @@ import tarfile
 import logging
 import docker
 import os.path
+import attrs
 from contextlib import contextmanager
 from collections.abc import Iterable
 import cloudpickle as cp
@@ -38,6 +41,48 @@ ARCANA_HOME_DIR = Path.home() / ".arcana"
 ARCANA_PIP = "git+ssh://git@github.com/australian-imaging-service/arcana.git"
 
 HASH_CHUNK_SIZE = 2**20  # 1MB in calc. checksums to avoid mem. issues
+
+
+@attrs.define
+class NestedContext:
+    """Base class for "nested contexts", which can be used in "with" statements at
+    at multiple points in the API, and ensures that the context is only entered at most
+    once at any one point. This allows low level calls to ensure that they are executing
+    within an appropriate context, while also enabling high level calls to maintain a
+    context over multiple low-level calls, and thereby not take the performance hit of
+    continually setting up and breaking down the context.
+
+    Parameters
+    -----------
+    _type_
+        _description_
+    """
+
+    depth: int = attrs.field(default=0, init=False)
+
+    def __enter__(self):
+        # This allows the store to be used within nested contexts
+        # but still only use one connection. This is useful for calling
+        # methods that need connections, and therefore control their
+        # own connection, in batches using the same connection by
+        # placing the batch calls within an outer context.
+        self.depth += 1
+        if self.depth == 1:
+            self.enter()
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.depth -= 1
+        if self.depth == 0:
+            self.exit()
+
+    def enter(self):
+        "To be overridden in subclasses as necessary"
+        pass
+
+    def exit(self):
+        "To be overridden in subclasses as necessary"
+        pass
 
 
 def get_home_dir():
@@ -541,6 +586,40 @@ def add_exc_note(e, note):
     else:
         e.args = (e.args[0] + "\n" + note,)
     return e
+
+
+def dict_diff(dict1, dict2, label1="dict1", label2="dict2"):
+    """Create a human readable diff between two dictionaries
+
+    Parameters
+    ----------
+    dict1 : dict
+        first dictionary to compare
+    dict2 : dict
+        second dictionary to compare
+    label1 : str
+        label to give first dictionary in diff
+    label2 : str
+        label to give second dictionary in diff
+
+    Returns
+    -------
+    diff : str
+        the unified diff between the two dictionaries
+    """
+    diff = difflib.unified_diff(
+        sorted(dict1.items()),
+        sorted(dict2.items()),
+        fromfile=label1,
+        tofile=label2,
+        lineterm="\n",
+    )
+    return "\n".join(diff)
+
+
+def show_cli_trace(result):
+    "Used in testing to show traceback of CLI output"
+    return "".join(traceback.format_exception(*result.exc_info))
 
 
 # Minimum version of Arcana that this version can read the serialisation from

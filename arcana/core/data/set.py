@@ -2,29 +2,30 @@ from __future__ import annotations
 import logging
 import typing as ty
 from pathlib import Path
-from itertools import chain
-import re
 import shutil
+from itertools import chain
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
-from fileformats.core.exceptions import FilePathsNotSetException
+
+from fileformats.generic import File
 from arcana.core.utils.serialize import asdict
 from arcana.core.exceptions import (
+    ArcanaDataMatchError,
     ArcanaLicenseNotFoundError,
     ArcanaNameError,
-    ArcanaDataTreeConstructionError,
     ArcanaUsageError,
-    ArcanaBadlyFormattedIDError,
     ArcanaWrongDataSpaceError,
 )
 from .space import DataSpace
 from .column import DataColumn, DataSink, DataSource
 from . import store as datastore
-from .row import DataRow
+from .tree import DataTree
+
 
 if ty.TYPE_CHECKING:
     from ..deploy.image.components import License
+    from .entry import DataEntry
 
 logger = logging.getLogger("arcana")
 
@@ -42,10 +43,10 @@ class Dataset:
         store it is stored (e.g. FS directory path or project ID)
     store : Repository
         The store the dataset is stored into. Can be the local file
-        system by providing a SimpleStore repo.
+        system by providing a FlatDir repo.
     hierarchy : Sequence[str]
         The data frequencies that are explicitly present in the data tree.
-        For example, if a SimpleStore dataset (i.e. directory) has
+        For example, if a FlatDir dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
@@ -137,9 +138,10 @@ class Dataset:
     pipelines: ty.Dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    _root: DataRow = attrs.field(default=None, init=False, repr=False, eq=False)
+    cache: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
 
     def __attrs_post_init__(self):
+        self.cache.dataset = self
         # Ensure that hierarchy items are in the DataSpace enums not strings
         # or set the space from the provided enums
         if self.space is not None:
@@ -287,17 +289,18 @@ class Dataset:
 
     @property
     def root(self):
-        """Lazily loads the data tree from the store on demand
+        """Lazily loads the data tree from the store on demand and return root
 
         Returns
         -------
         DataRow
             The root row of the data tree
         """
-        if self._root is None:
-            self._set_root()
-            self.store.find_rows(self)
-        return self._root
+        # Build the tree cache and return the tree root. Note that if there is a
+        # "with <this-dataset>.cache" statement further up the call stack then the
+        # cache won't be broken down until the highest cache statement exits
+        with self.cache:
+            return self.cache.root
 
     @property
     def locator(self):
@@ -311,13 +314,6 @@ class Dataset:
             locator += f"@{self.name}"
         return locator
 
-    def _set_root(self):
-        self._root = DataRow({self.root_freq: None}, self.root_freq, self)
-
-    def refresh(self):
-        """Refresh the dataset rows"""
-        self._root = None
-
     def add_source(
         self, name, datatype, path=None, row_frequency=None, overwrite=False, **kwargs
     ):
@@ -330,7 +326,7 @@ class Dataset:
             The name used to reference the dataset "column" for the
             source
         datatype : type
-            The file-format (for file-groups) or datatype (for fields)
+            The file-format (for file-sets) or datatype (for fields)
             that the source will be stored in within the dataset
         path : str, default `name`
             The location of the source within the dataset
@@ -341,10 +337,17 @@ class Dataset:
         **kwargs : ty.Dict[str, Any]
             Additional kwargs to pass to DataSource.__init__
         """
-        row_frequency = self._parse_freq(row_frequency)
+        row_frequency = self.parse_frequency(row_frequency)
         if path is None:
             path = name
-        source = DataSource(name, path, datatype, row_frequency, dataset=self, **kwargs)
+        source = DataSource(
+            name=name,
+            datatype=datatype,
+            row_frequency=row_frequency,
+            path=path,
+            dataset=self,
+            **kwargs,
+        )
         self._add_spec(name, source, overwrite)
         return source
 
@@ -360,7 +363,7 @@ class Dataset:
             The name used to reference the dataset "column" for the
             sink
         datatype : type
-            The file-format (for file-groups) or datatype (for fields)
+            The file-format (for file-sets) or datatype (for fields)
             that the sink will be stored in within the dataset
         path : str, default `name`
             The location of the sink within the dataset
@@ -369,10 +372,17 @@ class Dataset:
         overwrite : bool
             Whether to overwrite an existing sink
         """
-        row_frequency = self._parse_freq(row_frequency)
+        row_frequency = self.parse_frequency(row_frequency)
         if path is None:
             path = name
-        sink = DataSink(name, path, datatype, row_frequency, dataset=self, **kwargs)
+        sink = DataSink(
+            name=name,
+            datatype=datatype,
+            row_frequency=row_frequency,
+            path=path,
+            dataset=self,
+            **kwargs,
+        )
         self._add_spec(name, sink, overwrite)
         return sink
 
@@ -417,44 +427,45 @@ class Dataset:
         ArcanaNameError
             If there is no row corresponding to the given ids
         """
-        row = self.root
-        # Parse str to row_frequency enums
-        if not row_frequency:
-            if id is not None:
-                raise ArcanaUsageError(f"Root rows don't have any IDs ({id})")
-            return self.root
-        row_frequency = self._parse_freq(row_frequency)
-        if id_kwargs:
-            if id is not None:
-                raise ArcanaUsageError(
-                    f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
-                    f"provided to `row` method of {self}"
-                )
-            # Convert to the DataSpace of the dataset
-            row = self.root
-            for freq, id in id_kwargs.items():
+        with self.cache:
+            # Parse str to row_frequency enums
+            if not row_frequency:
+                if id is not None:
+                    raise ArcanaUsageError(f"Root rows don't have any IDs ({id})")
+                return self.root
+            row_frequency = self.parse_frequency(row_frequency)
+            if id_kwargs:
+                if id is not None:
+                    raise ArcanaUsageError(
+                        f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
+                        f"provided to `row` method of {self}"
+                    )
+                # Iterate through the tree to find the row (i.e. tree node) matching the
+                # provided IDs
+                row = self.root
+                for freq, id in id_kwargs.items():
+                    try:
+                        children_dict = row.children[self.space[freq]]
+                    except KeyError as e:
+                        raise ArcanaNameError(
+                            freq, f"{freq} is not a child row_frequency of {row}"
+                        ) from e
+                    try:
+                        row = children_dict[id]
+                    except KeyError as e:
+                        raise ArcanaNameError(
+                            id, f"{id} ({freq}) not a child row of {row}"
+                        ) from e
+                return row
+            else:
                 try:
-                    children_dict = row.children[self.space[freq]]
+                    return self.root.children[row_frequency][id]
                 except KeyError as e:
                     raise ArcanaNameError(
-                        freq, f"{freq} is not a child row_frequency of {row}"
+                        id,
+                        f"{id} not present in data tree "
+                        f"({list(self.row_ids(row_frequency))})",
                     ) from e
-                try:
-                    row = children_dict[id]
-                except KeyError as e:
-                    raise ArcanaNameError(
-                        id, f"{id} ({freq}) not a child row of {row}"
-                    ) from e
-            return row
-        else:
-            try:
-                return self.root.children[row_frequency][id]
-            except KeyError as e:
-                raise ArcanaNameError(
-                    id,
-                    f"{id} not present in data tree "
-                    f"({list(self.row_ids(row_frequency))})",
-                ) from e
 
     def rows(self, frequency=None, ids=None):
         """Return all the IDs in the dataset for a given frequency
@@ -472,15 +483,16 @@ class Dataset:
         Sequence[DataRow]
             The sequence of the data row within the dataset
         """
-        if frequency is None:
-            return chain(*(d.values() for d in self.root.children.values()))
-        frequency = self._parse_freq(frequency)
-        if frequency == self.root_freq:
-            return [self.root]
-        rows = self.root.children[frequency].values()
-        if ids is not None:
-            rows = (n for n in rows if n.id in set(ids))
-        return rows
+        with self.cache:
+            if frequency is None:
+                return chain(*(d.values() for d in self.root.children.values()))
+            frequency = self.parse_frequency(frequency)
+            if frequency == self.root_freq:
+                return [self.root]
+            rows = self.root.children[frequency].values()
+            if ids is not None:
+                rows = (n for n in rows if n.id in set(ids))
+            return rows
 
     def row_ids(self, row_frequency):
         """Return all the IDs in the dataset for a given row_frequency
@@ -495,10 +507,11 @@ class Dataset:
         Sequence[str]
             The IDs of the rows
         """
-        row_frequency = self._parse_freq(row_frequency)
-        if row_frequency == self.root_freq:
-            return [None]
-        return self.root.children[row_frequency].keys()
+        with self.cache:
+            row_frequency = self.parse_frequency(row_frequency)
+            if row_frequency == self.root_freq:
+                return [None]
+            return self.root.children[row_frequency].keys()
 
     def __getitem__(self, name):
         """Return all data items across the dataset for a given source or sink
@@ -514,169 +527,6 @@ class Dataset:
             the column object
         """
         return self.columns[name]
-
-    def add_leaf(self, tree_path, explicit_ids=None):
-        """Creates a new row at a the path down the tree of the dataset as
-        well as all "parent" rows upstream in the data tree
-
-        Parameters
-        ----------
-        tree_path : list[str]
-            The sequence of labels for each layer in the hierarchy of the
-            dataset leading to the current row.
-        explicit_ids : dict[DataSpace, str]
-            IDs for frequencies not in the dataset hierarchy that are to be
-            set explicitly
-
-        Raises
-        ------
-        ArcanaBadlyFormattedIDError
-            raised if one of the IDs doesn't match the pattern in the
-            `id_inference`
-        ArcanaDataTreeConstructionError
-            raised if one of the groups specified in the ID inference reg-ex
-            doesn't match a valid row_frequency in the data dimensions
-        """
-        if self._root is None:
-            self._set_root()
-        if explicit_ids is None:
-            explicit_ids = {}
-        # Get basis frequencies covered at the given depth of the
-        if len(tree_path) != len(self.hierarchy):
-            raise ArcanaDataTreeConstructionError(
-                f"Tree path ({tree_path}) should have the same length as "
-                f"the hierarchy ({self.hierarchy}) of {self}"
-            )
-        # Set a default ID of None for all parent frequencies that could be
-        # inferred from a row at this depth
-        ids = {f: None for f in self.space}
-        # Calculate the combined freqs after each layer is added
-        row_frequency = self.space(0)
-        for layer, label in zip(self.hierarchy, tree_path):
-            ids[layer] = label
-            regexes = [r for ln, r in self.id_inference if ln == layer]
-            if not regexes:
-                # If the layer introduces completely new axes then the axis
-                # with the least significant bit (the order of the bits in the
-                # DataSpace class should be arranged to account for this)
-                # can be considered be considered to be equivalent to the label.
-                # E.g. Given a hierarchy of ['subject', 'session']
-                # no groups are assumed to be present by default (although this
-                # can be overridden by the `id_inference` attr) and the `member`
-                # ID is assumed to be equivalent to the `subject` ID. Conversely,
-                # the timepoint can't be inferred from the `session` ID, since
-                # the session ID could be expected to contain the `member` and
-                # `group` ID in it, and should be explicitly extracted by
-                # providing a regex to `id_inference`, e.g.
-                #
-                #       session ID: MRH010_CONTROL03_MR02
-                #
-                # with the '02' part representing as the timepoint can be
-                # extracted with the
-                #
-                #       id_inference={
-                #           'session': r'.*(?P<timepoint>0-9+)$'}
-                if not (layer & row_frequency):
-                    ids[layer.span()[-1]] = label
-            else:
-                for regex in regexes:
-                    match = re.match(regex, label)
-                    if match is None:
-                        raise ArcanaBadlyFormattedIDError(
-                            f"{layer} label '{label}', does not match ID inference"
-                            f" pattern '{regex}'"
-                        )
-                    new_freqs = (layer ^ row_frequency) & layer
-                    for target_freq, target_id in match.groupdict().items():
-                        target_freq = self.space[target_freq]
-                        if (target_freq & new_freqs) != target_freq:
-                            raise ArcanaUsageError(
-                                f"Inferred ID target, {target_freq}, is not a "
-                                f"data row_frequency added by layer {layer}"
-                            )
-                        if ids[target_freq] is not None:
-                            raise ArcanaUsageError(
-                                f"ID '{target_freq}' is specified twice in the ID "
-                                f"inference of {tree_path} ({ids[target_freq]} "
-                                f"and {target_id} from {regex}"
-                            )
-                        ids[target_freq] = target_id
-            row_frequency |= layer
-        assert row_frequency == max(self.space)
-        # Set or override any inferred IDs within the ones that have been
-        # explicitly provided
-        ids.update(explicit_ids)
-        # Create composite IDs for non-basis frequencies if they are not
-        # explicitly in the layer dimensions
-        for freq in set(self.space) - set(row_frequency.span()):
-            if ids[freq] is None:
-                id = tuple(ids[b] for b in freq.span() if ids[b] is not None)
-                if id:
-                    if len(id) == 1:
-                        id = id[0]
-                    ids[freq] = id
-        # TODO: filter row based on dataset include & exclude attrs
-        return self._add_row(ids, row_frequency)
-
-    def _add_row(self, ids, row_frequency):
-        """Adds a row to the dataset, creating all parent "aggregate" rows
-        (e.g. for each subject, group or timepoint) where required
-
-        Parameters
-        ----------
-        row: DataRow
-            The row to add into the data tree
-
-        Raises
-        ------
-        ArcanaDataTreeConstructionError
-            If inserting a multiple IDs of the same class within the tree if
-            one of their ids is None
-        """
-        logger.debug("Adding new %s row to %s dataset: %s", row_frequency, self.id, ids)
-        row_frequency = self._parse_freq(row_frequency)
-        row = DataRow(ids, row_frequency, self)
-        # Create new data row
-        row_dict = self.root.children[row.frequency]
-        if row.id in row_dict:
-            raise ArcanaDataTreeConstructionError(
-                f"ID clash ({row.id}) between rows inserted into data " "tree"
-            )
-        row_dict[row.id] = row
-        # Insert root row
-        # Insert parent rows if not already present and link them with
-        # inserted row
-        for parent_freq, parent_id in row.ids.items():
-            if not parent_freq:
-                continue  # Don't need to insert root row again
-            diff_freq = (row.frequency ^ parent_freq) & row.frequency
-            if diff_freq:
-                # logger.debug(f'Linking parent {parent_freq}: {parent_id}')
-                try:
-                    parent_row = self.row(parent_freq, parent_id)
-                except ArcanaNameError:
-                    # logger.debug(
-                    #     f'Parent {parent_freq}:{parent_id} not found, adding')
-                    parent_ids = {
-                        f: i
-                        for f, i in row.ids.items()
-                        if (f.is_parent(parent_freq) or f == parent_freq)
-                    }
-                    parent_row = self._add_row(parent_ids, parent_freq)
-                # Set reference to level row in new row
-                diff_id = row.ids[diff_freq]
-                children_dict = parent_row.children[row_frequency]
-                if diff_id in children_dict:
-                    raise ArcanaDataTreeConstructionError(
-                        f"ID clash ({diff_id}) between rows inserted into "
-                        f"data tree in {diff_freq} children of {parent_row} "
-                        f"({children_dict[diff_id]} and {row}). You may "
-                        f"need to set the `id_inference` attr of the dataset "
-                        "to disambiguate ID components (e.g. how to extract "
-                        "the timepoint ID from a session label)"
-                    )
-                children_dict[diff_id] = row
-        return row
 
     def apply_pipeline(
         self,
@@ -722,7 +572,7 @@ class Dataset:
         """
         from arcana.core.analysis.pipeline import Pipeline
 
-        row_frequency = self._parse_freq(row_frequency)
+        row_frequency = self.parse_frequency(row_frequency)
 
         # def parsed_conns(lst, conn_type):
         #     parsed = []
@@ -788,12 +638,10 @@ class Dataset:
             # FIXME: Should combine the pipelines into a single workflow and
             # dilate the IDs that need to be run when summarising over different
             # data axes
-            pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
-        # Update local cache of sink paths
-        for sink in sinks:
-            sink.assume_exists()
+            with self.cache:
+                pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
 
-    def _parse_freq(self, freq):
+    def parse_frequency(self, freq):
         """Parses the data row_frequency, converting from string if necessary and
         checks it matches the dimensions of the dataset"""
         if freq is None:
@@ -843,67 +691,70 @@ class Dataset:
             raised if the license of the given name isn't present in the project-specific
             location to retrieve
         """
+        from arcana.core.deploy.image.components import License
 
         site_licenses_dataset = self.store.site_licenses_dataset()
 
         for lic in licenses:
 
-            license_file = self._get_license_file(lic.name)
-
+            missing = False
             try:
-                lic_fs_path = license_file.fs_paths[0]
-            except FilePathsNotSetException:
-                missing = False
+                license_file = self._get_license_file(lic.name)
+            except ArcanaDataMatchError:
                 if site_licenses_dataset is not None:
-                    license_file = self._get_license_file(
-                        lic.name, dataset=site_licenses_dataset
-                    )
                     try:
-                        lic_fs_path = license_file.fs_paths[0]
-                    except FilePathsNotSetException:
+                        license_file = self._get_license_file(
+                            lic.name, dataset=site_licenses_dataset
+                        )
+                    except ArcanaDataMatchError:
                         missing = True
                 else:
                     missing = True
-                if missing:
-                    msg = (
-                        f"Did not find a license corresponding to '{lic.name}' at "
-                        f"{License.column_name(lic.name)} in {self}"
-                    )
-                    if site_licenses_dataset:
-                        msg += f" or {site_licenses_dataset}"
-                    raise ArcanaLicenseNotFoundError(
-                        lic.name,
-                        msg,
-                    )
-            shutil.copyfile(lic_fs_path, lic.destination)
+            if missing:
+                msg = (
+                    f"Did not find a license corresponding to '{lic.name}' at "
+                    f"{License.column_path(lic.name)} in {self}"
+                )
+                if site_licenses_dataset:
+                    msg += f" or {site_licenses_dataset}"
+                raise ArcanaLicenseNotFoundError(
+                    lic.name,
+                    msg,
+                )
+            shutil.copyfile(license_file, lic.destination)
 
-    def install_license(self, name, source_file):
+    def install_license(self, name: str, source_file: File):
         """Store project-specific license in dataset
 
         Parameters
         ----------
         name : str
             name of the license to install
-        source_file : Path
+        source_file : File
             path to the license file to install
         """
-        license_file = self._get_license_file(name)
-        license_file.put(source_file)
+        from arcana.core.deploy.image.components import License
 
-    def _get_license_file(self, lic_name, dataset=None):
-        from fileformats.core.file import BaseFile
+        self.store.post(
+            item=File(source_file),
+            path=License.column_path(name),
+            datatype=File,
+            row=self.root,
+        )
+
+    def _get_license_file(self, name, dataset=None) -> DataEntry:
         from arcana.core.deploy.image.components import License
 
         if dataset is None:
             dataset = self
-        license_column = DataSink(
-            f"{lic_name}_license",
-            License.column_path(lic_name),
-            BaseFile,
+        column = DataSink(
+            name=f"{name}_license",
+            datatype=File,
             row_frequency=self.root_freq,
             dataset=dataset,
+            path=License.column_path(name),
         )
-        return license_column.match(dataset.root)
+        return File(column.match_entry(dataset.root).item)
 
 
 @attrs.define

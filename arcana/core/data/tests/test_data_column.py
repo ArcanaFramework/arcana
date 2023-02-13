@@ -1,9 +1,10 @@
 from operator import mul
 from functools import reduce
-from fileformats.core.base import FileGroup
+from fileformats.core.base import FileSet
+from arcana.core.data.set import Dataset
 
 
-def test_column_api_access(dataset):
+def test_column_api_access(dataset: Dataset):
 
     bp = dataset.__annotations__["blueprint"]
 
@@ -17,9 +18,10 @@ def test_column_api_access(dataset):
         # Check length of column
         assert len(col) == reduce(mul, bp.dim_lengths)
 
-        # Access file-group via leaf IDs
-        for id_ in col.ids:
-            item = col[id_]
-            assert isinstance(item, exp.datatype)
-            if issubclass(exp.datatype, FileGroup):
-                assert sorted(p.name for p in item.fs_paths) == sorted(exp.filenames)
+        # Access file-set via leaf IDs
+        with dataset.cache:
+            for id_ in col.ids:
+                item = col[id_]
+                assert isinstance(item, exp.datatype)
+                if issubclass(exp.datatype, FileSet):
+                    assert sorted(p.name for p in item.fspaths) == sorted(exp.filenames)

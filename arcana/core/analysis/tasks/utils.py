@@ -4,7 +4,7 @@ from pydra import mark
 from pydra.engine.core import File
 from pydra.engine.specs import BaseSpec, SpecInfo
 from pydra.engine.task import FunctionTask
-from fileformats.core.base import DataType, FileGroup
+from fileformats.core.base import DataType, FileSet
 from arcana.core.data.row import DataRow
 
 
@@ -28,7 +28,7 @@ def identity_task(task_name, fields):
 
 
 @mark.task
-@mark.annotate({"in_file": FileGroup, "return": {"out_file": FileGroup}})
+@mark.annotate({"in_file": FileSet, "return": {"out_file": FileSet}})
 def identity_converter(in_file):
     return in_file
 

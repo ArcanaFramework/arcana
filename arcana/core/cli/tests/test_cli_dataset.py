@@ -1,12 +1,11 @@
 import pytest
-import os.path
 from arcana.core.data.set import Dataset
 from arcana.core.analysis.salience import ColumnSalience
-from fileformats.core.quality import DataQuality
-from arcana.core.utils.testing.data import TestDataSpace
+from arcana.core.data.quality import DataQuality
+from arcana.testing.data.space import TestDataSpace
 from arcana.core.cli.dataset import define, add_source, add_sink, missing_items
-from fileformats.common import Text
-from arcana.core.utils.testing import show_cli_trace
+from fileformats.text import Plain as Text
+from arcana.core.utils.misc import show_cli_trace
 
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
@@ -31,7 +30,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
         row_frequency=TestDataSpace.d,
         quality_threshold=DataQuality.questionable,
         order=1,
-        header_vals={},
+        required_metadata={},
         is_regex=False,
     )
     # Add source column to saved dataset
@@ -40,7 +39,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
         [
             saved_dataset.locator,
             "a_source",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--path",
             "file1",
             "--row-frequency",
@@ -66,7 +65,7 @@ def test_add_column_cli(saved_dataset, cli_runner):
         [
             saved_dataset.locator,
             "a_sink",
-            "fileformats.common:Text",
+            "fileformats.text:Plain",
             "--path",
             "deriv",
             "--row-frequency",
@@ -109,7 +108,7 @@ def test_define_cli(dataset: Dataset, cli_runner):
         args.extend(["--include", str(axis), slce])
     for axis, slce in excluded:
         args.extend(["--exclude", str(axis), slce])
-    args.extend(["--space", "arcana.core.utils.testing.data:TestDataSpace"])
+    args.extend(["--space", "arcana.testing.data.space:TestDataSpace"])
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully

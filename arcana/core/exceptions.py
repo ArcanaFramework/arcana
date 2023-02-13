@@ -115,7 +115,7 @@ class ArcanaUnresolvableFormatException(ArcanaException):
     pass
 
 
-class ArcanaFileGroupNotCachedException(ArcanaException):
+class ArcanaFileSetNotCachedException(ArcanaException):
     pass
 
 
@@ -207,3 +207,26 @@ class ArcanaEmptyDatasetError(ArcanaException):
 
 class ArcanaBuildError(ArcanaError):
     pass
+
+
+class NamedError(Exception):
+    def __init__(self, name, msg):
+        super().__init__(msg)
+        self.name = name
+
+
+class NameError(NamedError):
+    pass
+
+
+class DataNotDerivedYetError(NamedError):
+    pass
+
+
+class DatatypeUnsupportedByStoreError(ArcanaError):
+    """Raised when a data store doesn't support a given datatype"""
+
+    def __init__(self, datatype, store):
+        super().__init__(
+            f"'{datatype.mime_like}' data types aren't supported by {type(store)} stores"
+        )
