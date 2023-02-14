@@ -132,14 +132,16 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get(self, entry: DataEntry) -> DataType:
+    def get(self, entry: DataEntry, datatype: type) -> DataType:
         """
         Gets the data item corresponding to the given entry
 
         Parameters
         ----------
-        entry: DataEntry
+        entry : DataEntry
             the data entry to update
+        datatype : type
+            the datatype to interpret the entry's item as
 
         Returns
         -------

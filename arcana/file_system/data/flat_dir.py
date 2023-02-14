@@ -94,7 +94,7 @@ class FlatDir(DataStore):
                 uri=entry_path,
             )
 
-    def get(self, entry: DataEntry) -> DataType:
+    def get(self, entry: DataEntry, datatype: type) -> DataType:
         if entry.datatype.is_fileset:
             value = self.iterdir(entry.uri)
         elif entry.datatype.is_field:
@@ -102,7 +102,7 @@ class FlatDir(DataStore):
                 value = f.read()
         else:
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
-        return entry.datatype(value)
+        return datatype(value)
 
     def put(self, item: DataType, entry: DataEntry) -> DataType:
         """

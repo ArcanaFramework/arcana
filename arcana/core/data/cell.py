@@ -46,7 +46,7 @@ class DataCell:
     def item(self) -> DataType:
         if self.is_empty:
             raise ArcanaError(f"Cannot access item of empty cell, {self}")
-        return self.column.datatype(self.entry.item)
+        return self.entry.get_item(self.column.datatype)
 
     @item.setter
     def item(self, item: DataType):

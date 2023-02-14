@@ -2,10 +2,12 @@ from __future__ import annotations
 from abc import abstractmethod, ABCMeta
 import re
 import typing as ty
+import logging
 import attrs
 from operator import attrgetter
 from attrs.converters import optional
 from fileformats.core import DataType
+from fileformats.core.exceptions import FormatMismatchError
 from arcana.core.exceptions import ArcanaDataMatchError
 from ..analysis.salience import ColumnSalience
 from .quality import DataQuality
@@ -16,6 +18,9 @@ if ty.TYPE_CHECKING:
     from .row import DataRow
     from .entry import DataEntry
     from .set import Dataset
+
+
+logger = logging.getLogger("arcana")
 
 
 @attrs.define(kw_only=True)
@@ -29,6 +34,9 @@ class DataColumn(metaclass=ABCMeta):
     path: str = None
     dataset: Dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
+    )
+    _mismatch_log: list = attrs.field(
+        default=None, eq=False, hash=False, repr=False, init=False
     )
 
     is_sink = False
@@ -107,18 +115,26 @@ class DataColumn(metaclass=ABCMeta):
             within the row
         """
         matches = row.entries
+        self._mismatch_log = []
         for method in self.criteria():
             filtered = [m for m in matches if method(m)]
             if not filtered:
                 if allow_none:
                     return None
                 else:
-                    raise ArcanaDataMatchError(
+                    msg = (
                         "Did not find any entries "
                         + method.__doc__.format(self=self)
                         + self._error_msg(row, matches)
+                        + "\n\nDetails\n"
+                        + "-------\n"
+                        + "\n".join(
+                            frmt.format(*ags) for frmt, ags in self._mismatch_log
+                        )
                     )
+                    raise ArcanaDataMatchError(msg)
             matches = filtered
+        self._mismatch_log = None
         return self.select_entry_from_matches(row, matches)
 
     @abstractmethod
@@ -131,16 +147,35 @@ class DataColumn(metaclass=ABCMeta):
 
     def matches_path(self, entry: DataEntry) -> bool:
         "that matched the path '{self.path}'"
-        id_parts = entry.path.split("/")
         path_parts = self.path.split("/")
-        return id_parts[: len(path_parts)] == path_parts
+        entry_parts = entry.path.split("/")[: len(path_parts)]
+        if entry_parts == path_parts:
+            return True
+        else:
+            return self._log_mismatch(
+                entry,
+                "path sections {} do not match {}",
+                entry_parts,
+                path_parts,
+            )
 
     def matches_datatype(self, entry: DataEntry) -> bool:
         "that matched the datatype '{self.datatype.mime_like}'"
-        return self.datatype is entry.datatype or (
-            issubclass(self.datatype, entry.datatype)
-            and self.datatype.matches(entry.item)
-        )
+        if self.datatype is entry.datatype:
+            return True
+        if not self.datatype.is_subtype_of(entry.datatype):
+            return self._log_mismatch(
+                entry,
+                "required datatype '{}' is not a " "sub-type of '{}'",
+                self.datatype.mime_like,
+                entry.datatype,
+            )
+        try:
+            entry.get_item(self.datatype)
+        except FormatMismatchError as e:
+            return self._log_mismatch(entry, "datatype does not match, {}", str(e))
+        else:
+            return True
 
     def select_entry_from_matches(
         self, row: DataRow, matches: list[DataEntry]
@@ -168,6 +203,10 @@ class DataColumn(metaclass=ABCMeta):
             out_str += match.path
             out_str += f" ({match.quality})"
         return out_str
+
+    def _log_mismatch(self, entry, format_str, *args):
+        self._mismatch_log.append(("Entry {}: " + format_str, (entry.path,) + args))
+        return False
 
 
 @attrs.define(kw_only=True)
@@ -254,18 +293,35 @@ class DataSource(DataColumn):
         "that matched the path pattern '{self.path}'"
         pattern = self.path
         if not pattern.endswith("$"):
-            pattern += "$"
-        return re.match(pattern, entry.path)
+            pattern += "(/.*)?$"
+        if re.match(pattern, entry.path):
+            return True
+        else:
+            return self._log_mismatch(
+                entry, "entry path {} doesn't match regular expression", pattern
+            )
 
     def matches_quality(self, entry: DataEntry) -> bool:
         "with an acceptable quality '{self.quality_threshold}'"
-        return entry.quality >= self.quality_threshold
+        if entry.quality >= self.quality_threshold:
+            return True
+        else:
+            return self._log_mismatch(
+                entry, "quality is below threshold {}", self.quality_threshold
+            )
 
     def matches_metadata(self, entry: DataEntry) -> bool:
         "with the required metadata '{self.required_metadata}'"
-        return all(
-            entry.item_metadata[k] == v for k, v in self.required_metadata.items()
-        )
+        entry_metadata = {k: entry.item_metadata[k] for k in self.required_metadata}
+        if entry_metadata == self.required_metadata:
+            return True
+        else:
+            return self._log_mismatch(
+                entry,
+                "metadata {} doesn't match required {}",
+                entry_metadata,
+                self.required_metadata,
+            )
 
     def select_entry_from_matches(
         self, row: DataRow, matches: list[DataEntry]

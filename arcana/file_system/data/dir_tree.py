@@ -100,11 +100,11 @@ class DirTree(DataStore):
         # First ID can be omitted
         return self.add_entries_from_dir(self.root_dir(row) / self.row_path(row), row)
 
-    def get(self, entry: DataEntry) -> DataType:
+    def get(self, entry: DataEntry, datatype: type) -> DataType:
         if entry.datatype.is_fileset:
-            item = self.get_fileset(entry)
+            item = self.get_fileset(entry, datatype)
         elif entry.datatype.is_field:
-            item = self.get_field(entry)
+            item = self.get_field(entry, datatype)
         else:
             raise RuntimeError(
                 f"Don't know how to retrieve {entry.datatype} data from {type(self)} stores"
@@ -156,11 +156,11 @@ class DirTree(DataStore):
         else:
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
 
-    def get_field(self, entry: DataEntry) -> Field:
-        return entry.datatype(self.read_from_json(*entry.uri.split("@")))
+    def get_field(self, entry: DataEntry, datatype: type) -> Field:
+        return datatype(self.read_from_json(*entry.uri.split("@")))
 
-    def get_fileset(self, entry: DataEntry) -> FileSet:
-        return entry.datatype(self.get_all_fileset_paths(self.get_fileset_path(entry)))
+    def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
+        return datatype(self.get_all_fileset_paths(self.get_fileset_path(entry)))
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         """
