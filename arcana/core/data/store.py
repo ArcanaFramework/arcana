@@ -21,7 +21,7 @@ from arcana.core.utils.misc import (
     NestedContext,
 )
 from arcana.core.utils.packaging import list_subclasses
-from arcana.core.exceptions import ArcanaUsageError, ArcanaNameError
+from arcana.core.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaError
 
 DS = ty.TypeVar("DS", bound="DataStore")
 
@@ -84,7 +84,7 @@ class ConnectionManager(NestedContext):
     def enter(self):
         self.session = self.store.connect()
 
-    def disconnect(self):
+    def exit(self):
         self.store.disconnect(self.session)
         self.session = None
 
@@ -479,7 +479,14 @@ class DataStore(metaclass=ABCMeta):
         )
 
     @classmethod
-    def create_test_fsobject(cls, fname: str, dpath: Path, source_data: Path = None):
+    def create_test_fsobject(
+        cls,
+        fname: str,
+        dpath: Path,
+        source_data: Path = None,
+        source_fallback: bool = False,
+        escape_source_name: bool = True,
+    ):
         """For use in test routines, this classmethod creates a simple text file,
         zip file or nested directory at the given path
 
@@ -493,6 +500,11 @@ class DataStore(metaclass=ABCMeta):
         source_data : Path, optional
             path to a directory containing source data to use instead of the dummy
             data
+        source_fallback : bool
+            whether to fall back to the generated file if fname isn't in the source
+            data dir
+        escape_source_name : bool
+            whether to escape the source name or simple use the file name of the source
 
         Returns
         -------
@@ -503,39 +515,48 @@ class DataStore(metaclass=ABCMeta):
         dpath.mkdir(parents=True, exist_ok=True)
         if source_data is not None:
             src_path = source_data.joinpath(*fname.split("/"))
-            parts = fname.split(".")
-            out_path = dpath / (path2varname(parts[0]) + "." + ".".join(parts[1:]))
-            if src_path.is_dir():
-                shutil.copytree(src_path, out_path)
-            else:
-                shutil.copyfile(src_path, out_path, follow_symlinks=True)
+            if src_path.exists():
+                if escape_source_name:
+                    parts = fname.split(".")
+                    out_fname = path2varname(parts[0]) + "." + ".".join(parts[1:])
+                else:
+                    out_fname = Path(fname).name
+                out_path = dpath / out_fname
+                if src_path.is_dir():
+                    shutil.copytree(src_path, out_path)
+                else:
+                    shutil.copyfile(src_path, out_path, follow_symlinks=True)
+                return out_path
+            elif not source_fallback:
+                raise ArcanaError(
+                    f"Couldn't find {fname} in source data directory {source_data}"
+                )
+        out_path = dpath / fname
+        next_part = fname
+        if next_part.endswith(".zip"):
+            next_part = next_part.strip(".zip")
+        next_path = Path(next_part)
+        # Make double dir
+        if next_part.startswith("doubledir"):
+            (dpath / next_path).mkdir(exist_ok=True)
+            next_part = "dir"
+            next_path /= next_part
+        if next_part.startswith("dir"):
+            (dpath / next_path).mkdir(exist_ok=True)
+            next_part = "test.txt"
+            next_path /= next_part
+        if not next_path.suffix:
+            next_path = next_path.with_suffix(".txt")
+        if next_path.suffix == ".json":
+            contents = '{"a": 1.0}'
         else:
-            out_path = dpath / fname
-            next_part = fname
-            if next_part.endswith(".zip"):
-                next_part = next_part.strip(".zip")
-            next_path = Path(next_part)
-            # Make double dir
-            if next_part.startswith("doubledir"):
-                (dpath / next_path).mkdir(exist_ok=True)
-                next_part = "dir"
-                next_path /= next_part
-            if next_part.startswith("dir"):
-                (dpath / next_path).mkdir(exist_ok=True)
-                next_part = "test.txt"
-                next_path /= next_part
-            if not next_path.suffix:
-                next_path = next_path.with_suffix(".txt")
-            if next_path.suffix == ".json":
-                contents = '{"a": 1.0}'
-            else:
-                contents = fname
-            with open(dpath / next_path, "w") as f:
-                f.write(contents)
-            if fname.endswith(".zip"):
-                with zipfile.ZipFile(out_path, mode="w") as zfile, set_cwd(dpath):
-                    zfile.write(next_path)
-                (dpath / next_path).unlink()
+            contents = fname
+        with open(dpath / next_path, "w") as f:
+            f.write(contents)
+        if fname.endswith(".zip"):
+            with zipfile.ZipFile(out_path, mode="w") as zfile, set_cwd(dpath):
+                zfile.write(next_path)
+            (dpath / next_path).unlink()
         return out_path
 
     def make_test_dataset(

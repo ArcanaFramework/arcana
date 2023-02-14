@@ -3,6 +3,7 @@ import subprocess as sp
 import typing as ty
 import re
 import traceback
+import yaml
 import difflib
 from itertools import zip_longest
 from pathlib import Path, PosixPath
@@ -607,9 +608,11 @@ def dict_diff(dict1, dict2, label1="dict1", label2="dict2"):
     diff : str
         the unified diff between the two dictionaries
     """
+    yaml1 = yaml.dump(dict1, sort_keys=True, indent=4)
+    yaml2 = yaml.dump(dict2, sort_keys=True, indent=4)
     diff = difflib.unified_diff(
-        sorted(dict1.items()),
-        sorted(dict2.items()),
+        yaml1.splitlines(),
+        yaml2.splitlines(),
         fromfile=label1,
         tofile=label2,
         lineterm="\n",
