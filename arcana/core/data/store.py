@@ -259,7 +259,7 @@ class DataStore(metaclass=ABCMeta):
         If a connection session is required to the store manage it here
         """
 
-    def disconnect(self):
+    def disconnect(self, session):
         """
         If a connection session is required to the store manage it here
         """

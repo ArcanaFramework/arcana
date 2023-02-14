@@ -228,200 +228,192 @@ class ContainerCommand:
             dataset_locator, store_cache_dir, dataset_hierarchy, dataset_name
         )
 
-        with dataset.cache:
+        # Install required software licenses from store into container
+        if self.image is not None:
+            dataset.download_licenses(
+                [lic for lic in self.image.licenses if not lic.store_in_image]
+            )
 
-            if single_row is not None:
-                # Adds a single row to the dataset (i.e. skips a full scan)
-                dataset.cache.add_leaf(single_row.split(","))
+        input_values = dict(input_values) if input_values else {}
+        output_values = dict(output_values) if output_values else {}
+        parameter_values = dict(parameter_values) if parameter_values else {}
 
-            # Install required software licenses from store into container
-            if self.image is not None:
-                dataset.download_licenses(
-                    [lic for lic in self.image.licenses if not lic.store_in_image]
+        input_configs = []
+        converter_args = {}  # Arguments passed to converter
+        for inpt in self.inputs:
+            if not input_values[inpt.name] and inpt.datatype != DataRow:
+                logger.warning(
+                    f"Skipping '{inpt.name}' source column as no input was provided"
                 )
-
-            input_values = dict(input_values) if input_values else {}
-            output_values = dict(output_values) if output_values else {}
-            parameter_values = dict(parameter_values) if parameter_values else {}
-
-            input_configs = []
-            converter_args = {}  # Arguments passed to converter
-            for inpt in self.inputs:
-                if not input_values[inpt.name] and inpt.datatype != DataRow:
-                    logger.warning(
-                        f"Skipping '{inpt.name}' source column as no input was provided"
-                    )
-                    continue
-                if inpt.datatype is DataRow:
-                    logger.info(
-                        f"No column added for '{inpt.name}' column as it uses built-in "
-                        "type `arcana.core.data.row.DataRow`"
-                    )
-                    continue
-                path, qualifiers = self.extract_qualifiers_from_path(
-                    input_values[inpt.name]
-                )
-                source_kwargs = qualifiers.pop("criteria", {})
-                converter_args[inpt.name] = qualifiers.pop("converter", {})
-                if qualifiers:
-                    raise ArcanaUsageError(
-                        "Unrecognised qualifier namespaces extracted from path for "
-                        f"{inpt.name} (expected ['criteria', 'converter']): {qualifiers}"
-                    )
-                if inpt.name in dataset.columns:
-                    column = dataset[inpt.name]
-                    logger.info(f"Found existing source column {column}")
-                else:
-                    logger.info(f"Adding new source column '{inpt.name}'")
-                    dataset.add_source(
-                        name=inpt.name,
-                        datatype=inpt.default_column.datatype,
-                        path=path,
-                        is_regex=True,
-                        **source_kwargs,
-                    )
-                if input_config := inpt.config_dict:
-                    input_configs.append(input_config)
-
-            output_configs = []
-            for output in self.outputs:
-                path, qualifiers = self.extract_qualifiers_from_path(
-                    output_values.get(output.name, output.name)
-                )
-                converter_args[output.name] = qualifiers.pop("converter", {})
-                if qualifiers:
-                    raise ArcanaUsageError(
-                        "Unrecognised qualifier namespaces extracted from path for "
-                        f"{output.name} (expected ['criteria', 'converter']): {qualifiers}"
-                    )
-                if output.name in dataset.columns:
-                    column = dataset[output.name]
-                    if not column.is_sink:
-                        raise ArcanaUsageError(
-                            "Output column name '{output.name}' shadows existing source column"
-                        )
-                    logger.info(f"Found existing sink column {column}")
-                else:
-                    logger.info(f"Adding new source column '{output.name}'")
-                    dataset.add_sink(
-                        name=output.name,
-                        datatype=output.default_column.datatype,
-                        path=path,
-                    )
-                if output_config := output.config_dict:
-                    output_configs.append(output_config)
-
-            kwargs = copy(self.configuration)
-
-            param_configs = []
-            for param in self.parameters:
-                param_value = parameter_values.get(param.name, None)
+                continue
+            if inpt.datatype is DataRow:
                 logger.info(
-                    "Parameter %s (type %s) passed value %s",
+                    f"No column added for '{inpt.name}' column as it uses built-in "
+                    "type `arcana.core.data.row.DataRow`"
+                )
+                continue
+            path, qualifiers = self.extract_qualifiers_from_path(
+                input_values[inpt.name]
+            )
+            source_kwargs = qualifiers.pop("criteria", {})
+            converter_args[inpt.name] = qualifiers.pop("converter", {})
+            if qualifiers:
+                raise ArcanaUsageError(
+                    "Unrecognised qualifier namespaces extracted from path for "
+                    f"{inpt.name} (expected ['criteria', 'converter']): {qualifiers}"
+                )
+            if inpt.name in dataset.columns:
+                column = dataset[inpt.name]
+                logger.info(f"Found existing source column {column}")
+            else:
+                logger.info(f"Adding new source column '{inpt.name}'")
+                dataset.add_source(
+                    name=inpt.name,
+                    datatype=inpt.default_column.datatype,
+                    path=path,
+                    is_regex=True,
+                    **source_kwargs,
+                )
+            if input_config := inpt.config_dict:
+                input_configs.append(input_config)
+
+        output_configs = []
+        for output in self.outputs:
+            path, qualifiers = self.extract_qualifiers_from_path(
+                output_values.get(output.name, output.name)
+            )
+            converter_args[output.name] = qualifiers.pop("converter", {})
+            if qualifiers:
+                raise ArcanaUsageError(
+                    "Unrecognised qualifier namespaces extracted from path for "
+                    f"{output.name} (expected ['criteria', 'converter']): {qualifiers}"
+                )
+            if output.name in dataset.columns:
+                column = dataset[output.name]
+                if not column.is_sink:
+                    raise ArcanaUsageError(
+                        "Output column name '{output.name}' shadows existing source column"
+                    )
+                logger.info(f"Found existing sink column {column}")
+            else:
+                logger.info(f"Adding new source column '{output.name}'")
+                dataset.add_sink(
+                    name=output.name,
+                    datatype=output.default_column.datatype,
+                    path=path,
+                )
+            if output_config := output.config_dict:
+                output_configs.append(output_config)
+
+        kwargs = copy(self.configuration)
+
+        param_configs = []
+        for param in self.parameters:
+            param_value = parameter_values.get(param.name, None)
+            logger.info(
+                "Parameter %s (type %s) passed value %s",
+                param.name,
+                param.datatype,
+                param_value,
+            )
+            if param_value == "" and param.datatype is not str:
+                param_value = None
+                logger.info(
+                    "Non-string parameter '%s' passed empty string, setting to NOTHING",
                     param.name,
-                    param.datatype,
-                    param_value,
                 )
-                if param_value == "" and param.datatype is not str:
-                    param_value = None
-                    logger.info(
-                        "Non-string parameter '%s' passed empty string, setting to NOTHING",
-                        param.name,
-                    )
-                if param_value is None:
-                    if param.default is None:
-                        raise RuntimeError(
-                            f"A value must be provided to required '{param.name}' parameter"
-                        )
-                    param_value = param.default
-                    logger.info(
-                        "Using default value for %s, %s", param.name, param_value
-                    )
-
-                # Convert parameter to parameter type
-                try:
-                    param_value = param.datatype(param_value)
-                except ValueError:
-                    raise ValueError(
-                        f"Could not convert value passed to '{param.name}' parameter, "
-                        f"{param_value}, into {param.datatype}"
-                    )
-                kwargs[param.field] = param_value
-                if param_config := param.config_dict:
-                    param_configs.append(param_config)
-
-            if "name" not in kwargs:
-                kwargs["name"] = "pipeline_task"
-
-            if input_configs:
-                kwargs["inputs"] = input_configs
-            if output_configs:
-                kwargs["outputs"] = output_configs
-            if param_configs:
-                kwargs["parameters"] = param_configs
-
-            task = self.task(**kwargs)
-
-            if pipeline_name in dataset.pipelines and not overwrite:
-                pipeline = dataset.pipelines[self.name]
-                if task != pipeline.workflow:
+            if param_value is None:
+                if param.default is None:
                     raise RuntimeError(
-                        f"A pipeline named '{self.name}' has already been applied to "
-                        "which differs from one specified. Please use '--overwrite' option "
-                        "if this is intentional"
+                        f"A value must be provided to required '{param.name}' parameter"
                     )
-            else:
-                pipeline = dataset.apply_pipeline(
-                    pipeline_name,
-                    task,
-                    inputs=self.inputs,
-                    outputs=self.outputs,
-                    row_frequency=self.row_frequency,
-                    overwrite=overwrite,
-                    converter_args=converter_args,
-                )
+                param_value = param.default
+                logger.info("Using default value for %s, %s", param.name, param_value)
 
-            # Instantiate the Pydra workflow
-            wf = pipeline(cache_dir=pipeline_cache_dir)
-
-            if ids is not None:
-                ids = ids.split(",")
-
-            # execute the workflow
+            # Convert parameter to parameter type
             try:
-                result = wf(ids=ids, plugin=plugin)
-            except Exception:
-                msg = show_workflow_errors(
-                    pipeline_cache_dir, omit_nodes=["per_node", wf.name]
+                param_value = param.datatype(param_value)
+            except ValueError:
+                raise ValueError(
+                    f"Could not convert value passed to '{param.name}' parameter, "
+                    f"{param_value}, into {param.datatype}"
                 )
-                logger.error(
-                    "Pipeline failed with errors for the following nodes:\n\n%s", msg
-                )
-                if raise_errors or not msg:
-                    raise
-                else:
-                    errors = True
-            else:
-                logger.info(
-                    "Pipeline '%s' ran successfully for the following data rows:\n%s",
-                    pipeline_name,
-                    "\n".join(result.output.processed),
-                )
-                errors = False
-            finally:
-                if export_work:
-                    logger.info("Exporting work directory to '%s'", export_work)
-                    export_work.mkdir(parents=True, exist_ok=True)
-                    shutil.copytree(pipeline_cache_dir, export_work / "pydra")
+            kwargs[param.field] = param_value
+            if param_config := param.config_dict:
+                param_configs.append(param_config)
 
-            # Abort at the end after the working directory can be copied back to the
-            # host so that XNAT knows there was an error
-            if errors:
-                if keep_running_on_errors:
-                    while True:
-                        pass
-                else:
-                    sys.exit(1)
+        if "name" not in kwargs:
+            kwargs["name"] = "pipeline_task"
+
+        if input_configs:
+            kwargs["inputs"] = input_configs
+        if output_configs:
+            kwargs["outputs"] = output_configs
+        if param_configs:
+            kwargs["parameters"] = param_configs
+
+        task = self.task(**kwargs)
+
+        if pipeline_name in dataset.pipelines and not overwrite:
+            pipeline = dataset.pipelines[self.name]
+            if task != pipeline.workflow:
+                raise RuntimeError(
+                    f"A pipeline named '{self.name}' has already been applied to "
+                    "which differs from one specified. Please use '--overwrite' option "
+                    "if this is intentional"
+                )
+        else:
+            pipeline = dataset.apply_pipeline(
+                pipeline_name,
+                task,
+                inputs=self.inputs,
+                outputs=self.outputs,
+                row_frequency=self.row_frequency,
+                overwrite=overwrite,
+                converter_args=converter_args,
+            )
+
+        # Instantiate the Pydra workflow
+        wf = pipeline(cache_dir=pipeline_cache_dir)
+
+        if ids is not None:
+            ids = ids.split(",")
+
+        # execute the workflow
+        try:
+            result = wf(ids=ids, plugin=plugin)
+        except Exception:
+            msg = show_workflow_errors(
+                pipeline_cache_dir, omit_nodes=["per_node", wf.name]
+            )
+            logger.error(
+                "Pipeline failed with errors for the following nodes:\n\n%s", msg
+            )
+            if raise_errors or not msg:
+                raise
+            else:
+                errors = True
+        else:
+            logger.info(
+                "Pipeline '%s' ran successfully for the following data rows:\n%s",
+                pipeline_name,
+                "\n".join(result.output.processed),
+            )
+            errors = False
+        finally:
+            if export_work:
+                logger.info("Exporting work directory to '%s'", export_work)
+                export_work.mkdir(parents=True, exist_ok=True)
+                shutil.copytree(pipeline_cache_dir, export_work / "pydra")
+
+        # Abort at the end after the working directory can be copied back to the
+        # host so that XNAT knows there was an error
+        if errors:
+            if keep_running_on_errors:
+                while True:
+                    pass
+            else:
+                sys.exit(1)
 
     @classmethod
     def extract_qualifiers_from_path(cls, user_input: str):
