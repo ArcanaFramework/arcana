@@ -6,7 +6,8 @@ from pathlib import Path
 import attrs
 import yaml
 from fileformats.core.base import FileSet, DataType, Field
-from arcana.core.data.store import DataStore, TestDatasetBlueprint
+from arcana.core.data.store import DataStore
+from arcana.core.data.testing import TestDatasetBlueprint
 from arcana.core.data.row import DataRow
 from arcana.core.data.tree import DataTree
 from arcana.core.data.entry import DataEntry

@@ -1,7 +1,7 @@
 from functools import reduce
 from operator import mul
 import pytest
-from arcana.core.data.store import TestDatasetBlueprint
+from arcana.core.data.testing import TestDatasetBlueprint
 from arcana.testing.data.space import (
     TestDataSpace,
 )

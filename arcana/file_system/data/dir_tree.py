@@ -19,7 +19,8 @@ from arcana.core.exceptions import (
 from arcana.core.data.set import DataTree
 from arcana.core.data.row import DataRow
 from arcana.core.data.entry import DataEntry
-from arcana.core.data.store import DataStore, TestDatasetBlueprint
+from arcana.core.data.store import DataStore
+from arcana.core.data.testing import TestDatasetBlueprint
 from arcana.core.utils.misc import get_home_dir
 from arcana.core.data import Samples
 

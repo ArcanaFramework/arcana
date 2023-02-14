@@ -29,7 +29,7 @@ from arcana.testing.analysis.tasks import (
     concatenate,
     concatenate_reverse,
 )
-from arcana.core.data.store import (
+from arcana.core.data.testing import (
     TestDatasetBlueprint,
     DerivBlueprint,
     ExpDatatypeBlueprint,

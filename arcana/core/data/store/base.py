@@ -23,53 +23,17 @@ from arcana.core.utils.misc import (
 from arcana.core.utils.packaging import list_subclasses
 from arcana.core.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaError
 
+
 DS = ty.TypeVar("DS", bound="DataStore")
 
 logger = logging.getLogger("arcana")
 
 
 if ty.TYPE_CHECKING:
-    from .space import DataSpace
-    from .set import DataTree
-    from .entry import DataEntry
-    from .row import DataRow
-
-
-@attrs.define(kw_only=True)
-class ExpDatatypeBlueprint:
-
-    datatype: type
-    filenames: list[str]
-
-
-@attrs.define(kw_only=True)
-class DerivBlueprint:
-
-    name: str
-    row_frequency: DataSpace
-    datatype: type
-    filenames: ty.List[str]
-
-
-@attrs.define(slots=False, kw_only=True)
-class TestDatasetBlueprint:
-
-    hierarchy: ty.List[DataSpace]
-    dim_lengths: ty.List[int]  # size of layers a-d respectively
-    files: ty.List[str]  # files present at bottom layer
-    id_inference: ty.List[ty.Tuple[DataSpace, str]] = attrs.field(
-        factory=list
-    )  # id_inference dict
-    expected_datatypes: ty.Dict[str, ExpDatatypeBlueprint] = attrs.field(
-        factory=dict
-    )  # expected formats
-    derivatives: ty.List[DerivBlueprint] = attrs.field(
-        factory=list
-    )  # files to insert as derivatives
-
-    @property
-    def space(self):
-        return type(self.hierarchy[0])
+    from ..set import DataTree
+    from ..entry import DataEntry
+    from ..row import DataRow
+    from ..testing import TestDatasetBlueprint
 
 
 @attrs.define
@@ -378,7 +342,7 @@ class DataStore(metaclass=ABCMeta):
         **kwargs:
             Keyword args passed on to the Dataset init method
         """
-        from .space import DataSpace
+        from ..space import DataSpace
 
         if not hierarchy:
             if space:
