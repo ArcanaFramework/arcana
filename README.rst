@@ -64,6 +64,11 @@ Close TG, et. al. Neuroinformatics. 2020 18(1):109-129. doi:* `<10.1007/s12021-0
 However, instead of Nipype, later versions use the Pydra dataflow engine (Nipype's successor)
 and the syntax has been rewritten from scratch to make it more streamlined and intuitive.*
 
+Acknowledgements
+~~~~~~~~~~~~~~~~
+
+The authors acknowledge the facilities and scientific and technical assistance of the National Imaging Facility, a National Collaborative Research Infrastructure Strategy (NCRIS) capability.
+
 
 .. _Arcana: http://arcana.readthedocs.io
 .. _Pydra: http://pydra.readthedocs.io
