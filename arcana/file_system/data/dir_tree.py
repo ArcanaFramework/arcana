@@ -8,9 +8,7 @@ import logging
 import json
 import attrs
 from fileformats.core.base import FileSet, Field
-from arcana.core.exceptions import (
-    ArcanaUsageError,
-)
+from arcana.core.exceptions import ArcanaUsageError
 from arcana.core.data.set import DataTree
 from arcana.core.data.row import DataRow
 from arcana.core.data.entry import DataEntry
@@ -42,10 +40,9 @@ class DirTree(LocalStore):
 
     """
 
-    PROV_SUFFIX = ".prov"
-    FIELDS_FNAME = "__fields__.json"
-    FIELDS_PROV_FNAME = "__fields_prov__.json"
-    VALUE_KEY = "__value__"
+    PROV_SUFFIX = ".provenance"
+    FIELDS_FNAME = "__fields__"
+    FIELDS_PROV_FNAME = "__fields_provenance__"
 
     name: str = "file"  # Name is constant, as there is only ever one store, which covers whole FS
 
@@ -115,7 +112,7 @@ class DirTree(LocalStore):
         return datatype(self.read_from_json(fspath, key))
 
     def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
-        return datatype(self._fileset_fspath(entry) + datatype.ext)
+        return datatype(self._fileset_fspath(entry).with_suffix(datatype.ext))
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         """

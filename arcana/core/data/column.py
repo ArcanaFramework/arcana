@@ -147,8 +147,8 @@ class DataColumn(metaclass=ABCMeta):
 
     def matches_path(self, entry: DataEntry) -> bool:
         "that matched the path '{self.path}'"
-        path_parts = self.path.split("/")
-        entry_parts = entry.path.split("/")[: len(path_parts)]
+        path_parts = self.path_split_re.split(self.path)
+        entry_parts = self.path_split_re.split(entry.path)[: len(path_parts)]
         if entry_parts == path_parts:
             return True
         else:
@@ -174,6 +174,12 @@ class DataColumn(metaclass=ABCMeta):
             entry.get_item(self.datatype)
         except FormatMismatchError as e:
             return self._log_mismatch(entry, "datatype does not match, {}", str(e))
+        except FileNotFoundError as e:
+            return self._log_mismatch(
+                entry,
+                f"path (with ext {self.datatype.ext} does not exist, {{}}",
+                str(e),
+            )
         else:
             return True
 
@@ -187,9 +193,10 @@ class DataColumn(metaclass=ABCMeta):
         return matches[0]
 
     def _error_msg(self, row: DataRow, matches: list[DataEntry]) -> str:
+        row_str = f"'{row.id}' {row.frequency}" if row.id is not None else "root"
         return (
             f", when attempting to match an entry to the '{self.name}' column "
-            f"in the '{row.id}' {row.frequency} row\n\n  Found:"
+            f"in the {row_str} row of {self.dataset}\n\n  Found:"
             + self._format_matches(matches)
             + self.format_criteria()
         )
@@ -207,6 +214,9 @@ class DataColumn(metaclass=ABCMeta):
     def _log_mismatch(self, entry, format_str, *args):
         self._mismatch_log.append(("Entry {}: " + format_str, (entry.path,) + args))
         return False
+
+    # Split a path into sections delimited by '/' or '.'
+    path_split_re = re.compile(r"/|\.")
 
 
 @attrs.define(kw_only=True)
@@ -394,7 +404,7 @@ class DataSink(DataColumn):
         return (
             "\n\n  Criteria: "
             f"\n    path='{self.path}' "
-            f"\n    datatype='{self.datatype}' "
+            f"\n    datatype='{self.datatype.mime_like}' "
         )
 
     def __setitem__(self, id, value: DataType):
