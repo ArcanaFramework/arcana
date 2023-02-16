@@ -1,6 +1,5 @@
 from __future__ import annotations
 import os
-import os.path as op
 from pathlib import Path
 import re
 import typing as ty
@@ -74,32 +73,24 @@ class DirTree(LocalStore):
             tree.add_leaf(tree_path)
 
     def populate_row(self, row):
-        dpath = Path(row.dataset.id) / self._row_relpath(row)
-        if not op.exists(dpath):
+        row_dir = Path(row.dataset.id) / self._row_relpath(row)
+        if not row_dir.exists():
             return
         # Filter contents of directory to omit fields JSON and provenance
-        filtered = []
-        for subpath in dpath.iterdir():
+        for subpath in row_dir.iterdir():
             if not (
                 subpath.name.startswith(".")
                 or subpath.name == self.FIELDS_FNAME
                 or subpath.name.endswith(self.PROV_SUFFIX)
             ):
-                filtered.append(subpath.name)
-        # Add data cells corresponding to files. We add a new cell for each possible
-        # extension (including no extension) to handle cases where "." periods are used
-        # as part of the filename
-        file_stems = set()
-        for fname in filtered:
-            fname_parts = fname.split(".")
-            for i in range(len(fname_parts)):
-                file_stems.add(".".join(fname_parts[: (i + 1)]))
-
-        for stem in file_stems:
-            row.add_entry(path=stem, datatype=FileSet, uri=str(dpath / stem))
+                row.add_entry(
+                    path=str(subpath.relative_to(row_dir)),
+                    datatype=FileSet,
+                    uri=str(subpath),
+                )
         # Add fields
         try:
-            with open(op.join(dpath, self.FIELDS_FNAME)) as f:
+            with open(row_dir / self.FIELDS_FNAME) as f:
                 fields_dict = json.load(f)
         except FileNotFoundError:
             pass
@@ -112,7 +103,7 @@ class DirTree(LocalStore):
         return datatype(self.read_from_json(fspath, key))
 
     def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
-        return datatype(self._fileset_fspath(entry).with_suffix(datatype.ext))
+        return datatype(self._fileset_fspath(entry))
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         """

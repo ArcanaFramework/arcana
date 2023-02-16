@@ -174,12 +174,6 @@ class DataColumn(metaclass=ABCMeta):
             entry.get_item(self.datatype)
         except FormatMismatchError as e:
             return self._log_mismatch(entry, "datatype does not match, {}", str(e))
-        except FileNotFoundError as e:
-            return self._log_mismatch(
-                entry,
-                f"path (with ext {self.datatype.ext} does not exist, {{}}",
-                str(e),
-            )
         else:
             return True
 
@@ -303,7 +297,9 @@ class DataSource(DataColumn):
         "that matched the path pattern '{self.path}'"
         pattern = self.path
         if not pattern.endswith("$"):
-            pattern += "(/.*)?$"
+            # Allow paths to match with additional text after a '/' or a '.' but not
+            # additional characters otherwise
+            pattern += r"(?:(?:/|\.).*)?$"
         if re.match(pattern, entry.path):
             return True
         else:
