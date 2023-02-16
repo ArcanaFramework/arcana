@@ -86,7 +86,7 @@ class LocalStore(DataStore):
         self, fileset: FileSet, path: str, datatype: type, row: DataRow
     ) -> DataEntry:
         entry = row.add_entry(
-            path=path, datatype=datatype, uri=self.fileset_uri(path, row)
+            path=path, datatype=datatype, uri=self.fileset_uri(path, datatype, row)
         )
         self.put(fileset, entry)
         return entry
@@ -95,7 +95,7 @@ class LocalStore(DataStore):
         self, field: Field, path: str, datatype: type, row: DataRow
     ) -> DataEntry:
         entry = row.add_entry(
-            path=path, datatype=datatype, uri=self.field_uri(path, row)
+            path=path, datatype=datatype, uri=self.field_uri(path, datatype, row)
         )
         self.put(field, entry)
         return entry

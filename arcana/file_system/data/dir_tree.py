@@ -77,16 +77,16 @@ class DirTree(LocalStore):
         if not row_dir.exists():
             return
         # Filter contents of directory to omit fields JSON and provenance
-        for subpath in row_dir.iterdir():
+        for entry_path in row_dir.iterdir():
             if not (
-                subpath.name.startswith(".")
-                or subpath.name == self.FIELDS_FNAME
-                or subpath.name.endswith(self.PROV_SUFFIX)
+                entry_path.name.startswith(".")
+                or entry_path.name == self.FIELDS_FNAME
+                or entry_path.name.endswith(self.PROV_SUFFIX)
             ):
                 row.add_entry(
-                    path=str(subpath.relative_to(row_dir)),
+                    path=str(entry_path.relative_to(row_dir)),
                     datatype=FileSet,
-                    uri=str(subpath),
+                    uri=str(entry_path),
                 )
         # Add fields
         try:
@@ -112,7 +112,7 @@ class DirTree(LocalStore):
         fspath = self._fileset_fspath(entry)
         # Create target directory if it doesn't exist already
         copied_fileset = fileset.copy_to(
-            dest_dir=fspath.parent, stem=fspath.name, make_dirs=True
+            dest_dir=fspath.parent, stem=fspath.stem, make_dirs=True
         )
         return copied_fileset
 
@@ -142,7 +142,7 @@ class DirTree(LocalStore):
         fspath, key = self._fields_prov_fspath_and_key(entry)
         self.update_json(fspath, key, provenance)
 
-    def fileset_uri(self, path: str, row: DataRow) -> str:
+    def fileset_uri(self, path: str, datatype: type, row: DataRow) -> str:
         """The path to the stem of the paths (i.e. the path without
         file extension) where the files are saved in the file-system.
         NB: this method is overridden in Bids store.
@@ -152,9 +152,9 @@ class DirTree(LocalStore):
         fileset: FileSet
             the file set stored or to be stored
         """
-        return str(self._row_relpath(row).joinpath(*path.split("/")))
+        return str(self._row_relpath(row).joinpath(*path.split("/"))) + datatype.ext
 
-    def field_uri(self, path: str, row: DataRow) -> str:
+    def field_uri(self, path: str, datatype: type, row: DataRow) -> str:
         return str(self.get_fields_path(row)) + "@" + path
 
     def create_test_dataset_data(

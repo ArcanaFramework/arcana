@@ -63,8 +63,9 @@ def test_put_items(dataset: Dataset):
             test_file = deriv.datatype(fspaths)
             all_checksums[deriv.name] = test_file.hash_files()
             # Test inserting the new item into the store
-            for row in dataset.rows(deriv.row_frequency):
-                row[deriv.name] = test_file
+            with dataset.cache:
+                for row in dataset.rows(deriv.row_frequency):
+                    row[deriv.name] = test_file
         check_inserted()  # Check that cached objects have been updated
     check_inserted()  # Check that objects can be recreated from store
 
