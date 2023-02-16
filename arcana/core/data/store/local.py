@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import re
+from abc import abstractmethod
 import typing as ty
 import errno
 import logging
@@ -20,8 +21,6 @@ from ..row import DataRow
 from ..entry import DataEntry
 from .base import DataStore
 
-if ty.TYPE_CHECKING:
-    from ..testing import TestDatasetBlueprint
 
 logger = logging.getLogger("arcana")
 
@@ -33,7 +32,7 @@ special_dir_re = re.compile(r"(__.*__$|\..*|~.*)")
 
 
 @attrs.define
-class Local(DataStore):
+class LocalStore(DataStore):
     """
     A Repository class for data stored hierarchically within sub-directories
     of a file-system directory. The depth and which layer in the data tree
@@ -53,44 +52,53 @@ class Local(DataStore):
 
     name: str
 
+    @abstractmethod
     def get_field(self, entry: DataEntry, datatype: type) -> Field:
         raise NotImplementedError
 
+    @abstractmethod
     def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
         raise NotImplementedError
 
+    @abstractmethod
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
         """
         Inserts or updates a fileset in the store
         """
         raise NotImplementedError
 
+    @abstractmethod
     def put_field(self, field: Field, entry: DataEntry):
         """
         Inserts or updates a field in the store
         """
         raise NotImplementedError
 
-    def make_fileset_entry(self, path: str, datatype: type, row: DataRow) -> str:
+    @abstractmethod
+    def fileset_uri(self, path: str, row: DataRow) -> str:
         raise NotImplementedError
 
-    def make_field_entry(self, path: str, datatype: type, row: DataRow) -> str:
+    @abstractmethod
+    def field_uri(self, path: str, row: DataRow) -> str:
         raise NotImplementedError
 
-    def create_test_dataset_data(
-        self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
-    ):
-        """Creates the actual data in the store, from the provided blueprint, which
-        can be used to run test routines against
+    def post_fileset(
+        self, fileset: FileSet, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
+        entry = row.add_entry(
+            path=path, datatype=datatype, uri=self.fileset_uri(path, row)
+        )
+        self.put(fileset, entry)
+        return entry
 
-        Parameters
-        ----------
-        blueprint
-            the test dataset blueprint
-        dataset_path : Path
-            the pat
-        """
-        raise NotImplementedError
+    def post_field(
+        self, field: Field, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
+        entry = row.add_entry(
+            path=path, datatype=datatype, uri=self.field_uri(path, row)
+        )
+        self.put(field, entry)
+        return entry
 
     def save_dataset_definition(self, dataset_id, definition, name):
         definition_path = self.definition_save_path(dataset_id, name)
@@ -144,42 +152,20 @@ class Local(DataStore):
 
     def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
         if entry.datatype.is_fileset:
-            with open(self.get_fileset_prov_path(entry)) as f:
-                provenance = json.load(f)
+            provenance = self.get_fileset_provenance(entry)
         elif entry.datatype.is_field:
-            with open(self.get_fields_prov_path(entry)) as f:
-                fields_provenance = json.load(f)
-            provenance = fields_provenance[entry.path]
+            provenance = self.get_field_provenance(entry)
         else:
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return provenance
 
     def put_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
         if entry.datatype.is_fileset:
-            with open(self.get_fileset_prov_path(entry), "w") as f:
-                json.dump(provenance, f)
+            self.put_fileset_provenance(provenance, entry)
         elif entry.datatype.is_field:
-            self.update_json(self.get_fields_prov_path(entry), entry.path, provenance)
+            self.put_field_provenance(provenance, entry)
         else:
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
-
-    def post_fileset(
-        self, fileset: FileSet, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        uri = self.make_fileset_entry(path, datatype, row)
-        entry = row.add_entry(path=path, datatype=datatype, uri=uri)
-        # Need to wait until the entry is created so we can use the get_fileset_path
-        # to determine the URI
-        self.put(fileset, entry)
-        return entry
-
-    def post_field(
-        self, field: Field, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        uri = self.make_field_entry(path, datatype, row)
-        entry = row.add_entry(path=id, datatype=datatype, uri=uri)
-        self.put(field, entry)
-        return entry
 
     def root_dir(self, row) -> Path:
         return Path(row.dataset.id)
