@@ -122,7 +122,9 @@ class Dataset:
     hierarchy: ty.List[DataSpace] = attrs.field()
     space: DataSpace = attrs.field(default=None)
     metadata: DatasetMetadata = attrs.field(
-        factory=DatasetMetadata, converter=metadata_converter
+        factory=DatasetMetadata,
+        converter=metadata_converter,
+        repr=False,
     )
     id_inference: ty.List[ty.Tuple[DataSpace, str]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
