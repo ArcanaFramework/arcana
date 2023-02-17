@@ -7,9 +7,7 @@ from itertools import chain
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
-
 from fileformats.generic import File
-from arcana.core.utils.serialize import asdict
 from arcana.core.exceptions import (
     ArcanaDataMatchError,
     ArcanaLicenseNotFoundError,
@@ -17,15 +15,16 @@ from arcana.core.exceptions import (
     ArcanaUsageError,
     ArcanaWrongDataSpaceError,
 )
-from .space import DataSpace
-from .column import DataColumn, DataSink, DataSource
-from . import store as datastore
-from .tree import DataTree
+from ..space import DataSpace
+from ..column import DataColumn, DataSink, DataSource
+from .. import store as datastore
+from ..tree import DataTree
+from .metadata import DatasetMetadata, metadata_converter
 
 
 if ty.TYPE_CHECKING:
-    from ..deploy.image.components import License
-    from .entry import DataEntry
+    from ...deploy.image.components import License
+    from ...data.entry import DataEntry
 
 logger = logging.getLogger("arcana")
 
@@ -122,6 +121,9 @@ class Dataset:
     store: datastore.DataStore = attrs.field()
     hierarchy: ty.List[DataSpace] = attrs.field()
     space: DataSpace = attrs.field(default=None)
+    metadata: DatasetMetadata = attrs.field(
+        factory=DatasetMetadata, converter=metadata_converter
+    )
     id_inference: ty.List[ty.Tuple[DataSpace, str]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
@@ -167,11 +169,7 @@ class Dataset:
             pipeline.dataset = self
 
     def save(self, name=None):
-        """Save metadata in project definition file for future reference"""
-        definition = asdict(self, omit=["store", "name"])
-        if name is None:
-            name = self.name
-        self.store.save_dataset_definition(self.id, definition, name=name)
+        self.store.save_dataset(self, name=name)
 
     @classmethod
     def load(

@@ -5,9 +5,9 @@ import itertools
 from copy import copy
 from operator import attrgetter
 import attrs
-from ..data.column import DataColumn
-from ..data.set import Dataset
-from ..utils.misc import (
+from arcana.core.data.column import DataColumn
+from arcana.core.data.set import Dataset
+from arcana.core.utils.misc import (
     PIPELINE_ANNOTATIONS,
     SWICTH_ANNOTATIONS,
     CHECK_ANNOTATIONS,

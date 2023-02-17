@@ -216,8 +216,11 @@ class FlatDir(DataStore):
         try:
             dataset = self.load_dataset_definition(dataset_root, name="site_licenses")
         except KeyError:
-            dataset = self.new_dataset(dataset_root, space=TestDataSpace)
+            dataset = self.define_dataset(dataset_root, space=TestDataSpace)
         return dataset
+
+    def create_dataset(self):
+        raise NotImplementedError
 
     def get_field_value(self, field):
         """

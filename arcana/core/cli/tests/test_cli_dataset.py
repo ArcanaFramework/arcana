@@ -1,5 +1,5 @@
 import pytest
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from arcana.core.analysis.salience import ColumnSalience
 from arcana.core.data.quality import DataQuality
 from arcana.testing.data.space import TestDataSpace

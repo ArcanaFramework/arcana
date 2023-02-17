@@ -1,7 +1,7 @@
 from __future__ import annotations
 import click
 from .base import cli
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.data.space import DataSpace
 from fileformats.core.base import DataType
@@ -114,7 +114,7 @@ def define(id_str, hierarchy, include, exclude, space, id_inference):
     if space:
         space = ClassResolver(DataSpace)(space)
 
-    dataset = store.new_dataset(
+    dataset = store.define_dataset(
         id,
         hierarchy=hierarchy,
         space=space,

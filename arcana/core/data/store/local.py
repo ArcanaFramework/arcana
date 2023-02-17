@@ -178,7 +178,7 @@ class LocalStore(DataStore):
         try:
             dataset = self.load_dataset(dataset_root)
         except KeyError:
-            dataset = self.new_dataset(dataset_root, space=Samples)
+            dataset = self.define_dataset(dataset_root, space=Samples)
         return dataset
 
     def update_json(self, fpath: Path, key, value):
@@ -226,7 +226,7 @@ class LocalStore(DataStore):
     def definition_save_path(self, dataset_id, name):
         return Path(dataset_id) / self.METADATA_DIR / (name + ".yaml")
 
-    def new_dataset(self, id, *args, **kwargs):
+    def define_dataset(self, id, *args, **kwargs):
         if not Path(id).exists():
             raise ArcanaUsageError(f"Path to dataset root '{id}'' does not exist")
-        return super().new_dataset(id, *args, **kwargs)
+        return super().define_dataset(id, *args, **kwargs)

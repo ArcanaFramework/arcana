@@ -1,7 +1,7 @@
 from operator import mul
 from functools import reduce
 from fileformats.core.base import FileSet
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 
 
 def test_column_api_access(dataset: Dataset):

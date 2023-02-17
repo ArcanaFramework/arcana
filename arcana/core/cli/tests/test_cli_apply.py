@@ -1,4 +1,4 @@
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from fileformats.text import Plain as Text
 from arcana.core.cli.apply import apply_pipeline
 from arcana.core.utils.misc import show_cli_trace

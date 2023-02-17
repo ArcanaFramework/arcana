@@ -7,7 +7,7 @@ import docker.errors
 from arcana.core.utils.misc import show_cli_trace
 from arcana.core.cli.deploy import make_app, install_license
 from arcana.core.deploy.image import App
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from arcana.core.data import Samples
 from arcana.file_system import DirTree
 
@@ -209,7 +209,7 @@ def make_dataset(dataset_dir) -> Dataset:
     with open(contents_dir / (LICENSE_INPUT_PATH + ".txt"), "w") as f:
         f.write(LICENSE_CONTENTS)
 
-    dataset = DirTree().new_dataset(dataset_dir, space=Samples)
+    dataset = DirTree().define_dataset(dataset_dir, space=Samples)
     dataset.save()
     return dataset
 

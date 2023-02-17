@@ -19,7 +19,7 @@ from arcana.core.utils.serialize import (
 )
 from arcana.core.utils.misc import show_workflow_errors
 from arcana.core.data.row import DataRow
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.data.space import DataSpace
 from arcana.core.exceptions import ArcanaUsageError
@@ -506,7 +506,7 @@ class ContainerCommand:
                     id, name
                 )  # FIXME: Does this need to be here or this covered by L253??
             except KeyError:
-                dataset = store.new_dataset(
+                dataset = store.define_dataset(
                     id, hierarchy=hierarchy, space=self.data_space
                 )
         return dataset

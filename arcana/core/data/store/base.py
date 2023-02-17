@@ -30,7 +30,8 @@ logger = logging.getLogger("arcana")
 
 
 if ty.TYPE_CHECKING:
-    from ..set import DataTree
+    from ..set import Dataset
+    from ..tree import DataTree
     from ..entry import DataEntry
     from ..row import DataRow
     from ..testing import TestDatasetBlueprint
@@ -218,6 +219,36 @@ class DataStore(metaclass=ABCMeta):
             A dct Dataset object that was saved in the data store
         """
 
+    @abstractmethod
+    def create_dataset(self, id: str, name: str = None, **kwargs):
+        """create a new empty dataset within the store
+
+        Parameters
+        ----------
+        id : str
+            ID for the newly created dataset
+        name : str, optional
+            name to give to the dataset definition returned
+        **kwargs
+            store sub-class relevant arguments
+        """
+
+    def import_dataset(self, id: str, dataset: Dataset, **kwargs):
+        """Import a dataset from another store, transferring metadata and columns
+        defined on the original dataset
+
+        Parameters
+        ----------
+        id : str
+            the ID of the dataset within this store
+        dataset : Dataset
+            the dataset to import
+        **kwargs:
+            keyword arguments passed through to the `create_dataset` method
+        """
+        raise NotImplementedError
+        # imported = self.create_dataset(id, **kwargs)
+
     def connect(self):
         """
         If a connection session is required to the store manage it here
@@ -323,9 +354,10 @@ class DataStore(metaclass=ABCMeta):
         del entries[name]
         cls.save_entries(entries)
 
-    def new_dataset(self, id, space=None, hierarchy=None, **kwargs):
+    def define_dataset(self, id, space=None, hierarchy=None, **kwargs):
         """
-        Returns a dataset from the XNAT repository
+        Creates a Arcana dataset definition for an existing data in the
+        data store.
 
         Parameters
         ----------
@@ -373,7 +405,43 @@ class DataStore(metaclass=ABCMeta):
         dataset = Dataset(id, store=self, space=space, hierarchy=hierarchy, **kwargs)
         return dataset
 
-    def load_dataset(self, id, name=None):
+    def save_dataset(self, dataset: Dataset, name: str = None):
+        """Save metadata in project definition file for future reference
+
+        Parameters
+        ----------
+        dataset : Dataset
+            the dataset to save
+        name : str, optional
+            the name for the definition to distinguish from other definitions on
+            the same data, by default None
+        """
+        definition = asdict(dataset, omit=["store", "name"])
+        if name is None:
+            name = self.name
+        self.save_dataset_definition(dataset.id, definition, name=name)
+
+    def load_dataset(self, id, name=None, **kwargs):
+        """Load an existing dataset definition
+
+        Parameters
+        ----------
+        id : str
+            ID of the dataset within the store
+        name : str, optional
+            name of the dataset definition, which distinguishes it from alternative
+            definitions on the same data, by default None
+
+        Returns
+        -------
+        Dataset
+            the loaded dataset
+
+        Raises
+        ------
+        KeyError
+            if the dataset is not found
+        """
         from arcana.core.data.set import (
             Dataset,
         )  # avoid circular imports it is imported here rather than at the top of the file
@@ -383,7 +451,7 @@ class DataStore(metaclass=ABCMeta):
         dct = self.load_dataset_definition(id, name)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}@{name}'")
-        return fromdict(dct, id=id, name=name, store=self)
+        return fromdict(dct, id=id, name=name, store=self, **kwargs)
 
     @classmethod
     def singletons(cls):
@@ -538,7 +606,7 @@ class DataStore(metaclass=ABCMeta):
         return self.access_test_dataset(blueprint, dataset_id)
 
     def access_test_dataset(self, blueprint, dataset_id):
-        dataset = self.new_dataset(
+        dataset = self.define_dataset(
             dataset_id,
             hierarchy=blueprint.hierarchy,
             id_inference=blueprint.id_inference,

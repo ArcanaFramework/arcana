@@ -2,7 +2,7 @@ from tempfile import mkdtemp
 from pathlib import Path
 import operator as op
 from functools import reduce
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from arcana.file_system import DirTree
 from arcana.core.data.store import DataStore
 from arcana.core.utils.misc import path2varname

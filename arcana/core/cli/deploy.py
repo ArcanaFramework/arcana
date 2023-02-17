@@ -17,7 +17,7 @@ from arcana.core.utils.serialize import (
 )
 from arcana.core.deploy.image import Metapackage, App
 from arcana.core.exceptions import ArcanaBuildError
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.utils.misc import extract_file_from_docker_image, DOCKER_HUB
 from .base import cli

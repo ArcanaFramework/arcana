@@ -14,7 +14,7 @@ from arcana.core.exceptions import (
 from .row import DataRow
 
 if ty.TYPE_CHECKING:
-    from .set import Dataset
+    from ..set.base import Dataset
 
 
 logger = logging.getLogger("arcana")

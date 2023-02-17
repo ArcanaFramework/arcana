@@ -17,7 +17,7 @@ from .cell import DataCell
 if ty.TYPE_CHECKING:
     from .row import DataRow
     from .entry import DataEntry
-    from .set import Dataset
+    from ..set.base import Dataset
 
 
 logger = logging.getLogger("arcana")

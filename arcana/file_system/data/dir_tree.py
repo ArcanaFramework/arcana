@@ -8,7 +8,7 @@ import json
 import attrs
 from fileformats.core.base import FileSet, Field
 from arcana.core.exceptions import ArcanaUsageError
-from arcana.core.data.set import DataTree
+from arcana.core.data.set.base import DataTree
 from arcana.core.data.row import DataRow
 from arcana.core.data.entry import DataEntry
 from arcana.core.data.store import LocalStore
@@ -80,7 +80,7 @@ class DirTree(LocalStore):
         for entry_path in row_dir.iterdir():
             if not (
                 entry_path.name.startswith(".")
-                or entry_path.name == self.FIELDS_FNAME
+                or entry_path.name not in (self.FIELDS_FNAME, self.FIELDS_PROV_FNAME)
                 or entry_path.name.endswith(self.PROV_SUFFIX)
             ):
                 row.add_entry(
@@ -112,7 +112,7 @@ class DirTree(LocalStore):
         fspath = self._fileset_fspath(entry)
         # Create target directory if it doesn't exist already
         copied_fileset = fileset.copy_to(
-            dest_dir=fspath.parent, stem=fspath.stem, make_dirs=True
+            dest_dir=fspath.parent, stem=fspath.name, make_dirs=True
         )
         return copied_fileset
 
@@ -177,6 +177,9 @@ class DirTree(LocalStore):
             dpath.mkdir(parents=True)
             for fname in blueprint.files:
                 self.create_test_fsobject(fname, dpath, source_data=source_data)
+
+    def create_dataset(self):
+        raise NotImplementedError
 
     ##################
     # Helper functions

@@ -14,7 +14,7 @@ from .entry import DataEntry
 
 
 if ty.TYPE_CHECKING:
-    from .set import Dataset
+    from ..set.base import Dataset
 
 
 @attrs.define(auto_detect=True)
