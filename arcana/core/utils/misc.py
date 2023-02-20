@@ -19,7 +19,7 @@ import cloudpickle as cp
 from pydra.engine.core import Workflow, LazyField, TaskBase
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
-from arcana.core.exceptions import ArcanaUsageError
+from arcana.core.exceptions import ArcanaUsageError, ArcanaError
 
 
 logger = logging.getLogger("arcana")
@@ -618,6 +618,32 @@ def dict_diff(dict1, dict2, label1="dict1", label2="dict2"):
         lineterm="\n",
     )
     return "\n".join(diff)
+
+
+class fromdict_converter:
+    def __init__(self, tp):
+        if isinstance(tp, ty.GenericAlias):
+            if tp.__origin__ not in (list, tuple, set, frozenset):
+                raise ArcanaError(
+                    f"generic aliases of {tp.__origin__} type are not supported by "
+                    "fromdict_converter"
+                )
+            self.container_type = list
+            self.type = tp.__args__[0]
+        else:
+            self.type = tp
+            self.container_type = None
+
+    def __call__(self, to_convert):
+        if self.container_type:
+            converted = self.container_type(
+                self.type(**d) if isinstance(d, dict) else d for d in to_convert
+            )
+        else:
+            converted = (
+                self.type(**to_convert) if isinstance(to_convert, dict) else to_convert
+            )
+        return converted
 
 
 def show_cli_trace(result):

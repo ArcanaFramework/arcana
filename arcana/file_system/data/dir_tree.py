@@ -78,10 +78,10 @@ class DirTree(LocalStore):
             return
         # Filter contents of directory to omit fields JSON and provenance
         for entry_path in row_dir.iterdir():
-            if not (
-                entry_path.name.startswith(".")
-                or entry_path.name not in (self.FIELDS_FNAME, self.FIELDS_PROV_FNAME)
-                or entry_path.name.endswith(self.PROV_SUFFIX)
+            if (
+                not entry_path.name.startswith(".")
+                and entry_path.name not in (self.FIELDS_FNAME, self.FIELDS_PROV_FNAME)
+                and not entry_path.name.endswith(self.PROV_SUFFIX)
             ):
                 row.add_entry(
                     path=str(entry_path.relative_to(row_dir)),
@@ -112,7 +112,9 @@ class DirTree(LocalStore):
         fspath = self._fileset_fspath(entry)
         # Create target directory if it doesn't exist already
         copied_fileset = fileset.copy_to(
-            dest_dir=fspath.parent, stem=fspath.name, make_dirs=True
+            dest_dir=fspath.parent,
+            stem=fspath.name[: -len(fileset.ext)] if fileset.ext else fspath.name,
+            make_dirs=True,
         )
         return copied_fileset
 

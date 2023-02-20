@@ -418,7 +418,7 @@ class DataStore(metaclass=ABCMeta):
         """
         definition = asdict(dataset, omit=["store", "name"])
         if name is None:
-            name = self.name
+            name = dataset.name
         self.save_dataset_definition(dataset.id, definition, name=name)
 
     def load_dataset(self, id, name=None, **kwargs):
