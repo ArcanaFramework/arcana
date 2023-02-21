@@ -597,7 +597,7 @@ def install_license(install_locations, license_name, source_file, logfile, logle
         source_file = Path(source_file.decode("utf-8"))
 
     if not install_locations:
-        install_locations = ["file"]
+        install_locations = ["dirtree"]
 
     for install_loc in install_locations:
         if "//" in install_loc:

@@ -4,7 +4,7 @@ import attrs
 import pytest
 import pydra
 from arcana.core.data import Samples
-from arcana.testing.analysis.tasks import (
+from arcana.testing.tasks import (
     concatenate,
     concatenate_reverse,
     multiply_contents,
@@ -27,7 +27,8 @@ from arcana.core.analysis.mark import (
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
 from fileformats.text import Plain as Text
 from fileformats.archive import Zip
-from arcana.file_system import DirTree, FlatDir
+from arcana.dirtree import DirTree
+from arcana.testing import MockRemoteStore
 from arcana.core.analysis.salience import (
     CheckStatus,
     ColumnSalience as cs,
@@ -116,7 +117,7 @@ def test_dataset(source_dir, test_file1, test_file2, test_file3):
 def test_partial_numeric_dataset(
     source_dir, test_file1, test_file2, test_numeric_file1, test_numeric_file2
 ):
-    dataset = FlatDir().define_dataset(
+    dataset = MockRemoteStore().define_dataset(
         source_dir, space=Samples, hierarchy=[Samples.sample]
     )
     dataset.add_source("a_column", Text, "file1")

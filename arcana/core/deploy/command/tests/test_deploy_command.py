@@ -2,7 +2,7 @@ from functools import reduce
 from operator import mul
 import pytest
 from arcana.core.data.testing import TestDatasetBlueprint
-from arcana.testing.data.space import (
+from arcana.testing import (
     TestDataSpace,
 )
 from fileformats.text import Plain as Text
@@ -12,12 +12,12 @@ from arcana.core.exceptions import ArcanaDataMatchError
 
 
 def test_command_execute(concatenate_task, saved_dataset, work_dir):
-    # Get CLI name for dataset (i.e. file system path prepended by 'file//')
+    # Get CLI name for dataset (i.e. file system path prepended by 'dirtree//')
     bp = saved_dataset.__annotations__["blueprint"]
     duplicates = 1
 
     command_spec = ContainerCommand(
-        task="arcana.testing.analysis.tasks:" + concatenate_task.__name__,
+        task="arcana.testing.tasks:" + concatenate_task.__name__,
         row_frequency=bp.space.default(),
         inputs=[
             {
@@ -85,12 +85,12 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
 
 
 def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
-    # Get CLI name for dataset (i.e. file system path prepended by 'file//')
+    # Get CLI name for dataset (i.e. file system path prepended by 'dirtree//')
     bp = saved_dataset.__annotations__["blueprint"]
     duplicates = 1
 
     command_spec = ContainerCommand(
-        task="arcana.testing.analysis.tasks:" + concatenate_task.__name__,
+        task="arcana.testing.tasks:" + concatenate_task.__name__,
         row_frequency=bp.space.default(),
         inputs=[
             {
@@ -171,7 +171,7 @@ def test_command_execute_on_row(flat_dir_store, cli_runner, work_dir):
     assert get_dataset_filenumbers() == filenumbers
 
     command_spec = ContainerCommand(
-        task="arcana.testing.analysis.tasks:plus_10_to_filenumbers",
+        task="arcana.testing.tasks:plus_10_to_filenumbers",
         row_frequency=bp.space.default(),
         inputs=[
             {
@@ -206,12 +206,12 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
     "qualifiers", e.g. 'converter.shift=3' using the arcana-run-pipeline CLI
     tool (as used in the XNAT CS commands)
     """
-    # Get CLI name for dataset (i.e. file system path prepended by 'file//')
+    # Get CLI name for dataset (i.e. file system path prepended by 'dirtree//')
     bp = saved_dataset.__annotations__["blueprint"]
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     command_spec = ContainerCommand(
-        task="arcana.testing.analysis.tasks:identity_file",
+        task="arcana.testing.tasks:identity_file",
         row_frequency=bp.space.default(),
         inputs=[
             {

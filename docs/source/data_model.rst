@@ -315,7 +315,7 @@ commands to add columns to a dataset using the CLI.
       medimage:Dicom --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
-    $ arcana dataset add-sink 'file///data/imaging/my-project' fmri_activation_map \
+    $ arcana dataset add-sink '/data/imaging/my-project' fmri_activation_map \
       medimage:NiftiGz --row-frequency group
 
 
@@ -566,7 +566,7 @@ appropriate.
 
 .. code-block:: python
 
-    from arcana.file_system import DirTree
+    from arcana.dirtree import DirTree
     from arcana.medimage.data import Clinical
 
     fs_dataset = DirTree().dataset(
@@ -646,7 +646,7 @@ a dataset.
 
 .. code-block:: console
 
-    $ arcana dataset define 'file///data/imaging/my-project@manually_qcd' \
+    $ arcana dataset define '/data/imaging/my-project@manually_qcd' \
       medimage:Clinical subject session \
       --exclude member 03,11,27
 
@@ -658,7 +658,7 @@ frequencies.
 
 .. code-block:: console
 
-    $ arcana dataset define 'file///data/imaging/my-project@manually_qcd' \
+    $ arcana dataset define '/data/imaging/my-project@manually_qcd' \
       medimage:Clinical subject session \
       --exclude member 03,11,27 \
       --include timepoint 1,2
@@ -673,7 +673,7 @@ CLI, append the name to the dataset's ID string separated by '::', e.g.
 
 .. code-block:: console
 
-    $ arcana dataset define 'file///data/imaging/my-project@training' \
+    $ arcana dataset define '/data/imaging/my-project@training' \
       medimage:Clinical group subject \
       --include member 10:20
 

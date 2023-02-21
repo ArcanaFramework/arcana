@@ -5,7 +5,7 @@ from arcana.core.utils.misc import show_cli_trace
 
 
 def test_apply_pipeline_cli(saved_dataset: Dataset, concatenate_task, cli_runner):
-    # Get CLI name for dataset (i.e. file system path prepended by 'file//')
+    # Get CLI name for dataset (i.e. file system path prepended by 'dirtree//')
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     duplicates = 5
@@ -24,7 +24,7 @@ def test_apply_pipeline_cli(saved_dataset: Dataset, concatenate_task, cli_runner
         [
             saved_dataset.locator,
             "a_pipeline",
-            "arcana.testing.analysis.tasks:" + concatenate_task.__name__,
+            "arcana.testing.tasks:" + concatenate_task.__name__,
             "--source",
             "file1",
             "in_file1",

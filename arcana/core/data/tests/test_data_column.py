@@ -19,7 +19,7 @@ def test_column_api_access(dataset: Dataset):
         assert len(col) == reduce(mul, bp.dim_lengths)
 
         # Access file-set via leaf IDs
-        with dataset.cache:
+        with dataset.tree:
             for id_ in col.ids:
                 item = col[id_]
                 assert isinstance(item, exp.datatype)

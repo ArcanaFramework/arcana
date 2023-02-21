@@ -3,7 +3,8 @@ from pathlib import Path
 import operator as op
 from functools import reduce
 from arcana.core.data.set.base import Dataset
-from arcana.file_system import DirTree
+from arcana.dirtree import DirTree
+from arcana.testing import MockRemoteStore  # noqa
 from arcana.core.data.store import DataStore
 from arcana.core.utils.misc import path2varname
 
@@ -49,7 +50,7 @@ def test_put_items(dataset: Dataset):
                 assert item.hash_files() == all_checksums[deriv.name]
 
     all_checksums = {}
-    with dataset.cache:
+    with dataset.tree:
         for deriv in blueprint.derivatives:  # name, freq, datatype, files
             dataset.add_sink(
                 name=deriv.name,
@@ -63,7 +64,7 @@ def test_put_items(dataset: Dataset):
             test_file = deriv.datatype(fspaths)
             all_checksums[deriv.name] = test_file.hash_files()
             # Test inserting the new item into the store
-            with dataset.cache:
+            with dataset.tree:
                 for row in dataset.rows(deriv.row_frequency):
                     row[deriv.name] = test_file
         check_inserted()  # Check that cached objects have been updated
@@ -71,5 +72,5 @@ def test_put_items(dataset: Dataset):
 
 
 def test_singletons():
-    standard = set(("flat", "file"))
+    standard = set(["dirtree"])
     assert set(DataStore.singletons()) & standard == standard

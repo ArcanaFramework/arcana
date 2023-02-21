@@ -79,22 +79,22 @@ over all sessions using the command line interface
 .. code-block:: console
 
     # Define dataset
-    $ arcana dataset define 'file///data/my-project' subject session
+    $ arcana dataset define '/data/my-project' subject session
 
     # Add source column to select a single T1-weighted image in each session subdirectory
-    $ arcana dataset add-source 'file///data/my-dataset' T1w '.*mprage.*' medimage:Dicom --regex
+    $ arcana dataset add-source '/data/my-dataset' T1w '.*mprage.*' medimage:Dicom --regex
 
     # Add sink column to store brain mask
-    $ arcana dataset add-sink 'file///data/my-dataset' brain_mask medimage:NiftiGz
+    $ arcana dataset add-sink '/data/my-dataset' brain_mask medimage:NiftiGz
 
     # Apply BET Pydra task, connecting it between the source and sink
-    $ arcana apply pipeline 'file///data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
+    $ arcana apply pipeline '/data/my-dataset' pydra.tasks.fsl.preprocess.bet:BET \
       --arg name brain_extraction \
       --input T1w in_file medimage:NiftiGz \
       --output brain_mask out_file .
 
     # Derive brain masks for all imaging sessions in dataset
-    $ arcana derive column 'file///data/my-dataset' brain_maskAPI
+    $ arcana derive column '/data/my-dataset' brain_maskAPI
 
 This code will iterate over all imaging sessions in the directory tree, find and
 convert T1-weighted images (which contain 'mprage' in their names) from
@@ -113,7 +113,7 @@ Alternatively, the same steps can be performed using the Python API:
     from fileformats.medimage.data import Dicom, NiftiGz
 
     # Define dataset
-    my_dataset = Dataset.load('file///data/my-dataset', space=Clinical,
+    my_dataset = Dataset.load('/data/my-dataset', space=Clinical,
                               hierarchy=['subject', 'session'])
 
     # Add source column to select a single T1-weighted image in each session subdirectory
@@ -140,8 +140,8 @@ each session of each subject.
 
 .. code-block:: console
 
-    $ arcana apply analysis 'file///data/my-project' bids.mri:T1wAnalysis
-    $ arcana derive column 'file///data/my-project' avg_cortical_thickness
+    $ arcana apply analysis '/data/my-project' bids.mri:T1wAnalysis
+    $ arcana derive column '/data/my-project' avg_cortical_thickness
 
 
 Doing the same steps via the Python API provides convenient access to the

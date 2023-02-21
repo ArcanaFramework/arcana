@@ -74,7 +74,7 @@ class DataStore(metaclass=ABCMeta):
     SUBPACKAGE = "data"
 
     @abstractmethod
-    def populate_tree(self, tree: DataTree):
+    def scan_tree(self, tree: DataTree):
         """
         Populates the nodes of the data tree with those found in the dataset
 
@@ -85,7 +85,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def populate_row(self, row: DataRow):
+    def scan_row(self, row: DataRow):
         """
         Populate a row with all data entries found in the corresponding node in the data
         store (e.g. files within a directory, scans within an XNAT session).
@@ -219,19 +219,39 @@ class DataStore(metaclass=ABCMeta):
             A dct Dataset object that was saved in the data store
         """
 
-    @abstractmethod
-    def create_dataset(self, id: str, name: str = None, **kwargs):
-        """create a new empty dataset within the store
+    def create_empty_dataset(
+        self,
+        id: str,
+        hierarchy: list[str],
+        row_ids: list[list[str]],
+        space: type,
+        name: str = None,
+        **kwargs,
+    ):
+        """create a new empty dataset within the store, used in test routines and
+        dataset imports
 
         Parameters
         ----------
         id : str
             ID for the newly created dataset
+        space : type(DataSpace)
+            the data space of the dataset
+        hierarchy : list[str]
+            the hierarchy of row frequencies the tree of the dataset
+        row_ids : list[list[str]]
+            the empty data rows to create within the newly created dataset. Outer list
+            corresponds to levels in the hierarchy, inner lists correspond to the row
+            ids repeated in each branch of the corresponding level of the data tree.
         name : str, optional
             name to give to the dataset definition returned
         **kwargs
             store sub-class relevant arguments
         """
+        raise NotImplementedError(
+            f"{type(self).__name__} stores don't implement the `create_empty_dataset` "
+            "method"
+        )
 
     def import_dataset(self, id: str, dataset: Dataset, **kwargs):
         """Import a dataset from another store, transferring metadata and columns
@@ -244,10 +264,10 @@ class DataStore(metaclass=ABCMeta):
         dataset : Dataset
             the dataset to import
         **kwargs:
-            keyword arguments passed through to the `create_dataset` method
+            keyword arguments passed through to the `create_empty_dataset` method
         """
         raise NotImplementedError
-        # imported = self.create_dataset(id, **kwargs)
+        # imported = self.create_empty_dataset(id, **kwargs)
 
     def connect(self):
         """

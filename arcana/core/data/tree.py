@@ -14,7 +14,7 @@ from arcana.core.exceptions import (
 from .row import DataRow
 
 if ty.TYPE_CHECKING:
-    from ..set.base import Dataset
+    from .set.base import Dataset
 
 
 logger = logging.getLogger("arcana")
@@ -29,7 +29,7 @@ class DataTree(NestedContext):
     def enter(self):
         assert self.root is None
         self._set_root()
-        self.dataset.store.populate_tree(self)
+        self.dataset.store.scan_tree(self)
 
     def exit(self):
         self.root = None

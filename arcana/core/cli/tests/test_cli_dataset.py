@@ -2,7 +2,7 @@ import pytest
 from arcana.core.data.set.base import Dataset
 from arcana.core.analysis.salience import ColumnSalience
 from arcana.core.data.quality import DataQuality
-from arcana.testing.data.space import TestDataSpace
+from arcana.testing import TestDataSpace
 from arcana.core.cli.dataset import define, add_source, add_sink, missing_items
 from fileformats.text import Plain as Text
 from arcana.core.utils.misc import show_cli_trace
@@ -21,7 +21,7 @@ def get_arbitrary_slice(i, dim_length):
 
 
 def test_add_column_cli(saved_dataset, cli_runner):
-    # Get CLI name for dataset (i.e. file system path prepended by 'file//')
+    # Get CLI name for dataset (i.e. file system path prepended by 'dirtree//')
     # Add source to loaded dataset
     saved_dataset.add_source(
         name="a_source",
@@ -108,7 +108,7 @@ def test_define_cli(dataset: Dataset, cli_runner):
         args.extend(["--include", str(axis), slce])
     for axis, slce in excluded:
         args.extend(["--exclude", str(axis), slce])
-    args.extend(["--space", "arcana.testing.data.space:TestDataSpace"])
+    args.extend(["--space", "arcana.testing:TestDataSpace"])
     # Run the command line
     result = cli_runner(define, [path, *args])
     # Check tool completed successfully

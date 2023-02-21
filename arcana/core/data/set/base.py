@@ -42,10 +42,10 @@ class Dataset:
         store it is stored (e.g. FS directory path or project ID)
     store : Repository
         The store the dataset is stored into. Can be the local file
-        system by providing a FlatDir repo.
+        system by providing a MockRemoteStore repo.
     hierarchy : Sequence[str]
         The data frequencies that are explicitly present in the data tree.
-        For example, if a FlatDir dataset (i.e. directory) has
+        For example, if a MockRemoteStore dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
@@ -142,10 +142,10 @@ class Dataset:
     pipelines: ty.Dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    cache: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
+    tree: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
 
     def __attrs_post_init__(self):
-        self.cache.dataset = self
+        self.tree.dataset = self
         # Ensure that hierarchy items are in the DataSpace enums not strings
         # or set the space from the provided enums
         if self.space is not None:
@@ -297,10 +297,10 @@ class Dataset:
             The root row of the data tree
         """
         # Build the tree cache and return the tree root. Note that if there is a
-        # "with <this-dataset>.cache" statement further up the call stack then the
+        # "with <this-dataset>.tree" statement further up the call stack then the
         # cache won't be broken down until the highest cache statement exits
-        with self.cache:
-            return self.cache.root
+        with self.tree:
+            return self.tree.root
 
     @property
     def locator(self):
@@ -427,7 +427,7 @@ class Dataset:
         ArcanaNameError
             If there is no row corresponding to the given ids
         """
-        with self.cache:
+        with self.tree:
             # Parse str to row_frequency enums
             if not row_frequency:
                 if id is not None:
@@ -483,7 +483,7 @@ class Dataset:
         Sequence[DataRow]
             The sequence of the data row within the dataset
         """
-        with self.cache:
+        with self.tree:
             if frequency is None:
                 return chain(*(d.values() for d in self.root.children.values()))
             frequency = self.parse_frequency(frequency)
@@ -507,7 +507,7 @@ class Dataset:
         Sequence[str]
             The IDs of the rows
         """
-        with self.cache:
+        with self.tree:
             row_frequency = self.parse_frequency(row_frequency)
             if row_frequency == self.root_freq:
                 return [None]
@@ -638,7 +638,7 @@ class Dataset:
             # FIXME: Should combine the pipelines into a single workflow and
             # dilate the IDs that need to be run when summarising over different
             # data axes
-            with self.cache:
+            with self.tree:
                 pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
 
     def parse_frequency(self, freq):
@@ -664,8 +664,8 @@ class Dataset:
     @classmethod
     def parse_id_str(cls, id):
         parts = id.split("//")
-        if len(parts) == 1:  # No store definition, default to file system
-            store_name = "file"
+        if len(parts) == 1:  # No store definition, default to the `DirTree` store
+            store_name = "dirtree"
         else:
             store_name, id = parts
         parts = id.split("@")

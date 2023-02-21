@@ -106,7 +106,7 @@ can all add the sources and sinks in one step
 
 .. code-block:: console
 
-    $ arcana apply pipeline 'file///data/enigma/alzheimers:test' segmentation \
+    $ arcana apply pipeline '/data/enigma/alzheimers:test' segmentation \
       pydra.tasks.fsl.preprocess.fast:FAST \
       --source T1w in_file medimage:NiftiGz \
       --sink fast/gm gm medimage:NiftiGz \
@@ -273,7 +273,7 @@ column specs in the class with existing columns in the dataset.
 
 .. code-block:: console
 
-  $ arcana apply analysis 'file///data/a-dataset' example:ExampleAnalysis \
+  $ arcana apply analysis '/data/a-dataset' example:ExampleAnalysis \
     --column recorded_datafile datafile \
     --column recorded_metadata metadata \
     --parameter contrast 0.75
@@ -289,7 +289,7 @@ parameters.
   from fileformats.serialization import Yaml
   from arcana.examples import ExampleAnalysis
 
-  a_dataset = Dataset.load('file///data/a-dataset')
+  a_dataset = Dataset.load('/data/a-dataset')
 
   dataset.add_source(
       name='datafile',
@@ -330,7 +330,7 @@ To generate derivatives via the API
 
 .. code-block:: python
 
-  dataset = Dataset.load('file///data/openneuro/ds00014:test')
+  dataset = Dataset.load('/data/openneuro/ds00014:test')
 
   dataset.derive('fast/gm', cache_dir='/work/temp-dir')
 
@@ -354,7 +354,7 @@ have been applied you can use the ``menu`` command
 
 .. code-block:: console
 
-  $ arcana derive menu 'file///data/a-dataset'
+  $ arcana derive menu '/data/a-dataset'
 
   Derivatives
   -----------
@@ -381,7 +381,7 @@ salience >= 'qa' and 'recommended', respectively.
 
 .. code-block:: console
 
-  $ arcana derive menu 'file///data/another-dataset' --columns qa --parameters recommended
+  $ arcana derive menu '/data/another-dataset' --columns qa --parameters recommended
 
 The ``salience_threshold`` argument can also be used to filter out derivatives
 from the data store when applying an analysis to a dataset. This

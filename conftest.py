@@ -19,7 +19,7 @@ from fileformats.testing import (
     ImageWithHeader,
     YourFormat,
 )
-from arcana.testing.analysis.tasks import (
+from arcana.testing.tasks import (
     add,
     path_manip,
     attrs_func,
@@ -34,9 +34,9 @@ from arcana.core.data.testing import (
     DerivBlueprint,
     ExpDatatypeBlueprint,
 )
-from arcana.testing.data.space import TestDataSpace as TDS
+from arcana.testing import TestDataSpace as TDS, MockRemoteStore
 from fileformats.testing import Xyz
-from arcana.file_system import DirTree, FlatDir
+from arcana.dirtree import DirTree
 from pydra import set_input_validator
 
 set_input_validator(True)
@@ -80,7 +80,7 @@ def build_cache_dir():
 
 @pytest.fixture
 def flat_dir_store(work_dir):
-    store = FlatDir(cache_dir=work_dir / "flat-dir-store-cache")
+    store = MockRemoteStore(cache_dir=work_dir / "flat-dir-store-cache")
     with patch.dict(os.environ, {"ARCANA_HOME": str(work_dir / "arcana-home")}):
         store.save("custom-flat")
         yield store
@@ -415,7 +415,7 @@ def concatenate_task(request):
 @pytest.fixture(scope="session")
 def command_spec():
     return {
-        "task": "arcana.testing.analysis.tasks:concatenate",
+        "task": "arcana.testing.tasks:concatenate",
         "inputs": {
             "first_file": {
                 "datatype": "fileformats.text:Plain",

@@ -43,13 +43,15 @@ class DirTree(LocalStore):
     FIELDS_FNAME = "__fields__"
     FIELDS_PROV_FNAME = "__fields_provenance__"
 
-    name: str = "file"  # Name is constant, as there is only ever one store, which covers whole FS
+    # Note this name will be constant, as there is only ever one store,
+    # which covers whole FS
+    name: str = "dirtree"
 
     #################################
     # Abstract-method implementations
     #################################
 
-    def populate_tree(self, tree: DataTree):
+    def scan_tree(self, tree: DataTree):
         """
         Find all rows within the dataset stored in the store and
         populate the data tree within the dataset
@@ -72,7 +74,14 @@ class DirTree(LocalStore):
                 continue
             tree.add_leaf(tree_path)
 
-    def populate_row(self, row):
+    def scan_row(self, row: DataRow):
+        """Scans a data row and populates it with entries
+
+        Parameters
+        ----------
+        row : DataRow
+            the data row to populate
+        """
         row_dir = Path(row.dataset.id) / self._row_relpath(row)
         if not row_dir.exists():
             return
@@ -180,7 +189,15 @@ class DirTree(LocalStore):
             for fname in blueprint.files:
                 self.create_test_fsobject(fname, dpath, source_data=source_data)
 
-    def create_dataset(self):
+    def create_empty_dataset(
+        self,
+        id: str,
+        hierarchy: list[str],
+        row_ids: list[list[str]],
+        space: type,
+        name: str = None,
+        **kwargs,
+    ):
         raise NotImplementedError
 
     ##################

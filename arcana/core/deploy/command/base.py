@@ -56,7 +56,7 @@ class ContainerCommand:
         back-reference to the image the command is installed in
     """
 
-    STORE_TYPE = "file"
+    STORE_TYPE = "dirtree"
     DATA_SPACE = None
 
     task: pydra.engine.task.TaskBase = attrs.field(
