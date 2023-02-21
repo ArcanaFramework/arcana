@@ -72,6 +72,8 @@ class DataStore(metaclass=ABCMeta):
 
     CONFIG_NAME = "stores"
     SUBPACKAGE = "data"
+    VERSION_KEY = "store-version"
+    VERSION = "1.0.0"
 
     @abstractmethod
     def scan_tree(self, tree: DataTree):
@@ -437,6 +439,7 @@ class DataStore(metaclass=ABCMeta):
             the same data, by default None
         """
         definition = asdict(dataset, omit=["store", "name"])
+        definition[self.VERSION_KEY] = self.VERSION
         if name is None:
             name = dataset.name
         self.save_dataset_definition(dataset.id, definition, name=name)
@@ -469,6 +472,8 @@ class DataStore(metaclass=ABCMeta):
         if name is None:
             name = Dataset.DEFAULT_NAME
         dct = self.load_dataset_definition(id, name)
+        store_version = dct.pop(self.VERSION_KEY)
+        self.check_store_version(store_version)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}@{name}'")
         return fromdict(dct, id=id, name=name, store=self, **kwargs)
@@ -643,3 +648,24 @@ class DataStore(metaclass=ABCMeta):
             for layer in blueprint.hierarchy:
                 ids[layer] = "".join(f"{b}{base_ids[b]}" for b in layer.span())
             yield ids
+
+    def check_store_version(self, store_version: str):
+        """Check whether version store used to save the dataset is compatible with the
+        current version of the software. Can be overridden by store subclasses where
+        appropriate
+
+        Parameters
+        ----------
+        store_version : str
+            version of the store used to save the dataset
+
+        Raises
+        ------
+        ArcanaError
+            if the saved version isn't compatible
+        """
+        if store_version != self.VERSION:
+            raise ArcanaError(
+                f"Stored version of dataset ({store_version}) does not match current "
+                f"version of {type(self).__name__} ({self.VERSION})"
+            )

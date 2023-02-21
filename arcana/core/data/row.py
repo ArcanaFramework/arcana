@@ -40,6 +40,7 @@ class DataRow:
     frequency: DataSpace = attrs.field()
     dataset: Dataset = attrs.field(repr=False)
     uri: str = None
+    metadata: dict = None
 
     # Automatically populated fields
     children: ty.DefaultDict[

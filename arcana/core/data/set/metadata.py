@@ -16,24 +16,6 @@ class ContainerMetadata(Metadata):
     tag: str = None
     uri: str = None
 
-    def tobids(self, **kwargs):
-        dct = {}
-        if self.type:
-            dct["Type"] = self.type
-        if self.tag:
-            dct["Tag"] = self.tag
-        if self.uri:
-            dct["URI"] = self.uri
-        return dct
-
-    @classmethod
-    def frombids(cls, dct):
-        if dct is None:
-            return None
-        return ContainerMetadata(
-            type=dct.get("Type"), tag=dct.get("Tag"), uri=dct.get("URI")
-        )
-
 
 @attrs.define
 class GeneratorMetadata(Metadata):
@@ -46,28 +28,6 @@ class GeneratorMetadata(Metadata):
         default=None, converter=fromdict_converter(ContainerMetadata)
     )
 
-    def tobids(self, **kwargs):
-        dct = {"Name": self.name}
-        if self.version:
-            dct["Version"] = self.version
-        if self.description:
-            dct["Description"] = self.description
-        if self.code_url:
-            dct["CodeURL"] = self.code_url
-        if self.container:
-            dct["Container"] = self.container.tobids()
-        return dct
-
-    @classmethod
-    def frombids(cls, dct):
-        return GeneratorMetadata(
-            name=dct["Name"],
-            version=dct.get("Version"),
-            description=dct.get("Description"),
-            code_url=dct.get("CodeURL"),
-            container=ContainerMetadata.fromdict(dct.get("Container")),
-        )
-
 
 @attrs.define
 class SourceDatasetMetadata(Metadata):
@@ -75,24 +35,6 @@ class SourceDatasetMetadata(Metadata):
     url: str = None
     doi: str = None
     version: str = None
-
-    def tobids(self, **kwargs):
-        dct = {}
-        if self.url:
-            dct["URL"] = self.url
-        if self.doi:
-            dct["DOI"] = self.doi
-        if self.version:
-            dct["Version"] = self.version
-        return dct
-
-    @classmethod
-    def frombids(cls, dct):
-        if dct is None:
-            return None
-        return SourceDatasetMetadata(
-            url=dct.get("URL"), doi=dct.get("DOI"), version=dct.get("Version")
-        )
 
 
 DEFAULT_README = f"""
@@ -126,6 +68,8 @@ class DatasetMetadata(Metadata):
         factory=list, converter=fromdict_converter(list[SourceDatasetMetadata])
     )
     readme: str = attrs.field(default=DEFAULT_README)
+    type: str = attrs.field(default="derivative", repr=False)
+    row_keys: list[str] = attrs.field(factory=list)
 
     @generated_by.default
     def generated_by_default(self):
