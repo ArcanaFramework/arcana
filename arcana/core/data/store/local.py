@@ -102,14 +102,14 @@ class LocalStore(DataStore):
 
     def save_dataset_definition(self, dataset_id, definition, name):
         definition_path = self.definition_save_path(dataset_id, name)
-        definition_path.parent.mkdir(exist_ok=True)
+        definition_path.parent.mkdir(exist_ok=True, parents=True)
         with open(definition_path, "w") as f:
             yaml.dump(definition, f)
 
     def load_dataset_definition(self, dataset_id, name):
-        fpath = self.definition_save_path(dataset_id, name)
-        if fpath.exists():
-            with open(fpath) as f:
+        fspath = self.definition_save_path(dataset_id, name)
+        if fspath.exists():
+            with open(fspath) as f:
                 definition = yaml.load(f, Loader=yaml.Loader)
         else:
             definition = None
@@ -224,7 +224,7 @@ class LocalStore(DataStore):
             )
 
     def definition_save_path(self, dataset_id, name):
-        return Path(dataset_id) / self.METADATA_DIR / (name + ".yaml")
+        return Path(dataset_id) / "derivatives" / name / "arcana-definition.yaml"
 
     def define_dataset(self, id, *args, **kwargs):
         if not Path(id).exists():

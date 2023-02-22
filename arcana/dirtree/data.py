@@ -163,10 +163,11 @@ class DirTree(LocalStore):
         fileset: FileSet
             the file set stored or to be stored
         """
+        path = path.lstrip("@")  # We don't put derivatives anywhere special
         return str(self._row_relpath(row).joinpath(*path.split("/"))) + datatype.ext
 
     def field_uri(self, path: str, datatype: type, row: DataRow) -> str:
-        return str(self.get_fields_path(row)) + "@" + path
+        return str(self._row_relpath(row) / self.FIELDS_FNAME) + "::" + path
 
     def create_test_dataset_data(
         self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
@@ -205,6 +206,19 @@ class DirTree(LocalStore):
     ##################
 
     def _row_relpath(self, row):
+        """Get the file-system path to the dataset root for the given row, taking into
+        account non-leaf rows
+
+        Parameters
+        ----------
+        row : DataRow
+            the row to get the relative path for
+
+        Returns
+        -------
+        relpath : Path
+            the relative path to the row directory
+        """
         path = Path()
         accounted_freq = row.dataset.space(0)
         for layer in row.dataset.hierarchy:
@@ -228,7 +242,7 @@ class DirTree(LocalStore):
         return Path(entry.row.dataset.id) / entry.uri
 
     def _fields_fspath_and_key(self, entry):
-        relpath, key = entry.uri.split("@")
+        relpath, key = entry.uri.split("::")
         fspath = Path(entry.row.dataset.id) / relpath
         return fspath, key
 

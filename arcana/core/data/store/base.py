@@ -472,10 +472,10 @@ class DataStore(metaclass=ABCMeta):
         if name is None:
             name = Dataset.DEFAULT_NAME
         dct = self.load_dataset_definition(id, name)
-        store_version = dct.pop(self.VERSION_KEY)
-        self.check_store_version(store_version)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}@{name}'")
+        store_version = dct.pop(self.VERSION_KEY)
+        self.check_store_version(store_version)
         return fromdict(dct, id=id, name=name, store=self, **kwargs)
 
     @classmethod

@@ -17,7 +17,7 @@ from .cell import DataCell
 if ty.TYPE_CHECKING:
     from .row import DataRow
     from .entry import DataEntry
-    from ..set.base import Dataset
+    from .set.base import Dataset
 
 
 logger = logging.getLogger("arcana")
@@ -388,7 +388,7 @@ class DataSink(DataColumn):
 
     @path.default
     def path_default(self):
-        return f"{self.dataset.name}/{self.name}"
+        return f"@{self.dataset.name}/{self.name}"
 
     def derive(self, ids: list[str] = None):
         self.dataset.derive(self.name, ids=ids)

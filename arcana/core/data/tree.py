@@ -42,7 +42,7 @@ class DataTree(NestedContext):
     def hierarchy(self):
         return self.dataset.hierarchy
 
-    def add_leaf(self, tree_path, explicit_ids=None):
+    def add_leaf(self, tree_path, additional_ids=None):
         """Creates a new row at a the path down the tree of the dataset as
         well as all "parent" rows upstream in the data tree
 
@@ -51,7 +51,7 @@ class DataTree(NestedContext):
         tree_path : list[str]
             The sequence of labels for each layer in the hierarchy of the
             dataset leading to the current row.
-        explicit_ids : dict[DataSpace, str]
+        additional_ids : dict[DataSpace, str]
             IDs for frequencies not in the dataset hierarchy that are to be
             set explicitly
 
@@ -66,8 +66,8 @@ class DataTree(NestedContext):
         """
         if self.root is None:
             self._set_root()
-        if explicit_ids is None:
-            explicit_ids = {}
+        if additional_ids is None:
+            additional_ids = {}
         # Get basis frequencies covered at the given depth of the
         if len(tree_path) != len(self.dataset.hierarchy):
             raise ArcanaDataTreeConstructionError(
@@ -132,7 +132,7 @@ class DataTree(NestedContext):
         assert row_frequency == max(self.dataset.space)
         # Set or override any inferred IDs within the ones that have been
         # explicitly provided
-        ids.update(explicit_ids)
+        ids.update((self.dataset.space[str(k)], i) for k, i in additional_ids.items())
         # Create composite IDs for non-basis frequencies if they are not
         # explicitly in the layer dimensions
         for freq in set(self.dataset.space) - set(row_frequency.span()):
