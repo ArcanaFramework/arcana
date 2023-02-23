@@ -47,7 +47,7 @@ class LocalStore(DataStore):
     """
 
     LOCK_SUFFIX = ".lock"
-    METADATA_DIR = ".arcana"
+    ARCANA_DIR = "__arcana__"
     SITE_LICENSES_DIR = "site-licenses"
 
     name: str
@@ -224,7 +224,7 @@ class LocalStore(DataStore):
             )
 
     def definition_save_path(self, dataset_id, name):
-        return Path(dataset_id) / "derivatives" / name / "arcana-definition.yaml"
+        return Path(dataset_id) / self.ARCANA_DIR / name / "definition.yaml"
 
     def define_dataset(self, id, *args, **kwargs):
         if not Path(id).exists():

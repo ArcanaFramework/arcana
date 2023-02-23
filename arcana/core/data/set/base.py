@@ -112,7 +112,7 @@ class Dataset:
         Repository specific args used to control the way the dataset is accessed
     """
 
-    DEFAULT_NAME = "default"
+    DEFAULT_NAME = "common"
     LICENSES_PATH = (
         "LICENSES"  # The resource that project-specifc licenses are expected
     )

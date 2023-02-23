@@ -622,7 +622,7 @@ def dict_diff(dict1, dict2, label1="dict1", label2="dict2"):
 
 class fromdict_converter:
     def __init__(self, tp):
-        if isinstance(tp, ty.GenericAlias):
+        if isinstance(tp, ty.Generic):
             if tp.__origin__ not in (list, tuple, set, frozenset):
                 raise ArcanaError(
                     f"generic aliases of {tp.__origin__} type are not supported by "
