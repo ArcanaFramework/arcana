@@ -102,11 +102,13 @@ class DataRow:
                 f"frequency and therefore not in rows of {self.frequency}"
                 " frequency",
             )
-        return DataCell.intersection(column=column, row=self, allow_empty=allow_empty)
+        cell = DataCell.intersection(column=column, row=self, allow_empty=allow_empty)
+        self._cells[column_name] = cell
+        return cell
 
     def cells(self, allow_empty: bool = None) -> ty.Iterable[DataCell]:
-        for column in self.dataset.columns:
-            yield self.cell(column.name, allow_empty=allow_empty)
+        for column_name in self.dataset.columns:
+            yield self.cell(column_name, allow_empty=allow_empty)
 
     @property
     def entries(self) -> ty.Iterable[DataEntry]:

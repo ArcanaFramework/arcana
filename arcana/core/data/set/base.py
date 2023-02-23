@@ -261,10 +261,11 @@ class Dataset:
             covered |= layer
         if covered != max(self.space):
             raise ArcanaUsageError(
-                f"The data hierarchy {hierarchy} does not cover the following "
-                f"basis frequencies "
-                + ", ".join(str(m) for m in (~covered).span())
-                + f"f the {self.space} data dimensions"
+                "The data hierarchy ['"
+                + "', '".join(str(h) for h in hierarchy)
+                + "'] does not cover the following basis frequencies ['"
+                + "', '".join(str(m) for m in (covered ^ max(self.space)).span())
+                + f"'] the '{self.space.__module__}.{self.space.__name__}' data space"
             )
 
     @property
