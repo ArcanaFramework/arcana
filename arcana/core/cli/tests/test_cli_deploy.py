@@ -284,7 +284,7 @@ command:
         datatype: fileformats.medimage:NiftiGzX
         help_string: "functional MRI"
         configuration:
-          path: func/task-rest_bold
+          path: func/bold/task=rest
         default_column:
           datatype: fileformats.medimage:Dicom
     outputs:
