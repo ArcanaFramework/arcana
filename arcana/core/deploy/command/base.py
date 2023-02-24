@@ -282,6 +282,8 @@ class ContainerCommand:
             path, qualifiers = self.extract_qualifiers_from_path(
                 output_values.get(output.name, output.name)
             )
+            if not path.startswith("@"):
+                path = f"@{dataset.name}/{path}"  # Add dataset namespace
             converter_args[output.name] = qualifiers.pop("converter", {})
             if qualifiers:
                 raise ArcanaUsageError(
@@ -292,7 +294,7 @@ class ContainerCommand:
                 column = dataset[output.name]
                 if not column.is_sink:
                     raise ArcanaUsageError(
-                        "Output column name '{output.name}' shadows existing source column"
+                        f"Output column name '{output.name}' shadows existing source column"
                     )
                 logger.info(f"Found existing sink column {column}")
             else:
