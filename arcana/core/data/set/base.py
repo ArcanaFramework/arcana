@@ -352,9 +352,7 @@ class Dataset:
         self._add_spec(name, source, overwrite)
         return source
 
-    def add_sink(
-        self, name, datatype, path=None, row_frequency=None, overwrite=False, **kwargs
-    ):
+    def add_sink(self, name, datatype, row_frequency=None, overwrite=False, **kwargs):
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
 
@@ -366,21 +364,19 @@ class Dataset:
         datatype : type
             The file-format (for file-sets) or datatype (for fields)
             that the sink will be stored in within the dataset
-        path : str, default `name`
-            The location of the sink within the dataset
         row_frequency : DataSpace, default self.leaf_freq
             The row_frequency of the sink within the dataset
         overwrite : bool
             Whether to overwrite an existing sink
+        path : str, optional
+            Specify a particular for the sink within the dataset, defaults to the column
+            name within the dataset derivatives directory of the store
         """
         row_frequency = self.parse_frequency(row_frequency)
-        if path is None:
-            path = name
         sink = DataSink(
             name=name,
             datatype=datatype,
             row_frequency=row_frequency,
-            path=path,
             dataset=self,
             **kwargs,
         )
