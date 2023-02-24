@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="prev" title="Command-line interface" href="cli.html" />
 
     <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
-        <title>Application Programming Interface - Arcana v0.9.1</title>
+        <title>Application Programming Interface - Arcana v0.9.2</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.9.1</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.9.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.1</span>
+  <span class="sidebar-brand-text">Arcana v0.9.2</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -312,7 +312,7 @@ explicitly added when workflows are applied to the dataset).</p></li>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="arcana.core.data.set.Dataset.add_sink">
-<span class="sig-name descname"><span class="pre">add_sink</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datatype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/arcana/core/data/set/base.html#Dataset.add_sink"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.data.set.Dataset.add_sink" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">add_sink</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datatype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/arcana/core/data/set/base.html#Dataset.add_sink"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.data.set.Dataset.add_sink" title="Permalink to this definition">#</a></dt>
 <dd><p>Specify a data source in the dataset, which can then be referenced
 when connecting workflow inputs.</p>
 <dl class="field-list simple">
@@ -322,9 +322,10 @@ when connecting workflow inputs.</p>
 sink</p></li>
 <li><p><strong>datatype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a>) – The file-format (for file-sets) or datatype (for fields)
 that the sink will be stored in within the dataset</p></li>
-<li><p><strong>path</strong> (str, default <cite>name</cite>) – The location of the sink within the dataset</p></li>
 <li><p><strong>row_frequency</strong> (<a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a><em>, </em><em>default self.leaf_freq</em>) – The row_frequency of the sink within the dataset</p></li>
 <li><p><strong>overwrite</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether to overwrite an existing sink</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>optional</em>) – Specify a particular for the sink within the dataset, defaults to the column
+name within the dataset derivatives directory of the store</p></li>
 </ul>
 </dd>
 </dl>
