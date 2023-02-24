@@ -1,0 +1,788 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Deployment" href="deployment.html" /><link rel="prev" title="Data model" href="data_model.html" />
+
+    <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
+        <title>Processing - Arcana v0.9.1</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #ffffff;
+  --color-code-foreground: black;
+  --color-brand-primary: #7b112d;
+  --color-brand-content: #7b112d;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">Arcana v0.9.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Arcana v0.9.1</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_model.html">Data model</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design_analyses.html">Designing Analyses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adding_formats.html">New formats and spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="alternative_stores.html">Alternative storage</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="processing">
+<h1>Processing<a class="headerlink" href="#processing" title="Permalink to this heading">#</a></h1>
+<p>All data processing in Arcana is performed by the <a class="reference external" href="http://pydra.readthedocs.io">Pydra</a> dataflow engine, which
+specifies a declarative domain-specific language (DSL) for creating workflows
+in Python, and enables the execution of workflows to be split over multiple
+cores or high-performance clusters (i.e. SLURM and SGE).</p>
+<p>Processed derivatives are computed by “pipelines”, modular <a class="reference external" href="http://pydra.readthedocs.io">Pydra</a> workflows
+that connect dataset columns (see <a class="reference internal" href="data_model.html#data-columns"><span class="std std-ref">Frames: Rows and Columns</span></a>). Pipeline outputs are
+always connected to sink columns, whereas pipeline inputs can draw data from either
+source columns or sink columns containing derivatives generated by prerequisite
+pipelines.</p>
+<p>By connecting pipeline inputs to the outputs of other pipelines,
+complex processing chains/webs can be created (reminiscent of a makefile),
+in which intermediate products will be stored in the dataset for subsequent
+analysis. Alternatively, <code class="xref py py-class docutils literal notranslate"><span class="pre">Analysis</span></code> classes can be used to implement
+processing chains/webs independently of a specific dataset so that they can be applied
+to new studies in a reproducible way. If required, <code class="xref py py-class docutils literal notranslate"><span class="pre">Analysis</span></code>
+classes can be customised for particular use cases via combination of new
+parameterisations and overriding selected methods in subclasses (see <a class="reference internal" href="design_analyses.html#design-analyses"><span class="std std-ref">Designing Analyses</span></a>).</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>While a general-purpose dataflow engine, <a class="reference external" href="http://pydra.readthedocs.io">Pydra</a> was developed in the neuroimaging
+field and so the existing task interfaces wrap common neuroimaging tools. Therefore,
+you will need to create your own <a class="reference external" href="http://pydra.readthedocs.io">Pydra</a> wrappers for other tools used in other
+domains.</p>
+</div>
+<section id="pydra-workflows">
+<span id="applying-workflows"></span><h2>Pydra workflows<a class="headerlink" href="#pydra-workflows" title="Permalink to this heading">#</a></h2>
+<p><a class="reference external" href="https://pydra.readthedocs.io/en/latest/components.html#workflows">Pydra workflows</a>, or individual <a class="reference external" href="https://pydra.readthedocs.io/en/latest/components.html#function-tasks">Pydra tasks</a>, can be applied to dataset in
+order to operate on the data within it. Workflows are connected from source or sink
+columns to sink columns. During the application process <a class="reference internal" href="api.html#arcana.core.analysis.pipeline.Pipeline" title="arcana.core.analysis.pipeline.Pipeline"><code class="xref py py-class docutils literal notranslate"><span class="pre">Pipeline</span></code></a> objects
+are created to wrap the workflow and prepend and append additional tasks to</p>
+<ul class="simple">
+<li><p>iterate over the relevant rows in the dataset</p></li>
+<li><p>manage storage and retrieval of data to and from the data store</p></li>
+<li><p>convert between between mismatching file formats</p></li>
+<li><p>write provenance metadata</p></li>
+<li><p>check saved provenance metadata to ensure prerequisite derivatives were generated with equivalent parameterisations and software versions (and potentially reprocess them if not)</p></li>
+</ul>
+<p>To connect a workflow via the CLI mapping the inputs and outputs of the <a class="reference external" href="http://pydra.readthedocs.io">Pydra</a>
+workflow/task (<code class="docutils literal notranslate"><span class="pre">in_file</span></code>, <code class="docutils literal notranslate"><span class="pre">peel</span></code> and <code class="docutils literal notranslate"><span class="pre">out_file</span></code> in the example below)
+to appropriate columns in the dataset (<code class="docutils literal notranslate"><span class="pre">T1w</span></code>, <code class="docutils literal notranslate"><span class="pre">T2w</span></code> and
+<code class="docutils literal notranslate"><span class="pre">freesurfer/recon-all</span></code> respectively)</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>add-source<span class="w"> </span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="w"> </span>T1w<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>fileformats.medimage:Dicom<span class="w"> </span>--path<span class="w"> </span><span class="s1">&#39;.*mprage.*&#39;</span><span class="w"> </span>--regex
+
+<span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>add-source<span class="w"> </span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="w"> </span>T2w<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>fileformats.medimage:Dicom<span class="w"> </span>--path<span class="w"> </span><span class="s1">&#39;.*t2spc.*&#39;</span><span class="w"> </span>--regex
+
+<span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>add-sink<span class="w"> </span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="w"> </span>freesurfer/recon-all<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>fileformats.archive:Zip
+
+<span class="gp">$ </span>arcana<span class="w"> </span>apply<span class="w"> </span>pipeline<span class="w"> </span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="w"> </span>freesurfer<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>pydra.tasks.freesurfer:Freesurfer<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input<span class="w"> </span>T1w<span class="w"> </span>in_file<span class="w"> </span>fileformats.medimage:NiftiGz<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input<span class="w"> </span>T2w<span class="w"> </span>peel<span class="w"> </span>fileformats.medimage:NiftiGz<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>freesurfer/recon-all<span class="w"> </span>out_file<span class="w"> </span>fileformats.generic:Directory<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--parameter<span class="w"> </span>param1<span class="w"> </span><span class="m">10</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--parameter<span class="w"> </span>param2<span class="w"> </span><span class="m">20</span>
+</pre></div>
+</div>
+<p>If there is a mismatch in the data datatype (see <a class="reference internal" href="data_model.html#data-formats"><span class="std std-ref">Items</span></a>) between the
+workflow inputs/outputs and the columns they are connected to, a datatype conversion
+task will be inserted into the pipeline if converter method between the two
+formats exists (see <a class="reference internal" href="adding_formats.html#file-formats"><span class="std std-ref">File formats</span></a>).</p>
+<p>To add a workflow to a dataset via the API use the <code class="xref py py-meth docutils literal notranslate"><span class="pre">Dataset.apply_pipeline()</span></code> method</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pydra.tasks.freesurfer</span> <span class="kn">import</span> <span class="n">Freesurfer</span>
+<span class="kn">from</span> <span class="nn">arcana.data.types</span> <span class="kn">import</span> <span class="n">common</span><span class="p">,</span> <span class="n">medimage</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="p">)</span>
+
+<span class="n">dataset</span><span class="o">.</span><span class="n">add_source</span><span class="p">(</span><span class="s1">&#39;T1w&#39;</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="n">medimage</span><span class="o">.</span><span class="n">Dicom</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;.*mprage.*&#39;</span><span class="p">,</span>
+                   <span class="n">is_regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">dataset</span><span class="o">.</span><span class="n">add_source</span><span class="p">(</span><span class="s1">&#39;T2w&#39;</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="n">medimage</span><span class="o">.</span><span class="n">Dicom</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;.*t2spc.*&#39;</span><span class="p">,</span>
+                   <span class="n">is_regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">dataset</span><span class="o">.</span><span class="n">add_sink</span><span class="p">(</span><span class="s1">&#39;freesurfer/recon-all&#39;</span><span class="p">,</span> <span class="n">common</span><span class="o">.</span><span class="n">Directory</span><span class="p">)</span>
+
+<span class="n">dataset</span><span class="o">.</span><span class="n">apply_pipeline</span><span class="p">(</span>
+    <span class="n">workflow</span><span class="o">=</span><span class="n">Freesurfer</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;freesurfer,</span>
+        <span class="n">param1</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
+        <span class="n">param2</span><span class="o">=</span><span class="mf">20.0</span><span class="p">),</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;T1w&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">,</span> <span class="n">medimage</span><span class="o">.</span><span class="n">NiftiGz</span><span class="p">),</span>
+            <span class="p">(</span><span class="s1">&#39;T2w&#39;</span><span class="p">,</span> <span class="s1">&#39;peel&#39;</span><span class="p">,</span> <span class="n">medimage</span><span class="o">.</span><span class="n">NiftiGz</span><span class="p">)],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;freesurfer/recon-all&#39;</span><span class="p">,</span> <span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="n">common</span><span class="o">.</span><span class="n">Directory</span><span class="p">)])</span>
+
+<span class="n">dataset</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>If the source can be referenced by its path alone and the formats of the source
+and sink columns match those expected and produced by the workflow, then you
+can all add the sources and sinks in one step</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>apply<span class="w"> </span>pipeline<span class="w"> </span><span class="s1">&#39;/data/enigma/alzheimers:test&#39;</span><span class="w"> </span>segmentation<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>pydra.tasks.fsl.preprocess.fast:FAST<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--source<span class="w"> </span>T1w<span class="w"> </span>in_file<span class="w"> </span>medimage:NiftiGz<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--sink<span class="w"> </span>fast/gm<span class="w"> </span>gm<span class="w"> </span>medimage:NiftiGz<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--parameter<span class="w"> </span>method<span class="w"> </span>a-method
+</pre></div>
+</div>
+<p>By default, pipelines will iterate all “leaf rows” of the data tree (e.g. <code class="docutils literal notranslate"><span class="pre">session</span></code>
+for datasets in the <code class="xref py py-class docutils literal notranslate"><span class="pre">Clinical</span></code> space). However, pipelines can be run
+at any row row_frequency of the dataset (see <a class="reference internal" href="data_model.html#data-spaces"><span class="std std-ref">Spaces</span></a>), e.g. per subject,
+per timepoint, or on the dataset as a whole (to create single templates/statistics).</p>
+<p>Pipeline outputs must be connected to sinks of the same row row_frequency. However,
+inputs can be drawn from columns of any row row_frequency. In this case,
+inputs from more frequent rows will be provided to the pipeline as a list
+sorted by their ID.</p>
+<p>For example, when the pipeline in the following code-block runs, it will receive
+a list of T1w filenames, run one workflow row, and then sink a single template
+back to the dataset.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">myworkflows</span> <span class="kn">import</span> <span class="n">vbm_template</span>
+<span class="kn">from</span> <span class="nn">arcana.data.types</span> <span class="kn">import</span> <span class="n">common</span><span class="p">,</span> <span class="n">medimage</span>
+<span class="kn">from</span> <span class="nn">arcana.medimage.data</span> <span class="kn">import</span> <span class="n">Clinical</span>
+
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;bids///data/openneuro/ds00014&#39;</span><span class="p">)</span>
+
+<span class="c1"># Add sink column with &quot;dataset&quot; row row_frequency</span>
+<span class="n">dataset</span><span class="o">.</span><span class="n">add_sink</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vbm_template&#39;</span><span class="p">,</span>
+    <span class="n">datatype</span><span class="o">=</span><span class="n">medimage</span><span class="o">.</span><span class="n">NiftiGz</span>
+    <span class="n">row_frequency</span><span class="o">=</span><span class="s1">&#39;dataset&#39;</span><span class="p">)</span>
+
+<span class="c1"># NB: we don&#39;t need to add the T1w source as it is automatically detected</span>
+<span class="c1">#     when using BIDS</span>
+
+<span class="c1"># Connect pipeline to a &quot;dataset&quot; row-row_frequency sink column. Needs to be</span>
+<span class="c1"># of `dataset` row_frequency itself or Arcana will raise an error</span>
+<span class="n">dataset</span><span class="o">.</span><span class="n">apply_pipeline</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vbm_template&#39;</span><span class="p">,</span>
+    <span class="n">workflow</span><span class="o">=</span><span class="n">vbm_template</span><span class="p">(),</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;in_file&#39;</span><span class="p">,</span> <span class="s1">&#39;T1w&#39;</span><span class="p">)],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;out_file&#39;</span><span class="p">,</span> <span class="s1">&#39;vbm_template&#39;</span><span class="p">)],</span>
+    <span class="n">row_frequency</span><span class="o">=</span><span class="s1">&#39;dataset&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="analysis-classes">
+<span id="id1"></span><h2>Analysis classes<a class="headerlink" href="#analysis-classes" title="Permalink to this heading">#</a></h2>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">Analysis</span></code> classes are used to implement pipeline chains/webs that
+can be applied to types of datasets in a reproducible manner. The syntax used is
+an extension of the <a class="reference external" href="https://www.attrs.org/en/stable/">attrs</a> package (see <a class="reference external" href="https://www.attrs.org/en/stable/extending.html">https://www.attrs.org/en/stable/extending.html</a>). In this syntax, member
+attributes are either free parameters or placeholders for columns in the
+dataset the analysis is applied to. Decorated “pipeline builder” methods
+construct the pipelines to perform the analysis.</p>
+<p>The following toy example has two column placeholders, <code class="docutils literal notranslate"><span class="pre">recorded_datafile</span></code>
+and <code class="docutils literal notranslate"><span class="pre">recorded_metadata</span></code>, to be linked to source data (<em>Line 13 &amp; 14</em>), and
+three column placeholders, <code class="docutils literal notranslate"><span class="pre">preprocessed</span></code>, <code class="docutils literal notranslate"><span class="pre">derived_image</span></code> and
+<code class="docutils literal notranslate"><span class="pre">summary_metric</span></code> (<em>Line 15-17</em>) that can be derived by pipelines created by
+one of the two implemented pipeline builder methods <code class="docutils literal notranslate"><span class="pre">preprocess_pipeline</span></code>
+(<em>Line 26</em>) and <code class="docutils literal notranslate"><span class="pre">create_image_pipeline</span></code> (<em>Line 56</em>).</p>
+<p>The <code class="xref py py-func docutils literal notranslate"><span class="pre">arcana.core.mark.analysis()</span></code> decorator is used to specify an
+analysis class (<em>Line 6</em>), taking the dataset space that the class operates on
+as an argument. By default, class attributes are assumed to be
+column placeholders of <code class="xref py py-func docutils literal notranslate"><span class="pre">arcana.core.mark.column()</span></code> type (<em>Line 13-17</em>).
+Class attributes can also be free parameters of the analysis by using the
+<code class="xref py py-func docutils literal notranslate"><span class="pre">arcana.core.mark.parameter()</span></code> instead (<em>Line 21</em>).</p>
+<p>The <code class="xref py py-func docutils literal notranslate"><span class="pre">arca.acore.mark.pipeline()</span></code> decorator specifies pipeline builder
+methods, and takes the columns the pipeline outputs are connected to as arguments
+(<em>Line 26 &amp; 54</em>). More details on the design of analysis classes see
+<a class="reference internal" href="design_analyses.html#design-analyses"><span class="std std-ref">Designing Analyses</span></a>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos"> 1</span><span class="kn">import</span> <span class="nn">pydra</span>
+<span class="linenos"> 2</span><span class="kn">from</span> <span class="nn">some.example.pydra.tasks</span> <span class="kn">import</span> <span class="n">Preprocess</span><span class="p">,</span> <span class="n">ExtractFromJson</span><span class="p">,</span> <span class="n">MakeImage</span>
+<span class="linenos"> 3</span><span class="kn">from</span> <span class="nn">arcana.core.mark</span> <span class="kn">import</span> <span class="n">analysis</span><span class="p">,</span> <span class="n">pipeline</span><span class="p">,</span> <span class="n">parameter</span>
+<span class="linenos"> 4</span><span class="kn">from</span> <span class="nn">arcana.example.data</span> <span class="kn">import</span> <span class="n">ExampleDataSpace</span>
+<span class="linenos"> 5</span><span class="kn">from</span> <span class="nn">fileformats.archive</span> <span class="kn">import</span> <span class="n">Zip</span>
+<span class="linenos"> 6</span><span class="kn">from</span> <span class="nn">fileformats.generic</span> <span class="kn">import</span> <span class="n">Directory</span>
+<span class="linenos"> 7</span><span class="kn">from</span> <span class="nn">fileformats.serialization</span> <span class="kn">import</span> <span class="n">Json</span>
+<span class="linenos"> 8</span><span class="kn">from</span> <span class="nn">fileformats.image</span> <span class="kn">import</span> <span class="n">Png</span><span class="p">,</span> <span class="n">Gif</span>
+<span class="linenos"> 9</span>
+<span class="linenos">10</span><span class="nd">@analysis</span><span class="p">(</span><span class="n">ExampleDataSpace</span><span class="p">)</span>
+<span class="linenos">11</span><span class="k">class</span> <span class="nc">ExampleAnalysis</span><span class="p">():</span>
+<span class="linenos">12</span>
+<span class="linenos">13</span>    <span class="c1"># Define the columns for the dataset along with their formats.</span>
+<span class="linenos">14</span>    <span class="c1"># The `column` decorator can be used to specify additional options but</span>
+<span class="linenos">15</span>    <span class="c1"># is not required by default. The data formats specify the datatype</span>
+<span class="linenos">16</span>    <span class="c1"># that the column data will be stored in</span>
+<span class="linenos">17</span>    <span class="n">recorded_datafile</span><span class="p">:</span> <span class="n">Zip</span>  <span class="c1"># Not derived by a pipeline, should be linked to existing dataset column</span>
+<span class="linenos">18</span>    <span class="n">recorded_metadata</span><span class="p">:</span> <span class="n">Json</span>  <span class="c1"># &quot;     &quot;     &quot;     &quot;</span>
+<span class="linenos">19</span>    <span class="n">preprocessed</span><span class="p">:</span> <span class="n">Zip</span>  <span class="c1"># Derived by &#39;preprocess_pipeline&#39; pipeline</span>
+<span class="linenos">20</span>    <span class="n">derived_image</span><span class="p">:</span> <span class="n">Png</span>  <span class="c1"># Derived by &#39;create_image_pipeline&#39; pipeline</span>
+<span class="linenos">21</span>    <span class="n">summary_metric</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># Derived by &#39;create_image_pipeline&#39; pipeline</span>
+<span class="linenos">22</span>
+<span class="linenos">23</span>    <span class="c1"># Define an analysis-wide parameters that can be used in multiple</span>
+<span class="linenos">24</span>    <span class="c1"># pipelines/tasks</span>
+<span class="linenos">25</span>    <span class="n">contrast</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">parameter</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+<span class="linenos">26</span>    <span class="n">kernel_fwhms</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">parameter</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])</span>
+<span class="linenos">27</span>
+<span class="linenos">28</span>    <span class="c1"># Define a &quot;pipeline builder method&quot; to generate the &#39;preprocessed&#39;</span>
+<span class="linenos">29</span>    <span class="c1"># derivative. Arcana automagically maps column names to arguments of the</span>
+<span class="linenos">30</span>    <span class="c1"># builder methods.</span>
+<span class="linenos">31</span>    <span class="nd">@pipeline</span><span class="p">(</span><span class="n">preprocessed</span><span class="p">)</span>
+<span class="linenos">32</span>    <span class="k">def</span> <span class="nf">preprocess_pipeline</span><span class="p">(</span>
+<span class="linenos">33</span>            <span class="bp">self</span><span class="p">,</span>
+<span class="linenos">34</span>            <span class="n">wf</span><span class="p">:</span> <span class="n">pydra</span><span class="o">.</span><span class="n">Workflow</span><span class="p">,</span>
+<span class="linenos">35</span>            <span class="n">recorded_datafile</span><span class="p">:</span> <span class="n">Directory</span><span class="p">,</span>  <span class="c1"># Automatic conversion from stored Zip format before pipeline is run</span>
+<span class="linenos">36</span>            <span class="n">recorded_metadata</span><span class="p">):</span>  <span class="c1"># Format/format is the same as class definition so can be omitted</span>
+<span class="linenos">37</span>
+<span class="linenos">38</span>        <span class="c1"># A simple task to extract the &quot;temperature&quot; field from a JSON</span>
+<span class="linenos">39</span>        <span class="c1"># metadata</span>
+<span class="linenos">40</span>        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+<span class="linenos">41</span>            <span class="n">ExtractFromJson</span><span class="p">(</span>
+<span class="linenos">42</span>                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;extract_metadata&#39;</span><span class="p">,</span>
+<span class="linenos">43</span>                <span class="n">in_file</span><span class="o">=</span><span class="n">recorded_metadata</span><span class="p">,</span>
+<span class="linenos">44</span>                <span class="n">field</span><span class="o">=</span><span class="s1">&#39;temperature&#39;</span><span class="p">))</span>
+<span class="linenos">45</span>
+<span class="linenos">46</span>        <span class="c1"># Add tasks to the pipeline using Pydra workflow syntax</span>
+<span class="linenos">47</span>        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+<span class="linenos">48</span>            <span class="n">Task1</span><span class="p">(</span>
+<span class="linenos">49</span>                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;preprocess&#39;</span><span class="p">,</span>
+<span class="linenos">50</span>                <span class="n">in_file</span><span class="o">=</span><span class="n">recorded_datafile</span><span class="p">,</span>
+<span class="linenos">51</span>                <span class="n">temperature</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">extract_metadata</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out_field</span><span class="p">))</span>
+<span class="linenos">52</span>
+<span class="linenos">53</span>        <span class="c1"># Map the output of the pipeline to the &quot;preprocessed&quot; column specified</span>
+<span class="linenos">54</span>        <span class="c1"># in the @pipeline decorator</span>
+<span class="linenos">55</span>        <span class="k">return</span> <span class="n">preprocess</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out_file</span>
+<span class="linenos">56</span>
+<span class="linenos">57</span>    <span class="c1"># The &#39;create_image&#39; pipeline derives two columns &#39;derived_image&#39; (in GIF format) and</span>
+<span class="linenos">58</span>    <span class="c1"># &#39;summary_metric&#39;. Since the output format of derived image created by the pipeline (&#39;Gif&#39;)</span>
+<span class="linenos">59</span>    <span class="c1"># differs from that specified for the column (&#39;Png&#39;), an automatic conversion</span>
+<span class="linenos">60</span>    <span class="c1"># step will be added by Arcana before the image is stored.</span>
+<span class="linenos">61</span>    <span class="nd">@pipeline</span><span class="p">((</span><span class="n">derived_image</span><span class="p">,</span> <span class="n">Gif</span><span class="p">),</span>
+<span class="linenos">62</span>              <span class="n">summary_metric</span><span class="p">)</span>
+<span class="linenos">63</span>    <span class="k">def</span> <span class="nf">create_image_pipeline</span><span class="p">(</span>
+<span class="linenos">64</span>            <span class="bp">self</span><span class="p">,</span>
+<span class="linenos">65</span>            <span class="n">wf</span><span class="p">,</span>
+<span class="linenos">66</span>            <span class="n">preprocessed</span><span class="p">:</span> <span class="n">Directory</span><span class="p">,</span>  <span class="c1"># Automatic conversion from stored Zip format before pipeline is run</span>
+<span class="linenos">67</span>            <span class="n">contrast</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>  <span class="c1"># Parameters are also automagically mapped to method args</span>
+<span class="linenos">68</span>
+<span class="linenos">69</span>        <span class="c1"># Add a task that creates an image from the preprocessed data, using</span>
+<span class="linenos">70</span>        <span class="c1"># the &#39;contrast&#39; parameter</span>
+<span class="linenos">71</span>        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+<span class="linenos">72</span>            <span class="n">MakeImage</span><span class="p">(</span>
+<span class="linenos">73</span>                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;create_image&quot;</span><span class="p">,</span>
+<span class="linenos">74</span>                <span class="n">in_file</span><span class="o">=</span><span class="n">preprocessed</span><span class="p">,</span>
+<span class="linenos">75</span>                <span class="n">contrast</span><span class="o">=</span><span class="n">contrast</span><span class="p">))</span>
+<span class="linenos">76</span>
+<span class="linenos">77</span>        <span class="k">return</span> <span class="n">create_image</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out_file</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">create_image</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">summary</span>
+</pre></div>
+</div>
+<p>To apply an analysis via the command-line use the <code class="docutils literal notranslate"><span class="pre">--column</span></code> flag to connect
+column specs in the class with existing columns in the dataset.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>apply<span class="w"> </span>analysis<span class="w"> </span><span class="s1">&#39;/data/a-dataset&#39;</span><span class="w"> </span>example:ExampleAnalysis<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--column<span class="w"> </span>recorded_datafile<span class="w"> </span>datafile<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--column<span class="w"> </span>recorded_metadata<span class="w"> </span>metadata<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--parameter<span class="w"> </span>contrast<span class="w"> </span><span class="m">0</span>.75
+</pre></div>
+</div>
+<p>Analyses are applied to datasets using the Python API with the <code class="xref py py-meth docutils literal notranslate"><span class="pre">Dataset.apply()</span></code>
+method. <code class="xref py py-meth docutils literal notranslate"><span class="pre">Dataset.apply()</span></code> takes an <code class="xref py py-class docutils literal notranslate"><span class="pre">Analysis</span></code> object that is instantiated
+with the names of columns in the dataset to link placeholders to and any
+parameters.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">arcana.core.data.set</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">fileformats.serialization</span> <span class="kn">import</span> <span class="n">Yaml</span>
+<span class="kn">from</span> <span class="nn">arcana.examples</span> <span class="kn">import</span> <span class="n">ExampleAnalysis</span>
+
+<span class="n">a_dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;/data/a-dataset&#39;</span><span class="p">)</span>
+
+<span class="n">dataset</span><span class="o">.</span><span class="n">add_source</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;datafile&#39;</span><span class="p">,</span>
+    <span class="n">path</span><span class="o">=</span><span class="s1">&#39;a-long-arbitrary-name&#39;</span><span class="p">,</span>
+    <span class="n">datatype</span><span class="o">=</span><span class="n">Zip</span><span class="p">)</span>
+
+<span class="n">dataset</span><span class="o">.</span><span class="n">add_source</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s1">&#39;metadata&#39;</span><span class="p">,</span>
+    <span class="n">path</span><span class="o">=</span><span class="s1">&#39;another-long-arbitrary-name&#39;</span><span class="p">,</span>
+    <span class="n">datatype</span><span class="o">=</span><span class="n">Yaml</span><span class="p">)</span>  <span class="c1"># The format the data is in the dataset, will be automatically converted</span>
+
+<span class="n">dataset</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+    <span class="n">ExampleAnalysis</span><span class="p">(</span>
+        <span class="n">recorded_datafile</span><span class="o">=</span><span class="s1">&#39;datafile&#39;</span><span class="p">,</span>
+        <span class="n">recorded_metadata</span><span class="o">=</span><span class="s1">&#39;metadata&#39;</span><span class="p">,</span>
+        <span class="n">contrast</span><span class="o">=</span><span class="mf">0.75</span><span class="p">))</span>
+</pre></div>
+</div>
+</section>
+<section id="generating-derivatives">
+<span id="derivatives"></span><h2>Generating derivatives<a class="headerlink" href="#generating-derivatives" title="Permalink to this heading">#</a></h2>
+<p>After workflows and/or analysis classes have been connected to a dataset, derivatives can be
+generated using <code class="xref py py-meth docutils literal notranslate"><span class="pre">Dataset.derive()</span></code> or alternatively <code class="xref py py-meth docutils literal notranslate"><span class="pre">DataColumn.derive()</span></code>
+for single columns. These methods check the data store to see whether the
+source data is present and executes the pipelines over all rows of the dataset
+with available source data. If pipeline inputs are sink columns to be derived
+by prerequisite pipelines, then the prerequisite pipelines will be prepended
+onto the execution stack.</p>
+<p>To generate derivatives via the CLI</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>derive<span class="w"> </span>column<span class="w"> </span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="w"> </span>freesurfer/recon-all
+</pre></div>
+</div>
+<p>To generate derivatives via the API</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;/data/openneuro/ds00014:test&#39;</span><span class="p">)</span>
+
+<span class="n">dataset</span><span class="o">.</span><span class="n">derive</span><span class="p">(</span><span class="s1">&#39;fast/gm&#39;</span><span class="p">,</span> <span class="n">cache_dir</span><span class="o">=</span><span class="s1">&#39;/work/temp-dir&#39;</span><span class="p">)</span>
+
+<span class="c1"># Print URI of generated dataset</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">dataset</span><span class="p">[</span><span class="s1">&#39;fast/gm&#39;</span><span class="p">][</span><span class="s1">&#39;sub11&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">uri</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>By default <a class="reference external" href="http://pydra.readthedocs.io">Pydra</a> uses the “concurrent-futures” (<cite>‘cf’</cite>) plugin, which
+splits workflows over multiple processes. You can specify which plugin, and
+thereby how the workflow is executed via the <code class="docutils literal notranslate"><span class="pre">pydra_plugin</span></code> option, and pass
+options to it with <code class="docutils literal notranslate"><span class="pre">pydra_option</span></code>.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>derive<span class="w"> </span>column<span class="w"> </span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="w"> </span>freesurfer/recon-all<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--plugin<span class="w"> </span>slurm<span class="w"> </span>--pydra-option<span class="w"> </span>poll_delay<span class="w"> </span><span class="m">5</span><span class="w"> </span>--pydra-option<span class="w"> </span>max_jobs<span class="w"> </span><span class="m">10</span>
+</pre></div>
+</div>
+<p>To list the derivatives that can be derived from a dataset after workflows
+have been applied you can use the <code class="docutils literal notranslate"><span class="pre">menu</span></code> command</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>derive<span class="w"> </span>menu<span class="w"> </span><span class="s1">&#39;/data/a-dataset&#39;</span>
+
+<span class="go">Derivatives</span>
+<span class="go">-----------</span>
+<span class="go">recorded_datafile (zip)</span>
+<span class="go">recorded_metadata (json)</span>
+<span class="go">preprocessed (zip)</span>
+<span class="go">derived_image (png)</span>
+<span class="go">summary_metric (float)</span>
+
+<span class="go">Parameters</span>
+<span class="go">----------</span>
+<span class="go">contrast (float) default=0.5</span>
+<span class="go">kernel_fwhms (list[float]) default=[0.5, 0.3, 0.1]</span>
+</pre></div>
+</div>
+<p>For large analysis classes with many column specs this list could become
+overwhelming, so when designing an analysis class it is good practice to set the
+“salience” of columns and parameters (see <a class="reference internal" href="design_analyses.html#column-param-specs"><span class="std std-ref">DataColumn and parameter specification</span></a>). The menu
+can then be filtered to show only the more salient columns (the default is to
+only show “supplementary” and above).
+Parameters can similarly be filtered by their salience (see <code class="xref py py-class docutils literal notranslate"><span class="pre">ParameterSalience</span></code>),
+by default only showing parameters “check” and above.
+For example, the following menu call will show all columns and parameters with
+salience &gt;= ‘qa’ and ‘recommended’, respectively.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>derive<span class="w"> </span>menu<span class="w"> </span><span class="s1">&#39;/data/another-dataset&#39;</span><span class="w"> </span>--columns<span class="w"> </span>qa<span class="w"> </span>--parameters<span class="w"> </span>recommended
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">salience_threshold</span></code> argument can also be used to filter out derivatives
+from the data store when applying an analysis to a dataset. This
+allows the user to control how much derivative data are saved to
+avoid filling up (potentially expensive) storage. The following call will only
+attempt to store data columns with “qa” or greater salience in XNAT, keeping the
+remaining only in local cache.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>apply<span class="w"> </span>analysis<span class="w"> </span><span class="s1">&#39;my-unis-xnat//MYPROJECT:test&#39;</span><span class="w"> </span>example:ExampleAnalysis<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--link<span class="w"> </span>recorded_datafile<span class="w"> </span>datafile<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--link<span class="w"> </span>recorded_metadata<span class="w"> </span>metadata<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--parameter<span class="w"> </span>contrast<span class="w"> </span><span class="m">0</span>.75<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--salience-threshold<span class="w"> </span>qa
+</pre></div>
+</div>
+</section>
+<section id="provenance">
+<h2>Provenance<a class="headerlink" href="#provenance" title="Permalink to this heading">#</a></h2>
+<p>Provenance metadata is saved alongside derivatives in the data store. The
+metadata includes:</p>
+<ul class="simple">
+<li><p>MD5 Checksums of all pipeline inputs and outputs</p></li>
+<li><p>Full workflow graph with connections between, and parameterisations of, Pydra tasks</p></li>
+<li><p>Container image tags for tasks that ran inside containers</p></li>
+<li><p>Python dependencies and versions used.</p></li>
+</ul>
+<p>How these provenance metadata are stored will depend on the type data store,
+but often it will be stored in a JSON file. For example, a provenance JSON file
+would look like</p>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="s2">&quot;store&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="s2">&quot;class&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&lt;arcana.medimage.data.xnat.api:Xnat&gt;&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;server&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;https://central.xnat.org&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="s2">&quot;dataset&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="s2">&quot;id&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;MYPROJECT&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;name&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;passed-dwi-qc&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">&quot;exclude&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;015&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;101&#39;</span><span class="p">]</span>
+<span class="w">    </span><span class="s2">&quot;id_inference&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">      </span><span class="p">[</span><span class="s2">&quot;subject&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;(?P&lt;group&gt;TEST|CONT)(?P&lt;member&gt;\d+3)&quot;</span><span class="p">]</span>
+<span class="w">    </span><span class="p">]</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="s2">&quot;pipelines&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="s2">&quot;name&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;anatomically_constrained_tractography&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="s2">&quot;inputs&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// MD5 Checksums for all files in the file group. &quot;.&quot; refers to the</span>
+<span class="w">        </span><span class="c1">// &quot;primary file&quot; in the file group.</span>
+<span class="w">        </span><span class="s2">&quot;T1w_reg_dwi&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="s2">&quot;datatype&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&lt;fileformats.medimage.data:NiftiGzX&gt;&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="s2">&quot;checksums&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="s2">&quot;.&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;4838470888DBBEADEAD91089DD4DFC55&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s2">&quot;json&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;7500099D8BE29EF9057D6DE5D515DFFE&quot;</span>
+<span class="w">          </span><span class="p">}</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="s2">&quot;T2w_reg_dwi&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="s2">&quot;datatype&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&lt;fileformats.medimage.data:NiftiGzX&gt;&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="s2">&quot;checksums&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="s2">&quot;.&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;4838470888DBBEADEAD91089DD4DFC55&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s2">&quot;json&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;5625E881E32AE6415E7E9AF9AEC59FD6&quot;</span>
+<span class="w">          </span><span class="p">}</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">        </span><span class="s2">&quot;dwi_fod&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="s2">&quot;datatype&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&lt;fileformats.medimage.data:MrtrixImage&gt;&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="s2">&quot;checksums&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="s2">&quot;.&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;92EF19B942DD019BF8D32A2CE2A3652F&quot;</span>
+<span class="w">          </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="s2">&quot;outputs&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="s2">&quot;wm_tracks&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="s2">&quot;task&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;tckgen&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="s2">&quot;field&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;out_file&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="s2">&quot;datatype&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&lt;fileformats.medimage.data:MrtrixTrack&gt;&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="s2">&quot;checksums&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="s2">&quot;.&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;D30073044A7B1239EFF753C85BC1C5B3&quot;</span>
+<span class="w">          </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">      </span><span class="s2">&quot;workflow&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="s2">&quot;name&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;workflow&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;class&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&lt;pydra.engine.core:Workflow&gt;&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;tasks&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="s2">&quot;5ttgen&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="s2">&quot;class&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&lt;pydra.tasks.mrtrix3.preprocess:FiveTissueTypes&gt;&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s2">&quot;package&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;pydra-mrtrix&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s2">&quot;version&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;0.1.1&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s2">&quot;inputs&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">              </span><span class="s2">&quot;in_file&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="s2">&quot;field&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;T1w_reg_dwi&quot;</span>
+<span class="w">              </span><span class="p">}</span>
+<span class="w">              </span><span class="s2">&quot;t2&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="s2">&quot;field&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;T1w_reg_dwi&quot;</span>
+<span class="w">              </span><span class="p">}</span>
+<span class="w">              </span><span class="s2">&quot;sgm_amyg_hipp&quot;</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="s2">&quot;container&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">              </span><span class="s2">&quot;type&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;docker&quot;</span><span class="p">,</span>
+<span class="w">              </span><span class="s2">&quot;image&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;mrtrix3/mrtrix3:3.0.3&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">          </span><span class="p">},</span>
+<span class="w">          </span><span class="s2">&quot;tckgen&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="s2">&quot;class&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;&lt;pydra.tasks.mrtrix3.tractography:TrackGen&gt;&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s2">&quot;package&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;pydra-mrtrix&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s2">&quot;version&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;0.1.1&quot;</span><span class="p">,</span>
+<span class="w">            </span><span class="s2">&quot;inputs&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">              </span><span class="s2">&quot;in_file&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="s2">&quot;field&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;dwi_fod&quot;</span>
+<span class="w">              </span><span class="p">},</span>
+<span class="w">              </span><span class="s2">&quot;act&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="s2">&quot;task&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;5ttgen&quot;</span><span class="p">,</span>
+<span class="w">                </span><span class="s2">&quot;field&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;out_file&quot;</span>
+<span class="w">              </span><span class="p">},</span>
+<span class="w">              </span><span class="s2">&quot;select&quot;</span><span class="o">:</span><span class="w"> </span><span class="mf">100000000</span><span class="p">,</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="s2">&quot;container&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">              </span><span class="s2">&quot;type&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;docker&quot;</span><span class="p">,</span>
+<span class="w">              </span><span class="s2">&quot;image&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;mrtrix3/mrtrix3:3.0.3&quot;</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">          </span><span class="p">},</span>
+<span class="w">        </span><span class="p">},</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">      </span><span class="s2">&quot;execution&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="s2">&quot;machine&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;hpc.myuni.edu&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;processor&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;intel9999&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="s2">&quot;python-packages&quot;</span><span class="o">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">          </span><span class="s2">&quot;pydra-mrtrix3&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span><span class="p">,</span>
+<span class="w">          </span><span class="s2">&quot;arcana-medimage&quot;</span><span class="o">:</span><span class="w"> </span><span class="s2">&quot;0.1.0&quot;</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">      </span><span class="p">},</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Before derivatives are generated, provenance metadata of prerequisite
+derivatives (i.e. inputs of the pipeline and prerequisite pipelines, etc…)
+are checked to see if there have been any alterations to the configuration of
+the pipelines that generated them. If so, any affected rows will not be
+processed, and a warning will be generated by default. To override this behaviour
+and reprocesse the derivatives, set the <code class="docutils literal notranslate"><span class="pre">reprocess</span></code> flag when calling
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">Dataset.derive()</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">dataset</span><span class="o">.</span><span class="n">derive</span><span class="p">(</span><span class="s1">&#39;fast/gm&#39;</span><span class="p">,</span> <span class="n">reprocess</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>or</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>derive<span class="w"> </span>column<span class="w"> </span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="w"> </span>freesurfer/recon-all<span class="w">  </span>--reprocess
+</pre></div>
+</div>
+<p>To ignore differences between pipeline configurations you can use the <code class="xref py py-meth docutils literal notranslate"><span class="pre">Dataset.ignore()</span></code>
+method</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">dataset</span><span class="o">.</span><span class="n">ignore_diff</span><span class="p">(</span><span class="s1">&#39;freesurfer_pipeline&#39;</span><span class="p">,</span> <span class="p">(</span><span class="s1">&#39;freesurfer_task&#39;</span><span class="p">,</span> <span class="s1">&#39;num_iterations&#39;</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>or via the CLI</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>derive<span class="w"> </span>ignore-diff<span class="w"> </span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="w"> </span>freesurfer<span class="w"> </span>--param<span class="w"> </span>freesurfer_task<span class="w"> </span>num_iterations<span class="w"> </span><span class="m">3</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="deployment.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Deployment</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="data_model.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Data model</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, Thomas G. Close
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Processing</a><ul>
+<li><a class="reference internal" href="#pydra-workflows">Pydra workflows</a></li>
+<li><a class="reference internal" href="#analysis-classes">Analysis classes</a></li>
+<li><a class="reference internal" href="#generating-derivatives">Generating derivatives</a></li>
+<li><a class="reference internal" href="#provenance">Provenance</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/scripts/furo.js"></script>
+    </body>
+</html>

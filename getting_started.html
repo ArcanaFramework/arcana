@@ -1,0 +1,458 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Data model" href="data_model.html" /><link rel="prev" title="Arcana" href="index.html" />
+
+    <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
+        <title>Getting started - Arcana v0.9.1</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #ffffff;
+  --color-code-foreground: black;
+  --color-brand-primary: #7b112d;
+  --color-brand-content: #7b112d;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">Arcana v0.9.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Arcana v0.9.1</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_model.html">Data model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing.html">Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design_analyses.html">Designing Analyses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adding_formats.html">New formats and spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="alternative_stores.html">Alternative storage</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="getting-started">
+<h1>Getting started<a class="headerlink" href="#getting-started" title="Permalink to this heading">#</a></h1>
+<section id="pydra">
+<h2>Pydra<a class="headerlink" href="#pydra" title="Permalink to this heading">#</a></h2>
+<p>Pipelines in Arcana are implemented in and executed with the <a class="reference external" href="http://pydra.readthedocs.io">Pydra</a> dataflow
+engine, so before getting started with Arcana it is a good idea to familiarise
+yourself with <a class="reference external" href="http://pydra.readthedocs.io">Pydra</a>’s syntax and concepts. There is short Jupyter notebook
+tutorial available at <a class="reference external" href="https://github.com/nipype/pydra-tutorial">https://github.com/nipype/pydra-tutorial</a>, which is a
+nice place to start with this after the reading the
+<a class="reference external" href="https://pydra.readthedocs.io">official docs</a>.</p>
+</section>
+<section id="software-requirements">
+<h2>Software requirements<a class="headerlink" href="#software-requirements" title="Permalink to this heading">#</a></h2>
+<p>Arcana requires a recent version of Python (&gt;=3.8) to run. So you may
+need to upgrade your Python version before it is installed. The best way
+to install Python depends on your OS:</p>
+<ul class="simple">
+<li><p>Windows - it is very strongly recommended to use <a class="reference external" href="https://www.anaconda.com/products/individual">Anaconda</a> to install Python because it will manage C dependencies as well</p></li>
+<li><p>Mac - either <a class="reference external" href="https://brew.sh/">Homebrew</a> or <a class="reference external" href="https://www.anaconda.com/products/individual">Anaconda</a> are good options</p></li>
+<li><p>Linux - the native package manager should work ok unless you are using an old Linux distribution that doesn’t support Python 3.8, in which case <a class="reference external" href="https://docs.brew.sh/Homebrew-on-Linux">Linuxbrew</a> is a good option</p></li>
+</ul>
+<p>To deploy Arcana pipelines to <a class="reference external" href="https://www.docker.com/">Docker</a> images XNAT’s container service,
+<a class="reference external" href="https://www.docker.com/">Docker</a> needs to be installed. Please see the <a class="reference external" href="https://www.docker.com/">Docker</a> docs for how to do this,
+<a class="reference external" href="https://docs.docker.com/engine/install/">https://docs.docker.com/engine/install/</a> for your system.</p>
+<p>One of the main strengths of Pydra is the ability to link 3rd party tools
+together into coherent workflows. 3rd party tools are best run within software
+containers (e.g. <a class="reference external" href="https://www.docker.com/">Docker</a> or <a class="reference external" href="https://sylabs.io/guides/3.0/user-guide/index.html">Singularity</a>), but in cases where that isn’t possible
+(i.e. when nested within other containers without access to Docker socket or
+on some high-performance computing clusters) you will obviously need to have
+installed these dependencies on the system and ensure they are on the <a class="reference external" href="https://learn.sparkfun.com/tutorials/configuring-the-path-system-variable/all">system
+path</a>.</p>
+<p>Two command-line tools that the the <cite>arcana-medimage</cite> sub-package uses
+for implicit file-format conversions are</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://github.com/rordenlab/dcm2niix">Dcm2Niix</a></p></li>
+<li><p><a class="reference external" href="https://mrtrix.readthedocs.io/en/latest/index.html">Mrtrix3</a></p></li>
+</ul>
+<p>Both these packages can be installed using Home/LinuxBrew (you will need to tap
+<code class="docutils literal notranslate"><span class="pre">MRtrix3/mrtrix3</span></code>) and <a class="reference external" href="https://www.anaconda.com/products/individual">Anaconda</a> (use the <code class="docutils literal notranslate"><span class="pre">conda-forge</span></code> and <code class="docutils literal notranslate"><span class="pre">mrtrix3</span></code>
+repositories for Dcm2Niix and MRtrix3 respectively).</p>
+</section>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">#</a></h2>
+<p>Arcana can be installed along with its Python dependencies from the
+<a class="reference external" href="http://pypi.org">Python Package Index</a> using <em>Pip3</em></p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>pip3<span class="w"> </span>install<span class="w"> </span>arcana
+</pre></div>
+</div>
+</section>
+<section id="basic-usage">
+<h2>Basic usage<a class="headerlink" href="#basic-usage" title="Permalink to this heading">#</a></h2>
+<p>Arcana is implemented in Python, and can be accessed either via it’s
+API or via the command-line interface (CLI).</p>
+<p>The basic usage pattern is</p>
+<ol class="arabic simple">
+<li><p>Define a dataset to work with (see <a class="reference internal" href="data_model.html#datasets"><span class="std std-ref">Datasets</span></a>)</p></li>
+<li><p>Specify columns in the dataset to access data from and store data to (see <a class="reference internal" href="data_model.html#data-columns"><span class="std std-ref">Frames: Rows and Columns</span></a>)</p></li>
+<li><p>Connect a <a class="reference external" href="https://pydra.readthedocs.io/en/latest/components.html#dataflows-components-task-and-workflow">Pydra task or workflow</a>, or an analysis class between columns (see <a class="reference internal" href="processing.html#analysis-classes"><span class="std std-ref">Analysis classes</span></a>)</p></li>
+<li><p>Select derivatives to generate (see <a class="reference internal" href="processing.html#derivatives"><span class="std std-ref">Generating derivatives</span></a>)</p></li>
+</ol>
+<p>For example, given a dataset stored within the <code class="docutils literal notranslate"><span class="pre">/data/my-dataset</span></code> directory,
+which contains two-layers of sub-directories, for subjects and sessions
+respectively, FSL’s Brain Extraction Tool (BET) can be executed
+over all sessions using the command line interface</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp"># </span>Define<span class="w"> </span>dataset
+<span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>define<span class="w"> </span><span class="s1">&#39;/data/my-project&#39;</span><span class="w"> </span>subject<span class="w"> </span>session
+
+<span class="gp"># </span>Add<span class="w"> </span><span class="nb">source</span><span class="w"> </span>column<span class="w"> </span>to<span class="w"> </span><span class="k">select</span><span class="w"> </span>a<span class="w"> </span>single<span class="w"> </span>T1-weighted<span class="w"> </span>image<span class="w"> </span><span class="k">in</span><span class="w"> </span>each<span class="w"> </span>session<span class="w"> </span>subdirectory
+<span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>add-source<span class="w"> </span><span class="s1">&#39;/data/my-dataset&#39;</span><span class="w"> </span>T1w<span class="w"> </span><span class="s1">&#39;.*mprage.*&#39;</span><span class="w"> </span>medimage:Dicom<span class="w"> </span>--regex
+
+<span class="gp"># </span>Add<span class="w"> </span>sink<span class="w"> </span>column<span class="w"> </span>to<span class="w"> </span>store<span class="w"> </span>brain<span class="w"> </span>mask
+<span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>add-sink<span class="w"> </span><span class="s1">&#39;/data/my-dataset&#39;</span><span class="w"> </span>brain_mask<span class="w"> </span>medimage:NiftiGz
+
+<span class="gp"># </span>Apply<span class="w"> </span>BET<span class="w"> </span>Pydra<span class="w"> </span>task,<span class="w"> </span>connecting<span class="w"> </span>it<span class="w"> </span>between<span class="w"> </span>the<span class="w"> </span><span class="nb">source</span><span class="w"> </span>and<span class="w"> </span>sink
+<span class="gp">$ </span>arcana<span class="w"> </span>apply<span class="w"> </span>pipeline<span class="w"> </span><span class="s1">&#39;/data/my-dataset&#39;</span><span class="w"> </span>pydra.tasks.fsl.preprocess.bet:BET<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--arg<span class="w"> </span>name<span class="w"> </span>brain_extraction<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--input<span class="w"> </span>T1w<span class="w"> </span>in_file<span class="w"> </span>medimage:NiftiGz<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>brain_mask<span class="w"> </span>out_file<span class="w"> </span>.
+
+<span class="gp"># </span>Derive<span class="w"> </span>brain<span class="w"> </span>masks<span class="w"> </span><span class="k">for</span><span class="w"> </span>all<span class="w"> </span>imaging<span class="w"> </span>sessions<span class="w"> </span><span class="k">in</span><span class="w"> </span>dataset
+<span class="gp">$ </span>arcana<span class="w"> </span>derive<span class="w"> </span>column<span class="w"> </span><span class="s1">&#39;/data/my-dataset&#39;</span><span class="w"> </span>brain_maskAPI
+</pre></div>
+</div>
+<p>This code will iterate over all imaging sessions in the directory tree, find and
+convert T1-weighted images (which contain ‘mprage’ in their names) from
+DICOM into the required gzipped NIfTI format, and then execute BET on the converted
+files before they are saved back into the directory structure at
+<code class="docutils literal notranslate"><span class="pre">&lt;subject-id&gt;/&lt;session-id&gt;/derivs/brain_mask.nii.gz</span></code>.</p>
+<p>Alternatively, the same steps can be performed using the Python API:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Import arcana module</span>
+<span class="kn">from</span> <span class="nn">pydra.tasks.fsl.preprocess.bet</span> <span class="kn">import</span> <span class="n">BET</span>
+<span class="kn">from</span> <span class="nn">arcana.core.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">arcana.medimage.data</span> <span class="kn">import</span> <span class="n">Clinical</span>
+<span class="kn">from</span> <span class="nn">fileformats.medimage.data</span> <span class="kn">import</span> <span class="n">Dicom</span><span class="p">,</span> <span class="n">NiftiGz</span>
+
+<span class="c1"># Define dataset</span>
+<span class="n">my_dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;/data/my-dataset&#39;</span><span class="p">,</span> <span class="n">space</span><span class="o">=</span><span class="n">Clinical</span><span class="p">,</span>
+                          <span class="n">hierarchy</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;subject&#39;</span><span class="p">,</span> <span class="s1">&#39;session&#39;</span><span class="p">])</span>
+
+<span class="c1"># Add source column to select a single T1-weighted image in each session subdirectory</span>
+<span class="n">my_dataset</span><span class="o">.</span><span class="n">add_source</span><span class="p">(</span><span class="s1">&#39;T1w&#39;</span><span class="p">,</span> <span class="s1">&#39;.*mprage.*&#39;</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="n">Dicom</span><span class="p">,</span> <span class="n">is_regex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># Add sink column to store brain mask</span>
+<span class="n">my_dataset</span><span class="o">.</span><span class="n">add_sink</span><span class="p">(</span><span class="s1">&#39;brain_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;derivs/brain_mask&#39;</span><span class="p">,</span> <span class="n">datatype</span><span class="o">=</span><span class="n">NiftiGz</span><span class="p">)</span>
+
+<span class="c1"># Apply BET Pydra task, connecting it between the source and sink</span>
+<span class="n">my_dataset</span><span class="o">.</span><span class="n">apply_pipeline</span><span class="p">(</span>
+    <span class="n">BET</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;brain_extraction&#39;</span><span class="p">),</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;T1w&#39;</span><span class="p">,</span> <span class="s1">&#39;in_file&#39;</span><span class="p">,</span> <span class="n">NiftiGz</span><span class="p">)],</span>  <span class="c1"># Specify required input format</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;brain_mask&#39;</span><span class="p">,</span> <span class="s1">&#39;out_file&#39;</span><span class="p">)])</span>  <span class="c1"># Output datatype matches stored so can be omitted</span>
+
+<span class="c1"># Derive brain masks for all imaging sessions in dataset</span>
+<span class="n">my_dataset</span><span class="p">[</span><span class="s1">&#39;brain_mask&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">derive</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Applying an Analysis class instead of a Pydra task/workflow follows the same
+steps up to ‘add-source’ (sinks are automatically added by the analysis class).
+The following example applies methods for analysing T1-weighted MRI images to the
+dataset, then calls the methods calculates the average cortical thickness for
+each session of each subject.</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>apply<span class="w"> </span>analysis<span class="w"> </span><span class="s1">&#39;/data/my-project&#39;</span><span class="w"> </span>bids.mri:T1wAnalysis
+<span class="gp">$ </span>arcana<span class="w"> </span>derive<span class="w"> </span>column<span class="w"> </span><span class="s1">&#39;/data/my-project&#39;</span><span class="w"> </span>avg_cortical_thickness
+</pre></div>
+</div>
+<p>Doing the same steps via the Python API provides convenient access to the
+generated data, which a histogram of the distribution over all subjects at
+Timepoint ‘T3’ can be plotted.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">arcana.analyses.bids.mri</span> <span class="kn">import</span> <span class="n">T1wAnalysis</span>
+
+<span class="c1"># Apply the T1wAnalysis class to the dataset</span>
+<span class="n">my_dataset</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">T1wAnalysis</span><span class="p">())</span>
+
+<span class="c1"># Generate the average cortical thickness derivative that was added by</span>
+<span class="c1"># the T1wAnalysis class</span>
+<span class="n">my_dataset</span><span class="p">[</span><span class="s1">&#39;avg_cortical_thickness&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">derive</span><span class="p">()</span>
+
+<span class="c1"># Get all members at the &#39;T3&#39; timepoint. Indexing of a column can either</span>
+<span class="c1"># be a single arg in order to use the IDs for the row_frequency of the column</span>
+<span class="c1"># (&#39;session&#39;) in this case, or the rank of the data space</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="n">my_dataset</span><span class="p">[</span><span class="s1">&#39;avg_cortical_thickness&#39;</span><span class="p">][</span><span class="s1">&#39;T3&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:])</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When referencing objects within the <code class="docutils literal notranslate"><span class="pre">arcana</span></code> package from the CLI such
+as file-datatype classes or data spaces (see <a class="reference internal" href="data_model.html#data-spaces"><span class="std std-ref">Spaces</span></a>), the
+standard <code class="docutils literal notranslate"><span class="pre">arcana.*.</span></code> prefix can be dropped, e.g. <code class="docutils literal notranslate"><span class="pre">medimage:Dicom</span></code>
+instead of the full path <code class="docutils literal notranslate"><span class="pre">fileformats.medimage.data:Dicom</span></code>.
+Classes installed outside of the Arcana package, should be referred to
+with their full import path.</p>
+</div>
+</section>
+<section id="licence">
+<h2>Licence<a class="headerlink" href="#licence" title="Permalink to this heading">#</a></h2>
+<p>Arcana &gt;=v2.0 is licenced under the <a class="reference external" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License</a>
+(see <a class="reference external" href="https://raw.githubusercontent.com/Australian-Imaging-Service/arcana/master/LICENSE">LICENCE</a>).
+Non-commercial usage is permitted freely on the condition that Arcana is
+appropriately acknowledged in related publications. Commercial usage is encouraged,
+but permission from the authors for specific uses must be granted first
+(see <a class="reference external" href="https://raw.githubusercontent.com/Australian-Imaging-Service/arcana/master/AUTHORS">AUTHORS</a>).</p>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="data_model.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Data model</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Home</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, Thomas G. Close
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Getting started</a><ul>
+<li><a class="reference internal" href="#pydra">Pydra</a></li>
+<li><a class="reference internal" href="#software-requirements">Software requirements</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#basic-usage">Basic usage</a></li>
+<li><a class="reference internal" href="#licence">Licence</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/scripts/furo.js"></script>
+    </body>
+</html>

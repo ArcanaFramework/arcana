@@ -1,0 +1,999 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../genindex.html" /><link rel="search" title="Search" href="../../../../search.html" />
+
+    <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
+        <title>arcana.core.analysis.pipeline - Arcana v0.9.1</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #ffffff;
+  --color-code-foreground: black;
+  --color-brand-primary: #7b112d;
+  --color-brand-content: #7b112d;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../../index.html"><div class="brand">Arcana v0.9.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../../index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo" src="../../../../_static/logo_small.png" alt="Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Arcana v0.9.1</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../data_model.html">Data model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../processing.html">Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../deployment.html">Deployment</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../design_analyses.html">Designing Analyses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../adding_formats.html">New formats and spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../alternative_stores.html">Alternative storage</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../cli.html">CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api.html">API</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <h1>Source code for arcana.core.analysis.pipeline</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">attrs</span>
+<span class="kn">import</span> <span class="nn">typing</span> <span class="k">as</span> <span class="nn">ty</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="kn">import</span> <span class="n">OrderedDict</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">copy</span><span class="p">,</span> <span class="n">deepcopy</span>
+<span class="kn">import</span> <span class="nn">attrs.converters</span>
+<span class="kn">import</span> <span class="nn">pydra.mark</span>
+<span class="kn">from</span> <span class="nn">pydra.engine.core</span> <span class="kn">import</span> <span class="n">Workflow</span>
+<span class="kn">from</span> <span class="nn">arcana.core.exceptions</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ArcanaNameError</span><span class="p">,</span>
+    <span class="n">ArcanaUsageError</span><span class="p">,</span>
+    <span class="n">ArcanaDesignError</span><span class="p">,</span>
+    <span class="n">ArcanaPipelinesStackError</span><span class="p">,</span>
+    <span class="n">ArcanaOutputNotProducedException</span><span class="p">,</span>
+    <span class="n">ArcanaDataMatchError</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">fileformats.core.base</span> <span class="kn">import</span> <span class="n">DataType</span><span class="p">,</span> <span class="n">FileSet</span>
+<span class="kn">from</span> <span class="nn">fileformats.field</span> <span class="kn">import</span> <span class="n">Field</span>
+<span class="kn">from</span> <span class="nn">fileformats.core.exceptions</span> <span class="kn">import</span> <span class="n">FormatConversionError</span>
+<span class="kn">import</span> <span class="nn">arcana.core.data.set.base</span>
+<span class="kn">import</span> <span class="nn">arcana.core.data.row</span>
+<span class="kn">from</span> <span class="nn">..data.space</span> <span class="kn">import</span> <span class="n">DataSpace</span>
+<span class="kn">from</span> <span class="nn">..utils.misc</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">func_task</span><span class="p">,</span>
+    <span class="n">pydra_eq</span><span class="p">,</span>
+    <span class="n">path2varname</span><span class="p">,</span>
+    <span class="n">add_exc_note</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..utils.serialize</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">asdict</span><span class="p">,</span>
+    <span class="n">fromdict</span><span class="p">,</span>
+    <span class="n">pydra_asdict</span><span class="p">,</span>
+    <span class="n">pydra_fromdict</span><span class="p">,</span>
+    <span class="n">ClassResolver</span><span class="p">,</span>
+    <span class="n">ObjectListConverter</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;arcana&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span>
+<span class="k">class</span> <span class="nc">PipelineField</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Defines an input to a pipeline</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Name of the input and how it will be referred to in UI</span>
+<span class="sd">    field : str, optional</span>
+<span class="sd">        the name of the pydra input field to connect to, defaults to name</span>
+<span class="sd">    datatype : type, optional</span>
+<span class="sd">        the type of the items to be passed to the input, arcana.dirtree.data.File by default</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">field</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+    <span class="n">datatype</span><span class="p">:</span> <span class="nb">type</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">converter</span><span class="o">=</span><span class="n">ClassResolver</span><span class="p">(</span>
+            <span class="n">DataType</span><span class="p">,</span>
+            <span class="n">allow_none</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">alternative_types</span><span class="o">=</span><span class="p">[</span><span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row</span><span class="o">.</span><span class="n">DataRow</span><span class="p">],</span>
+        <span class="p">),</span>
+    <span class="p">)</span>
+
+    <span class="nd">@field</span><span class="o">.</span><span class="n">default</span>
+    <span class="k">def</span> <span class="nf">field_default</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;arcana&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Pipeline"><a class="viewcode-back" href="../../../../api.html#arcana.core.analysis.pipeline.Pipeline">[docs]</a><span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span>
+<span class="k">class</span> <span class="nc">Pipeline</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A thin wrapper around a Pydra workflow to link it to sources and sinks</span>
+<span class="sd">    within a dataset</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        the name of the pipeline, used to differentiate it from others</span>
+<span class="sd">    row_frequency : DataSpace, optional</span>
+<span class="sd">        The row_frequency of the pipeline, i.e. the row_frequency of the</span>
+<span class="sd">        derivatvies within the dataset, e.g. per-session, per-subject, etc,</span>
+<span class="sd">        by default None</span>
+<span class="sd">    workflow : Workflow</span>
+<span class="sd">        The pydra workflow that performs the actual analysis</span>
+<span class="sd">    inputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]</span>
+<span class="sd">        List of column names (i.e. either data sources or sinks) to be</span>
+<span class="sd">        connected to the inputs of the pipeline. If the pipelines requires</span>
+<span class="sd">        the input to be in a datatype to the source, then it can be specified</span>
+<span class="sd">        in a tuple (NAME, FORMAT)</span>
+<span class="sd">    outputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]</span>
+<span class="sd">        List of sink names to be connected to the outputs of the pipeline</span>
+<span class="sd">        If the input to be in a specific datatype, then it can be provided in</span>
+<span class="sd">        a tuple (NAME, FORMAT)</span>
+<span class="sd">    converter_args : dict[str, dict]</span>
+<span class="sd">        keyword arguments passed on to the converter to control how the</span>
+<span class="sd">        conversion is performed.</span>
+<span class="sd">    dataset : Dataset</span>
+<span class="sd">        the dataset the pipeline has been applied to</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+    <span class="n">row_frequency</span><span class="p">:</span> <span class="n">DataSpace</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+    <span class="n">workflow</span><span class="p">:</span> <span class="n">Workflow</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">eq</span><span class="o">=</span><span class="n">attrs</span><span class="o">.</span><span class="n">cmp_using</span><span class="p">(</span><span class="n">pydra_eq</span><span class="p">))</span>
+    <span class="n">inputs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">PipelineField</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">converter</span><span class="o">=</span><span class="n">ObjectListConverter</span><span class="p">(</span><span class="n">PipelineField</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">outputs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">PipelineField</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">converter</span><span class="o">=</span><span class="n">ObjectListConverter</span><span class="p">(</span><span class="n">PipelineField</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">converter_args</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">attrs</span><span class="o">.</span><span class="n">converters</span><span class="o">.</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">dataset</span><span class="p">:</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">set</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">Dataset</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;asdict&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">},</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">eq</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">hash</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__attrs_post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">field</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">field</span><span class="o">.</span><span class="n">datatype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">field</span><span class="o">.</span><span class="n">datatype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">field</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">datatype</span>
+
+    <span class="nd">@inputs</span><span class="o">.</span><span class="n">validator</span>
+    <span class="k">def</span> <span class="nf">inputs_validator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">inputs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">PipelineField</span><span class="p">]):</span>
+        <span class="k">for</span> <span class="n">inpt</span> <span class="ow">in</span> <span class="n">inputs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">inpt</span><span class="o">.</span><span class="n">datatype</span> <span class="ow">is</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row</span><span class="o">.</span><span class="n">DataRow</span><span class="p">:</span>  <span class="c1"># special case</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">:</span>
+                <span class="n">column</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+                <span class="c1"># Check that a converter can be found if required</span>
+                <span class="k">if</span> <span class="n">inpt</span><span class="o">.</span><span class="n">datatype</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">inpt</span><span class="o">.</span><span class="n">datatype</span><span class="o">.</span><span class="n">get_converter</span><span class="p">(</span><span class="n">column</span><span class="o">.</span><span class="n">datatype</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;dummy&quot;</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="n">FormatConversionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;required to in conversion of &#39;</span><span class="si">{</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; input &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;to &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; pipeline&quot;</span>
+                        <span class="p">)</span>
+                        <span class="n">add_exc_note</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+                        <span class="k">raise</span>
+            <span class="k">elif</span> <span class="n">inpt</span><span class="o">.</span><span class="n">datatype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Datatype must be explicitly set for </span><span class="si">{</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> in unbound Pipeline&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">inpt</span><span class="o">.</span><span class="n">field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">input_names</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArcanaNameError</span><span class="p">(</span>
+                    <span class="n">inpt</span><span class="o">.</span><span class="n">field</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">inpt</span><span class="o">.</span><span class="n">field</span><span class="si">}</span><span class="s2"> is not in the input spec of &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;pipeline: &quot;</span> <span class="o">+</span> <span class="s2">&quot;&#39;, &#39;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">input_names</span><span class="p">),</span>
+                <span class="p">)</span>
+
+    <span class="nd">@outputs</span><span class="o">.</span><span class="n">validator</span>
+    <span class="k">def</span> <span class="nf">outputs_validator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">outputs</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">PipelineField</span><span class="p">]):</span>
+        <span class="k">for</span> <span class="n">outpt</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">:</span>
+                <span class="n">column</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">column</span><span class="o">.</span><span class="n">row_frequency</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Pipeline row_frequency (&#39;</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39;) doesn&#39;t match &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;that of &#39;</span><span class="si">{</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; output (&#39;</span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">)</span><span class="si">}</span><span class="s2">&#39;)&quot;</span>
+                    <span class="p">)</span>
+                <span class="c1"># Check that a converter can be found if required</span>
+                <span class="k">if</span> <span class="n">outpt</span><span class="o">.</span><span class="n">datatype</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">column</span><span class="o">.</span><span class="n">datatype</span><span class="o">.</span><span class="n">get_converter</span><span class="p">(</span><span class="n">outpt</span><span class="o">.</span><span class="n">datatype</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;dummy&quot;</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="n">FormatConversionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">&quot;required to in conversion of &#39;</span><span class="si">{</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; output &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;from &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; pipeline&quot;</span>
+                        <span class="p">)</span>
+                        <span class="n">add_exc_note</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+                        <span class="k">raise</span>
+            <span class="k">elif</span> <span class="n">outpt</span><span class="o">.</span><span class="n">datatype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Datatype must be explicitly set for </span><span class="si">{</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> in unbound Pipeline&quot;</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">outpt</span><span class="o">.</span><span class="n">field</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">output_names</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArcanaNameError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">outpt</span><span class="o">.</span><span class="n">field</span><span class="si">}</span><span class="s2"> is not in the output spec of &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;pipeline: &quot;</span> <span class="o">+</span> <span class="s2">&quot;&#39;, &#39;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">output_names</span><span class="p">)</span>
+                <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">input_varnames</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">i</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span>
+        <span class="p">]</span>  <span class="c1"># [path2varname(i.name) for i in self.inputs]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_varnames</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="n">o</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span>
+        <span class="p">]</span>  <span class="c1"># [path2varname(o.name) for o in self.outputs]</span>
+
+    <span class="c1"># parameterisation = self.get_parameterisation(kwargs)</span>
+    <span class="c1"># self.wf.to_process.inputs.parameterisation = parameterisation</span>
+    <span class="c1"># self.wf.per_node.source.inputs.parameterisation = parameterisation</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create an &quot;outer&quot; workflow that interacts with the dataset to pull input</span>
+<span class="sd">        data, process it and then push the derivatives back to the store.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            passed directly to the Pydra.Workflow init. The `ids` arg can be</span>
+<span class="sd">            used to filter the data rows over which the pipeline is run.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        pydra.Workflow</span>
+<span class="sd">            a Pydra workflow that iterates through the dataset, pulls data to the</span>
+<span class="sd">            processing node, executes the analysis workflow on each data row,</span>
+<span class="sd">            then uploads the outputs back to the data store</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ArcanaUsageError</span>
+<span class="sd">            If the new pipeline will overwrite an existing pipeline connection</span>
+<span class="sd">            with overwrite == False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Create the outer workflow to link the analysis workflow with the</span>
+        <span class="c1"># data row iteration and store connection rows</span>
+        <span class="n">wf</span> <span class="o">=</span> <span class="n">Workflow</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">input_spec</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ids&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Generate list of rows to process checking existing outputs</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">to_process</span><span class="p">(</span>
+                <span class="n">dataset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span>
+                <span class="n">row_frequency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">,</span>
+                <span class="n">outputs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">,</span>
+                <span class="n">requested_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>  <span class="c1"># FIXME: Needs to be set dynamically</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;to_process&quot;</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Create the workflow that will be split across all rows for the</span>
+        <span class="c1"># given data row_frequency</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">Workflow</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;per_row&quot;</span><span class="p">,</span> <span class="n">input_spec</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span> <span class="nb">id</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">to_process</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">ids</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Automatically output interface for source node to include sourced</span>
+        <span class="c1"># columns</span>
+        <span class="n">source_out_dct</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">inpt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+            <span class="c1"># If the row frequency of the column is not a parent of the pipeline</span>
+            <span class="c1"># then the input will be a sequence of all the child rows</span>
+            <span class="k">if</span> <span class="n">inpt</span><span class="o">.</span><span class="n">datatype</span> <span class="ow">is</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row</span><span class="o">.</span><span class="n">DataRow</span><span class="p">:</span>
+                <span class="n">dtype</span> <span class="o">=</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row</span><span class="o">.</span><span class="n">DataRow</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dtype</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">datatype</span>
+                <span class="c1"># If the row frequency of the source column is higher than the frequency</span>
+                <span class="c1"># of the pipeline, then the related elements of the source column are</span>
+                <span class="c1"># collected into a list and passed to the pipeline</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">row_frequency</span><span class="o">.</span><span class="n">is_parent</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">,</span> <span class="n">if_match</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">):</span>
+                    <span class="n">dtype</span> <span class="o">=</span> <span class="nb">list</span><span class="p">[</span><span class="n">dtype</span><span class="p">]</span>
+            <span class="n">source_out_dct</span><span class="p">[</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">dtype</span>
+        <span class="n">source_out_dct</span><span class="p">[</span><span class="s2">&quot;provenance_&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">func_task</span><span class="p">(</span>
+                <span class="n">source_items</span><span class="p">,</span>
+                <span class="n">in_fields</span><span class="o">=</span><span class="p">[</span>
+                    <span class="p">(</span><span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">set</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">Dataset</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s2">&quot;row_frequency&quot;</span><span class="p">,</span> <span class="n">DataSpace</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span>
+                    <span class="p">(</span><span class="s2">&quot;inputs&quot;</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">PipelineField</span><span class="p">]),</span>
+                    <span class="p">(</span><span class="s2">&quot;parameterisation&quot;</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Any</span><span class="p">]),</span>
+                <span class="p">],</span>
+                <span class="n">out_fields</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">source_out_dct</span><span class="o">.</span><span class="n">items</span><span class="p">()),</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;source&quot;</span><span class="p">,</span>
+                <span class="n">dataset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span>
+                <span class="n">row_frequency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">,</span>
+                <span class="n">inputs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">lzin</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Set the inputs</span>
+        <span class="n">sourced</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">lzout</span><span class="p">,</span> <span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Do input datatype conversions if required</span>
+        <span class="k">for</span> <span class="n">inpt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">inpt</span><span class="o">.</span><span class="n">datatype</span> <span class="o">==</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row</span><span class="o">.</span><span class="n">DataRow</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">stored_format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">datatype</span>
+            <span class="n">converter</span> <span class="o">=</span> <span class="n">inpt</span><span class="o">.</span><span class="n">datatype</span><span class="o">.</span><span class="n">get_converter</span><span class="p">(</span>
+                <span class="n">stored_format</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">_input_converter&quot;</span><span class="p">,</span>
+                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">converter_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="p">{}),</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">converter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># None if no conversion required</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Adding implicit conversion for input &#39;</span><span class="si">%s</span><span class="s2">&#39; &quot;</span> <span class="s2">&quot;from </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">stored_format</span><span class="o">.</span><span class="n">mime_like</span><span class="p">,</span>
+                    <span class="n">inpt</span><span class="o">.</span><span class="n">datatype</span><span class="o">.</span><span class="n">mime_like</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">converter</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">in_file</span> <span class="o">=</span> <span class="n">sourced</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">source_out_dct</span><span class="p">[</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">],</span> <span class="n">ty</span><span class="o">.</span><span class="n">Sequence</span><span class="p">):</span>
+                    <span class="c1"># Iterate over all items in the sequence and convert them</span>
+                    <span class="c1"># separately</span>
+                    <span class="n">converter</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;to_convert&quot;</span><span class="p">)</span>
+                <span class="c1"># Insert converter</span>
+                <span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">converter</span><span class="p">)</span>
+                <span class="c1"># Map converter output to input_interface</span>
+                <span class="n">sourced</span><span class="p">[</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">converter</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out_file</span>
+
+        <span class="c1"># Create identity row to accept connections from user-defined rows</span>
+        <span class="c1"># via `set_output` method</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">func_task</span><span class="p">(</span>
+                <span class="n">access_paths_and_values</span><span class="p">,</span>
+                <span class="n">in_fields</span><span class="o">=</span><span class="p">[</span>
+                    <span class="p">(</span>
+                        <span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                        <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">DataType</span><span class="p">,</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row</span><span class="o">.</span><span class="n">DataRow</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">],</span>
+                    <span class="p">)</span>
+                    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span>
+                <span class="p">],</span>
+                <span class="n">out_fields</span><span class="o">=</span><span class="p">[(</span><span class="n">i</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Any</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">],</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;input_interface&quot;</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">sourced</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Add the &quot;inner&quot; workflow of the pipeline that actually performs the</span>
+        <span class="c1"># analysis/processing</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="p">))</span>
+        <span class="c1"># Make connections to &quot;inner&quot; workflow</span>
+        <span class="k">for</span> <span class="n">inpt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+            <span class="nb">setattr</span><span class="p">(</span>
+                <span class="nb">getattr</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">inputs</span><span class="p">,</span>
+                <span class="n">inpt</span><span class="o">.</span><span class="n">field</span><span class="p">,</span>
+                <span class="nb">getattr</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">input_interface</span><span class="o">.</span><span class="n">lzout</span><span class="p">,</span> <span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Creates a row to accept values from user-defined rows and</span>
+        <span class="c1"># encapsulate them into DataTypes</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">func_task</span><span class="p">(</span>
+                <span class="n">encapsulate_paths_and_values</span><span class="p">,</span>
+                <span class="n">in_fields</span><span class="o">=</span><span class="p">[(</span><span class="s2">&quot;outputs&quot;</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">PipelineField</span><span class="p">])]</span>
+                <span class="o">+</span> <span class="p">[(</span><span class="n">o</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">])</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">],</span>
+                <span class="n">out_fields</span><span class="o">=</span><span class="p">[(</span><span class="n">o</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">DataType</span><span class="p">)</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">],</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;output_interface&quot;</span><span class="p">,</span>
+                <span class="n">outputs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">,</span>
+                <span class="o">**</span><span class="p">{</span>
+                    <span class="n">o</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span>
+                        <span class="nb">getattr</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">lzout</span><span class="p">,</span> <span class="n">o</span><span class="o">.</span><span class="n">field</span>
+                    <span class="p">)</span>
+                    <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span>
+                <span class="p">},</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Set datatype converters where required</span>
+        <span class="n">to_sink</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">o</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">output_interface</span><span class="o">.</span><span class="n">lzout</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_varnames</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Do output datatype conversions if required</span>
+        <span class="k">for</span> <span class="n">outpt</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>
+            <span class="n">stored_format</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">datatype</span>
+            <span class="n">sink_name</span> <span class="o">=</span> <span class="n">path2varname</span><span class="p">(</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">converter</span> <span class="o">=</span> <span class="n">stored_format</span><span class="o">.</span><span class="n">get_converter</span><span class="p">(</span>
+                <span class="n">outpt</span><span class="o">.</span><span class="n">datatype</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sink_name</span><span class="si">}</span><span class="s2">_output_converter&quot;</span><span class="p">,</span>
+                <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">converter_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="p">{}),</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">converter</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">&quot;Adding implicit conversion for output &#39;</span><span class="si">%s</span><span class="s2">&#39; &quot;</span> <span class="s2">&quot;from </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">outpt</span><span class="o">.</span><span class="n">datatype</span><span class="o">.</span><span class="n">mime_like</span><span class="p">,</span>
+                    <span class="n">stored_format</span><span class="o">.</span><span class="n">mime_like</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Insert converter</span>
+                <span class="n">converter</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">in_file</span> <span class="o">=</span> <span class="n">to_sink</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">sink_name</span><span class="p">)</span>
+                <span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">converter</span><span class="p">)</span>
+                <span class="c1"># Map converter output to workflow output</span>
+                <span class="n">to_sink</span><span class="p">[</span><span class="n">sink_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">converter</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out_file</span>
+
+        <span class="c1"># Can&#39;t use a decorated function as we need to allow for dynamic</span>
+        <span class="c1"># arguments</span>
+        <span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">func_task</span><span class="p">(</span>
+                <span class="n">sink_items</span><span class="p">,</span>
+                <span class="n">in_fields</span><span class="o">=</span><span class="p">(</span>
+                    <span class="p">[</span>
+                        <span class="p">(</span><span class="s2">&quot;dataset&quot;</span><span class="p">,</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">set</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">Dataset</span><span class="p">),</span>
+                        <span class="p">(</span><span class="s2">&quot;row_frequency&quot;</span><span class="p">,</span> <span class="n">DataSpace</span><span class="p">),</span>
+                        <span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">),</span>
+                        <span class="p">(</span><span class="s2">&quot;provenance&quot;</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Any</span><span class="p">]),</span>
+                    <span class="p">]</span>
+                    <span class="o">+</span> <span class="p">[</span>
+                        <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">DataType</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">PathLike</span><span class="p">])</span>
+                        <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">to_sink</span>
+                    <span class="p">]</span>
+                <span class="p">),</span>
+                <span class="n">out_fields</span><span class="o">=</span><span class="p">[(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">)],</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;sink&quot;</span><span class="p">,</span>
+                <span class="n">dataset</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="p">,</span>
+                <span class="n">row_frequency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">,</span>
+                <span class="nb">id</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">lzin</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                <span class="n">provenance</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">provenance_</span><span class="p">,</span>
+                <span class="o">**</span><span class="n">to_sink</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">set_output</span><span class="p">([(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">sink</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">id</span><span class="p">)])</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">set_output</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="p">(</span><span class="s2">&quot;processed&quot;</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">per_row</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+                <span class="p">(</span><span class="s2">&quot;couldnt_process&quot;</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">to_process</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">cant_process</span><span class="p">),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">wf</span>
+
+    <span class="n">PROVENANCE_VERSION</span> <span class="o">=</span> <span class="s2">&quot;1.0&quot;</span>
+    <span class="n">WORKFLOW_NAME</span> <span class="o">=</span> <span class="s2">&quot;processing&quot;</span>
+
+    <span class="k">def</span> <span class="nf">asdict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">required_modules</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">dct</span> <span class="o">=</span> <span class="n">asdict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">omit</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;workflow&quot;</span><span class="p">],</span> <span class="n">required_modules</span><span class="o">=</span><span class="n">required_modules</span><span class="p">)</span>
+        <span class="n">dct</span><span class="p">[</span><span class="s2">&quot;workflow&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pydra_asdict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">workflow</span><span class="p">,</span> <span class="n">required_modules</span><span class="o">=</span><span class="n">required_modules</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dct</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">fromdict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">dct</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">fromdict</span><span class="p">(</span><span class="n">dct</span><span class="p">,</span> <span class="n">workflow</span><span class="o">=</span><span class="n">pydra_fromdict</span><span class="p">(</span><span class="n">dct</span><span class="p">[</span><span class="s2">&quot;workflow&quot;</span><span class="p">]),</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">stack</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="o">*</span><span class="n">sinks</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines the pipelines stack, in order of execution,</span>
+<span class="sd">        required to generate the specified sink columns.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        sinks : Iterable[DataSink or str]</span>
+<span class="sd">            the sink columns, or their names, that are to be generated</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list[tuple[Pipeline, list[DataSink]]]</span>
+<span class="sd">            stack of pipelines required to produce the specified data sinks,</span>
+<span class="sd">            along with the sinks each stage needs to produce.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ArcanaDesignError</span>
+<span class="sd">            when there are circular references in the pipelines stack</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Stack of pipelines to process in reverse order of required execution</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">push_pipeline_on_stack</span><span class="p">(</span><span class="n">sink</span><span class="p">,</span> <span class="n">downstream</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">Pipeline</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">            </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Push a pipeline onto the stack of pipelines to be processed,</span>
+<span class="sd">            detecting common upstream pipelines and resolving them to a single</span>
+<span class="sd">            pipeline</span>
+
+<span class="sd">            Parameters</span>
+<span class="sd">            ----------</span>
+<span class="sd">            sink: DataSink</span>
+<span class="sd">                the sink to push its deriving pipeline for</span>
+<span class="sd">            downstream : tuple[Pipeline]</span>
+<span class="sd">                The pipelines directly downstream of the pipeline to be added.</span>
+<span class="sd">                Used to detect circular dependencies</span>
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">downstream</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">downstream</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="n">sink</span><span class="o">.</span><span class="n">pipeline_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArcanaDesignError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sink</span><span class="si">}</span><span class="s2"> hasn&#39;t been connected to a pipeline yet&quot;</span>
+                <span class="p">)</span>
+            <span class="n">pipeline</span> <span class="o">=</span> <span class="n">sink</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">pipelines</span><span class="p">[</span><span class="n">sink</span><span class="o">.</span><span class="n">pipeline_name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">sink</span><span class="o">.</span><span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">output_varnames</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArcanaOutputNotProducedException</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pipeline</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> does not produce </span><span class="si">{</span><span class="n">sink</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="c1"># Check downstream piplines for circular dependencies</span>
+            <span class="n">downstream_pipelines</span> <span class="o">=</span> <span class="p">[</span><span class="n">p</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">downstream</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">pipeline</span> <span class="ow">in</span> <span class="n">downstream_pipelines</span><span class="p">:</span>
+                <span class="n">recur_index</span> <span class="o">=</span> <span class="n">downstream_pipelines</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">pipeline</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">ArcanaDesignError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pipeline</span><span class="si">}</span><span class="s2"> cannot be a dependency of itself. Call-stack:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                        <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> (</span><span class="si">{}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">p</span><span class="p">,</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ro</span><span class="p">))</span>
+                        <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">ro</span> <span class="ow">in</span> <span class="p">(</span>
+                            <span class="p">[[</span><span class="n">pipeline</span><span class="p">,</span> <span class="n">sink</span><span class="o">.</span><span class="n">name</span><span class="p">]]</span> <span class="o">+</span> <span class="n">downstream</span><span class="p">[:</span> <span class="p">(</span><span class="n">recur_index</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">name</span> <span class="ow">in</span> <span class="n">stack</span><span class="p">:</span>
+                <span class="c1"># Pop pipeline from stack in order to add it to the end of the</span>
+                <span class="c1"># stack and ensure it is run before all downstream pipelines</span>
+                <span class="n">prev_pipeline</span><span class="p">,</span> <span class="n">to_produce</span> <span class="o">=</span> <span class="n">stack</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">pipeline</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="k">assert</span> <span class="n">pipeline</span> <span class="ow">is</span> <span class="n">prev_pipeline</span>
+                <span class="c1"># Combined required output to produce</span>
+                <span class="n">to_produce</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">sink</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">to_produce</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="c1"># Add the pipeline to the stack</span>
+            <span class="n">stack</span><span class="p">[</span><span class="n">pipeline</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">pipeline</span><span class="p">,</span> <span class="n">to_produce</span>
+            <span class="c1"># Recursively add all the pipeline&#39;s prerequisite pipelines to the stack</span>
+            <span class="k">for</span> <span class="n">inpt</span> <span class="ow">in</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">inputs</span><span class="p">:</span>
+                <span class="n">inpt_column</span> <span class="o">=</span> <span class="n">sink</span><span class="o">.</span><span class="n">dataset</span><span class="p">[</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">inpt_column</span><span class="o">.</span><span class="n">is_sink</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">push_pipeline_on_stack</span><span class="p">(</span>
+                            <span class="n">inpt_column</span><span class="p">,</span>
+                            <span class="n">downstream</span><span class="o">=</span><span class="p">[(</span><span class="n">pipeline</span><span class="p">,</span> <span class="n">to_produce</span><span class="p">)]</span> <span class="o">+</span> <span class="n">downstream</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="k">except</span> <span class="n">ArcanaPipelinesStackError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">e</span><span class="o">.</span><span class="n">msg</span> <span class="o">+=</span> <span class="p">(</span>
+                            <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">which are required as inputs to the &#39;</span><span class="si">{}</span><span class="s2">&#39; &quot;</span>
+                            <span class="s2">&quot;pipeline to produce &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                <span class="n">pipeline</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s2">&quot;&#39;, &#39;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">to_produce</span><span class="p">)</span>
+                            <span class="p">)</span>
+                        <span class="p">)</span>
+                        <span class="k">raise</span> <span class="n">e</span>
+
+        <span class="c1"># Add all pipelines</span>
+        <span class="k">for</span> <span class="n">sink</span> <span class="ow">in</span> <span class="n">sinks</span><span class="p">:</span>
+            <span class="n">push_pipeline_on_stack</span><span class="p">(</span><span class="n">sink</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">stack</span><span class="o">.</span><span class="n">values</span><span class="p">())</span></div>
+
+
+<span class="k">def</span> <span class="nf">append_side_car_suffix</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">suffix</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Creates a new combined field name out of a basename and a side car&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">__o__</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span>
+
+
+<span class="k">def</span> <span class="nf">split_side_car_suffix</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Splits the basename from a side car sufix (as combined by `append_side_car_suffix`&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;__o__&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@pydra</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">task</span>
+<span class="nd">@pydra</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">annotate</span><span class="p">({</span><span class="s2">&quot;return&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="s2">&quot;cant_process&quot;</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]}})</span>
+<span class="k">def</span> <span class="nf">to_process</span><span class="p">(</span>
+    <span class="n">dataset</span><span class="p">:</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">set</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">row_frequency</span><span class="p">:</span> <span class="n">DataSpace</span><span class="p">,</span>
+    <span class="n">outputs</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">PipelineField</span><span class="p">],</span>
+    <span class="n">requested_ids</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="kc">None</span><span class="p">],</span>
+    <span class="n">parameterisation</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Any</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">requested_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">requested_ids</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">row_ids</span><span class="p">(</span><span class="n">row_frequency</span><span class="p">)</span>
+    <span class="n">ids</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">cant_process</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">dataset</span><span class="o">.</span><span class="n">rows</span><span class="p">(</span><span class="n">row_frequency</span><span class="p">,</span> <span class="n">ids</span><span class="o">=</span><span class="n">requested_ids</span><span class="p">):</span>
+        <span class="c1"># TODO: Should check provenance of existing rows to see if it matches</span>
+        <span class="n">empty</span> <span class="o">=</span> <span class="p">[</span><span class="n">row</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">is_empty</span> <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">empty</span><span class="p">):</span>
+            <span class="n">ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">any</span><span class="p">(</span><span class="n">empty</span><span class="p">):</span>
+            <span class="n">cant_process</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+        <span class="s2">&quot;Found </span><span class="si">%s</span><span class="s2"> ids to process, and can&#39;t process </span><span class="si">%s</span><span class="s2"> due to partially present outputs&quot;</span><span class="p">,</span>
+        <span class="n">ids</span><span class="p">,</span>
+        <span class="n">cant_process</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">ids</span><span class="p">,</span> <span class="n">cant_process</span>
+
+
+<span class="k">def</span> <span class="nf">source_items</span><span class="p">(</span>
+    <span class="n">dataset</span><span class="p">:</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">set</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">row_frequency</span><span class="p">:</span> <span class="n">DataSpace</span><span class="p">,</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">PipelineField</span><span class="p">],</span>
+    <span class="n">parameterisation</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Selects the items from the dataset corresponding to the input</span>
+<span class="sd">    sources and retrieves them from the store to a cache on</span>
+<span class="sd">    the host</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataset : Dataset</span>
+<span class="sd">        the dataset to source the data from</span>
+<span class="sd">    row_frequency : DataSpace</span>
+<span class="sd">        the frequency of the row to source the data from</span>
+<span class="sd">    id : str</span>
+<span class="sd">        the ID of the row to source from</span>
+<span class="sd">    parameterisation : dict</span>
+<span class="sd">        provenance information... can&#39;t remember why this was used here...</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Sourcing </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">inputs</span><span class="p">)</span>
+    <span class="n">provenance</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">parameterisation</span><span class="p">)</span>
+    <span class="n">sourced</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">row</span><span class="p">(</span><span class="n">row_frequency</span><span class="p">,</span> <span class="nb">id</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">dataset</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">connection</span><span class="p">:</span>
+        <span class="n">missing_inputs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">inpt</span> <span class="ow">in</span> <span class="n">inputs</span><span class="p">:</span>
+            <span class="c1"># If the required datatype is of type DataRow then provide the whole</span>
+            <span class="c1"># row to the pipeline input</span>
+            <span class="k">if</span> <span class="n">inpt</span><span class="o">.</span><span class="n">datatype</span> <span class="o">==</span> <span class="n">arcana</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">row</span><span class="o">.</span><span class="n">DataRow</span><span class="p">:</span>
+                <span class="n">sourced</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">sourced</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">])</span>
+            <span class="k">except</span> <span class="n">ArcanaDataMatchError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">missing_inputs</span><span class="p">[</span><span class="n">inpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">missing_inputs</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ArcanaDataMatchError</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing_inputs</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">sourced</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">provenance</span><span class="p">,)</span>
+
+
+<span class="k">def</span> <span class="nf">sink_items</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">row_frequency</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">provenance</span><span class="p">,</span> <span class="o">**</span><span class="n">to_sink</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Stores items generated by the pipeline back into the store</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    dataset : Dataset</span>
+<span class="sd">        the dataset to source the data from</span>
+<span class="sd">    row_frequency : DataSpace</span>
+<span class="sd">        the frequency of the row to source the data from</span>
+<span class="sd">    id : str</span>
+<span class="sd">        the ID of the row to source from</span>
+<span class="sd">    provenance : dict</span>
+<span class="sd">        provenance information to be stored alongside the generated data</span>
+<span class="sd">    **to_sink : dict[str, DataType]</span>
+<span class="sd">        data items to be stored in the data store</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Sinking </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">to_sink</span><span class="p">)</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">row</span><span class="p">(</span><span class="n">row_frequency</span><span class="p">,</span> <span class="nb">id</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">dataset</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">connection</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">outpt_name</span><span class="p">,</span> <span class="n">output</span> <span class="ow">in</span> <span class="n">to_sink</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">row</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">outpt_name</span><span class="p">)</span><span class="o">.</span><span class="n">item</span> <span class="o">=</span> <span class="n">output</span>
+    <span class="k">return</span> <span class="nb">id</span>
+
+
+<span class="k">def</span> <span class="nf">access_paths_and_values</span><span class="p">(</span><span class="o">**</span><span class="n">data_items</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Copies files into the CWD renaming so the basenames match</span>
+<span class="sd">    except for extensions&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Extracting paths/values from </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">data_items</span><span class="p">)</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">data_items</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">FileSet</span><span class="p">):</span>
+            <span class="n">cpy</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">copy_to</span><span class="p">(</span><span class="n">Path</span><span class="o">.</span><span class="n">cwd</span><span class="p">()</span> <span class="o">/</span> <span class="n">name</span><span class="p">,</span> <span class="n">symlink</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">make_dirs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cpy</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">Field</span><span class="p">):</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">encapsulate_paths_and_values</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Copies files into the CWD renaming so the basenames match</span>
+<span class="sd">    except for extensions&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Encapsulating </span><span class="si">%s</span><span class="s2"> into </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">)</span>
+    <span class="n">items</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">outpt</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">:</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="n">kwargs</span><span class="p">[</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+        <span class="n">items</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">outpt</span><span class="o">.</span><span class="n">datatype</span><span class="p">(</span><span class="n">val</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">items</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">items</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">items</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">items</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="c1"># Provenance mismatch detection methods salvaged from data.provenance</span>
+
+<span class="c1"># def mismatches(self, other, include=None, exclude=None):</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     Compares information stored within provenance objects with the</span>
+<span class="c1">#     exception of version information to see if they match. Matches are</span>
+<span class="c1">#     constrained to the name_paths passed to the &#39;include&#39; kwarg, with the</span>
+<span class="c1">#     exception of sub-name_paths passed to the &#39;exclude&#39; kwarg</span>
+
+<span class="c1">#     Parameters</span>
+<span class="c1">#     ----------</span>
+<span class="c1">#     other : Provenance</span>
+<span class="c1">#         The provenance object to compare against</span>
+<span class="c1">#     include : list[list[str]] | None</span>
+<span class="c1">#         Paths in the provenance to include in the match. If None all are</span>
+<span class="c1">#         incluced</span>
+<span class="c1">#     exclude : list[list[str]] | None</span>
+<span class="c1">#         Paths in the provenance to exclude from the match. In None all are</span>
+<span class="c1">#         excluded</span>
+<span class="c1">#     &quot;&quot;&quot;</span>
+<span class="c1">#     if include is not None:</span>
+<span class="c1">#         include_res = [self._gen_prov_path_regex(p) for p in include]</span>
+<span class="c1">#     if exclude is not None:</span>
+<span class="c1">#         exclude_res = [self._gen_prov_path_regex(p) for p in exclude]</span>
+<span class="c1">#     diff = DeepDiff(self._prov, other._prov, ignore_order=True)</span>
+<span class="c1">#     # Create regular expressions for the include and exclude name_paths in</span>
+<span class="c1">#     # the datatype that deepdiff uses for nested dictionary/lists</span>
+
+<span class="c1">#     def include_change(change):</span>
+<span class="c1">#         if include is None:</span>
+<span class="c1">#             included = True</span>
+<span class="c1">#         else:</span>
+<span class="c1">#             included = any(rx.match(change) for rx in include_res)</span>
+<span class="c1">#         if included and exclude is not None:</span>
+<span class="c1">#             included = not any(rx.match(change) for rx in exclude_res)</span>
+<span class="c1">#         return included</span>
+
+<span class="c1">#     filtered_diff = {}</span>
+<span class="c1">#     for change_type, changes in diff.items():</span>
+<span class="c1">#         if isinstance(changes, dict):</span>
+<span class="c1">#             filtered = dict((k, v) for k, v in changes.items()</span>
+<span class="c1">#                             if include_change(k))</span>
+<span class="c1">#         else:</span>
+<span class="c1">#             filtered = [c for c in changes if include_change(c)]</span>
+<span class="c1">#         if filtered:</span>
+<span class="c1">#             filtered_diff[change_type] = filtered</span>
+<span class="c1">#     return filtered_diff</span>
+
+<span class="c1"># @classmethod</span>
+<span class="c1"># def _gen_prov_path_regex(self, file_path):</span>
+<span class="c1">#     if isinstance(file_path, str):</span>
+<span class="c1">#         if file_path.startswith(&#39;/&#39;):</span>
+<span class="c1">#             file_path = file_path[1:]</span>
+<span class="c1">#         regex = re.compile(r&quot;root\[&#39;{}&#39;\].*&quot;</span>
+<span class="c1">#                             .format(r&quot;&#39;\]\[&#39;&quot;.join(file_path.split(&#39;/&#39;))))</span>
+<span class="c1">#     elif not isinstance(file_path, re.Pattern):</span>
+<span class="c1">#         raise ArcanaUsageError(</span>
+<span class="c1">#             &quot;Provenance in/exclude name_paths can either be name_path &quot;</span>
+<span class="c1">#             &quot;strings or regexes, not &#39;{}&#39;&quot;.format(file_path))</span>
+<span class="c1">#     return regex</span>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, Thomas G. Close
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script src="../../../../_static/scripts/furo.js"></script>
+    </body>
+</html>

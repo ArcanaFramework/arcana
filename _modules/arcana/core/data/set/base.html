@@ -1,0 +1,1023 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" />
+
+    <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
+        <title>arcana.core.data.set.base - Arcana v0.9.1</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #ffffff;
+  --color-code-foreground: black;
+  --color-brand-primary: #7b112d;
+  --color-brand-content: #7b112d;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../../../index.html"><div class="brand">Arcana v0.9.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../../../index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo" src="../../../../../_static/logo_small.png" alt="Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Arcana v0.9.1</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../data_model.html">Data model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../processing.html">Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../deployment.html">Deployment</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../design_analyses.html">Designing Analyses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../adding_formats.html">New formats and spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../alternative_stores.html">Alternative storage</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../cli.html">CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api.html">API</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <h1>Source code for arcana.core.data.set.base</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">typing</span> <span class="k">as</span> <span class="nn">ty</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">chain</span>
+<span class="kn">import</span> <span class="nn">attrs</span>
+<span class="kn">import</span> <span class="nn">attrs.filters</span>
+<span class="kn">from</span> <span class="nn">attrs.converters</span> <span class="kn">import</span> <span class="n">default_if_none</span>
+<span class="kn">from</span> <span class="nn">fileformats.generic</span> <span class="kn">import</span> <span class="n">File</span>
+<span class="kn">from</span> <span class="nn">arcana.core.exceptions</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ArcanaDataMatchError</span><span class="p">,</span>
+    <span class="n">ArcanaLicenseNotFoundError</span><span class="p">,</span>
+    <span class="n">ArcanaNameError</span><span class="p">,</span>
+    <span class="n">ArcanaUsageError</span><span class="p">,</span>
+    <span class="n">ArcanaWrongDataSpaceError</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..space</span> <span class="kn">import</span> <span class="n">DataSpace</span>
+<span class="kn">from</span> <span class="nn">..column</span> <span class="kn">import</span> <span class="n">DataColumn</span><span class="p">,</span> <span class="n">DataSink</span><span class="p">,</span> <span class="n">DataSource</span>
+<span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">store</span> <span class="k">as</span> <span class="n">datastore</span>
+<span class="kn">from</span> <span class="nn">..tree</span> <span class="kn">import</span> <span class="n">DataTree</span>
+<span class="kn">from</span> <span class="nn">.metadata</span> <span class="kn">import</span> <span class="n">DatasetMetadata</span><span class="p">,</span> <span class="n">metadata_converter</span>
+
+
+<span class="k">if</span> <span class="n">ty</span><span class="o">.</span><span class="n">TYPE_CHECKING</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">...deploy.image.components</span> <span class="kn">import</span> <span class="n">License</span>
+    <span class="kn">from</span> <span class="nn">...data.entry</span> <span class="kn">import</span> <span class="n">DataEntry</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;arcana&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Dataset"><a class="viewcode-back" href="../../../../../api.html#arcana.core.data.set.Dataset">[docs]</a><span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span>
+<span class="k">class</span> <span class="nc">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A representation of a &quot;dataset&quot;, the complete collection of data</span>
+<span class="sd">    (file-sets and fields) to be used in an analysis.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    id : str</span>
+<span class="sd">        The dataset id/path that uniquely identifies the dataset within the</span>
+<span class="sd">        store it is stored (e.g. FS directory path or project ID)</span>
+<span class="sd">    store : Repository</span>
+<span class="sd">        The store the dataset is stored into. Can be the local file</span>
+<span class="sd">        system by providing a MockRemoteStore repo.</span>
+<span class="sd">    hierarchy : Sequence[str]</span>
+<span class="sd">        The data frequencies that are explicitly present in the data tree.</span>
+<span class="sd">        For example, if a MockRemoteStore dataset (i.e. directory) has</span>
+<span class="sd">        two layer hierarchy of sub-directories, the first layer of</span>
+<span class="sd">        sub-directories labelled by unique subject ID, and the second directory</span>
+<span class="sd">        layer labelled by study time-point then the hierarchy would be</span>
+
+<span class="sd">            [&#39;subject&#39;, &#39;timepoint&#39;]</span>
+
+<span class="sd">        Alternatively, in some stores (e.g. XNAT) the second layer in the</span>
+<span class="sd">        hierarchy may be named with session ID that is unique across the project,</span>
+<span class="sd">        in which case the layer dimensions would instead be</span>
+
+<span class="sd">            [&#39;subject&#39;, &#39;session&#39;]</span>
+
+<span class="sd">        In such cases, if there are multiple timepoints, the timepoint ID of the</span>
+<span class="sd">        session will need to be extracted using the `id_inference` argument.</span>
+
+<span class="sd">        Alternatively, the hierarchy could be organised such that the tree</span>
+<span class="sd">        first splits on longitudinal time-points, then a second directory layer</span>
+<span class="sd">        labelled by member ID, with the final layer containing sessions of</span>
+<span class="sd">        matched members labelled by their groups (e.g. test &amp; control):</span>
+
+<span class="sd">            [&#39;timepoint&#39;, &#39;member&#39;, &#39;group&#39;]</span>
+
+<span class="sd">        Note that the combination of layers in the hierarchy must span the</span>
+<span class="sd">        space defined in the DataSpace enum, i.e. the &quot;bitwise or&quot; of the</span>
+<span class="sd">        layer values of the hierarchy must be 1 across all bits</span>
+<span class="sd">        (e.g. &#39;session&#39;: 0b111).</span>
+<span class="sd">    space: DataSpace</span>
+<span class="sd">        The space of the dataset. See https://arcana.readthedocs.io/en/latest/data_model.html#spaces)</span>
+<span class="sd">        for a description</span>
+<span class="sd">    id_inference : list[tuple[DataSpace, str]]</span>
+<span class="sd">        Not all IDs will appear explicitly within the hierarchy of the data</span>
+<span class="sd">        tree, and some will need to be inferred by extracting components of</span>
+<span class="sd">        more specific labels.</span>
+
+<span class="sd">        For example, given a set of subject IDs that combination of the ID of</span>
+<span class="sd">        the group that they belong to and the member ID within that group</span>
+<span class="sd">        (i.e. matched test &amp; control would have same member ID)</span>
+
+<span class="sd">            CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03</span>
+
+<span class="sd">        the group ID can be extracted by providing the a list of tuples</span>
+<span class="sd">        containing ID to source the inferred IDs from coupled with a regular</span>
+<span class="sd">        expression with named groups</span>
+
+<span class="sd">            id_inference=[(&#39;subject&#39;,</span>
+<span class="sd">                           r&#39;(?P&lt;group&gt;[A-Z]+)(?P&lt;member&gt;[0-9]+)&#39;)}</span>
+<span class="sd">    include : list[tuple[DataSpace, str or list[str]]]</span>
+<span class="sd">        The IDs to be included in the dataset per row_frequency. E.g. can be</span>
+<span class="sd">        used to limit the subject IDs in a project to the sub-set that passed</span>
+<span class="sd">        QC. If a row_frequency is omitted or its value is None, then all available</span>
+<span class="sd">        will be used</span>
+<span class="sd">    exclude : list[tuple[DataSpace, str or list[str]]]</span>
+<span class="sd">        The IDs to be excluded in the dataset per row_frequency. E.g. can be</span>
+<span class="sd">        used to exclude specific subjects that failed QC. If a row_frequency is</span>
+<span class="sd">        omitted or its value is None, then all available will be used</span>
+<span class="sd">    name : str</span>
+<span class="sd">        The name of the dataset as saved in the store under</span>
+<span class="sd">    columns : list[tuple[str, DataSource or DataSink]</span>
+<span class="sd">        The sources and sinks to be initially added to the dataset (columns are</span>
+<span class="sd">        explicitly added when workflows are applied to the dataset).</span>
+<span class="sd">    workflows : Dict[str, pydra.Workflow]</span>
+<span class="sd">        Workflows that have been applied to the dataset to generate sink</span>
+<span class="sd">    access_args: ty.Dict[str, Any]</span>
+<span class="sd">        Repository specific args used to control the way the dataset is accessed</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">DEFAULT_NAME</span> <span class="o">=</span> <span class="s2">&quot;common&quot;</span>
+    <span class="n">LICENSES_PATH</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;LICENSES&quot;</span>  <span class="c1"># The resource that project-specifc licenses are expected</span>
+    <span class="p">)</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;asdict&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">datastore</span><span class="o">.</span><span class="n">DataStore</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+    <span class="n">hierarchy</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">DataSpace</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+    <span class="n">space</span><span class="p">:</span> <span class="n">DataSpace</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">DatasetMetadata</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">factory</span><span class="o">=</span><span class="n">DatasetMetadata</span><span class="p">,</span>
+        <span class="n">converter</span><span class="o">=</span><span class="n">metadata_converter</span><span class="p">,</span>
+        <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">id_inference</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">ty</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">DataSpace</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">include</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">ty</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">DataSpace</span><span class="p">,</span> <span class="nb">str</span> <span class="ow">or</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="n">exclude</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">ty</span><span class="o">.</span><span class="n">Tuple</span><span class="p">[</span><span class="n">DataSpace</span><span class="p">,</span> <span class="nb">str</span> <span class="ow">or</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">DEFAULT_NAME</span><span class="p">)</span>
+    <span class="n">columns</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Optional</span><span class="p">[</span><span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">DataColumn</span><span class="p">]]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="n">pipelines</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+        <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+    <span class="n">tree</span><span class="p">:</span> <span class="n">DataTree</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="n">DataTree</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">eq</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__attrs_post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="c1"># Ensure that hierarchy items are in the DataSpace enums not strings</span>
+        <span class="c1"># or set the space from the provided enums</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hierarchy</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">h</span><span class="p">)]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">hierarchy</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">first_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hierarchy</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">first_layer</span><span class="p">,</span> <span class="n">DataSpace</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                    <span class="s2">&quot;Data space needs to be specified explicitly as an &quot;</span>
+                    <span class="s2">&quot;argument or implicitly via hierarchy types&quot;</span>
+                <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">space</span> <span class="o">=</span> <span class="nb">type</span><span class="p">()</span>
+
+        <span class="c1"># Ensure the keys of the include, exclude and id_inference attrs are</span>
+        <span class="c1"># in the space of the dataset</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">include</span> <span class="o">=</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">)],</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">include</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span> <span class="o">=</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">)],</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">exclude</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">id_inference</span> <span class="o">=</span> <span class="p">[(</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">k</span><span class="p">)],</span> <span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">id_inference</span><span class="p">]</span>
+        <span class="c1"># Set reference to pipeline in columns and pipelines</span>
+        <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">column</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">for</span> <span class="n">pipeline</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pipelines</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">pipeline</span><span class="o">.</span><span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">save_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">load</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">store</span><span class="p">:</span> <span class="n">datastore</span><span class="o">.</span><span class="n">DataStore</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Loads a dataset from an store/ID/name string, as used in the CLI</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        id: str</span>
+<span class="sd">            either the ID of a dataset if `store` keyword arg is provided or a</span>
+<span class="sd">            &quot;dataset ID string&quot; in the format &lt;store-nickname&gt;//&lt;dataset-id&gt;[@&lt;dataset-name&gt;]</span>
+<span class="sd">        store: DataStore, optional</span>
+<span class="sd">            the store to load the dataset. If not provided the provided ID</span>
+<span class="sd">            is interpreted as an ID string</span>
+<span class="sd">        name: str, optional</span>
+<span class="sd">            the name of the dataset within the project/directory</span>
+<span class="sd">            (e.g. &#39;test&#39;, &#39;training&#39;). Used to specify a subset of data rows</span>
+<span class="sd">            to work with, within a greater project</span>
+<span class="sd">        **kwargs</span>
+<span class="sd">            keyword arguments parsed to the data store load</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dataset</span>
+<span class="sd">            the loaded dataset&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">store</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">store_name</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">parsed_name</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">parse_id_str</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+            <span class="n">store</span> <span class="o">=</span> <span class="n">datastore</span><span class="o">.</span><span class="n">DataStore</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">store_name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">parsed_name</span>
+        <span class="k">return</span> <span class="n">store</span><span class="o">.</span><span class="n">load_dataset</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+
+    <span class="nd">@columns</span><span class="o">.</span><span class="n">validator</span>
+    <span class="k">def</span> <span class="nf">columns_validator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">columns</span><span class="p">):</span>
+        <span class="n">wrong_freq</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">m</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">columns</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">wrong_freq</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Data hierarchy of </span><span class="si">{</span><span class="n">wrong_freq</span><span class="si">}</span><span class="s2"> column specs do(es) not match&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; that of dataset </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+    <span class="nd">@exclude</span><span class="o">.</span><span class="n">validator</span>
+    <span class="k">def</span> <span class="nf">exclude_validator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">exclude</span><span class="p">):</span>
+        <span class="n">include_freqs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">include</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">exclude_freqs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">exclude</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">both</span> <span class="o">=</span> <span class="n">include_freqs</span> <span class="o">&amp;</span> <span class="n">exclude_freqs</span>
+        <span class="k">if</span> <span class="n">both</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot provide both &#39;include&#39; and &#39;exclude&#39; arguments &quot;</span>
+                <span class="s2">&quot;for frequencies (&#39;</span><span class="si">{}</span><span class="s2">&#39;) to Dataset&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="s2">&quot;&#39;, &#39;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">both</span><span class="p">))</span>
+            <span class="p">)</span>
+
+    <span class="nd">@hierarchy</span><span class="o">.</span><span class="n">validator</span>
+    <span class="k">def</span> <span class="nf">hierarchy_validator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">hierarchy</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">hierarchy</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;hierarchy provided to </span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2"> cannot be empty&quot;</span><span class="p">)</span>
+
+        <span class="n">space</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">hierarchy</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span>
+        <span class="n">not_valid</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">hierarchy</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">__members__</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">space</span> <span class="ow">is</span> <span class="nb">str</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                <span class="s2">&quot;Either the data space of the set needs to be provided &quot;</span>
+                <span class="s2">&quot;separately, or the hierarchy must be provided as members of &quot;</span>
+                <span class="s2">&quot;a single data space, not strings&quot;</span>
+            <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">hierarchy</span> <span class="o">=</span> <span class="p">[</span><span class="n">space</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">h</span><span class="p">)]</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hierarchy</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ArcanaWrongDataSpaceError</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> are not part of the </span><span class="si">{}</span><span class="s2"> data space&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">not_valid</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="c1"># Check that all data frequencies are &quot;covered&quot; by the hierarchy and</span>
+        <span class="c1"># each subsequent</span>
+        <span class="n">covered</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">hierarchy</span><span class="p">):</span>
+            <span class="n">diff</span> <span class="o">=</span> <span class="p">(</span><span class="n">layer</span> <span class="o">^</span> <span class="n">covered</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">layer</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">diff</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2"> does not add any additional basis layers to &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;previous layers </span><span class="si">{</span><span class="n">hierarchy</span><span class="p">[</span><span class="n">i</span><span class="p">:]</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="n">covered</span> <span class="o">|=</span> <span class="n">layer</span>
+        <span class="k">if</span> <span class="n">covered</span> <span class="o">!=</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                <span class="s2">&quot;The data hierarchy [&#39;&quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;&#39;, &#39;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="n">hierarchy</span><span class="p">)</span>
+                <span class="o">+</span> <span class="s2">&quot;&#39;] does not cover the following basis frequencies [&#39;&quot;</span>
+                <span class="o">+</span> <span class="s2">&quot;&#39;, &#39;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">m</span><span class="p">)</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="p">(</span><span class="n">covered</span> <span class="o">^</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">))</span><span class="o">.</span><span class="n">span</span><span class="p">())</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot;&#39;] the &#39;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&#39; data space&quot;</span>
+            <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">root_freq</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">root_dir</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">leaf_freq</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">prov</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="s2">&quot;store&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">prov</span><span class="p">,</span>
+            <span class="s2">&quot;ids&quot;</span><span class="p">:</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">freq</span><span class="p">):</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span> <span class="k">for</span> <span class="n">freq</span><span class="p">,</span> <span class="n">ids</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rows</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
+        <span class="p">}</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">root</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Lazily loads the data tree from the store on demand and return root</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        DataRow</span>
+<span class="sd">            The root row of the data tree</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Build the tree cache and return the tree root. Note that if there is a</span>
+        <span class="c1"># &quot;with &lt;this-dataset&gt;.tree&quot; statement further up the call stack then the</span>
+        <span class="c1"># cache won&#39;t be broken down until the highest cache statement exits</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="o">.</span><span class="n">root</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">locator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Must save store </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="si">}</span><span class="s2"> first before accessing locator for &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="n">locator</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">//</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_NAME</span><span class="p">:</span>
+            <span class="n">locator</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;@</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="n">locator</span>
+
+<div class="viewcode-block" id="Dataset.add_source"><a class="viewcode-back" href="../../../../../api.html#arcana.core.data.set.Dataset.add_source">[docs]</a>    <span class="k">def</span> <span class="nf">add_source</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">datatype</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">row_frequency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Specify a data source in the dataset, which can then be referenced</span>
+<span class="sd">        when connecting workflow inputs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            The name used to reference the dataset &quot;column&quot; for the</span>
+<span class="sd">            source</span>
+<span class="sd">        datatype : type</span>
+<span class="sd">            The file-format (for file-sets) or datatype (for fields)</span>
+<span class="sd">            that the source will be stored in within the dataset</span>
+<span class="sd">        path : str, default `name`</span>
+<span class="sd">            The location of the source within the dataset</span>
+<span class="sd">        row_frequency : DataSpace, default self.leaf_freq</span>
+<span class="sd">            The row_frequency of the source within the dataset</span>
+<span class="sd">        overwrite : bool</span>
+<span class="sd">            Whether to overwrite existing columns</span>
+<span class="sd">        **kwargs : ty.Dict[str, Any]</span>
+<span class="sd">            Additional kwargs to pass to DataSource.__init__</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">row_frequency</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_frequency</span><span class="p">(</span><span class="n">row_frequency</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">DataSource</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="n">datatype</span><span class="p">,</span>
+            <span class="n">row_frequency</span><span class="o">=</span><span class="n">row_frequency</span><span class="p">,</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_spec</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">overwrite</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">source</span></div>
+
+<div class="viewcode-block" id="Dataset.add_sink"><a class="viewcode-back" href="../../../../../api.html#arcana.core.data.set.Dataset.add_sink">[docs]</a>    <span class="k">def</span> <span class="nf">add_sink</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">datatype</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">row_frequency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Specify a data source in the dataset, which can then be referenced</span>
+<span class="sd">        when connecting workflow inputs.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            The name used to reference the dataset &quot;column&quot; for the</span>
+<span class="sd">            sink</span>
+<span class="sd">        datatype : type</span>
+<span class="sd">            The file-format (for file-sets) or datatype (for fields)</span>
+<span class="sd">            that the sink will be stored in within the dataset</span>
+<span class="sd">        path : str, default `name`</span>
+<span class="sd">            The location of the sink within the dataset</span>
+<span class="sd">        row_frequency : DataSpace, default self.leaf_freq</span>
+<span class="sd">            The row_frequency of the sink within the dataset</span>
+<span class="sd">        overwrite : bool</span>
+<span class="sd">            Whether to overwrite an existing sink</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">row_frequency</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_frequency</span><span class="p">(</span><span class="n">row_frequency</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="n">sink</span> <span class="o">=</span> <span class="n">DataSink</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="n">datatype</span><span class="p">,</span>
+            <span class="n">row_frequency</span><span class="o">=</span><span class="n">row_frequency</span><span class="p">,</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_spec</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">sink</span><span class="p">,</span> <span class="n">overwrite</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sink</span></div>
+
+    <span class="k">def</span> <span class="nf">_add_spec</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">spec</span><span class="p">,</span> <span class="n">overwrite</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">overwrite</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Overwriting </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="n">spec</span><span class="si">}</span><span class="s2"> in &quot;</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArcanaNameError</span><span class="p">(</span>
+                    <span class="n">name</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">&quot;Name clash attempting to add </span><span class="si">{</span><span class="n">spec</span><span class="si">}</span><span class="s2"> to </span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2"> &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;with </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="si">}</span><span class="s2">. Use &#39;overwrite&#39; option &quot;</span>
+                    <span class="s2">&quot;if this is desired&quot;</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec</span>
+
+    <span class="k">def</span> <span class="nf">row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row_frequency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">id_kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the row associated with the given row_frequency and ids dict</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        row_frequency : DataSpace or str</span>
+<span class="sd">            The row_frequency of the row</span>
+<span class="sd">        id : str or Tuple[str], optional</span>
+<span class="sd">            The ID of the row to</span>
+<span class="sd">        **id_kwargs : Dict[str, str]</span>
+<span class="sd">            Alternatively to providing `id`, ID corresponding to the row to</span>
+<span class="sd">            return passed as kwargs</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        DataRow</span>
+<span class="sd">            The selected data row</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ArcanaUsageError</span>
+<span class="sd">            Raised when attempting to use IDs with the row_frequency associated</span>
+<span class="sd">            with the root row</span>
+<span class="sd">        ArcanaNameError</span>
+<span class="sd">            If there is no row corresponding to the given ids</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">:</span>
+            <span class="c1"># Parse str to row_frequency enums</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">row_frequency</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Root rows don&#39;t have any IDs (</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span>
+            <span class="n">row_frequency</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_frequency</span><span class="p">(</span><span class="n">row_frequency</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">id_kwargs</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;ID (</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">) and id_kwargs (</span><span class="si">{</span><span class="n">id_kwargs</span><span class="si">}</span><span class="s2">) cannot be both &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;provided to `row` method of </span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="c1"># Iterate through the tree to find the row (i.e. tree node) matching the</span>
+                <span class="c1"># provided IDs</span>
+                <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span>
+                <span class="k">for</span> <span class="n">freq</span><span class="p">,</span> <span class="nb">id</span> <span class="ow">in</span> <span class="n">id_kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">children_dict</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">[</span><span class="n">freq</span><span class="p">]]</span>
+                    <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">ArcanaNameError</span><span class="p">(</span>
+                            <span class="n">freq</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">freq</span><span class="si">}</span><span class="s2"> is not a child row_frequency of </span><span class="si">{</span><span class="n">row</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">row</span> <span class="o">=</span> <span class="n">children_dict</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span>
+                    <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">ArcanaNameError</span><span class="p">(</span>
+                            <span class="nb">id</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">freq</span><span class="si">}</span><span class="s2">) not a child row of </span><span class="si">{</span><span class="n">row</span><span class="si">}</span><span class="s2">&quot;</span>
+                        <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+                <span class="k">return</span> <span class="n">row</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">row_frequency</span><span class="p">][</span><span class="nb">id</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">ArcanaNameError</span><span class="p">(</span>
+                        <span class="nb">id</span><span class="p">,</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2"> not present in data tree &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">row_ids</span><span class="p">(</span><span class="n">row_frequency</span><span class="p">))</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                    <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+    <span class="k">def</span> <span class="nf">rows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ids</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all the IDs in the dataset for a given frequency</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        frequency : DataSpace or None</span>
+<span class="sd">            The &quot;frequency&quot; of the rows, e.g. per-session, per-subject. If</span>
+<span class="sd">            None then all rows are returned</span>
+<span class="sd">        ids : Sequence[str or Tuple[str]]</span>
+<span class="sd">            The i</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Sequence[DataRow]</span>
+<span class="sd">            The sequence of the data row within the dataset</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">frequency</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">chain</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">values</span><span class="p">()</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">children</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+            <span class="n">frequency</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_frequency</span><span class="p">(</span><span class="n">frequency</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">frequency</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_freq</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">]</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">frequency</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">rows</span> <span class="o">=</span> <span class="p">(</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">rows</span> <span class="k">if</span> <span class="n">n</span><span class="o">.</span><span class="n">id</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">ids</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">rows</span>
+
+    <span class="k">def</span> <span class="nf">row_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row_frequency</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all the IDs in the dataset for a given row_frequency</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        row_frequency : DataSpace</span>
+<span class="sd">            The &quot;row_frequency&quot; of the rows, e.g. per-session, per-subject...</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Sequence[str]</span>
+<span class="sd">            The IDs of the rows</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">:</span>
+            <span class="n">row_frequency</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_frequency</span><span class="p">(</span><span class="n">row_frequency</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">row_frequency</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_freq</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">row_frequency</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all data items across the dataset for a given source or sink</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            Name of the column to return</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        DataColumn</span>
+<span class="sd">            the column object</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">apply_pipeline</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">,</span>
+        <span class="n">workflow</span><span class="p">,</span>
+        <span class="n">inputs</span><span class="p">,</span>
+        <span class="n">outputs</span><span class="p">,</span>
+        <span class="n">row_frequency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">overwrite</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">converter_args</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Connect a Pydra workflow as a pipeline of the dataset</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            name of the pipeline</span>
+<span class="sd">        workflow : pydra.Workflow</span>
+<span class="sd">            pydra workflow to connect to the dataset as a pipeline</span>
+<span class="sd">        inputs : list[arcana.core.analysis.pipeline.Input or tuple[str, str, type] or tuple[str, str]]</span>
+<span class="sd">            List of inputs to the pipeline (see `arcana.core.analysis.pipeline.Pipeline.PipelineInput`)</span>
+<span class="sd">        outputs : list[arcana.core.analysis.pipeline.Output or tuple[str, str, type] or tuple[str, str]]</span>
+<span class="sd">            List of outputs of the pipeline (see `arcana.core.analysis.pipeline.Pipeline.PipelineOutput`)</span>
+<span class="sd">        row_frequency : str, optional</span>
+<span class="sd">            the frequency of the data rows the pipeline will be executed over, i.e.</span>
+<span class="sd">            will it be run once per-session, per-subject or per whole dataset,</span>
+<span class="sd">            by default the highest row frequency (e.g. per-session for Clinical)</span>
+<span class="sd">        overwrite : bool, optional</span>
+<span class="sd">            overwrite connections to previously connected sinks, by default False</span>
+<span class="sd">        converter_args : dict[str, dict]</span>
+<span class="sd">            keyword arguments passed on to the converter to control how the</span>
+<span class="sd">            conversion is performed.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Pipeline</span>
+<span class="sd">            the pipeline added to the dataset</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ArcanaUsageError</span>
+<span class="sd">            if overwrite is false and</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">arcana.core.analysis.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+
+        <span class="n">row_frequency</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_frequency</span><span class="p">(</span><span class="n">row_frequency</span><span class="p">)</span>
+
+        <span class="c1"># def parsed_conns(lst, conn_type):</span>
+        <span class="c1">#     parsed = []</span>
+        <span class="c1">#     for spec in lst:</span>
+        <span class="c1">#         if isinstance(spec, conn_type):</span>
+        <span class="c1">#             parsed.append(spec)</span>
+        <span class="c1">#         elif len(spec) == 3:</span>
+        <span class="c1">#             parsed.append(conn_type(*spec))</span>
+        <span class="c1">#         else:</span>
+        <span class="c1">#             col_name, field = spec</span>
+        <span class="c1">#             parsed.append(conn_type(col_name, field, self[col_name].datatype))</span>
+        <span class="c1">#     return parsed</span>
+
+        <span class="n">pipeline</span> <span class="o">=</span> <span class="n">Pipeline</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="n">row_frequency</span><span class="o">=</span><span class="n">row_frequency</span><span class="p">,</span>
+            <span class="n">workflow</span><span class="o">=</span><span class="n">workflow</span><span class="p">,</span>
+            <span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span>
+            <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">,</span>
+            <span class="n">converter_args</span><span class="o">=</span><span class="n">converter_args</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">outpt</span> <span class="ow">in</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>
+            <span class="n">sink</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">sink</span><span class="o">.</span><span class="n">pipeline_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">overwrite</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Overwriting pipeline of sink &#39;</span><span class="si">{</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">sink</span><span class="o">.</span><span class="n">pipeline_name</span><span class="si">}</span><span class="s2"> with </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Attempting to overwrite pipeline of &#39;</span><span class="si">{</span><span class="n">outpt</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;sink (</span><span class="si">{</span><span class="n">sink</span><span class="o">.</span><span class="n">pipeline_name</span><span class="si">}</span><span class="s2">) with </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">. Use &quot;</span>
+                        <span class="sa">f</span><span class="s2">&quot;&#39;overwrite&#39; option if this is desired&quot;</span>
+                    <span class="p">)</span>
+            <span class="n">sink</span><span class="o">.</span><span class="n">pipeline_name</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pipelines</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">pipeline</span>
+
+        <span class="k">return</span> <span class="n">pipeline</span>
+
+    <span class="k">def</span> <span class="nf">derive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">sink_names</span><span class="p">,</span> <span class="n">ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cache_dir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generate derivatives from the workflows</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        *sink_names : Iterable[str]</span>
+<span class="sd">            Names of the columns corresponding to the items to derive</span>
+<span class="sd">        ids : Iterable[str]</span>
+<span class="sd">            The IDs of the data rows in each column to derive</span>
+<span class="sd">        cache_dir</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Sequence[List[DataType]]</span>
+<span class="sd">            The derived columns</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">arcana.core.analysis.pipeline</span> <span class="kn">import</span> <span class="n">Pipeline</span>
+
+        <span class="n">sinks</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="p">[</span><span class="n">s</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">set</span><span class="p">(</span><span class="n">sink_names</span><span class="p">)]</span>
+        <span class="k">for</span> <span class="n">pipeline</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">Pipeline</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="o">*</span><span class="n">sinks</span><span class="p">):</span>
+            <span class="c1"># Execute pipelines in stack</span>
+            <span class="c1"># FIXME: Should combine the pipelines into a single workflow and</span>
+            <span class="c1"># dilate the IDs that need to be run when summarising over different</span>
+            <span class="c1"># data axes</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">:</span>
+                <span class="n">pipeline</span><span class="p">(</span><span class="n">ids</span><span class="o">=</span><span class="n">ids</span><span class="p">,</span> <span class="n">cache_dir</span><span class="o">=</span><span class="n">cache_dir</span><span class="p">)(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">parse_frequency</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">freq</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Parses the data row_frequency, converting from string if necessary and</span>
+<span class="sd">        checks it matches the dimensions of the dataset&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">freq</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">[</span><span class="n">freq</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">freq</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">ArcanaWrongDataSpaceError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">freq</span><span class="si">}</span><span class="s2"> is not a valid dimension for </span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2"> &quot;</span> <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="si">}</span><span class="s2">)&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">return</span> <span class="n">freq</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">_sink_path</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">workflow_name</span><span class="p">,</span> <span class="n">sink_name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">workflow_name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">sink_name</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">parse_id_str</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="nb">id</span><span class="p">):</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="nb">id</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;//&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>  <span class="c1"># No store definition, default to the `DirTree` store</span>
+            <span class="n">store_name</span> <span class="o">=</span> <span class="s2">&quot;dirtree&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">store_name</span><span class="p">,</span> <span class="nb">id</span> <span class="o">=</span> <span class="n">parts</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="nb">id</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;@&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">DEFAULT_NAME</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">id</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">parts</span>
+        <span class="k">return</span> <span class="n">store_name</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">name</span>
+
+    <span class="k">def</span> <span class="nf">download_licenses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">licenses</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">License</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Install licenses from project-specific location in data store and</span>
+<span class="sd">        install them at the destination location</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        licenses : list[License]</span>
+<span class="sd">            the list of licenses stored in the dataset or in a site-wide location that</span>
+<span class="sd">            need to be downloaded to the local file-system before a pipeline is run</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ArcanaLicenseNotFoundError</span>
+<span class="sd">            raised if the license of the given name isn&#39;t present in the project-specific</span>
+<span class="sd">            location to retrieve</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">arcana.core.deploy.image.components</span> <span class="kn">import</span> <span class="n">License</span>
+
+        <span class="n">site_licenses_dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">site_licenses_dataset</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">lic</span> <span class="ow">in</span> <span class="n">licenses</span><span class="p">:</span>
+
+            <span class="n">missing</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">license_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_license_file</span><span class="p">(</span><span class="n">lic</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">ArcanaDataMatchError</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">site_licenses_dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">license_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_license_file</span><span class="p">(</span>
+                            <span class="n">lic</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="n">site_licenses_dataset</span>
+                        <span class="p">)</span>
+                    <span class="k">except</span> <span class="n">ArcanaDataMatchError</span><span class="p">:</span>
+                        <span class="n">missing</span> <span class="o">=</span> <span class="kc">True</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">missing</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Did not find a license corresponding to &#39;</span><span class="si">{</span><span class="n">lic</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39; at &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">License</span><span class="o">.</span><span class="n">column_path</span><span class="p">(</span><span class="n">lic</span><span class="o">.</span><span class="n">name</span><span class="p">)</span><span class="si">}</span><span class="s2"> in </span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">site_licenses_dataset</span><span class="p">:</span>
+                    <span class="n">msg</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; or </span><span class="si">{</span><span class="n">site_licenses_dataset</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="k">raise</span> <span class="n">ArcanaLicenseNotFoundError</span><span class="p">(</span>
+                    <span class="n">lic</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                    <span class="n">msg</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">license_file</span><span class="p">,</span> <span class="n">lic</span><span class="o">.</span><span class="n">destination</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">install_license</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">source_file</span><span class="p">:</span> <span class="n">File</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Store project-specific license in dataset</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            name of the license to install</span>
+<span class="sd">        source_file : File</span>
+<span class="sd">            path to the license file to install</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">arcana.core.deploy.image.components</span> <span class="kn">import</span> <span class="n">License</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+            <span class="n">item</span><span class="o">=</span><span class="n">File</span><span class="p">(</span><span class="n">source_file</span><span class="p">),</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">License</span><span class="o">.</span><span class="n">column_path</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="n">File</span><span class="p">,</span>
+            <span class="n">row</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_get_license_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataEntry</span><span class="p">:</span>
+        <span class="kn">from</span> <span class="nn">arcana.core.deploy.image.components</span> <span class="kn">import</span> <span class="n">License</span>
+
+        <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="n">column</span> <span class="o">=</span> <span class="n">DataSink</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_license&quot;</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="n">File</span><span class="p">,</span>
+            <span class="n">row_frequency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">root_freq</span><span class="p">,</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+            <span class="n">path</span><span class="o">=</span><span class="n">License</span><span class="o">.</span><span class="n">column_path</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">File</span><span class="p">(</span><span class="n">column</span><span class="o">.</span><span class="n">match_entry</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">)</span></div>
+
+
+<span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span>
+<span class="k">class</span> <span class="nc">SplitDataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A dataset created by combining multiple datasets into a conglomerate</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">source_dataset</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+    <span class="n">sink_dataset</span><span class="p">:</span> <span class="n">Dataset</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, Thomas G. Close
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="../../../../../" id="documentation_options" src="../../../../../_static/documentation_options.js"></script>
+    <script src="../../../../../_static/doctools.js"></script>
+    <script src="../../../../../_static/sphinx_highlight.js"></script>
+    <script src="../../../../../_static/scripts/furo.js"></script>
+    </body>
+</html>

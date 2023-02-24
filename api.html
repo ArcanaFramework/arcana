@@ -1,0 +1,610 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="prev" title="Command-line interface" href="cli.html" />
+
+    <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
+        <title>Application Programming Interface - Arcana v0.9.1</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #ffffff;
+  --color-code-foreground: black;
+  --color-brand-primary: #7b112d;
+  --color-brand-content: #7b112d;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">Arcana v0.9.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Arcana v0.9.1</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_model.html">Data model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing.html">Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design_analyses.html">Designing Analyses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adding_formats.html">New formats and spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="alternative_stores.html">Alternative storage</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">API</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="application-programming-interface">
+<h1>Application Programming Interface<a class="headerlink" href="#application-programming-interface" title="Permalink to this heading">#</a></h1>
+<p>The core of Arcana’s framework is located under the <code class="docutils literal notranslate"><span class="pre">arcana.core</span></code> sub-package,
+which contains all the domain-independent logic. Domain-specific extensions
+for alternative data stores, dimensions and formats should be placed in
+<code class="docutils literal notranslate"><span class="pre">arcana.data.stores</span></code>, <code class="docutils literal notranslate"><span class="pre">arcana.data.spaces</span></code> and <code class="docutils literal notranslate"><span class="pre">arcana.data.types</span></code>
+respectively.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Under construction</p>
+</div>
+<section id="data-model">
+<h2>Data Model<a class="headerlink" href="#data-model" title="Permalink to this heading">#</a></h2>
+<section id="core">
+<h3>Core<a class="headerlink" href="#core" title="Permalink to this heading">#</a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="arcana.core.data.store.DataStore">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">arcana.core.data.store.</span></span><span class="sig-name descname"><span class="pre">DataStore</span></span><a class="reference internal" href="_modules/arcana/core/data/store/base.html#DataStore"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.data.store.DataStore" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="arcana.core.data.set.Dataset">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">arcana.core.data.set.</span></span><span class="sig-name descname"><span class="pre">Dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">store</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#arcana.core.data.store.DataStore" title="arcana.core.data.store.base.DataStore"><span class="pre">DataStore</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">hierarchy</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.11)"><span class="pre">List</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><span class="pre">DataSpace</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">space</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><span class="pre">DataSpace</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_Nothing.NOTHING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id_inference</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_Nothing.NOTHING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">include</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_Nothing.NOTHING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exclude</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_Nothing.NOTHING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'common'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">columns</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_Nothing.NOTHING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pipelines</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_Nothing.NOTHING</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/arcana/core/data/set/base.html#Dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.data.set.Dataset" title="Permalink to this definition">#</a></dt>
+<dd><p>A representation of a “dataset”, the complete collection of data
+(file-sets and fields) to be used in an analysis.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – The dataset id/path that uniquely identifies the dataset within the
+store it is stored (e.g. FS directory path or project ID)</p></li>
+<li><p><strong>store</strong> (<em>Repository</em>) – The store the dataset is stored into. Can be the local file
+system by providing a MockRemoteStore repo.</p></li>
+<li><p><strong>hierarchy</strong> (<em>Sequence</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – <p>The data frequencies that are explicitly present in the data tree.
+For example, if a MockRemoteStore dataset (i.e. directory) has
+two layer hierarchy of sub-directories, the first layer of
+sub-directories labelled by unique subject ID, and the second directory
+layer labelled by study time-point then the hierarchy would be</p>
+<blockquote>
+<div><p>[‘subject’, ‘timepoint’]</p>
+</div></blockquote>
+<p>Alternatively, in some stores (e.g. XNAT) the second layer in the
+hierarchy may be named with session ID that is unique across the project,
+in which case the layer dimensions would instead be</p>
+<blockquote>
+<div><p>[‘subject’, ‘session’]</p>
+</div></blockquote>
+<p>In such cases, if there are multiple timepoints, the timepoint ID of the
+session will need to be extracted using the <cite>id_inference</cite> argument.</p>
+<p>Alternatively, the hierarchy could be organised such that the tree
+first splits on longitudinal time-points, then a second directory layer
+labelled by member ID, with the final layer containing sessions of
+matched members labelled by their groups (e.g. test &amp; control):</p>
+<blockquote>
+<div><p>[‘timepoint’, ‘member’, ‘group’]</p>
+</div></blockquote>
+<p>Note that the combination of layers in the hierarchy must span the
+space defined in the DataSpace enum, i.e. the “bitwise or” of the
+layer values of the hierarchy must be 1 across all bits
+(e.g. ‘session’: 0b111).</p>
+</p></li>
+<li><p><strong>space</strong> (<a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a>) – The space of the dataset. See <a class="reference external" href="https://arcana.readthedocs.io/en/latest/data_model.html#spaces">https://arcana.readthedocs.io/en/latest/data_model.html#spaces</a>)
+for a description</p></li>
+<li><p><strong>id_inference</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><em>tuple</em></a><em>[</em><a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em>) – <p>Not all IDs will appear explicitly within the hierarchy of the data
+tree, and some will need to be inferred by extracting components of
+more specific labels.</p>
+<p>For example, given a set of subject IDs that combination of the ID of
+the group that they belong to and the member ID within that group
+(i.e. matched test &amp; control would have same member ID)</p>
+<blockquote>
+<div><p>CONTROL01, CONTROL02, CONTROL03, … and TEST01, TEST02, TEST03</p>
+</div></blockquote>
+<p>the group ID can be extracted by providing the a list of tuples
+containing ID to source the inferred IDs from coupled with a regular
+expression with named groups</p>
+<blockquote>
+<div><dl class="simple">
+<dt>id_inference=[(‘subject’,</dt><dd><p>r’(?P&lt;group&gt;[A-Z]+)(?P&lt;member&gt;[0-9]+)’)}</p>
+</dd>
+</dl>
+</div></blockquote>
+</p></li>
+<li><p><strong>include</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><em>tuple</em></a><em>[</em><a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em><em>]</em>) – The IDs to be included in the dataset per row_frequency. E.g. can be
+used to limit the subject IDs in a project to the sub-set that passed
+QC. If a row_frequency is omitted or its value is None, then all available
+will be used</p></li>
+<li><p><strong>exclude</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><em>tuple</em></a><em>[</em><a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em> or </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em><em>]</em><em>]</em>) – The IDs to be excluded in the dataset per row_frequency. E.g. can be
+used to exclude specific subjects that failed QC. If a row_frequency is
+omitted or its value is None, then all available will be used</p></li>
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – The name of the dataset as saved in the store under</p></li>
+<li><p><strong>columns</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.11)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><a class="reference internal" href="#arcana.core.data.column.DataSource" title="arcana.core.data.column.DataSource"><em>DataSource</em></a><em> or </em><a class="reference internal" href="#arcana.core.data.column.DataSink" title="arcana.core.data.column.DataSink"><em>DataSink</em></a><em>]</em>) – The sources and sinks to be initially added to the dataset (columns are
+explicitly added when workflows are applied to the dataset).</p></li>
+<li><p><strong>workflows</strong> (<em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>pydra.Workflow</em><em>]</em>) – Workflows that have been applied to the dataset to generate sink</p></li>
+<li><p><strong>access_args</strong> (<em>ty.Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>Any</em><em>]</em>) – Repository specific args used to control the way the dataset is accessed</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="arcana.core.data.set.Dataset.add_sink">
+<span class="sig-name descname"><span class="pre">add_sink</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datatype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/arcana/core/data/set/base.html#Dataset.add_sink"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.data.set.Dataset.add_sink" title="Permalink to this definition">#</a></dt>
+<dd><p>Specify a data source in the dataset, which can then be referenced
+when connecting workflow inputs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – The name used to reference the dataset “column” for the
+sink</p></li>
+<li><p><strong>datatype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a>) – The file-format (for file-sets) or datatype (for fields)
+that the sink will be stored in within the dataset</p></li>
+<li><p><strong>path</strong> (str, default <cite>name</cite>) – The location of the sink within the dataset</p></li>
+<li><p><strong>row_frequency</strong> (<a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a><em>, </em><em>default self.leaf_freq</em>) – The row_frequency of the sink within the dataset</p></li>
+<li><p><strong>overwrite</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether to overwrite an existing sink</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="arcana.core.data.set.Dataset.add_source">
+<span class="sig-name descname"><span class="pre">add_source</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datatype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_frequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overwrite</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/arcana/core/data/set/base.html#Dataset.add_source"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.data.set.Dataset.add_source" title="Permalink to this definition">#</a></dt>
+<dd><p>Specify a data source in the dataset, which can then be referenced
+when connecting workflow inputs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – The name used to reference the dataset “column” for the
+source</p></li>
+<li><p><strong>datatype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a>) – The file-format (for file-sets) or datatype (for fields)
+that the source will be stored in within the dataset</p></li>
+<li><p><strong>path</strong> (str, default <cite>name</cite>) – The location of the source within the dataset</p></li>
+<li><p><strong>row_frequency</strong> (<a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a><em>, </em><em>default self.leaf_freq</em>) – The row_frequency of the source within the dataset</p></li>
+<li><p><strong>overwrite</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Whether to overwrite existing columns</p></li>
+<li><p><strong>**kwargs</strong> (<em>ty.Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>Any</em><em>]</em>) – Additional kwargs to pass to DataSource.__init__</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="arcana.core.data.space.DataSpace">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">arcana.core.data.space.</span></span><span class="sig-name descname"><span class="pre">DataSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">qualname</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/arcana/core/data/space.html#DataSpace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.data.space.DataSpace" title="Permalink to this definition">#</a></dt>
+<dd><p>Base class for all “data space” enums. DataSpace enums specify
+the relationships between rows of a dataset.</p>
+<p>For example in imaging studies, scannings sessions are typically organised
+by analysis group (e.g. test &amp; control), membership within the group (i.e
+matched subjects) and time-points (for longitudinal studies). We can
+visualise the rows arranged in a 3-D grid along the <cite>group</cite>, <cite>member</cite>, and
+<cite>timepoint</cite> dimensions. Note that datasets that only contain one group or
+time-point can still be represented in the same space, and just be of
+depth=1 along those dimensions.</p>
+<p>All dimensions should be included as members of a DataSpace subclass
+enum with orthogonal binary vector values, e.g.</p>
+<blockquote>
+<div><p>member = 0b001
+group = 0b010
+timepoint = 0b100</p>
+</div></blockquote>
+<p>In this space, an imaging session row is uniquely defined by its member,
+group and timepoint ID. The most commonly present dimension should be given
+the least frequent bit (e.g. imaging datasets will not always have
+different groups or time-points but will always have different members
+(equivalent to subjects when there is one group).</p>
+<p>In addition to the data items stored in the data rows for each session,
+some items only vary along a particular dimension of the grid. The
+“row_frequency” of these rows can be specified using the “basis” members
+(i.e. member, group, timepoint) in contrast to the <cite>session</cite> row_frequency,
+which is the combination of all three</p>
+<blockquote>
+<div><p>session = 0b111</p>
+</div></blockquote>
+<p>Additionally, some data is stored in aggregated rows that across a plane
+of the grid. These frequencies should also be added to the enum (all
+combinations of the basis frequencies must be included) and given intuitive
+names if possible, e.g.</p>
+<blockquote>
+<div><p>subject = 0b011 - uniquely identified subject within in the dataset.
+batch = 0b110 - separate group+timepoint combinations
+matchedpoint = 0b101 - matched members and time-points aggregated across groups</p>
+</div></blockquote>
+<p>Finally, for items that are singular across the whole dataset there should
+also be a dataset-wide member with value=0:</p>
+<blockquote>
+<div><p>dataset = 0b000</p>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="arcana.core.data.row.DataRow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">arcana.core.data.row.</span></span><span class="sig-name descname"><span class="pre">DataRow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ids</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ty.Dict</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><span class="pre">DataSpace</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frequency</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><span class="pre">DataSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#arcana.core.data.set.Dataset" title="arcana.core.data.set.Dataset"><span class="pre">Dataset</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">uri</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/arcana/core/data/row.html#DataRow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.data.row.DataRow" title="Permalink to this definition">#</a></dt>
+<dd><p>A “row” in a dataset “frame” where file-sets and fields can be placed, e.g.
+a session or subject.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ids</strong> (<em>Dict</em><em>[</em><a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>]</em>) – The ids for the frequency of the row and all “parent” frequencies
+within the tree</p></li>
+<li><p><strong>frequency</strong> (<a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a>) – The frequency of the row</p></li>
+<li><p><strong>dataset</strong> (<a class="reference internal" href="#arcana.core.data.set.Dataset" title="arcana.core.data.set.Dataset"><em>Dataset</em></a>) – A reference to the root of the data tree</p></li>
+<li><p><strong>uri</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>optional</em>) – a URI for the row, can be set and used by the data store implementation if
+appropriate, by default None</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="arcana.core.data.column.DataSource">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">arcana.core.data.column.</span></span><span class="sig-name descname"><span class="pre">DataSource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name:</span> <span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datatype:</span> <span class="pre">type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_frequency:</span> <span class="pre">DataSpace</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">&lt;property</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset:</span> <span class="pre">Dataset</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quality_threshold=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order=None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">required_metadata:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ty.Any]</span> <span class="pre">=</span> <span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_regex=False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/arcana/core/data/column.html#DataSource"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.data.column.DataSource" title="Permalink to this definition">#</a></dt>
+<dd><p>Specifies the criteria by which an item is selected from a data row to
+be a data source.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – the name of the column</p></li>
+<li><p><strong>datatype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a>) – the data type of items in the column</p></li>
+<li><p><strong>row_frequency</strong> (<a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a>) – the frequency of the “rows” (data nodes) within the dataset tree, e.g. for the
+<code class="docutils literal notranslate"><span class="pre">Clinical</span></code> data spce the row frequency can be per ‘session’, ‘subject’,
+‘timepoint’, ‘group’, ‘dataset’, et…</p></li>
+<li><p><strong>dataset</strong> (<a class="reference internal" href="#arcana.core.data.set.Dataset" title="arcana.core.data.set.Dataset"><em>Dataset</em></a>) – the dataset the column belongs to</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – A regex name_path to match the fileset names with. Must match
+one and only one fileset per &lt;row_frequency&gt;. If None, the name
+is used instead.</p></li>
+<li><p><strong>quality_threshold</strong> (<em>DataQuality</em>) – The acceptable quality (or above) that should be considered. Data items
+will be considered missing</p></li>
+<li><p><strong>order</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><em>int</em></a><em> | </em><em>None</em>) – To be used to distinguish multiple filesets that match the
+name_path in the same session. The order of the fileset within the
+session (0-indexed). Based on the scan ID but is more robust to small
+changes to the IDs within the session if for example there are
+two scans of the same type taken before and after a task.</p></li>
+<li><p><strong>required_metadata</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>ty.Any</em><em>]</em>) – Required metadata, which can be used to distinguish multiple items that match all
+other criteria. The provided dictionary contains metadata values that must match
+the stored required_metadata exactly.</p></li>
+<li><p><strong>is_regex</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><em>bool</em></a>) – Flags whether the name_path is a regular expression or not</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="arcana.core.data.column.DataSink">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">arcana.core.data.column.</span></span><span class="sig-name descname"><span class="pre">DataSink</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">datatype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><span class="pre">type</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_frequency</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><span class="pre">DataSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#arcana.core.data.set.Dataset" title="arcana.core.data.set.Dataset"><span class="pre">Dataset</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_Nothing.NOTHING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">salience</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">ColumnSalience.supplementary</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pipeline_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/arcana/core/data/column.html#DataSink"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.data.column.DataSink" title="Permalink to this definition">#</a></dt>
+<dd><p>A specification for a file set within a analysis to be derived from a
+processing pipeline.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – the name of the column</p></li>
+<li><p><strong>datatype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a>) – the data type of items in the column</p></li>
+<li><p><strong>row_frequency</strong> (<a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a>) – the frequency of the “rows” (data nodes) within the dataset tree, e.g. for the
+<code class="docutils literal notranslate"><span class="pre">Clinical</span></code> data spce the row frequency can be per ‘session’, ‘subject’,
+‘timepoint’, ‘group’, ‘dataset’, et…</p></li>
+<li><p><strong>dataset</strong> (<a class="reference internal" href="#arcana.core.data.set.Dataset" title="arcana.core.data.set.Dataset"><em>Dataset</em></a>) – the dataset the column belongs to</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – A regex name_path to match the fileset names with. Must match
+one and only one fileset per &lt;row_frequency&gt;. If None, the name
+is used instead.</p></li>
+<li><p><strong>salience</strong> (<em>Salience</em>) – The salience of the specified file-set, i.e. whether it would be
+typically of interest for publication outputs or whether it is just
+a temporary file in a workflow, and stages in between</p></li>
+<li><p><strong>pipeline_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – The name of the workflow applied to the dataset to generates the data
+for the sink</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="stores">
+<h3>Stores<a class="headerlink" href="#stores" title="Permalink to this heading">#</a></h3>
+</section>
+</section>
+<section id="processing">
+<h2>Processing<a class="headerlink" href="#processing" title="Permalink to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="arcana.core.analysis.pipeline.Pipeline">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">arcana.core.analysis.pipeline.</span></span><span class="sig-name descname"><span class="pre">Pipeline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">row_frequency</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><span class="pre">DataSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">workflow</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Workflow</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">converter_args</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_Nothing.NOTHING</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#arcana.core.data.set.Dataset" title="arcana.core.data.set.base.Dataset"><span class="pre">Dataset</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/arcana/core/analysis/pipeline.html#Pipeline"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#arcana.core.analysis.pipeline.Pipeline" title="Permalink to this definition">#</a></dt>
+<dd><p>A thin wrapper around a Pydra workflow to link it to sources and sinks
+within a dataset</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a>) – the name of the pipeline, used to differentiate it from others</p></li>
+<li><p><strong>row_frequency</strong> (<a class="reference internal" href="#arcana.core.data.space.DataSpace" title="arcana.core.data.space.DataSpace"><em>DataSpace</em></a><em>, </em><em>optional</em>) – The row_frequency of the pipeline, i.e. the row_frequency of the
+derivatvies within the dataset, e.g. per-session, per-subject, etc,
+by default None</p></li>
+<li><p><strong>workflow</strong> (<em>Workflow</em>) – The pydra workflow that performs the actual analysis</p></li>
+<li><p><strong>inputs</strong> (<em>Sequence</em><em>[</em><em>ty.Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>ty.Tuple</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a><em>]</em><em>]</em><em>]</em>) – List of column names (i.e. either data sources or sinks) to be
+connected to the inputs of the pipeline. If the pipelines requires
+the input to be in a datatype to the source, then it can be specified
+in a tuple (NAME, FORMAT)</p></li>
+<li><p><strong>outputs</strong> (<em>Sequence</em><em>[</em><em>ty.Union</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><em>ty.Tuple</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.11)"><em>type</em></a><em>]</em><em>]</em><em>]</em>) – List of sink names to be connected to the outputs of the pipeline
+If the input to be in a specific datatype, then it can be provided in
+a tuple (NAME, FORMAT)</p></li>
+<li><p><strong>converter_args</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><em>dict</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><em>dict</em></a><em>]</em>) – keyword arguments passed on to the converter to control how the
+conversion is performed.</p></li>
+<li><p><strong>dataset</strong> (<a class="reference internal" href="#arcana.core.data.set.Dataset" title="arcana.core.data.set.Dataset"><em>Dataset</em></a>) – the dataset the pipeline has been applied to</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<section id="enums">
+<h3>Enums<a class="headerlink" href="#enums" title="Permalink to this heading">#</a></h3>
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          <a class="prev-page" href="cli.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Command-line interface</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, Thomas G. Close
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Application Programming Interface</a><ul>
+<li><a class="reference internal" href="#data-model">Data Model</a><ul>
+<li><a class="reference internal" href="#core">Core</a><ul>
+<li><a class="reference internal" href="#arcana.core.data.store.DataStore"><code class="docutils literal notranslate"><span class="pre">DataStore</span></code></a></li>
+<li><a class="reference internal" href="#arcana.core.data.set.Dataset"><code class="docutils literal notranslate"><span class="pre">Dataset</span></code></a><ul>
+<li><a class="reference internal" href="#arcana.core.data.set.Dataset.add_sink"><code class="docutils literal notranslate"><span class="pre">Dataset.add_sink()</span></code></a></li>
+<li><a class="reference internal" href="#arcana.core.data.set.Dataset.add_source"><code class="docutils literal notranslate"><span class="pre">Dataset.add_source()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#arcana.core.data.space.DataSpace"><code class="docutils literal notranslate"><span class="pre">DataSpace</span></code></a></li>
+<li><a class="reference internal" href="#arcana.core.data.row.DataRow"><code class="docutils literal notranslate"><span class="pre">DataRow</span></code></a></li>
+<li><a class="reference internal" href="#arcana.core.data.column.DataSource"><code class="docutils literal notranslate"><span class="pre">DataSource</span></code></a></li>
+<li><a class="reference internal" href="#arcana.core.data.column.DataSink"><code class="docutils literal notranslate"><span class="pre">DataSink</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#stores">Stores</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#processing">Processing</a><ul>
+<li><a class="reference internal" href="#arcana.core.analysis.pipeline.Pipeline"><code class="docutils literal notranslate"><span class="pre">Pipeline</span></code></a></li>
+<li><a class="reference internal" href="#enums">Enums</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/scripts/furo.js"></script>
+    </body>
+</html>

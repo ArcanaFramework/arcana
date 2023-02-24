@@ -1,0 +1,884 @@
+<!doctype html>
+<html class="no-js" lang="en">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="New formats and spaces" href="adding_formats.html" /><link rel="prev" title="Contributing" href="contributing.html" />
+
+    <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
+        <title>Designing Analyses - Arcana v0.9.1</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #ffffff;
+  --color-code-foreground: black;
+  --color-brand-primary: #7b112d;
+  --color-brand-content: #7b112d;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #111111;
+  --color-code-foreground: #ffffff;
+  --color-brand-primary: #b94e5e;
+  --color-brand-content: #b94e5e;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-half" viewBox="0 0 24 24">
+    <title>Auto light/dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-shadow">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M13 12h5" />
+      <path d="M13 15h4" />
+      <path d="M13 18h1" />
+      <path d="M13 9h4" />
+      <path d="M13 6h1" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">Arcana v0.9.1</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  <div class="sidebar-logo-container">
+    <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
+  </div>
+  
+  <span class="sidebar-brand-text">Arcana v0.9.1</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <ul>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_model.html">Data model</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing.html">Processing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deployment.html">Deployment</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Designing Analyses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="adding_formats.html">New formats and spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="alternative_stores.html">Alternative storage</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli.html">CLI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto"><use href="#svg-sun-half"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main">
+          <section id="designing-analyses">
+<span id="design-analyses"></span><h1>Designing Analyses<a class="headerlink" href="#designing-analyses" title="Permalink to this heading">#</a></h1>
+<p>An great way to contribute to the development of Arcana is to implement new
+analysis classes or extend existing ones. The architecture of analysis
+classes is intended to facilitate the implementation of generic analysis suites
+for wide-spread use, which can then be tailored to meet the specific requirements
+of particular research studies via class inheritance (see <a class="reference internal" href="#inheritance"><span class="std std-ref">Inheritance</span></a>).</p>
+<p>This page builds upon the description of analysis-class design
+introduced in <a class="reference internal" href="processing.html#analysis-classes"><span class="std std-ref">Analysis classes</span></a>. The basic building blocks of the design
+are described in detail in the <a class="reference internal" href="#basics"><span class="std std-ref">Basics</span></a> section, while more advanced
+concepts involved in extending existing classes are covered in the <a class="reference internal" href="#advanced"><span class="std std-ref">Advanced</span></a>
+section.</p>
+<section id="basics">
+<h2>Basics<a class="headerlink" href="#basics" title="Permalink to this heading">#</a></h2>
+<p>There are two main components of analysis classes, column specifications
+(<a class="reference internal" href="#column-param-specs"><span class="std std-ref">DataColumn and parameter specification</span></a>), which define the data to be provided to and
+derived by the class, and pipeline builder methods (<a class="reference internal" href="#pipeline-builders"><span class="std std-ref">Pipeline builders</span></a>),
+which construct the <a class="reference external" href="https://pydra.readthedocs.io/en/latest/components.html#workflows">Pydra workflows</a>
+used to generate the derivatives. Parameter attributes (<a class="reference internal" href="#column-param-specs"><span class="std std-ref">DataColumn and parameter specification</span></a>)
+expose key parameters used by the workflow construction and output methods
+(<a class="reference internal" href="#analysis-outputs"><span class="std std-ref">Output methods</span></a>) provide a convenient way to include the final steps
+analyses (e.g. plotting figures) all in the one place.</p>
+<section id="datacolumn-and-parameter-specification">
+<span id="column-param-specs"></span><h3>DataColumn and parameter specification<a class="headerlink" href="#datacolumn-and-parameter-specification" title="Permalink to this heading">#</a></h3>
+<p>While columns in an <code class="xref py py-class docutils literal notranslate"><span class="pre">Analysis</span></code> class can be specified using the
+dataclass-like syntax of <code class="docutils literal notranslate"><span class="pre">column_name:</span> <span class="pre">Format</span></code>, in most cases you will want to
+explicitly use the <code class="docutils literal notranslate"><span class="pre">arcana.core.mark.column</span></code> function to include some basic
+metadata for the column, such as a description of what the column represents
+in the <code class="docutils literal notranslate"><span class="pre">desc</span></code> keyword arg.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@analysis</span><span class="p">(</span><span class="n">ExampleDataSpace</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">ExampleAnalysis</span><span class="p">():</span>
+
+    <span class="n">recorded_datafile</span><span class="p">:</span> <span class="n">Zip</span><span class="p">[</span><span class="n">Text</span><span class="p">]</span>  <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="n">desc</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Datafile acquired from an example scanner. Contains key &quot;</span>
+              <span class="s2">&quot;data to analyse&quot;</span><span class="p">))</span>
+    <span class="n">recorded_metadata</span><span class="p">:</span> <span class="n">Json</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Metadata accompanying the recorded data&quot;</span><span class="p">)</span>
+    <span class="n">preprocessed</span><span class="p">:</span> <span class="n">Zip</span><span class="p">[</span><span class="n">Text</span><span class="p">]</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Preprocessed data file, corrected for distortions&quot;</span><span class="p">)</span>
+    <span class="n">derived_image</span><span class="p">:</span> <span class="n">Png</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Map of the processed data&quot;</span><span class="p">)</span>
+    <span class="n">summary_metric</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;A summary metric extracted from the derived image&quot;</span><span class="p">,</span>
+        <span class="n">row_frequency</span><span class="o">=</span><span class="s1">&#39;dataset&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The column spec descriptions will be shown to the user when they use the <code class="xref py py-meth docutils literal notranslate"><span class="pre">Dataset.menu()</span></code>
+or <code class="docutils literal notranslate"><span class="pre">arcana</span> <span class="pre">menu</span></code> CLI command. The row row_frequency of the column (e.g. per-session,
+per-subject, per-group, once per-dataset etc…, see <a class="reference internal" href="data_model.html#data-spaces"><span class="std std-ref">Spaces</span></a> and
+<a class="reference internal" href="data_model.html#data-columns"><span class="std std-ref">Frames: Rows and Columns</span></a>) is specified by the <code class="docutils literal notranslate"><span class="pre">row_frequency</span></code>
+keyword argument. The row_frequency should be a member of the data space(see <a class="reference internal" href="data_model.html#data-spaces"><span class="std std-ref">Spaces</span></a>)
+provided to the <code class="xref py py-func docutils literal notranslate"><span class="pre">arcana.core.mark.analysis()</span></code> class decorator.</p>
+<p>Not all columns specifications are created equal. Some refer to key inputs
+(e.g. the primary MRI image) or outputs (e.g. lesion load) and others just need
+to be sanity checked or useful in debugging. Therefore, to avoid the menu being
+cluttered up with non-salient specifications, the “salience” of the columns can
+be specified in addition to a description via the <code class="docutils literal notranslate"><span class="pre">salience</span></code> keyword arg.
+Values for <code class="docutils literal notranslate"><span class="pre">salience</span></code> must be drawn from the <code class="xref py py-class docutils literal notranslate"><span class="pre">arcana.core.enum.ColumnSalience</span></code> enum:</p>
+<ul class="simple">
+<li><p><strong>primary</strong> - Primary input data, e.g. raw data or data reconstructed on the scanner</p></li>
+<li><p><strong>output</strong> - Results that would typically be used as main outputs in publications</p></li>
+<li><p><strong>supplementary</strong> - Derivatives that would typically only be provided in supplementary material</p></li>
+<li><p><strong>qa</strong> - Derivatives that would typically be only kept for quality assurance of analysis workflows</p></li>
+<li><p><strong>debug</strong> - Derivatives that would typically only need to be checked when debugging analysis workflows</p></li>
+<li><p><strong>temp</strong> - Data only temporarily stored to pass between pipelines</p></li>
+</ul>
+<p>Descriptions and saliences can also be set for parameter attributes, where the
+saliences are drawn from <code class="xref py py-class docutils literal notranslate"><span class="pre">arcana.core.enum.ParameterSalience</span></code> enum.</p>
+<ul class="simple">
+<li><p><strong>debug</strong> - typically only needs to be altered for debugging</p></li>
+<li><p><strong>recommended</strong> - recommended to keep default value</p></li>
+<li><p><strong>dependent</strong> - can be dependent on the context of the analysis but default should work for most cases</p></li>
+<li><p><strong>check</strong> - the default should be at checked for validity for particular use case</p></li>
+<li><p><strong>arbitrary</strong> - a default is provided, but it is not clear which value is best</p></li>
+<li><p><strong>required</strong> - no sensible default value, the parameter should be set manually</p></li>
+</ul>
+<p>With the exception of required parameters, default values should be provided
+to the parameter specification via the <code class="docutils literal notranslate"><span class="pre">default</span></code> keyword. The default
+value should match the type of the parameter specification. Parameters can
+be any of the following types:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list[float]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list[int]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list[bool]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">list[str]</span></code></p></li>
+</ul>
+<p>See <span class="xref std std-ref">comprehensive_example</span> L4-29 for examples of these attributes of
+column and parameter specifications.</p>
+</section>
+<section id="pipeline-builders">
+<span id="id1"></span><h3>Pipeline builders<a class="headerlink" href="#pipeline-builders" title="Permalink to this heading">#</a></h3>
+<p>“Pipeline builders” are called by Arcana to construct the Pydra workflows that
+derive data columns. The <code class="xref py py-func docutils literal notranslate"><span class="pre">arcana.core.mark.pipeline()</span></code>
+decorator is used to mark a method as a pipeline builder and specify the
+columns the workflow it builds derives.</p>
+<p>The first argument to a builder method is the <a class="reference internal" href="api.html#arcana.core.analysis.pipeline.Pipeline" title="arcana.core.analysis.pipeline.Pipeline"><code class="xref py py-class docutils literal notranslate"><span class="pre">Pipeline</span></code></a> object
+that is being constructed. The initialisation of the pipeline and rows to iteract
+with the data store are handled by Arcana, the builder method just needs to add
+the rows that actually perform the analysis. Pipeline rows are added using
+<a class="reference external" href="https://pydra.readthedocs.io/en/latest/components.html#workflows">Pydra’s workflow syntax</a>.
+(the only exception being that the newly added row is returned from
+<code class="xref py py-meth docutils literal notranslate"><span class="pre">Pipeline.add()</span></code> for convenience).</p>
+<p>The remaining arguments to the builder should be named after any columns
+and parameters that are required for the pipeline rows to be added. Arcana will
+automagically provide <code class="docutils literal notranslate"><span class="pre">LazyField</span></code> pointers to the arguments named after
+column specs, and values to the arguments named after parameter specs.
+For file formats with side cars, lazy-field pointers to side car
+files can be accessed as attributes of the primary <code class="docutils literal notranslate"><span class="pre">LazyField</span></code>, e.g.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">arcana.medimage.data</span> <span class="kn">import</span> <span class="n">Clinical</span>
+<span class="kn">from</span> <span class="nn">arcana.analysis.tasks.misc</span> <span class="kn">import</span> <span class="n">ExtractFromJson</span>
+<span class="kn">from</span> <span class="nn">arcana.data.salience</span> <span class="kn">import</span> <span class="n">ColumnSalience</span> <span class="k">as</span> <span class="n">ds</span>
+
+
+<span class="nd">@analysis</span><span class="p">(</span><span class="n">Clinical</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">AnotherExampleAnalysis</span><span class="p">():</span>
+
+    <span class="n">primary_image</span><span class="p">:</span> <span class="n">Dicom</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;The primary image to be analysed&quot;</span><span class="p">,</span>
+        <span class="n">salience</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">primary</span><span class="p">)</span>
+    <span class="n">repetition_time</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="s2">&quot;The repetition time of the MR sequence used&quot;</span><span class="p">,</span>
+        <span class="n">salience</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">debug</span><span class="p">)</span>
+    <span class="n">slice_timing_interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="s2">&quot;The time interval between slices&quot;</span><span class="p">,</span>
+        <span class="n">salience</span><span class="o">=</span><span class="n">ds</span><span class="o">.</span><span class="n">debug</span><span class="p">)</span>
+
+    <span class="nd">@pipeline</span><span class="p">(</span><span class="n">repetition_time</span><span class="p">,</span> <span class="n">slice_timing_interval</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">preprocess_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wf</span><span class="p">,</span> <span class="n">primary_image</span><span class="p">:</span> <span class="n">NiftiGzX</span><span class="p">):</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">ExtractFromJson</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;extract_tr&#39;</span><span class="p">,</span>
+                <span class="c1"># JSON side car is accessed by an attribute of the primary image</span>
+                <span class="n">in_file</span><span class="o">=</span><span class="n">primary_image</span><span class="o">.</span><span class="n">json</span><span class="p">,</span>
+                <span class="n">field</span><span class="o">=</span><span class="s1">&#39;tr&#39;</span><span class="p">))</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">ExtractFromJson</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;extract_st&#39;</span><span class="p">,</span>
+                <span class="c1"># JSON side car is accessed by an attribute of the primary image</span>
+                <span class="n">in_file</span><span class="o">=</span><span class="n">primary_image</span><span class="o">.</span><span class="n">json</span><span class="p">,</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">extract_tr</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out</span><span class="p">,</span>
+                <span class="n">field</span><span class="o">=</span><span class="s1">&#39;SliceTiming&#39;</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">wf</span><span class="o">.</span><span class="n">extract_tr</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">wf</span><span class="o">.</span><span class="n">extract_st</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out</span>
+</pre></div>
+</div>
+<p>The “row_frequency” (see <a class="reference internal" href="data_model.html#data-spaces"><span class="std std-ref">Spaces</span></a> and <a class="reference internal" href="data_model.html#data-columns"><span class="std std-ref">Frames: Rows and Columns</span></a>) of a pipeline,
+(whether it is run per-session, per-subject, per-timepoint, etc… for example)
+is determined by the row_frequency of its output columns. Therefore, all columns
+derived from a single pipeline need to have the same row row_frequency. If the
+row_frequency of an input column provided to the builder method is higher than that
+of the pipeline then the lazy field provided will point to a list (sorted by the
+axis IDs they are combined over) rather than a single value. If the row_frequency
+of an input is lower than that of the pipeline then that value is simply
+repeated. For example, an analysis of flood levels using datasets in the <code class="docutils literal notranslate"><span class="pre">Weather</span></code>
+data space (see <span class="xref std std-ref">weather_example</span>) to calculate the average rainfall per
+station, could look like</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">import</span> <span class="nn">pydra.mark</span>
+<span class="kn">from</span> <span class="nn">arcana.weather.data</span> <span class="kn">import</span> <span class="n">Weather</span>  <span class="c1"># See example in Data spaces section</span>
+
+
+<span class="c1"># A basic Pydra function task used in the analysis</span>
+<span class="nd">@pydra</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">task</span>
+<span class="k">def</span> <span class="nf">average</span><span class="p">(</span><span class="n">measurements</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="s2">&quot;A simple function task to convert daily to yearly figures&quot;</span>
+    <span class="k">return</span> <span class="n">numpy</span><span class="o">.</span><span class="n">average</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span>
+
+<span class="c1"># Another basic Pydra function task used in the analysis</span>
+<span class="nd">@pydra</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">task</span>
+<span class="k">def</span> <span class="nf">delta</span><span class="p">(</span><span class="n">measurements</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">average</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]:</span>
+    <span class="s2">&quot;A simple function task to convert daily to yearly figures&quot;</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">numpy</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">measurements</span><span class="p">)</span> <span class="o">-</span> <span class="n">average</span><span class="p">)</span>
+
+
+<span class="nd">@analysis</span><span class="p">(</span><span class="n">Weather</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">FloodAnalysis</span><span class="p">():</span>
+
+    <span class="n">record_time</span><span class="p">:</span> <span class="n">datetime</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;The time/date the recording was taken&quot;</span>
+        <span class="n">row_frequency</span><span class="o">=</span><span class="s1">&#39;recording&#39;</span><span class="p">)</span>
+    <span class="n">rain</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Daily rain measurements at different locations&quot;</span><span class="p">,</span>
+        <span class="n">row_frequency</span><span class="o">=</span><span class="s1">&#39;recording&#39;</span><span class="p">)</span>
+    <span class="n">avg_rainfall</span><span class="p">:</span> <span class="nb">float</span>  <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Average rainfall for a given location&quot;</span><span class="p">,</span>
+        <span class="n">row_frequency</span><span class="o">=</span><span class="s1">&#39;station&#39;</span><span class="p">)</span>
+    <span class="n">delta_rain</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+        <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Deviation from average rainfall for a given month&quot;</span>
+        <span class="n">row_frequency</span><span class="o">=</span><span class="s1">&#39;recording&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Pipeline is of &#39;per-station&#39; row_frequency due to row_frequency of output column</span>
+    <span class="c1"># &#39;avg_rainfall&#39;</span>
+    <span class="nd">@pipeline</span><span class="p">(</span><span class="n">avg_rainfall</span><span class="p">)</span>
+    <span class="c1"># &#39;rain&#39; arg is a lazy-field to a list[float] over all dates since the</span>
+    <span class="c1"># row_frequency of the &#39;rain&#39; column (&#39;recording&#39;) is higher than</span>
+    <span class="c1"># the pipeline&#39;s row_frequency (&#39;station&#39;)</span>
+    <span class="k">def</span> <span class="nf">average_rainfall_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wf</span><span class="p">:</span> <span class="n">pydra</span><span class="o">.</span><span class="n">Workflow</span><span class="p">,</span> <span class="n">rain</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">average</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s1">&#39;average_rain&#39;</span><span class="p">,</span>
+                <span class="n">measurements</span><span class="o">=</span><span class="n">rainfall</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">wf</span><span class="o">.</span><span class="n">average_rain</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out</span>
+
+    <span class="c1"># Pipeline is of &#39;per-recording&#39; row_frequency due to delta_rainfall</span>
+    <span class="c1"># output column</span>
+    <span class="nd">@pipeline</span><span class="p">(</span><span class="n">delta_rain</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">delta_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wf</span><span class="p">:</span> <span class="n">pydra</span><span class="o">.</span><span class="n">Workflow</span><span class="p">,</span> <span class="n">rain</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>  <span class="n">avg_rainfall</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+
+        <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">delta</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;delta_rain&quot;</span><span class="p">,</span>
+                <span class="n">measurements</span><span class="o">=</span><span class="n">rain</span><span class="p">,</span>
+                <span class="n">average</span><span class="o">=</span><span class="n">avg_rainfall</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">wf</span><span class="o">.</span><span class="n">delta_rain</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out</span>
+</pre></div>
+</div>
+</section>
+<section id="output-methods">
+<span id="analysis-outputs"></span><h3>Output methods<a class="headerlink" href="#output-methods" title="Permalink to this heading">#</a></h3>
+<p>“Output methods” take derivatives and produce the visualisations or tables to be
+included in publications or reports. Since these methods typically rely on
+graphical libraries, they are executed on the local workstation/row and
+therefore should not contain any heavy computations. The feature that
+differentiates them from a regular method is that they are accessible from the
+CLI</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>derive<span class="w"> </span>output<span class="w"> </span><span class="s1">&#39;/data/my-dataset&#39;</span><span class="w"> </span>connectivity_matrix_plot<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--save<span class="w"> </span><span class="s1">&#39;~/Documents/papers/my-connectivity-paper/&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--option<span class="w"> </span>figsize<span class="w"> </span><span class="m">10</span>,10
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">arcana.core.mark.output</span></code> decorator is used to specify an output method
+and the outputs that are generated by it. Output methods should take the
+directory to save the outputs in as its first argument and use keyword
+arguments for “options” of the method following that. The save directory
+should have a default of <code class="docutils literal notranslate"><span class="pre">None</span></code>, and display the results in the case that it
+isn’t provided.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">arcana.medimage.data</span> <span class="kn">import</span> <span class="n">Clinical</span>
+
+<span class="nd">@analysis</span><span class="p">(</span><span class="n">Clinical</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">ExampleAnalysis2</span><span class="p">():</span>
+
+    <span class="o">...</span>
+
+    <span class="nd">@output</span>
+    <span class="k">def</span> <span class="nf">connectivity_matrix_plot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save_dir</span><span class="p">:</span> <span class="nb">str</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">figsize</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span><span class="o">=</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">5</span><span class="p">)):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Plots the connectivity matrix as an image</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="bp">self</span><span class="p">[</span><span class="s1">&#39;connectivity_matrix&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">save_dir</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">save_dir</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="advanced">
+<h2>Advanced<a class="headerlink" href="#advanced" title="Permalink to this heading">#</a></h2>
+<p>In every software framework, there are always corner cases that are
+more complicated than the basic logic can handle. In designing
+informatics frameworks, these challenges often arise when attempting to write
+portable workflows, due to slight differences in the data and and end goals of
+the application. This is particularly true in academia, where novelty is a key
+criteria. To address these requirements, this section introduces some more
+complex concepts, which can be used to customise and combine analysis methods
+into powerful new classes: class inheritance (<a class="reference internal" href="#inheritance"><span class="std std-ref">Inheritance</span></a>),
+conditional pipelines (<a class="reference internal" href="#conditional-pipelines"><span class="std std-ref">Conditionals and switches</span></a>),
+quality-control checks (<a class="reference internal" href="#quality-control"><span class="std std-ref">Quality-control checks</span></a>) and sub-analyses (<a class="reference internal" href="#subanalyses"><span class="std std-ref">Sub-analyses</span></a>).</p>
+<section id="inheritance">
+<span id="id2"></span><h3>Inheritance<a class="headerlink" href="#inheritance" title="Permalink to this heading">#</a></h3>
+<p>Given a toy example analysis class that has two text-file source columns, <code class="docutils literal notranslate"><span class="pre">file1</span></code> and
+<code class="docutils literal notranslate"><span class="pre">file2</span></code>. The <code class="docutils literal notranslate"><span class="pre">concat_pipeline</span></code> builds a workflow that generates data for the sink
+column <code class="docutils literal notranslate"><span class="pre">concatenated</span></code> and can be modified by the <code class="docutils literal notranslate"><span class="pre">duplicates</span></code> parameter.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@analysis</span><span class="p">(</span><span class="n">Samples</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">Concat</span><span class="p">:</span>
+
+    <span class="c1"># Source columns</span>
+    <span class="n">file1</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span><span class="s2">&quot;an arbitrary text file&quot;</span><span class="p">)</span>
+    <span class="n">file2</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span><span class="s2">&quot;another arbitrary text file&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Sink columns</span>
+    <span class="n">concatenated</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span><span class="s2">&quot;the output of concatenating file1 and file2&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Parameters</span>
+    <span class="n">duplicates</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">parameter</span><span class="p">(</span>
+        <span class="s2">&quot;the number of times to duplicate the concatenation&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">1</span>
+    <span class="p">)</span>
+
+    <span class="nd">@pipeline</span><span class="p">(</span><span class="n">concatenated</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">concat_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wf</span><span class="p">,</span> <span class="n">file1</span><span class="p">:</span> <span class="n">Text</span><span class="p">,</span> <span class="n">file2</span><span class="p">:</span> <span class="n">Text</span><span class="p">,</span> <span class="n">duplicates</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Concatenates the contents of `file1` with the contents of `file2` to produce</span>
+<span class="sd">        a new text file. The concatenation can be repeated multiple times within</span>
+<span class="sd">        the produced text file by specifying the number of repeats to the `duplicates`</span>
+<span class="sd">        parameter</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">concatenate</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;concat&quot;</span><span class="p">,</span> <span class="n">in_file1</span><span class="o">=</span><span class="n">file1</span><span class="p">,</span> <span class="n">in_file2</span><span class="o">=</span><span class="n">file2</span><span class="p">,</span> <span class="n">duplicates</span><span class="o">=</span><span class="n">duplicates</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">wf</span><span class="o">.</span><span class="n">concat</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out</span>  <span class="c1"># Output Pydra LazyField for concatenated file</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">Concat</span></code> class can be subclassed to create the <code class="docutils literal notranslate"><span class="pre">ExtendedConcat</span></code> class, which adds
+one additional source column <code class="docutils literal notranslate"><span class="pre">file3</span></code> and another sink column <code class="docutils literal notranslate"><span class="pre">doubly_concatenated</span></code>.
+Data for <code class="docutils literal notranslate"><span class="pre">doubly_concatenated</span></code> is generated by the <code class="docutils literal notranslate"><span class="pre">doubly_concat_pipeline</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@analysis</span><span class="p">(</span><span class="n">Samples</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">ExtendedConcat</span><span class="p">(</span><span class="n">Concat</span><span class="p">):</span>
+
+    <span class="c1"># Source columns</span>
+    <span class="n">file3</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span><span class="s2">&quot;Another file to concatenate&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Sink columns</span>
+    <span class="n">concatenated</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">()</span>
+    <span class="n">doubly_concatenated</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span><span class="s2">&quot;The doubly concatenated file&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Parameters</span>
+    <span class="n">duplicates</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="nd">@pipeline</span><span class="p">(</span><span class="n">doubly_concatenated</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">doubly_concat_pipeline</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">wf</span><span class="p">,</span> <span class="n">concatenated</span><span class="p">:</span> <span class="n">Text</span><span class="p">,</span> <span class="n">file3</span><span class="p">:</span> <span class="n">Text</span><span class="p">,</span> <span class="n">duplicates</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">):</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">concatenate</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;concat&quot;</span><span class="p">,</span>
+                <span class="n">in_file1</span><span class="o">=</span><span class="n">concatenated</span><span class="p">,</span>
+                <span class="n">in_file2</span><span class="o">=</span><span class="n">file3</span><span class="p">,</span>
+                <span class="n">duplicates</span><span class="o">=</span><span class="n">duplicates</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">wf</span><span class="o">.</span><span class="n">concat</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out</span>
+</pre></div>
+</div>
+<p>Because the <code class="docutils literal notranslate"><span class="pre">concatenated</span></code> column and <code class="docutils literal notranslate"><span class="pre">duplicates</span></code> parameter are used in the
+<code class="docutils literal notranslate"><span class="pre">doubly_concat_pipeline</span></code>, they are explicitly referenced in the subclass using the
+<code class="docutils literal notranslate"><span class="pre">inherit_from</span></code> function. Note, that this is enforced due a design decision to make it
+clear where columns and parameters are defined when reading the code. Columns that
+aren’t explicitly referenced in the class (e.g. <code class="docutils literal notranslate"><span class="pre">file1</span></code> and <code class="docutils literal notranslate"><span class="pre">file2</span></code>) can be omitted
+from the subclass definition (but will still be present in the subclass). When
+explicitly inheriting columns and parameters it is possible to override their attributes,
+such as the default value for a given parameter (see <code class="docutils literal notranslate"><span class="pre">duplicates</span></code> in above example).</p>
+</section>
+<section id="conditionals-and-switches">
+<span id="conditional-pipelines"></span><h3>Conditionals and switches<a class="headerlink" href="#conditionals-and-switches" title="Permalink to this heading">#</a></h3>
+<p>There are cases where different analysis methods need to be applied depending on the
+requirements of a particular study or to deal with idiosyncrasies of a particular
+dataset. There are two mechanisms for handling such cases in Arcana: “condition
+expressions” and “switches”.</p>
+<p>Both condition expressions and switches are referenced within the <code class="docutils literal notranslate"><span class="pre">&#64;pipeline</span></code> decorator.
+When a condition expression or switch is set on a pipeline builder, that pipeline will
+be used to generate data for a sink column only when certain criteria are met. If the criteria
+aren’t met, then either the default pipeline builder (one without either a switch or
+condition expression) will be used if it is present or an “not produced” error will be
+raised instead.</p>
+<p>The difference between a condition expression and a switch is that a condition
+expression is true or false over a whole dataset given a specific parameterisation,
+whereas a switch can be true or false for different rows of the dataset depending on
+the nature of the input data.</p>
+<p>Condition expressions are specified as using the functions <code class="docutils literal notranslate"><span class="pre">value_of(parameter)</span></code>
+and <code class="docutils literal notranslate"><span class="pre">is_provided(column)</span></code> as placeholders for parameter values or whether a column
+specification in the analysis is linked to a column in the dataset or not. In the
+following example, a condition is used to enable the user whether <code class="docutils literal notranslate"><span class="pre">concatenated</span></code>
+should be generated by the <code class="docutils literal notranslate"><span class="pre">concat_pipeline</span></code> method (default) or
+the <code class="docutils literal notranslate"><span class="pre">reverse_concat_pipeline</span></code> by setting the value of the <code class="docutils literal notranslate"><span class="pre">order</span></code> parameter.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@analysis</span><span class="p">(</span><span class="n">Samples</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">OverridenConcat</span><span class="p">(</span><span class="n">Concat</span><span class="p">):</span>
+
+    <span class="c1"># Source columns</span>
+    <span class="n">file1</span><span class="p">:</span> <span class="n">Zip</span><span class="p">[</span><span class="n">Text</span><span class="p">]</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">()</span>
+    <span class="n">file2</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">()</span>
+
+    <span class="c1"># Sinks columns</span>
+    <span class="n">concatenated</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">()</span>
+
+    <span class="c1"># Parameters</span>
+    <span class="n">duplicates</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># default value changed because we can</span>
+    <span class="n">order</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">parameter</span><span class="p">(</span>
+        <span class="s2">&quot;perform the concatenation in reverse order, i.e. file2 and then file1&quot;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;forward&quot;</span><span class="p">,</span> <span class="s2">&quot;reversed&quot;</span><span class="p">],</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;forward&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="nd">@pipeline</span><span class="p">(</span>
+        <span class="n">concatenated</span><span class="p">,</span>
+        <span class="n">condition</span><span class="o">=</span><span class="p">(</span><span class="n">value_of</span><span class="p">(</span><span class="n">order</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;reversed&quot;</span><span class="p">),</span>
+    <span class="p">)</span>
+    <span class="k">def</span> <span class="nf">reverse_concat_pipeline</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">wf</span><span class="p">,</span> <span class="n">file1</span><span class="p">:</span> <span class="n">Text</span><span class="p">,</span> <span class="n">file2</span><span class="p">:</span> <span class="n">Text</span><span class="p">,</span> <span class="n">duplicates</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">):</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">concatenate_reverse</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;concat&quot;</span><span class="p">,</span> <span class="n">in_file1</span><span class="o">=</span><span class="n">file1</span><span class="p">,</span> <span class="n">in_file2</span><span class="o">=</span><span class="n">file2</span><span class="p">,</span> <span class="n">duplicates</span><span class="o">=</span><span class="n">duplicates</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">wf</span><span class="o">.</span><span class="n">concat</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out</span>
+</pre></div>
+</div>
+<p>Switches are defined in methods of the analysis class using the <code class="docutils literal notranslate"><span class="pre">&#64;switch</span></code> decorator
+and are similar pipeline builders in that they add nodes to a Pydra workflow passed to the
+first argument. The sole output field of a switch must contain either be a boolean or
+string, which specifies which branch of processing is to be performed. The switch
+method is then passed to the <code class="docutils literal notranslate"><span class="pre">&#64;pipeline</span></code> decorator via the <code class="docutils literal notranslate"><span class="pre">switch</span></code> keyword. If
+the switch returns a string then the value passed to the <code class="docutils literal notranslate"><span class="pre">switch</span></code> keyword must be
+tuple, with the first element the switch method and the second the value of the string
+that will activate that branch of the pipeline to be run.</p>
+<p>In the following example, the contents of the files in the <code class="docutils literal notranslate"><span class="pre">concatenated</span></code> column are
+multiplied the value passed to the arbitrary <code class="docutils literal notranslate"><span class="pre">multiplier</span></code> parameter if the contents of
+the input files <code class="docutils literal notranslate"><span class="pre">file1</span></code> and <code class="docutils literal notranslate"><span class="pre">file2</span></code> are numeric for the corresponding row as
+determined by the <code class="docutils literal notranslate"><span class="pre">inputs_are_numeric</span></code> switch.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@analysis</span><span class="p">(</span><span class="n">Samples</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">ConcatWithSwitch</span><span class="p">(</span><span class="n">Concat</span><span class="p">):</span>
+
+    <span class="c1"># Source columns</span>
+    <span class="n">file1</span><span class="p">:</span> <span class="n">Zip</span><span class="p">[</span><span class="n">Text</span><span class="p">]</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">()</span>
+    <span class="n">file2</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">()</span>
+
+    <span class="c1"># Sink columns</span>
+    <span class="n">concatenated</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">()</span>
+    <span class="n">multiplied</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span><span class="s2">&quot;contents of the concatenated files are multiplied&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Parameters</span>
+    <span class="n">multiplier</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">parameter</span><span class="p">(</span>
+        <span class="s2">&quot;the multiplier used to apply&quot;</span><span class="p">,</span> <span class="n">salience</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">arbitrary</span>
+    <span class="p">)</span>
+
+    <span class="nd">@switch</span>
+    <span class="k">def</span> <span class="nf">inputs_are_numeric</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wf</span><span class="p">,</span> <span class="n">file1</span><span class="p">:</span> <span class="n">Text</span><span class="p">,</span> <span class="n">file2</span><span class="p">:</span> <span class="n">Text</span><span class="p">):</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">contents_are_numeric</span><span class="p">(</span><span class="n">in_file</span><span class="o">=</span><span class="n">file1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;check_file1&quot;</span><span class="p">))</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">contents_are_numeric</span><span class="p">(</span><span class="n">in_file</span><span class="o">=</span><span class="n">file2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;check_file2&quot;</span><span class="p">))</span>
+
+        <span class="nd">@pydra</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">task</span>
+        <span class="k">def</span> <span class="nf">boolean_and</span><span class="p">(</span><span class="n">val1</span><span class="p">,</span> <span class="n">val2</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">val1</span> <span class="ow">and</span> <span class="n">val2</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">boolean_and</span><span class="p">(</span>
+                <span class="n">val1</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">check_file1</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">val2</span><span class="o">=</span><span class="n">wf</span><span class="o">.</span><span class="n">check_file2</span><span class="o">.</span><span class="n">out</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;bool_and&quot;</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">wf</span><span class="o">.</span><span class="n">bool_and</span><span class="o">.</span><span class="n">out</span>
+
+    <span class="nd">@pipeline</span><span class="p">(</span><span class="n">multiplied</span><span class="p">,</span> <span class="n">switch</span><span class="o">=</span><span class="n">inputs_are_numeric</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">multiply_pipeline</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wf</span><span class="p">,</span> <span class="n">concatenated</span><span class="p">,</span> <span class="n">multiplier</span><span class="p">):</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">multiply_contents</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">&quot;concat&quot;</span><span class="p">,</span> <span class="n">in_file</span><span class="o">=</span><span class="n">concatenated</span><span class="p">,</span> <span class="n">multiplier</span><span class="o">=</span><span class="n">multiplier</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">wf</span><span class="o">.</span><span class="n">concat</span><span class="o">.</span><span class="n">lzout</span><span class="o">.</span><span class="n">out</span>
+</pre></div>
+</div>
+</section>
+<section id="quality-control-checks">
+<span id="quality-control"></span><h3>Quality-control checks<a class="headerlink" href="#quality-control-checks" title="Permalink to this heading">#</a></h3>
+<p>When running complex analyses it is important to inspect generated derivatives
+to make sure the workflows completed properly. In Arcana, it is possible to semi-automate
+this process by adding quality-control “checks” to an analysis class.</p>
+<p>In the following example the number of lines produced by the concatation step is checked
+to see if it matches the number expected given the value of the <code class="docutils literal notranslate"><span class="pre">duplicates</span></code> parameter.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@analysis</span><span class="p">(</span><span class="n">Samples</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">ConcatWithCheck</span><span class="p">(</span><span class="n">Concat</span><span class="p">):</span>
+
+    <span class="c1"># Sink columns</span>
+    <span class="n">concatenated</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">()</span>
+
+    <span class="c1"># Parameters</span>
+    <span class="n">duplicates</span> <span class="o">=</span> <span class="n">inherit</span><span class="p">()</span>
+
+    <span class="nd">@check</span><span class="p">(</span><span class="n">concatenated</span><span class="p">,</span> <span class="n">salience</span><span class="o">=</span><span class="n">CheckSalience</span><span class="o">.</span><span class="n">recommended</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">check_file3</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">wf</span><span class="p">,</span> <span class="n">concatenated</span><span class="p">:</span> <span class="n">Text</span><span class="p">,</span> <span class="n">duplicates</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Checks the number of lines in the concatenated file to see whether they</span>
+<span class="sd">        match what is expected for the number of duplicates specified&quot;&quot;&quot;</span>
+        <span class="nd">@pydra</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">task</span>
+        <span class="k">def</span> <span class="nf">num_lines_equals</span><span class="p">(</span><span class="n">in_file</span><span class="p">,</span> <span class="n">num_lines</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">in_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">contents</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">contents</span><span class="o">.</span><span class="n">splitlines</span><span class="p">())</span> <span class="o">==</span> <span class="n">num_lines</span><span class="p">:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="n">CheckStatus</span><span class="o">.</span><span class="n">probable_pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="n">CheckStatus</span><span class="o">.</span><span class="n">failed</span>
+            <span class="k">return</span> <span class="n">status</span>
+
+        <span class="n">wf</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+            <span class="n">num_lines_equals</span><span class="p">(</span>
+                <span class="n">in_file</span><span class="o">=</span><span class="n">concatenated</span><span class="p">,</span> <span class="n">num_lines</span><span class="o">=</span><span class="mi">2</span> <span class="o">*</span> <span class="n">duplicates</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;num_lines_check&quot;</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">wf</span><span class="o">.</span><span class="n">num_lines_check</span><span class="o">.</span><span class="n">out</span>
+</pre></div>
+</div>
+</section>
+<section id="sub-analyses">
+<span id="subanalyses"></span><h3>Sub-analyses<a class="headerlink" href="#sub-analyses" title="Permalink to this heading">#</a></h3>
+<p>When dealing with separate data streams that can be largely analysed in parallel
+(e.g. multiple MRI contrasts), it can be convenient to combine multiple analyses tailored
+to each stream into a single conglomerate analysis. This pattern can implemented in
+Arcana using <code class="docutils literal notranslate"><span class="pre">subanalysis</span></code> attributes.</p>
+<p>The type annotation of the <code class="docutils literal notranslate"><span class="pre">subanalysis</span></code> attribute specifies the analysis to be performed,
+and the keyword arguments of specify mappings from the column specs and parameters
+in the global namespace of the outer class to the namespace of the subanalysis. With these
+mappings, source columns linked to specs in the global namespace can be passed to
+the subanalysis, and sink columns generated by pipelines in the global namespace
+can be linked to any column within the subanalysis.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">mapped_from</span></code> function is used to map columns and parameters from subanalyses into
+the global namespace, and takes two arguments, the name of the subanalysis and the name
+of the column/parameter to map. By mapping a column/parameter into the global namespace
+from one subanalysis and then mapping it back into another subanalysis the designer
+can be stitched together. For example, the cortical surface reconstruction column from
+a subanalysis for analysing anatomical MRI images could be mapped to a source column
+in another subanalysis for analysing white matter tracts diffusion-weighted contrast
+MRI images in order to constrain the potential endpoints of the tracts.</p>
+<p>In the following example, two of the classes defined above, <code class="docutils literal notranslate"><span class="pre">ExtendedConcat</span></code> and
+<code class="docutils literal notranslate"><span class="pre">ConcatWithSwitch</span></code> are stitched together, so that the <code class="docutils literal notranslate"><span class="pre">multiplied</span></code> output column of
+<code class="docutils literal notranslate"><span class="pre">ConcatWithSwitch</span></code> is passed to the <code class="docutils literal notranslate"><span class="pre">file3</span></code> input column of <code class="docutils literal notranslate"><span class="pre">ExtendedConcat</span></code>.
+The <code class="docutils literal notranslate"><span class="pre">duplicates</span></code> parameter in each subanalysis are linked together so they are always
+consistent by mapping it from the <code class="docutils literal notranslate"><span class="pre">ExtendedConcat</span></code> subanalysis to the global namespace
+and then back into the <code class="docutils literal notranslate"><span class="pre">ConcatWithSwitch</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@analysis</span><span class="p">(</span><span class="n">Samples</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">_ConcatWithSubanalyses</span><span class="p">:</span>
+
+    <span class="c1"># Source columns mapped from &quot;sub1&quot; subanalysis so they can be shared across</span>
+    <span class="c1"># both sub-analyses. Note that they could just as easily have been mapped from</span>
+    <span class="c1"># &quot;sub1&quot; or recreated from scratch and mapped into both</span>
+    <span class="n">file1</span> <span class="o">=</span> <span class="n">map_from</span><span class="p">(</span><span class="s2">&quot;sub1&quot;</span><span class="p">,</span> <span class="s2">&quot;file1&quot;</span><span class="p">)</span>
+    <span class="n">file2</span> <span class="o">=</span> <span class="n">map_from</span><span class="p">(</span><span class="s2">&quot;sub1&quot;</span><span class="p">,</span> <span class="s2">&quot;file2&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Sink columns generated within the subanalyses mapped back out to the global</span>
+    <span class="c1"># namespace so they can be mapped into the other subanalysis</span>
+    <span class="n">concat_and_multiplied</span> <span class="o">=</span> <span class="n">map_from</span><span class="p">(</span><span class="s2">&quot;sub2&quot;</span><span class="p">,</span> <span class="s2">&quot;multiplied&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Link the duplicates parameter across both subanalyses so it is always the same</span>
+    <span class="c1"># by mapping a global parameter into both subanalyses</span>
+    <span class="n">common_duplicates</span> <span class="o">=</span> <span class="n">map_from</span><span class="p">(</span>
+        <span class="s2">&quot;sub1&quot;</span><span class="p">,</span> <span class="s2">&quot;duplicates&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">salience</span><span class="o">=</span><span class="n">ps</span><span class="o">.</span><span class="n">check</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Additional parameters such as &quot;multiplier&quot; can be accessed within the subanalysis</span>
+    <span class="c1"># class after the analysis class has been initialised using the &#39;sub2.multiplier&#39;</span>
+
+    <span class="n">sub1</span><span class="p">:</span> <span class="n">ExtendedConcat</span> <span class="o">=</span> <span class="n">subanalysis</span><span class="p">(</span>
+        <span class="s2">&quot;sub-analysis to add the &#39;doubly_concat&#39; pipeline&quot;</span><span class="p">,</span>
+        <span class="c1"># Feed the multiplied sink column from sub2 into the source column file3 of</span>
+        <span class="c1"># the extended class</span>
+        <span class="n">file3</span><span class="o">=</span><span class="n">concat_and_multiplied</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">sub2</span><span class="p">:</span> <span class="n">ConcatWithSwitch</span> <span class="o">=</span> <span class="n">subanalysis</span><span class="p">(</span>
+        <span class="s2">&quot;sub-analysis to add the &#39;multiply&#39; pipeline&quot;</span><span class="p">,</span>
+        <span class="n">file1</span><span class="o">=</span><span class="n">file1</span><span class="p">,</span>
+        <span class="n">file2</span><span class="o">=</span><span class="n">file2</span><span class="p">,</span>
+        <span class="c1"># Use the concatenated generated by sub1 to avoid running it twice</span>
+        <span class="n">duplicates</span><span class="o">=</span><span class="n">common_duplicates</span><span class="p">,</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="adding_formats.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">New formats and spaces</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="contributing.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Contributing</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2023, Thomas G. Close
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Designing Analyses</a><ul>
+<li><a class="reference internal" href="#basics">Basics</a><ul>
+<li><a class="reference internal" href="#datacolumn-and-parameter-specification">DataColumn and parameter specification</a></li>
+<li><a class="reference internal" href="#pipeline-builders">Pipeline builders</a></li>
+<li><a class="reference internal" href="#output-methods">Output methods</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#advanced">Advanced</a><ul>
+<li><a class="reference internal" href="#inheritance">Inheritance</a></li>
+<li><a class="reference internal" href="#conditionals-and-switches">Conditionals and switches</a></li>
+<li><a class="reference internal" href="#quality-control-checks">Quality-control checks</a></li>
+<li><a class="reference internal" href="#sub-analyses">Sub-analyses</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/scripts/furo.js"></script>
+    </body>
+</html>
