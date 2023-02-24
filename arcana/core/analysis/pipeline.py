@@ -20,7 +20,7 @@ from arcana.core.exceptions import (
 from fileformats.core.base import DataType, FileSet
 from fileformats.field import Field
 from fileformats.core.exceptions import FormatConversionError
-import arcana.core.data.set
+import arcana.core.data.set.base
 import arcana.core.data.row
 from ..data.space import DataSpace
 from ..utils.misc import (
@@ -118,7 +118,7 @@ class Pipeline:
     converter_args: ty.Dict[str, dict] = attrs.field(
         factory=dict, converter=attrs.converters.default_if_none(factory=dict)
     )
-    dataset: arcana.core.data.set.Dataset = attrs.field(
+    dataset: arcana.core.data.set.base.Dataset = attrs.field(
         metadata={"asdict": False}, default=None, eq=False, hash=False
     )
 
@@ -275,7 +275,7 @@ class Pipeline:
             func_task(
                 source_items,
                 in_fields=[
-                    ("dataset", arcana.core.data.set.Dataset),
+                    ("dataset", arcana.core.data.set.base.Dataset),
                     ("row_frequency", DataSpace),
                     ("id", str),
                     ("inputs", ty.List[PipelineField]),
@@ -405,7 +405,7 @@ class Pipeline:
                 sink_items,
                 in_fields=(
                     [
-                        ("dataset", arcana.core.data.set.Dataset),
+                        ("dataset", arcana.core.data.set.base.Dataset),
                         ("row_frequency", DataSpace),
                         ("id", str),
                         ("provenance", ty.Dict[str, ty.Any]),
@@ -560,7 +560,7 @@ def split_side_car_suffix(name):
 @pydra.mark.task
 @pydra.mark.annotate({"return": {"ids": ty.List[str], "cant_process": ty.List[str]}})
 def to_process(
-    dataset: arcana.core.data.set.Dataset,
+    dataset: arcana.core.data.set.base.Dataset,
     row_frequency: DataSpace,
     outputs: ty.List[PipelineField],
     requested_ids: ty.Union[list[str], None],
@@ -586,7 +586,7 @@ def to_process(
 
 
 def source_items(
-    dataset: arcana.core.data.set.Dataset,
+    dataset: arcana.core.data.set.base.Dataset,
     row_frequency: DataSpace,
     id: str,
     inputs: ty.List[PipelineField],

@@ -2,7 +2,7 @@ from pathlib import Path
 import logging
 import cloudpickle as cp
 import click
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from arcana.core.utils.misc import set_loggers
 from .base import cli
 
@@ -121,7 +121,10 @@ if __name__ == "__main__":
     runner.invoke(
         show_errors,
         [
-            "/Users/tclose/Downloads/892d1907-fe2b-40ac-9b77-a3f2ee21ca76/pipeline-cache/Workflow_f3a2bb7474848840aec86fd87e88f5938217fae5976fc699bfc993d95d48a3b8"
+            (
+                "/Users/tclose/Downloads/892d1907-fe2b-40ac-9b77-a3f2ee21ca76/pipeline-cache/"
+                "Workflow_f3a2bb7474848840aec86fd87e88f5938217fae5976fc699bfc993d95d48a3b8"
+            )
         ],
         catch_exceptions=False,
     )

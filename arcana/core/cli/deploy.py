@@ -17,7 +17,7 @@ from arcana.core.utils.serialize import (
 )
 from arcana.core.deploy.image import Metapackage, App
 from arcana.core.exceptions import ArcanaBuildError
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.utils.misc import extract_file_from_docker_image, DOCKER_HUB
 from .base import cli
@@ -597,7 +597,7 @@ def install_license(install_locations, license_name, source_file, logfile, logle
         source_file = Path(source_file.decode("utf-8"))
 
     if not install_locations:
-        install_locations = ["file"]
+        install_locations = ["dirtree"]
 
     for install_loc in install_locations:
         if "//" in install_loc:

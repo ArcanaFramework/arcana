@@ -179,7 +179,7 @@ info_url: https://example.com
 description: >-
   a test of the YAML join functionality
 command:
-  task: arcana.testing.analysis.tasks:identity_file
+  task: arcana.testing.tasks:identity_file
   row_frequency: common:Samples[sample]
   inputs:
     in_file:
@@ -214,7 +214,7 @@ a test of the YAML join functionality
 ## Command
 |Key|Value|
 |---|-----|
-|Task|arcana.testing.analysis.tasks:identity_file|
+|Task|arcana.testing.tasks:identity_file|
 |Operates on|sample|
 #### Inputs
 |Name|Required data-type|Default column data-type|Description|
@@ -284,7 +284,7 @@ command:
         datatype: fileformats.medimage:NiftiGzX
         help_string: "functional MRI"
         configuration:
-          path: func/task-rest_bold
+          path: func/bold/task=rest
         default_column:
           datatype: fileformats.medimage:Dicom
     outputs:

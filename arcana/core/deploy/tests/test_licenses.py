@@ -7,9 +7,9 @@ import docker.errors
 from arcana.core.utils.misc import show_cli_trace
 from arcana.core.cli.deploy import make_app, install_license
 from arcana.core.deploy.image import App
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from arcana.core.data import Samples
-from arcana.file_system import DirTree
+from arcana.dirtree import DirTree
 
 
 def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_runner):
@@ -57,7 +57,7 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
     assert result.stdout.strip().splitlines()[-1] == image_tag
 
     args = (
-        "file///dataset "
+        "dirtree///dataset "
         f"--input {LICENSE_INPUT_FIELD} '{LICENSE_INPUT_PATH}' "
         f"--output {LICENSE_OUTPUT_FIELD} '{LICENSE_OUTPUT_PATH}' "
         f"--parameter {LICENSE_PATH_PARAM} '{LICENSE_PATH}' "
@@ -100,9 +100,7 @@ def test_site_runtime_license(license_file, work_dir, cli_runner):
         # Save it into the new home directory
         dataset = make_dataset(dataset_dir)
 
-        result = cli_runner(
-            install_license, args=[LICENSE_NAME, str(license_file), "file"]
-        )
+        result = cli_runner(install_license, args=[LICENSE_NAME, str(license_file)])
         assert result.exit_code == 0, show_cli_trace(result)
 
         pipeline_image.command.execute(
@@ -170,7 +168,7 @@ def get_pipeline_image(license_path) -> App:
             }
         },
         command={
-            "task": "arcana.testing.analysis.tasks:check_license",
+            "task": "arcana.testing.tasks:check_license",
             "row_frequency": "core:Samples[sample]",
             "inputs": [
                 {
@@ -209,7 +207,7 @@ def make_dataset(dataset_dir) -> Dataset:
     with open(contents_dir / (LICENSE_INPUT_PATH + ".txt"), "w") as f:
         f.write(LICENSE_CONTENTS)
 
-    dataset = DirTree().new_dataset(dataset_dir, space=Samples)
+    dataset = DirTree().define_dataset(dataset_dir, space=Samples)
     dataset.save()
     return dataset
 

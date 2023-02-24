@@ -2,6 +2,7 @@ from __future__ import annotations
 import typing as ty
 import attrs
 from fileformats.core.base import DataType
+from arcana.core.exceptions import ArcanaDataMatchError
 from .quality import DataQuality
 
 if ty.TYPE_CHECKING:
@@ -98,12 +99,23 @@ class DataEntry:
 
     @property
     def item(self) -> DataType:
-        return self.datatype(self.row.dataset.store.get(self))
+        return self.get_item()
 
     @item.setter
     def item(self, item):
-        item = self.datatype(item)
+        if isinstance(item, DataType):
+            if not type(item).is_subtype_of(self.datatype):
+                raise ArcanaDataMatchError(
+                    f"Cannot put {item} into {self.datatype} entry of {self.row}"
+                )
+        else:
+            item = self.datatype(item)
         self.row.dataset.store.put(self, item)
+
+    def get_item(self, datatype=None):
+        if datatype is None:
+            datatype = self.datatype
+        return self.row.dataset.store.get(self, datatype)
 
     @property
     def recorded_checksums(self):

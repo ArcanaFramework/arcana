@@ -1,7 +1,7 @@
 from pathlib import Path
 import cloudpickle as cp
 from pydra import mark, Workflow
-from arcana.core.data.set import Dataset
+from arcana.core.data.set.base import Dataset
 from arcana.core.utils.serialize import asdict, fromdict
 
 

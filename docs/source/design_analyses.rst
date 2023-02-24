@@ -265,7 +265,7 @@ CLI
 
 .. code-block:: console
 
-    $ arcana derive output 'file///data/my-dataset' connectivity_matrix_plot \
+    $ arcana derive output '/data/my-dataset' connectivity_matrix_plot \
       --save '~/Documents/papers/my-connectivity-paper/' \
       --option figsize 10,10
 

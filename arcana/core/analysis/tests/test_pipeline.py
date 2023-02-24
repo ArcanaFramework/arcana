@@ -3,10 +3,10 @@ import tempfile
 from pathlib import Path
 from fileformats.text import Plain as Text
 from fileformats.archive import Zip
-from arcana.testing.data.space import TestDataSpace
-from arcana.file_system.data import FlatDir
+from arcana.testing import TestDataSpace
+from arcana.dirtree import DirTree
 from conftest import TEST_DATASET_BLUEPRINTS
-from arcana.testing.analysis.tasks import concatenate
+from arcana.testing.tasks import concatenate
 
 
 def test_pipeline(flat_dir_store, work_dir):
@@ -37,7 +37,7 @@ def test_pipeline(flat_dir_store, work_dir):
         assert contents == "\n".join(["file1.txt", "file2.txt"] * 2)
 
 
-def test_pipeline_with_implicit_conversion(flat_dir_store: FlatDir, work_dir):
+def test_pipeline_with_implicit_conversion(flat_dir_store: DirTree, work_dir):
     """Input files are converted from zip to Text, concatenated and then
     written back as zip files into the data store"""
     dataset = flat_dir_store.make_test_dataset(
@@ -58,7 +58,7 @@ def test_pipeline_with_implicit_conversion(flat_dir_store: FlatDir, work_dir):
 
     IDS = ["a0b0c0d0", "a0b0c0d1"]
 
-    with dataset.cache:
+    with dataset.tree:
         workflow = pipeline(cache_dir=work_dir / "pipeline-cache")
         workflow(ids=IDS, plugin="serial")
 

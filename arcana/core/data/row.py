@@ -14,7 +14,7 @@ from .entry import DataEntry
 
 
 if ty.TYPE_CHECKING:
-    from .set import Dataset
+    from .set.base import Dataset
 
 
 @attrs.define(auto_detect=True)
@@ -31,14 +31,21 @@ class DataRow:
         The frequency of the row
     dataset : Dataset
         A reference to the root of the data tree
+    uri : str, optional
+        a URI for the row, can be set and used by the data store implementation if
+        appropriate, by default None
     """
 
     ids: ty.Dict[DataSpace, str] = attrs.field()
     frequency: DataSpace = attrs.field()
     dataset: Dataset = attrs.field(repr=False)
+    uri: str = None
+    metadata: dict = None
+
+    # Automatically populated fields
     children: ty.DefaultDict[
         DataSpace, dict[ty.Union[str, tuple[str]], str]
-    ] = attrs.field(factory=lambda: defaultdict(dict), repr=False)
+    ] = attrs.field(factory=lambda: defaultdict(dict), repr=False, init=False)
     _entries_dict: dict[str, DataEntry] = attrs.field(
         default=None, init=False, repr=False
     )
@@ -95,17 +102,19 @@ class DataRow:
                 f"frequency and therefore not in rows of {self.frequency}"
                 " frequency",
             )
-        return DataCell.intersection(column=column, row=self, allow_empty=allow_empty)
+        cell = DataCell.intersection(column=column, row=self, allow_empty=allow_empty)
+        self._cells[column_name] = cell
+        return cell
 
     def cells(self, allow_empty: bool = None) -> ty.Iterable[DataCell]:
-        for column in self.dataset.columns:
-            yield self.cell(column.name, allow_empty=allow_empty)
+        for column_name in self.dataset.columns:
+            yield self.cell(column_name, allow_empty=allow_empty)
 
     @property
     def entries(self) -> ty.Iterable[DataEntry]:
         if self._entries_dict is None:
             self._entries_dict = {}
-            self.dataset.store.populate_row(self)
+            self.dataset.store.scan_row(self)
         return self._entries_dict.values()
 
     def __repr__(self):

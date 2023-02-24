@@ -17,7 +17,7 @@ def test_derive_cli(saved_dataset, concatenate_task, cli_runner):
         [
             saved_dataset.locator,
             "a_pipeline",
-            "arcana.testing.analysis.tasks:" + concatenate_task.__name__,
+            "arcana.testing.tasks:" + concatenate_task.__name__,
             "--source",
             "file1",
             "in_file1",
