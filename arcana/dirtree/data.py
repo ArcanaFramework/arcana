@@ -70,7 +70,7 @@ class DirTree(LocalStore):
             tree_path = tuple(Path(dpath).relative_to(tree.dataset_id).parts)
             if len(tree_path) != len(tree.hierarchy):
                 continue
-            if special_dir_re.match(tree_path[-1]):
+            if self.ARCANA_DIR in tree_path:
                 continue
             tree.add_leaf(tree_path)
 
@@ -82,30 +82,54 @@ class DirTree(LocalStore):
         row : DataRow
             the data row to populate
         """
+
+        def filter_entry_dir(entry_dir):
+            entry_name = entry_dir.name
+            for subpath in entry_dir.iterdir():
+                if (
+                    not entry_name.startswith(".")
+                    and entry_name != self.ARCANA_DIR
+                    and entry_name not in (self.FIELDS_FNAME, self.FIELDS_PROV_FNAME)
+                    and not entry_name.endswith(self.PROV_SUFFIX)
+                ):
+                    yield subpath
+
+        def add_field_entries(entry_dir, prefix=None):
+            fields_json = entry_dir / self.FIELDS_FNAME
+            try:
+                with open(fields_json) as f:
+                    fields_dict = json.load(f)
+            except FileNotFoundError:
+                pass
+            else:
+                for name in fields_dict:
+                    row.add_entry(
+                        path=(prefix + name if prefix else name),
+                        datatype=Field,
+                        uri=str(fields_json) + "::" + name,
+                    )
+
         row_dir = Path(row.dataset.id) / self._row_relpath(row)
         if not row_dir.exists():
             return
         # Filter contents of directory to omit fields JSON and provenance
-        for entry_path in row_dir.iterdir():
-            if (
-                not entry_path.name.startswith(".")
-                and entry_path.name not in (self.FIELDS_FNAME, self.FIELDS_PROV_FNAME)
-                and not entry_path.name.endswith(self.PROV_SUFFIX)
-            ):
-                row.add_entry(
-                    path=str(entry_path.relative_to(row_dir)),
-                    datatype=FileSet,
-                    uri=str(entry_path),
-                )
-        # Add fields
-        try:
-            with open(row_dir / self.FIELDS_FNAME) as f:
-                fields_dict = json.load(f)
-        except FileNotFoundError:
-            pass
-        else:
-            for name in fields_dict:
-                row.add_entry(path=name, datatype=Field, uri=None)
+        for entry_path in filter_entry_dir(row_dir):
+            row.add_entry(
+                path=str(entry_path.relative_to(row_dir)),
+                datatype=FileSet,
+                uri=str(entry_path),
+            )
+        add_field_entries(row_dir)
+        deriv_dir = row_dir / self.ARCANA_DIR
+        if deriv_dir.exists():
+            for namespace_dir in deriv_dir.iterdir():
+                for entry_path in filter_entry_dir(namespace_dir):
+                    row.add_entry(
+                        path="@" + str(entry_path.relative_to(deriv_dir)),
+                        datatype=FileSet,
+                        uri=str(entry_path),
+                    )
+                add_field_entries(namespace_dir, prefix=f"@{namespace_dir.name}/")
 
     def get_field(self, entry: DataEntry, datatype: type) -> Field:
         fspath, key = self._fields_fspath_and_key(entry)
