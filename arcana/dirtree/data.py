@@ -51,10 +51,9 @@ class DirTree(LocalStore):
     # Abstract-method implementations
     #################################
 
-    def scan_tree(self, tree: DataTree):
+    def populate_tree(self, tree: DataTree):
         """
-        Find all rows within the dataset stored in the store and
-        populate the data tree within the dataset
+        Scans the data present in the dataset and populates the data tree with nodes
 
         Parameters
         ----------
@@ -70,42 +69,66 @@ class DirTree(LocalStore):
             tree_path = tuple(Path(dpath).relative_to(tree.dataset_id).parts)
             if len(tree_path) != len(tree.hierarchy):
                 continue
-            if special_dir_re.match(tree_path[-1]):
+            if self.ARCANA_DIR in tree_path:
                 continue
             tree.add_leaf(tree_path)
 
-    def scan_row(self, row: DataRow):
-        """Scans a data row and populates it with entries
+    def populate_row(self, row: DataRow):
+        """Scans the node in the data tree corresponding to the data row and populates
+        the row with data entries found in the tree node
 
         Parameters
         ----------
         row : DataRow
             the data row to populate
         """
+
+        def filter_entry_dir(entry_dir):
+            for subpath in entry_dir.iterdir():
+                entry_name = subpath.name
+                if (
+                    not entry_name.startswith(".")
+                    and entry_name != self.ARCANA_DIR
+                    and entry_name not in (self.FIELDS_FNAME, self.FIELDS_PROV_FNAME)
+                    and not entry_name.endswith(self.PROV_SUFFIX)
+                ):
+                    yield subpath
+
+        def add_field_entries(entry_dir, prefix=None):
+            fields_json = entry_dir / self.FIELDS_FNAME
+            try:
+                with open(fields_json) as f:
+                    fields_dict = json.load(f)
+            except FileNotFoundError:
+                pass
+            else:
+                for name in fields_dict:
+                    row.add_entry(
+                        path=(prefix + name if prefix else name),
+                        datatype=Field,
+                        uri=str(fields_json.relative_to(row.dataset.id)) + "::" + name,
+                    )
+
         row_dir = Path(row.dataset.id) / self._row_relpath(row)
-        if not row_dir.exists():
-            return
-        # Filter contents of directory to omit fields JSON and provenance
-        for entry_path in row_dir.iterdir():
-            if (
-                not entry_path.name.startswith(".")
-                and entry_path.name not in (self.FIELDS_FNAME, self.FIELDS_PROV_FNAME)
-                and not entry_path.name.endswith(self.PROV_SUFFIX)
-            ):
+        if row_dir.exists():
+            # Filter contents of directory to omit fields JSON and provenance
+            for entry_path in filter_entry_dir(row_dir):
                 row.add_entry(
                     path=str(entry_path.relative_to(row_dir)),
                     datatype=FileSet,
-                    uri=str(entry_path),
+                    uri=str(entry_path.relative_to(row.dataset.id)),
                 )
-        # Add fields
-        try:
-            with open(row_dir / self.FIELDS_FNAME) as f:
-                fields_dict = json.load(f)
-        except FileNotFoundError:
-            pass
-        else:
-            for name in fields_dict:
-                row.add_entry(path=name, datatype=Field, uri=None)
+            add_field_entries(row_dir)
+        deriv_dir = Path(row.dataset.id) / self._row_relpath(row, derivatives=True)
+        if deriv_dir.exists():
+            for namespace_dir in deriv_dir.iterdir():
+                for entry_path in filter_entry_dir(namespace_dir):
+                    row.add_entry(
+                        path="@" + str(entry_path.relative_to(deriv_dir)),
+                        datatype=FileSet,
+                        uri=str(entry_path.relative_to(row.dataset.id)),
+                    )
+                add_field_entries(namespace_dir, prefix=f"@{namespace_dir.name}/")
 
     def get_field(self, entry: DataEntry, datatype: type) -> Field:
         fspath, key = self._fields_fspath_and_key(entry)
@@ -163,11 +186,29 @@ class DirTree(LocalStore):
         fileset: FileSet
             the file set stored or to be stored
         """
-        path = path.lstrip("@")  # We don't put derivatives anywhere special
-        return str(self._row_relpath(row).joinpath(*path.split("/"))) + datatype.ext
+        is_derivative = path.startswith("@")
+        row_dir = self._row_relpath(row, derivatives=is_derivative)
+        path_parts = path.lstrip("@").split("/")
+        if is_derivative and len(path_parts) != 2:
+            raise ArcanaUsageError(
+                "Dataset namespace is required for derivative paths (i.e. paths starting "
+                f"with '@2), provided {path})"
+            )
+        return str(row_dir.joinpath(*path_parts)) + datatype.ext
 
     def field_uri(self, path: str, datatype: type, row: DataRow) -> str:
-        return str(self._row_relpath(row) / self.FIELDS_FNAME) + "::" + path
+        is_derivative = path.startswith("@")
+        row_dir = self._row_relpath(row, derivatives=is_derivative)
+        if is_derivative:
+            path_parts = path.lstrip("@").split("/")
+            if len(path_parts) != 2:
+                raise ArcanaUsageError(
+                    "Dataset namespace is required for derivative paths (i.e. paths "
+                    f"starting with '@2), provided {path})"
+                )
+            row_dir = row_dir.joinpath(path_parts[:-1])
+            path = path_parts[-1]
+        return str(row_dir / self.FIELDS_FNAME) + "::" + path
 
     def create_test_dataset_data(
         self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
@@ -205,7 +246,7 @@ class DirTree(LocalStore):
     # Helper functions
     ##################
 
-    def _row_relpath(self, row):
+    def _row_relpath(self, row: DataRow, derivatives: bool = False):
         """Get the file-system path to the dataset root for the given row, taking into
         account non-leaf rows
 
@@ -213,6 +254,8 @@ class DirTree(LocalStore):
         ----------
         row : DataRow
             the row to get the relative path for
+        derivatives : bool
+            whether to return the directory containing derivatives or originals
 
         Returns
         -------
@@ -220,23 +263,41 @@ class DirTree(LocalStore):
             the relative path to the row directory
         """
         path = Path()
-        accounted_freq = row.dataset.space(0)
-        for layer in row.dataset.hierarchy:
-            if not (layer.is_parent(row.frequency) or layer == row.frequency):
-                break
-            path /= row.ids[layer]
-            accounted_freq |= layer
-        # If not "leaf row" then
-        if row.frequency != max(row.dataset.space):
-            unaccounted_freq = (row.frequency ^ accounted_freq) & row.frequency
-            unaccounted_id = row.ids[unaccounted_freq]
-            if unaccounted_id is None:
-                path /= f"__{unaccounted_freq}__"
-            elif isinstance(unaccounted_id, str):
-                path /= f"__{unaccounted_freq}_{unaccounted_id}__"
-            else:
-                path /= f"__{unaccounted_freq}_" + "_".join(unaccounted_id) + "__"
+        if row.frequency is max(row.dataset.space):  # leaf node
+            for freq in row.dataset.hierarchy:
+                path /= row.ids[freq]
+            if derivatives:
+                path /= self.ARCANA_DIR
+        else:
+            path = path.joinpath(
+                self.ARCANA_DIR,
+                str(row.frequency),
+            )
+            if isinstance(row.id, tuple):
+                path /= ".".join(row.id)
+            elif row.id:
+                path /= row.id
+            if not derivatives:
+                path /= "__primary__"
         return path
+
+        # accounted_freq = row.dataset.space(0)
+        # for layer in row.dataset.hierarchy:
+        #     if not (layer.is_parent(row.frequency) or layer == row.frequency):
+        #         break
+        #     path /= row.ids[layer]
+        #     accounted_freq |= layer
+        # # If not "leaf row" then
+        # if row.frequency != max(row.dataset.space):
+        #     unaccounted_freq = (row.frequency ^ accounted_freq) & row.frequency
+        #     unaccounted_id = row.ids[unaccounted_freq]
+        #     if unaccounted_id is None:
+        #         path /= f"__{unaccounted_freq}__"
+        #     elif isinstance(unaccounted_id, str):
+        #         path /= f"__{unaccounted_freq}_{unaccounted_id}__"
+        #     else:
+        #         path /= f"__{unaccounted_freq}_" + "_".join(unaccounted_id) + "__"
+        # return path
 
     def _fileset_fspath(self, entry):
         return Path(entry.row.dataset.id) / entry.uri

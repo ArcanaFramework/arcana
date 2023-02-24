@@ -76,7 +76,7 @@ class DataStore(metaclass=ABCMeta):
     VERSION = "1.0.0"
 
     @abstractmethod
-    def scan_tree(self, tree: DataTree):
+    def populate_tree(self, tree: DataTree):
         """
         Populates the nodes of the data tree with those found in the dataset
 
@@ -87,7 +87,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def scan_row(self, row: DataRow):
+    def populate_row(self, row: DataRow):
         """
         Populate a row with all data entries found in the corresponding node in the data
         store (e.g. files within a directory, scans within an XNAT session).

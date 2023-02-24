@@ -43,7 +43,8 @@ def test_put_items(dataset: Dataset):
         """Check that the inserted items are present in the dataset"""
         for deriv in blueprint.derivatives:  # name, freq, datatype, _
             for row in dataset.rows(deriv.row_frequency):
-                item = row[deriv.name]
+                cell = row.cell(deriv.name, allow_empty=False)
+                item = cell.item
                 assert item.fspath.relative_to(dataset.id)
                 assert isinstance(item, deriv.datatype)
                 assert item.hash_files() == all_checksums[deriv.name]

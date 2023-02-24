@@ -114,7 +114,7 @@ class DataRow:
     def entries(self) -> ty.Iterable[DataEntry]:
         if self._entries_dict is None:
             self._entries_dict = {}
-            self.dataset.store.scan_row(self)
+            self.dataset.store.populate_row(self)
         return self._entries_dict.values()
 
     def __repr__(self):

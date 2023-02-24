@@ -9,8 +9,8 @@ from conftest import TEST_DATASET_BLUEPRINTS
 from arcana.testing.tasks import concatenate
 
 
-def test_pipeline(flat_dir_store, work_dir):
-    dataset = flat_dir_store.make_test_dataset(
+def test_pipeline(work_dir):
+    dataset = DirTree().make_test_dataset(
         TEST_DATASET_BLUEPRINTS["concatenate_test"], work_dir / "dataset"
     )
 
@@ -37,10 +37,10 @@ def test_pipeline(flat_dir_store, work_dir):
         assert contents == "\n".join(["file1.txt", "file2.txt"] * 2)
 
 
-def test_pipeline_with_implicit_conversion(flat_dir_store: DirTree, work_dir):
+def test_pipeline_with_implicit_conversion(work_dir):
     """Input files are converted from zip to Text, concatenated and then
     written back as zip files into the data store"""
-    dataset = flat_dir_store.make_test_dataset(
+    dataset = DirTree().make_test_dataset(
         TEST_DATASET_BLUEPRINTS["concatenate_zip_test"], work_dir / "dataset"
     )
 

@@ -1,5 +1,6 @@
 from functools import reduce
 from operator import mul
+from pathlib import Path
 import pytest
 from arcana.core.data.testing import TestDatasetBlueprint
 from arcana.testing import (
@@ -7,6 +8,8 @@ from arcana.testing import (
 )
 from fileformats.text import Plain as Text
 from fileformats.testing import EncodedText
+from arcana.core.data.set import Dataset
+from arcana.dirtree import DirTree
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.core.exceptions import ArcanaDataMatchError
 
@@ -148,7 +151,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         )
 
 
-def test_command_execute_on_row(flat_dir_store, cli_runner, work_dir):
+def test_command_execute_on_row(cli_runner, work_dir):
 
     # Create test dataset consisting of a single row with a range of filenames
     # from 0 to 4
@@ -161,12 +164,12 @@ def test_command_execute_on_row(flat_dir_store, cli_runner, work_dir):
         files=[f"{i}.txt" for i in filenumbers],
     )
     dataset_path = work_dir / "numbered_dataset"
-    dataset = flat_dir_store.make_test_dataset(bp, dataset_path)
+    dataset = DirTree().make_test_dataset(bp, dataset_path)
     dataset.save()
 
     def get_dataset_filenumbers():
         row = next(dataset.rows())
-        return sorted(int(i.path) for i in row.entries)
+        return sorted(int(i.path.split(".")[0]) for i in row.entries)
 
     assert get_dataset_filenumbers() == filenumbers
 
@@ -201,7 +204,7 @@ def test_command_execute_on_row(flat_dir_store, cli_runner, work_dir):
     assert get_dataset_filenumbers() == [i + 10 for i in filenumbers]
 
 
-def test_command_execute_with_converter_args(saved_dataset, work_dir):
+def test_command_execute_with_converter_args(saved_dataset: Dataset, work_dir: Path):
     """Test passing arguments to file format converter tasks via input/output
     "qualifiers", e.g. 'converter.shift=3' using the arcana-run-pipeline CLI
     tool (as used in the XNAT CS commands)
@@ -256,15 +259,17 @@ def test_command_execute_with_converter_args(saved_dataset, work_dir):
         pipeline_name="test_pipeline",
     )
     # Add source column to saved dataset
-    saved_dataset.add_sink("sink1", EncodedText, path="encoded")
-    saved_dataset.add_sink("sink2", Text, path="decoded")
+    saved_dataset.add_sink("sink1", EncodedText, path="@common/encoded")
+    saved_dataset.add_sink("sink2", Text, path="@common/decoded")
     unencoded_contents = "file1.txt"
     encoded_contents = (
         "iloh41w{w"  # 'file1.txt' characters shifted up by 3 in ASCII code
     )
     for row in saved_dataset.rows(frequency="abcd"):
-        enc_item = row["sink1"]
-        dec_item = row["sink2"]
+        enc_cell = row.cell("sink1", allow_empty=False)
+        dec_cell = row.cell("sink2", allow_empty=False)
+        enc_item = enc_cell.item
+        dec_item = dec_cell.item
         with open(enc_item) as f:
             enc_contents = f.read()
         with open(dec_item) as f:
