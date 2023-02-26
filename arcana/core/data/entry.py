@@ -2,7 +2,7 @@ from __future__ import annotations
 import typing as ty
 import attrs
 from fileformats.core.base import DataType
-from arcana.core.exceptions import ArcanaDataMatchError
+from arcana.core.exceptions import ArcanaDataMatchError, ArcanaUsageError
 from .quality import DataQuality
 
 if ty.TYPE_CHECKING:
@@ -81,7 +81,7 @@ class DataEntry:
         checksums for all of the files in the data entry
     """
 
-    path: str
+    path: str = attrs.field()
     datatype: type
     row: DataRow
     uri: str
@@ -93,6 +93,16 @@ class DataEntry:
     checksums: dict[str, ty.Union[str, dict]] = attrs.field(
         default=None, repr=False, eq=False
     )
+
+    @path.validator
+    def path_validator(self, _, path):
+        if path.startswith("@"):
+            num_parts = len(path.split("/"))
+            if num_parts < 2:
+                raise ArcanaUsageError(
+                    "Derivative paths (i.e. those starting with '@') must have more than "
+                    f"one part separated by '/', a namespace and a name (found {path})"
+                )
 
     def __attrs_post_init__(self):
         self.item_metadata._entry = self
@@ -123,3 +133,19 @@ class DataEntry:
             return None
         else:
             return self.provenance.outputs[self.path]
+
+    @property
+    def is_derivative(self):
+        return self.path.startswith("@")
+
+    @property
+    def namespace(self):
+        if not self.is_derivative:
+            raise ArcanaUsageError(
+                f"Only derivative entries have namespaces, not {self}"
+            )
+        return self.path.split("/")[0].lstrip("@")
+
+    @property
+    def in_derivative_namespace(self):
+        return self.is_derivative and self.namespace == self.row.dataset.name
