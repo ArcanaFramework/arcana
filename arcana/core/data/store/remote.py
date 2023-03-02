@@ -9,8 +9,7 @@ import json
 import re
 import shutil
 import attrs
-import xnat.session
-from fileformats.core import FileSet, Field
+from fileformats.core import DataType, FileSet, Field
 from arcana.core.utils.misc import (
     dir_modtime,
     JSON_ENCODING,
@@ -20,7 +19,6 @@ from arcana.core.exceptions import (
     ArcanaWrongRepositoryError,
     DatatypeUnsupportedByStoreError,
 )
-from fileformats.core import DataType
 from arcana.core.utils.misc import dict_diff
 from ..entry import DataEntry
 from ..row import DataRow
@@ -88,25 +86,10 @@ class RemoteStore(DataStore):
             "Upload fileset needs to be implemented to use RemoteStore.put_fileset"
         )
 
-    def post_fileset(
-        self, fileset: DataType, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        """
-        Creates a new resource entry to store the fileset in then puts it in it
-
-        Parameters
-        ----------
-        fileset : FileSet
-            The file-set to put the paths for
-        fspaths: list[Path or str  ]
-            The paths of files/directories to put into the XNAT repository
-
-        Returns
-        -------
-        list[Path]
-            The locations of the locally cached paths
-        """
-        raise NotImplementedError(f"post_fileset needs to be implemented in {self}")
+    def create_fileset_entry(self, path: str, datatype: type, row: DataRow):
+        raise NotImplementedError(
+            "Upload fileset needs to be implemented to use RemoteStore.put_fileset"
+        )
 
     def get_field(self, entry: DataEntry, datatype: type) -> Field:
         """
@@ -153,10 +136,10 @@ class RemoteStore(DataStore):
             f"load_dataset_definition needs to be implemented in {self}"
         )
 
-    def connect(self) -> xnat.XNATSession:
+    def connect(self):
         raise NotImplementedError(f"`connect` needs to be implemented for {self}")
 
-    def disconnect(self, session: xnat.XNATSession):
+    def disconnect(self, session):
         raise NotImplementedError(f"`disconnect` needs to be implemented for {self}")
 
     def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
@@ -342,6 +325,28 @@ class RemoteStore(DataStore):
         )
         return cached
 
+    def post_fileset(
+        self, fileset: DataType, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
+        """
+        Creates a new resource entry to store the fileset in then puts it in it
+
+        Parameters
+        ----------
+        fileset : FileSet
+            The file-set to put the paths for
+        fspaths: list[Path or str  ]
+            The paths of files/directories to put into the XNAT repository
+
+        Returns
+        -------
+        list[Path]
+            The locations of the locally cached paths
+        """
+        with self.connection:
+            entry = self.create_fileset_entry(path, datatype, row)
+            self.put_fileset(fileset, entry)
+
     def _delayed_download(
         self, entry: DataEntry, tmp_download_dir: Path, target_path: Path, delay: int
     ):
@@ -428,78 +433,6 @@ class RemoteStore(DataStore):
         except KeyError:
             return None
         return store.load_dataset(dataset_name)
-
-    # def create_empty_dataset(
-    #     self,
-    #     id: str,
-    # ):
-    #     with self.connection:
-    #         self.connection.put(f"/data/archive/projects/{id}")
-
-    # def create_dataset_tree(
-    #     self,
-    #     dataset_id: str,
-    #     hierarchy: list[str],
-    #     row_ids: list[list[str]],
-    #     space: type = Clinical,
-    #     name: str = None,
-    #     source_data: Path = None,
-    # ):
-    #     """
-    #     Creates dataset for each entry in dataset_structures
-    #     """
-
-    #     with self.connection:
-    #         for labels in itertools.product(*[row_ids.get(f) for f in hierarchy]):
-    #             row = self.create_row(
-    #                 dataset_id=dataset_id, **dict(zip(hierarchy, labels))
-    #             )
-
-    # def create_test_dataset(self, blueprint, source_data):
-
-    #     self.create_dataset_tree()
-
-    #         for i, scan in enumerate(blueprint.scans, start=1):
-    #             tmp_dir = Path(tempfile.mkdtemp())
-    #             # Create scan
-    #             fspath = self.create_test_fsobject(
-    #                 fname,
-    #                 tmp_dir,
-    #                 source_data=source_data,
-    #                 source_fallback=True,
-    #                 escape_source_name=False,
-    #             )
-    #             self.post_fileset(fspath)
-
-    # def create_row(self, dataset_id: str, subject: str, timepoint: str) -> DataRow:
-    #     with self.connection:
-    #         xclasses = self.connection.classes
-    #         xproject = self.connection.projects[dataset_id]
-    #         # Create subject
-    #         xsubject = xclasses.SubjectData(label=subject, parent=xproject)
-    #         # Create session
-    #         xsession = xclasses.MrSessionData(label=timepoint, parent=xsubject)
-    #     return DataRow()
-
-    # def create_test_fsobject(
-    #     self, scan_id: int, blueprint: ScanBlueprint, parent, source_data: Path = None
-    # ):
-    #     xclasses = parent.xnat_session.classes
-    #     xscan = xclasses.MrScanData(id=scan_id, type=blueprint.name, parent=parent)
-    #     for resource in blueprint.resources:
-    #         tmp_dir = Path(tempfile.mkdtemp())
-    #         # Create the resource
-    #         xresource = xscan.create_resource(resource.name)
-    #         # Create the dummy files
-    #         for fname in resource.filenames:
-    #             fpath = super().create_test_fsobject(
-    #                 fname,
-    #                 tmp_dir,
-    #                 source_data=source_data,
-    #                 source_fallback=True,
-    #                 escape_source_name=False,
-    #             )
-    #             xresource.upload(str(fpath), fpath.name)
 
 
 def append_suffix(path, suffix):

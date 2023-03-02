@@ -272,21 +272,21 @@ command:
         datatype: fileformats.medimage:NiftiGzX
         help_string: "T1-weighted anatomical scan"
         default_column:
-          datatype: fileformats.medimage:Dicom
+          datatype: fileformats.medimage:DicomSet
       T2w:
         configuration:
           path: anat/T2w
         datatype: fileformats.medimage:NiftiGzX
         help_string: "T2-weighted anatomical scan"
         default_column:
-          datatype: fileformats.medimage:Dicom
+          datatype: fileformats.medimage:DicomSet
       fMRI:
         datatype: fileformats.medimage:NiftiGzX
         help_string: "functional MRI"
         configuration:
           path: func/bold/task=rest
         default_column:
-          datatype: fileformats.medimage:Dicom
+          datatype: fileformats.medimage:DicomSet
     outputs:
       mriqc:
         datatype: fileformats.generic:Directory
@@ -339,9 +339,9 @@ a longer description
 #### Inputs
 |Name|Required data-type|Default column data-type|Description|
 |----|------------------|------------------------|-----------|
-|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom" aria-label="medimage/dicom">medimage/dicom</span>|T1-weighted anatomical scan|
-|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom" aria-label="medimage/dicom">medimage/dicom</span>|T2-weighted anatomical scan|
-|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom" aria-label="medimage/dicom">medimage/dicom</span>|functional MRI|
+|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom-set" aria-label="medimage/dicom-set">medimage/dicom-set</span>|T1-weighted anatomical scan|
+|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom-set" aria-label="medimage/dicom-set">medimage/dicom-set</span>|T2-weighted anatomical scan|
+|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom-set" aria-label="medimage/dicom-set">medimage/dicom-set</span>|functional MRI|
 
 #### Outputs
 |Name|Required data-type|Default column data-type|Description|

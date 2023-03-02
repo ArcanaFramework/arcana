@@ -41,7 +41,7 @@ Core
 
 .. autoclass:: arcana.core.data.datatype.BaseFile
 
-.. autoclass:: arcana.core.data.datatype.BaseDirectory
+.. autoclass:: arcana.core.data.datatype.Directory
 
 .. autoclass:: arcana.core.data.datatype.WithSideCars
 

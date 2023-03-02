@@ -218,7 +218,7 @@ field array (list[int|float|str|bool]) or
     help=(
         "Match on specific header value. This option is only valid for "
         "select formats that the implement the 'header_val()' method "
-        "(e.g. medimage/Dicom)."
+        "(e.g. medimage/DicomSet)."
     ),
 )
 def add_source(
