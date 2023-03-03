@@ -74,14 +74,14 @@ class RemoteStore(DataStore):
     SITE_LICENSES_USER_ENV = "ARCANA_SITE_LICENSE_USER"
     SITE_LICENSES_PASS_ENV = "ARCANA_SITE_LICENSE_PASS"
 
-    def download_fileset(
+    def download_files(
         self, entry: DataEntry, tmp_download_dir: Path, target_path: Path
     ):
         raise NotImplementedError(
             "Download fileset needs to be implemented to use RemoteStore.put_fileset"
         )
 
-    def upload_fileset(self, fileset: FileSet, entry: DataEntry):
+    def upload_files(self, fileset: FileSet, entry: DataEntry):
         raise NotImplementedError(
             "Upload fileset needs to be implemented to use RemoteStore.put_fileset"
         )
@@ -176,6 +176,9 @@ class RemoteStore(DataStore):
         uri: str
             uri of the data item to download the checksums for
         """
+        raise NotImplementedError(
+            f"calculate_checksums needs to be implemented for {self}"
+        )
 
     @cache_dir.validator
     def cache_dir_validator(self, _, cache_dir):
@@ -264,7 +267,7 @@ class RemoteStore(DataStore):
                     else:
                         raise
                 else:
-                    self.download_fileset(entry, tmp_download_dir, cache_path)
+                    self.download_files(entry, tmp_download_dir, cache_path)
                     shutil.rmtree(tmp_download_dir)
                 # Save checksums for future reference, so we can check to see if cache
                 # is stale
@@ -297,8 +300,8 @@ class RemoteStore(DataStore):
         if cache_path.exists():
             shutil.rmtree(cache_path)
         # Copy to cache
-        cached = fileset.copy_to(cache_path, make_dirs=True)
-        self.upload_fileset(cached, entry)
+        cached = fileset.copy_to(cache_path, make_dirs=True, trim=True)
+        self.upload_files(cache_path, entry)
         checksums = self.get_checksums(entry.uri)
         calculated_checksums = self.calculate_checksums(cached)
         if checksums != calculated_checksums:
@@ -384,7 +387,7 @@ class RemoteStore(DataStore):
             )
             shutil.rmtree(tmp_download_dir)
             os.mkdir(tmp_download_dir)
-            self.download_fileset(entry, tmp_download_dir, target_path)
+            self.download_files(entry, tmp_download_dir, target_path)
 
     def cache_path(self, uri: str):
         """Path to the directory where the item is/should be cached. Note that
