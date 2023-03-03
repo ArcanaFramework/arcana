@@ -20,6 +20,15 @@ class DerivBlueprint:
     filenames: ty.List[str]
 
 
+@attrs.define(kw_only=True)
+class FieldBlueprint:
+
+    name: str
+    row_frequency: DataSpace
+    datatype: type
+    value: ty.Any
+
+
 @attrs.define(slots=False, kw_only=True)
 class TestDatasetBlueprint:
 
@@ -35,6 +44,7 @@ class TestDatasetBlueprint:
     derivatives: ty.List[DerivBlueprint] = attrs.field(
         factory=list
     )  # files to insert as derivatives
+    fields: ty.List[FieldBlueprint] = attrs.field(factory=list)
 
     @property
     def space(self):

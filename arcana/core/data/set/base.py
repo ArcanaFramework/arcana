@@ -398,13 +398,13 @@ class Dataset:
                 )
         self.columns[name] = spec
 
-    def row(self, row_frequency=None, id=None, **id_kwargs):
-        """Returns the row associated with the given row_frequency and ids dict
+    def row(self, frequency=None, id=None, **id_kwargs):
+        """Returns the row associated with the given frequency and ids dict
 
         Parameters
         ----------
-        row_frequency : DataSpace or str
-            The row_frequency of the row
+        frequency : DataSpace or str
+            The frequency of the row
         id : str or Tuple[str], optional
             The ID of the row to
         **id_kwargs : Dict[str, str]
@@ -419,18 +419,18 @@ class Dataset:
         Raises
         ------
         ArcanaUsageError
-            Raised when attempting to use IDs with the row_frequency associated
+            Raised when attempting to use IDs with the frequency associated
             with the root row
         ArcanaNameError
             If there is no row corresponding to the given ids
         """
         with self.tree:
-            # Parse str to row_frequency enums
-            if not row_frequency:
+            # Parse str to frequency enums
+            if not frequency:
                 if id is not None:
                     raise ArcanaUsageError(f"Root rows don't have any IDs ({id})")
                 return self.root
-            row_frequency = self.parse_frequency(row_frequency)
+            frequency = self.parse_frequency(frequency)
             if id_kwargs:
                 if id is not None:
                     raise ArcanaUsageError(
@@ -445,7 +445,7 @@ class Dataset:
                         children_dict = row.children[self.space[freq]]
                     except KeyError as e:
                         raise ArcanaNameError(
-                            freq, f"{freq} is not a child row_frequency of {row}"
+                            freq, f"{freq} is not a child frequency of {row}"
                         ) from e
                     try:
                         row = children_dict[id]
@@ -456,12 +456,12 @@ class Dataset:
                 return row
             else:
                 try:
-                    return self.root.children[row_frequency][id]
+                    return self.root.children[frequency][id]
                 except KeyError as e:
                     raise ArcanaNameError(
                         id,
                         f"{id} not present in data tree "
-                        f"({list(self.row_ids(row_frequency))})",
+                        f"({list(self.row_ids(frequency))})",
                     ) from e
 
     def rows(self, frequency=None, ids=None):

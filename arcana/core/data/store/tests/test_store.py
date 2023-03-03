@@ -1,7 +1,9 @@
 from tempfile import mkdtemp
 from pathlib import Path
+import itertools
 import operator as op
 from functools import reduce
+from fileformats.core import Field
 from arcana.core.data.set.base import Dataset
 from arcana.dirtree import DirTree
 from arcana.core.data.store import DataStore
@@ -22,7 +24,21 @@ def test_populate_tree(dataset: Dataset):
         ), f"{freq} doesn't match {len(dataset.rows(freq))} vs {num_rows}"
 
 
-def test_get_items(dataset: Dataset):
+def test_populate_row(dataset):
+    blueprint = dataset.__annotations__["blueprint"]
+    for row in dataset.rows("session"):
+        expected_entries = sorted(
+            itertools.chain(
+                *(
+                    [f"{scan.name}/{rsrc.name}" for rsrc in scan.resources]
+                    for scan in blueprint.scans
+                )
+            )
+        )
+        assert sorted(e.path for e in row.entries) == expected_entries
+
+
+def test_get_fileset(dataset: Dataset):
     blueprint = dataset.__annotations__["blueprint"]
     source_files = {}
     for fg_name, exp_datatypes in blueprint.expected_datatypes.items():
@@ -36,7 +52,7 @@ def test_get_items(dataset: Dataset):
             assert set(p.name for p in item.fspaths) == files
 
 
-def test_put_items(dataset: Dataset):
+def test_post_fileset(dataset: Dataset):
     blueprint = dataset.__annotations__["blueprint"]
 
     def check_inserted():
@@ -69,6 +85,38 @@ def test_put_items(dataset: Dataset):
                     row[deriv.name] = test_file
         check_inserted()  # Check that cached objects have been updated
     check_inserted()  # Check that objects can be recreated from store
+
+
+def test_field_rountrip(dataset: Dataset):
+    blueprint = dataset.__annotations__["blueprint"]
+
+    def sort_key(bp):
+        return bp.row_frequency
+
+    for field_bp in blueprint.fields:
+        dataset.add_sink(
+            name=field_bp.name,
+            datatype=field_bp.datatype,
+            row_frequency=field_bp.row_frequency,
+        )
+    for freq, bps in itertools.groupby(
+        sorted(blueprint.fields, key=sort_key), key=sort_key
+    ):
+        bps = list(bps)
+        row_id = next(iter(dataset.row_ids(freq)))
+        row = dataset.row(id=row_id, frequency=freq)
+        for bp in bps:
+            row[bp.name] = bp.value
+        reloaded_row = dataset.row(id=row_id, frequency=freq)
+        # Check all entries are loaded
+        field_entries = [
+            e for e in reloaded_row.entries if issubclass(e.datatype, Field)
+        ]
+        assert sorted(e.path for e in field_entries) == sorted(
+            "@common/" + bp.name for bp in bps
+        )
+        for bp in bps:
+            assert row[bp.name] == bp.datatype(bp.value)
 
 
 def test_singletons():

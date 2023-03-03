@@ -206,7 +206,7 @@ class DirTree(LocalStore):
                     "Dataset namespace is required for derivative paths (i.e. paths "
                     f"starting with '@2), provided {path})"
                 )
-            row_dir = row_dir.joinpath(path_parts[:-1])
+            row_dir = row_dir.joinpath(*path_parts[:-1])
             path = path_parts[-1]
         return str(row_dir / self.FIELDS_FNAME) + "::" + path
 

@@ -9,7 +9,8 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 from fileformats.generic import Directory
-from fileformats.text import Plain as Text
+from fileformats.text import Plain as PlainText
+from fileformats.field import Text, Decimal, Boolean, Integer, Array
 from fileformats.serialization import Json
 from fileformats.testing import (
     MyFormatGz,
@@ -33,6 +34,7 @@ from arcana.core.data.testing import (
     TestDatasetBlueprint,
     DerivBlueprint,
     ExpDatatypeBlueprint,
+    FieldBlueprint,
 )
 from arcana.testing import TestDataSpace as TDS, MockRemoteStore
 from fileformats.testing import Xyz
@@ -170,7 +172,9 @@ TEST_DATASET_BLUEPRINTS = {
         files=["file1.txt", "file2.my.gz", "dir1"],
         id_inference=[],
         expected_datatypes={
-            "file1": [ExpDatatypeBlueprint(datatype=Text, filenames=["file1.txt"])],
+            "file1": [
+                ExpDatatypeBlueprint(datatype=PlainText, filenames=["file1.txt"])
+            ],
             "file2": [
                 ExpDatatypeBlueprint(datatype=MyFormatGz, filenames=["file2.my.gz"])
             ],
@@ -180,7 +184,7 @@ TEST_DATASET_BLUEPRINTS = {
             DerivBlueprint(
                 name="deriv1",
                 row_frequency=TDS.abcd,
-                datatype=Text,
+                datatype=PlainText,
                 filenames=["file1.txt"],
             ),  # Derivatives to insert
             DerivBlueprint(
@@ -192,8 +196,40 @@ TEST_DATASET_BLUEPRINTS = {
             DerivBlueprint(
                 name="deriv3",
                 row_frequency=TDS.bd,
-                datatype=Text,
+                datatype=PlainText,
                 filenames=["file1.txt"],
+            ),
+        ],
+        fields=[
+            FieldBlueprint(
+                name="textfield",
+                row_frequency=TDS.abcd,
+                datatype=Text,
+                value="sample-text",
+            ),  # Derivatives to insert
+            FieldBlueprint(
+                name="booleanfield",
+                row_frequency=TDS.c,
+                datatype=Boolean,
+                value="no",
+            ),  # Derivatives to insert
+            FieldBlueprint(
+                name="integerfield",
+                row_frequency=TDS.c,
+                datatype=Integer,
+                value=99,
+            ),
+            FieldBlueprint(
+                name="decimalfield",
+                row_frequency=TDS.bd,
+                datatype=Decimal,
+                value=33.3333,
+            ),
+            FieldBlueprint(
+                name="arrayfield",
+                row_frequency=TDS.bd,
+                datatype=Array[Integer],
+                value=[1, 2, 3, 4, 5],
             ),
         ],
     ),
@@ -333,29 +369,52 @@ GOOD_DATASETS = ["full", "one_layer", "skip_single", "skip_with_inference", "red
 # Pytest fixtures and helper functions
 # ------------------------------------
 
-
-@pytest.fixture
-def test_dataspace():
-    return TDS
+DATA_STORES = ["dirtree", "mock_remote"]
 
 
-@pytest.fixture
-def test_dataspace_location():
-    return __name__ + ".TestDataSpace"
+# @pytest.fixture
+# def test_dataspace():
+#     return TDS
+
+
+# @pytest.fixture
+# def test_dataspace_location():
+#     return __name__ + ".TestDataSpace"
+
+
+@pytest.fixture(params=DATA_STORES)
+def data_store(work_dir, request):
+    if request.param == "dirtree":
+        store = DirTree()
+    elif request.param == "mock_remote":
+        cache_dir = work_dir / "mock-remote-store" / "cache"
+        cache_dir.mkdir(parents=True)
+        remote_dir = work_dir / "mock-remote-store" / "remote"
+        remote_dir.mkdir(parents=True)
+        store = MockRemoteStore(
+            server="http://a.server.com",
+            cache_dir=cache_dir,
+            user="admin",
+            password="admin",
+            mock_remote_dir=remote_dir,
+        )
+    else:
+        assert False, f"Unrecognised store {request.param}"
+    return store
 
 
 @pytest.fixture(params=GOOD_DATASETS)
-def dataset(work_dir, request):
+def dataset(work_dir, data_store, request):
     dataset_name = request.param
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_path = work_dir / dataset_name
-    dataset = DirTree().make_test_dataset(blueprint, dataset_path)
+    dataset = data_store.make_test_dataset(blueprint, dataset_path)
     yield dataset
     # shutil.rmtree(dataset.id)
 
 
 @pytest.fixture
-def saved_dataset(work_dir):
+def saved_dataset(data_store, work_dir):
     blueprint = TestDatasetBlueprint(
         hierarchy=[
             TDS.abcd
@@ -364,7 +423,7 @@ def saved_dataset(work_dir):
         files=["file1.txt", "file2.txt"],
     )
     dataset_path = work_dir / "saved-dataset"
-    dataset = DirTree().make_test_dataset(blueprint, dataset_path)
+    dataset = data_store.make_test_dataset(blueprint, dataset_path)
     dataset.save()
     return dataset
 
@@ -379,19 +438,19 @@ def dirtree_dataset(flat_dir_store, work_dir, request):
     # shutil.rmtree(dataset.id)
 
 
-@pytest.fixture
-def saved_dirtree_dataset(flat_dir_store, work_dir):
-    blueprint = TestDatasetBlueprint(
-        hierarchy=[
-            TDS.abcd
-        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        dim_lengths=[1, 1, 1, 1],
-        files=["file1.txt", "file2.txt"],
-    )
-    dataset_path = work_dir / "saved-dataset"
-    dataset = flat_dir_store.make_test_dataset(blueprint, dataset_path)
-    dataset.save()
-    return dataset
+# @pytest.fixture
+# def saved_dirtree_dataset(flat_dir_store, work_dir):
+#     blueprint = TestDatasetBlueprint(
+#         hierarchy=[
+#             TDS.abcd
+#         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+#         dim_lengths=[1, 1, 1, 1],
+#         files=["file1.txt", "file2.txt"],
+#     )
+#     dataset_path = work_dir / "saved-dataset"
+#     dataset = flat_dir_store.make_test_dataset(blueprint, dataset_path)
+#     dataset.save()
+#     return dataset
 
 
 @pytest.fixture

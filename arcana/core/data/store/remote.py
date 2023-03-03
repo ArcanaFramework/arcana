@@ -43,14 +43,14 @@ class RemoteStore(DataStore):
     ----------
     server : str (URI)
         URI of XNAT server to connect to
-    project_id : str
-        The ID of the project in the XNAT repository
     cache_dir : str (name_path)
         Path to local directory to cache remote data in
-    user : str
-        Username with which to connect to XNAT with
-    password : str
-        Password to connect to the XNAT repository with
+    name : str, optional
+        the name of the store as it is saved in the store config file, by default None
+    user : str, optional
+        Username with which to connect to XNAT with, by default None
+    password : str, optional
+        Password to connect to the XNAT repository with, by default None
     race_condition_delay : int
         The amount of time to wait before checking that the required
         fileset has been downloaded to cache by another process has

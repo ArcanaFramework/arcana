@@ -15,7 +15,7 @@ from arcana.core.exceptions import (
     ArcanaUsageError,
     DatatypeUnsupportedByStoreError,
 )
-from arcana.core.utils.misc import get_home_dir
+from arcana.core.utils.misc import get_home_dir, append_suffix
 from ..space import Samples
 from ..row import DataRow
 from ..entry import DataEntry
@@ -143,7 +143,7 @@ class LocalStore(DataStore):
         if datatype.is_fileset:
             entry = self.post_fileset(item, path, datatype, row)
         elif datatype.is_field:
-            entry = self.put_field(item, path, datatype, row)
+            entry = self.post_field(item, path, datatype, row)
         else:
             raise RuntimeError(
                 f"Don't know how to store {datatype} data in {type(self)} stores"
@@ -185,7 +185,7 @@ class LocalStore(DataStore):
         """Updates a JSON file in a multi-process safe way"""
         # Open fields JSON, locking to prevent other processes
         # reading or writing
-        with InterProcessLock(fpath + self.LOCK_SUFFIX, logger=logger):
+        with InterProcessLock(append_suffix(fpath, self.LOCK_SUFFIX), logger=logger):
             try:
                 with open(fpath) as f:
                     dct = json.load(f)
@@ -206,9 +206,9 @@ class LocalStore(DataStore):
         locks (in my understanding at least).
         """
         try:
-            with InterProcessLock(fpath + self.LOCK_SUFFIX, logger=logger), open(
-                fpath, "r"
-            ) as f:
+            with InterProcessLock(
+                append_suffix(fpath, self.LOCK_SUFFIX), logger=logger
+            ), open(fpath, "r") as f:
                 dct = json.load(f)
             return dct[key]
         except (KeyError, IOError) as e:
