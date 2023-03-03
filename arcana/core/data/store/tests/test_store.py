@@ -26,16 +26,13 @@ def test_populate_tree(dataset: Dataset):
 
 def test_populate_row(dataset):
     blueprint = dataset.__annotations__["blueprint"]
-    for row in dataset.rows("session"):
-        expected_entries = sorted(
-            itertools.chain(
-                *(
-                    [f"{scan.name}/{rsrc.name}" for rsrc in scan.resources]
-                    for scan in blueprint.scans
-                )
-            )
-        )
-        assert sorted(e.path for e in row.entries) == expected_entries
+    for row in dataset.rows("abcd"):
+        entry_paths = sorted(e.path for e in row.entries)
+        if isinstance(dataset.store, DirTree):
+            expected = sorted(blueprint.files)
+        else:
+            expected = sorted(set(f.split(".")[0] for f in blueprint.files))
+        assert entry_paths == expected
 
 
 def test_get_fileset(dataset: Dataset):
