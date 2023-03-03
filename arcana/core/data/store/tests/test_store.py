@@ -8,7 +8,7 @@ from arcana.core.data.store import DataStore
 from arcana.core.utils.misc import path2varname
 
 
-def test_find_rows(dataset: Dataset):
+def test_populate_tree(dataset: Dataset):
     blueprint = dataset.__annotations__["blueprint"]
     for freq in dataset.space:
         # For all non-zero bases in the row_frequency, multiply the dim lengths
