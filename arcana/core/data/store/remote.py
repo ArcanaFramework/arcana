@@ -470,4 +470,4 @@ class RemoteStore(DataStore):
         cache_path : Path
             the path to the directory where the entry will be cached
         """
-        return self.cache_dir.joinpath(*uri.split("/")[3:])
+        return self.cache_dir.joinpath(*str(uri).split("/")[3:])
