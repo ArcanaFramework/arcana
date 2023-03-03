@@ -185,31 +185,34 @@ class RemoteStore(DataStore):
     ################################
 
     def get(self, entry: DataEntry, datatype: type) -> DataType:
-        if entry.datatype.is_fileset:
-            item = self.get_fileset(entry, datatype)
-        elif entry.datatype.is_field:
-            item = self.get_field(entry, datatype)
-        else:
-            raise DatatypeUnsupportedByStoreError(entry.datatype, self)
+        with self.connection:
+            if entry.datatype.is_fileset:
+                item = self.get_fileset(entry, datatype)
+            elif entry.datatype.is_field:
+                item = self.get_field(entry, datatype)
+            else:
+                raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         assert isinstance(item, datatype)
         return item
 
     def put(self, item: DataType, entry: DataEntry):
-        if entry.datatype.is_fileset:
-            item = self.put_fileset(item, entry)
-        elif entry.datatype.is_field:
-            item = self.put_field(item, entry)
-        else:
-            raise DatatypeUnsupportedByStoreError(entry.datatype, self)
+        with self.connection:
+            if entry.datatype.is_fileset:
+                item = self.put_fileset(item, entry)
+            elif entry.datatype.is_field:
+                item = self.put_field(item, entry)
+            else:
+                raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return item
 
     def post(self, item: DataType, path: str, datatype: type, row: DataRow):
-        if datatype.is_fileset:
-            entry = self.post_fileset(item, path=path, datatype=datatype, row=row)
-        elif datatype.is_field:
-            entry = self.post_field(item, path=path, datatype=datatype, row=row)
-        else:
-            raise DatatypeUnsupportedByStoreError(datatype, self)
+        with self.connection:
+            if datatype.is_fileset:
+                entry = self.post_fileset(item, path=path, datatype=datatype, row=row)
+            elif datatype.is_field:
+                entry = self.post_field(item, path=path, datatype=datatype, row=row)
+            else:
+                raise DatatypeUnsupportedByStoreError(datatype, self)
         return entry
 
     def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
@@ -375,7 +378,7 @@ class RemoteStore(DataStore):
         value : str or float or int or bool
             the value to store
         """
-        return self.upload_value(entry.datatype(field).value)
+        return self.upload_value(entry.datatype(field).value, entry)
 
     def post_field(
         self, field: Field, path: str, datatype: type, row: DataRow

@@ -408,7 +408,8 @@ def dataset(work_dir, data_store, request):
     dataset_name = request.param
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_path = work_dir / dataset_name
-    dataset = data_store.make_test_dataset(blueprint, dataset_path)
+    dataset_id = dataset_path if isinstance(data_store, DirTree) else dataset_name
+    dataset = data_store.make_test_dataset(blueprint, dataset_id)
     yield dataset
     # shutil.rmtree(dataset.id)
 
