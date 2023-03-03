@@ -1,7 +1,6 @@
 import os
 import os.path as op
 from pathlib import Path
-import typing as ty
 import time
 import logging
 import errno
@@ -13,10 +12,10 @@ from fileformats.core import DataType, FileSet, Field
 from arcana.core.utils.misc import (
     dir_modtime,
     JSON_ENCODING,
+    append_suffix,
 )
 from arcana.core.exceptions import (
     ArcanaError,
-    ArcanaWrongRepositoryError,
     DatatypeUnsupportedByStoreError,
 )
 from arcana.core.utils.misc import dict_diff
@@ -74,83 +73,84 @@ class RemoteStore(DataStore):
     SITE_LICENSES_USER_ENV = "ARCANA_SITE_LICENSE_USER"
     SITE_LICENSES_PASS_ENV = "ARCANA_SITE_LICENSE_PASS"
 
-    def download_files(
-        self, entry: DataEntry, tmp_download_dir: Path, target_path: Path
-    ):
-        raise NotImplementedError(
-            "Download fileset needs to be implemented to use RemoteStore.put_fileset"
-        )
+    ####################
+    # Attrs validators #
+    ####################
+
+    @cache_dir.validator
+    def cache_dir_validator(self, _, cache_dir):
+        if not cache_dir.exists():
+            raise ValueError(f"Cache dir, '{cache_dir}' does not exist")
+
+    ################################
+    # Abstractmethods to implement #
+    ################################
+
+    # populate_tree
+
+    # populate_row
+
+    # save_dataset_definition
+
+    # load_dataset_definition
+
+    # connect
+
+    # disconnect
+
+    # put_provenance
+
+    # get_provenance
+
+    #######################
+    # Methods to override #
+    #######################
+
+    # The following methods can be thought of as "abstractmethods", the only
+    # reason they aren't implemented as such is to give the option to override
+    # the outer abstract method from DataStore directory, e.g. "post_fileset"
+    # without having to provide a stub for the inner method ("upload_files") as well
+
+    def download_files(self, entry: DataEntry, download_dir: Path, target_path: Path):
+        raise NotImplementedError(f"`download_files` is not implemented by {self}")
 
     def upload_files(self, fileset: FileSet, entry: DataEntry):
-        raise NotImplementedError(
-            "Upload fileset needs to be implemented to use RemoteStore.put_fileset"
-        )
+        raise NotImplementedError(f"`upload_files` is not implemented by {self}")
 
-    def create_fileset_entry(self, path: str, datatype: type, row: DataRow):
-        raise NotImplementedError(
-            "Upload fileset needs to be implemented to use RemoteStore.put_fileset"
-        )
-
-    def get_field(self, entry: DataEntry, datatype: type) -> Field:
+    def download_value(self, field):
         """
-        Retrieves a fields value
+        Extract and return the value of the field from the store
 
         Parameters
         ----------
         field : Field
-            The field to retrieve
+            The field to retrieve the value for
 
         Returns
         -------
-        value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
-            The value of the field
+        value : int | float | str | ty.List[int] | ty.List[float] | ty.List[str]
+            The value of the Field
         """
-        raise NotImplementedError(f"get_field needs to be implemented in {self}")
+        raise NotImplementedError(f"`download_value` is not implemented by {self}")
 
-    def put_field(self, field: Field, entry: DataEntry):
-        """Store the value for a field in the XNAT repository
+    def upload_value(self, field, value):
+        """
+        Inserts or updates the field's value in the store
 
         Parameters
         ----------
         field : Field
-            the field to store the value for
-        value : str or float or int or bool
-            the value to store
+            The field to insert into the store
         """
-        raise NotImplementedError(f"put_field needs to be implemented in {self}")
+        raise NotImplementedError(f"`upload_value` is not implemented by {self}")
 
-    def post_field(
-        self, field: Field, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        raise NotImplementedError(f"post_field needs to be implemented in {self}")
-
-    def save_dataset_definition(
-        self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
-    ):
+    def create_fileset_entry(self, path: str, datatype: type, row: DataRow):
         raise NotImplementedError(
-            f"save_dataset_definition needs to be implemented in {self}"
+            f"`create_fileset_entry` is not implemented by {self}"
         )
 
-    def load_dataset_definition(self, dataset_id: str, name: str) -> dict[str, ty.Any]:
-        raise NotImplementedError(
-            f"load_dataset_definition needs to be implemented in {self}"
-        )
-
-    def connect(self):
-        raise NotImplementedError(f"`connect` needs to be implemented for {self}")
-
-    def disconnect(self, session):
-        raise NotImplementedError(f"`disconnect` needs to be implemented for {self}")
-
-    def put_provenance(self, item, provenance: ty.Dict[str, ty.Any]):
-        raise NotImplementedError(
-            f"`put_provenance` needs to be implemented for {self}"
-        )
-
-    def get_provenance(self, item) -> ty.Dict[str, ty.Any]:
-        raise NotImplementedError(
-            f"`get_provenance` needs to be implemented for {self}"
-        )
+    def create_field_entry(self, path: str, datatype: type, row: DataRow):
+        raise NotImplementedError("`create_field_entry` is not implemented by {self}")
 
     def get_checksums(self, uri: str) -> dict[str, str]:
         """
@@ -180,10 +180,9 @@ class RemoteStore(DataStore):
             f"calculate_checksums needs to be implemented for {self}"
         )
 
-    @cache_dir.validator
-    def cache_dir_validator(self, _, cache_dir):
-        if not cache_dir.exists():
-            raise ValueError(f"Cache dir, '{cache_dir}' does not exist")
+    ################################
+    # Abstractmethod implementations
+    ################################
 
     def get(self, entry: DataEntry, datatype: type) -> DataType:
         if entry.datatype.is_fileset:
@@ -247,9 +246,9 @@ class RemoteStore(DataStore):
                 need_to_download = False
         if need_to_download:
             with self.connection:
-                tmp_download_dir = append_suffix(cache_path, ".download")
+                download_dir = append_suffix(cache_path, ".download")
                 try:
-                    os.makedirs(tmp_download_dir)
+                    os.makedirs(download_dir)
                 except OSError as e:
                     if e.errno == errno.EEXIST:
                         # Attempt to make tmp download directory. This will
@@ -260,15 +259,15 @@ class RemoteStore(DataStore):
                         # and otherwise assume that it was interrupted and redownload.
                         self._delayed_download(
                             entry,
-                            tmp_download_dir,
+                            download_dir,
                             cache_path,
                             delay=self._race_cond_delay,
                         )
                     else:
                         raise
                 else:
-                    self.download_files(entry, tmp_download_dir, cache_path)
-                    shutil.rmtree(tmp_download_dir)
+                    self.download_files(entry, download_dir, cache_path)
+                    shutil.rmtree(download_dir)
                 # Save checksums for future reference, so we can check to see if cache
                 # is stale
                 checksums = self.get_checksums(entry.uri)
@@ -350,66 +349,40 @@ class RemoteStore(DataStore):
             entry = self.create_fileset_entry(path, datatype, row)
             self.put_fileset(fileset, entry)
 
-    def _delayed_download(
-        self, entry: DataEntry, tmp_download_dir: Path, target_path: Path, delay: int
-    ):
-        logger.info(
-            "Waiting %s seconds for incomplete download of '%s' "
-            "initiated another process to finish",
-            delay,
-            target_path,
-        )
-        initial_mod_time = dir_modtime(tmp_download_dir)
-        time.sleep(delay)
-        if op.exists(target_path):
-            logger.info(
-                "The download of '%s' has completed "
-                "successfully in the other process, continuing",
-                target_path,
-            )
-            return
-        elif initial_mod_time != dir_modtime(tmp_download_dir):
-            logger.info(
-                "The download of '%s' hasn't completed yet, but it has"
-                " been updated.  Waiting another %s seconds before "
-                "checking again.",
-                target_path,
-                delay,
-            )
-            self._delayed_download(entry, tmp_download_dir, target_path, delay)
-        else:
-            logger.warning(
-                "The download of '%s' hasn't updated in %s "
-                "seconds, assuming that it was interrupted and "
-                "restarting download",
-                target_path,
-                delay,
-            )
-            shutil.rmtree(tmp_download_dir)
-            os.mkdir(tmp_download_dir)
-            self.download_files(entry, tmp_download_dir, target_path)
-
-    def cache_path(self, uri: str):
-        """Path to the directory where the item is/should be cached. Note that
-        the URI of the item needs to be set beforehand
+    def get_field(self, entry: DataEntry, datatype: type) -> Field:
+        """
+        Retrieves a fields value
 
         Parameters
         ----------
-        uri :  `str`
-            the uri of the entry to be cached
+        field : Field
+            The field to retrieve
 
         Returns
         -------
-        cache_path : Path
-            the path to the directory where the entry will be cached
+        value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
+            The value of the field
         """
-        return self.cache_dir.joinpath(*uri.split("/")[3:])
+        return datatype(self.download_value(entry))
 
-    def _check_store(self, entry):
-        if entry.row.dataset.store is not self:
-            raise ArcanaWrongRepositoryError(
-                f"{entry} is from {entry.dataset.store} instead of {self}"
-            )
+    def put_field(self, field: Field, entry: DataEntry):
+        """Store the value for a field in the XNAT repository
+
+        Parameters
+        ----------
+        field : Field
+            the field to store the value for
+        value : str or float or int or bool
+            the value to store
+        """
+        return self.upload_value(entry.datatype(field).value)
+
+    def post_field(
+        self, field: Field, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
+        entry = self.create_field_entry(path, datatype, row)
+        self.put_field(field, entry)
+        return entry
 
     def site_licenses_dataset(self):
         """Return a dataset that holds site-wide licenses
@@ -437,7 +410,61 @@ class RemoteStore(DataStore):
             return None
         return store.load_dataset(dataset_name)
 
+    ##################
+    # Helper methods #
+    ##################
 
-def append_suffix(path, suffix):
-    "Appends a string suffix to a Path object"
-    return Path(str(path) + suffix)
+    def _delayed_download(
+        self, entry: DataEntry, download_dir: Path, target_path: Path, delay: int
+    ):
+        logger.info(
+            "Waiting %s seconds for incomplete download of '%s' "
+            "initiated another process to finish",
+            delay,
+            target_path,
+        )
+        initial_mod_time = dir_modtime(download_dir)
+        time.sleep(delay)
+        if op.exists(target_path):
+            logger.info(
+                "The download of '%s' has completed "
+                "successfully in the other process, continuing",
+                target_path,
+            )
+            return
+        elif initial_mod_time != dir_modtime(download_dir):
+            logger.info(
+                "The download of '%s' hasn't completed yet, but it has"
+                " been updated.  Waiting another %s seconds before "
+                "checking again.",
+                target_path,
+                delay,
+            )
+            self._delayed_download(entry, download_dir, target_path, delay)
+        else:
+            logger.warning(
+                "The download of '%s' hasn't updated in %s "
+                "seconds, assuming that it was interrupted and "
+                "restarting download",
+                target_path,
+                delay,
+            )
+            shutil.rmtree(download_dir)
+            os.mkdir(download_dir)
+            self.download_files(entry, download_dir, target_path)
+
+    def cache_path(self, uri: str):
+        """Path to the directory where the item is/should be cached. Note that
+        the URI of the item needs to be set beforehand
+
+        Parameters
+        ----------
+        uri :  `str`
+            the uri of the entry to be cached
+
+        Returns
+        -------
+        cache_path : Path
+            the path to the directory where the entry will be cached
+        """
+        return self.cache_dir.joinpath(*uri.split("/")[3:])

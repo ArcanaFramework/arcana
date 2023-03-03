@@ -652,6 +652,11 @@ def show_cli_trace(result):
     return "".join(traceback.format_exception(*result.exc_info))
 
 
+def append_suffix(path: Path, suffix: str) -> Path:
+    "Appends a string suffix to a Path object"
+    return Path(str(path) + suffix)
+
+
 # Minimum version of Arcana that this version can read the serialisation from
 MIN_SERIAL_VERSION = "0.0.0"
 
