@@ -114,7 +114,7 @@ class DataEntry:
     @item.setter
     def item(self, item):
         if isinstance(item, DataType):
-            if not type(item).is_subtype_of(self.datatype):
+            if not type(item).issubtype(self.datatype):
                 raise ArcanaDataMatchError(
                     f"Cannot put {item} into {self.datatype} entry of {self.row}"
                 )
