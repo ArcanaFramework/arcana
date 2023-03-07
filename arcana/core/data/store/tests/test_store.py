@@ -58,7 +58,8 @@ def test_post_fileset(dataset: Dataset):
             for row in dataset.rows(deriv.row_frequency):
                 cell = row.cell(deriv.name, allow_empty=False)
                 item = cell.item
-                assert item.fspath.relative_to(dataset.id)
+                if isinstance(dataset.store, DirTree):
+                    assert item.fspath.relative_to(dataset.id)
                 assert isinstance(item, deriv.datatype)
                 assert item.hash_files() == all_checksums[deriv.name]
 

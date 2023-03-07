@@ -240,7 +240,7 @@ class RemoteStore(DataStore):
         )
         cache_path = self.cache_path(entry.uri)
         need_to_download = True
-        if op.exists(cache_path):
+        if cache_path.exists():
             md5_path = append_suffix(cache_path, self.CHECKSUM_SUFFIX)
             if md5_path.exists():
                 with open(md5_path, "r") as f:
@@ -269,6 +269,8 @@ class RemoteStore(DataStore):
                     else:
                         raise
                 else:
+                    if cache_path.exists():
+                        shutil.rmtree(cache_path)
                     self.download_files(entry, download_dir, cache_path)
                     shutil.rmtree(download_dir)
                 # Save checksums for future reference, so we can check to see if cache
@@ -351,6 +353,7 @@ class RemoteStore(DataStore):
         with self.connection:
             entry = self.create_fileset_entry(path, datatype, row)
             self.put_fileset(fileset, entry)
+        return entry
 
     def get_field(self, entry: DataEntry, datatype: type) -> Field:
         """
