@@ -42,10 +42,10 @@ class Dataset:
         store it is stored (e.g. FS directory path or project ID)
     store : Repository
         The store the dataset is stored into. Can be the local file
-        system by providing a MockRemoteStore repo.
+        system by providing a MockRemote repo.
     hierarchy : Sequence[str]
         The data frequencies that are explicitly present in the data tree.
-        For example, if a MockRemoteStore dataset (i.e. directory) has
+        For example, if a MockRemote dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
@@ -112,7 +112,10 @@ class Dataset:
         Repository specific args used to control the way the dataset is accessed
     """
 
-    DEFAULT_NAME = "common"
+    # alternative name used to save datasets that are named "" in cases where "" is
+    # not appropriate
+    EMPTY_NAME = "arcana"
+
     LICENSES_PATH = (
         "LICENSES"  # The resource that project-specifc licenses are expected
     )
@@ -135,7 +138,7 @@ class Dataset:
     exclude: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    name: str = attrs.field(default=DEFAULT_NAME)
+    name: str = attrs.field(default="")
     columns: ty.Optional[ty.Dict[str, DataColumn]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
@@ -170,40 +173,19 @@ class Dataset:
         for pipeline in self.pipelines.values():
             pipeline.dataset = self
 
-    def save(self, name=None):
-        self.store.save_dataset(self, name=name)
-
-    @classmethod
-    def load(
-        cls, id: str, store: datastore.DataStore = None, name: str = None, **kwargs
-    ):
-        """Loads a dataset from an store/ID/name string, as used in the CLI
-
-        Parameters
-        ----------
-        id: str
-            either the ID of a dataset if `store` keyword arg is provided or a
-            "dataset ID string" in the format <store-nickname>//<dataset-id>[@<dataset-name>]
-        store: DataStore, optional
-            the store to load the dataset. If not provided the provided ID
-            is interpreted as an ID string
-        name: str, optional
-            the name of the dataset within the project/directory
-            (e.g. 'test', 'training'). Used to specify a subset of data rows
-            to work with, within a greater project
-        **kwargs
-            keyword arguments parsed to the data store load
-
-        Returns
-        -------
-        Dataset
-            the loaded dataset"""
-        if store is None:
-            store_name, id, parsed_name = cls.parse_id_str(id)
-            store = datastore.DataStore.load(store_name, **kwargs)
-        if name is None:
-            name = parsed_name
-        return store.load_dataset(id, name=name)
+    @name.validator
+    def name_validator(self, _, name: str):
+        if name and not name.isidentifier():
+            raise ArcanaUsageError(
+                f"Name provided to dataset, '{name}' should be a valid Python identifier, "
+                "i.e. contain only numbers, letters and underscores and not start with a "
+                "number"
+            )
+        if name == self.EMPTY_NAME:
+            raise ArcanaUsageError(
+                f"'{self.EMPTY_NAME}' is a reserved name for datasets as it is used to "
+                "in place of the empty dataset name in situations where '' can't be used"
+            )
 
     @columns.validator
     def columns_validator(self, _, columns):
@@ -268,6 +250,41 @@ class Dataset:
                 + f"'] the '{self.space.__module__}.{self.space.__name__}' data space"
             )
 
+    def save(self, name=None):
+        self.store.save_dataset(self, name=name)
+
+    @classmethod
+    def load(
+        cls, id: str, store: datastore.DataStore = None, name: str = None, **kwargs
+    ):
+        """Loads a dataset from an store/ID/name string, as used in the CLI
+
+        Parameters
+        ----------
+        id: str
+            either the ID of a dataset if `store` keyword arg is provided or a
+            "dataset ID string" in the format <store-nickname>//<dataset-id>[@<dataset-name>]
+        store: DataStore, optional
+            the store to load the dataset. If not provided the provided ID
+            is interpreted as an ID string
+        name: str, optional
+            the name of the dataset within the project/directory
+            (e.g. 'test', 'training'). Used to specify a subset of data rows
+            to work with, within a greater project
+        **kwargs
+            keyword arguments parsed to the data store load
+
+        Returns
+        -------
+        Dataset
+            the loaded dataset"""
+        if store is None:
+            store_name, id, parsed_name = cls.parse_id_str(id)
+            store = datastore.DataStore.load(store_name, **kwargs)
+        if name is None:
+            name = parsed_name
+        return store.load_dataset(id, name=name)
+
     @property
     def root_freq(self):
         return self.space(0)
@@ -311,7 +328,7 @@ class Dataset:
                 f"{self}"
             )
         locator = f"{self.store.name}//{self.id}"
-        if self.name is not self.DEFAULT_NAME:
+        if self.name:
             locator += f"@{self.name}"
         return locator
 
@@ -667,7 +684,7 @@ class Dataset:
             store_name, id = parts
         parts = id.split("@")
         if len(parts) == 1:
-            name = cls.DEFAULT_NAME
+            name = ""
         else:
             id, name = parts
         return store_name, id, name

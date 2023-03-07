@@ -95,13 +95,17 @@ class DataEntry:
     )
 
     @path.validator
-    def path_validator(self, _, path):
-        if path.startswith("@"):
-            num_parts = len(path.split("/"))
-            if num_parts < 2:
+    def path_validator(self, _, path: str):
+        if "@" in path:
+            parts = path.split("@")
+            if len(parts) > 2:
                 raise ArcanaUsageError(
-                    "Derivative paths (i.e. those starting with '@') must have more than "
-                    f"one part separated by '/', a namespace and a name (found {path})"
+                    f"Entry paths can't have more than one '@' symbol, given {path})"
+                )
+            dataset_name = parts[-1]
+            if dataset_name and not dataset_name.isidentifier():
+                raise ArcanaUsageError(
+                    f"Path '{path}' has an invalid dataset_name '{dataset_name}')"
                 )
 
     def __attrs_post_init__(self):
@@ -136,7 +140,7 @@ class DataEntry:
 
     @property
     def is_derivative(self):
-        return self.path.startswith("@")
+        return "@" in self.path
 
     @property
     def namespace(self):
@@ -144,7 +148,7 @@ class DataEntry:
             raise ArcanaUsageError(
                 f"Only derivative entries have namespaces, not {self}"
             )
-        return self.path.split("/")[0].lstrip("@")
+        return self.path.split("@")[-1]
 
     @property
     def in_derivative_namespace(self):

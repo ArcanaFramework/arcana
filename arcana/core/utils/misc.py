@@ -620,6 +620,10 @@ def dict_diff(dict1, dict2, label1="dict1", label2="dict2"):
     return "\n".join(diff)
 
 
+def full_path(fspath: ty.Union[str, bytes, Path]):
+    return Path(fspath).resolve().absolute()
+
+
 class fromdict_converter:
     def __init__(self, tp):
         try:

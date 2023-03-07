@@ -36,7 +36,7 @@ from arcana.core.data.testing import (
     ExpDatatypeBlueprint,
     FieldBlueprint,
 )
-from arcana.testing import TestDataSpace as TDS, MockRemoteStore
+from arcana.testing import TestDataSpace as TDS, MockRemote
 from fileformats.testing import Xyz
 from arcana.dirtree import DirTree
 from pydra import set_input_validator
@@ -80,12 +80,12 @@ def build_cache_dir():
     # return build_cache_dir
 
 
-@pytest.fixture
-def flat_dir_store(work_dir):
-    store = MockRemoteStore(cache_dir=work_dir / "flat-dir-store-cache")
-    with patch.dict(os.environ, {"ARCANA_HOME": str(work_dir / "arcana-home")}):
-        store.save("custom-flat")
-        yield store
+# @pytest.fixture
+# def flat_dir_store(work_dir):
+#     store = MockRemote(cache_dir=work_dir / "flat-dir-store-cache")
+#     with patch.dict(os.environ, {"ARCANA_HOME": str(work_dir / "arcana-home")}):
+#         store.save("custom-flat")
+#         yield store
 
 
 @pytest.fixture
@@ -382,8 +382,15 @@ DATA_STORES = ["dirtree", "mock_remote"]
 #     return __name__ + ".TestDataSpace"
 
 
+@pytest.fixture
+def arcana_home(work_dir):
+    arcana_home = work_dir / "arcana-home"
+    with patch.dict(os.environ, {"ARCANA_HOME": str(arcana_home)}):
+        yield arcana_home
+
+
 @pytest.fixture(params=DATA_STORES)
-def data_store(work_dir, request):
+def data_store(work_dir, arcana_home, request):
     if request.param == "dirtree":
         store = DirTree()
     elif request.param == "mock_remote":
@@ -391,16 +398,17 @@ def data_store(work_dir, request):
         cache_dir.mkdir(parents=True)
         remote_dir = work_dir / "mock-remote-store" / "remote"
         remote_dir.mkdir(parents=True)
-        store = MockRemoteStore(
+        store = MockRemote(
             server="http://a.server.com",
             cache_dir=cache_dir,
             user="admin",
             password="admin",
-            mock_remote_dir=remote_dir,
+            remote_dir=remote_dir,
         )
+        store.save("test_mock_store")
     else:
         assert False, f"Unrecognised store {request.param}"
-    return store
+    yield store
 
 
 @pytest.fixture(params=GOOD_DATASETS)
@@ -423,8 +431,11 @@ def saved_dataset(data_store, work_dir):
         dim_lengths=[1, 1, 1, 1],
         files=["file1.txt", "file2.txt"],
     )
-    dataset_path = work_dir / "saved-dataset"
-    dataset = data_store.make_test_dataset(blueprint, dataset_path)
+    if isinstance(data_store, DirTree):
+        dataset_id = work_dir / "saved-dataset"
+    else:
+        dataset_id = "saved_dataset"
+    dataset = data_store.make_test_dataset(blueprint, dataset_id)
     dataset.save()
     return dataset
 

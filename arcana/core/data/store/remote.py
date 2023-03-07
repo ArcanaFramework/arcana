@@ -18,7 +18,7 @@ from arcana.core.exceptions import (
     ArcanaError,
     DatatypeUnsupportedByStoreError,
 )
-from arcana.core.utils.misc import dict_diff
+from arcana.core.utils.misc import dict_diff, full_path
 from ..entry import DataEntry
 from ..row import DataRow
 from .base import DataStore
@@ -43,7 +43,7 @@ class RemoteStore(DataStore):
     ----------
     server : str (URI)
         URI of XNAT server to connect to
-    cache_dir : str (name_path)
+    cache_dir : Path
         Path to local directory to cache remote data in
     name : str, optional
         the name of the store as it is saved in the store config file, by default None
@@ -58,7 +58,7 @@ class RemoteStore(DataStore):
     """
 
     server: str = attrs.field()
-    cache_dir: str = attrs.field(converter=Path)
+    cache_dir: Path = attrs.field(converter=full_path)
     name: str = None
     user: str = attrs.field(default=None, metadata={"asdict": False})
     password: str = attrs.field(default=None, metadata={"asdict": False})

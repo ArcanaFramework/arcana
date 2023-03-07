@@ -259,8 +259,8 @@ def test_command_execute_with_converter_args(saved_dataset: Dataset, work_dir: P
         pipeline_name="test_pipeline",
     )
     # Add source column to saved dataset
-    saved_dataset.add_sink("sink1", EncodedText, path="@common/encoded")
-    saved_dataset.add_sink("sink2", Text, path="@common/decoded")
+    saved_dataset.add_sink("sink1", EncodedText, path="encoded@")
+    saved_dataset.add_sink("sink2", Text, path="decoded@")
     unencoded_contents = "file1.txt"
     encoded_contents = (
         "iloh41w{w"  # 'file1.txt' characters shifted up by 3 in ASCII code

@@ -358,7 +358,7 @@ class DataStore(metaclass=ABCMeta):
                     name, f"No saved data store or built-in type matches '{name}'"
                 )
         else:
-            entry.update(kwargs)
+            entry.update({k: v for k, v in kwargs.items() if v is not None})
             entry["name"] = name
             store = fromdict(entry)  # Would be good to use a class resolver here
         return store
@@ -442,9 +442,10 @@ class DataStore(metaclass=ABCMeta):
         definition[self.VERSION_KEY] = self.VERSION
         if name is None:
             name = dataset.name
-        self.save_dataset_definition(dataset.id, definition, name=name)
+        with self.connection:
+            self.save_dataset_definition(dataset.id, definition, name=name)
 
-    def load_dataset(self, id, name=None, **kwargs):
+    def load_dataset(self, id, name="", **kwargs):
         """Load an existing dataset definition
 
         Parameters
@@ -465,13 +466,8 @@ class DataStore(metaclass=ABCMeta):
         KeyError
             if the dataset is not found
         """
-        from arcana.core.data.set import (
-            Dataset,
-        )  # avoid circular imports it is imported here rather than at the top of the file
-
-        if name is None:
-            name = Dataset.DEFAULT_NAME
-        dct = self.load_dataset_definition(id, name)
+        with self.connection:
+            dct = self.load_dataset_definition(id, name)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}@{name}'")
         store_version = dct.pop(self.VERSION_KEY)

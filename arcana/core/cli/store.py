@@ -3,6 +3,7 @@ import click
 from arcana.core.data.store import DataStore
 from arcana.core.utils.serialize import ClassResolver
 from arcana.core.utils.misc import get_home_dir
+from arcana.core.exceptions import ArcanaUsageError
 from .base import cli
 
 
@@ -30,8 +31,12 @@ location
 )
 @click.argument("name")
 @click.argument("type")
-@click.argument("location")
-@click.argument("varargs", nargs=-1)
+@click.option(
+    "--server",
+    "-s",
+    default=None,
+    help="The URI of the server to connect to (if applicable)",
+)
 @click.option(
     "--user", "-u", default=None, help="The username to use to connect to the store"
 )
@@ -48,14 +53,41 @@ location
     default=None,
     help="The location of a cache dir to download local copies of remote data",
 )
-def add(name, type, location, varargs, cache, user, password):
-    if cache is None:
-        cache = get_home_dir() / "cache" / name
-        cache.mkdir(parents=True, exist_ok=True)
+@click.option(
+    "--race-condition-delay",
+    "-d",
+    type=int,
+    help=(
+        "How long to wait for changes on a incomplete download before assuming it has "
+        "been interrupted, clearing it and starting again"
+    ),
+)
+@click.option(
+    "--option",
+    "-o",
+    nargs=2,
+    multiple=True,
+    metavar="<name> <value>",
+    default=None,
+    help="Additional key-word arguments that are passed to the store class",
+)
+def add(name, type, option, cache, **kwargs):
+    if option is not None:
+        options = dict(option)
+        conflicting = set(options) & set(kwargs)
+        if conflicting:
+            raise ArcanaUsageError(
+                f"Custom options {conflicting} conflict with in-built options, please "
+                "use them instead"
+            )
+        kwargs.update(options)
     store_cls = ClassResolver(DataStore)(type)
-    store = store_cls(
-        location, *varargs, name=name, cache_dir=cache, user=user, password=password
-    )
+    if hasattr(store_cls, "cache_dir"):
+        if cache is None:
+            cache = get_home_dir() / "cache" / name
+        cache.mkdir(parents=True, exist_ok=True)
+        kwargs["cache_dir"] = cache
+    store = store_cls(name=name, **kwargs)
     store.save(name)
 
 

@@ -110,7 +110,7 @@ def test_field_rountrip(dataset: Dataset):
             e for e in reloaded_row.entries if issubclass(e.datatype, Field)
         ]
         assert sorted(e.path for e in field_entries) == sorted(
-            "@common/" + bp.name for bp in bps
+            bp.name + "@" for bp in bps
         )
         for bp in bps:
             assert row[bp.name] == bp.datatype(bp.value)
