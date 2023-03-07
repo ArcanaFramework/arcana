@@ -8,6 +8,7 @@ from arcana.core.data.set.base import Dataset
 from arcana.dirtree import DirTree
 from arcana.core.data.store import DataStore
 from arcana.core.utils.misc import path2varname
+from arcana.core.utils.serialize import asdict
 
 
 def test_populate_tree(dataset: Dataset):
@@ -117,8 +118,20 @@ def test_field_rountrip(dataset: Dataset):
             assert row[bp.name] == bp.datatype(bp.value)
 
 
-# def test_dataset_definition_roundtrip():
-#     pass
+def test_dataset_definition_roundtrip(dataset: Dataset):
+    definition = asdict(dataset, omit=["store", "name"])
+    definition["store-version"] = "1.0.0"
+
+    store = dataset.store
+
+    with store.connection:
+        store.save_dataset_definition(
+            dataset_id=dataset.id, definition=definition, name="test_dataset"
+        )
+        reloaded_definition = store.load_dataset_definition(
+            dataset_id=dataset.id, name="test_dataset"
+        )
+    assert definition == reloaded_definition
 
 
 def test_singletons():
