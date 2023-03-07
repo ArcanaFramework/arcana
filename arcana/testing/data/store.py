@@ -204,11 +204,13 @@ class MockRemote(RemoteStore):
     # RemoteStore-specific methods #
     ################################
 
-    def download_files(self, entry: DataEntry, download_dir: Path, target_path: Path):
+    def download_files(self, entry: DataEntry, download_dir: Path) -> Path:
         self._check_connected()
         fileset = FileSet(self.iterdir(self.entry_fspath(entry)))
+        data_path = download_dir / "downloaded"
+        fileset.copy_to(data_path, make_dirs=True, symlink=True)
         time.sleep(self.mock_delay)
-        fileset.copy_to(target_path, make_dirs=True)
+        return data_path
 
     def upload_files(self, cache_path: Path, entry: DataEntry):
         self._check_connected()
@@ -289,10 +291,7 @@ class MockRemote(RemoteStore):
 
     def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
         self._check_connected()
-        if "@" in path:
-            path, dataset_name = path.split("@")
-        else:
-            dataset_name = None
+        path, dataset_name = DataEntry.split_dataset_name_from_path(path)
         entry = row.add_entry(
             path=path,
             datatype=datatype,

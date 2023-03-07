@@ -189,18 +189,12 @@ class DirTree(LocalStore):
         fileset: FileSet
             the file set stored or to be stored
         """
-        if "@" in path:
-            path, dataset_name = path.split("@")
-        else:
-            dataset_name = None
+        path, dataset_name = DataEntry.split_dataset_name_from_path(path)
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
         return str(row_dir.joinpath(*path.split("/"))) + datatype.ext
 
     def field_uri(self, path: str, datatype: type, row: DataRow) -> str:
-        if "@" in path:
-            path, dataset_name = path.split("@")
-        else:
-            dataset_name = None
+        path, dataset_name = DataEntry.split_dataset_name_from_path(path)
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
         return str(row_dir / self.FIELDS_FNAME) + "::" + path
 

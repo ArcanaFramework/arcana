@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import os.path as op
 from pathlib import Path
@@ -111,10 +112,39 @@ class RemoteStore(DataStore):
     # the outer abstract method from DataStore directory, e.g. "post_fileset"
     # without having to provide a stub for the inner method ("upload_files") as well
 
-    def download_files(self, entry: DataEntry, download_dir: Path, target_path: Path):
+    def download_files(self, entry: DataEntry, download_dir: Path) -> Path:
+        """Download files associated with the given entry in the data store, using
+        `download_dir` as temporary storage location (will be monitored by downloads
+        in sibling processes to detect if download activity has stalled), return the
+        path to a directory containing only the downloaded files
+
+        Parameters
+        ----------
+        entry : DataEntry
+            entry in the data store to download the files/directories from
+        download_dir : Path
+            temporary storage location for the downloaded files and/or compressed
+            archives. Monitored by sibling processes to detect if download activity
+            has stalled.
+
+        Returns
+        -------
+        output_dir : Path
+            a directory containing the downloaded files/directories and nothing else
+        """
         raise NotImplementedError(f"`download_files` is not implemented by {self}")
 
-    def upload_files(self, fileset: FileSet, entry: DataEntry):
+    def upload_files(self, input_dir: Path, entry: DataEntry):
+        """Upload all files contained within `input_dir` to the specified entry in the
+        data store
+
+        Parameters
+        ----------
+        input_dir : Path
+            directory containing the files/directories to be uploaded
+        entry : DataEntry
+            the entry in the data store to upload the files to
+        """
         raise NotImplementedError(f"`upload_files` is not implemented by {self}")
 
     def download_value(self, field):
@@ -269,9 +299,10 @@ class RemoteStore(DataStore):
                     else:
                         raise
                 else:
+                    data_path = self.download_files(entry, download_dir)
                     if cache_path.exists():
                         shutil.rmtree(cache_path)
-                    self.download_files(entry, download_dir, cache_path)
+                    shutil.move(data_path, cache_path)
                     shutil.rmtree(download_dir)
                 # Save checksums for future reference, so we can check to see if cache
                 # is stale
@@ -424,40 +455,40 @@ class RemoteStore(DataStore):
         self, entry: DataEntry, download_dir: Path, target_path: Path, delay: int
     ):
         logger.info(
-            "Waiting %s seconds for incomplete download of '%s' "
+            "Waiting %s seconds for incomplete download of %s "
             "initiated another process to finish",
             delay,
-            target_path,
+            entry,
         )
         initial_mod_time = dir_modtime(download_dir)
         time.sleep(delay)
         if op.exists(target_path):
             logger.info(
-                "The download of '%s' has completed "
+                "The download of %s has completed "
                 "successfully in the other process, continuing",
-                target_path,
+                entry,
             )
             return
         elif initial_mod_time != dir_modtime(download_dir):
             logger.info(
-                "The download of '%s' hasn't completed yet, but it has"
+                "The download of %s hasn't completed yet, but it has"
                 " been updated.  Waiting another %s seconds before "
                 "checking again.",
-                target_path,
+                entry,
                 delay,
             )
             self._delayed_download(entry, download_dir, target_path, delay)
         else:
             logger.warning(
-                "The download of '%s' hasn't updated in %s "
+                "The download of %s hasn't updated in %s "
                 "seconds, assuming that it was interrupted and "
                 "restarting download",
-                target_path,
+                entry,
                 delay,
             )
             shutil.rmtree(download_dir)
             os.mkdir(download_dir)
-            self.download_files(entry, download_dir, target_path)
+            self.download_files(entry, download_dir)
 
     def cache_path(self, uri: str):
         """Path to the directory where the item is/should be cached. Note that

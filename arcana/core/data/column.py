@@ -13,10 +13,10 @@ from ..analysis.salience import ColumnSalience
 from .quality import DataQuality
 from .space import DataSpace
 from .cell import DataCell
+from .entry import DataEntry
 
 if ty.TYPE_CHECKING:
     from .row import DataRow
-    from .entry import DataEntry
     from .set.base import Dataset
 
 
@@ -147,20 +147,11 @@ class DataColumn(metaclass=ABCMeta):
 
     def matches_path(self, entry: DataEntry) -> bool:
         "that matched the path '{self.path}'"
-        if "@" in self.path:
-            path, dataset_name = self.path.split("@")
-        else:
-            path = self.path
-            dataset_name = None
-        if "@" in entry.path:
-            entry_path, entry_dataset_name = entry.path.split("@")
-        else:
-            entry_path = entry.path
-            entry_dataset_name = None
+        path, dataset_name = DataEntry.split_dataset_name_from_path(self.path)
         path_parts = self.path_split_re.split(path)
-        entry_parts = self.path_split_re.split(entry_path)[: len(path_parts)]
+        entry_parts = self.path_split_re.split(entry.base_path)[: len(path_parts)]
         if entry_parts == path_parts:
-            return dataset_name == "*" or dataset_name == entry_dataset_name
+            return dataset_name == "*" or dataset_name == entry.dataset_name
         else:
             return self._log_mismatch(
                 entry,

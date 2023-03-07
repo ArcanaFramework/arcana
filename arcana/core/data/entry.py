@@ -96,17 +96,11 @@ class DataEntry:
 
     @path.validator
     def path_validator(self, _, path: str):
-        if "@" in path:
-            parts = path.split("@")
-            if len(parts) > 2:
-                raise ArcanaUsageError(
-                    f"Entry paths can't have more than one '@' symbol, given {path})"
-                )
-            dataset_name = parts[-1]
-            if dataset_name and not dataset_name.isidentifier():
-                raise ArcanaUsageError(
-                    f"Path '{path}' has an invalid dataset_name '{dataset_name}')"
-                )
+        path, dataset_name = self.split_dataset_name_from_path(path)
+        if dataset_name and not dataset_name.isidentifier():
+            raise ArcanaUsageError(
+                f"Path '{path}' has an invalid dataset_name '{dataset_name}')"
+            )
 
     def __attrs_post_init__(self):
         self.item_metadata._entry = self
@@ -140,16 +134,29 @@ class DataEntry:
 
     @property
     def is_derivative(self):
-        return "@" in self.path
+        return self.path_is_derivative(self.path)
 
     @property
-    def namespace(self):
-        if not self.is_derivative:
+    def base_path(self):
+        return self.split_dataset_name_from_path(self.path)[0]
+
+    @property
+    def dataset_name(self):
+        return self.split_dataset_name_from_path(self.path)[1]
+
+    @classmethod
+    def split_dataset_name_from_path(cls, path):
+        parts = path.split("@")
+        if len(parts) == 1:
+            dataset_name = None
+        else:
+            path, dataset_name = parts
+        if len(parts) > 2:
             raise ArcanaUsageError(
-                f"Only derivative entries have namespaces, not {self}"
+                f"Entry paths can't have more than one '@' symbol, given {path})"
             )
-        return self.path.split("@")[-1]
+        return path, dataset_name
 
-    @property
-    def in_derivative_namespace(self):
-        return self.is_derivative and self.namespace == self.row.dataset.name
+    @classmethod
+    def path_is_derivative(cls, path):
+        return cls.split_dataset_name_from_path(path)[1] is not None
