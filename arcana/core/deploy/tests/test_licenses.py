@@ -152,7 +152,7 @@ def get_pipeline_image(license_path) -> App:
         description="A test of the license installation",
         readme="This is a test README",
         packages={
-            "pip": ["arcana-testing", "fileformats"],
+            "pip": ["fileformats"],
         },
         licenses={
             LICENSE_NAME: {

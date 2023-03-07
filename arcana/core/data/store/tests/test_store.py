@@ -117,6 +117,10 @@ def test_field_rountrip(dataset: Dataset):
             assert row[bp.name] == bp.datatype(bp.value)
 
 
+# def test_dataset_definition_roundtrip():
+#     pass
+
+
 def test_singletons():
     standard = set(["dirtree"])
     assert set(DataStore.singletons()) & standard == standard
