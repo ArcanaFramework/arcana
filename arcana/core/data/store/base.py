@@ -2,9 +2,6 @@ from __future__ import annotations
 import logging
 from abc import abstractmethod, ABCMeta
 from pathlib import Path
-import zipfile
-import shutil
-from itertools import product
 import attrs
 import typing as ty
 import yaml
@@ -16,8 +13,6 @@ import arcana
 from fileformats.core import DataType
 from arcana.core.utils.misc import (
     get_config_file_path,
-    set_cwd,
-    path2varname,
     NestedContext,
 )
 from arcana.core.utils.packaging import list_subclasses
@@ -34,7 +29,6 @@ if ty.TYPE_CHECKING:
     from ..tree import DataTree
     from ..entry import DataEntry
     from ..row import DataRow
-    from ..testing import TestDatasetBlueprint
 
 
 @attrs.define
@@ -74,6 +68,10 @@ class DataStore(metaclass=ABCMeta):
     SUBPACKAGE = "data"
     VERSION_KEY = "store-version"
     VERSION = "1.0.0"
+
+    ####################
+    # Abstract methods #
+    ####################
 
     @abstractmethod
     def populate_tree(self, tree: DataTree):
@@ -132,29 +130,6 @@ class DataStore(metaclass=ABCMeta):
         -------
         cached : DataType
             returns the cached version of the item, if applicable
-        """
-
-    @abstractmethod
-    def post(
-        self, item: DataType, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        """Inserts the item within a newly created entry in the data store
-
-        Parameters
-        ----------
-        item : DataType
-            the item to insert
-        path : str
-            the path to the entry relative to the data row
-        datatype : type
-            the datatype of the entry
-        row : DataRow
-            the data row to insert the entry into
-
-        Returns
-        -------
-        entry : DataEntry
-            the inserted entry
         """
 
     @abstractmethod
@@ -221,39 +196,96 @@ class DataStore(metaclass=ABCMeta):
             A dct Dataset object that was saved in the data store
         """
 
-    def create_empty_dataset(
+    @abstractmethod
+    def connect(self):
+        """
+        If a connection session is required to the store manage it here
+        """
+
+    @abstractmethod
+    def disconnect(self, session):
+        """
+        If a connection session is required to the store manage it here
+        """
+
+    @abstractmethod
+    def site_licenses_dataset(self):
+        """Can be overridden by subclasses to provide a dataset to hold site-wide licenses"""
+
+    @abstractmethod
+    def create_data_tree(
         self,
         id: str,
+        leaves: list[tuple[str, ...]],
         hierarchy: list[str],
-        row_ids: list[list[str]],
         space: type,
-        name: str = None,
-        **kwargs,
     ):
-        """create a new empty dataset within the store, used in test routines and
-        dataset imports
+        """creates a new empty dataset within in the store. Used in test routines and
+        importing/exporting datasets between stores
 
         Parameters
         ----------
         id : str
             ID for the newly created dataset
+        leaves : list[tuple[str, ...]]
+                        list of IDs for each leaf node to be added to the dataset. The IDs for each
+            leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
+            for a hierarchy of [subject, timepoint] ->
+            [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
+        hierarchy: list[str]
+            the hierarchy of the dataset to be created
         space : type(DataSpace)
             the data space of the dataset
-        hierarchy : list[str]
-            the hierarchy of row frequencies the tree of the dataset
-        row_ids : list[list[str]]
-            the empty data rows to create within the newly created dataset. Outer list
-            corresponds to levels in the hierarchy, inner lists correspond to the row
-            ids repeated in each branch of the corresponding level of the data tree.
-        name : str, optional
-            name to give to the dataset definition returned
-        **kwargs
-            store sub-class relevant arguments
         """
-        raise NotImplementedError(
-            f"{type(self).__name__} stores don't implement the `create_empty_dataset` "
-            "method"
-        )
+
+    @abstractmethod
+    def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
+        """Creates an "entry" in the store to hold a new data item
+
+        Parameters
+        ----------
+        path : str
+            path to the entry relative to the data "row"
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the row (tree node) to create the entry in
+
+        Returns
+        -------
+        entry : DataEntry
+            the newly created entry
+        """
+
+    # Can be overridden if necessary (e.g. the underlying store only returns new URI
+    # when a new item is added)
+    def post(
+        self, item: DataType, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
+        """Inserts the item within a newly created entry in the data store
+
+        Parameters
+        ----------
+        item : DataType
+            the item to insert
+        path : str
+            the path to the entry relative to the data row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the data row to insert the entry into
+
+        Returns
+        -------
+        entry : DataEntry
+            the inserted entry
+        """
+        entry = self.create_entry(path, datatype, row)
+        self.put(item, entry)
+
+    ###############
+    # General API #
+    ###############
 
     def import_dataset(self, id: str, dataset: Dataset, **kwargs):
         """Import a dataset from another store, transferring metadata and columns
@@ -266,24 +298,10 @@ class DataStore(metaclass=ABCMeta):
         dataset : Dataset
             the dataset to import
         **kwargs:
-            keyword arguments passed through to the `create_empty_dataset` method
+            keyword arguments passed through to the `create_data_tree` method
         """
         raise NotImplementedError
-        # imported = self.create_empty_dataset(id, **kwargs)
-
-    def connect(self):
-        """
-        If a connection session is required to the store manage it here
-        """
-
-    def disconnect(self, session):
-        """
-        If a connection session is required to the store manage it here
-        """
-
-    def site_licenses_dataset(self):
-        """Can be overridden by subclasses to provide a dataset to hold site-wide licenses"""
-        return None
+        # imported = self.create_data_tree(id, **kwargs)
 
     def save(self, name: str = None, config_path: Path = None):
         """Saves the configuration of a DataStore in 'stores.yaml'
@@ -474,6 +492,47 @@ class DataStore(metaclass=ABCMeta):
         self.check_store_version(store_version)
         return fromdict(dct, id=id, name=name, store=self, **kwargs)
 
+    def new_dataset(
+        self,
+        id: str,
+        leaves: list[tuple[str, ...]],
+        name: str = None,
+        **kwargs,
+    ):
+        """Creates a new dataset with new rows to store data in
+
+        Parameters
+        ----------
+        id : str
+            ID of the dataset
+        leaves : list[tuple[str, ...]]
+            the list of tuple IDs (at each level of the tree)
+        name : str, optional
+            name of the dataset, if provided the dataset definition will be saved. To
+            save the dataset with the default name pass an empty string.
+        hierarchy : list[str], optional
+            hierarchy of the dataset tree
+        space : type, optional
+            the space of the dataset
+
+        Returns
+        -------
+        Dataset
+            the newly created dataset
+        """
+        self.create_data_tree(
+            id=id,
+            leaves=leaves,
+            **kwargs,
+        )
+        dataset = self.define_dataset(
+            id=id,
+            **kwargs,
+        )
+        if name is not None:
+            dataset.save(name=name)
+        return dataset
+
     @classmethod
     def singletons(cls):
         """Returns stores in a dictionary indexed by their aliases, for which there
@@ -512,138 +571,9 @@ class DataStore(metaclass=ABCMeta):
         with open(config_path, "w") as f:
             yaml.dump(entries, f)
 
-    def create_test_dataset_data(
-        self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
-    ):
-        """Creates the test data in the store, from the provided blueprint, which
-        can be used to run test routines against
-
-        Parameters
-        ----------
-        blueprint
-            the test dataset blueprint
-        dataset_path : Path
-            the pat
-        """
-        raise NotImplementedError(
-            f"'create_test_dataset_data' method hasn't been implemented for {type(self)} "
-            "class please create it to use 'make_test_dataset' method in your test "
-            "routines"
-        )
-
-    @classmethod
-    def create_test_fsobject(
-        cls,
-        fname: str,
-        dpath: Path,
-        source_data: Path = None,
-        source_fallback: bool = False,
-        escape_source_name: bool = True,
-    ):
-        """For use in test routines, this classmethod creates a simple text file,
-        zip file or nested directory at the given path
-
-        Parameters
-        ----------
-        fname : str
-            name of the file to create, a file or directory will be created depending
-            on the name given
-        dpath : Path
-            the path at which to create the file/directory
-        source_data : Path, optional
-            path to a directory containing source data to use instead of the dummy
-            data
-        source_fallback : bool
-            whether to fall back to the generated file if fname isn't in the source
-            data dir
-        escape_source_name : bool
-            whether to escape the source name or simple use the file name of the source
-
-        Returns
-        -------
-        Path
-            path to the created file/directory
-        """
-        dpath = Path(dpath)
-        dpath.mkdir(parents=True, exist_ok=True)
-        if source_data is not None:
-            src_path = source_data.joinpath(*fname.split("/"))
-            if src_path.exists():
-                if escape_source_name:
-                    parts = fname.split(".")
-                    out_fname = path2varname(parts[0]) + "." + ".".join(parts[1:])
-                else:
-                    out_fname = Path(fname).name
-                out_path = dpath / out_fname
-                if src_path.is_dir():
-                    shutil.copytree(src_path, out_path)
-                else:
-                    shutil.copyfile(src_path, out_path, follow_symlinks=True)
-                return out_path
-            elif not source_fallback:
-                raise ArcanaError(
-                    f"Couldn't find {fname} in source data directory {source_data}"
-                )
-        out_path = dpath / fname
-        next_part = fname
-        if next_part.endswith(".zip"):
-            next_part = next_part.strip(".zip")
-        next_path = Path(next_part)
-        # Make double dir
-        if next_part.startswith("doubledir"):
-            (dpath / next_path).mkdir(exist_ok=True)
-            next_part = "dir"
-            next_path /= next_part
-        if next_part.startswith("dir"):
-            (dpath / next_path).mkdir(exist_ok=True)
-            next_part = "test.txt"
-            next_path /= next_part
-        if not next_path.suffix:
-            next_path = next_path.with_suffix(".txt")
-        if next_path.suffix == ".json":
-            contents = '{"a": 1.0}'
-        else:
-            contents = fname
-        with open(dpath / next_path, "w") as f:
-            f.write(contents)
-        if fname.endswith(".zip"):
-            with zipfile.ZipFile(out_path, mode="w") as zfile, set_cwd(dpath):
-                zfile.write(next_path)
-            (dpath / next_path).unlink()
-        return out_path
-
-    def make_test_dataset(
-        self,
-        blueprint: TestDatasetBlueprint,
-        dataset_id: str,
-        source_data: Path = None,
-        **kwargs,
-    ):
-        """For use in tests, this method creates a test dataset from the provided
-        blueprint"""
-        self.create_test_dataset_data(
-            blueprint, dataset_id, source_data=source_data, **kwargs
-        )
-        return self.access_test_dataset(blueprint, dataset_id)
-
-    def access_test_dataset(self, blueprint, dataset_id):
-        dataset = self.define_dataset(
-            dataset_id,
-            hierarchy=blueprint.hierarchy,
-            id_inference=blueprint.id_inference,
-        )
-        dataset.__annotations__["blueprint"] = blueprint
-        return dataset
-
-    @classmethod
-    def iter_test_blueprint(cls, blueprint: TestDatasetBlueprint):
-        """Iterate all leaves of the data tree specified by the test blueprint"""
-        for id_tple in product(*(list(range(d)) for d in blueprint.dim_lengths)):
-            base_ids = dict(zip(blueprint.space.axes(), id_tple))
-            ids = {}
-            for layer in blueprint.hierarchy:
-                ids[layer] = "".join(f"{b}{base_ids[b]}" for b in layer.span())
-            yield ids
+    ##################
+    # Helper methods #
+    ##################
 
     def check_store_version(self, store_version: str):
         """Check whether version store used to save the dataset is compatible with the

@@ -2,7 +2,7 @@ from functools import reduce
 from operator import mul
 from pathlib import Path
 import pytest
-from arcana.core.data.testing import TestDatasetBlueprint
+from arcana.testing.data.blueprint import TestDatasetBlueprint
 from arcana.testing import (
     TestDataSpace,
 )

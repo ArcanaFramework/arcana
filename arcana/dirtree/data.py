@@ -13,7 +13,6 @@ from arcana.core.data.row import DataRow
 from arcana.core.data.set import Dataset
 from arcana.core.data.entry import DataEntry
 from arcana.core.data.store import LocalStore
-from arcana.core.data.testing import TestDatasetBlueprint
 from arcana.core.utils.misc import full_path
 
 
@@ -198,37 +197,18 @@ class DirTree(LocalStore):
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
         return str(row_dir / self.FIELDS_FNAME) + "::" + path
 
-    def create_test_dataset_data(
-        self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
-    ):
-        """Creates the actual data in the store, from the provided blueprint, which
-        can be used to run test routines against
-
-        Parameters
-        ----------
-        blueprint
-            the test dataset blueprint
-        dataset_path : Path
-            the pat
-        """
-        dataset_path = Path(dataset_id)
-        dataset_path.mkdir()
-        for ids in self.iter_test_blueprint(blueprint):
-            dpath = dataset_path.joinpath(*[ids[h] for h in blueprint.hierarchy])
-            dpath.mkdir(parents=True)
-            for fname in blueprint.files:
-                self.create_test_fsobject(fname, dpath, source_data=source_data)
-
-    def create_empty_dataset(
+    def create_data_tree(
         self,
         id: str,
+        leaves: list[tuple[str, ...]],
         hierarchy: list[str],
-        row_ids: list[list[str]],
         space: type,
-        name: str = None,
-        **kwargs,
     ):
-        raise NotImplementedError
+        root_dir = Path(id)
+        root_dir.mkdir(parents=True)
+        # Create sub-directories corresponding to rows of the dataset
+        for ids_tuple in leaves:
+            root_dir.joinpath(*ids_tuple).mkdir(parents=True)
 
     ##################
     # Helper functions

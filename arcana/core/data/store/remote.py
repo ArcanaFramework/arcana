@@ -2,11 +2,11 @@ from __future__ import annotations
 import os
 import os.path as op
 from pathlib import Path
+from abc import abstractmethod
 import time
 import logging
 import errno
 import json
-import re
 import shutil
 import attrs
 from fileformats.core import DataType, FileSet, Field
@@ -26,13 +26,6 @@ from .base import DataStore
 
 
 logger = logging.getLogger("arcana")
-
-special_char_re = re.compile(r"[^a-zA-Z_0-9]")
-tag_parse_re = re.compile(r"\((\d+),(\d+)\)")
-
-RELEVANT_DICOM_TAG_TYPES = set(("UI", "CS", "DA", "TM", "SH", "LO", "PN", "ST", "AS"))
-
-# COMMAND_INPUT_TYPES = {bool: "bool", str: "string", int: "number", float: "number"}
 
 
 @attrs.define
@@ -83,9 +76,9 @@ class RemoteStore(DataStore):
         if not cache_dir.exists():
             raise ValueError(f"Cache dir, '{cache_dir}' does not exist")
 
-    ################################
-    # Abstractmethods to implement #
-    ################################
+    ######################
+    # Inherited abstract #
+    ######################
 
     # populate_tree
 
@@ -103,15 +96,15 @@ class RemoteStore(DataStore):
 
     # get_provenance
 
-    #######################
-    # Methods to override #
-    #######################
+    # create_entry
 
-    # The following methods can be thought of as "abstractmethods", the only
-    # reason they aren't implemented as such is to give the option to override
-    # the outer abstract method from DataStore directory, e.g. "post_fileset"
-    # without having to provide a stub for the inner method ("upload_files") as well
+    # create_data_tree
 
+    ######################
+    # Abstract methods #
+    ######################
+
+    @abstractmethod
     def download_files(self, entry: DataEntry, download_dir: Path) -> Path:
         """Download files associated with the given entry in the data store, using
         `download_dir` as temporary storage location (will be monitored by downloads
@@ -132,8 +125,8 @@ class RemoteStore(DataStore):
         output_dir : Path
             a directory containing the downloaded files/directories and nothing else
         """
-        raise NotImplementedError(f"`download_files` is not implemented by {self}")
 
+    @abstractmethod
     def upload_files(self, input_dir: Path, entry: DataEntry):
         """Upload all files contained within `input_dir` to the specified entry in the
         data store
@@ -145,8 +138,25 @@ class RemoteStore(DataStore):
         entry : DataEntry
             the entry in the data store to upload the files to
         """
-        raise NotImplementedError(f"`upload_files` is not implemented by {self}")
 
+    @abstractmethod
+    def create_fileset_entry(
+        self, path: str, datatype: type, row: DataRow
+    ) -> DataEntry:
+        """
+        Creates a new resource entry to store a fileset
+
+        Parameters
+        ----------
+        path: str
+            the path to the entry relative to the row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the row of the data entry
+        """
+
+    @abstractmethod
     def download_value(self, field):
         """
         Extract and return the value of the field from the store
@@ -161,8 +171,8 @@ class RemoteStore(DataStore):
         value : int | float | str | ty.List[int] | ty.List[float] | ty.List[str]
             The value of the Field
         """
-        raise NotImplementedError(f"`download_value` is not implemented by {self}")
 
+    @abstractmethod
     def upload_value(self, field, value):
         """
         Inserts or updates the field's value in the store
@@ -172,16 +182,23 @@ class RemoteStore(DataStore):
         field : Field
             The field to insert into the store
         """
-        raise NotImplementedError(f"`upload_value` is not implemented by {self}")
 
-    def create_fileset_entry(self, path: str, datatype: type, row: DataRow):
-        raise NotImplementedError(
-            f"`create_fileset_entry` is not implemented by {self}"
-        )
-
+    @abstractmethod
     def create_field_entry(self, path: str, datatype: type, row: DataRow):
-        raise NotImplementedError("`create_field_entry` is not implemented by {self}")
+        """
+        Creates a new resource entry to store a field
 
+        Parameters
+        ----------
+        path: str
+            the path to the entry relative to the row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the row of the data entry
+        """
+
+    @abstractmethod
     def get_checksums(self, uri: str) -> dict[str, str]:
         """
         Downloads the checksum digests associated with the files in the file-set.
@@ -193,8 +210,8 @@ class RemoteStore(DataStore):
         uri: str
             uri of the data item to download the checksums for
         """
-        raise NotImplementedError(f"get_checksums needs to be implemented for {self}")
 
+    @abstractmethod
     def calculate_checksums(self, fileset: FileSet) -> dict[str, str]:
         """
         Downloads the checksum digests associated with the files in the file-set.
@@ -206,9 +223,6 @@ class RemoteStore(DataStore):
         uri: str
             uri of the data item to download the checksums for
         """
-        raise NotImplementedError(
-            f"calculate_checksums needs to be implemented for {self}"
-        )
 
     ################################
     # Abstractmethod implementations
@@ -235,15 +249,44 @@ class RemoteStore(DataStore):
                 raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return item
 
-    def post(self, item: DataType, path: str, datatype: type, row: DataRow):
-        with self.connection:
-            if datatype.is_fileset:
-                entry = self.post_fileset(item, path=path, datatype=datatype, row=row)
-            elif datatype.is_field:
-                entry = self.post_field(item, path=path, datatype=datatype, row=row)
-            else:
-                raise DatatypeUnsupportedByStoreError(datatype, self)
+    def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
+        if datatype.is_fileset:
+            entry = self.create_fileset_entry(path, datatype, row)
+        elif datatype.is_field:
+            entry = self.create_field_entry(path, datatype, row)
+        else:
+            raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return entry
+
+    def site_licenses_dataset(self):
+        """Return a dataset that holds site-wide licenses
+
+        Returns
+        -------
+        Dataset or None
+            the dataset that holds site-wide licenses
+        """
+        try:
+            user = os.environ[self.SITE_LICENSES_USER_ENV]
+        except KeyError:
+            store = self
+        else:
+            # Reconnect to store with site-license user/password
+            store = type(self)(
+                server=self,
+                cache_dir=self.cache_dir,
+                user=user,
+                password=os.environ[self.SITE_LICENSES_PASS_ENV],
+            )
+        try:
+            dataset_name = os.environ[self.SITE_LICENSES_DATASET_ENV]
+        except KeyError:
+            return None
+        return store.load_dataset(dataset_name)
+
+    ###################
+    # Get and putters #
+    ###################
 
     def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
         """
@@ -363,29 +406,6 @@ class RemoteStore(DataStore):
         )
         return cached
 
-    def post_fileset(
-        self, fileset: DataType, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        """
-        Creates a new resource entry to store the fileset in then puts it in it
-
-        Parameters
-        ----------
-        fileset : FileSet
-            The file-set to put the paths for
-        fspaths: list[Path or str  ]
-            The paths of files/directories to put into the XNAT repository
-
-        Returns
-        -------
-        list[Path]
-            The locations of the locally cached paths
-        """
-        with self.connection:
-            entry = self.create_fileset_entry(path, datatype, row)
-            self.put_fileset(fileset, entry)
-        return entry
-
     def get_field(self, entry: DataEntry, datatype: type) -> Field:
         """
         Retrieves a fields value
@@ -413,39 +433,6 @@ class RemoteStore(DataStore):
             the value to store
         """
         return self.upload_value(entry.datatype(field).value, entry)
-
-    def post_field(
-        self, field: Field, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        entry = self.create_field_entry(path, datatype, row)
-        self.put_field(field, entry)
-        return entry
-
-    def site_licenses_dataset(self):
-        """Return a dataset that holds site-wide licenses
-
-        Returns
-        -------
-        Dataset or None
-            the dataset that holds site-wide licenses
-        """
-        try:
-            user = os.environ[self.SITE_LICENSES_USER_ENV]
-        except KeyError:
-            store = self
-        else:
-            # Reconnect to store with site-license user/password
-            store = type(self)(
-                server=self,
-                cache_dir=self.cache_dir,
-                user=user,
-                password=os.environ[self.SITE_LICENSES_PASS_ENV],
-            )
-        try:
-            dataset_name = os.environ[self.SITE_LICENSES_DATASET_ENV]
-        except KeyError:
-            return None
-        return store.load_dataset(dataset_name)
 
     ##################
     # Helper methods #

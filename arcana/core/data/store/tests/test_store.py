@@ -75,7 +75,13 @@ def test_post_fileset(dataset: Dataset):
             deriv_tmp_dir = Path(mkdtemp())
             fspaths = []
             for fname in deriv.filenames:
-                fspaths.append(DirTree().create_test_fsobject(fname, deriv_tmp_dir))
+                fspaths.append(
+                    blueprint.create_fsobject(
+                        fname,
+                        deriv_tmp_dir,
+                        store=dataset.store,
+                    )
+                )
             test_file = deriv.datatype(fspaths)
             all_checksums[deriv.name] = test_file.hash_files()
             # Test inserting the new item into the store
@@ -122,16 +128,26 @@ def test_dataset_definition_roundtrip(dataset: Dataset):
     definition = asdict(dataset, omit=["store", "name"])
     definition["store-version"] = "1.0.0"
 
-    store = dataset.store
+    data_store = dataset.store
 
-    with store.connection:
-        store.save_dataset_definition(
+    with data_store.connection:
+        data_store.save_dataset_definition(
             dataset_id=dataset.id, definition=definition, name="test_dataset"
         )
-        reloaded_definition = store.load_dataset_definition(
+        reloaded_definition = data_store.load_dataset_definition(
             dataset_id=dataset.id, name="test_dataset"
         )
     assert definition == reloaded_definition
+
+
+def test_provenance_roundtrip(dataset: Dataset):
+    provenance = {"a": 1, "b": [1, 2, 3], "c": {"x": True, "y": "foo", "z": "bar"}}
+    data_store = dataset.store
+
+    with data_store.connection:
+        data_store.put_provenance(provenance)
+        reloaded_provenance = data_store.get_provenance()
+        assert provenance == reloaded_provenance
 
 
 def test_singletons():

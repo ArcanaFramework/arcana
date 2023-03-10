@@ -30,7 +30,7 @@ from arcana.testing.tasks import (
     concatenate,
     concatenate_reverse,
 )
-from arcana.core.data.testing import (
+from arcana.testing.data.blueprint import (
     TestDatasetBlueprint,
     DerivBlueprint,
     ExpDatatypeBlueprint,
@@ -78,14 +78,6 @@ def build_cache_dir():
     # build_cache_dir.mkdir()
     return Path(mkdtemp())
     # return build_cache_dir
-
-
-# @pytest.fixture
-# def flat_dir_store(work_dir):
-#     store = MockRemote(cache_dir=work_dir / "flat-dir-store-cache")
-#     with patch.dict(os.environ, {"ARCANA_HOME": str(work_dir / "arcana-home")}):
-#         store.save("custom-flat")
-#         yield store
 
 
 @pytest.fixture
@@ -372,16 +364,6 @@ GOOD_DATASETS = ["full", "one_layer", "skip_single", "skip_with_inference", "red
 DATA_STORES = ["dirtree", "mock_remote"]
 
 
-# @pytest.fixture
-# def test_dataspace():
-#     return TDS
-
-
-# @pytest.fixture
-# def test_dataspace_location():
-#     return __name__ + ".TestDataSpace"
-
-
 @pytest.fixture
 def arcana_home(work_dir):
     arcana_home = work_dir / "arcana-home"
@@ -390,7 +372,7 @@ def arcana_home(work_dir):
 
 
 @pytest.fixture(params=DATA_STORES)
-def data_store(work_dir, arcana_home, request):
+def data_store(work_dir: Path, arcana_home: Path, request):
     if request.param == "dirtree":
         store = DirTree()
     elif request.param == "mock_remote":
@@ -417,7 +399,7 @@ def dataset(work_dir, data_store, request):
     blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
     dataset_path = work_dir / dataset_name
     dataset_id = dataset_path if isinstance(data_store, DirTree) else dataset_name
-    dataset = data_store.make_test_dataset(blueprint, dataset_id)
+    dataset = blueprint.make_dataset(data_store, dataset_id)
     yield dataset
     # shutil.rmtree(dataset.id)
 
@@ -435,34 +417,7 @@ def saved_dataset(data_store, work_dir):
         dataset_id = work_dir / "saved-dataset"
     else:
         dataset_id = "saved_dataset"
-    dataset = data_store.make_test_dataset(blueprint, dataset_id)
-    dataset.save()
-    return dataset
-
-
-@pytest.fixture(params=GOOD_DATASETS)
-def dirtree_dataset(flat_dir_store, work_dir, request):
-    dataset_name = request.param
-    blueprint = TEST_DATASET_BLUEPRINTS[dataset_name]
-    dataset_path = work_dir / dataset_name
-    dataset = flat_dir_store.make_test_dataset(blueprint, dataset_path)
-    yield dataset
-    # shutil.rmtree(dataset.id)
-
-
-# @pytest.fixture
-# def saved_dirtree_dataset(flat_dir_store, work_dir):
-#     blueprint = TestDatasetBlueprint(
-#         hierarchy=[
-#             TDS.abcd
-#         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-#         dim_lengths=[1, 1, 1, 1],
-#         files=["file1.txt", "file2.txt"],
-#     )
-#     dataset_path = work_dir / "saved-dataset"
-#     dataset = flat_dir_store.make_test_dataset(blueprint, dataset_path)
-#     dataset.save()
-#     return dataset
+    return blueprint.make_dataset(data_store, dataset_id, name="")
 
 
 @pytest.fixture

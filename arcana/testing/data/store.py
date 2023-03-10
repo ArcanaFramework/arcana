@@ -8,7 +8,6 @@ import time
 import yaml
 from fileformats.core.base import FileSet, Field
 from arcana.core.data.store import RemoteStore
-from arcana.core.data.testing import TestDatasetBlueprint
 from arcana.core.data.row import DataRow
 from arcana.core.data.tree import DataTree
 from arcana.core.data.entry import DataEntry
@@ -185,20 +184,35 @@ class MockRemote(RemoteStore):
         with open(prov_path, "w") as f:
             json.dumps(provenance, f)
 
-    def create_test_dataset_data(
-        self, blueprint: TestDatasetBlueprint, dataset_id: str, source_data: Path = None
+    def create_data_tree(
+        self,
+        id: str,
+        leaves: list[tuple[str, ...]],
+        hierarchy: list[str],
+        space: type,
     ):
-        """Create test data within store for test routines"""
-        dataset_path = self.dataset_fspath(dataset_id) / self.LEAVES_DIR
+        """reate test data within store with rows specified by row_ids
+
+        Parameters
+        ----------
+        id : str
+            ID of the dataset
+        leaves : list[tuple[str, ...]]
+            list of IDs for each leaf node to be added to the dataset. The IDs for each
+            leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
+            for a hierarchy of [subject, timepoint] ->
+            [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
+        hierarchy : list[str]
+            the hierarchy of the dataset to be created
+        space : type
+            the dataspace of the dataset to be created
+        """
+        dataset_path = self.dataset_fspath(id) / self.LEAVES_DIR
         dataset_path.mkdir(parents=True)
-        for ids in self.iter_test_blueprint(blueprint):
-            row_path = dataset_path / self.get_row_dirname_from_ids(
-                ids, blueprint.hierarchy
-            )
+        for ids_tuple in leaves:
+            ids = dict(zip(hierarchy, ids_tuple))
+            row_path = dataset_path / self.get_row_dirname_from_ids(ids, hierarchy)
             row_path.mkdir(parents=True)
-            for fname in blueprint.files:
-                cell_path = row_path / fname.split(".")[0]
-                self.create_test_fsobject(fname, cell_path, source_data=source_data)
 
     ################################
     # RemoteStore-specific methods #
@@ -272,9 +286,6 @@ class MockRemote(RemoteStore):
             uri of the data item to download the checksums for
         """
         return fileset.hash_files()
-
-    # def create_empty_dataset(self):
-    #     raise NotImplementedError
 
     ##################
     # Helper methods #

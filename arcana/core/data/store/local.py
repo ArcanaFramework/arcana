@@ -52,53 +52,157 @@ class LocalStore(DataStore):
 
     name: str
 
-    @abstractmethod
-    def get_field(self, entry: DataEntry, datatype: type) -> Field:
-        raise NotImplementedError
+    ##############################
+    # Inherited abstract methods #
+    ##############################
+
+    # populate_tree
+
+    # populate_row
+
+    # save_dataset_definition
+
+    # load_dataset_definition
+
+    # connect
+
+    # disconnect
+
+    # put_provenance
+
+    # get_provenance
+
+    # create_data_tree
+
+    ####################
+    # Abstract methods #
+    ####################
 
     @abstractmethod
-    def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
+    def get_field(self, entry: DataEntry, datatype: type) -> Field:
+        """Retrieves a field from a data entry
+
+        Parameters
+        ----------
+        entry : DataEntry
+            the entry to retrieve the file-set from
+        datatype : type
+            the type of the field from
+
+        Returns
+        -------
+        Field
+            the retrieved field
+        """
         raise NotImplementedError
 
     @abstractmethod
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
+        """Stores a file-set into a data entry
+
+        Parameters
+        ----------
+        fileset : FileSet
+            the file-set to store
+        entry : DataEntry
+            the entry to store the file-set in
+
+        Returns
+        -------
+        FileSet
+            the file-set within the store
         """
-        Inserts or updates a fileset in the store
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
+        """Retrieves a file-set from a data entry
+
+        Parameters
+        ----------
+        entry : DataEntry
+            the entry to retrieve the file-set from
+        datatype : type
+            the type of the file-set
+
+        Returns
+        -------
+        FileSet
+            the retrieved file-set
         """
         raise NotImplementedError
 
     @abstractmethod
     def put_field(self, field: Field, entry: DataEntry):
-        """
-        Inserts or updates a field in the store
+        """Stores a field into a data entry
+
+        Parameters
+        ----------
+        field : Field
+            the field to store
+        entry : DataEntry
+            the entry to store the field in
         """
         raise NotImplementedError
 
     @abstractmethod
-    def fileset_uri(self, path: str, row: DataRow) -> str:
+    def fileset_uri(self, path: str, datatype: type, row: DataRow) -> str:
+        """Returns the "uri" (e.g. file-system path relative to root dir) of a file-set
+        entry at the given path relative to the given row
+
+        Parameters
+        ----------
+        path : str
+            path to the entry relative to the row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the row of the entry
+
+        Returns
+        -------
+        uri : str
+            the "uri" to the file-set entry relative to the data store
+        """
         raise NotImplementedError
 
     @abstractmethod
-    def field_uri(self, path: str, row: DataRow) -> str:
+    def field_uri(self, path: str, datatype: type, row: DataRow) -> str:
+        """Returns the "uri" (e.g. file-system path relative to root dir) of a field
+        entry at the given path relative to the given row
+
+        Parameters
+        ----------
+        path : str
+            path to the entry relative to the row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the row of the entry
+
+        Returns
+        -------
+        uri : str
+            the "uri" to the field entry relative to the data store
+        """
         raise NotImplementedError
 
-    def post_fileset(
-        self, fileset: FileSet, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        entry = row.add_entry(
-            path=path, datatype=datatype, uri=self.fileset_uri(path, datatype, row)
-        )
-        self.put(fileset, entry)
-        return entry
+    ##################################
+    # Abstractmethod implementations #
+    ##################################
 
-    def post_field(
-        self, field: Field, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        entry = row.add_entry(
-            path=path, datatype=datatype, uri=self.field_uri(path, datatype, row)
-        )
-        self.put(field, entry)
-        return entry
+    def connect(self):
+        return None
+
+    def disconnect(self, connection):
+        pass
+
+    def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
+        if issubclass(datatype, FileSet):
+            uri = self.fileset_uri(path, datatype, row)
+        else:
+            uri = self.field_uri(path, datatype, row)
+        return row.add_entry(path=path, datatype=datatype, uri=uri)
 
     def save_dataset_definition(self, dataset_id, definition, name):
         definition_path = self.definition_save_path(dataset_id, name)
@@ -137,19 +241,6 @@ class LocalStore(DataStore):
             )
         return cpy
 
-    def post(
-        self, item: DataType, path: str, datatype: type, row: DataRow
-    ) -> DataEntry:
-        if datatype.is_fileset:
-            entry = self.post_fileset(item, path, datatype, row)
-        elif datatype.is_field:
-            entry = self.post_field(item, path, datatype, row)
-        else:
-            raise RuntimeError(
-                f"Don't know how to store {datatype} data in {type(self)} stores"
-            )
-        return entry
-
     def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
         if entry.datatype.is_fileset:
             provenance = self.get_fileset_provenance(entry)
@@ -180,6 +271,19 @@ class LocalStore(DataStore):
         except KeyError:
             dataset = self.define_dataset(dataset_root, space=Samples)
         return dataset
+
+    ###################
+    # Other overrides #
+    ###################
+
+    def define_dataset(self, id, *args, **kwargs):
+        if not Path(id).exists():
+            raise ArcanaUsageError(f"Path to dataset root '{id}'' does not exist")
+        return super().define_dataset(id, *args, **kwargs)
+
+    ##################
+    # Helper methods #
+    ##################
 
     def update_json(self, fpath: Path, key, value):
         """Updates a JSON file in a multi-process safe way"""
@@ -225,8 +329,3 @@ class LocalStore(DataStore):
 
     def definition_save_path(self, dataset_id, name):
         return Path(dataset_id) / self.ARCANA_DIR / name / "definition.yaml"
-
-    def define_dataset(self, id, *args, **kwargs):
-        if not Path(id).exists():
-            raise ArcanaUsageError(f"Path to dataset root '{id}'' does not exist")
-        return super().define_dataset(id, *args, **kwargs)
