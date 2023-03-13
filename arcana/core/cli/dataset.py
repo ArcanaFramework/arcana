@@ -26,7 +26,7 @@ format <store-nickname>//<dataset-id>[@<dataset-name>]
 
 HIERARCHY the data frequencies that are present in the data tree. For some
 store types this is fixed (e.g. XNAT-> subject > session) but for more flexible
-(e.g. MockRemoteStore), which dimension each layer of sub-directories corresponds to
+(e.g. MockRemote), which dimension each layer of sub-directories corresponds to
 can be arbitrarily specified. dimensions"""
     ),
 )
@@ -82,9 +82,9 @@ can be arbitrarily specified. dimensions"""
     ),
 )
 @click.option(
-    "--id-inference",
+    "--id-composition",
     nargs=2,
-    metavar="<source-regex>",
+    metavar="<source-id> <composition-regex>",
     multiple=True,
     help="""Specifies how IDs of row frequencies that not explicitly
 provided are inferred from the IDs that are. For example, given a set
@@ -102,7 +102,7 @@ groups corresponding to the inferred IDs
 
 """,
 )
-def define(id_str, hierarchy, include, exclude, space, id_inference):
+def define(id_str, hierarchy, include, exclude, space, id_composition):
 
     store_name, id, name = Dataset.parse_id_str(id_str)
 
@@ -118,7 +118,7 @@ def define(id_str, hierarchy, include, exclude, space, id_inference):
         id,
         hierarchy=hierarchy,
         space=space,
-        id_inference=id_inference,
+        id_composition=dict(id_composition),
         include=include,
         exclude=exclude,
     )
@@ -218,7 +218,7 @@ field array (list[int|float|str|bool]) or
     help=(
         "Match on specific header value. This option is only valid for "
         "select formats that the implement the 'header_val()' method "
-        "(e.g. medimage/Dicom)."
+        "(e.g. medimage/DicomSet)."
     ),
 )
 def add_source(

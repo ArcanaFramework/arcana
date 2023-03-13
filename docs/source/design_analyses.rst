@@ -135,25 +135,28 @@ files can be accessed as attributes of the primary ``LazyField``, e.g.
 
 .. code-block:: python
 
+    from fileformats.field import Decimal
+    from fileformats.medimage import DicomCollection
     from arcana.medimage.data import Clinical
-    from arcana.analysis.tasks.misc import ExtractFromJson
-    from arcana.data.salience import ColumnSalience as ds
+    from arcana.core import mark
+    from arcana.core.tasks.misc import ExtractFromJson
+    from arcana.core.data.salience import ColumnSalience as ds
 
 
-    @analysis(Clinical)
+    @mark.analysis(Clinical)
     class AnotherExampleAnalysis():
 
-        primary_image: Dicom = column(
-            desc="The primary image to be analysed",
+        primary_image: DicomCollection = mark.column(
+            desc="The primary image set to be analysed",
             salience=ds.primary)
-        repetition_time: float = column(
+        repetition_time: Decimal = mark.column(
             "The repetition time of the MR sequence used",
             salience=ds.debug)
-        slice_timing_interval: float = column(
+        slice_timing_interval: Decimal = mark.column(
             "The time interval between slices",
             salience=ds.debug)
 
-        @pipeline(repetition_time, slice_timing_interval)
+        @mark.pipeline(repetition_time, slice_timing_interval)
         def preprocess_pipeline(self, wf, primary_image: NiftiGzX):
 
             wf.add(

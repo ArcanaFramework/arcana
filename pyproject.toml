@@ -21,7 +21,7 @@ dependencies = [
     "hatch-vcs >= 0.3.0",
     "importlib-metadata>=1.4",
     "neurodocker>=0.9.4",
-    "pydra>=0.20",
+    "pydra",
     "PyYAML>=6.0",
 ]
 license = {file = "LICENSE"}
@@ -63,7 +63,7 @@ docs = [
     "sphinx-click>=3.1",
 ]
 test = [
-    "arcana-testing",
+    # "arcana-testing",
     "codecov",
     "fileformats-testing",
     "fileformats-medimage[extended]",

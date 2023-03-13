@@ -425,9 +425,9 @@ would look like
       "id": "MYPROJECT",
       "name": "passed-dwi-qc",
       "exclude": ['015', '101']
-      "id_inference": [
-        ["subject", "(?P<group>TEST|CONT)(?P<member>\d+3)"]
-      ]
+      "id_composition": {
+        "subject": "(?P<group>TEST|CONT)(?P<member>\d+3)"
+      }
     },
     "pipelines": [
       {

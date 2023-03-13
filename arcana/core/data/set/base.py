@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import re
 import typing as ty
 from pathlib import Path
 import shutil
@@ -42,10 +43,10 @@ class Dataset:
         store it is stored (e.g. FS directory path or project ID)
     store : Repository
         The store the dataset is stored into. Can be the local file
-        system by providing a MockRemoteStore repo.
-    hierarchy : Sequence[str]
+        system by providing a MockRemote repo.
+    hierarchy : list[str]
         The data frequencies that are explicitly present in the data tree.
-        For example, if a MockRemoteStore dataset (i.e. directory) has
+        For example, if a MockRemote dataset (i.e. directory) has
         two layer hierarchy of sub-directories, the first layer of
         sub-directories labelled by unique subject ID, and the second directory
         layer labelled by study time-point then the hierarchy would be
@@ -59,7 +60,7 @@ class Dataset:
             ['subject', 'session']
 
         In such cases, if there are multiple timepoints, the timepoint ID of the
-        session will need to be extracted using the `id_inference` argument.
+        session will need to be extracted using the `id_composition` argument.
 
         Alternatively, the hierarchy could be organised such that the tree
         first splits on longitudinal time-points, then a second directory layer
@@ -75,7 +76,7 @@ class Dataset:
     space: DataSpace
         The space of the dataset. See https://arcana.readthedocs.io/en/latest/data_model.html#spaces)
         for a description
-    id_inference : list[tuple[DataSpace, str]]
+    id_composition : dict[str, str]
         Not all IDs will appear explicitly within the hierarchy of the data
         tree, and some will need to be inferred by extracting components of
         more specific labels.
@@ -90,8 +91,9 @@ class Dataset:
         containing ID to source the inferred IDs from coupled with a regular
         expression with named groups
 
-            id_inference=[('subject',
-                           r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')}
+            id_composition = {
+                'subject': r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')
+            }
     include : list[tuple[DataSpace, str or list[str]]]
         The IDs to be included in the dataset per row_frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
@@ -112,21 +114,24 @@ class Dataset:
         Repository specific args used to control the way the dataset is accessed
     """
 
-    DEFAULT_NAME = "common"
+    # alternative name used to save datasets that are named "" in cases where "" is
+    # not appropriate
+    EMPTY_NAME = "arcana"
+
     LICENSES_PATH = (
         "LICENSES"  # The resource that project-specifc licenses are expected
     )
 
     id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.DataStore = attrs.field()
-    hierarchy: ty.List[DataSpace] = attrs.field()
-    space: DataSpace = attrs.field(default=None)
+    space: DataSpace = attrs.field()
+    hierarchy: ty.List[DataSpace] = attrs.field(converter=list)
     metadata: DatasetMetadata = attrs.field(
         factory=DatasetMetadata,
         converter=metadata_converter,
         repr=False,
     )
-    id_inference: ty.List[ty.Tuple[DataSpace, str]] = attrs.field(
+    id_composition: dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
     include: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attrs.field(
@@ -135,7 +140,7 @@ class Dataset:
     exclude: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    name: str = attrs.field(default=DEFAULT_NAME)
+    name: str = attrs.field(default="")
     columns: ty.Optional[ty.Dict[str, DataColumn]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
@@ -146,29 +151,98 @@ class Dataset:
 
     def __attrs_post_init__(self):
         self.tree.dataset = self
-        # Ensure that hierarchy items are in the DataSpace enums not strings
-        # or set the space from the provided enums
-        if self.space is not None:
-            self.hierarchy = [self.space[str(h)] for h in self.hierarchy]
-        else:
-            first_layer = self.hierarchy[0]
-            if not isinstance(first_layer, DataSpace):
-                raise ArcanaUsageError(
-                    "Data space needs to be specified explicitly as an "
-                    "argument or implicitly via hierarchy types"
-                )
-            self.space = type()
-
-        # Ensure the keys of the include, exclude and id_inference attrs are
+        # Ensure the keys of the include, exclude and id_composition attrs are
         # in the space of the dataset
         self.include = [(self.space[str(k)], v) for k, v in self.include]
         self.exclude = [(self.space[str(k)], v) for k, v in self.exclude]
-        self.id_inference = [(self.space[str(k)], v) for k, v in self.id_inference]
         # Set reference to pipeline in columns and pipelines
         for column in self.columns.values():
             column.dataset = self
         for pipeline in self.pipelines.values():
             pipeline.dataset = self
+
+    @name.validator
+    def name_validator(self, _, name: str):
+        if name and not name.isidentifier():
+            raise ArcanaUsageError(
+                f"Name provided to dataset, '{name}' should be a valid Python identifier, "
+                "i.e. contain only numbers, letters and underscores and not start with a "
+                "number"
+            )
+        if name == self.EMPTY_NAME:
+            raise ArcanaUsageError(
+                f"'{self.EMPTY_NAME}' is a reserved name for datasets as it is used to "
+                "in place of the empty dataset name in situations where '' can't be used"
+            )
+
+    @columns.validator
+    def columns_validator(self, _, columns):
+        wrong_freq = [
+            m for m in columns.values() if not isinstance(m.row_frequency, self.space)
+        ]
+        if wrong_freq:
+            raise ArcanaUsageError(
+                f"Data hierarchy of {wrong_freq} column specs do(es) not match"
+                f" that of dataset {self.space}"
+            )
+
+    @exclude.validator
+    def exclude_validator(self, _, exclude):
+        include_freqs = set(f for f, i in self.include if i is not None)
+        exclude_freqs = set(f for f, i in exclude if i is not None)
+        both = include_freqs & exclude_freqs
+        if both:
+            raise ArcanaUsageError(
+                "Cannot provide both 'include' and 'exclude' arguments "
+                "for frequencies ('{}') to Dataset".format("', '".join(both))
+            )
+
+    @hierarchy.validator
+    def hierarchy_validator(self, _, hierarchy):
+        if not hierarchy:
+            raise ArcanaUsageError(f"hierarchy provided to {self} cannot be empty")
+        not_valid = [f for f in hierarchy if f not in self.space.__members__]
+        if not_valid:
+            raise ArcanaWrongDataSpaceError(
+                f"hierarchy items {not_valid} are not part of the {self.space} data space"
+            )
+        # Check that all data frequencies are "covered" by the hierarchy and
+        # each subsequent
+        covered = self.space(0)
+        for i, layer_str in enumerate(hierarchy):
+            layer = self.space[layer_str]
+            diff = (layer ^ covered) & layer
+            if not diff:
+                raise ArcanaUsageError(
+                    f"{layer} does not add any additional basis layers to "
+                    f"previous layers {hierarchy[i:]}"
+                )
+            covered |= layer
+        if covered != max(self.space):
+            raise ArcanaUsageError(
+                "The data hierarchy ['"
+                + "', '".join(hierarchy)
+                + "'] does not cover the following basis frequencies ['"
+                + "', '".join(str(m) for m in (covered ^ max(self.space)).span())
+                + f"'] the '{self.space.__module__}.{self.space.__name__}' data space"
+            )
+
+    @id_composition.validator
+    def id_composition_validator(self, _, id_composition):
+        non_valid_keys = [f for f in id_composition if f not in self.space.__members__]
+        if non_valid_keys:
+            raise ArcanaWrongDataSpaceError(
+                f"Keys for the id_composition dictionary {non_valid_keys} are not part "
+                f"of the {self.space} data space"
+            )
+        for key, expr in id_composition.items():
+            groups = list(re.compile(expr).groupindex)
+            non_valid_groups = [f for f in groups if f not in self.space.__members__]
+            if non_valid_groups:
+                raise ArcanaWrongDataSpaceError(
+                    f"Groups in the {key} id_composition expression {non_valid_groups} "
+                    f"are not part of the {self.space} data space"
+                )
 
     def save(self, name=None):
         self.store.save_dataset(self, name=name)
@@ -204,69 +278,6 @@ class Dataset:
         if name is None:
             name = parsed_name
         return store.load_dataset(id, name=name)
-
-    @columns.validator
-    def columns_validator(self, _, columns):
-        wrong_freq = [
-            m for m in columns.values() if not isinstance(m.row_frequency, self.space)
-        ]
-        if wrong_freq:
-            raise ArcanaUsageError(
-                f"Data hierarchy of {wrong_freq} column specs do(es) not match"
-                f" that of dataset {self.space}"
-            )
-
-    @exclude.validator
-    def exclude_validator(self, _, exclude):
-        include_freqs = set(f for f, i in self.include if i is not None)
-        exclude_freqs = set(f for f, i in exclude if i is not None)
-        both = include_freqs & exclude_freqs
-        if both:
-            raise ArcanaUsageError(
-                "Cannot provide both 'include' and 'exclude' arguments "
-                "for frequencies ('{}') to Dataset".format("', '".join(both))
-            )
-
-    @hierarchy.validator
-    def hierarchy_validator(self, _, hierarchy):
-        if not hierarchy:
-            raise ArcanaUsageError(f"hierarchy provided to {self} cannot be empty")
-
-        space = type(hierarchy[0]) if self.space is None else self.space
-        not_valid = [f for f in hierarchy if f not in self.space.__members__]
-        if space is str:
-            raise ArcanaUsageError(
-                "Either the data space of the set needs to be provided "
-                "separately, or the hierarchy must be provided as members of "
-                "a single data space, not strings"
-            )
-        try:
-            hierarchy = [space[str(h)] for h in hierarchy]
-        except KeyError:
-            raise ArcanaWrongDataSpaceError(
-                "{} are not part of the {} data space".format(
-                    ", ".join(not_valid), self.space
-                )
-            )
-        # Check that all data frequencies are "covered" by the hierarchy and
-        # each subsequent
-        covered = self.space(0)
-        for i, layer in enumerate(hierarchy):
-            diff = (layer ^ covered) & layer
-            if not diff:
-                raise ArcanaUsageError(
-                    f"{layer} does not add any additional basis layers to "
-                    f"previous layers {hierarchy[i:]}"
-                )
-            covered |= layer
-        if covered != max(self.space):
-            raise ArcanaUsageError(
-                "The data hierarchy ['"
-                + "', '".join(str(h) for h in hierarchy)
-                + "'] does not cover the following basis frequencies ['"
-                + "', '".join(str(m) for m in (covered ^ max(self.space)).span())
-                + f"'] the '{self.space.__module__}.{self.space.__name__}' data space"
-            )
 
     @property
     def root_freq(self):
@@ -311,7 +322,7 @@ class Dataset:
                 f"{self}"
             )
         locator = f"{self.store.name}//{self.id}"
-        if self.name is not self.DEFAULT_NAME:
+        if self.name:
             locator += f"@{self.name}"
         return locator
 
@@ -398,13 +409,13 @@ class Dataset:
                 )
         self.columns[name] = spec
 
-    def row(self, row_frequency=None, id=None, **id_kwargs):
-        """Returns the row associated with the given row_frequency and ids dict
+    def row(self, frequency=None, id=None, **id_kwargs):
+        """Returns the row associated with the given frequency and ids dict
 
         Parameters
         ----------
-        row_frequency : DataSpace or str
-            The row_frequency of the row
+        frequency : DataSpace or str
+            The frequency of the row
         id : str or Tuple[str], optional
             The ID of the row to
         **id_kwargs : Dict[str, str]
@@ -419,18 +430,18 @@ class Dataset:
         Raises
         ------
         ArcanaUsageError
-            Raised when attempting to use IDs with the row_frequency associated
+            Raised when attempting to use IDs with the frequency associated
             with the root row
         ArcanaNameError
             If there is no row corresponding to the given ids
         """
         with self.tree:
-            # Parse str to row_frequency enums
-            if not row_frequency:
+            # Parse str to frequency enums
+            if not frequency:
                 if id is not None:
                     raise ArcanaUsageError(f"Root rows don't have any IDs ({id})")
                 return self.root
-            row_frequency = self.parse_frequency(row_frequency)
+            frequency = self.parse_frequency(frequency)
             if id_kwargs:
                 if id is not None:
                     raise ArcanaUsageError(
@@ -445,7 +456,7 @@ class Dataset:
                         children_dict = row.children[self.space[freq]]
                     except KeyError as e:
                         raise ArcanaNameError(
-                            freq, f"{freq} is not a child row_frequency of {row}"
+                            freq, f"{freq} is not a child frequency of {row}"
                         ) from e
                     try:
                         row = children_dict[id]
@@ -456,12 +467,12 @@ class Dataset:
                 return row
             else:
                 try:
-                    return self.root.children[row_frequency][id]
+                    return self.root.children[frequency][id]
                 except KeyError as e:
                     raise ArcanaNameError(
                         id,
                         f"{id} not present in data tree "
-                        f"({list(self.row_ids(row_frequency))})",
+                        f"({list(self.row_ids(frequency))})",
                     ) from e
 
     def rows(self, frequency=None, ids=None):
@@ -667,7 +678,7 @@ class Dataset:
             store_name, id = parts
         parts = id.split("@")
         if len(parts) == 1:
-            name = cls.DEFAULT_NAME
+            name = ""
         else:
             id, name = parts
         return store_name, id, name

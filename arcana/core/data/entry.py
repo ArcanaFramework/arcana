@@ -95,14 +95,12 @@ class DataEntry:
     )
 
     @path.validator
-    def path_validator(self, _, path):
-        if path.startswith("@"):
-            num_parts = len(path.split("/"))
-            if num_parts < 2:
-                raise ArcanaUsageError(
-                    "Derivative paths (i.e. those starting with '@') must have more than "
-                    f"one part separated by '/', a namespace and a name (found {path})"
-                )
+    def path_validator(self, _, path: str):
+        path, dataset_name = self.split_dataset_name_from_path(path)
+        if dataset_name and not dataset_name.isidentifier():
+            raise ArcanaUsageError(
+                f"Path '{path}' has an invalid dataset_name '{dataset_name}')"
+            )
 
     def __attrs_post_init__(self):
         self.item_metadata._entry = self
@@ -114,7 +112,7 @@ class DataEntry:
     @item.setter
     def item(self, item):
         if isinstance(item, DataType):
-            if not type(item).is_subtype_of(self.datatype):
+            if not type(item).issubtype(self.datatype):
                 raise ArcanaDataMatchError(
                     f"Cannot put {item} into {self.datatype} entry of {self.row}"
                 )
@@ -136,16 +134,29 @@ class DataEntry:
 
     @property
     def is_derivative(self):
-        return self.path.startswith("@")
+        return self.path_is_derivative(self.path)
 
     @property
-    def namespace(self):
-        if not self.is_derivative:
+    def base_path(self):
+        return self.split_dataset_name_from_path(self.path)[0]
+
+    @property
+    def dataset_name(self):
+        return self.split_dataset_name_from_path(self.path)[1]
+
+    @classmethod
+    def split_dataset_name_from_path(cls, path):
+        parts = path.split("@")
+        if len(parts) == 1:
+            dataset_name = None
+        else:
+            path, dataset_name = parts
+        if len(parts) > 2:
             raise ArcanaUsageError(
-                f"Only derivative entries have namespaces, not {self}"
+                f"Entry paths can't have more than one '@' symbol, given {path})"
             )
-        return self.path.split("/")[0].lstrip("@")
+        return path, dataset_name
 
-    @property
-    def in_derivative_namespace(self):
-        return self.is_derivative and self.namespace == self.row.dataset.name
+    @classmethod
+    def path_is_derivative(cls, path):
+        return cls.split_dataset_name_from_path(path)[1] is not None

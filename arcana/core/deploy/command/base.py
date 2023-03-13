@@ -282,8 +282,8 @@ class ContainerCommand:
             path, qualifiers = self.extract_qualifiers_from_path(
                 output_values.get(output.name, output.name)
             )
-            if not path.startswith("@"):
-                path = f"@{dataset.name}/{path}"  # Add dataset namespace
+            if "@" not in path:
+                path = f"{path}@{dataset.name}"  # Add dataset namespace
             converter_args[output.name] = qualifiers.pop("converter", {})
             if qualifiers:
                 raise ArcanaUsageError(

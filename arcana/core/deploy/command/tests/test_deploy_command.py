@@ -2,10 +2,11 @@ from functools import reduce
 from operator import mul
 from pathlib import Path
 import pytest
-from arcana.core.data.testing import TestDatasetBlueprint
-from arcana.testing import (
-    TestDataSpace,
+from arcana.testing.data.blueprint import (
+    TestDatasetBlueprint,
+    FileSetEntryBlueprint as FileBP,
 )
+from arcana.testing.data import TestDataSpace
 from fileformats.text import Plain as Text
 from fileformats.testing import EncodedText
 from arcana.core.data.set import Dataset
@@ -71,7 +72,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         plugin="serial",
         work_dir=str(work_dir),
         loglevel="debug",
-        dataset_hierarchy=",".join(str(ln) for ln in bp.hierarchy),
+        dataset_hierarchy=",".join(bp.hierarchy),
         pipeline_name="test_pipeline",
     )
     # Add source column to saved dataset
@@ -146,7 +147,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
             plugin="serial",
             work_dir=str(work_dir),
             loglevel="debug",
-            dataset_hierarchy=",".join(str(ln) for ln in bp.hierarchy),
+            dataset_hierarchy=",".join(bp.hierarchy),
             pipeline_name="test_pipeline",
         )
 
@@ -157,14 +158,18 @@ def test_command_execute_on_row(cli_runner, work_dir):
     # from 0 to 4
     filenumbers = list(range(5))
     bp = TestDatasetBlueprint(
+        space=TestDataSpace,
         hierarchy=[
-            TestDataSpace.abcd
+            "abcd"
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         dim_lengths=[1, 1, 1, 1],
-        files=[f"{i}.txt" for i in filenumbers],
+        entries=[
+            FileBP(path=str(i), datatype=Text, filenames=[f"{i}.txt"])
+            for i in filenumbers
+        ],
     )
     dataset_path = work_dir / "numbered_dataset"
-    dataset = DirTree().make_test_dataset(bp, dataset_path)
+    dataset = bp.make_dataset(DirTree(), dataset_path)
     dataset.save()
 
     def get_dataset_filenumbers():
@@ -197,7 +202,7 @@ def test_command_execute_on_row(cli_runner, work_dir):
         plugin="serial",
         work_dir=str(work_dir),
         loglevel="debug",
-        dataset_hierarchy=",".join(str(ln) for ln in bp.hierarchy),
+        dataset_hierarchy=",".join(bp.hierarchy),
         pipeline_name="test_pipeline",
     )
 
@@ -255,12 +260,12 @@ def test_command_execute_with_converter_args(saved_dataset: Dataset, work_dir: P
         plugin="serial",
         work_dir=str(work_dir),
         loglevel="debug",
-        dataset_hierarchy=",".join(str(ln) for ln in bp.hierarchy),
+        dataset_hierarchy=",".join(bp.hierarchy),
         pipeline_name="test_pipeline",
     )
     # Add source column to saved dataset
-    saved_dataset.add_sink("sink1", EncodedText, path="@common/encoded")
-    saved_dataset.add_sink("sink2", Text, path="@common/decoded")
+    saved_dataset.add_sink("sink1", EncodedText, path="encoded@")
+    saved_dataset.add_sink("sink2", Text, path="decoded@")
     unencoded_contents = "file1.txt"
     encoded_contents = (
         "iloh41w{w"  # 'file1.txt' characters shifted up by 3 in ASCII code

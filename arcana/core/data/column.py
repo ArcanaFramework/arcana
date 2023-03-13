@@ -13,10 +13,10 @@ from ..analysis.salience import ColumnSalience
 from .quality import DataQuality
 from .space import DataSpace
 from .cell import DataCell
+from .entry import DataEntry
 
 if ty.TYPE_CHECKING:
     from .row import DataRow
-    from .entry import DataEntry
     from .set.base import Dataset
 
 
@@ -60,7 +60,7 @@ class DataColumn(metaclass=ABCMeta):
     def cell(self, id, allow_empty: bool = True) -> DataCell:
         return DataCell.intersection(
             self,
-            self.dataset.row(id=id, row_frequency=self.row_frequency),
+            self.dataset.row(id=id, frequency=self.row_frequency),
             allow_empty=allow_empty,
         )
 
@@ -147,10 +147,19 @@ class DataColumn(metaclass=ABCMeta):
 
     def matches_path(self, entry: DataEntry) -> bool:
         "that matched the path '{self.path}'"
-        path_parts = self.path_split_re.split(self.path)
-        entry_parts = self.path_split_re.split(entry.path)[: len(path_parts)]
+        path, dataset_name = DataEntry.split_dataset_name_from_path(self.path)
+        path_parts = self.path_split_re.split(path)
+        entry_parts = self.path_split_re.split(entry.base_path)[: len(path_parts)]
         if entry_parts == path_parts:
-            return True
+            if dataset_name == entry.dataset_name or dataset_name == "*":
+                return True
+            else:
+                return self._log_mismatch(
+                    entry,
+                    "dataset_name '{}' does not match requested '{}'",
+                    entry.dataset_name,
+                    dataset_name,
+                )
         else:
             return self._log_mismatch(
                 entry,
@@ -163,7 +172,7 @@ class DataColumn(metaclass=ABCMeta):
         "that matched the datatype '{self.datatype.mime_like}'"
         if self.datatype is entry.datatype:
             return True
-        if not self.datatype.is_subtype_of(entry.datatype):
+        if not self.datatype.issubtype(entry.datatype):
             return self._log_mismatch(
                 entry,
                 "required datatype '{}' is not a " "sub-type of '{}'",
@@ -210,7 +219,7 @@ class DataColumn(metaclass=ABCMeta):
         return False
 
     # Split a path into sections delimited by '/' or '.'
-    path_split_re = re.compile(r"/|\.")
+    path_split_re = re.compile(r"/|\.|@")
 
 
 @attrs.define(kw_only=True)
@@ -388,7 +397,7 @@ class DataSink(DataColumn):
 
     @path.default
     def path_default(self):
-        return f"@{self.dataset.name}/{self.name}"
+        return f"{self.name}@{self.dataset.name}"
 
     def derive(self, ids: list[str] = None):
         self.dataset.derive(self.name, ids=ids)

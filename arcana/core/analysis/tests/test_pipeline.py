@@ -10,8 +10,8 @@ from arcana.testing.tasks import concatenate
 
 
 def test_pipeline(work_dir):
-    dataset = DirTree().make_test_dataset(
-        TEST_DATASET_BLUEPRINTS["concatenate_test"], work_dir / "dataset"
+    dataset = TEST_DATASET_BLUEPRINTS["concatenate_test"].make_dataset(
+        DirTree(), work_dir / "dataset"
     )
 
     dataset.add_source("file1", Text)
@@ -40,8 +40,8 @@ def test_pipeline(work_dir):
 def test_pipeline_with_implicit_conversion(work_dir):
     """Input files are converted from zip to Text, concatenated and then
     written back as zip files into the data store"""
-    dataset = DirTree().make_test_dataset(
-        TEST_DATASET_BLUEPRINTS["concatenate_zip_test"], work_dir / "dataset"
+    dataset = TEST_DATASET_BLUEPRINTS["concatenate_zip_test"].make_dataset(
+        DirTree(), work_dir / "dataset"
     )
 
     dataset.add_source("file1", Zip[Text])
