@@ -59,7 +59,7 @@ class DataTree(NestedContext):
         ------
         ArcanaBadlyFormattedIDError
             raised if one of the IDs doesn't match the pattern in the
-            `id_inference`
+            `id_composition`
         ArcanaDataTreeConstructionError
             raised if one of the groups specified in the ID inference reg-ex
             doesn't match a valid row_frequency in the data dimensions
@@ -79,9 +79,14 @@ class DataTree(NestedContext):
         ids = {f: None for f in self.dataset.space}
         # Calculate the combined freqs after each layer is added
         row_frequency = self.dataset.space(0)
-        for layer, label in zip(self.dataset.hierarchy, tree_path):
+        for layer_str, label in zip(self.dataset.hierarchy, tree_path):
+            layer = self.dataset.space[layer_str]
             ids[layer] = label
-            regexes = [r for ln, r in self.dataset.id_inference if ln == layer]
+            regexes = [
+                r
+                for ln, r in self.dataset.id_composition.items()
+                if self.dataset.space[ln] == layer
+            ]
             if not regexes:
                 # If the layer introduces completely new axes then the axis
                 # with the least significant bit (the order of the bits in the
@@ -89,19 +94,19 @@ class DataTree(NestedContext):
                 # can be considered be considered to be equivalent to the label.
                 # E.g. Given a hierarchy of ['subject', 'session']
                 # no groups are assumed to be present by default (although this
-                # can be overridden by the `id_inference` attr) and the `member`
+                # can be overridden by the `id_composition` attr) and the `member`
                 # ID is assumed to be equivalent to the `subject` ID. Conversely,
                 # the timepoint can't be inferred from the `session` ID, since
                 # the session ID could be expected to contain the `member` and
                 # `group` ID in it, and should be explicitly extracted by
-                # providing a regex to `id_inference`, e.g.
+                # providing a regex to `id_composition`, e.g.
                 #
                 #       session ID: MRH010_CONTROL03_MR02
                 #
                 # with the '02' part representing as the timepoint can be
                 # extracted with the
                 #
-                #       id_inference={
+                #       id_composition={
                 #           'session': r'.*(?P<timepoint>0-9+)$'}
                 if not (layer & row_frequency):
                     ids[layer.span()[-1]] = label
@@ -164,7 +169,7 @@ class DataTree(NestedContext):
             "Adding new %s row to %s dataset: %s", row_frequency, self.dataset_id, ids
         )
         row_frequency = self.dataset.parse_frequency(row_frequency)
-        row = DataRow(ids, row_frequency, self.dataset)
+        row = DataRow(ids=ids, frequency=row_frequency, dataset=self.dataset)
         # Create new data row
         row_dict = self.root.children[row.frequency]
         if row.id in row_dict:
@@ -193,14 +198,14 @@ class DataTree(NestedContext):
                     }
                     parent_row = self._add_row(parent_ids, parent_freq)
                 # Set reference to level row in new row
-                diff_id = row.ids[diff_freq]
+                diff_id = row.frequency_id(diff_freq)
                 children_dict = parent_row.children[row_frequency]
                 if diff_id in children_dict:
                     raise ArcanaDataTreeConstructionError(
                         f"ID clash ({diff_id}) between rows inserted into "
                         f"data tree in {diff_freq} children of {parent_row} "
                         f"({children_dict[diff_id]} and {row}). You may "
-                        f"need to set the `id_inference` attr of the dataset "
+                        f"need to set the `id_composition` attr of the dataset "
                         "to disambiguate ID components (e.g. how to extract "
                         "the timepoint ID from a session label)"
                     )
@@ -209,5 +214,7 @@ class DataTree(NestedContext):
 
     def _set_root(self):
         self.root = DataRow(
-            {self.dataset.root_freq: None}, self.dataset.root_freq, self.dataset
+            ids={self.dataset.root_freq: None},
+            frequency=self.dataset.root_freq,
+            dataset=self.dataset,
         )

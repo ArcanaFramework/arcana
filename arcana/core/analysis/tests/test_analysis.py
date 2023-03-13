@@ -104,9 +104,7 @@ def test_numeric_file2(sample_dir2):
 
 @pytest.fixture
 def test_dataset(source_dir, test_file1, test_file2, test_file3):
-    dataset = DirTree().define_dataset(
-        source_dir, space=Samples, hierarchy=[Samples.sample]
-    )
+    dataset = DirTree().define_dataset(source_dir, space=Samples, hierarchy=["sample"])
     dataset.add_source("a_column", Text, "file1")
     dataset.add_source("another_column", Text, "file2")
     dataset.add_source("yet_another_column", Text, "file3")
@@ -117,9 +115,7 @@ def test_dataset(source_dir, test_file1, test_file2, test_file3):
 def test_partial_numeric_dataset(
     source_dir, test_file1, test_file2, test_numeric_file1, test_numeric_file2
 ):
-    dataset = DirTree().define_dataset(
-        source_dir, space=Samples, hierarchy=[Samples.sample]
-    )
+    dataset = DirTree().define_dataset(source_dir, space=Samples, hierarchy=["sample"])
     dataset.add_source("a_column", Text, "file1")
     dataset.add_source("another_column", Text, "file2")
     return dataset

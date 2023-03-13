@@ -280,8 +280,9 @@ class DataStore(metaclass=ABCMeta):
         entry : DataEntry
             the inserted entry
         """
-        entry = self.create_entry(path, datatype, row)
-        self.put(item, entry)
+        with self.connection:
+            entry = self.create_entry(path, datatype, row)
+            self.put(item, entry)
 
     ###############
     # General API #
@@ -406,7 +407,7 @@ class DataStore(metaclass=ABCMeta):
             the store
         space: DataSpace
             The data space of the dataset
-        hierarchy: list[DataSpace or str]
+        hierarchy: list[str]
             The hierarchy of the dataset
         space : EnumMeta
             The DataSpace enum that defines the frequencies (e.g.
@@ -414,30 +415,19 @@ class DataStore(metaclass=ABCMeta):
         **kwargs:
             Keyword args passed on to the Dataset init method
         """
-        from ..space import DataSpace
-
-        if not hierarchy:
-            if space:
-                hierarchy = [max(space)]
-            else:
-                try:
-                    hierarchy = self.DEFAULT_HIERARCHY
-                except AttributeError as e:
-                    raise ArcanaUsageError(
-                        "'hierarchy' kwarg must be specified for datasets in "
-                        f"{type(self)} stores"
-                    ) from e
         if not space:
-            if hierarchy and isinstance(hierarchy[0], DataSpace):
-                space = type(hierarchy[0])
-            else:
-                try:
-                    space = self.DEFAULT_SPACE
-                except AttributeError as e:
-                    raise ArcanaUsageError(
-                        "'space' kwarg must be specified for datasets in "
-                        f"{type(self)} stores"
-                    ) from e
+            try:
+                space = self.DEFAULT_SPACE
+            except AttributeError as e:
+                raise ArcanaUsageError(
+                    "'space' kwarg must be specified for datasets in "
+                    f"{type(self)} stores"
+                ) from e
+        if not hierarchy:
+            try:
+                hierarchy = self.DEFAULT_HIERARCHY
+            except AttributeError:
+                hierarchy = [str(max(space))]  # one-layer with only leaf nodes
         from arcana.core.data.set import (
             Dataset,
         )  # avoid circular imports it is imported here rather than at the top of the file
@@ -496,6 +486,8 @@ class DataStore(metaclass=ABCMeta):
         self,
         id: str,
         leaves: list[tuple[str, ...]],
+        hierarchy: list[str],
+        space: type,
         name: str = None,
         **kwargs,
     ):
@@ -523,10 +515,13 @@ class DataStore(metaclass=ABCMeta):
         self.create_data_tree(
             id=id,
             leaves=leaves,
-            **kwargs,
+            hierarchy=hierarchy,
+            space=space,
         )
         dataset = self.define_dataset(
             id=id,
+            hierarchy=hierarchy,
+            space=space,
             **kwargs,
         )
         if name is not None:

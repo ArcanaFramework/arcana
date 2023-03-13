@@ -92,7 +92,7 @@ def test_define_cli(dataset: Dataset, cli_runner):
     # Get CLI name for dataset (i.e. file system path prepended by 'file//')
     path = dataset.locator
     # Start generating the arguments for the CLI
-    args = [str(h) for h in blueprint.hierarchy]
+    args = list(blueprint.hierarchy)
     # Generate "arbitrary" values for included and excluded from dim length
     # and index
     included = []

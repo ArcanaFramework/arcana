@@ -43,7 +43,7 @@ class MockRemote(RemoteStore):
     SITE_LICENSES_DIR = "LICENSE"
     METADATA_DIR = ".definition"
     LEAVES_DIR = "leaves"
-    DERIVS_DIR = "derivatives"
+    NON_LEAVES_DIR = "non-leaves"
     FIELDS_FILE = "__FIELD__"
     CHECKSUMS_FILE = "__CHECKSUMS__.json"
 
@@ -71,7 +71,7 @@ class MockRemote(RemoteStore):
                 )
             for row_dir in self.iterdir(leaves_dir):
                 ids = self.get_ids_from_row_dirname(row_dir)
-                tree.add_leaf([ids[str(h)] for h in tree.hierarchy])
+                tree.add_leaf([ids[h] for h in tree.hierarchy])
 
     def populate_row(self, row: DataRow):
         """
@@ -85,27 +85,21 @@ class MockRemote(RemoteStore):
         """
         with self.connection:
             self._check_connected()
-            for dataset_name in (None, row.dataset.name):
-                try:
-                    row_dir = self.get_row_path(row, dataset_name=dataset_name)
-                except NotInHierarchyException:
-                    continue
-                if not row_dir.exists():
-                    continue
-                for path in self.iterdir(row_dir, skip_suffixes=[".json"]):
-                    datatype = (
-                        Field if path / self.FIELDS_FILE in path.iterdir() else FileSet
-                    )
-                    entry_path = (
-                        f"{path.name}@{dataset_name}"
-                        if dataset_name is not None
-                        else path.name
-                    )
-                    row.add_entry(
-                        path=entry_path,
-                        datatype=datatype,
-                        uri=full_path(path).relative_to(self.remote_dir),
-                    )
+            try:
+                row_dir = self.get_row_path(row)
+            except NotInHierarchyException:
+                return
+            if not row_dir.exists():
+                return
+            for path in self.iterdir(row_dir, skip_suffixes=[".json"]):
+                datatype = (
+                    Field if path / self.FIELDS_FILE in path.iterdir() else FileSet
+                )
+                row.add_entry(
+                    path=path.name,
+                    datatype=datatype,
+                    uri=full_path(path).relative_to(self.remote_dir),
+                )
 
     def save_dataset_definition(
         self, dataset_id: str, definition: ty.Dict[str, ty.Any], name: str
@@ -182,7 +176,7 @@ class MockRemote(RemoteStore):
         self._check_connected()
         prov_path = entry.uri.with_suffix(".json")
         with open(prov_path, "w") as f:
-            json.dumps(provenance, f)
+            json.dump(provenance, f)
 
     def create_data_tree(
         self,
@@ -302,11 +296,10 @@ class MockRemote(RemoteStore):
 
     def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
         self._check_connected()
-        path, dataset_name = DataEntry.split_dataset_name_from_path(path)
         entry = row.add_entry(
             path=path,
             datatype=datatype,
-            uri=self.get_row_path(row, dataset_name=dataset_name) / path,
+            uri=self.get_row_path(row) / path,
         )
         self.entry_fspath(entry).mkdir(parents=True)
         return entry
@@ -314,31 +307,30 @@ class MockRemote(RemoteStore):
     def definition_save_path(self, dataset_id, name):
         return self.dataset_fspath(dataset_id) / self.METADATA_DIR / (name + ".yml")
 
-    def get_row_path(self, row: DataRow, dataset_name=None):
+    def get_row_path(self, row: DataRow):
         dataset_fspath = self.dataset_fspath(row.dataset)
-        if dataset_name is None:
+        try:
             row_path = (
                 dataset_fspath
                 / self.LEAVES_DIR
                 / self.get_row_dirname_from_ids(row.ids, row.dataset.hierarchy)
             )
-        else:
+        except NotInHierarchyException:
             if not row.frequency:  # root frequency
                 row_dirname = str(row.frequency)
             else:
                 row_dirname = self.get_row_dirname_from_ids(
-                    row.ids, row.frequency.span()
+                    row.ids, [str(h) for h in row.frequency.span()]
                 )
-            row_path = dataset_fspath / self.DERIVS_DIR / dataset_name / row_dirname
+            row_path = dataset_fspath / self.NON_LEAVES_DIR / row_dirname
         return row_path
 
     @classmethod
     def get_row_dirname_from_ids(
-        cls, ids: dict[ty.Union[str, DataSpace], str], hierarchy: list[DataSpace]
+        cls, ids: dict[ty.Union[str, DataSpace], str], hierarchy: list[str]
     ):
-        space = type(hierarchy[0])
-        # Ensure that ID keys are DataSpace enums not strings
-        ids = {space[str(f)]: i for f, i in ids.items()}
+        # Ensure that ID keys are strings not DataSpace enums
+        ids = {str(f): i for f, i in ids.items()}
         try:
             row_dirname = ".".join(f"{h}={ids[h]}" for h in hierarchy)
         except KeyError:

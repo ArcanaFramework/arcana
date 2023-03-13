@@ -151,7 +151,15 @@ class DataColumn(metaclass=ABCMeta):
         path_parts = self.path_split_re.split(path)
         entry_parts = self.path_split_re.split(entry.base_path)[: len(path_parts)]
         if entry_parts == path_parts:
-            return dataset_name == "*" or dataset_name == entry.dataset_name
+            if dataset_name == entry.dataset_name or dataset_name == "*":
+                return True
+            else:
+                return self._log_mismatch(
+                    entry,
+                    "dataset_name '{}' does not match requested '{}'",
+                    entry.dataset_name,
+                    dataset_name,
+                )
         else:
             return self._log_mismatch(
                 entry,

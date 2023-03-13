@@ -90,7 +90,12 @@ class DirTree(LocalStore):
                 if (
                     not entry_name.startswith(".")
                     and entry_name != self.ARCANA_DIR
-                    and entry_name not in (self.FIELDS_FNAME, self.FIELDS_PROV_FNAME)
+                    and entry_name
+                    not in (
+                        self.FIELDS_FNAME,
+                        self.FIELDS_PROV_FNAME,
+                        self.FIELDS_FNAME + self.LOCK_SUFFIX,
+                    )
                     and not entry_name.endswith(self.PROV_SUFFIX)
                 ):
                     yield subpath
@@ -233,7 +238,7 @@ class DirTree(LocalStore):
         relpath = Path()
         if row.frequency is max(row.dataset.space):  # leaf node
             for freq in row.dataset.hierarchy:
-                relpath /= row.ids[freq]
+                relpath /= row.frequency_id(freq)
             if dataset_name is not None:
                 relpath /= self.ARCANA_DIR
                 if dataset_name:

@@ -17,7 +17,7 @@ if ty.TYPE_CHECKING:
     from .set.base import Dataset
 
 
-@attrs.define(auto_detect=True)
+@attrs.define(kw_only=True)
 class DataRow:
     """A "row" in a dataset "frame" where file-sets and fields can be placed, e.g.
     a session or subject.
@@ -27,7 +27,7 @@ class DataRow:
     ids : Dict[DataSpace, str]
         The ids for the frequency of the row and all "parent" frequencies
         within the tree
-    frequency : DataSpace
+    frequency : str
         The frequency of the row
     dataset : Dataset
         A reference to the root of the data tree
@@ -37,8 +37,8 @@ class DataRow:
     """
 
     ids: ty.Dict[DataSpace, str] = attrs.field()
-    frequency: DataSpace = attrs.field()
     dataset: Dataset = attrs.field(repr=False)
+    frequency: str = attrs.field()
     uri: str = None
     metadata: dict = None
 
@@ -57,6 +57,18 @@ class DataRow:
 
         if not isinstance(dataset, Dataset):
             raise ValueError(f"provided dataset {dataset} is not of type {Dataset}")
+
+    @frequency.validator
+    def frequency_validator(self, _, frequency):
+        if frequency not in self.dataset.space:
+            raise ValueError(
+                f"'{frequency}' frequency is not in the data space of the dataset, "
+                f"{self.dataset.space}"
+            )
+
+    def __attrs_post_init__(self):
+        if isinstance(self.frequency, str):
+            self.frequency = self.dataset.space[self.frequency]
 
     def __getitem__(self, column_name: str) -> DataType:
         """Gets the item for the current row
@@ -82,9 +94,12 @@ class DataRow:
 
     def cell(self, column_name: str, allow_empty: bool = None) -> DataCell:
         try:
-            return self._cells[column_name]
+            cell = self._cells[column_name]
         except KeyError:
             pass
+        else:
+            if not cell.is_empty:
+                return cell
         try:
             column = self.dataset[column_name]
         except KeyError as e:
@@ -123,6 +138,9 @@ class DataRow:
     @property
     def id(self):
         return self.ids[self.frequency]
+
+    def frequency_id(self, frequency: str):
+        return self.ids[self.dataset.space[str(frequency)]]
 
     @property
     def label(self):

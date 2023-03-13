@@ -2,6 +2,7 @@ import os
 import logging
 from pathlib import Path
 from datetime import datetime
+import decimal
 import shutil
 import docker
 from tempfile import mkdtemp
@@ -10,7 +11,8 @@ import pytest
 from click.testing import CliRunner
 from fileformats.generic import Directory
 from fileformats.text import Plain as PlainText
-from fileformats.field import Text, Decimal, Boolean, Integer, Array
+from fileformats.archive import Zip
+from fileformats.field import Text as TextField, Decimal, Boolean, Integer, Array
 from fileformats.serialization import Json
 from fileformats.testing import (
     MyFormatGz,
@@ -32,11 +34,10 @@ from arcana.testing.tasks import (
 )
 from arcana.testing.data.blueprint import (
     TestDatasetBlueprint,
-    DerivBlueprint,
-    ExpDatatypeBlueprint,
-    FieldBlueprint,
+    FileSetEntryBlueprint as FileBP,
+    FieldEntryBlueprint as FieldBP,
 )
-from arcana.testing import TestDataSpace as TDS, MockRemote
+from arcana.testing import TestDataSpace, MockRemote
 from fileformats.testing import Xyz
 from arcana.dirtree import DirTree
 from pydra import set_input_validator
@@ -159,198 +160,187 @@ def pydra_task(request):
 
 TEST_DATASET_BLUEPRINTS = {
     "full": TestDatasetBlueprint(  # dataset name
-        hierarchy=[TDS.a, TDS.b, TDS.c, TDS.d],
+        space=TestDataSpace,
+        hierarchy=["a", "b", "c", "d"],
         dim_lengths=[2, 3, 4, 5],
-        files=["file1.txt", "file2.my.gz", "dir1"],
-        id_inference=[],
-        expected_datatypes={
-            "file1": [
-                ExpDatatypeBlueprint(datatype=PlainText, filenames=["file1.txt"])
-            ],
-            "file2": [
-                ExpDatatypeBlueprint(datatype=MyFormatGz, filenames=["file2.my.gz"])
-            ],
-            "dir1": [ExpDatatypeBlueprint(datatype=Directory, filenames=["dir1"])],
-        },
+        entries=[
+            FileBP(path="file1", datatype=PlainText, filenames=["file1.txt"]),
+            FileBP(path="file2", datatype=MyFormatGz, filenames=["file2.my.gz"]),
+            FileBP(path="dir1", datatype=Directory, filenames=["dir1"]),
+            FieldBP(
+                path="textfield",
+                row_frequency="abcd",
+                datatype=TextField,
+                value="sample-text",
+            ),  # Derivatives to insert
+            FieldBP(
+                path="booleanfield",
+                row_frequency="c",
+                datatype=Boolean,
+                value="no",
+                expected_value=False,
+            ),  # Derivatives to insert
+        ],
         derivatives=[
-            DerivBlueprint(
-                name="deriv1",
-                row_frequency=TDS.abcd,
+            FileBP(
+                path="deriv1",
+                row_frequency="abcd",
                 datatype=PlainText,
                 filenames=["file1.txt"],
             ),  # Derivatives to insert
-            DerivBlueprint(
-                name="deriv2",
-                row_frequency=TDS.c,
+            FileBP(
+                path="deriv2",
+                row_frequency="c",
                 datatype=Directory,
                 filenames=["dir"],
             ),
-            DerivBlueprint(
-                name="deriv3",
-                row_frequency=TDS.bd,
+            FileBP(
+                path="deriv3",
+                row_frequency="bd",
                 datatype=PlainText,
                 filenames=["file1.txt"],
             ),
-        ],
-        fields=[
-            FieldBlueprint(
-                name="textfield",
-                row_frequency=TDS.abcd,
-                datatype=Text,
-                value="sample-text",
-            ),  # Derivatives to insert
-            FieldBlueprint(
-                name="booleanfield",
-                row_frequency=TDS.c,
-                datatype=Boolean,
-                value="no",
-            ),  # Derivatives to insert
-            FieldBlueprint(
-                name="integerfield",
-                row_frequency=TDS.c,
+            FieldBP(
+                path="integerfield",
+                row_frequency="c",
                 datatype=Integer,
                 value=99,
             ),
-            FieldBlueprint(
-                name="decimalfield",
-                row_frequency=TDS.bd,
+            FieldBP(
+                path="decimalfield",
+                row_frequency="bd",
                 datatype=Decimal,
-                value=33.3333,
+                value="33.3333",
+                expected_value=decimal.Decimal("33.3333"),
             ),
-            FieldBlueprint(
-                name="arrayfield",
-                row_frequency=TDS.bd,
+            FieldBP(
+                path="arrayfield",
+                row_frequency="bd",
                 datatype=Array[Integer],
                 value=[1, 2, 3, 4, 5],
             ),
         ],
     ),
     "one_layer": TestDatasetBlueprint(
-        hierarchy=[TDS.abcd],
+        space=TestDataSpace,
+        hierarchy=["abcd"],
         dim_lengths=[1, 1, 1, 5],
-        files=["file1.my.gz", "file1.json", "file2.my", "file2.json"],
-        id_inference=[],
-        expected_datatypes={
-            "file1": [
-                ExpDatatypeBlueprint(
-                    datatype=MyFormatGzX, filenames=["file1.my.gz", "file1.json"]
-                ),
-                ExpDatatypeBlueprint(datatype=MyFormatGz, filenames=["file1.my.gz"]),
-                ExpDatatypeBlueprint(datatype=Json, filenames=["file1.json"]),
-            ],
-            "file2": [
-                ExpDatatypeBlueprint(
-                    datatype=MyFormatX, filenames=["file2.my", "file2.json"]
-                ),
-                ExpDatatypeBlueprint(datatype=MyFormat, filenames=["file2.my"]),
-                ExpDatatypeBlueprint(datatype=Json, filenames=["file2.json"]),
-            ],
-        },
+        entries=[
+            FileBP(
+                path="file1",
+                datatype=MyFormatGzX,
+                filenames=["file1.my.gz", "file1.json"],
+                alternative_datatypes=[MyFormatGz, Json],
+            ),
+            FileBP(
+                path="file2",
+                datatype=MyFormatX,
+                filenames=["file2.my", "file2.json"],
+                alternative_datatypes=[MyFormat, Json],
+            ),
+        ],
         derivatives=[
-            DerivBlueprint(
-                name="deriv1",
-                row_frequency=TDS.abcd,
+            FileBP(
+                path="deriv1",
+                row_frequency="abcd",
                 datatype=Json,
                 filenames=["file1.json"],
             ),
-            DerivBlueprint(
-                name="deriv2",
-                row_frequency=TDS.bc,
+            FileBP(
+                path="deriv2",
+                row_frequency="bc",
                 datatype=Xyz,
                 filenames=["file1.x", "file1.y", "file1.z"],
             ),
-            DerivBlueprint(
-                name="deriv3",
-                row_frequency=TDS._,
+            FileBP(
+                path="deriv3",
+                row_frequency="_",
                 datatype=YourFormat,
                 filenames=["file1.yr"],
             ),
         ],
     ),
     "skip_single": TestDatasetBlueprint(
-        hierarchy=[TDS.a, TDS.bc, TDS.d],
+        space=TestDataSpace,
+        hierarchy=["a", "bc", "d"],
         dim_lengths=[2, 1, 2, 3],
-        files=["doubledir1", "doubledir2"],
-        id_inference=[],
-        expected_datatypes={
-            "doubledir1": [
-                ExpDatatypeBlueprint(datatype=Directory, filenames=["doubledir1"])
-            ],
-            "doubledir2": [
-                ExpDatatypeBlueprint(datatype=Directory, filenames=["doubledir2"])
-            ],
-        },
+        entries=[
+            FileBP(path="doubledir1", datatype=Directory, filenames=["doubledir1"]),
+            FileBP(path="doubledir2", datatype=Directory, filenames=["doubledir2"]),
+        ],
         derivatives=[
-            DerivBlueprint(
-                name="deriv1",
-                row_frequency=TDS.ad,
+            FileBP(
+                path="deriv1",
+                row_frequency="ad",
                 datatype=Json,
                 filenames=["file1.json"],
             )
         ],
     ),
     "skip_with_inference": TestDatasetBlueprint(
-        hierarchy=[TDS.bc, TDS.ad],
+        space=TestDataSpace,
+        hierarchy=["bc", "ad"],
         dim_lengths=[2, 3, 2, 4],
-        files=["file1.img", "file1.hdr", "file2.yr"],
-        id_inference=[
-            (TDS.bc, r"b(?P<b>\d+)c(?P<c>\d+)"),
-            (TDS.ad, r"a(?P<a>\d+)d(?P<d>\d+)"),
-        ],
-        expected_datatypes={
-            "file1": [
-                ExpDatatypeBlueprint(
-                    datatype=ImageWithHeader, filenames=["file1.hdr", "file1.img"]
-                )
-            ],
-            "file2": [
-                ExpDatatypeBlueprint(datatype=YourFormat, filenames=["file2.yr"])
-            ],
+        id_composition={
+            "bc": r"b(?P<b>\d+)c(?P<c>\d+)",
+            "ad": r"a(?P<a>\d+)d(?P<d>\d+)",
         },
+        entries=[
+            FileBP(
+                path="file1",
+                datatype=ImageWithHeader,
+                filenames=["file1.hdr", "file1.img"],
+            ),
+            FileBP(path="file2", datatype=YourFormat, filenames=["file2.yr"]),
+        ],
     ),
     "redundant": TestDatasetBlueprint(
+        space=TestDataSpace,
         hierarchy=[
-            TDS.abc,
-            TDS.abcd,
+            "abc",
+            "abcd",
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         dim_lengths=[3, 4, 5, 6],
-        files=["doubledir", "file1.x", "file1.y", "file1.z"],
-        id_inference=[
-            (TDS.abc, r"a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)"),
-            (TDS.abcd, r"a\d+b\d+c\d+d(?P<d>\d+)"),
-        ],
-        expected_datatypes={
-            "doubledir": [
-                ExpDatatypeBlueprint(datatype=Directory, filenames=["doubledir"])
-            ],
-            "file1": [
-                ExpDatatypeBlueprint(
-                    datatype=Xyz, filenames=["file1.x", "file1.y", "file1.z"]
-                )
-            ],
+        id_composition={
+            "abc": r"a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)",
+            "abcd": r"a\d+b\d+c\d+d(?P<d>\d+)",
         },
+        entries=[
+            FileBP(path="doubledir", datatype=Directory, filenames=["doubledir"]),
+            FileBP(
+                path="file1", datatype=Xyz, filenames=["file1.x", "file1.y", "file1.z"]
+            ),
+        ],
         derivatives=[
-            DerivBlueprint(
-                name="deriv1",
-                row_frequency=TDS.d,
+            FileBP(
+                path="deriv1",
+                row_frequency="d",
                 datatype=Json,
                 filenames=["file1.json"],
             )
         ],
     ),
     "concatenate_test": TestDatasetBlueprint(
+        space=TestDataSpace,
         hierarchy=[
-            TDS.abcd
+            "abcd"
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         dim_lengths=[1, 1, 1, 2],
-        files=["file1.txt", "file2.txt"],
+        entries=[
+            FileBP(path="file1", datatype=PlainText, filenames=["file1.txt"]),
+            FileBP(path="file2", datatype=PlainText, filenames=["file2.txt"]),
+        ],
     ),
     "concatenate_zip_test": TestDatasetBlueprint(
+        space=TestDataSpace,
         hierarchy=[
-            TDS.abcd
+            "abcd"
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         dim_lengths=[1, 1, 1, 1],
-        files=["file1.zip", "file2.zip"],
+        entries=[
+            FileBP(path="file1", datatype=Zip, filenames=["file1.zip"]),
+            FileBP(path="file2", datatype=Zip, filenames=["file2.zip"]),
+        ],
     ),
 }
 
@@ -408,10 +398,14 @@ def dataset(work_dir, data_store, request):
 def saved_dataset(data_store, work_dir):
     blueprint = TestDatasetBlueprint(
         hierarchy=[
-            TDS.abcd
+            "abcd"
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        space=TestDataSpace,
         dim_lengths=[1, 1, 1, 1],
-        files=["file1.txt", "file2.txt"],
+        entries=[
+            FileBP(path="file1", datatype=PlainText, filenames=["file1.txt"]),
+            FileBP(path="file2", datatype=PlainText, filenames=["file2.txt"]),
+        ],
     )
     if isinstance(data_store, DirTree):
         dataset_id = work_dir / "saved-dataset"
