@@ -553,7 +553,13 @@ def extract_file_from_docker_image(
             )
         else:
             raise
-    container = dc.containers.get(dc.api.create_container(image_tag)["Id"])
+    try:
+        container = dc.containers.get(dc.api.create_container(image_tag)["Id"])
+    except docker.errors.APIError as e:
+        if e.response.status_code == 404:
+            return None
+        else:
+            raise
     try:
         tarfile_path = tmp_dir / "tar-file.tar.gz"
         with open(tarfile_path, mode="w+b") as f:
