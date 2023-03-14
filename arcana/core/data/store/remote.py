@@ -378,7 +378,7 @@ class RemoteStore(DataStore):
         if cache_path.exists():
             shutil.rmtree(cache_path)
         # Copy to cache
-        cached = fileset.copy_to(cache_path, make_dirs=True, trim=True)
+        cached = fileset.copy_to(cache_path, make_dirs=True, trim=False)
         self.upload_files(cache_path, entry)
         checksums = self.get_checksums(entry.uri)
         calculated_checksums = self.calculate_checksums(cached)
