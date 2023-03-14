@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Application Programming Interface" href="api.html" /><link rel="prev" title="Alternative storage systems" href="alternative_stores.html" />
 
     <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
-        <title>Command-line interface - Arcana v0.9.3</title>
+        <title>Command-line interface - Arcana v0.9.4</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.9.3</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.9.4</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.3</span>
+  <span class="sidebar-brand-text">Arcana v0.9.4</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -240,10 +240,16 @@ file (‘~/.arcana/stores.yaml’).</p>
 <dt><a href="#id1"><span class="problematic" id="id2">*</span></a>varargs</dt><dd><p>Parameters that are specific to the ‘type’ of storage class to be added</p>
 </dd>
 </dl>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>store<span class="w"> </span>add<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>NAME<span class="w"> </span>TYPE<span class="w"> </span>LOCATION<span class="w"> </span><span class="o">[</span>VARARGS<span class="o">]</span>...
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>store<span class="w"> </span>add<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>NAME<span class="w"> </span>TYPE
 </pre></div>
 </div>
 <p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-arcana-store-add-s">
+<span id="cmdoption-arcana-store-add-server"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--server</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;server&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-s" title="Permalink to this definition">#</a></dt>
+<dd><p>The URI of the server to connect to (if applicable)</p>
+</dd></dl>
+
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-u">
 <span id="cmdoption-arcana-store-add-user"></span><span class="sig-name descname"><span class="pre">-u</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--user</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;user&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-u" title="Permalink to this definition">#</a></dt>
@@ -262,6 +268,18 @@ file (‘~/.arcana/stores.yaml’).</p>
 <dd><p>The location of a cache dir to download local copies of remote data</p>
 </dd></dl>
 
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-arcana-store-add-d">
+<span id="cmdoption-arcana-store-add-race-condition-delay"></span><span class="sig-name descname"><span class="pre">-d</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--race-condition-delay</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;race_condition_delay&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-d" title="Permalink to this definition">#</a></dt>
+<dd><p>How long to wait for changes on a incomplete download before assuming it has been interrupted, clearing it and starting again</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-arcana-store-add-o">
+<span id="cmdoption-arcana-store-add-option"></span><span class="sig-name descname"><span class="pre">-o</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--option</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;name&gt;</span> <span class="pre">&lt;value&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-o" title="Permalink to this definition">#</a></dt>
+<dd><p>Additional key-word arguments that are passed to the store class</p>
+</dd></dl>
+
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-arg-NAME">
@@ -273,18 +291,6 @@ file (‘~/.arcana/stores.yaml’).</p>
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-arg-TYPE">
 <span id="cmdoption-arcana-store-add-arg-type"></span><span class="sig-name descname"><span class="pre">TYPE</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-add-arg-TYPE" title="Permalink to this definition">#</a></dt>
 <dd><p>Required argument</p>
-</dd></dl>
-
-<dl class="std option">
-<dt class="sig sig-object std" id="cmdoption-arcana-store-add-arg-LOCATION">
-<span id="cmdoption-arcana-store-add-arg-location"></span><span class="sig-name descname"><span class="pre">LOCATION</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-add-arg-LOCATION" title="Permalink to this definition">#</a></dt>
-<dd><p>Required argument</p>
-</dd></dl>
-
-<dl class="std option">
-<dt class="sig sig-object std" id="cmdoption-arcana-store-add-arg-VARARGS">
-<span id="cmdoption-arcana-store-add-arg-varargs"></span><span class="sig-name descname"><span class="pre">VARARGS</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-add-arg-VARARGS" title="Permalink to this definition">#</a></dt>
-<dd><p>Optional argument(s)</p>
 </dd></dl>
 
 </section>
@@ -384,7 +390,7 @@ use by multiple users, if not possible it is stored in the ~/.arcana directory.<
 format &lt;store-nickname&gt;//&lt;dataset-id&gt;[&#64;&lt;dataset-name&gt;]</p>
 <p>HIERARCHY the data frequencies that are present in the data tree. For some
 store types this is fixed (e.g. XNAT-&gt; subject &gt; session) but for more flexible
-(e.g. MockRemoteStore), which dimension each layer of sub-directories corresponds to
+(e.g. MockRemote), which dimension each layer of sub-directories corresponds to
 can be arbitrarily specified. dimensions</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>dataset<span class="w"> </span>define<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>ID_STR<span class="w"> </span><span class="o">[</span>HIERARCHY<span class="o">]</span>...
 </pre></div>
@@ -415,8 +421,8 @@ can be arbitrarily specified. dimensions</p>
 </dd></dl>
 
 <dl class="std option">
-<dt class="sig sig-object std" id="cmdoption-arcana-dataset-define-id-inference">
-<span class="sig-name descname"><span class="pre">--id-inference</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;source-regex&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-id-inference" title="Permalink to this definition">#</a></dt>
+<dt class="sig sig-object std" id="cmdoption-arcana-dataset-define-id-composition">
+<span class="sig-name descname"><span class="pre">--id-composition</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;source-id&gt;</span> <span class="pre">&lt;composition-regex&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-id-composition" title="Permalink to this definition">#</a></dt>
 <dd><p>Specifies how IDs of row frequencies that not explicitly
 provided are inferred from the IDs that are. For example, given a set
 of subject IDs that are a combination of the ID of the group that they belong
@@ -496,7 +502,7 @@ field array (list[int|float|str|bool]) or
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-h">
 <span id="cmdoption-arcana-dataset-add-source-header"></span><span class="sig-name descname"><span class="pre">-h</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--header</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;key-val&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-h" title="Permalink to this definition">#</a></dt>
-<dd><p>Match on specific header value. This option is only valid for select formats that the implement the ‘header_val()’ method (e.g. medimage/Dicom).</p>
+<dd><p>Match on specific header value. This option is only valid for select formats that the implement the ‘header_val()’ method (e.g. medimage/DicomSet).</p>
 </dd></dl>
 
 <p class="rubric">Arguments</p>

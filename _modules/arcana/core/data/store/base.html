@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" />
 
     <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
-        <title>arcana.core.data.store.base - Arcana v0.9.3</title>
+        <title>arcana.core.data.store.base - Arcana v0.9.4</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../../index.html"><div class="brand">Arcana v0.9.3</div></a>
+      <a href="../../../../../index.html"><div class="brand">Arcana v0.9.4</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.3</span>
+  <span class="sidebar-brand-text">Arcana v0.9.4</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -217,9 +217,6 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractmethod</span><span class="p">,</span> <span class="n">ABCMeta</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">import</span> <span class="nn">zipfile</span>
-<span class="kn">import</span> <span class="nn">shutil</span>
-<span class="kn">from</span> <span class="nn">itertools</span> <span class="kn">import</span> <span class="n">product</span>
 <span class="kn">import</span> <span class="nn">attrs</span>
 <span class="kn">import</span> <span class="nn">typing</span> <span class="k">as</span> <span class="nn">ty</span>
 <span class="kn">import</span> <span class="nn">yaml</span>
@@ -231,8 +228,6 @@
 <span class="kn">from</span> <span class="nn">fileformats.core</span> <span class="kn">import</span> <span class="n">DataType</span>
 <span class="kn">from</span> <span class="nn">arcana.core.utils.misc</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">get_config_file_path</span><span class="p">,</span>
-    <span class="n">set_cwd</span><span class="p">,</span>
-    <span class="n">path2varname</span><span class="p">,</span>
     <span class="n">NestedContext</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span> <span class="nn">arcana.core.utils.packaging</span> <span class="kn">import</span> <span class="n">list_subclasses</span>
@@ -249,7 +244,6 @@
     <span class="kn">from</span> <span class="nn">..tree</span> <span class="kn">import</span> <span class="n">DataTree</span>
     <span class="kn">from</span> <span class="nn">..entry</span> <span class="kn">import</span> <span class="n">DataEntry</span>
     <span class="kn">from</span> <span class="nn">..row</span> <span class="kn">import</span> <span class="n">DataRow</span>
-    <span class="kn">from</span> <span class="nn">..testing</span> <span class="kn">import</span> <span class="n">TestDatasetBlueprint</span>
 
 
 <span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span>
@@ -289,6 +283,10 @@
     <span class="n">SUBPACKAGE</span> <span class="o">=</span> <span class="s2">&quot;data&quot;</span>
     <span class="n">VERSION_KEY</span> <span class="o">=</span> <span class="s2">&quot;store-version&quot;</span>
     <span class="n">VERSION</span> <span class="o">=</span> <span class="s2">&quot;1.0.0&quot;</span>
+
+    <span class="c1">####################</span>
+    <span class="c1"># Abstract methods #</span>
+    <span class="c1">####################</span>
 
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">populate_tree</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tree</span><span class="p">:</span> <span class="n">DataTree</span><span class="p">):</span>
@@ -347,29 +345,6 @@
 <span class="sd">        -------</span>
 <span class="sd">        cached : DataType</span>
 <span class="sd">            returns the cached version of the item, if applicable</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-
-    <span class="nd">@abstractmethod</span>
-    <span class="k">def</span> <span class="nf">post</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">DataType</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">datatype</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">DataRow</span>
-    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataEntry</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inserts the item within a newly created entry in the data store</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        item : DataType</span>
-<span class="sd">            the item to insert</span>
-<span class="sd">        path : str</span>
-<span class="sd">            the path to the entry relative to the data row</span>
-<span class="sd">        datatype : type</span>
-<span class="sd">            the datatype of the entry</span>
-<span class="sd">        row : DataRow</span>
-<span class="sd">            the data row to insert the entry into</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        entry : DataEntry</span>
-<span class="sd">            the inserted entry</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
     <span class="nd">@abstractmethod</span>
@@ -436,39 +411,98 @@
 <span class="sd">            A dct Dataset object that was saved in the data store</span>
 <span class="sd">        &quot;&quot;&quot;</span></div>
 
-    <span class="k">def</span> <span class="nf">create_empty_dataset</span><span class="p">(</span>
+<div class="viewcode-block" id="DataStore.connect"><a class="viewcode-back" href="../../../../../alternative_stores.html#arcana.core.data.store.DataStore.connect">[docs]</a>    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If a connection session is required to the store manage it here</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="DataStore.disconnect"><a class="viewcode-back" href="../../../../../alternative_stores.html#arcana.core.data.store.DataStore.disconnect">[docs]</a>    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If a connection session is required to the store manage it here</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">site_licenses_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Can be overridden by subclasses to provide a dataset to hold site-wide licenses&quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">create_data_tree</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">leaves</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]],</span>
         <span class="n">hierarchy</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
-        <span class="n">row_ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span>
         <span class="n">space</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span>
-        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="n">id_composition</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span>
     <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;create a new empty dataset within the store, used in test routines and</span>
-<span class="sd">        dataset imports</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;creates a new empty dataset within in the store. Used in test routines and</span>
+<span class="sd">        importing/exporting datasets between stores</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        id : str</span>
 <span class="sd">            ID for the newly created dataset</span>
+<span class="sd">        leaves : list[tuple[str, ...]]</span>
+<span class="sd">                        list of IDs for each leaf node to be added to the dataset. The IDs for each</span>
+<span class="sd">            leaf should be a tuple with an ID for each level in the tree&#39;s hierarchy, e.g.</span>
+<span class="sd">            for a hierarchy of [subject, timepoint] -&gt;</span>
+<span class="sd">            [(&quot;SUBJ01&quot;, &quot;TIMEPOINT01&quot;), (&quot;SUBJ01&quot;, &quot;TIMEPOINT02&quot;), ....]</span>
+<span class="sd">        hierarchy: list[str]</span>
+<span class="sd">            the hierarchy of the dataset to be created</span>
 <span class="sd">        space : type(DataSpace)</span>
 <span class="sd">            the data space of the dataset</span>
-<span class="sd">        hierarchy : list[str]</span>
-<span class="sd">            the hierarchy of row frequencies the tree of the dataset</span>
-<span class="sd">        row_ids : list[list[str]]</span>
-<span class="sd">            the empty data rows to create within the newly created dataset. Outer list</span>
-<span class="sd">            corresponds to levels in the hierarchy, inner lists correspond to the row</span>
-<span class="sd">            ids repeated in each branch of the corresponding level of the data tree.</span>
-<span class="sd">        name : str, optional</span>
-<span class="sd">            name to give to the dataset definition returned</span>
-<span class="sd">        **kwargs</span>
-<span class="sd">            store sub-class relevant arguments</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> stores don&#39;t implement the `create_empty_dataset` &quot;</span>
-            <span class="s2">&quot;method&quot;</span>
-        <span class="p">)</span>
+
+    <span class="nd">@abstractmethod</span>
+    <span class="k">def</span> <span class="nf">create_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">datatype</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">DataRow</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataEntry</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates an &quot;entry&quot; in the store to hold a new data item</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            path to the entry relative to the data &quot;row&quot;</span>
+<span class="sd">        datatype : type</span>
+<span class="sd">            the datatype of the entry</span>
+<span class="sd">        row : DataRow</span>
+<span class="sd">            the row (tree node) to create the entry in</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        entry : DataEntry</span>
+<span class="sd">            the newly created entry</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="c1"># Can be overridden if necessary (e.g. the underlying store only returns new URI</span>
+    <span class="c1"># when a new item is added)</span>
+    <span class="k">def</span> <span class="nf">post</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">:</span> <span class="n">DataType</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">datatype</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">DataRow</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataEntry</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inserts the item within a newly created entry in the data store</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        item : DataType</span>
+<span class="sd">            the item to insert</span>
+<span class="sd">        path : str</span>
+<span class="sd">            the path to the entry relative to the data row</span>
+<span class="sd">        datatype : type</span>
+<span class="sd">            the datatype of the entry</span>
+<span class="sd">        row : DataRow</span>
+<span class="sd">            the data row to insert the entry into</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        entry : DataEntry</span>
+<span class="sd">            the inserted entry</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">:</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">datatype</span><span class="p">,</span> <span class="n">row</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">entry</span><span class="p">)</span>
+
+    <span class="c1">###############</span>
+    <span class="c1"># General API #</span>
+    <span class="c1">###############</span>
 
     <span class="k">def</span> <span class="nf">import_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Import a dataset from another store, transferring metadata and columns</span>
@@ -481,24 +515,10 @@
 <span class="sd">        dataset : Dataset</span>
 <span class="sd">            the dataset to import</span>
 <span class="sd">        **kwargs:</span>
-<span class="sd">            keyword arguments passed through to the `create_empty_dataset` method</span>
+<span class="sd">            keyword arguments passed through to the `create_data_tree` method</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span>
-        <span class="c1"># imported = self.create_empty_dataset(id, **kwargs)</span>
-
-<div class="viewcode-block" id="DataStore.connect"><a class="viewcode-back" href="../../../../../alternative_stores.html#arcana.core.data.store.DataStore.connect">[docs]</a>    <span class="k">def</span> <span class="nf">connect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        If a connection session is required to the store manage it here</span>
-<span class="sd">        &quot;&quot;&quot;</span></div>
-
-<div class="viewcode-block" id="DataStore.disconnect"><a class="viewcode-back" href="../../../../../alternative_stores.html#arcana.core.data.store.DataStore.disconnect">[docs]</a>    <span class="k">def</span> <span class="nf">disconnect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        If a connection session is required to the store manage it here</span>
-<span class="sd">        &quot;&quot;&quot;</span></div>
-
-    <span class="k">def</span> <span class="nf">site_licenses_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Can be overridden by subclasses to provide a dataset to hold site-wide licenses&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="kc">None</span>
+        <span class="c1"># imported = self.create_data_tree(id, **kwargs)</span>
 
     <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Saves the configuration of a DataStore in &#39;stores.yaml&#39;</span>
@@ -573,7 +593,7 @@
                     <span class="n">name</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;No saved data store or built-in type matches &#39;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
                 <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">entry</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">})</span>
             <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
             <span class="n">store</span> <span class="o">=</span> <span class="n">fromdict</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>  <span class="c1"># Would be good to use a class resolver here</span>
         <span class="k">return</span> <span class="n">store</span>
@@ -603,7 +623,7 @@
 <span class="sd">            the store</span>
 <span class="sd">        space: DataSpace</span>
 <span class="sd">            The data space of the dataset</span>
-<span class="sd">        hierarchy: list[DataSpace or str]</span>
+<span class="sd">        hierarchy: list[str]</span>
 <span class="sd">            The hierarchy of the dataset</span>
 <span class="sd">        space : EnumMeta</span>
 <span class="sd">            The DataSpace enum that defines the frequencies (e.g.</span>
@@ -611,30 +631,19 @@
 <span class="sd">        **kwargs:</span>
 <span class="sd">            Keyword args passed on to the Dataset init method</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span> <span class="nn">..space</span> <span class="kn">import</span> <span class="n">DataSpace</span>
-
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">hierarchy</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">space</span><span class="p">:</span>
-                <span class="n">hierarchy</span> <span class="o">=</span> <span class="p">[</span><span class="nb">max</span><span class="p">(</span><span class="n">space</span><span class="p">)]</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">hierarchy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_HIERARCHY</span>
-                <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
-                        <span class="s2">&quot;&#39;hierarchy&#39; kwarg must be specified for datasets in &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s2"> stores&quot;</span>
-                    <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">space</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">hierarchy</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">hierarchy</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">DataSpace</span><span class="p">):</span>
-                <span class="n">space</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">hierarchy</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="k">try</span><span class="p">:</span>
-                    <span class="n">space</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_SPACE</span>
-                <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                    <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
-                        <span class="s2">&quot;&#39;space&#39; kwarg must be specified for datasets in &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s2"> stores&quot;</span>
-                    <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">space</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_SPACE</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                    <span class="s2">&quot;&#39;space&#39; kwarg must be specified for datasets in &quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s2"> stores&quot;</span>
+                <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">hierarchy</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">hierarchy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_HIERARCHY</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="n">hierarchy</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">space</span><span class="p">))]</span>  <span class="c1"># one-layer with only leaf nodes</span>
         <span class="kn">from</span> <span class="nn">arcana.core.data.set</span> <span class="kn">import</span> <span class="p">(</span>
             <span class="n">Dataset</span><span class="p">,</span>
         <span class="p">)</span>  <span class="c1"># avoid circular imports it is imported here rather than at the top of the file</span>
@@ -657,9 +666,10 @@
         <span class="n">definition</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">VERSION_KEY</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">VERSION</span>
         <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">name</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">name</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">save_dataset_definition</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">definition</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save_dataset_definition</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">definition</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">load_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">load_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Load an existing dataset definition</span>
 
 <span class="sd">        Parameters</span>
@@ -680,18 +690,80 @@
 <span class="sd">        KeyError</span>
 <span class="sd">            if the dataset is not found</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="kn">from</span> <span class="nn">arcana.core.data.set</span> <span class="kn">import</span> <span class="p">(</span>
-            <span class="n">Dataset</span><span class="p">,</span>
-        <span class="p">)</span>  <span class="c1"># avoid circular imports it is imported here rather than at the top of the file</span>
-
-        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">name</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">DEFAULT_NAME</span>
-        <span class="n">dct</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_dataset_definition</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span><span class="p">:</span>
+            <span class="n">dct</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_dataset_definition</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">dct</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Did not find a dataset &#39;</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">@</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
         <span class="n">store_version</span> <span class="o">=</span> <span class="n">dct</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">VERSION_KEY</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">check_store_version</span><span class="p">(</span><span class="n">store_version</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">fromdict</span><span class="p">(</span><span class="n">dct</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">store</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">new_dataset</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">leaves</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]],</span>
+        <span class="n">hierarchy</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span>
+        <span class="n">space</span><span class="p">:</span> <span class="nb">type</span><span class="p">,</span>
+        <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">id_composition</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates a new dataset with new rows to store data in</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        id : str</span>
+<span class="sd">            ID of the dataset</span>
+<span class="sd">        leaves : list[tuple[str, ...]]</span>
+<span class="sd">            the list of tuple IDs (at each level of the tree)</span>
+<span class="sd">        name : str, optional</span>
+<span class="sd">            name of the dataset, if provided the dataset definition will be saved. To</span>
+<span class="sd">            save the dataset with the default name pass an empty string.</span>
+<span class="sd">        hierarchy : list[str], optional</span>
+<span class="sd">            hierarchy of the dataset tree</span>
+<span class="sd">        space : type, optional</span>
+<span class="sd">            the space of the dataset</span>
+<span class="sd">        id_composition : dict[str, str]</span>
+<span class="sd">            Not all IDs will appear explicitly within the hierarchy of the data</span>
+<span class="sd">            tree, and some will need to be inferred by extracting components of</span>
+<span class="sd">            more specific labels.</span>
+
+<span class="sd">            For example, given a set of subject IDs that combination of the ID of</span>
+<span class="sd">            the group that they belong to and the member ID within that group</span>
+<span class="sd">            (i.e. matched test &amp; control would have same member ID)</span>
+
+<span class="sd">                CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03</span>
+
+<span class="sd">            the group ID can be extracted by providing the a list of tuples</span>
+<span class="sd">            containing ID to source the inferred IDs from coupled with a regular</span>
+<span class="sd">            expression with named groups</span>
+
+<span class="sd">                id_composition = {</span>
+<span class="sd">                    &#39;subject&#39;: r&#39;(?P&lt;group&gt;[A-Z]+)(?P&lt;member&gt;[0-9]+)&#39;)</span>
+<span class="sd">                }</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        Dataset</span>
+<span class="sd">            the newly created dataset</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">create_data_tree</span><span class="p">(</span>
+            <span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span>
+            <span class="n">leaves</span><span class="o">=</span><span class="n">leaves</span><span class="p">,</span>
+            <span class="n">hierarchy</span><span class="o">=</span><span class="n">hierarchy</span><span class="p">,</span>
+            <span class="n">space</span><span class="o">=</span><span class="n">space</span><span class="p">,</span>
+            <span class="n">id_composition</span><span class="o">=</span><span class="n">id_composition</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">define_dataset</span><span class="p">(</span>
+            <span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span>
+            <span class="n">hierarchy</span><span class="o">=</span><span class="n">hierarchy</span><span class="p">,</span>
+            <span class="n">space</span><span class="o">=</span><span class="n">space</span><span class="p">,</span>
+            <span class="n">id_composition</span><span class="o">=</span><span class="n">id_composition</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dataset</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">dataset</span>
 
     <span class="nd">@classmethod</span>
     <span class="k">def</span> <span class="nf">singletons</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
@@ -731,138 +803,9 @@
         <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
             <span class="n">yaml</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">create_test_dataset_data</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span> <span class="n">blueprint</span><span class="p">:</span> <span class="n">TestDatasetBlueprint</span><span class="p">,</span> <span class="n">dataset_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">source_data</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Creates the test data in the store, from the provided blueprint, which</span>
-<span class="sd">        can be used to run test routines against</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        blueprint</span>
-<span class="sd">            the test dataset blueprint</span>
-<span class="sd">        dataset_path : Path</span>
-<span class="sd">            the pat</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;&#39;create_test_dataset_data&#39; method hasn&#39;t been implemented for </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s2"> &quot;</span>
-            <span class="s2">&quot;class please create it to use &#39;make_test_dataset&#39; method in your test &quot;</span>
-            <span class="s2">&quot;routines&quot;</span>
-        <span class="p">)</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">create_test_fsobject</span><span class="p">(</span>
-        <span class="bp">cls</span><span class="p">,</span>
-        <span class="n">fname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">dpath</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
-        <span class="n">source_data</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">source_fallback</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-        <span class="n">escape_source_name</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;For use in test routines, this classmethod creates a simple text file,</span>
-<span class="sd">        zip file or nested directory at the given path</span>
-
-<span class="sd">        Parameters</span>
-<span class="sd">        ----------</span>
-<span class="sd">        fname : str</span>
-<span class="sd">            name of the file to create, a file or directory will be created depending</span>
-<span class="sd">            on the name given</span>
-<span class="sd">        dpath : Path</span>
-<span class="sd">            the path at which to create the file/directory</span>
-<span class="sd">        source_data : Path, optional</span>
-<span class="sd">            path to a directory containing source data to use instead of the dummy</span>
-<span class="sd">            data</span>
-<span class="sd">        source_fallback : bool</span>
-<span class="sd">            whether to fall back to the generated file if fname isn&#39;t in the source</span>
-<span class="sd">            data dir</span>
-<span class="sd">        escape_source_name : bool</span>
-<span class="sd">            whether to escape the source name or simple use the file name of the source</span>
-
-<span class="sd">        Returns</span>
-<span class="sd">        -------</span>
-<span class="sd">        Path</span>
-<span class="sd">            path to the created file/directory</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="n">dpath</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">dpath</span><span class="p">)</span>
-        <span class="n">dpath</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">source_data</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">src_path</span> <span class="o">=</span> <span class="n">source_data</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="o">*</span><span class="n">fname</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">))</span>
-            <span class="k">if</span> <span class="n">src_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-                <span class="k">if</span> <span class="n">escape_source_name</span><span class="p">:</span>
-                    <span class="n">parts</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
-                    <span class="n">out_fname</span> <span class="o">=</span> <span class="n">path2varname</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">out_fname</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
-                <span class="n">out_path</span> <span class="o">=</span> <span class="n">dpath</span> <span class="o">/</span> <span class="n">out_fname</span>
-                <span class="k">if</span> <span class="n">src_path</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
-                    <span class="n">shutil</span><span class="o">.</span><span class="n">copytree</span><span class="p">(</span><span class="n">src_path</span><span class="p">,</span> <span class="n">out_path</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">src_path</span><span class="p">,</span> <span class="n">out_path</span><span class="p">,</span> <span class="n">follow_symlinks</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                <span class="k">return</span> <span class="n">out_path</span>
-            <span class="k">elif</span> <span class="ow">not</span> <span class="n">source_fallback</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">ArcanaError</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Couldn&#39;t find </span><span class="si">{</span><span class="n">fname</span><span class="si">}</span><span class="s2"> in source data directory </span><span class="si">{</span><span class="n">source_data</span><span class="si">}</span><span class="s2">&quot;</span>
-                <span class="p">)</span>
-        <span class="n">out_path</span> <span class="o">=</span> <span class="n">dpath</span> <span class="o">/</span> <span class="n">fname</span>
-        <span class="n">next_part</span> <span class="o">=</span> <span class="n">fname</span>
-        <span class="k">if</span> <span class="n">next_part</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.zip&quot;</span><span class="p">):</span>
-            <span class="n">next_part</span> <span class="o">=</span> <span class="n">next_part</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;.zip&quot;</span><span class="p">)</span>
-        <span class="n">next_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">next_part</span><span class="p">)</span>
-        <span class="c1"># Make double dir</span>
-        <span class="k">if</span> <span class="n">next_part</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;doubledir&quot;</span><span class="p">):</span>
-            <span class="p">(</span><span class="n">dpath</span> <span class="o">/</span> <span class="n">next_path</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="n">next_part</span> <span class="o">=</span> <span class="s2">&quot;dir&quot;</span>
-            <span class="n">next_path</span> <span class="o">/=</span> <span class="n">next_part</span>
-        <span class="k">if</span> <span class="n">next_part</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;dir&quot;</span><span class="p">):</span>
-            <span class="p">(</span><span class="n">dpath</span> <span class="o">/</span> <span class="n">next_path</span><span class="p">)</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-            <span class="n">next_part</span> <span class="o">=</span> <span class="s2">&quot;test.txt&quot;</span>
-            <span class="n">next_path</span> <span class="o">/=</span> <span class="n">next_part</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">next_path</span><span class="o">.</span><span class="n">suffix</span><span class="p">:</span>
-            <span class="n">next_path</span> <span class="o">=</span> <span class="n">next_path</span><span class="o">.</span><span class="n">with_suffix</span><span class="p">(</span><span class="s2">&quot;.txt&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">next_path</span><span class="o">.</span><span class="n">suffix</span> <span class="o">==</span> <span class="s2">&quot;.json&quot;</span><span class="p">:</span>
-            <span class="n">contents</span> <span class="o">=</span> <span class="s1">&#39;{&quot;a&quot;: 1.0}&#39;</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">contents</span> <span class="o">=</span> <span class="n">fname</span>
-        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">dpath</span> <span class="o">/</span> <span class="n">next_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">contents</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">fname</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.zip&quot;</span><span class="p">):</span>
-            <span class="k">with</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">zfile</span><span class="p">,</span> <span class="n">set_cwd</span><span class="p">(</span><span class="n">dpath</span><span class="p">):</span>
-                <span class="n">zfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">next_path</span><span class="p">)</span>
-            <span class="p">(</span><span class="n">dpath</span> <span class="o">/</span> <span class="n">next_path</span><span class="p">)</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
-        <span class="k">return</span> <span class="n">out_path</span>
-
-    <span class="k">def</span> <span class="nf">make_test_dataset</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">blueprint</span><span class="p">:</span> <span class="n">TestDatasetBlueprint</span><span class="p">,</span>
-        <span class="n">dataset_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-        <span class="n">source_data</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;For use in tests, this method creates a test dataset from the provided</span>
-<span class="sd">        blueprint&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">create_test_dataset_data</span><span class="p">(</span>
-            <span class="n">blueprint</span><span class="p">,</span> <span class="n">dataset_id</span><span class="p">,</span> <span class="n">source_data</span><span class="o">=</span><span class="n">source_data</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
-        <span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">access_test_dataset</span><span class="p">(</span><span class="n">blueprint</span><span class="p">,</span> <span class="n">dataset_id</span><span class="p">)</span>
-
-    <span class="k">def</span> <span class="nf">access_test_dataset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">blueprint</span><span class="p">,</span> <span class="n">dataset_id</span><span class="p">):</span>
-        <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">define_dataset</span><span class="p">(</span>
-            <span class="n">dataset_id</span><span class="p">,</span>
-            <span class="n">hierarchy</span><span class="o">=</span><span class="n">blueprint</span><span class="o">.</span><span class="n">hierarchy</span><span class="p">,</span>
-            <span class="n">id_inference</span><span class="o">=</span><span class="n">blueprint</span><span class="o">.</span><span class="n">id_inference</span><span class="p">,</span>
-        <span class="p">)</span>
-        <span class="n">dataset</span><span class="o">.</span><span class="vm">__annotations__</span><span class="p">[</span><span class="s2">&quot;blueprint&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">blueprint</span>
-        <span class="k">return</span> <span class="n">dataset</span>
-
-    <span class="nd">@classmethod</span>
-    <span class="k">def</span> <span class="nf">iter_test_blueprint</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">blueprint</span><span class="p">:</span> <span class="n">TestDatasetBlueprint</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterate all leaves of the data tree specified by the test blueprint&quot;&quot;&quot;</span>
-        <span class="k">for</span> <span class="n">id_tple</span> <span class="ow">in</span> <span class="n">product</span><span class="p">(</span><span class="o">*</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">d</span><span class="p">))</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">blueprint</span><span class="o">.</span><span class="n">dim_lengths</span><span class="p">)):</span>
-            <span class="n">base_ids</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">blueprint</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">axes</span><span class="p">(),</span> <span class="n">id_tple</span><span class="p">))</span>
-            <span class="n">ids</span> <span class="o">=</span> <span class="p">{}</span>
-            <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">blueprint</span><span class="o">.</span><span class="n">hierarchy</span><span class="p">:</span>
-                <span class="n">ids</span><span class="p">[</span><span class="n">layer</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">b</span><span class="si">}{</span><span class="n">base_ids</span><span class="p">[</span><span class="n">b</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">layer</span><span class="o">.</span><span class="n">span</span><span class="p">())</span>
-            <span class="k">yield</span> <span class="n">ids</span>
+    <span class="c1">##################</span>
+    <span class="c1"># Helper methods #</span>
+    <span class="c1">##################</span>
 
     <span class="k">def</span> <span class="nf">check_store_version</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">store_version</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Check whether version store used to save the dataset is compatible with the</span>

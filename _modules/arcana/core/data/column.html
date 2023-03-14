@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../genindex.html" /><link rel="search" title="Search" href="../../../../search.html" />
 
     <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
-        <title>arcana.core.data.column - Arcana v0.9.3</title>
+        <title>arcana.core.data.column - Arcana v0.9.4</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../index.html"><div class="brand">Arcana v0.9.3</div></a>
+      <a href="../../../../index.html"><div class="brand">Arcana v0.9.4</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.3</span>
+  <span class="sidebar-brand-text">Arcana v0.9.4</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -228,10 +228,10 @@
 <span class="kn">from</span> <span class="nn">.quality</span> <span class="kn">import</span> <span class="n">DataQuality</span>
 <span class="kn">from</span> <span class="nn">.space</span> <span class="kn">import</span> <span class="n">DataSpace</span>
 <span class="kn">from</span> <span class="nn">.cell</span> <span class="kn">import</span> <span class="n">DataCell</span>
+<span class="kn">from</span> <span class="nn">.entry</span> <span class="kn">import</span> <span class="n">DataEntry</span>
 
 <span class="k">if</span> <span class="n">ty</span><span class="o">.</span><span class="n">TYPE_CHECKING</span><span class="p">:</span>
     <span class="kn">from</span> <span class="nn">.row</span> <span class="kn">import</span> <span class="n">DataRow</span>
-    <span class="kn">from</span> <span class="nn">.entry</span> <span class="kn">import</span> <span class="n">DataEntry</span>
     <span class="kn">from</span> <span class="nn">.set.base</span> <span class="kn">import</span> <span class="n">Dataset</span>
 
 
@@ -275,7 +275,7 @@
     <span class="k">def</span> <span class="nf">cell</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">allow_empty</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataCell</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">DataCell</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span>
             <span class="bp">self</span><span class="p">,</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">row</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span> <span class="n">row_frequency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">row</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="nb">id</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">),</span>
             <span class="n">allow_empty</span><span class="o">=</span><span class="n">allow_empty</span><span class="p">,</span>
         <span class="p">)</span>
 
@@ -362,10 +362,19 @@
 
     <span class="k">def</span> <span class="nf">matches_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entry</span><span class="p">:</span> <span class="n">DataEntry</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
         <span class="s2">&quot;that matched the path &#39;</span><span class="si">{self.path}</span><span class="s2">&#39;&quot;</span>
-        <span class="n">path_parts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_split_re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
-        <span class="n">entry_parts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_split_re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">path</span><span class="p">)[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">path_parts</span><span class="p">)]</span>
+        <span class="n">path</span><span class="p">,</span> <span class="n">dataset_name</span> <span class="o">=</span> <span class="n">DataEntry</span><span class="o">.</span><span class="n">split_dataset_name_from_path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">path_parts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_split_re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">entry_parts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_split_re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">base_path</span><span class="p">)[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">path_parts</span><span class="p">)]</span>
         <span class="k">if</span> <span class="n">entry_parts</span> <span class="o">==</span> <span class="n">path_parts</span><span class="p">:</span>
-            <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">dataset_name</span> <span class="o">==</span> <span class="n">entry</span><span class="o">.</span><span class="n">dataset_name</span> <span class="ow">or</span> <span class="n">dataset_name</span> <span class="o">==</span> <span class="s2">&quot;*&quot;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_mismatch</span><span class="p">(</span>
+                    <span class="n">entry</span><span class="p">,</span>
+                    <span class="s2">&quot;dataset_name &#39;</span><span class="si">{}</span><span class="s2">&#39; does not match requested &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
+                    <span class="n">entry</span><span class="o">.</span><span class="n">dataset_name</span><span class="p">,</span>
+                    <span class="n">dataset_name</span><span class="p">,</span>
+                <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_mismatch</span><span class="p">(</span>
                 <span class="n">entry</span><span class="p">,</span>
@@ -378,7 +387,7 @@
         <span class="s2">&quot;that matched the datatype &#39;</span><span class="si">{self.datatype.mime_like}</span><span class="s2">&#39;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">datatype</span> <span class="ow">is</span> <span class="n">entry</span><span class="o">.</span><span class="n">datatype</span><span class="p">:</span>
             <span class="k">return</span> <span class="kc">True</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">datatype</span><span class="o">.</span><span class="n">is_subtype_of</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">datatype</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">datatype</span><span class="o">.</span><span class="n">issubtype</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">datatype</span><span class="p">):</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_log_mismatch</span><span class="p">(</span>
                 <span class="n">entry</span><span class="p">,</span>
                 <span class="s2">&quot;required datatype &#39;</span><span class="si">{}</span><span class="s2">&#39; is not a &quot;</span> <span class="s2">&quot;sub-type of &#39;</span><span class="si">{}</span><span class="s2">&#39;&quot;</span><span class="p">,</span>
@@ -425,7 +434,7 @@
         <span class="k">return</span> <span class="kc">False</span>
 
     <span class="c1"># Split a path into sections delimited by &#39;/&#39; or &#39;.&#39;</span>
-    <span class="n">path_split_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;/|\.&quot;</span><span class="p">)</span>
+    <span class="n">path_split_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;/|\.|@&quot;</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="DataSource"><a class="viewcode-back" href="../../../../api.html#arcana.core.data.column.DataSource">[docs]</a><span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -603,7 +612,7 @@
 
     <span class="nd">@path</span><span class="o">.</span><span class="n">default</span>
     <span class="k">def</span> <span class="nf">path_default</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;@</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">@</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span>
 
     <span class="k">def</span> <span class="nf">derive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">derive</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">ids</span><span class="o">=</span><span class="n">ids</span><span class="p">)</span>
