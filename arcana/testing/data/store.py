@@ -179,11 +179,7 @@ class MockRemote(RemoteStore):
             json.dump(provenance, f)
 
     def create_data_tree(
-        self,
-        id: str,
-        leaves: list[tuple[str, ...]],
-        hierarchy: list[str],
-        space: type,
+        self, id: str, leaves: list[tuple[str, ...]], hierarchy: list[str], **kwargs
     ):
         """reate test data within store with rows specified by row_ids
 
