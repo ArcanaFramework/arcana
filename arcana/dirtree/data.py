@@ -202,13 +202,7 @@ class DirTree(LocalStore):
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
         return str(row_dir / self.FIELDS_FNAME) + "::" + path
 
-    def create_data_tree(
-        self,
-        id: str,
-        leaves: list[tuple[str, ...]],
-        hierarchy: list[str],
-        space: type,
-    ):
+    def create_data_tree(self, id: str, leaves: list[tuple[str, ...]], **kwargs):
         root_dir = Path(id)
         root_dir.mkdir(parents=True)
         # Create sub-directories corresponding to rows of the dataset

@@ -219,6 +219,7 @@ class DataStore(metaclass=ABCMeta):
         leaves: list[tuple[str, ...]],
         hierarchy: list[str],
         space: type,
+        id_composition: dict[str, str],
     ):
         """creates a new empty dataset within in the store. Used in test routines and
         importing/exporting datasets between stores
@@ -489,6 +490,7 @@ class DataStore(metaclass=ABCMeta):
         hierarchy: list[str],
         space: type,
         name: str = None,
+        id_composition: dict[str, str] = None,
         **kwargs,
     ):
         """Creates a new dataset with new rows to store data in
@@ -506,6 +508,24 @@ class DataStore(metaclass=ABCMeta):
             hierarchy of the dataset tree
         space : type, optional
             the space of the dataset
+        id_composition : dict[str, str]
+            Not all IDs will appear explicitly within the hierarchy of the data
+            tree, and some will need to be inferred by extracting components of
+            more specific labels.
+
+            For example, given a set of subject IDs that combination of the ID of
+            the group that they belong to and the member ID within that group
+            (i.e. matched test & control would have same member ID)
+
+                CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
+
+            the group ID can be extracted by providing the a list of tuples
+            containing ID to source the inferred IDs from coupled with a regular
+            expression with named groups
+
+                id_composition = {
+                    'subject': r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')
+                }
 
         Returns
         -------
@@ -517,11 +537,13 @@ class DataStore(metaclass=ABCMeta):
             leaves=leaves,
             hierarchy=hierarchy,
             space=space,
+            id_composition=id_composition,
         )
         dataset = self.define_dataset(
             id=id,
             hierarchy=hierarchy,
             space=space,
+            id_composition=id_composition,
             **kwargs,
         )
         if name is not None:

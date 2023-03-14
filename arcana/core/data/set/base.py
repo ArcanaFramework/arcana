@@ -502,13 +502,13 @@ class Dataset:
                 rows = (n for n in rows if n.id in set(ids))
             return rows
 
-    def row_ids(self, row_frequency):
+    def row_ids(self, frequency: str):
         """Return all the IDs in the dataset for a given row_frequency
 
         Parameters
         ----------
-        row_frequency : DataSpace
-            The "row_frequency" of the rows, e.g. per-session, per-subject...
+        frequency : str
+            The "frequency" of the rows to return the IDs for, e.g. per-session, per-subject...
 
         Returns
         -------
@@ -516,10 +516,10 @@ class Dataset:
             The IDs of the rows
         """
         with self.tree:
-            row_frequency = self.parse_frequency(row_frequency)
-            if row_frequency == self.root_freq:
+            frequency = self.parse_frequency(frequency)
+            if frequency == self.root_freq:
                 return [None]
-            return self.root.children[row_frequency].keys()
+            return self.root.children[frequency].keys()
 
     def __getitem__(self, name):
         """Return all data items across the dataset for a given source or sink
@@ -763,6 +763,35 @@ class Dataset:
             path=License.column_path(name),
         )
         return File(column.match_entry(dataset.root).item)
+
+    @classmethod
+    def decompose_ids(cls, ids: dict[str, str], composition: dict[str, str]):
+        """Infer IDs from those explicitly provided by using the decomposition patterns
+
+        Parameters
+        ----------
+        ids : dict[str, str]
+            explicitly provided IDs
+        composition : dict[str, str]
+            patterns used to inferred composed IDs
+
+        Return
+        ------
+        inferred_ids : dict[str, str]
+            IDs inferred from the decomposition
+        """
+        inferred_ids = {}
+        if composition is not None:
+            for freq, regex in composition.items():
+                match = re.match(regex, ids[freq])
+                inferred_ids.update(match.groupdict())
+            conflicting = set(ids) & set(inferred_ids)
+            if conflicting:
+                raise ArcanaUsageError(
+                    "Inferred IDs from decomposition conflict with explicitly provided IDs: "
+                    + str(conflicting)
+                )
+        return inferred_ids
 
 
 @attrs.define
