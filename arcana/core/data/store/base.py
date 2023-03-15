@@ -133,7 +133,7 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_provenance(self, entry: DataEntry, provenance: dict[str, ty.Any]):
+    def put_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
         """Stores provenance information for a given data item in the store
 
         Parameters
