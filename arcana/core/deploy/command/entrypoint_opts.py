@@ -132,17 +132,17 @@ def execution(func):
                     "over the whole dataset)"
                 ),
             ),
-            optgroup.option(
-                "--single-row",
-                type=str,
-                default=None,
-                help=(
-                    "Restrict the dataset created to a single row to avoid reduce start up "
-                    "times and avoid ssues with unrelated rows that aren't being processed. "
-                    "Comma-separated list of IDs for each layer of the hierarchy, e.g. "
-                    "--single-row mysubject,mysession"
-                ),
-            ),
+            # optgroup.option(
+            #     "--single-row",
+            #     type=str,
+            #     default=None,
+            #     help=(
+            #         "Restrict the dataset created to a single row to avoid reduce start up "
+            #         "times and avoid ssues with unrelated rows that aren't being processed. "
+            #         "Comma-separated list of IDs for each layer of the hierarchy, e.g. "
+            #         "--single-row mysubject,mysession"
+            #     ),
+            # ),
         ],
     )
 

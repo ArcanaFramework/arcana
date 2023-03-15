@@ -154,7 +154,6 @@ class ContainerCommand:
         parameter_values: dict[str, ty.Any] = None,
         work_dir: Path = None,
         ids: list[str] = None,
-        single_row: str = None,
         dataset_hierarchy: str = None,
         dataset_name: str = None,
         overwrite: bool = False,

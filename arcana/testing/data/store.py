@@ -227,7 +227,22 @@ class MockRemote(RemoteStore):
         with open(self.remote_dir / entry.uri / self.CHECKSUMS_FILE, "w") as f:
             json.dump(checksums, f)
 
-    def download_value(self, entry: DataEntry):
+    def download_value(
+        self, entry: DataEntry
+    ) -> ty.Union[float, int, str, list[float], list[int], list[str]]:
+        """
+        Retrieves a fields value
+
+        Parameters
+        ----------
+        field : Field
+            The field to retrieve
+
+        Returns
+        -------
+        value : ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]
+            The value of the field
+        """
         self._check_connected()
         with open(self.entry_fspath(entry) / self.FIELDS_FILE) as f:
             value = f.read()

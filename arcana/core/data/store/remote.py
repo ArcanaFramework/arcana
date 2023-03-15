@@ -1,6 +1,7 @@
 from __future__ import annotations
 import os
 import os.path as op
+import typing as ty
 from pathlib import Path
 from abc import abstractmethod
 import time
@@ -157,7 +158,9 @@ class RemoteStore(DataStore):
         """
 
     @abstractmethod
-    def download_value(self, field):
+    def download_value(
+        self, field
+    ) -> ty.Union[float, int, str, list[float], list[int], list[str]]:
         """
         Extract and return the value of the field from the store
 
@@ -214,14 +217,19 @@ class RemoteStore(DataStore):
     @abstractmethod
     def calculate_checksums(self, fileset: FileSet) -> dict[str, str]:
         """
-        Downloads the checksum digests associated with the files in the file-set.
-        These are saved with the downloaded files in the cache and used to
-        check if the files have been updated on the server
+        Calculates the checksum digests associated with the files in the file-set.
+        These checksums should match the cryptography method used by the remote store
+        (e.g. MD5, SHA256)
 
         Parameters
         ----------
         uri: str
             uri of the data item to download the checksums for
+
+        Returns
+        -------
+        checksums : dict[str, str]
+            the checksums calculated from the local file-set
         """
 
     ################################
@@ -378,7 +386,7 @@ class RemoteStore(DataStore):
         if cache_path.exists():
             shutil.rmtree(cache_path)
         # Copy to cache
-        cached = fileset.copy_to(cache_path, make_dirs=True, trim=True)
+        cached = fileset.copy_to(cache_path, make_dirs=True, trim=False)
         self.upload_files(cache_path, entry)
         checksums = self.get_checksums(entry.uri)
         calculated_checksums = self.calculate_checksums(cached)

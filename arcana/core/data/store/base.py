@@ -133,15 +133,16 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_provenance(self, entry: DataEntry, provenance: dict[str, ty.Any]):
+    def put_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
         """Stores provenance information for a given data item in the store
 
         Parameters
         ----------
-        item: DataType
+        entry: DataEntry
             The item to store the provenance data for
         provenance: dict[str, Any]
-            The provenance data to store"""
+            The provenance data to store
+        """
 
     @abstractmethod
     def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
@@ -149,14 +150,15 @@ class DataStore(metaclass=ABCMeta):
 
         Parameters
         ----------
-        item: DataType
+        entry: DataEntry
             The item to store the provenance data for
 
         Returns
         -------
         provenance: dict[str, Any] or None
             The provenance data stored in the repository for the data item.
-            None if no provenance data has been stored"""
+            None if no provenance data has been stored
+        """
 
     @abstractmethod
     def save_dataset_definition(
@@ -197,15 +199,26 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def connect(self):
+    def connect(self) -> ty.Any:
         """
         If a connection session is required to the store manage it here
+
+        Returns
+        ----------
+        session : Any
+            a session object that will be stored in the connection manager and
+            accessible at `DataStore.connection`
         """
 
     @abstractmethod
-    def disconnect(self, session):
+    def disconnect(self, session: ty.Any):
         """
         If a connection session is required to the store manage it here
+
+        Parameters
+        ----------
+        session : Any
+            the session object returned by `connect` to be closed gracefully
         """
 
     @abstractmethod
@@ -483,7 +496,7 @@ class DataStore(metaclass=ABCMeta):
         self.check_store_version(store_version)
         return fromdict(dct, id=id, name=name, store=self, **kwargs)
 
-    def new_dataset(
+    def create_dataset(
         self,
         id: str,
         leaves: list[tuple[str, ...]],

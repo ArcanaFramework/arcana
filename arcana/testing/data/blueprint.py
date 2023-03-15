@@ -5,6 +5,8 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 import tempfile
 import shutil
+import logging
+import time
 import zipfile
 import attrs
 from fileformats.core import FileSet, Field
@@ -12,6 +14,8 @@ from arcana.core.data.row import DataRow
 from arcana.core.utils.misc import path2varname, set_cwd
 from arcana.core.exceptions import ArcanaError
 from arcana.core.data.store import DataStore
+
+logger = logging.getLogger("arcana")
 
 
 @attrs.define(kw_only=True)
@@ -156,6 +160,7 @@ class TestDatasetBlueprint:
         dataset_id: str,
         name: str = None,
         source_data: Path = None,
+        metadata: dict[str, ty.Any] = None,
         **kwargs,
     ):
         """For use in tests, this method creates a test dataset from the provided
@@ -174,24 +179,43 @@ class TestDatasetBlueprint:
             path to a directory containing source data to use instead of the dummy
             data
         **kwargs
-            passed through to new_dataset
+            passed through to create_dataset
         """
+        if metadata is None:
+            metadata = {}
+        orig_type = metadata.get("type", "test")
+        metadata["type"] = "in-construction"
         with store.connection:
-            dataset = store.new_dataset(
+            dataset = store.create_dataset(
                 id=dataset_id,
                 leaves=self.all_ids,
                 name=name,
                 hierarchy=self.hierarchy,
                 id_composition=self.id_composition,
                 space=self.space,
+                metadata=metadata,
                 **kwargs,
             )
             for row in dataset.rows(frequency=max(self.space)):
                 self.make_entries(row, source_data=source_data)
+            dataset.metadata.type = orig_type
+            dataset.save()
         dataset.__annotations__["blueprint"] = self
         return dataset
 
     def access_dataset(self, store: DataStore, dataset_id: str):
+        num_attempts = 0
+        while num_attempts < NUM_ACCESS_ATTEMPTS:
+            dataset = store.load_dataset(dataset_id)
+            if dataset.metadata.type == "in-construction":
+                logger.info(
+                    "Waiting for test dataset '%s' to finish being constructed",
+                    dataset_id,
+                )
+                time.sleep(ACCESS_ATTEMPT_SLEEP)
+            else:
+                break
+            num_attempts += 1
         dataset = store.define_dataset(
             dataset_id,
             hierarchy=self.hierarchy,
@@ -234,3 +258,7 @@ class TestDatasetBlueprint:
                     f"{b}{base_ids[b]}" for b in self.space[layer].span()
                 )
             yield tuple(ids[h] for h in self.hierarchy)
+
+
+NUM_ACCESS_ATTEMPTS = 10
+ACCESS_ATTEMPT_SLEEP = 20
