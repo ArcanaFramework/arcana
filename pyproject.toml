@@ -52,7 +52,6 @@ dev = [
     "pre-commit",
 ]
 docs = [
-    "packaging",
     "docutils>=0.10",
     "furo>=2022.2.14.1",
     "mock>1.0",
@@ -63,7 +62,6 @@ docs = [
     "sphinx-click>=3.1",
 ]
 test = [
-    # "arcana-testing",
     "codecov",
     "fileformats-testing",
     "fileformats-medimage[extended]",
