@@ -496,7 +496,7 @@ class DataStore(metaclass=ABCMeta):
         self.check_store_version(store_version)
         return fromdict(dct, id=id, name=name, store=self, **kwargs)
 
-    def new_dataset(
+    def create_dataset(
         self,
         id: str,
         leaves: list[tuple[str, ...]],

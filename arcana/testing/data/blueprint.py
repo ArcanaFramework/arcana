@@ -179,14 +179,14 @@ class TestDatasetBlueprint:
             path to a directory containing source data to use instead of the dummy
             data
         **kwargs
-            passed through to new_dataset
+            passed through to create_dataset
         """
         if metadata is None:
             metadata = {}
         orig_type = metadata.get("type", "test")
         metadata["type"] = "in-construction"
         with store.connection:
-            dataset = store.new_dataset(
+            dataset = store.create_dataset(
                 id=dataset_id,
                 leaves=self.all_ids,
                 name=name,
