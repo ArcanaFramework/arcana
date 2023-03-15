@@ -176,7 +176,8 @@ class DataStore(metaclass=ABCMeta):
             YAML.
         name: str
             Name for the dataset definition to distinguish it from other
-            definitions for the same directory/project"""
+            definitions for the same directory/project
+        """
 
     @abstractmethod
     def load_dataset_definition(
@@ -233,8 +234,9 @@ class DataStore(metaclass=ABCMeta):
         hierarchy: list[str],
         space: type,
         id_composition: dict[str, str],
+        **kwargs,
     ):
-        """creates a new empty dataset within in the store. Used in test routines and
+        """Creates a new empty dataset within in the store. Used in test routines and
         importing/exporting datasets between stores
 
         Parameters
@@ -250,7 +252,29 @@ class DataStore(metaclass=ABCMeta):
             the hierarchy of the dataset to be created
         space : type(DataSpace)
             the data space of the dataset
+        id_composition : dict[str, str]
+            Not all IDs will appear explicitly within the hierarchy of the data
+            tree, and some will need to be inferred by extracting components of
+            more specific labels.
+
+            For example, given a set of subject IDs that combination of the ID of
+            the group that they belong to and the member ID within that group
+            (i.e. matched test & control would have same member ID)
+
+                CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
+
+            the group ID can be extracted by providing the a list of tuples
+            containing ID to source the inferred IDs from coupled with a regular
+            expression with named groups
+
+                id_composition = {
+                    'subject': r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')
+                }
+        **kwargs
+            implementing methods should take wildcard **kwargs to allow compatibility
+            with future arguments that might be added
         """
+        raise NotImplementedError
 
     @abstractmethod
     def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:

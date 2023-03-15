@@ -187,6 +187,68 @@ class LocalStore(DataStore):
         """
         raise NotImplementedError
 
+    @abstractmethod
+    def get_fileset_provenance(
+        self, entry: DataEntry
+    ) -> ty.Union[dict[str, ty.Any], None]:
+        """Retrieves provenance associated with a file-set data entry
+
+        Parameters
+        ----------
+        entry : DataEntry
+            the entry of the file-set to retrieve the provenance for
+
+        Returns
+        -------
+        dict[str, ty.Any] or None
+            the retrieved provenance
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def put_fileset_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+        """Puts provenance associated with a file-set data entry into the store
+
+        Parameters
+        ----------
+        provenance : dict[str, ty.Any]
+            the provenance to store
+        entry : DataEntry
+            the entry to associate the proveance with
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_field_provenance(
+        self, entry: DataEntry
+    ) -> ty.Union[dict[str, ty.Any], None]:
+        """Retrieves provenance associated with a field data entry
+
+        Parameters
+        ----------
+        entry : DataEntry
+            the entry of the field to retrieve the provenance for
+
+        Returns
+        -------
+        dict[str, ty.Any] or None
+            the retrieved provenance
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def put_field_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+        """Puts provenance associated with a field data entry into the store
+
+        Parameters
+        ----------
+        provenance : dict[str, ty.Any]
+            the provenance to store
+        entry : DataEntry
+            the entry to associate the proveance with
+        """
+        raise NotImplementedError
+
     ##################################
     # Abstractmethod implementations #
     ##################################
