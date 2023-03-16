@@ -57,7 +57,7 @@ class RemoteStore(DataStore):
     name: str = None
     user: str = attrs.field(default=None, metadata={"asdict": False})
     password: str = attrs.field(default=None, metadata={"asdict": False})
-    race_condition_delay: int = attrs.field(default=30)
+    race_condition_delay: int = attrs.field(default=5)
 
     CHECKSUM_SUFFIX = ".md5.json"
     PROV_SUFFIX = ".__prov__.json"
@@ -360,7 +360,7 @@ class RemoteStore(DataStore):
                             entry,
                             download_dir,
                             cache_path,
-                            delay=self._race_cond_delay,
+                            delay=self.race_condition_delay,
                         )
                     else:
                         raise
@@ -456,6 +456,15 @@ class RemoteStore(DataStore):
             the value to store
         """
         return self.upload_value(entry.datatype(field).value, entry)
+
+    ##############
+    # Public API #
+    ##############
+
+    def clear_cache(self):
+        "Clears the cache directory"
+        shutil.rmtree(self.cache_dir)
+        self.cache_dir.mkdir()
 
     ##################
     # Helper methods #

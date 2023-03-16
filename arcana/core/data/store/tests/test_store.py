@@ -1,17 +1,23 @@
 import operator as op
 from itertools import chain
-from functools import reduce
+from functools import reduce, partial
+import time
+from multiprocessing import Pool, cpu_count
 import pytest
 from fileformats.generic import File
+from fileformats.text import Plain as PlainText
 from fileformats.field import Text as TextField
 from arcana.core.data.set.base import Dataset
+from arcana.core.data.store import DataStore
+from arcana.core.data.entry import DataEntry
+from arcana.core.utils.serialize import asdict
+from arcana.dirtree import DirTree
 from arcana.testing.data.blueprint import (
+    TestDatasetBlueprint,
     FileSetEntryBlueprint as FileBP,
     FieldEntryBlueprint as FieldBP,
 )
-from arcana.dirtree import DirTree
-from arcana.core.data.store import DataStore
-from arcana.core.utils.serialize import asdict
+from arcana.testing import MockRemote
 
 
 def test_populate_tree(dataset: Dataset):
@@ -131,3 +137,38 @@ def test_provenance_roundtrip(datatype: type, value: str, saved_dataset: Dataset
 def test_singletons():
     standard = set(["dirtree"])
     assert set(DataStore.singletons()) & standard == standard
+
+
+@pytest.mark.skipif(
+    condition=cpu_count() < 2, reason="Not enough cpus to run test with multiprocessing"
+)
+def test_delayed_download(
+    delayed_mock_remote: MockRemote, simple_dataset_blueprint: TestDatasetBlueprint
+):
+
+    dataset_id = "delayed_download"
+    dataset = simple_dataset_blueprint.make_dataset(delayed_mock_remote, dataset_id)
+    entry = next(iter(dataset.rows())).entry("file1")
+
+    delayed_mock_remote.clear_cache()
+
+    worker = partial(
+        delayed_download,
+        entry,
+    )
+    with Pool(2) as p:
+        no_offset, with_offset = p.map(worker, [0.0, 0.05])
+
+    assert no_offset == "file1.txt"
+    assert with_offset == "modified"
+
+
+def delayed_download(entry: DataEntry, start_offset: float):
+    # Set the downloads off at slightly different times
+    time.sleep(start_offset)
+    text_file = PlainText(entry.item)
+    contents = text_file.contents
+    if not start_offset:
+        with open(text_file.fspath, "w") as f:
+            f.write("modified")
+    return contents

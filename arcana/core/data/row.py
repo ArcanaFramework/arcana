@@ -89,9 +89,6 @@ class DataRow:
         self.cell(column_name).item = value
         return self
 
-    def entry(self, id: str) -> DataEntry:
-        return self._entries_dict[id]
-
     def cell(self, column_name: str, allow_empty: bool = None) -> DataCell:
         try:
             cell = self._cells[column_name]
@@ -127,10 +124,17 @@ class DataRow:
 
     @property
     def entries(self) -> ty.Iterable[DataEntry]:
+        return self.entries_dict.values()
+
+    def entry(self, id: str) -> DataEntry:
+        return self.entries_dict[id]
+
+    @property
+    def entries_dict(self):
         if self._entries_dict is None:
             self._entries_dict = {}
             self.dataset.store.populate_row(self)
-        return self._entries_dict.values()
+        return self._entries_dict
 
     def __repr__(self):
         return f"{type(self).__name__}(id={self.id}, frequency={self.frequency})"
