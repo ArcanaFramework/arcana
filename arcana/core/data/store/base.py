@@ -326,7 +326,7 @@ class DataStore(metaclass=ABCMeta):
     # General API #
     ###############
 
-    def import_dataset(self, id: str, dataset: Dataset, **kwargs):
+    def import_dataset(self, id: str, dataset: Dataset, name="", **kwargs):
         """Import a dataset from another store, transferring metadata and columns
         defined on the original dataset
 
@@ -336,6 +336,8 @@ class DataStore(metaclass=ABCMeta):
             the ID of the dataset within this store
         dataset : Dataset
             the dataset to import
+        name : str
+            the name to save the specification under
         **kwargs:
             keyword arguments passed through to the `create_data_tree` method
         """
@@ -364,13 +366,13 @@ class DataStore(metaclass=ABCMeta):
                 )
         else:
             self.name = name
-        entries = self.load_saved_entries()
+        entries = self.load_saved_configs()
         # connect to store in case it is needed in the asdict method and to
         # test the connection in general before it is saved
         dct = self.asdict()
         with self.connection:
             entries[dct.pop("name")] = dct
-        self.save_entries(entries, config_path=config_path)
+        self.save_configs(entries, config_path=config_path)
 
     def asdict(self, **kwargs):
         return asdict(self, **kwargs)
@@ -404,7 +406,7 @@ class DataStore(metaclass=ABCMeta):
         ArcanaNameError
             If the name is not found in the saved stores
         """
-        entries = cls.load_saved_entries(config_path)
+        entries = cls.load_saved_configs(config_path)
         try:
             entry = entries[name]
         except KeyError:
@@ -429,11 +431,11 @@ class DataStore(metaclass=ABCMeta):
         name
             Name of the configuration to remove
         """
-        entries = cls.load_saved_entries(config_path)
+        entries = cls.load_saved_configs(config_path)
         del entries[name]
-        cls.save_entries(entries)
+        cls.save_configs(entries)
 
-    def define_dataset(self, id, space=None, hierarchy=None, **kwargs):
+    def define_dataset(self, id, space=None, hierarchy=None, **kwargs) -> Dataset:
         """
         Creates a Arcana dataset definition for an existing data in the
         data store.
@@ -452,6 +454,11 @@ class DataStore(metaclass=ABCMeta):
             per-session, per-subject,...) present in the dataset.
         **kwargs:
             Keyword args passed on to the Dataset init method
+
+        Returns
+        -------
+        Dataset
+            the newly defined dataset
         """
         if not space:
             try:
@@ -491,7 +498,7 @@ class DataStore(metaclass=ABCMeta):
         with self.connection:
             self.save_dataset_definition(dataset.id, definition, name=name)
 
-    def load_dataset(self, id, name="", **kwargs):
+    def load_dataset(self, id, name="", **kwargs) -> Dataset:
         """Load an existing dataset definition
 
         Parameters
@@ -529,7 +536,7 @@ class DataStore(metaclass=ABCMeta):
         name: str = None,
         id_composition: dict[str, str] = None,
         **kwargs,
-    ):
+    ) -> Dataset:
         """Creates a new dataset with new rows to store data in
 
         Parameters
@@ -608,22 +615,44 @@ class DataStore(metaclass=ABCMeta):
         return cls._singletons
 
     @classmethod
-    def load_saved_entries(cls, config_path: Path = None):
+    def load_saved_configs(cls, config_path: Path = None) -> dict[str, ty.Any]:
+        """Loads the saved data store configurations from the the user's home
+        directory
+
+        Parameters
+        ----------
+        config_path : Path, optional
+            the file-system path to the configuration, by default uses one in ~/.arcana
+
+        Returns
+        -------
+        dict[str, ty.Any]
+            dictionary containing the saved configs
+        """
         if config_path is None:
             config_path = get_config_file_path(cls.CONFIG_NAME)
         if config_path.exists():
             with open(config_path) as f:
-                entries = yaml.load(f, Loader=yaml.Loader)
+                configs = yaml.load(f, Loader=yaml.Loader)
         else:
-            entries = {}
-        return entries
+            configs = {}
+        return configs
 
     @classmethod
-    def save_entries(cls, entries, config_path: Path = None):
+    def save_configs(cls, configs: dict[str, ty.Any], config_path: Path = None):
+        """_summary_
+
+        Parameters
+        ----------
+        configs : dict[str, ty.Any]
+            dictionary containing the configs to save
+        config_path : Path, optional
+            the file-system path to the configuration, by default uses one in ~/.arcana
+        """
         if config_path is None:
             config_path = get_config_file_path(cls.CONFIG_NAME)
         with open(config_path, "w") as f:
-            yaml.dump(entries, f)
+            yaml.dump(configs, f)
 
     ##################
     # Helper methods #

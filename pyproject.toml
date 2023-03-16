@@ -65,9 +65,10 @@ test = [
     "codecov",
     "fileformats-testing",
     "fileformats-medimage[extended]",
-    "pytest>=5.4.3",
+    "pytest>=6.2.5",
     "pytest-cov>=2.12.1",
     "pytest-env>=0.6.2",
+    "pytest-asyncio>=0.16.0"
 ]
 
 [project.urls]

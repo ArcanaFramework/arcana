@@ -4,7 +4,6 @@ import re
 import typing as ty
 from pathlib import Path
 import shutil
-from itertools import chain
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
@@ -491,10 +490,11 @@ class Dataset:
         Sequence[DataRow]
             The sequence of the data row within the dataset
         """
-        with self.tree:
-            if frequency is None:
-                return chain(*(d.values() for d in self.root.children.values()))
+        if frequency is None:
+            frequency = max(self.space)  # "leaf" nodes of the data tree
+        else:
             frequency = self.parse_frequency(frequency)
+        with self.tree:
             if frequency == self.root_freq:
                 return [self.root]
             rows = self.root.children[frequency].values()
