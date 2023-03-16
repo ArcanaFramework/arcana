@@ -257,10 +257,10 @@ class MockRemote(RemoteStore):
     def create_fileset_entry(
         self, path: str, datatype: type, row: DataRow
     ) -> DataEntry:
-        return self.create_entry(path=path, datatype=datatype, row=row)
+        return self._create_entry(path=path, datatype=datatype, row=row)
 
     def create_field_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
-        return self.create_entry(path=path, datatype=datatype, row=row)
+        return self._create_entry(path=path, datatype=datatype, row=row)
 
     def get_checksums(self, uri: str) -> dict[str, str]:
         """
@@ -306,7 +306,7 @@ class MockRemote(RemoteStore):
     def entry_fspath(self, entry):
         return self.remote_dir / entry.uri
 
-    def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
+    def _create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
         self._check_connected()
         entry = row.add_entry(
             path=path,
