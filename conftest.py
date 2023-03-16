@@ -383,6 +383,28 @@ def data_store(work_dir: Path, arcana_home: Path, request):
     yield store
 
 
+@pytest.fixture
+def delayed_mock_remote(
+    work_dir: Path,
+    arcana_home: Path,  # So we save the store definition in the home dir, not ~/.arcana
+):
+    cache_dir = work_dir / "mock-remote-store" / "cache"
+    cache_dir.mkdir(parents=True)
+    remote_dir = work_dir / "mock-remote-store" / "remote"
+    remote_dir.mkdir(parents=True)
+    store = MockRemote(
+        server="http://a.server.com",
+        cache_dir=cache_dir,
+        user="admin",
+        password="admin",
+        remote_dir=remote_dir,
+        mock_delay=1,
+    )
+    store_name = "delayed_mock_remote"
+    store.save(store_name)
+    return store
+
+
 @pytest.fixture(params=GOOD_DATASETS)
 def dataset(work_dir, data_store, request):
     dataset_name = request.param

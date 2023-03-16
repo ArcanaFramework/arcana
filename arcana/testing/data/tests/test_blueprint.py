@@ -1,4 +1,3 @@
-from pathlib import Path
 import traceback
 import pytest
 from functools import partial
@@ -7,30 +6,6 @@ from arcana.core.data.store import DataStore
 from arcana.testing.data.blueprint import TestDatasetBlueprint
 from arcana.testing import MockRemote
 from arcana.core.utils.misc import add_exc_note
-
-DELAYED_MOCK_REMOTE_NAME = "delayed_mock_remote"
-
-
-@pytest.fixture
-def delayed_mock_remote(
-    work_dir: Path,
-    arcana_home: Path,  # So we save the store definition in the home dir, not ~/.arcana
-):
-    cache_dir = work_dir / "mock-remote-store" / "cache"
-    cache_dir.mkdir(parents=True)
-    remote_dir = work_dir / "mock-remote-store" / "remote"
-    remote_dir.mkdir(parents=True)
-    store = MockRemote(
-        server="http://a.server.com",
-        cache_dir=cache_dir,
-        user="admin",
-        password="admin",
-        remote_dir=remote_dir,
-        mock_delay=1,
-    )
-    store_name = DELAYED_MOCK_REMOTE_NAME
-    store.save(store_name)
-    return store
 
 
 @pytest.mark.skipif(
@@ -65,7 +40,7 @@ def test_blueprint_access_dataset(
     dataset_id = "blueprint_access"
     worker = partial(
         make_or_access_dataset,
-        DELAYED_MOCK_REMOTE_NAME,
+        delayed_mock_remote.name,
         dataset_id,
         simple_dataset_blueprint,
     )
