@@ -173,7 +173,7 @@ def test_command_execute_on_row(cli_runner, work_dir):
     dataset.save()
 
     def get_dataset_filenumbers():
-        row = next(dataset.rows())
+        row = next(iter(dataset.rows()))
         return sorted(int(i.path.split(".")[0]) for i in row.entries)
 
     assert get_dataset_filenumbers() == filenumbers
