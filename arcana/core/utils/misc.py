@@ -5,7 +5,6 @@ import re
 import traceback
 import yaml
 import difflib
-from itertools import zip_longest
 from pathlib import Path, PosixPath
 import tempfile
 import tarfile
@@ -295,60 +294,60 @@ def iscontainer(*items):
     return all(isinstance(i, Iterable) and not isinstance(i, str) for i in items)
 
 
-def find_mismatch(first, second, indent=""):
-    """
-    Finds where two objects differ, iterating down into nested containers
-    (i.e. dicts, lists and tuples) They can be nested containers
-    any combination of primary formats, str, int, float, dict and lists
+# def find_mismatch(first, second, indent=""):
+#     """
+#     Finds where two objects differ, iterating down into nested containers
+#     (i.e. dicts, lists and tuples) They can be nested containers
+#     any combination of primary formats, str, int, float, dict and lists
 
-    Parameters
-    ----------
-    first : dict | list | tuple | str | int | float
-        The first object to compare
-    second : dict | list | tuple | str | int | float
-        The other object to compare with the first
-    indent : str
-        The amount newlines in the output string should be indented. Provide
-        the actual indent, i.e. a string of spaces.
+#     Parameters
+#     ----------
+#     first : dict | list | tuple | str | int | float
+#         The first object to compare
+#     second : dict | list | tuple | str | int | float
+#         The other object to compare with the first
+#     indent : str
+#         The amount newlines in the output string should be indented. Provide
+#         the actual indent, i.e. a string of spaces.
 
-    Returns
-    -------
-    mismatch : str
-        Human readable output highlighting where two container differ.
-    """
+#     Returns
+#     -------
+#     mismatch : str
+#         Human readable output highlighting where two container differ.
+#     """
 
-    # Basic case where we are dealing with non-containers
-    if not (isinstance(first, type(second)) or isinstance(second, type(first))):
-        mismatch = " types: self={} v other={}".format(
-            type(first).__name__, type(second).__name__
-        )
-    elif not iscontainer(first, second):
-        mismatch = ": self={} v other={}".format(first, second)
-    else:
-        sub_indent = indent + "  "
-        mismatch = ""
-        if isinstance(first, dict):
-            if sorted(first.keys()) != sorted(second.keys()):
-                mismatch += " keys: self={} v other={}".format(
-                    sorted(first.keys()), sorted(second.keys())
-                )
-            else:
-                mismatch += ":"
-                for k in first:
-                    if first[k] != second[k]:
-                        mismatch += "\n{indent}'{}' values{}".format(
-                            k,
-                            find_mismatch(first[k], second[k], indent=sub_indent),
-                            indent=sub_indent,
-                        )
-        else:
-            mismatch += ":"
-            for i, (f, s) in enumerate(zip_longest(first, second)):
-                if f != s:
-                    mismatch += "\n{indent}{} index{}".format(
-                        i, find_mismatch(f, s, indent=sub_indent), indent=sub_indent
-                    )
-    return mismatch
+#     # Basic case where we are dealing with non-containers
+#     if not (isinstance(first, type(second)) or isinstance(second, type(first))):
+#         mismatch = " types: self={} v other={}".format(
+#             type(first).__name__, type(second).__name__
+#         )
+#     elif not iscontainer(first, second):
+#         mismatch = ": self={} v other={}".format(first, second)
+#     else:
+#         sub_indent = indent + "  "
+#         mismatch = ""
+#         if isinstance(first, dict):
+#             if sorted(first.keys()) != sorted(second.keys()):
+#                 mismatch += " keys: self={} v other={}".format(
+#                     sorted(first.keys()), sorted(second.keys())
+#                 )
+#             else:
+#                 mismatch += ":"
+#                 for k in first:
+#                     if first[k] != second[k]:
+#                         mismatch += "\n{indent}'{}' values{}".format(
+#                             k,
+#                             find_mismatch(first[k], second[k], indent=sub_indent),
+#                             indent=sub_indent,
+#                         )
+#         else:
+#             mismatch += ":"
+#             for i, (f, s) in enumerate(zip_longest(first, second)):
+#                 if f != s:
+#                     mismatch += "\n{indent}{} index{}".format(
+#                         i, find_mismatch(f, s, indent=sub_indent), indent=sub_indent
+#                     )
+#     return mismatch
 
 
 def wrap_text(text, line_length, indent, prefix_indent=False):

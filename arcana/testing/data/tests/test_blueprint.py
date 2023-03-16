@@ -45,7 +45,11 @@ def test_blueprint_access_dataset(
         simple_dataset_blueprint,
     )
     with Pool(2) as p:
-        access_paths, make_paths = p.map(worker, ["access", "make"])
+        try:
+            access_paths, make_paths = p.map(worker, ["access", "make"])
+        finally:
+            p.close()  # Marks the pool as closed.
+            p.join()  # Required to get the concurrency to show up in test coverage
 
     assert sorted(access_paths) == ["file1", "file2"]
     assert sorted(make_paths) == ["file1", "file2"]

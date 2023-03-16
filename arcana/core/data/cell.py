@@ -4,7 +4,7 @@ import attrs
 from fileformats.core.base import DataType
 from arcana.core.exceptions import ArcanaError
 
-if ty.TYPE_CHECKING:
+if ty.TYPE_CHECKING:  # pragma: no cover
     from .row import DataRow
     from .column import DataColumn
     from .entry import DataEntry

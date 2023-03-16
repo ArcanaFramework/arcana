@@ -157,7 +157,11 @@ def test_delayed_download(
         entry,
     )
     with Pool(2) as p:
-        no_offset, with_offset = p.map(worker, [0.0, 0.05])
+        try:
+            no_offset, with_offset = p.map(worker, [0.0, 0.05])
+        finally:
+            p.close()  # Marks the pool as closed.
+            p.join()  # Required to get the concurrency to show up in test coverage
 
     assert no_offset == "file1.txt"
     assert with_offset == "modified"

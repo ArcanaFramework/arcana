@@ -94,7 +94,6 @@ class LocalStore(DataStore):
         Field
             the retrieved field
         """
-        raise NotImplementedError
 
     @abstractmethod
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
@@ -112,7 +111,6 @@ class LocalStore(DataStore):
         FileSet
             the file-set within the store
         """
-        raise NotImplementedError
 
     @abstractmethod
     def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
@@ -130,7 +128,6 @@ class LocalStore(DataStore):
         FileSet
             the retrieved file-set
         """
-        raise NotImplementedError
 
     @abstractmethod
     def put_field(self, field: Field, entry: DataEntry):
@@ -143,7 +140,6 @@ class LocalStore(DataStore):
         entry : DataEntry
             the entry to store the field in
         """
-        raise NotImplementedError
 
     @abstractmethod
     def fileset_uri(self, path: str, datatype: type, row: DataRow) -> str:
@@ -164,7 +160,6 @@ class LocalStore(DataStore):
         uri : str
             the "uri" to the file-set entry relative to the data store
         """
-        raise NotImplementedError
 
     @abstractmethod
     def field_uri(self, path: str, datatype: type, row: DataRow) -> str:
@@ -185,7 +180,6 @@ class LocalStore(DataStore):
         uri : str
             the "uri" to the field entry relative to the data store
         """
-        raise NotImplementedError
 
     @abstractmethod
     def get_fileset_provenance(
@@ -203,7 +197,6 @@ class LocalStore(DataStore):
         dict[str, ty.Any] or None
             the retrieved provenance
         """
-        raise NotImplementedError
 
     @abstractmethod
     def put_fileset_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
@@ -216,7 +209,6 @@ class LocalStore(DataStore):
         entry : DataEntry
             the entry to associate the proveance with
         """
-        raise NotImplementedError
 
     @abstractmethod
     def get_field_provenance(
@@ -234,7 +226,6 @@ class LocalStore(DataStore):
         dict[str, ty.Any] or None
             the retrieved provenance
         """
-        raise NotImplementedError
 
     @abstractmethod
     def put_field_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
@@ -247,7 +238,6 @@ class LocalStore(DataStore):
         entry : DataEntry
             the entry to associate the proveance with
         """
-        raise NotImplementedError
 
     ##################################
     # Abstractmethod implementations #
