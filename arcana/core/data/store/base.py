@@ -460,7 +460,7 @@ class DataStore(metaclass=ABCMeta):
         Dataset
             the newly defined dataset
         """
-        if not space:
+        if space is None:
             try:
                 space = self.DEFAULT_SPACE
             except AttributeError as e:
@@ -468,7 +468,7 @@ class DataStore(metaclass=ABCMeta):
                     "'space' kwarg must be specified for datasets in "
                     f"{type(self)} stores"
                 ) from e
-        if not hierarchy:
+        if hierarchy is None:
             try:
                 hierarchy = self.DEFAULT_HIERARCHY
             except AttributeError:
