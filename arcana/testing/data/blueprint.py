@@ -256,12 +256,6 @@ class TestDatasetBlueprint:
                 f"Could not access {dataset_id} dataset in {store} after waiting "
                 f"{wait_time}, something may have gone wrong in the construction process"
             )
-        # dataset = store.define_dataset(
-        #     dataset_id,
-        #     hierarchy=self.hierarchy,
-        #     space=self.space,
-        #     id_composition=self.id_composition,
-        # )
         dataset.__annotations__["blueprint"] = self
         return dataset
 
