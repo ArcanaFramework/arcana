@@ -10,7 +10,6 @@ from fileformats.core.base import FileSet, Field
 from arcana.core.exceptions import ArcanaUsageError
 from arcana.core.data.set.base import DataTree
 from arcana.core.data.row import DataRow
-from arcana.core.data.set import Dataset
 from arcana.core.data.entry import DataEntry
 from arcana.core.data.store import LocalStore
 from arcana.core.utils.misc import full_path
@@ -374,7 +373,7 @@ class DirTree(LocalStore):
                 if dataset_name:
                     relpath /= dataset_name
                 else:
-                    relpath /= Dataset.EMPTY_NAME
+                    relpath /= self.EMPTY_DATASET_NAME
         else:
             relpath = relpath.joinpath(
                 self.ARCANA_DIR,
@@ -387,7 +386,7 @@ class DirTree(LocalStore):
             if dataset_name is None:
                 relpath /= self.ARCANA_DIR
             elif not dataset_name:
-                relpath /= Dataset.EMPTY_NAME
+                relpath /= self.EMPTY_DATASET_NAME
             else:
                 relpath /= dataset_name
         return relpath
@@ -411,7 +410,7 @@ class DirTree(LocalStore):
         )
         if derivs_dir.exists():
             dataset_names.extend(
-                ("" if d.name == Dataset.EMPTY_NAME else d.name)
+                ("" if d.name == self.EMPTY_DATASET_NAME else d.name)
                 for d in derivs_dir.iterdir()
                 if d.name != self.ARCANA_DIR
             )

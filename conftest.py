@@ -254,7 +254,7 @@ TEST_DATASET_BLUEPRINTS = {
             ),
             FileBP(
                 path="deriv3",
-                row_frequency="_",
+                row_frequency="__",
                 datatype=YourFormat,
                 filenames=["file1.yr"],
             ),

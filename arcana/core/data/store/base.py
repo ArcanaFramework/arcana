@@ -68,6 +68,9 @@ class DataStore(metaclass=ABCMeta):
     SUBPACKAGE = "data"
     VERSION_KEY = "store-version"
     VERSION = "1.0.0"
+    # alternative name used to save datasets that are named "" in cases where "" is
+    # not appropriate
+    EMPTY_DATASET_NAME = "_"
 
     ####################
     # Abstract methods #
@@ -480,7 +483,7 @@ class DataStore(metaclass=ABCMeta):
         dataset = Dataset(id, store=self, space=space, hierarchy=hierarchy, **kwargs)
         return dataset
 
-    def save_dataset(self, dataset: Dataset, name: str = None):
+    def save_dataset(self, dataset: Dataset, name: str = ""):
         """Save metadata in project definition file for future reference
 
         Parameters
@@ -491,14 +494,17 @@ class DataStore(metaclass=ABCMeta):
             the name for the definition to distinguish from other definitions on
             the same data, by default None
         """
+        if name is None:
+            name = ""
+        save_name = name if name else self.EMPTY_DATASET_NAME
         definition = asdict(dataset, omit=["store", "name"])
         definition[self.VERSION_KEY] = self.VERSION
         if name is None:
             name = dataset.name
         with self.connection:
-            self.save_dataset_definition(dataset.id, definition, name=name)
+            self.save_dataset_definition(dataset.id, definition, name=save_name)
 
-    def load_dataset(self, id, name="", **kwargs) -> Dataset:
+    def load_dataset(self, id, name: str = "", **kwargs) -> Dataset:
         """Load an existing dataset definition
 
         Parameters
@@ -519,8 +525,11 @@ class DataStore(metaclass=ABCMeta):
         KeyError
             if the dataset is not found
         """
+        if name is None:
+            name = ""
+        saved_name = name if name else self.EMPTY_DATASET_NAME
         with self.connection:
-            dct = self.load_dataset_definition(id, name)
+            dct = self.load_dataset_definition(id, saved_name)
         if dct is None:
             raise KeyError(f"Did not find a dataset '{id}@{name}'")
         store_version = dct.pop(self.VERSION_KEY)

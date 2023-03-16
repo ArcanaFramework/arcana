@@ -9,7 +9,6 @@ import yaml
 from fileformats.core.base import FileSet, Field
 from arcana.core.data.store import RemoteStore
 from arcana.core.data.row import DataRow
-from arcana.core.data.set import Dataset
 from arcana.core.data.tree import DataTree
 from arcana.core.data.entry import DataEntry
 from arcana.core.data.space import DataSpace
@@ -318,7 +317,7 @@ class MockRemote(RemoteStore):
 
     def definition_save_path(self, dataset_id, name):
         if not name:
-            name = Dataset.EMPTY_NAME
+            name = self.EMPTY_DATASET_NAME
         return self.dataset_fspath(dataset_id) / self.METADATA_DIR / (name + ".yml")
 
     def get_row_path(self, row: DataRow):

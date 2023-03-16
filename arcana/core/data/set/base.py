@@ -113,10 +113,6 @@ class Dataset:
         Repository specific args used to control the way the dataset is accessed
     """
 
-    # alternative name used to save datasets that are named "" in cases where "" is
-    # not appropriate
-    EMPTY_NAME = "arcana"
-
     LICENSES_PATH = (
         "LICENSES"  # The resource that project-specifc licenses are expected
     )
@@ -168,9 +164,9 @@ class Dataset:
                 "i.e. contain only numbers, letters and underscores and not start with a "
                 "number"
             )
-        if name == self.EMPTY_NAME:
+        if name == self.store.EMPTY_DATASET_NAME:
             raise ArcanaUsageError(
-                f"'{self.EMPTY_NAME}' is a reserved name for datasets as it is used to "
+                f"'{self.store.EMPTY_DATASET_NAME}' is a reserved name for datasets as it is used to "
                 "in place of the empty dataset name in situations where '' can't be used"
             )
 
