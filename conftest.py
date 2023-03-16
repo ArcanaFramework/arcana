@@ -395,8 +395,8 @@ def dataset(work_dir, data_store, request):
 
 
 @pytest.fixture
-def saved_dataset(data_store, work_dir):
-    blueprint = TestDatasetBlueprint(
+def simple_dataset_blueprint():
+    return TestDatasetBlueprint(
         hierarchy=[
             "abcd"
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
@@ -407,11 +407,15 @@ def saved_dataset(data_store, work_dir):
             FileBP(path="file2", datatype=PlainText, filenames=["file2.txt"]),
         ],
     )
+
+
+@pytest.fixture
+def saved_dataset(data_store, simple_dataset_blueprint, work_dir):
     if isinstance(data_store, DirTree):
         dataset_id = work_dir / "saved-dataset"
     else:
         dataset_id = "saved_dataset"
-    return blueprint.make_dataset(data_store, dataset_id, name="")
+    return simple_dataset_blueprint.make_dataset(data_store, dataset_id, name="")
 
 
 @pytest.fixture

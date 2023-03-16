@@ -153,7 +153,7 @@ def ls():
     for name, store in sorted(DataStore.singletons().items(), key=itemgetter(0)):
         click.echo(f"{name} - {ClassResolver.tostr(store, strip_prefix=False)}")
     click.echo("\nSaved stores\n-------------")
-    for name, entry in DataStore.load_saved_entries().items():
+    for name, entry in DataStore.load_saved_configs().items():
         store_class = entry.pop("class")
         click.echo(f"{name} - {store_class[1:-1]}")
         for key, val in sorted(entry.items(), key=itemgetter(0)):

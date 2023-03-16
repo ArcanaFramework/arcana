@@ -154,6 +154,9 @@ class TestDatasetBlueprint:
     derivatives: list[EntryBlueprint] = attrs.field(factory=list)
     id_composition: dict[str, str] = attrs.field(factory=dict)
 
+    DEFAULT_NUM_ACCESS_ATTEMPTS = 300
+    DEFAULT_ACCESS_ATTEMPT_INTERVAL = 1.0  # secs
+
     def make_dataset(
         self,
         store: DataStore,
@@ -203,24 +206,56 @@ class TestDatasetBlueprint:
         dataset.__annotations__["blueprint"] = self
         return dataset
 
-    def access_dataset(self, store: DataStore, dataset_id: str):
+    def access_dataset(
+        self,
+        store: DataStore,
+        dataset_id: str,
+        name: str = None,
+        max_num_attempts: int = DEFAULT_NUM_ACCESS_ATTEMPTS,
+        attempt_interval: float = DEFAULT_ACCESS_ATTEMPT_INTERVAL,
+    ):
+        """For data stores with significant latency, this method can be used to reuse
+        test datasets between tests
+
+        Parameters
+        ----------
+        store : DataStore
+            the data store to access the dataset from
+        dataset_id : str
+            the ID of the dataset to access
+        name : str, optional
+            the name of the dataset
+        max_num_attempts: int, optional
+            the maximum number of attempts to try to access
+        attempt_interval: float, optional
+            the time (in secs) between each attempt
+
+        Returns
+        -------
+        Dataset
+            the accessed dataset
+        """
         num_attempts = 0
-        while num_attempts < NUM_ACCESS_ATTEMPTS:
-            dataset = store.load_dataset(dataset_id)
-            if dataset.metadata.type == "in-construction":
-                logger.info(
-                    "Waiting for test dataset '%s' to finish being constructed",
-                    dataset_id,
-                )
-                time.sleep(ACCESS_ATTEMPT_SLEEP)
+        while num_attempts < max_num_attempts:
+            try:
+                dataset = store.load_dataset(dataset_id, name=name)
+            except KeyError:
+                pass
             else:
-                break
+                if dataset.metadata.type != "in-construction":
+                    break
+            logger.info(
+                "Waiting for test dataset '%s' to finish being constructed",
+                dataset_id,
+            )
+            time.sleep(attempt_interval)
             num_attempts += 1
-        dataset = store.define_dataset(
-            dataset_id,
-            hierarchy=self.hierarchy,
-            id_composition=self.id_composition,
-        )
+        if num_attempts >= max_num_attempts:
+            wait_time = max_num_attempts * attempt_interval
+            raise RuntimeError(
+                f"Could not access {dataset_id} dataset in {store} after waiting "
+                f"{wait_time}, something may have gone wrong in the construction process"
+            )
         dataset.__annotations__["blueprint"] = self
         return dataset
 
@@ -258,7 +293,3 @@ class TestDatasetBlueprint:
                     f"{b}{base_ids[b]}" for b in self.space[layer].span()
                 )
             yield tuple(ids[h] for h in self.hierarchy)
-
-
-NUM_ACCESS_ATTEMPTS = 10
-ACCESS_ATTEMPT_SLEEP = 20

@@ -138,15 +138,56 @@ class DirTree(LocalStore):
                         )
 
     def get_field(self, entry: DataEntry, datatype: type) -> Field:
+        """Retrieve the field associated with the given entry and return it cast
+        to the specified datatype
+
+        Parameters
+        ----------
+        entry : DataEntry
+            the entry to retrieve the field for
+        datatype : type (subclass DataType)
+            the datatype to return the field as
+
+        Returns
+        -------
+        Field
+            the retrieved field
+        """
         fspath, key = self._fields_fspath_and_key(entry)
         return datatype(self.read_from_json(fspath, key))
 
     def get_fileset(self, entry: DataEntry, datatype: type) -> FileSet:
+        """Retrieve the file-set associated with the given entry and return it cast
+        to the specified datatype
+
+        Parameters
+        ----------
+        entry : DataEntry
+            the entry to retrieve the file-set for
+        datatype : type (subclass DataType)
+            the datatype to return the file-set as
+
+        Returns
+        -------
+        FileSet
+            the retrieved file-set
+        """
         return datatype(self._fileset_fspath(entry))
 
     def put_fileset(self, fileset: FileSet, entry: DataEntry) -> FileSet:
-        """
-        Inserts or updates a fileset in the store
+        """Put a file-set into the specified data entry
+
+        Parameters
+        ----------
+        fileset : FileSet
+            the file-set to store
+        entry : DataEntry
+            the entry to store the file-set in
+
+        Returns
+        -------
+        FileSet
+            the copy of the file-set that has been stored within the data entry
         """
         fspath = self._fileset_fspath(entry)
         # Create target directory if it doesn't exist already
@@ -158,51 +199,146 @@ class DirTree(LocalStore):
         return copied_fileset
 
     def put_field(self, field: Field, entry: DataEntry):
-        """
-        Inserts or updates a field in the store
+
+        """Put a field into the specified data entry
+
+        Parameters
+        ----------
+        field : Field
+            the field to store
+        entry : DataEntry
+            the entry to store the field in
         """
         fspath, key = self._fields_fspath_and_key(entry)
         self.update_json(fspath, key, field.raw_type(field))
 
-    def get_fileset_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
+    def get_fileset_provenance(
+        self, entry: DataEntry
+    ) -> ty.Union[dict[str, ty.Any], None]:
+        """Retrieves provenance associated with a file-set data entry
+
+        Parameters
+        ----------
+        entry : DataEntry
+            the entry of the file-set to retrieve the provenance for
+
+        Returns
+        -------
+        dict[str, ty.Any] or None
+            the retrieved provenance or None if it doesn't exist
+        """
         with open(self._fileset_prov_fspath(entry)) as f:
             provenance = json.load(f)
         return provenance
 
     def put_fileset_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+        """Puts provenance associated with a file-set data entry into the store
+
+        Parameters
+        ----------
+        provenance : dict[str, ty.Any]
+            the provenance to store
+        entry : DataEntry
+            the entry to associate the provenance with
+        """
         with open(self._fileset_prov_fspath(entry), "w") as f:
             json.dump(provenance, f)
 
-    def get_field_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
+    def get_field_provenance(
+        self, entry: DataEntry
+    ) -> ty.Union[dict[str, ty.Any], None]:
+        """Retrieves provenance associated with a field data entry
+
+        Parameters
+        ----------
+        entry : DataEntry
+            the entry of the field to retrieve the provenance for
+
+        Returns
+        -------
+        dict[str, ty.Any] or None
+            the retrieved provenance or None if it doesn't exist
+        """
         fspath, key = self._fields_prov_fspath_and_key(entry)
         with open(fspath) as f:
             fields_provenance = json.load(f)
         return fields_provenance[key]
 
     def put_field_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+        """Puts provenance associated with a field data entry into the store
+
+        Parameters
+        ----------
+        provenance : dict[str, ty.Any]
+            the provenance to store
+        entry : DataEntry
+            the entry to associate the provenance with
+        """
         fspath, key = self._fields_prov_fspath_and_key(entry)
         self.update_json(fspath, key, provenance)
 
     def fileset_uri(self, path: str, datatype: type, row: DataRow) -> str:
-        """The path to the stem of the paths (i.e. the path without
-        file extension) where the files are saved in the file-system.
-        NB: this method is overridden in Bids store.
+        """Returns the "uri" (e.g. file-system path relative to root dir) of a file-set
+        entry at the given path relative to the given row
 
         Parameters
         ----------
-        fileset: FileSet
-            the file set stored or to be stored
+        path : str
+            path to the entry relative to the row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the row of the entry
+
+        Returns
+        -------
+        uri : str
+            the "uri" to the file-set entry relative to the data store
         """
         path, dataset_name = DataEntry.split_dataset_name_from_path(path)
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
         return str(row_dir.joinpath(*path.split("/"))) + datatype.ext
 
     def field_uri(self, path: str, datatype: type, row: DataRow) -> str:
+        """Returns the "uri" (e.g. file-system path relative to root dir) of a field
+        entry at the given path relative to the given row
+
+        Parameters
+        ----------
+        path : str
+            path to the entry relative to the row
+        datatype : type
+            the datatype of the entry
+        row : DataRow
+            the row of the entry
+
+        Returns
+        -------
+        uri : str
+            the "uri" to the field entry relative to the data store
+        """
         path, dataset_name = DataEntry.split_dataset_name_from_path(path)
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
         return str(row_dir / self.FIELDS_FNAME) + "::" + path
 
     def create_data_tree(self, id: str, leaves: list[tuple[str, ...]], **kwargs):
+        """creates a new empty dataset within in the store. Used in test routines and
+        importing/exporting datasets between stores
+
+        Parameters
+        ----------
+        id : str
+            ID for the newly created dataset
+        leaves : list[tuple[str, ...]]
+                        list of IDs for each leaf node to be added to the dataset. The IDs for each
+            leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
+            for a hierarchy of [subject, timepoint] ->
+            [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
+        hierarchy: list[str]
+            the hierarchy of the dataset to be created
+        space : type(DataSpace)
+            the data space of the dataset
+        """
         root_dir = Path(id)
         root_dir.mkdir(parents=True)
         # Create sub-directories corresponding to rows of the dataset

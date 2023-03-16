@@ -121,7 +121,7 @@ def test_provenance_roundtrip(datatype: type, value: str, saved_dataset: Dataset
     data_store = saved_dataset.store
 
     with data_store.connection:
-        entry = data_store.create_entry("provtest", datatype, saved_dataset.root)
+        entry = data_store.create_entry("provtest@", datatype, saved_dataset.root)
         data_store.put(datatype(value), entry)  # Create the entry first
         data_store.put_provenance(provenance, entry)  # Save the provenance
         reloaded_provenance = data_store.get_provenance(entry)  # reload the provenance

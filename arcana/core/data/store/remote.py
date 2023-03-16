@@ -155,39 +155,49 @@ class RemoteStore(DataStore):
             the datatype of the entry
         row : DataRow
             the row of the data entry
+
+        Returns
+        -------
+        entry : DataEntry
+            the created entry for the file-set
         """
 
     @abstractmethod
     def download_value(
-        self, field
+        self, entry: DataEntry
     ) -> ty.Union[float, int, str, list[float], list[int], list[str]]:
         """
         Extract and return the value of the field from the store
 
         Parameters
         ----------
-        field : Field
-            The field to retrieve the value for
+        entry : DataEntry
+            The data entry to retrieve the value from
 
         Returns
         -------
-        value : int | float | str | ty.List[int] | ty.List[float] | ty.List[str]
+        value : float or int or str or list[float] or list[int] or list[str]
             The value of the Field
         """
 
     @abstractmethod
-    def upload_value(self, field, value):
-        """
-        Inserts or updates the field's value in the store
+    def upload_value(
+        self,
+        value: ty.Union[float, int, str, list[float], list[int], list[str]],
+        entry: DataEntry,
+    ):
+        """Store the value for a field in the XNAT repository
 
         Parameters
         ----------
-        field : Field
-            The field to insert into the store
+        value : float or int or str or list[float] or list[int] or list[str]
+            the value to store in the entry
+        entry : DataEntry
+            the entry to store the value in
         """
 
     @abstractmethod
-    def create_field_entry(self, path: str, datatype: type, row: DataRow):
+    def create_field_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
         """
         Creates a new resource entry to store a field
 
@@ -199,6 +209,11 @@ class RemoteStore(DataStore):
             the datatype of the entry
         row : DataRow
             the row of the data entry
+
+        Returns
+        -------
+        entry : DataEntry
+            the created entry for the field
         """
 
     @abstractmethod
