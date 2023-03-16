@@ -22,9 +22,9 @@ from ..tree import DataTree
 from .metadata import DatasetMetadata, metadata_converter
 
 
-if ty.TYPE_CHECKING:
-    from ...deploy.image.components import License
-    from ...data.entry import DataEntry
+if ty.TYPE_CHECKING:  # pragma: no cover
+    from arcana.core.deploy.image.components import License
+    from arcana.core.data.entry import DataEntry
 
 logger = logging.getLogger("arcana")
 

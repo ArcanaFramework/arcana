@@ -15,7 +15,7 @@ from .space import DataSpace
 from .cell import DataCell
 from .entry import DataEntry
 
-if ty.TYPE_CHECKING:
+if ty.TYPE_CHECKING:  # pragma: no cover
     from .row import DataRow
     from .set.base import Dataset
 

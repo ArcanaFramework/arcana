@@ -13,7 +13,7 @@ from arcana.core.exceptions import (
 )
 from .row import DataRow
 
-if ty.TYPE_CHECKING:
+if ty.TYPE_CHECKING:  # pragma: no cover
     from .set.base import Dataset
 
 

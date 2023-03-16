@@ -24,7 +24,7 @@ DS = ty.TypeVar("DS", bound="DataStore")
 logger = logging.getLogger("arcana")
 
 
-if ty.TYPE_CHECKING:
+if ty.TYPE_CHECKING:  # pragma: no cover
     from ..set import Dataset
     from ..tree import DataTree
     from ..entry import DataEntry

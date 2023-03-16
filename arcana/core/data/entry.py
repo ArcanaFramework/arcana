@@ -5,7 +5,7 @@ from fileformats.core.base import DataType
 from arcana.core.exceptions import ArcanaDataMatchError, ArcanaUsageError
 from .quality import DataQuality
 
-if ty.TYPE_CHECKING:
+if ty.TYPE_CHECKING:  # pragma: no cover
     from .row import DataRow
 
 

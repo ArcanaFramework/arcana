@@ -13,7 +13,7 @@ from .cell import DataCell
 from .entry import DataEntry
 
 
-if ty.TYPE_CHECKING:
+if ty.TYPE_CHECKING:  # pragma: no cover
     from .set.base import Dataset
 
 
