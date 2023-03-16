@@ -5,7 +5,7 @@ class TestDataSpace(DataSpace):
     """Dummy data dimensions for ease of testing"""
 
     # Per dataset
-    _ = 0b0000
+    __ = 0b0000
 
     # Basis
     a = 0b1000
