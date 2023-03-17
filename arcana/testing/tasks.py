@@ -260,3 +260,22 @@ def check_license(
             f'expected "{expected_contents}"'
         )
     return expected_license_contents
+
+
+TEST_TASKS = {
+    "add": (add, {"a": 4, "b": 5}, {"out": 9}),
+    "path_manip": (
+        path_manip,
+        {"dpath": Path("/home/foo/Desktop"), "fname": "bar.txt"},
+        {"path": "/home/foo/Desktop/bar.txt", "suffix": ".txt"},
+    ),
+    "attrs_func": (
+        attrs_func,
+        {"a": A(x=2, y=4), "b": B(u=2.5, v=1.25)},
+        {"c": C(z=10)},
+    ),
+}
+
+BASIC_TASKS = ["add", "path_manip", "attrs_func"]
+
+FILE_TASKS = ["concatenate"]

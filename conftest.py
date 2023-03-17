@@ -2,43 +2,26 @@ import os
 import logging
 from pathlib import Path
 from datetime import datetime
-import decimal
 import shutil
 import docker
 from tempfile import mkdtemp
 from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
-from fileformats.generic import Directory
 from fileformats.text import Plain as PlainText
-from fileformats.archive import Zip
-from fileformats.field import Text as TextField, Decimal, Boolean, Integer, Array
-from fileformats.serialization import Json
-from fileformats.testing import (
-    MyFormatGz,
-    MyFormatGzX,
-    MyFormatX,
-    MyFormat,
-    ImageWithHeader,
-    YourFormat,
-)
 from arcana.testing.tasks import (
-    add,
-    path_manip,
-    attrs_func,
-    A,
-    B,
-    C,
     concatenate,
     concatenate_reverse,
+    TEST_TASKS,
+    BASIC_TASKS,
 )
 from arcana.testing.data.blueprint import (
     TestDatasetBlueprint,
     FileSetEntryBlueprint as FileBP,
-    FieldEntryBlueprint as FieldBP,
+    TEST_DATASET_BLUEPRINTS,
+    GOOD_DATASETS,
 )
 from arcana.testing import TestDataSpace, MockRemote
-from fileformats.testing import Xyz
 from arcana.dirtree import DirTree
 from pydra import set_input_validator
 
@@ -124,25 +107,6 @@ def catch_cli_exceptions():
     return CATCH_CLI_EXCEPTIONS
 
 
-TEST_TASKS = {
-    "add": (add, {"a": 4, "b": 5}, {"out": 9}),
-    "path_manip": (
-        path_manip,
-        {"dpath": Path("/home/foo/Desktop"), "fname": "bar.txt"},
-        {"path": "/home/foo/Desktop/bar.txt", "suffix": ".txt"},
-    ),
-    "attrs_func": (
-        attrs_func,
-        {"a": A(x=2, y=4), "b": B(u=2.5, v=1.25)},
-        {"c": C(z=10)},
-    ),
-}
-
-BASIC_TASKS = ["add", "path_manip", "attrs_func"]
-
-FILE_TASKS = ["concatenate"]
-
-
 @pytest.fixture(params=BASIC_TASKS)
 def pydra_task_details(request):
     func_name = request.param
@@ -157,195 +121,6 @@ def pydra_task(request):
     task.test_args = args  # stash args away in task object for future access
     return task
 
-
-TEST_DATASET_BLUEPRINTS = {
-    "full": TestDatasetBlueprint(  # dataset name
-        space=TestDataSpace,
-        hierarchy=["a", "b", "c", "d"],
-        dim_lengths=[2, 3, 4, 5],
-        entries=[
-            FileBP(path="file1", datatype=PlainText, filenames=["file1.txt"]),
-            FileBP(path="file2", datatype=MyFormatGz, filenames=["file2.my.gz"]),
-            FileBP(path="dir1", datatype=Directory, filenames=["dir1"]),
-            FieldBP(
-                path="textfield",
-                row_frequency="abcd",
-                datatype=TextField,
-                value="sample-text",
-            ),  # Derivatives to insert
-            FieldBP(
-                path="booleanfield",
-                row_frequency="c",
-                datatype=Boolean,
-                value="no",
-                expected_value=False,
-            ),  # Derivatives to insert
-        ],
-        derivatives=[
-            FileBP(
-                path="deriv1",
-                row_frequency="abcd",
-                datatype=PlainText,
-                filenames=["file1.txt"],
-            ),  # Derivatives to insert
-            FileBP(
-                path="deriv2",
-                row_frequency="c",
-                datatype=Directory,
-                filenames=["dir"],
-            ),
-            FileBP(
-                path="deriv3",
-                row_frequency="bd",
-                datatype=PlainText,
-                filenames=["file1.txt"],
-            ),
-            FieldBP(
-                path="integerfield",
-                row_frequency="c",
-                datatype=Integer,
-                value=99,
-            ),
-            FieldBP(
-                path="decimalfield",
-                row_frequency="bd",
-                datatype=Decimal,
-                value="33.3333",
-                expected_value=decimal.Decimal("33.3333"),
-            ),
-            FieldBP(
-                path="arrayfield",
-                row_frequency="bd",
-                datatype=Array[Integer],
-                value=[1, 2, 3, 4, 5],
-            ),
-        ],
-    ),
-    "one_layer": TestDatasetBlueprint(
-        space=TestDataSpace,
-        hierarchy=["abcd"],
-        dim_lengths=[1, 1, 1, 5],
-        entries=[
-            FileBP(
-                path="file1",
-                datatype=MyFormatGzX,
-                filenames=["file1.my.gz", "file1.json"],
-                alternative_datatypes=[MyFormatGz, Json],
-            ),
-            FileBP(
-                path="file2",
-                datatype=MyFormatX,
-                filenames=["file2.my", "file2.json"],
-                alternative_datatypes=[MyFormat, Json],
-            ),
-        ],
-        derivatives=[
-            FileBP(
-                path="deriv1",
-                row_frequency="abcd",
-                datatype=Json,
-                filenames=["file1.json"],
-            ),
-            FileBP(
-                path="deriv2",
-                row_frequency="bc",
-                datatype=Xyz,
-                filenames=["file1.x", "file1.y", "file1.z"],
-            ),
-            FileBP(
-                path="deriv3",
-                row_frequency="__",
-                datatype=YourFormat,
-                filenames=["file1.yr"],
-            ),
-        ],
-    ),
-    "skip_single": TestDatasetBlueprint(
-        space=TestDataSpace,
-        hierarchy=["a", "bc", "d"],
-        dim_lengths=[2, 1, 2, 3],
-        entries=[
-            FileBP(path="doubledir1", datatype=Directory, filenames=["doubledir1"]),
-            FileBP(path="doubledir2", datatype=Directory, filenames=["doubledir2"]),
-        ],
-        derivatives=[
-            FileBP(
-                path="deriv1",
-                row_frequency="ad",
-                datatype=Json,
-                filenames=["file1.json"],
-            )
-        ],
-    ),
-    "skip_with_inference": TestDatasetBlueprint(
-        space=TestDataSpace,
-        hierarchy=["bc", "ad"],
-        dim_lengths=[2, 3, 2, 4],
-        id_composition={
-            "bc": r"b(?P<b>\d+)c(?P<c>\d+)",
-            "ad": r"a(?P<a>\d+)d(?P<d>\d+)",
-        },
-        entries=[
-            FileBP(
-                path="file1",
-                datatype=ImageWithHeader,
-                filenames=["file1.hdr", "file1.img"],
-            ),
-            FileBP(path="file2", datatype=YourFormat, filenames=["file2.yr"]),
-        ],
-    ),
-    "redundant": TestDatasetBlueprint(
-        space=TestDataSpace,
-        hierarchy=[
-            "abc",
-            "abcd",
-        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        dim_lengths=[3, 4, 5, 6],
-        id_composition={
-            "abc": r"a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)",
-            "abcd": r"a\d+b\d+c\d+d(?P<d>\d+)",
-        },
-        entries=[
-            FileBP(path="doubledir", datatype=Directory, filenames=["doubledir"]),
-            FileBP(
-                path="file1", datatype=Xyz, filenames=["file1.x", "file1.y", "file1.z"]
-            ),
-        ],
-        derivatives=[
-            FileBP(
-                path="deriv1",
-                row_frequency="d",
-                datatype=Json,
-                filenames=["file1.json"],
-            )
-        ],
-    ),
-    "concatenate_test": TestDatasetBlueprint(
-        space=TestDataSpace,
-        hierarchy=[
-            "abcd"
-        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        dim_lengths=[1, 1, 1, 2],
-        entries=[
-            FileBP(path="file1", datatype=PlainText, filenames=["file1.txt"]),
-            FileBP(path="file2", datatype=PlainText, filenames=["file2.txt"]),
-        ],
-    ),
-    "concatenate_zip_test": TestDatasetBlueprint(
-        space=TestDataSpace,
-        hierarchy=[
-            "abcd"
-        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
-        dim_lengths=[1, 1, 1, 1],
-        entries=[
-            FileBP(path="file1", datatype=Zip, filenames=["file1.zip"]),
-            FileBP(path="file2", datatype=Zip, filenames=["file2.zip"]),
-        ],
-    ),
-}
-
-
-GOOD_DATASETS = ["full", "one_layer", "skip_single", "skip_with_inference", "redundant"]
 
 # ------------------------------------
 # Pytest fixtures and helper functions
