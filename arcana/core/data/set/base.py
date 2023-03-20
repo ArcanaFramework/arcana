@@ -475,9 +475,9 @@ class Dataset:
 
         Parameters
         ----------
-        frequency : DataSpace or None
-            The "frequency" of the rows, e.g. per-session, per-subject. If
-            None then all rows are returned
+        frequency : DataSpace, optional
+            The "frequency" of the rows, e.g. per-session, per-subject, defaults to
+            leaf rows
         ids : Sequence[str or Tuple[str]]
             The i
 

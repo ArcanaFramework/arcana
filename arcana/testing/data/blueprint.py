@@ -222,6 +222,7 @@ class TestDatasetBlueprint:
                 metadata=metadata,
                 **kwargs,
             )
+        with store.connection:
             logger.debug(
                 "Adding entries to test dataset for: %s",
                 dataset.rows(frequency=max(self.space)),
