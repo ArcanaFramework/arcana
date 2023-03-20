@@ -12,16 +12,12 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 from __future__ import print_function
-import sys
-import os.path as op
 import datetime
 
 # import sphinx_rtd_theme
 
-package_path = op.abspath(op.join(op.dirname(op.abspath(__file__)), "..", ".."))
-
-sys.path.insert(0, package_path)
-from arcana.core import __version__, __authors__  # noqa
+__version__ = "0.9.8"
+__authors__ = ["Thomas G. Close <tom.g.close@gmail.com>"]
 
 # from arcana import *
 
