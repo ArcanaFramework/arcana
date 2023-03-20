@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" />
 
     <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
-        <title>arcana.core.data.store.base - Arcana v0.9.7</title>
+        <title>arcana.core.data.store.base - Arcana v0.9.8</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../../index.html"><div class="brand">Arcana v0.9.7</div></a>
+      <a href="../../../../../index.html"><div class="brand">Arcana v0.9.8</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.7</span>
+  <span class="sidebar-brand-text">Arcana v0.9.8</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -265,11 +265,22 @@
 
 <div class="viewcode-block" id="DataStore"><a class="viewcode-back" href="../../../../../api.html#arcana.core.data.store.DataStore">[docs]</a><span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span>
 <span class="k">class</span> <span class="nc">DataStore</span><span class="p">(</span><span class="n">metaclass</span><span class="o">=</span><span class="n">ABCMeta</span><span class="p">):</span>
-    <span class="c1"># &quot;&quot;&quot;</span>
-    <span class="c1"># Abstract base class for all Repository systems, DaRIS, XNAT and</span>
-    <span class="c1"># local file system. Sets out the interface that all Repository</span>
-    <span class="c1"># classes should implement.</span>
-    <span class="c1"># &quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Abstract base class for all data store adapters. A data store can be an external</span>
+<span class="sd">    data management system, e.g. XNAT, OpenNeuro, Datalad or just a defined structure</span>
+<span class="sd">    of how to lay out data within a file-system, e.g. BIDS.</span>
+
+<span class="sd">    For a data management system/data structure to be compatible with Arcana, it must</span>
+<span class="sd">    meet a number of criteria. In Arcana, a store is assumed to</span>
+
+<span class="sd">        * contain multiple projects/datasets addressable by unique IDs.</span>
+<span class="sd">        * organise data within each project/dataset in trees</span>
+<span class="sd">        * store arbitrary numbers of data &quot;items&quot; (e.g. &quot;file-sets&quot; and fields) within</span>
+<span class="sd">          each tree node (including non-leaf nodes) addressable by unique &quot;paths&quot; relative</span>
+<span class="sd">          to the node.</span>
+<span class="sd">        * allow derivative data to be stored within in separate namespaces for different</span>
+<span class="sd">          analyses on the same data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># name: str = None</span>
     <span class="n">connection</span><span class="p">:</span> <span class="n">ConnectionManager</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
@@ -294,24 +305,35 @@
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">populate_tree</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tree</span><span class="p">:</span> <span class="n">DataTree</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Populates the nodes of the data tree with those found in the dataset</span>
+<span class="sd">        Populates the nodes of the data tree with those found in the dataset using</span>
+<span class="sd">        the ``DataTree.add_leaf`` method for every &quot;leaf&quot; node of the dataset tree.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        tree : DataTree</span>
-<span class="sd">            The tree to populate with nodes via the ``DataTree.add_leaf`` method</span>
+<span class="sd">            The tree to populate with nodes</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
     <span class="nd">@abstractmethod</span>
     <span class="k">def</span> <span class="nf">populate_row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row</span><span class="p">:</span> <span class="n">DataRow</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Populate a row with all data entries found in the corresponding node in the data</span>
-<span class="sd">        store (e.g. files within a directory, scans within an XNAT session).</span>
+<span class="sd">        store (e.g. files within a directory, scans within an XNAT session) using the</span>
+<span class="sd">        ``DataRow.add_entry`` method. Within a node/row there are assumed to be two types</span>
+<span class="sd">        of entries, &quot;primary&quot; entries (e.g. acquired scans) common to all analyses performed</span>
+<span class="sd">        on the dataset and &quot;derivative&quot; entries corresponding to intermediate outputs</span>
+<span class="sd">        of previously performed analyses. These types should be stored in separate</span>
+<span class="sd">        namespaces so there is no chance of a derivative overriding a primary data item.</span>
+
+<span class="sd">        The name of the dataset/analysis a derivative was generated by is appended to</span>
+<span class="sd">        to a base path, delimited by &quot;@&quot;, e.g. &quot;brain_mask@my_analysis&quot;. The dataset</span>
+<span class="sd">        name is left blank by default, in which case &quot;@&quot; is just appended to the</span>
+<span class="sd">        derivative path, i.e. &quot;brain_mask@&quot;.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        row : DataRow</span>
-<span class="sd">            The row to populate with entries using the ``DataRow.add_entry`` method</span>
+<span class="sd">            The row to populate with entries</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
     <span class="nd">@abstractmethod</span>
