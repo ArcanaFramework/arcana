@@ -13,7 +13,7 @@ from arcana.dirtree import DirTree
 from arcana.testing.data.blueprint import TEST_DATASET_BLUEPRINTS
 
 
-@pytest.parametrize("blueprint", TEST_DATASET_BLUEPRINTS)
+@pytest.mark.parametrize("blueprint", TEST_DATASET_BLUEPRINTS)
 def test_blueprint_translation(blueprint_name: str, work_dir: Path):
     blueprint = TEST_DATASET_BLUEPRINTS[blueprint_name]
     translated = blueprint.translate_to(Clinical)
