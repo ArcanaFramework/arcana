@@ -7,7 +7,7 @@ import tempfile
 import shutil
 import logging
 import decimal
-import time
+from copy import deepcopy
 import zipfile
 import attrs
 from fileformats.core import FileSet, Field
@@ -26,7 +26,6 @@ from fileformats.testing import (
     Xyz,
 )
 from arcana.core.data.row import DataRow
-from arcana.core.data.store import LocalStore
 from arcana.core.utils.misc import path2varname, set_cwd
 from arcana.core.exceptions import ArcanaError
 from arcana.core.data.store import DataStore
@@ -223,58 +222,99 @@ class TestDatasetBlueprint:
         dataset.__annotations__["blueprint"] = self
         return dataset
 
-    def access_dataset(
-        self,
-        store: DataStore,
-        dataset_id: str,
-        name: str = None,
-        max_num_attempts: int = DEFAULT_NUM_ACCESS_ATTEMPTS,
-        attempt_interval: float = DEFAULT_ACCESS_ATTEMPT_INTERVAL,
-    ):
-        """For data stores with significant latency, this method can be used to reuse
-        test datasets between tests
+    def translate_to(self, data_store: DataStore) -> "TestDatasetBlueprint":
+        """Translates the blueprint so that it matches the default space and hierarchy
+        of the data store (if applicable)
 
         Parameters
         ----------
-        store : DataStore
-            the data store to access the dataset from
-        dataset_id : str
-            the ID of the dataset to access
-        name : str, optional
-            the name of the dataset
-        max_num_attempts: int, optional
-            the maximum number of attempts to try to access
-        attempt_interval: float, optional
-            the time (in secs) between each attempt
+        data_store : DataStore
+            the data store to get the defaults for
 
         Returns
         -------
-        Dataset
-            the accessed dataset
+        blueprint : TestDatasetBlueprint
         """
-        num_attempts = 0
-        while num_attempts < max_num_attempts:
+        # Create copy of the blueprint
+        blueprint = deepcopy(self)
+        try:
+            blueprint.space = data_store.DEFAULT_SPACE
+        except AttributeError:
+            space = TestDataSpace
+        else:
             try:
-                dataset = store.load_dataset(dataset_id, name=name)
-            except KeyError:
-                pass
-            else:
-                if dataset.metadata.type != "in-construction":
-                    break
-            logger.info(
-                "Waiting for test dataset '%s' to finish being constructed",
-                dataset_id,
-            )
-            time.sleep(attempt_interval)
-            num_attempts += 1
-        if num_attempts >= max_num_attempts:
-            wait_time = max_num_attempts * attempt_interval
-            raise RuntimeError(
-                f"Could not access {dataset_id} dataset in {store} after waiting "
-                f"{wait_time}, something may have gone wrong in the construction process"
-            )
-        dataset.__annotations__["blueprint"] = self
-        return dataset
+                blueprint.hierarchy = data_store.DEFAULT_HIERARCHY
+            except AttributeError:
+                if space.ndim > self.space.ndim:
+                    raise RuntimeError(
+                        f"cannot translate hierarchy as from {self.space} to {space} "
+                        "as it has more dimensions"
+                    )
+                # Translate frequencies into new space
+                blueprint.hierarchy = [
+                    space.union(*f.span()[-space.ndim :]) for f in self.hierarchy
+                ]
+                # Drop frequencies that mapped onto same value
+                blueprint.hierarchy = [
+                    h
+                    for i, h in enumerate(blueprint.hierarchy)
+                    if i == 0 or h != blueprint.hierarchy[i - 1]
+                ]
+                blueprint.dim_lengths = self.dim_lengths[-len(blueprint.hierarchy) :]
+        return blueprint
+
+    # def access_dataset(
+    #     self,
+    #     store: DataStore,
+    #     dataset_id: str,
+    #     name: str = None,
+    #     max_num_attempts: int = DEFAULT_NUM_ACCESS_ATTEMPTS,
+    #     attempt_interval: float = DEFAULT_ACCESS_ATTEMPT_INTERVAL,
+    # ):
+    #     """For data stores with significant latency, this method can be used to reuse
+    #     test datasets between tests
+
+    #     Parameters
+    #     ----------
+    #     store : DataStore
+    #         the data store to access the dataset from
+    #     dataset_id : str
+    #         the ID of the dataset to access
+    #     name : str, optional
+    #         the name of the dataset
+    #     max_num_attempts: int, optional
+    #         the maximum number of attempts to try to access
+    #     attempt_interval: float, optional
+    #         the time (in secs) between each attempt
+
+    #     Returns
+    #     -------
+    #     Dataset
+    #         the accessed dataset
+    #     """
+    #     num_attempts = 0
+    #     while num_attempts < max_num_attempts:
+    #         try:
+    #             dataset = store.load_dataset(dataset_id, name=name)
+    #         except KeyError:
+    #             pass
+    #         else:
+    #             if dataset.metadata.type != "in-construction":
+    #                 break
+    #         logger.info(
+    #             "Waiting for test dataset '%s' to finish being constructed",
+    #             dataset_id,
+    #         )
+    #         time.sleep(attempt_interval)
+    #         num_attempts += 1
+    #     if num_attempts >= max_num_attempts:
+    #         wait_time = max_num_attempts * attempt_interval
+    #         raise RuntimeError(
+    #             f"Could not access {dataset_id} dataset in {store} after waiting "
+    #             f"{wait_time}, something may have gone wrong in the construction process"
+    #         )
+    #     dataset.__annotations__["blueprint"] = self
+    #     return dataset
 
     def make_entries(
         self,
@@ -310,43 +350,6 @@ class TestDatasetBlueprint:
                     f"{b}{base_ids[b]}" for b in self.space[layer].span()
                 )
             yield tuple(ids[h] for h in self.hierarchy)
-
-
-def dataset_defaults(
-    data_store: DataStore, dataset_name: str, run_prefix: str, work_dir: Path
-) -> tuple[str, type, list[str]]:
-    """Return sensible defaults for the dataset ID, data-space and hierarchy for
-    datasets created in the given data store
-
-    Parameters
-    ----------
-    data_store : DataStore
-        the data store to get the defaults for
-    dataset_name : str
-        the name of the dataset in the test matrix
-
-    Returns
-    -------
-    dataset_id : str
-        the ID for the test dataset
-    space : type
-        the data-space for the dataset
-    hierarchy : list[str]
-        the default hierarchy for the given data store
-    """
-    try:
-        space = data_store.DEFAULT_SPACE
-    except AttributeError:
-        space = TestDataSpace
-    try:
-        hierarchy = data_store.DEFAULT_HIERARCHY
-    except AttributeError:
-        hierarchy = [str(h) for h in max(space).span()]
-    if isinstance(data_store.name, LocalStore):
-        dataset_id = work_dir / dataset_name
-    else:
-        dataset_id = dataset_name
-    return run_prefix + dataset_id, space, hierarchy
 
 
 TEST_DATASET_BLUEPRINTS = {
