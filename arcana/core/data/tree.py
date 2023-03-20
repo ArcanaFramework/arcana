@@ -166,7 +166,7 @@ class DataTree(NestedContext):
             one of their ids is None
         """
         logger.debug(
-            "Adding new %s row to %s dataset: %s", row_frequency, self.dataset_id, ids
+            "Found %s row in %s dataset: %s", row_frequency, self.dataset_id, ids
         )
         row_frequency = self.dataset.parse_frequency(row_frequency)
         row = DataRow(ids=ids, frequency=row_frequency, dataset=self.dataset)
