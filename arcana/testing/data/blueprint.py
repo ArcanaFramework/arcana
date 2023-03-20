@@ -6,14 +6,30 @@ from pathlib import Path
 import tempfile
 import shutil
 import logging
-import time
+import decimal
+from copy import deepcopy
 import zipfile
 import attrs
 from fileformats.core import FileSet, Field
+from fileformats.generic import Directory
+from fileformats.text import Plain as PlainText
+from fileformats.archive import Zip
+from fileformats.field import Text as TextField, Decimal, Boolean, Integer, Array
+from fileformats.serialization import Json
+from fileformats.testing import (
+    MyFormatGz,
+    MyFormatGzX,
+    MyFormatX,
+    MyFormat,
+    ImageWithHeader,
+    YourFormat,
+    Xyz,
+)
 from arcana.core.data.row import DataRow
 from arcana.core.utils.misc import path2varname, set_cwd
 from arcana.core.exceptions import ArcanaError
 from arcana.core.data.store import DataStore
+from .space import TestDataSpace
 
 logger = logging.getLogger("arcana")
 
@@ -206,58 +222,99 @@ class TestDatasetBlueprint:
         dataset.__annotations__["blueprint"] = self
         return dataset
 
-    def access_dataset(
-        self,
-        store: DataStore,
-        dataset_id: str,
-        name: str = None,
-        max_num_attempts: int = DEFAULT_NUM_ACCESS_ATTEMPTS,
-        attempt_interval: float = DEFAULT_ACCESS_ATTEMPT_INTERVAL,
-    ):
-        """For data stores with significant latency, this method can be used to reuse
-        test datasets between tests
+    def translate_to(self, data_store: DataStore) -> "TestDatasetBlueprint":
+        """Translates the blueprint so that it matches the default space and hierarchy
+        of the data store (if applicable)
 
         Parameters
         ----------
-        store : DataStore
-            the data store to access the dataset from
-        dataset_id : str
-            the ID of the dataset to access
-        name : str, optional
-            the name of the dataset
-        max_num_attempts: int, optional
-            the maximum number of attempts to try to access
-        attempt_interval: float, optional
-            the time (in secs) between each attempt
+        data_store : DataStore
+            the data store to get the defaults for
 
         Returns
         -------
-        Dataset
-            the accessed dataset
+        blueprint : TestDatasetBlueprint
         """
-        num_attempts = 0
-        while num_attempts < max_num_attempts:
+        # Create copy of the blueprint
+        blueprint = deepcopy(self)
+        try:
+            blueprint.space = data_store.DEFAULT_SPACE
+        except AttributeError:
+            space = TestDataSpace
+        else:
             try:
-                dataset = store.load_dataset(dataset_id, name=name)
-            except KeyError:
-                pass
-            else:
-                if dataset.metadata.type != "in-construction":
-                    break
-            logger.info(
-                "Waiting for test dataset '%s' to finish being constructed",
-                dataset_id,
-            )
-            time.sleep(attempt_interval)
-            num_attempts += 1
-        if num_attempts >= max_num_attempts:
-            wait_time = max_num_attempts * attempt_interval
-            raise RuntimeError(
-                f"Could not access {dataset_id} dataset in {store} after waiting "
-                f"{wait_time}, something may have gone wrong in the construction process"
-            )
-        dataset.__annotations__["blueprint"] = self
-        return dataset
+                blueprint.hierarchy = data_store.DEFAULT_HIERARCHY
+            except AttributeError:
+                if space.ndim > self.space.ndim:
+                    raise RuntimeError(
+                        f"cannot translate hierarchy as from {self.space} to {space} "
+                        "as it has more dimensions"
+                    )
+                # Translate frequencies into new space
+                blueprint.hierarchy = [
+                    space.union(*f.span()[-space.ndim :]) for f in self.hierarchy
+                ]
+                # Drop frequencies that mapped onto same value
+                blueprint.hierarchy = [
+                    h
+                    for i, h in enumerate(blueprint.hierarchy)
+                    if i == 0 or h != blueprint.hierarchy[i - 1]
+                ]
+                blueprint.dim_lengths = self.dim_lengths[-len(blueprint.hierarchy) :]
+        return blueprint
+
+    # def access_dataset(
+    #     self,
+    #     store: DataStore,
+    #     dataset_id: str,
+    #     name: str = None,
+    #     max_num_attempts: int = DEFAULT_NUM_ACCESS_ATTEMPTS,
+    #     attempt_interval: float = DEFAULT_ACCESS_ATTEMPT_INTERVAL,
+    # ):
+    #     """For data stores with significant latency, this method can be used to reuse
+    #     test datasets between tests
+
+    #     Parameters
+    #     ----------
+    #     store : DataStore
+    #         the data store to access the dataset from
+    #     dataset_id : str
+    #         the ID of the dataset to access
+    #     name : str, optional
+    #         the name of the dataset
+    #     max_num_attempts: int, optional
+    #         the maximum number of attempts to try to access
+    #     attempt_interval: float, optional
+    #         the time (in secs) between each attempt
+
+    #     Returns
+    #     -------
+    #     Dataset
+    #         the accessed dataset
+    #     """
+    #     num_attempts = 0
+    #     while num_attempts < max_num_attempts:
+    #         try:
+    #             dataset = store.load_dataset(dataset_id, name=name)
+    #         except KeyError:
+    #             pass
+    #         else:
+    #             if dataset.metadata.type != "in-construction":
+    #                 break
+    #         logger.info(
+    #             "Waiting for test dataset '%s' to finish being constructed",
+    #             dataset_id,
+    #         )
+    #         time.sleep(attempt_interval)
+    #         num_attempts += 1
+    #     if num_attempts >= max_num_attempts:
+    #         wait_time = max_num_attempts * attempt_interval
+    #         raise RuntimeError(
+    #             f"Could not access {dataset_id} dataset in {store} after waiting "
+    #             f"{wait_time}, something may have gone wrong in the construction process"
+    #         )
+    #     dataset.__annotations__["blueprint"] = self
+    #     return dataset
 
     def make_entries(
         self,
@@ -293,3 +350,294 @@ class TestDatasetBlueprint:
                     f"{b}{base_ids[b]}" for b in self.space[layer].span()
                 )
             yield tuple(ids[h] for h in self.hierarchy)
+
+
+TEST_DATASET_BLUEPRINTS = {
+    "full": TestDatasetBlueprint(  # dataset name
+        space=TestDataSpace,
+        hierarchy=["a", "b", "c", "d"],
+        dim_lengths=[2, 3, 4, 5],
+        entries=[
+            FileSetEntryBlueprint(
+                path="file1", datatype=PlainText, filenames=["file1.txt"]
+            ),
+            FileSetEntryBlueprint(
+                path="file2", datatype=MyFormatGz, filenames=["file2.my.gz"]
+            ),
+            FileSetEntryBlueprint(path="dir1", datatype=Directory, filenames=["dir1"]),
+            FieldEntryBlueprint(
+                path="textfield",
+                row_frequency="abcd",
+                datatype=TextField,
+                value="sample-text",
+            ),  # Derivatives to insert
+            FieldEntryBlueprint(
+                path="booleanfield",
+                row_frequency="c",
+                datatype=Boolean,
+                value="no",
+                expected_value=False,
+            ),  # Derivatives to insert
+        ],
+        derivatives=[
+            FileSetEntryBlueprint(
+                path="deriv1",
+                row_frequency="abcd",
+                datatype=PlainText,
+                filenames=["file1.txt"],
+            ),  # Derivatives to insert
+            FileSetEntryBlueprint(
+                path="deriv2",
+                row_frequency="c",
+                datatype=Directory,
+                filenames=["dir"],
+            ),
+            FileSetEntryBlueprint(
+                path="deriv3",
+                row_frequency="bd",
+                datatype=PlainText,
+                filenames=["file1.txt"],
+            ),
+            FieldEntryBlueprint(
+                path="integerfield",
+                row_frequency="c",
+                datatype=Integer,
+                value=99,
+            ),
+            FieldEntryBlueprint(
+                path="decimalfield",
+                row_frequency="bd",
+                datatype=Decimal,
+                value="33.3333",
+                expected_value=decimal.Decimal("33.3333"),
+            ),
+            FieldEntryBlueprint(
+                path="arrayfield",
+                row_frequency="bd",
+                datatype=Array[Integer],
+                value=[1, 2, 3, 4, 5],
+            ),
+        ],
+    ),
+    "one_layer": TestDatasetBlueprint(
+        space=TestDataSpace,
+        hierarchy=["abcd"],
+        dim_lengths=[1, 1, 1, 5],
+        entries=[
+            FileSetEntryBlueprint(
+                path="file1",
+                datatype=MyFormatGzX,
+                filenames=["file1.my.gz", "file1.json"],
+                alternative_datatypes=[MyFormatGz, Json],
+            ),
+            FileSetEntryBlueprint(
+                path="file2",
+                datatype=MyFormatX,
+                filenames=["file2.my", "file2.json"],
+                alternative_datatypes=[MyFormat, Json],
+            ),
+        ],
+        derivatives=[
+            FileSetEntryBlueprint(
+                path="deriv1",
+                row_frequency="abcd",
+                datatype=Json,
+                filenames=["file1.json"],
+            ),
+            FileSetEntryBlueprint(
+                path="deriv2",
+                row_frequency="bc",
+                datatype=Xyz,
+                filenames=["file1.x", "file1.y", "file1.z"],
+            ),
+            FileSetEntryBlueprint(
+                path="deriv3",
+                row_frequency="__",
+                datatype=YourFormat,
+                filenames=["file1.yr"],
+            ),
+        ],
+    ),
+    "skip_single": TestDatasetBlueprint(
+        space=TestDataSpace,
+        hierarchy=["a", "bc", "d"],
+        dim_lengths=[2, 1, 2, 3],
+        entries=[
+            FileSetEntryBlueprint(
+                path="doubledir1", datatype=Directory, filenames=["doubledir1"]
+            ),
+            FileSetEntryBlueprint(
+                path="doubledir2", datatype=Directory, filenames=["doubledir2"]
+            ),
+        ],
+        derivatives=[
+            FileSetEntryBlueprint(
+                path="deriv1",
+                row_frequency="ad",
+                datatype=Json,
+                filenames=["file1.json"],
+            )
+        ],
+    ),
+    "skip_with_inference": TestDatasetBlueprint(
+        space=TestDataSpace,
+        hierarchy=["bc", "ad"],
+        dim_lengths=[2, 3, 2, 4],
+        id_composition={
+            "bc": r"b(?P<b>\d+)c(?P<c>\d+)",
+            "ad": r"a(?P<a>\d+)d(?P<d>\d+)",
+        },
+        entries=[
+            FileSetEntryBlueprint(
+                path="file1",
+                datatype=ImageWithHeader,
+                filenames=["file1.hdr", "file1.img"],
+            ),
+            FileSetEntryBlueprint(
+                path="file2", datatype=YourFormat, filenames=["file2.yr"]
+            ),
+        ],
+    ),
+    "redundant": TestDatasetBlueprint(
+        space=TestDataSpace,
+        hierarchy=[
+            "abc",
+            "abcd",
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        dim_lengths=[3, 4, 5, 6],
+        id_composition={
+            "abc": r"a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)",
+            "abcd": r"a\d+b\d+c\d+d(?P<d>\d+)",
+        },
+        entries=[
+            FileSetEntryBlueprint(
+                path="doubledir", datatype=Directory, filenames=["doubledir"]
+            ),
+            FileSetEntryBlueprint(
+                path="file1", datatype=Xyz, filenames=["file1.x", "file1.y", "file1.z"]
+            ),
+        ],
+        derivatives=[
+            FileSetEntryBlueprint(
+                path="deriv1",
+                row_frequency="d",
+                datatype=Json,
+                filenames=["file1.json"],
+            )
+        ],
+    ),
+    "concatenate_test": TestDatasetBlueprint(
+        space=TestDataSpace,
+        hierarchy=[
+            "abcd"
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        dim_lengths=[1, 1, 1, 2],
+        entries=[
+            FileSetEntryBlueprint(
+                path="file1", datatype=PlainText, filenames=["file1.txt"]
+            ),
+            FileSetEntryBlueprint(
+                path="file2", datatype=PlainText, filenames=["file2.txt"]
+            ),
+        ],
+    ),
+    "concatenate_zip_test": TestDatasetBlueprint(
+        space=TestDataSpace,
+        hierarchy=[
+            "abcd"
+        ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
+        dim_lengths=[1, 1, 1, 1],
+        entries=[
+            FileSetEntryBlueprint(path="file1", datatype=Zip, filenames=["file1.zip"]),
+            FileSetEntryBlueprint(path="file2", datatype=Zip, filenames=["file2.zip"]),
+        ],
+    ),
+}
+
+
+GOOD_DATASETS = ["full", "one_layer", "skip_single", "skip_with_inference", "redundant"]
+
+
+EXTENSION_DATASET_BLUEPRINTS = {
+    "complete": TestDatasetBlueprint(  # dataset name
+        space=TestDataSpace,
+        hierarchy=["a", "b", "c", "d"],
+        dim_lengths=[2, 2, 2, 2],
+        entries=[
+            FileSetEntryBlueprint(
+                path="file1", datatype=PlainText, filenames=["file.txt"]
+            ),
+            FileSetEntryBlueprint(
+                path="file2", datatype=MyFormatGz, filenames=["file.my.gz"]
+            ),
+            FileSetEntryBlueprint(
+                path="file3",
+                datatype=MyFormatGzX,
+                filenames=["file.my.gz", "file.json"],
+            ),
+            FileSetEntryBlueprint(path="dir1", datatype=Directory, filenames=["dir1"]),
+            FieldEntryBlueprint(
+                path="textfield",
+                row_frequency="abcd",
+                datatype=TextField,
+                value="sample-text",
+            ),  # Derivatives to insert
+            FieldEntryBlueprint(
+                path="booleanfield",
+                row_frequency="c",
+                datatype=Boolean,
+                value="no",
+                expected_value=False,
+            ),  # Derivatives to insert
+        ],
+        derivatives=[
+            FileSetEntryBlueprint(
+                path="deriv1",
+                row_frequency="abcd",
+                datatype=PlainText,
+                filenames=["file1.txt"],
+            ),  # Derivatives to insert
+            FileSetEntryBlueprint(
+                path="deriv2",
+                row_frequency="c",
+                datatype=Directory,
+                filenames=["dir"],
+            ),
+            FileSetEntryBlueprint(
+                path="deriv3",
+                row_frequency="bd",
+                datatype=PlainText,
+                filenames=["file1.txt"],
+            ),
+            FieldEntryBlueprint(
+                path="integerfield",
+                row_frequency="c",
+                datatype=Integer,
+                value=99,
+            ),
+            FieldEntryBlueprint(
+                path="decimalfield",
+                row_frequency="bd",
+                datatype=Decimal,
+                value="33.3333",
+                expected_value=decimal.Decimal("33.3333"),
+            ),
+            FieldEntryBlueprint(
+                path="arrayfield",
+                row_frequency="bd",
+                datatype=Array[Integer],
+                value=[1, 2, 3, 4, 5],
+            ),
+        ],
+    ),
+}
+
+SIMPLE_DATASET = TestDatasetBlueprint(  # dataset name
+    space=TestDataSpace,
+    hierarchy=["abcd"],
+    dim_lengths=[2, 2, 2, 2],
+    entries=[
+        FileSetEntryBlueprint(path="file1", datatype=PlainText, filenames=["file.txt"]),
+        FieldEntryBlueprint(path="field1", datatype=TextField, value="a field"),
+    ],
+)

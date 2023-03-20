@@ -65,6 +65,10 @@ class DataSpace(Enum):
     def axes(cls):
         return cls.leaf().span()
 
+    @classproperty
+    def ndim(self):
+        return len(self.axes)
+
     def span(self):
         """Returns the basis dimensions in the data tree that the given
         enum-member projects into.
@@ -136,7 +140,7 @@ class DataSpace(Enum):
 
     @classmethod
     def union(cls, freqs: ty.Sequence[Enum]):
-        "Returns the union between data row_frequency values"
+        "Returns the union between data frequency values"
         union = cls(0)
         for f in freqs:
             union |= f
@@ -147,14 +151,14 @@ class DataSpace(Enum):
         return max(cls)
 
     def is_parent(self, child, if_match=False):
-        """Checks to see whether the current row_frequency is a "parent" of the
-        other data row_frequency, i.e. all the base row_frequency of self appear in
+        """Checks to see whether the current frequency is a "parent" of the
+        other data frequency, i.e. all the base row_frequency of self appear in
         the "child".
 
         Parameters
         ----------
         child : DataSpace
-            The data row_frequency to check parent/child relationship with
+            The data frequency to check parent/child relationship with
         if_match : bool
             Treat matching frequencies as "parents" of each other
 
