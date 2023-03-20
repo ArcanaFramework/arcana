@@ -222,7 +222,10 @@ class TestDatasetBlueprint:
                 metadata=metadata,
                 **kwargs,
             )
-            logger.debug("Adding entries to test dataset")
+            logger.debug(
+                "Adding entries to test dataset for: %s",
+                dataset.rows(frequency=max(self.space)),
+            )
             for row in dataset.rows(frequency=max(self.space)):
                 self.make_entries(row, source_data=source_data)
             dataset.metadata.type = orig_type
@@ -344,6 +347,7 @@ class TestDatasetBlueprint:
         **kwargs
             passed directly through to the EntryBlueprint.create_item method
         """
+        logger.debug("making entries for %s: %s", row, self.entries)
         for entry_bp in self.entries:
             entry_bp.make_entry(row, **kwargs)
 
