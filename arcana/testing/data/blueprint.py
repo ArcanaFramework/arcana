@@ -204,7 +204,6 @@ class TestDatasetBlueprint:
         **kwargs
             passed through to create_dataset
         """
-        assert False
         if metadata is None:
             metadata = {}
         orig_type = metadata.get("type", "test")
