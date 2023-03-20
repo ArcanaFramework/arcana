@@ -13,7 +13,7 @@ Arcana
    :target: https://pypi.python.org/pypi/arcana/
    :alt: Latest Version
 .. image:: https://github.com/ArcanaFramework/arcana/actions/workflows/docs.yml/badge.svg
-   :target: http://https://arcanaframework.github.io/arcana
+   :target: https://arcanaframework.github.io/arcana
    :alt: Docs
 
 Abstraction of Repository-Centric ANAlysis (Arcana_) is Python framework
