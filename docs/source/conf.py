@@ -17,7 +17,7 @@ import datetime
 # import sphinx_rtd_theme
 
 __version__ = "0.9.8"
-__authors__ = ["Thomas G. Close <tom.g.close@gmail.com>"]
+__authors__ = [("Thomas G. Close", "tom.g.close@gmail.com")]
 
 # from arcana import *
 
