@@ -12,12 +12,16 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 from __future__ import print_function
+import sys
+import os.path as op
 import datetime
 
 # import sphinx_rtd_theme
 
-__version__ = "0.9.8"
-__authors__ = [("Thomas G. Close", "tom.g.close@gmail.com")]
+package_path = op.abspath(op.join(op.dirname(op.abspath(__file__)), "..", ".."))
+
+sys.path.insert(0, package_path)
+from arcana.core import __version__, __authors__  # noqa
 
 # from arcana import *
 
@@ -34,7 +38,20 @@ __authors__ = [("Thomas G. Close", "tom.g.close@gmail.com")]
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = []
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx.ext.doctest",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.todo",
+    "sphinx.ext.coverage",
+    "sphinx.ext.mathjax",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.autosectionlabel",
+    "sphinxarg.ext",
+    "sphinx_click.ext",
+    "numpydoc",
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -115,21 +132,21 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-# html_theme = "furo"
+html_theme = "furo"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-# html_theme_options = {
-#     "light_css_variables": {
-#         "color-brand-primary": "#7b112d",
-#         "color-brand-content": "#7b112d",
-#     },
-#     "dark_css_variables": {
-#         "color-brand-primary": "#b94e5e",
-#         "color-brand-content": "#b94e5e",
-#     },
-# }
+html_theme_options = {
+    "light_css_variables": {
+        "color-brand-primary": "#7b112d",
+        "color-brand-content": "#7b112d",
+    },
+    "dark_css_variables": {
+        "color-brand-primary": "#b94e5e",
+        "color-brand-content": "#b94e5e",
+    },
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
