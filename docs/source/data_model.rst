@@ -214,7 +214,7 @@ Items
 Atomic items within a dataset are encapsulated by :class:`DataType` objects.
 There are three types of data items:
 
-* :class:`.FileGroup` (single files, files + header/side-cars or directories)
+* :class:`.FileSet` (single files, files + header/side-cars or directories)
 * :class:`.Field` (int, float, str or bool)
 * :class:`.ArrayField` (an array of int, float, str or bool)
 
@@ -224,7 +224,7 @@ are accessed they need to be cached locally with :meth:`.DataType.get`.
 Newly created and modified data items are placed into the store with
 :meth:`.DataType.put`.
 
-:class:`.FileGroup` is typically subclassed to specify the datatype of the
+:class:`.FileSet` is typically subclassed to specify the datatype of the
 files/directories in the group. For example, there are a number common file
 formats implemented in :mod:`arcana.dirtree.data`, including
 
