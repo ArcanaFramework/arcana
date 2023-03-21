@@ -56,11 +56,13 @@ class EntryBlueprint(metaclass=ABCMeta):
         if self.ids and row.id not in self.ids:
             return
         item = self.make_item(**kwargs)
+        logger.debug("Creating entry at %s in %s", self.path, row)
         entry = row.dataset.store.create_entry(
             path=self.path,
             datatype=self.datatype,
             row=row,
         )
+        logger.debug("Putting %s at %s", item, entry)
         row.dataset.store.put(item, entry)
 
 
@@ -143,7 +145,9 @@ class FileSetEntryBlueprint(EntryBlueprint):
                         zfile.write(next_path)
                     (tmp_dir / next_path).unlink()
             out_paths.append(out_path)
-        return self.datatype(out_paths)
+        item = self.datatype(out_paths)
+        logger.debug("Created %s item", item)
+        return item
 
 
 @attrs.define(kw_only=True)
@@ -205,6 +209,9 @@ class TestDatasetBlueprint:
         orig_type = metadata.get("type", "test")
         metadata["type"] = "in-construction"
         with store.connection:
+            logger.debug(
+                "Creating test dataset in %s at %s from %s", store, dataset_id, self
+            )
             dataset = store.create_dataset(
                 id=dataset_id,
                 leaves=self.all_ids,
@@ -215,11 +222,17 @@ class TestDatasetBlueprint:
                 metadata=metadata,
                 **kwargs,
             )
+        with store.connection:
+            logger.debug(
+                "Adding entries to test dataset for: %s",
+                dataset.rows(frequency=max(self.space)),
+            )
             for row in dataset.rows(frequency=max(self.space)):
                 self.make_entries(row, source_data=source_data)
             dataset.metadata.type = orig_type
             dataset.save()
         dataset.__annotations__["blueprint"] = self
+        logger.debug("Successfully created test dataset at %s in %s", dataset_id, store)
         return dataset
 
     def translate_to(self, data_store: DataStore) -> "TestDatasetBlueprint":
@@ -335,6 +348,7 @@ class TestDatasetBlueprint:
         **kwargs
             passed directly through to the EntryBlueprint.create_item method
         """
+        logger.debug("making entries for %s: %s", row, self.entries)
         for entry_bp in self.entries:
             entry_bp.make_entry(row, **kwargs)
 
