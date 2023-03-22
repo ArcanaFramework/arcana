@@ -294,13 +294,20 @@ the column.
 DATASET_LOCATOR of the dataset including store and dataset name (where
     applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 
-NAME of the column to check
+COLUMN_NAMES for the columns to check, defaults to all source columns
 """,
 )
 @click.argument("dataset_locator")
-@click.argument("name")
-def missing_items(name):
-    raise NotImplementedError
+@click.argument("column_names", nargs=-1)
+def missing_items(dataset_locator, column_names):
+    dataset = Dataset.load(dataset_locator)
+    if not column_names:
+        column_names = [n for n, c in dataset.columns.items() if not c.is_sink]
+    for column_name in column_names:
+        column = dataset.columns[column_name]
+        empty_cells = [c for c in column.cells() if c.is_empty]
+        if empty_cells:
+            click.echo(f"'{column.name}': " + ", ".join(c.row.id for c in empty_cells))
 
 
 @dataset.command(
