@@ -322,8 +322,14 @@ class Dataset:
         return locator
 
     def add_source(
-        self, name, datatype, path=None, row_frequency=None, overwrite=False, **kwargs
-    ):
+        self,
+        name: str,
+        datatype: type,
+        path: str = None,
+        row_frequency: str = None,
+        overwrite: bool = False,
+        **kwargs,
+    ) -> DataSource:
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
 
@@ -350,15 +356,23 @@ class Dataset:
         source = DataSource(
             name=name,
             datatype=datatype,
-            row_frequency=row_frequency,
             path=path,
+            row_frequency=row_frequency,
             dataset=self,
             **kwargs,
         )
-        self._add_spec(name, source, overwrite)
+        self._add_column(name, source, overwrite)
         return source
 
-    def add_sink(self, name, datatype, row_frequency=None, overwrite=False, **kwargs):
+    def add_sink(
+        self,
+        name: str,
+        datatype: type,
+        path: str,
+        row_frequency: str = None,
+        overwrite: bool = False,
+        **kwargs,
+    ) -> DataSink:
         """Specify a data source in the dataset, which can then be referenced
         when connecting workflow inputs.
 
@@ -370,26 +384,28 @@ class Dataset:
         datatype : type
             The file-format (for file-sets) or datatype (for fields)
             that the sink will be stored in within the dataset
-        row_frequency : DataSpace, default self.leaf_freq
-            The row_frequency of the sink within the dataset
-        overwrite : bool
-            Whether to overwrite an existing sink
         path : str, optional
             Specify a particular for the sink within the dataset, defaults to the column
             name within the dataset derivatives directory of the store
+        row_frequency : str, optional
+            The row_frequency of the sink within the dataset, by default the leaf
+            frequency of the data tree
+        overwrite : bool
+            Whether to overwrite an existing sink
         """
         row_frequency = self.parse_frequency(row_frequency)
         sink = DataSink(
             name=name,
             datatype=datatype,
+            path=path,
             row_frequency=row_frequency,
             dataset=self,
             **kwargs,
         )
-        self._add_spec(name, sink, overwrite)
+        self._add_column(name, sink, overwrite)
         return sink
 
-    def _add_spec(self, name, spec, overwrite):
+    def _add_column(self, name: str, spec, overwrite):
         if name in self.columns:
             if overwrite:
                 logger.info(
@@ -498,7 +514,7 @@ class Dataset:
                 rows = (n for n in rows if n.id in set(ids))
             return rows
 
-    def row_ids(self, frequency: str):
+    def row_ids(self, frequency: str = None):
         """Return all the IDs in the dataset for a given row_frequency
 
         Parameters
@@ -511,10 +527,13 @@ class Dataset:
         Sequence[str]
             The IDs of the rows
         """
-        with self.tree:
+        if frequency is None:
+            frequency = max(self.space)  # "leaf" nodes of the data tree
+        else:
             frequency = self.parse_frequency(frequency)
-            if frequency == self.root_freq:
-                return [None]
+        if frequency == self.root_freq:
+            return [None]
+        with self.tree:
             return self.root.children[frequency].keys()
 
     def __getitem__(self, name):

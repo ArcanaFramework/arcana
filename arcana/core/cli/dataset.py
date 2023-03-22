@@ -20,7 +20,7 @@ def dataset():
 dataset. Where possible, the definition file is saved inside the dataset for
 use by multiple users, if not possible it is stored in the ~/.arcana directory.
 
-ID_STR string containing the nick-name of the store, the ID of the dataset
+DATASET_LOCATOR string containing the nick-name of the store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
 format <store-nickname>//<dataset-id>[@<dataset-name>]
 
@@ -30,7 +30,7 @@ store types this is fixed (e.g. XNAT-> subject > session) but for more flexible
 can be arbitrarily specified. dimensions"""
     ),
 )
-@click.argument("id_str")
+@click.argument("dataset_locator")
 @click.argument("hierarchy", nargs=-1)
 @click.option(
     "--space",
@@ -102,9 +102,9 @@ groups corresponding to the inferred IDs
 
 """,
 )
-def define(id_str, hierarchy, include, exclude, space, id_composition):
+def define(dataset_locator, hierarchy, include, exclude, space, id_composition):
 
-    store_name, id, name = Dataset.parse_id_str(id_str)
+    store_name, id, name = Dataset.parse_id_str(dataset_locator)
 
     if not hierarchy:
         hierarchy = None
@@ -127,32 +127,12 @@ def define(id_str, hierarchy, include, exclude, space, id_composition):
 
 
 @dataset.command(
-    help="""
-Renames a data store saved in the stores.yaml to a new name
-
-dataset_path
-    The current name of the store
-new_name
-    The new name for the store"""
-)
-@click.argument("dataset_path")
-@click.argument("new_name")
-def copy(dataset_path, new_name):
-    dataset = Dataset.load(dataset_path)
-    dataset.save(new_name)
-
-
-# def optional_args(names, args):
-#     kwargs = {}
-
-
-@dataset.command(
     name="add-source",
     help="""Adds a source column to a dataset. A source column
 selects comparable items along a dimension of the dataset to serve as
 an input to pipelines and analyses.
 
-DATASET_PATH: The path to the dataset including store and dataset name
+DATASET_LOCATOR The path to the dataset including store and dataset name
 (where applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 
 NAME: The name the source will be referenced by
@@ -162,7 +142,7 @@ field array (list[int|float|str|bool]) or
 "file-set" (file, file+header/side-cars or directory)
 """,
 )
-@click.argument("dataset_path")
+@click.argument("dataset_locator")
 @click.argument("name")
 @click.argument("datatype")
 @click.option(
@@ -222,9 +202,17 @@ field array (list[int|float|str|bool]) or
     ),
 )
 def add_source(
-    dataset_path, name, datatype, row_frequency, path, order, quality, is_regex, header
+    dataset_locator,
+    name,
+    datatype,
+    row_frequency,
+    path,
+    order,
+    quality,
+    is_regex,
+    header,
 ):
-    dataset = Dataset.load(dataset_path)
+    dataset = Dataset.load(dataset_locator)
     dataset.add_source(
         name=name,
         path=path,
@@ -256,7 +244,7 @@ datatype
     (file, file+header/side-cars or directory)
 """,
 )
-@click.argument("dataset_path")
+@click.argument("dataset_locator")
 @click.argument("name")
 @click.argument("datatype")
 @click.option(
@@ -286,8 +274,8 @@ datatype
         "'arcana derive menu'"
     ),
 )
-def add_sink(dataset_path, name, datatype, row_frequency, path, salience):
-    dataset = Dataset.load(dataset_path)
+def add_sink(dataset_locator, name, datatype, row_frequency, path, salience):
+    dataset = Dataset.load(dataset_locator)
     dataset.add_sink(
         name=name,
         path=path,
@@ -303,16 +291,54 @@ def add_sink(dataset_path, name, datatype, row_frequency, path, salience):
     help="""Finds the IDs of rows that are missing a valid entry for an item in
 the column.
 
-Arguments
----------
-dataset_path
-    The path to the dataset including store and dataset name (where
+DATASET_LOCATOR of the dataset including store and dataset name (where
     applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
-name
-    The name of the column to check
+
+NAME of the column to check
 """,
 )
-@click.argument("dataset_path")
+@click.argument("dataset_locator")
 @click.argument("name")
 def missing_items(name):
     raise NotImplementedError
+
+
+@dataset.command(
+    help="""
+Exports a dataset into another data store
+
+DATASET_LOCATOR of the dataset to copy
+
+STORE_NICKNAME of the store to import the dataset into
+
+ID for the dataset in the store it is being imported into
+
+COLUMN_NAMES
+"""
+)
+@click.argument("dataset_locator")
+@click.argument("store_nickname")
+@click.argument("imported_id")
+@click.argument("column_names", nargs=-1)
+@click.option("--id-composition", nargs=2)
+def export(dataset_locator, store_nickname, imported_id, column_names):
+    dataset = Dataset.load(dataset_locator)
+    store = DataStore.load(store_nickname)
+    store.import_dataset(imported_id, dataset, column_names)
+
+
+@dataset.command(
+    help="""
+Creates a copy of a dataset definition under a new name (so it can be modified, e.g.
+for different analysis)
+
+DATASET_LOCATOR of the dataset to copy
+
+NEW_NAME for the dataset
+"""
+)
+@click.argument("dataset_locator")
+@click.argument("new_name")
+def copy(dataset_locator, new_name):
+    dataset = Dataset.load(dataset_locator)
+    dataset.save(new_name)
