@@ -294,7 +294,7 @@ the column.
 DATASET_LOCATOR of the dataset including store and dataset name (where
     applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 
-COLUMN_NAMES for the columns to check, defaults to all source columns
+COLUMN_NAMES, [COLUMN_NAMES, ...] for the columns to check, defaults to all source columns
 """,
 )
 @click.argument("dataset_locator")
@@ -320,7 +320,7 @@ STORE_NICKNAME of the destination store
 
 ID for the dataset in the destination store
 
-COLUMN_NAMES to be included in the export, by default all will be included
+COLUMN_NAMES, [COLUMN_NAMES, ...] to be included in the export, by default all will be included
 """
 )
 @click.argument("dataset_locator")
