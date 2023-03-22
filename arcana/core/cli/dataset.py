@@ -305,26 +305,33 @@ def missing_items(name):
 
 @dataset.command(
     help="""
-Exports a dataset into another data store
+Exports a dataset from one data store into another
 
 DATASET_LOCATOR of the dataset to copy
 
-STORE_NICKNAME of the store to import the dataset into
+STORE_NICKNAME of the destination store
 
-ID for the dataset in the store it is being imported into
+ID for the dataset in the destination store
 
-COLUMN_NAMES
+COLUMN_NAMES to be included in the export, by default all will be included
 """
 )
 @click.argument("dataset_locator")
 @click.argument("store_nickname")
 @click.argument("imported_id")
 @click.argument("column_names", nargs=-1)
-@click.option("--id-composition", nargs=2)
-def export(dataset_locator, store_nickname, imported_id, column_names):
+@click.option(
+    "--id-composition",
+    nargs=2,
+    metavar="<id> <regex>",
+    help="mapping of ID from hierarchy of the source dataset to that of the destination",
+)
+def export(dataset_locator, store_nickname, id, column_names, id_composition):
     dataset = Dataset.load(dataset_locator)
     store = DataStore.load(store_nickname)
-    store.import_dataset(imported_id, dataset, column_names)
+    store.import_dataset(
+        id=id, dataset=dataset, column_names=column_names, id_composition=id_composition
+    )
 
 
 @dataset.command(
