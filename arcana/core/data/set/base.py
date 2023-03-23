@@ -76,23 +76,8 @@ class Dataset:
         The space of the dataset. See https://arcana.readthedocs.io/en/latest/data_model.html#spaces)
         for a description
     id_patterns : dict[str, str]
-        Not all IDs will appear explicitly within the hierarchy of the data
-        tree, and some will need to be inferred by extracting components of
-        more specific labels.
-
-        For example, given a set of subject IDs that combination of the ID of
-        the group that they belong to and the member ID within that group
-        (i.e. matched test & control would have same member ID)
-
-            CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
-
-        the group ID can be extracted by providing a dictionary of the IDs to
-        be inferred and the patterns to derive them from.
-
-            id_patterns = {
-                'group': r"subject:id:([A-Z]+).*',
-                'member': r"subject:id:.*([0-9]+)',
-            }
+        Patterns for inferring IDs of rows not explicitly present in the hierarchy of
+        the data tree. See ``DataStore.infer_ids()`` for syntax
     include : list[tuple[DataSpace, str or list[str]]]
         The IDs to be included in the dataset per row_frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
@@ -773,8 +758,10 @@ class Dataset:
         )
         return File(column.match_entry(dataset.root).item)
 
-    def infer_ids(self, ids: dict[str, str]):
-        return self.store.infer_ids(ids=ids, id_patterns=self.id_patterns)
+    def infer_ids(self, ids: dict[str, str], metadata: dict[str, dict[str, str]]):
+        return self.store.infer_ids(
+            ids=ids, id_patterns=self.id_patterns, metadata=metadata
+        )
 
 
 @attrs.define

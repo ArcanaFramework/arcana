@@ -9,7 +9,6 @@ from arcana.core.data.space import DataSpace
 from arcana.core.exceptions import (
     ArcanaNameError,
     ArcanaDataTreeConstructionError,
-    ArcanaUsageError,
 )
 from .row import DataRow
 
@@ -42,7 +41,7 @@ class DataTree(NestedContext):
     def hierarchy(self):
         return self.dataset.hierarchy
 
-    def add_leaf(self, tree_path, additional_ids=None):
+    def add_leaf(self, tree_path, metadata: dict[str, dict[str, str]] = None) -> bool:
         """Creates a new row at a the path down the tree of the dataset as
         well as all "parent" rows upstream in the data tree
 
@@ -51,9 +50,16 @@ class DataTree(NestedContext):
         tree_path : list[str]
             The sequence of labels for each layer in the hierarchy of the
             dataset leading to the current row.
-        additional_ids : dict[DataSpace, str]
-            IDs for frequencies not in the dataset hierarchy that are to be
-            set explicitly
+        metadata : dict[str, dict[str, str]]
+            metadata passed to ``DataStore.infer_ids()`` used to infer IDs not directly
+            represented in the hierarchy of the data tree.
+
+        Returns
+        -------
+        bool
+            true if the leaf was added to the dataset, false if it was excluded by
+            the exclusion criteria provided to the dataset (see ``Dataset.include``
+            and ``Dataset.exclude``)
 
         Raises
         ------
@@ -66,8 +72,8 @@ class DataTree(NestedContext):
         """
         if self.root is None:
             self._set_root()
-        if additional_ids is None:
-            additional_ids = {}
+        if metadata is None:
+            metadata = {}
         # Get basis frequencies covered at the given depth of the
         if len(tree_path) != len(self.dataset.hierarchy):
             raise ArcanaDataTreeConstructionError(
@@ -79,7 +85,7 @@ class DataTree(NestedContext):
         # ids = {f: None for f in self.dataset.space}
         ids = dict(zip(self.dataset.hierarchy, tree_path))
         # Infer IDs and add them to those explicitly in the hierarchy
-        ids.update(self.dataset.infer_ids(ids))
+        ids.update(self.dataset.infer_ids(ids, metadata=metadata))
         # Calculate the combined freqs after each layer is added
         row_frequency = self.dataset.space(0)
         for layer_str in self.dataset.hierarchy:
@@ -119,14 +125,14 @@ class DataTree(NestedContext):
                 ids[layer_span[-1]] = ids[layer_str]
             row_frequency |= layer_freq
         assert row_frequency == max(self.dataset.space)
-        # Set or override any inferred IDs within the ones that have been
-        # explicitly provided
-        clashing_ids = set(ids) & set(additional_ids)
-        if clashing_ids:
-            raise ArcanaUsageError(
-                f"Additional IDs clash with those inferred: {clashing_ids}"
-            )
-        ids.update(additional_ids)
+        # # Set or override any inferred IDs within the ones that have been
+        # # explicitly provided
+        # clashing_ids = set(ids) & set(additional_ids)
+        # if clashing_ids:
+        #     raise ArcanaUsageError(
+        #         f"Additional IDs clash with those inferred: {clashing_ids}"
+        #     )
+        # ids.update(additional_ids)
         # Create composite IDs for non-basis frequencies if they are not
         # explicitly in the layer dimensions
         for freq in set(self.dataset.space) - set(row_frequency.span()):
@@ -164,6 +170,7 @@ class DataTree(NestedContext):
             return self._add_row(
                 {f: ids.get(str(f)) for f in self.dataset.space}, row_frequency
             )
+        return add_row
 
     def _add_row(self, ids: dict[DataSpace, str], row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows
