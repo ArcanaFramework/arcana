@@ -87,7 +87,7 @@ class DataTree(NestedContext):
         # Infer IDs and add them to those explicitly in the hierarchy
         ids.update(self.dataset.infer_ids(ids, metadata=metadata))
         # Calculate the combined freqs after each layer is added
-        row_frequency = self.dataset.space(0)
+        cummulative_freq = self.dataset.space(0)
         for layer_str in self.dataset.hierarchy:
             layer_freq = self.dataset.space[layer_str]
             # If all the axes introduced by the layer not present in parent layers
@@ -117,14 +117,22 @@ class DataTree(NestedContext):
             #           'timepoint': r'session:id:.*MR(0-9+)$'
             #       }
             layer_span = [str(f) for f in layer_freq.span()]
-            if not (layer_freq & row_frequency) and not any(
+            if not (layer_freq & cummulative_freq) and not any(
                 f in ids for f in layer_span
             ):
                 for freq in layer_span[:-1]:
                     ids[freq] = None
                 ids[layer_span[-1]] = ids[layer_str]
-            row_frequency |= layer_freq
-        assert row_frequency == max(self.dataset.space)
+            cummulative_freq |= layer_freq
+        assert cummulative_freq == self.dataset.space.leaf()
+        missing_axes = set(str(f) for f in self.dataset.space.axes()) - set(ids)
+        if missing_axes:
+            raise ArcanaDataTreeConstructionError(
+                f"Leaf node at {tree_path} is missing explicit IDs for the following axes, '"
+                + "', '".join(missing_axes)
+                + "', please set 'id-patterns' on the dataset to extract the missing "
+                "axis IDs from composite IDs or row metadata"
+            )
         # # Set or override any inferred IDs within the ones that have been
         # # explicitly provided
         # clashing_ids = set(ids) & set(additional_ids)
@@ -135,7 +143,7 @@ class DataTree(NestedContext):
         # ids.update(additional_ids)
         # Create composite IDs for non-basis frequencies if they are not
         # explicitly in the layer dimensions
-        for freq in set(self.dataset.space) - set(row_frequency.span()):
+        for freq in set(self.dataset.space) - set(self.dataset.space.axes()):
             freq_str = str(freq)
             if freq_str not in ids:
                 id = tuple(ids[str(b)] for b in freq.span() if ids[str(b)] is not None)
@@ -168,7 +176,8 @@ class DataTree(NestedContext):
                 )
         if add_row:
             return self._add_row(
-                {f: ids.get(str(f)) for f in self.dataset.space}, row_frequency
+                ids={f: ids.get(str(f)) for f in self.dataset.space},
+                row_frequency=self.dataset.space.leaf(),
             )
         return add_row
 

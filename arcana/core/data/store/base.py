@@ -17,7 +17,12 @@ from arcana.core.utils.misc import (
     NestedContext,
 )
 from arcana.core.utils.packaging import list_subclasses
-from arcana.core.exceptions import ArcanaUsageError, ArcanaNameError, ArcanaError
+from arcana.core.exceptions import (
+    ArcanaUsageError,
+    ArcanaNameError,
+    ArcanaError,
+    ArcanaDataTreeConstructionError,
+)
 
 
 DS = ty.TypeVar("DS", bound="DataStore")
@@ -228,7 +233,14 @@ class DataStore(metaclass=ABCMeta):
             Dataset,
         )  # avoid circular imports it is imported here rather than at the top of the file
 
-        dataset = Dataset(id, store=self, space=space, hierarchy=hierarchy, **kwargs)
+        dataset = Dataset(
+            id,
+            store=self,
+            space=space,
+            hierarchy=hierarchy,
+            id_patterns=id_patterns,
+            **kwargs,
+        )
         return dataset
 
     def save_dataset(self, dataset: Dataset, name: str = ""):
@@ -537,21 +549,22 @@ class DataStore(metaclass=ABCMeta):
                         try:
                             attr = metadata[source_freq][attr_name]
                         except KeyError:
-                            raise ArcanaUsageError(
+                            raise ArcanaDataTreeConstructionError(
                                 f"'{ids[source_freq]}' {source_freq} row doesn't have "
                                 f"the metadata field '{attr_name}'"
                             )
                     if regex:
                         match = re.match(regex, attr)
                         if not match:
-                            raise ArcanaUsageError(
+                            raise ArcanaDataTreeConstructionError(
                                 f"Provided pattern in '{comp}' id-pattern component, doesn't "
                                 f"match '{attr_name}' attribute of '{ids[source_freq]}' "
                                 f"{source_freq} row, {attr}"
                             )
-                        sub = match.groups(1)
-                        if not sub:
-                            raise ArcanaUsageError(
+                        try:
+                            sub = match.group(1)
+                        except IndexError:
+                            raise ArcanaDataTreeConstructionError(
                                 f"Provided pattern in '{comp}' id-pattern component, either "
                                 "didn't contain a regular-expression group or that group "
                                 f"matched an empty string in '{ids[source_freq]}' "

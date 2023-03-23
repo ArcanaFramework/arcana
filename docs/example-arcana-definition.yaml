@@ -1,6 +1,6 @@
 name: no_motion
 sources:
-  t1w:
+  anat/t1w:
     datatype:
       format: medimage/dicom
       classifiers:

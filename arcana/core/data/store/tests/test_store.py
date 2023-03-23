@@ -158,7 +158,7 @@ def test_delayed_download(
     )
     with Pool(2) as p:
         try:
-            no_offset, with_offset = p.map(worker, [0.0, 0.05])
+            no_offset, with_offset = p.map(worker, [0.0, 0.001])
         finally:
             p.close()  # Marks the pool as closed.
             p.join()  # Required to get the concurrency to show up in test coverage

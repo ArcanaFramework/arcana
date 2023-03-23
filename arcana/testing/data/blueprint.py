@@ -498,8 +498,10 @@ TEST_DATASET_BLUEPRINTS = {
         hierarchy=["bc", "ad"],
         dim_lengths=[2, 3, 2, 4],
         id_patterns={
-            "bc": r"b(?P<b>\d+)c(?P<c>\d+)",
-            "ad": r"a(?P<a>\d+)d(?P<d>\d+)",
+            "a": r"ad::a(\d+)d\d+",
+            "b": r"bc::b(\d+)c\d+",
+            "c": r"bc::b\d+c(\d+)",
+            "d": r"ad::a\d+d(\d+)",
         },
         entries=[
             FileSetEntryBlueprint(
@@ -520,8 +522,10 @@ TEST_DATASET_BLUEPRINTS = {
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         dim_lengths=[3, 4, 5, 6],
         id_patterns={
-            "abc": r"a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)",
-            "abcd": r"a\d+b\d+c\d+d(?P<d>\d+)",
+            "a": r"abc::a(\d+)b\d+c\d+",
+            "b": r"abc::a\d+b(\d+)c\d+",
+            "c": r"abc::a\d+b\d+c(\d+)",
+            "d": r"abcd::a\d+b\d+c\d+d(\d+)",
         },
         entries=[
             FileSetEntryBlueprint(
