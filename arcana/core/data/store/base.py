@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import re
 from abc import abstractmethod, ABCMeta
 from pathlib import Path
 import attrs
@@ -283,7 +284,7 @@ class DataStore(metaclass=ABCMeta):
         hierarchy: list[str],
         space: type,
         name: str = None,
-        id_composition: dict[str, str] = None,
+        id_patterns: dict[str, str] = None,
         **kwargs,
     ) -> Dataset:
         """Creates a new dataset with new rows to store data in
@@ -301,7 +302,7 @@ class DataStore(metaclass=ABCMeta):
             hierarchy of the dataset tree
         space : type, optional
             the space of the dataset
-        id_composition : dict[str, str]
+        id_patterns : dict[str, str]
             Not all IDs will appear explicitly within the hierarchy of the data
             tree, and some will need to be inferred by extracting components of
             more specific labels.
@@ -316,7 +317,7 @@ class DataStore(metaclass=ABCMeta):
             containing ID to source the inferred IDs from coupled with a regular
             expression with named groups
 
-                id_composition = {
+                id_patterns = {
                     'subject': r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')
                 }
 
@@ -330,13 +331,13 @@ class DataStore(metaclass=ABCMeta):
             leaves=leaves,
             hierarchy=hierarchy,
             space=space,
-            id_composition=id_composition,
+            id_patterns=id_patterns,
         )
         dataset = self.define_dataset(
             id=id,
             hierarchy=hierarchy,
             space=space,
-            id_composition=id_composition,
+            id_patterns=id_patterns,
             **kwargs,
         )
         if name is not None:
@@ -348,7 +349,7 @@ class DataStore(metaclass=ABCMeta):
         id: str,
         dataset: Dataset,
         column_names: list[str],
-        id_composition: dict[str, str] = None,
+        id_patterns: dict[str, str] = None,
         **kwargs,
     ):
         """Import a dataset from another store, transferring metadata and columns
@@ -362,7 +363,7 @@ class DataStore(metaclass=ABCMeta):
             the dataset to import
         column_names : list[str]
             list of columns to be included in the imported dataset
-        id_composition : dict[str, str]
+        id_patterns : dict[str, str]
             Not all IDs will appear explicitly within the hierarchy of the data
             tree, and some will need to be inferred by extracting components of
             more specific labels.
@@ -377,7 +378,7 @@ class DataStore(metaclass=ABCMeta):
             containing ID to source the inferred IDs from coupled with a regular
             expression with named groups
 
-                id_composition = {
+                id_patterns = {
                     'subject': r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')
                 }
         **kwargs:
@@ -389,7 +390,7 @@ class DataStore(metaclass=ABCMeta):
             space=dataset.space,
             hierarchy=dataset.hierarchy,
             leaves=dataset.row_ids(),
-            id_composition=id_composition,
+            id_patterns=id_patterns,
             metadata=dataset.metadata,
             **kwargs,
         )
@@ -470,6 +471,35 @@ class DataStore(metaclass=ABCMeta):
             config_path = get_config_file_path(cls.CONFIG_NAME)
         with open(config_path, "w") as f:
             yaml.dump(configs, f)
+
+    @classmethod
+    def infer_ids(cls, ids: dict[str, str], id_patterns: dict[str, str]):
+        """Infer IDs from those explicitly provided by using the decomposition patterns
+
+        Parameters
+        ----------
+        ids : dict[str, str]
+            explicitly provided IDs
+        composition : dict[str, str]
+            patterns used to inferred composed IDs
+
+        Return
+        ------
+        inferred_ids : dict[str, str]
+            IDs inferred from the decomposition
+        """
+        inferred_ids = {}
+        if id_patterns is not None:
+            for freq, regex in id_patterns.items():
+                match = re.match(regex, ids[freq])
+                inferred_ids.update(match.groupdict())
+            conflicting = set(ids) & set(inferred_ids)
+            if conflicting:
+                raise ArcanaUsageError(
+                    "Inferred IDs from decomposition conflict with explicitly provided IDs: "
+                    + str(conflicting)
+                )
+        return inferred_ids
 
     ####################
     # Abstract methods #
@@ -646,7 +676,7 @@ class DataStore(metaclass=ABCMeta):
         leaves: list[tuple[str, ...]],
         hierarchy: list[str],
         space: type,
-        id_composition: dict[str, str],
+        id_patterns: dict[str, str],
         **kwargs,
     ):
         """Creates a new empty dataset within in the store. Used in test routines and
@@ -665,7 +695,7 @@ class DataStore(metaclass=ABCMeta):
             the hierarchy of the dataset to be created
         space : type(DataSpace)
             the data space of the dataset
-        id_composition : dict[str, str]
+        id_patterns : dict[str, str]
             Not all IDs will appear explicitly within the hierarchy of the data
             tree, and some will need to be inferred by extracting components of
             more specific labels.
@@ -680,7 +710,7 @@ class DataStore(metaclass=ABCMeta):
             containing ID to source the inferred IDs from coupled with a regular
             expression with named groups
 
-                id_composition = {
+                id_patterns = {
                     'subject': r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')
                 }
         **kwargs

@@ -82,9 +82,9 @@ can be arbitrarily specified. dimensions"""
     ),
 )
 @click.option(
-    "--id-composition",
+    "--id-pattern",
     nargs=2,
-    metavar="<source-id> <composition-regex>",
+    metavar="<row-frequency> <pattern>",
     multiple=True,
     help="""Specifies how IDs of row frequencies that not explicitly
 provided are inferred from the IDs that are. For example, given a set
@@ -95,14 +95,14 @@ CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
 
 the group ID can be extracted by providing the ID to source it from
 (i.e. subject) and a regular expression (in Python regex syntax:
-https://docs.python.org/3/library/re.html) with a named
-groups corresponding to the inferred IDs
+https://docs.python.org/3/library/re.html) with a single group corresponding to
+the inferred IDs
 
---id-inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
+--id-pattern group 'subject:([A-Z]+)[0-9]+' --id-pattern member 'subject:[A-Z]+([0-9]+)'
 
 """,
 )
-def define(dataset_locator, hierarchy, include, exclude, space, id_composition):
+def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
 
     store_name, id, name = Dataset.parse_id_str(dataset_locator)
 
@@ -118,9 +118,9 @@ def define(dataset_locator, hierarchy, include, exclude, space, id_composition):
         id,
         hierarchy=hierarchy,
         space=space,
-        id_composition=dict(id_composition),
-        include=include,
-        exclude=exclude,
+        id_patterns=dict(id_pattern),
+        include=dict(include),
+        exclude=dict(exclude),
     )
 
     dataset.save(name)
@@ -328,16 +328,16 @@ COLUMN_NAMES, [COLUMN_NAMES, ...] to be included in the export, by default all w
 @click.argument("imported_id")
 @click.argument("column_names", nargs=-1)
 @click.option(
-    "--id-composition",
+    "--id-pattern",
     nargs=2,
     metavar="<id> <regex>",
     help="mapping of ID from hierarchy of the source dataset to that of the destination",
 )
-def export(dataset_locator, store_nickname, id, column_names, id_composition):
+def export(dataset_locator, store_nickname, id, column_names, id_patterns):
     dataset = Dataset.load(dataset_locator)
     store = DataStore.load(store_nickname)
     store.import_dataset(
-        id=id, dataset=dataset, column_names=column_names, id_composition=id_composition
+        id=id, dataset=dataset, column_names=column_names, id_patterns=id_patterns
     )
 
 

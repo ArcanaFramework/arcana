@@ -172,7 +172,7 @@ class TestDatasetBlueprint:
     dim_lengths: list[int]  # size of layers a-d respectively
     entries: list[EntryBlueprint] = attrs.field(factory=list)
     derivatives: list[EntryBlueprint] = attrs.field(factory=list)
-    id_composition: dict[str, str] = attrs.field(factory=dict)
+    id_patterns: dict[str, str] = attrs.field(factory=dict)
 
     DEFAULT_NUM_ACCESS_ATTEMPTS = 300
     DEFAULT_ACCESS_ATTEMPT_INTERVAL = 1.0  # secs
@@ -217,7 +217,7 @@ class TestDatasetBlueprint:
                 leaves=self.all_ids,
                 name=name,
                 hierarchy=self.hierarchy,
-                id_composition=self.id_composition,
+                id_patterns=self.id_patterns,
                 space=self.space,
                 metadata=metadata,
                 **kwargs,
@@ -497,7 +497,7 @@ TEST_DATASET_BLUEPRINTS = {
         space=TestDataSpace,
         hierarchy=["bc", "ad"],
         dim_lengths=[2, 3, 2, 4],
-        id_composition={
+        id_patterns={
             "bc": r"b(?P<b>\d+)c(?P<c>\d+)",
             "ad": r"a(?P<a>\d+)d(?P<d>\d+)",
         },
@@ -519,7 +519,7 @@ TEST_DATASET_BLUEPRINTS = {
             "abcd",
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         dim_lengths=[3, 4, 5, 6],
-        id_composition={
+        id_patterns={
             "abc": r"a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)",
             "abcd": r"a\d+b\d+c\d+d(?P<d>\d+)",
         },

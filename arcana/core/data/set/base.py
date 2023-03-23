@@ -59,7 +59,7 @@ class Dataset:
             ['subject', 'session']
 
         In such cases, if there are multiple timepoints, the timepoint ID of the
-        session will need to be extracted using the `id_composition` argument.
+        session will need to be extracted using the `id_patterns` argument.
 
         Alternatively, the hierarchy could be organised such that the tree
         first splits on longitudinal time-points, then a second directory layer
@@ -75,7 +75,7 @@ class Dataset:
     space: DataSpace
         The space of the dataset. See https://arcana.readthedocs.io/en/latest/data_model.html#spaces)
         for a description
-    id_composition : dict[str, str]
+    id_patterns : dict[str, str]
         Not all IDs will appear explicitly within the hierarchy of the data
         tree, and some will need to be inferred by extracting components of
         more specific labels.
@@ -86,12 +86,12 @@ class Dataset:
 
             CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
 
-        the group ID can be extracted by providing the a list of tuples
-        containing ID to source the inferred IDs from coupled with a regular
-        expression with named groups
+        the group ID can be extracted by providing a dictionary of the IDs to
+        be inferred and the patterns to derive them from.
 
-            id_composition = {
-                'subject': r'(?P<group>[A-Z]+)(?P<member>[0-9]+)')
+            id_patterns = {
+                'group': r"subject:id:([A-Z]+).*',
+                'member': r"subject:id:.*([0-9]+)',
             }
     include : list[tuple[DataSpace, str or list[str]]]
         The IDs to be included in the dataset per row_frequency. E.g. can be
@@ -126,13 +126,13 @@ class Dataset:
         converter=metadata_converter,
         repr=False,
     )
-    id_composition: dict[str, str] = attrs.field(
+    id_patterns: dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
-    include: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attrs.field(
+    include: dict[str, ty.Union[list[str], str]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    exclude: ty.List[ty.Tuple[DataSpace, str or list[str]]] = attrs.field(
+    exclude: dict[str, ty.Union[list[str], str]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
     name: str = attrs.field(default="")
@@ -146,10 +146,6 @@ class Dataset:
 
     def __attrs_post_init__(self):
         self.tree.dataset = self
-        # Ensure the keys of the include, exclude and id_composition attrs are
-        # in the space of the dataset
-        self.include = [(self.space[str(k)], v) for k, v in self.include]
-        self.exclude = [(self.space[str(k)], v) for k, v in self.exclude]
         # Set reference to pipeline in columns and pipelines
         for column in self.columns.values():
             column.dataset = self
@@ -182,9 +178,9 @@ class Dataset:
             )
 
     @exclude.validator
-    def exclude_validator(self, _, exclude):
-        include_freqs = set(f for f, i in self.include if i is not None)
-        exclude_freqs = set(f for f, i in exclude if i is not None)
+    def exclude_validator(self, _, exclude: dict[str, str]):
+        include_freqs = set(f for f, i in self.include.items() if i is not None)
+        exclude_freqs = set(f for f, i in exclude.items() if i is not None)
         both = include_freqs & exclude_freqs
         if both:
             raise ArcanaUsageError(
@@ -222,20 +218,20 @@ class Dataset:
                 + f"'] the '{self.space.__module__}.{self.space.__name__}' data space"
             )
 
-    @id_composition.validator
-    def id_composition_validator(self, _, id_composition):
-        non_valid_keys = [f for f in id_composition if f not in self.space.__members__]
+    @id_patterns.validator
+    def id_patterns_validator(self, _, id_patterns):
+        non_valid_keys = [f for f in id_patterns if f not in self.space.__members__]
         if non_valid_keys:
             raise ArcanaWrongDataSpaceError(
-                f"Keys for the id_composition dictionary {non_valid_keys} are not part "
+                f"Keys for the id_patterns dictionary {non_valid_keys} are not part "
                 f"of the {self.space} data space"
             )
-        for key, expr in id_composition.items():
+        for key, expr in id_patterns.items():
             groups = list(re.compile(expr).groupindex)
             non_valid_groups = [f for f in groups if f not in self.space.__members__]
             if non_valid_groups:
                 raise ArcanaWrongDataSpaceError(
-                    f"Groups in the {key} id_composition expression {non_valid_groups} "
+                    f"Groups in the {key} id_patterns expression {non_valid_groups} "
                     f"are not part of the {self.space} data space"
                 )
 
@@ -368,7 +364,6 @@ class Dataset:
         self,
         name: str,
         datatype: type,
-        path: str,
         row_frequency: str = None,
         overwrite: bool = False,
         **kwargs,
@@ -397,7 +392,6 @@ class Dataset:
         sink = DataSink(
             name=name,
             datatype=datatype,
-            path=path,
             row_frequency=row_frequency,
             dataset=self,
             **kwargs,
@@ -779,34 +773,8 @@ class Dataset:
         )
         return File(column.match_entry(dataset.root).item)
 
-    @classmethod
-    def decompose_ids(cls, ids: dict[str, str], composition: dict[str, str]):
-        """Infer IDs from those explicitly provided by using the decomposition patterns
-
-        Parameters
-        ----------
-        ids : dict[str, str]
-            explicitly provided IDs
-        composition : dict[str, str]
-            patterns used to inferred composed IDs
-
-        Return
-        ------
-        inferred_ids : dict[str, str]
-            IDs inferred from the decomposition
-        """
-        inferred_ids = {}
-        if composition is not None:
-            for freq, regex in composition.items():
-                match = re.match(regex, ids[freq])
-                inferred_ids.update(match.groupdict())
-            conflicting = set(ids) & set(inferred_ids)
-            if conflicting:
-                raise ArcanaUsageError(
-                    "Inferred IDs from decomposition conflict with explicitly provided IDs: "
-                    + str(conflicting)
-                )
-        return inferred_ids
+    def infer_ids(self, ids: dict[str, str]):
+        return self.store.infer_ids(ids=ids, id_patterns=self.id_patterns)
 
 
 @attrs.define

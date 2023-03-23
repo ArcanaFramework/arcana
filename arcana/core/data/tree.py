@@ -5,11 +5,11 @@ import re
 import attrs
 import attrs.filters
 from arcana.core.utils.misc import NestedContext
+from arcana.core.data.space import DataSpace
 from arcana.core.exceptions import (
     ArcanaNameError,
     ArcanaDataTreeConstructionError,
     ArcanaUsageError,
-    ArcanaBadlyFormattedIDError,
 )
 from .row import DataRow
 
@@ -59,7 +59,7 @@ class DataTree(NestedContext):
         ------
         ArcanaBadlyFormattedIDError
             raised if one of the IDs doesn't match the pattern in the
-            `id_composition`
+            `id_patterns`
         ArcanaDataTreeConstructionError
             raised if one of the groups specified in the ID inference reg-ex
             doesn't match a valid row_frequency in the data dimensions
@@ -76,86 +76,103 @@ class DataTree(NestedContext):
             )
         # Set a default ID of None for all parent frequencies that could be
         # inferred from a row at this depth
-        ids = {f: None for f in self.dataset.space}
+        # ids = {f: None for f in self.dataset.space}
+        ids = dict(zip(self.dataset.hierarchy, tree_path))
+        # Infer IDs and add them to those explicitly in the hierarchy
+        ids.update(self.dataset.infer_ids(ids))
         # Calculate the combined freqs after each layer is added
         row_frequency = self.dataset.space(0)
-        for layer_str, label in zip(self.dataset.hierarchy, tree_path):
-            layer = self.dataset.space[layer_str]
-            ids[layer] = label
-            regexes = [
-                r
-                for ln, r in self.dataset.id_composition.items()
-                if self.dataset.space[ln] == layer
-            ]
-            if not regexes:
-                # If the layer introduces completely new axes then the axis
-                # with the least significant bit (the order of the bits in the
-                # DataSpace class should be arranged to account for this)
-                # can be considered be considered to be equivalent to the label.
-                # E.g. Given a hierarchy of ['subject', 'session']
-                # no groups are assumed to be present by default (although this
-                # can be overridden by the `id_composition` attr) and the `member`
-                # ID is assumed to be equivalent to the `subject` ID. Conversely,
-                # the timepoint can't be inferred from the `session` ID, since
-                # the session ID could be expected to contain the `member` and
-                # `group` ID in it, and should be explicitly extracted by
-                # providing a regex to `id_composition`, e.g.
-                #
-                #       session ID: MRH010_CONTROL03_MR02
-                #
-                # with the '02' part representing as the timepoint can be
-                # extracted with the
-                #
-                #       id_composition={
-                #           'session': r'.*(?P<timepoint>0-9+)$'}
-                if not (layer & row_frequency):
-                    ids[layer.span()[-1]] = label
-            else:
-                for regex in regexes:
-                    match = re.match(regex, label)
-                    if match is None:
-                        raise ArcanaBadlyFormattedIDError(
-                            f"{layer} label '{label}', does not match ID inference"
-                            f" pattern '{regex}'"
-                        )
-                    new_freqs = (layer ^ row_frequency) & layer
-                    for target_freq, target_id in match.groupdict().items():
-                        target_freq = self.dataset.space[target_freq]
-                        if (target_freq & new_freqs) != target_freq:
-                            raise ArcanaUsageError(
-                                f"Inferred ID target, {target_freq}, is not a "
-                                f"data row_frequency added by layer {layer}"
-                            )
-                        if ids[target_freq] is not None:
-                            raise ArcanaUsageError(
-                                f"ID '{target_freq}' is specified twice in the ID "
-                                f"inference of {tree_path} ({ids[target_freq]} "
-                                f"and {target_id} from {regex}"
-                            )
-                        ids[target_freq] = target_id
-            row_frequency |= layer
+        for layer_str in self.dataset.hierarchy:
+            layer_freq = self.dataset.space[layer_str]
+            # If all the axes introduced by the layer not present in parent layers
+            # and none of the IDs of these axes have been inferred from other IDs,
+            # then the ID of the axis out of the layer's axes with the least-
+            # significant bit can be considered to be equivalent to the
+            # ID of the layer and the IDs of the other axes of the layer set to None
+            # (the order of # the bits in the DataSpace class should be arranged to
+            # account for this default behaviour).
+            #
+            # For example, given a hierarchy of ['subject', 'session'] in the `Clinical`
+            # data space, no groups are assumed to be present by default (i.e. if not
+            # specified by the `id_patterns` attr of the dataset), and the `member`
+            # ID is assumed to be equivalent to the `subject` ID, since `member`
+            # correspdonds to the least significant bit in the value of the subject in
+            # the `Clinical` data space enum.
+            #
+            # Conversely, the timepoint can't be assumed to be equal to the `session`
+            # ID, since the session ID could be expected to also contain both the `member` and
+            # `group` ID in it, and should be explicitly extracted by via `id_patterns`
+            #
+            #       session ID: MRH010_CONTROL03_MR02
+            #
+            # with the '02' part representing as the timepoint can be extracted with the
+            #
+            #       id_inference = {
+            #           'timepoint': r'session:id:.*MR(0-9+)$'
+            #       }
+            layer_span = [str(f) for f in layer_freq.span()]
+            if not (layer_freq & row_frequency) and not any(
+                f in ids for f in layer_span
+            ):
+                for freq in layer_span[:-1]:
+                    ids[freq] = None
+                ids[layer_span[-1]] = ids[layer_str]
+            row_frequency |= layer_freq
         assert row_frequency == max(self.dataset.space)
         # Set or override any inferred IDs within the ones that have been
         # explicitly provided
-        ids.update((self.dataset.space[str(k)], i) for k, i in additional_ids.items())
+        clashing_ids = set(ids) & set(additional_ids)
+        if clashing_ids:
+            raise ArcanaUsageError(
+                f"Additional IDs clash with those inferred: {clashing_ids}"
+            )
+        ids.update(additional_ids)
         # Create composite IDs for non-basis frequencies if they are not
         # explicitly in the layer dimensions
         for freq in set(self.dataset.space) - set(row_frequency.span()):
-            if ids[freq] is None:
-                id = tuple(ids[b] for b in freq.span() if ids[b] is not None)
+            freq_str = str(freq)
+            if freq_str not in ids:
+                id = tuple(ids[str(b)] for b in freq.span() if ids[str(b)] is not None)
                 if id:
                     if len(id) == 1:
                         id = id[0]
-                    ids[freq] = id
-        # TODO: filter row based on dataset include & exclude attrs
-        return self._add_row(ids, row_frequency)
+                    ids[freq_str] = id
+        # Determine whether leaf node is included in the dataset definition according
+        # to the include and exclude criteria
+        add_row = True
+        for freq, include in self.dataset.include.items():
+            freq_id = ids[freq]
+            if (isinstance(include, list) and freq_id not in include) or (
+                isinstance(include, str) and not re.match(include, freq_id)
+            ):
+                add_row = False
+                logger.debug(
+                    f"skipping adding leaf at {tree_path} as {str(freq)} ID "
+                    f"'{freq_id}' is not explicitly included: {include}"
+                )
+        for freq, exclude in self.dataset.exclude.items():
+            freq_id = ids[freq]
+            if (isinstance(exclude, list) and freq_id in exclude) or (
+                isinstance(exclude, str) and re.match(exclude, freq_id)
+            ):
+                add_row = False
+                logger.debug(
+                    f"skipping adding leaf at {tree_path} as {str(freq)} ID "
+                    f"'{freq_id}' is explicitly excluded: {exclude}"
+                )
+        if add_row:
+            return self._add_row(
+                {f: ids.get(str(f)) for f in self.dataset.space}, row_frequency
+            )
 
-    def _add_row(self, ids, row_frequency):
+    def _add_row(self, ids: dict[DataSpace, str], row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows
         (e.g. for each subject, group or timepoint) where required
 
         Parameters
         ----------
+        ids : dict[DataSpace, str]
+            ids of the row in all frequencies that it intersects
         row: DataRow
             The row to add into the data tree
 
@@ -205,7 +222,7 @@ class DataTree(NestedContext):
                         f"ID clash ({diff_id}) between rows inserted into "
                         f"data tree in {diff_freq} children of {parent_row} "
                         f"({children_dict[diff_id]} and {row}). You may "
-                        f"need to set the `id_composition` attr of the dataset "
+                        f"need to set the `id_patterns` attr of the dataset "
                         "to disambiguate ID components (e.g. how to extract "
                         "the timepoint ID from a session label)"
                     )

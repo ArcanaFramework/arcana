@@ -95,19 +95,19 @@ def test_define_cli(dataset: Dataset, cli_runner):
     args = list(blueprint.hierarchy)
     # Generate "arbitrary" values for included and excluded from dim length
     # and index
-    included = []
-    excluded = []
+    included = {}
+    excluded = {}
     for i, (dim_length, axis) in enumerate(zip(blueprint.dim_lengths, dataset.space)):
         a, b = get_arbitrary_slice(i, dim_length)
         if i % 2:
-            included.append((axis, f"{a}:{b}"))
+            included[str(axis)] = f"{a}:{b}"
         elif (b - a) < dim_length:  # Check that we aren't excluding all
-            excluded.append((axis, f"{a}:{b}"))
+            excluded[str(axis)] = f"{a}:{b}"
     # Add include and exclude options
-    for axis, slce in included:
-        args.extend(["--include", str(axis), slce])
-    for axis, slce in excluded:
-        args.extend(["--exclude", str(axis), slce])
+    for axis, slce in included.items():
+        args.extend(["--include", axis, slce])
+    for axis, slce in excluded.items():
+        args.extend(["--exclude", axis, slce])
     args.extend(["--space", "arcana.testing:TestDataSpace"])
     # Run the command line
     result = cli_runner(define, [path, *args])
