@@ -221,12 +221,12 @@ class DataStore(metaclass=ABCMeta):
                 ) from e
         if hierarchy is None:
             try:
-                hierarchy = self.DEFAULT_HIERARCHY
+                hierarchy = list(self.DEFAULT_HIERARCHY)
             except AttributeError:
                 hierarchy = [str(max(space))]  # one-layer with only leaf nodes
         if id_patterns is None:
             try:
-                id_patterns = self.DEFAULT_ID_PATTERNS
+                id_patterns = dict(self.DEFAULT_ID_PATTERNS)
             except AttributeError:
                 pass
         from arcana.core.data.set import (

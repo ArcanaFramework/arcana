@@ -41,7 +41,9 @@ class DataTree(NestedContext):
     def hierarchy(self):
         return self.dataset.hierarchy
 
-    def add_leaf(self, tree_path, metadata: dict[str, dict[str, str]] = None) -> bool:
+    def add_leaf(
+        self, tree_path, metadata: dict[str, dict[str, str]] = None
+    ) -> list[str]:
         """Creates a new row at a the path down the tree of the dataset as
         well as all "parent" rows upstream in the data tree
 
@@ -56,10 +58,10 @@ class DataTree(NestedContext):
 
         Returns
         -------
-        bool
-            true if the leaf was added to the dataset, false if it was excluded by
-            the exclusion criteria provided to the dataset (see ``Dataset.include``
-            and ``Dataset.exclude``)
+        exclusions : list[str]
+            the list of frequencies that caused the leaf to be excluded (empty if it
+            was added) according to the the exclusion criteria provided to the dataset
+            (see ``Dataset.include`` and ``Dataset.exclude``)
 
         Raises
         ------
@@ -153,13 +155,13 @@ class DataTree(NestedContext):
                     ids[freq_str] = id
         # Determine whether leaf node is included in the dataset definition according
         # to the include and exclude criteria
-        add_row = True
+        exclusions = []
         for freq, include in self.dataset.include.items():
             freq_id = ids[freq]
             if (isinstance(include, list) and freq_id not in include) or (
                 isinstance(include, str) and not re.match(include, freq_id)
             ):
-                add_row = False
+                exclusions.append(freq)
                 logger.debug(
                     f"skipping adding leaf at {tree_path} as {str(freq)} ID "
                     f"'{freq_id}' is not explicitly included: {include}"
@@ -169,17 +171,17 @@ class DataTree(NestedContext):
             if (isinstance(exclude, list) and freq_id in exclude) or (
                 isinstance(exclude, str) and re.match(exclude, freq_id)
             ):
-                add_row = False
+                exclusions.append(freq)
                 logger.debug(
                     f"skipping adding leaf at {tree_path} as {str(freq)} ID "
                     f"'{freq_id}' is explicitly excluded: {exclude}"
                 )
-        if add_row:
+        if not exclusions:
             return self._add_row(
                 ids={f: ids.get(str(f)) for f in self.dataset.space},
                 row_frequency=self.dataset.space.leaf(),
             )
-        return add_row
+        return exclusions
 
     def _add_row(self, ids: dict[DataSpace, str], row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows
