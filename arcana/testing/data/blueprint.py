@@ -212,12 +212,13 @@ class TestDatasetBlueprint:
             logger.debug(
                 "Creating test dataset in %s at %s from %s", store, dataset_id, self
             )
+            if self.id_patterns:
+                kwargs = {"id_patterns": self.id_patterns}
             dataset = store.create_dataset(
                 id=dataset_id,
                 leaves=self.all_ids,
                 name=name,
                 hierarchy=self.hierarchy,
-                id_patterns=self.id_patterns,
                 space=self.space,
                 metadata=metadata,
                 **kwargs,

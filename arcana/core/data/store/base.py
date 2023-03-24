@@ -536,7 +536,7 @@ class DataStore(metaclass=ABCMeta):
                     whole_str = True
                 else:
                     whole_str = False
-                subs = []
+                substitutions = []
                 for comp in comps:
                     parts = comp.split(":")
                     source_freq = parts[0] if parts[0] else freq
@@ -562,7 +562,7 @@ class DataStore(metaclass=ABCMeta):
                                 f"{source_freq} row, {attr}"
                             )
                         try:
-                            sub = match.group(1)
+                            attr = match.group(1)
                         except IndexError:
                             raise ArcanaDataTreeConstructionError(
                                 f"Provided pattern in '{comp}' id-pattern component, either "
@@ -570,13 +570,13 @@ class DataStore(metaclass=ABCMeta):
                                 f"matched an empty string in '{ids[source_freq]}' "
                                 f"{source_freq} row"
                             )
-                    subs.append(sub)
+                    substitutions.append(attr)
                 if whole_str:
-                    assert len(subs) == 1
-                    inferred_id = subs[0]
+                    assert len(substitutions) == 1
+                    inferred_id = substitutions[0]
                 else:
                     inferred_id = pattern
-                    for sub in subs:
+                    for sub in substitutions:
                         cls.pattern_comp_re.subn(sub, inferred_id, count=1)
                 inferred_ids[freq] = inferred_id
         return inferred_ids

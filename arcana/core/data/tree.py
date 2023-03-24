@@ -177,7 +177,7 @@ class DataTree(NestedContext):
                     f"'{freq_id}' is explicitly excluded: {exclude}"
                 )
         if not exclusions:
-            return self._add_row(
+            self._add_row(
                 ids={f: ids.get(str(f)) for f in self.dataset.space},
                 row_frequency=self.dataset.space.leaf(),
             )
