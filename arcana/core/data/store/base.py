@@ -521,11 +521,13 @@ class DataStore(metaclass=ABCMeta):
         inferred_ids : dict[str, str]
             IDs inferred from the decomposition
         """
+        if metadata is None:
+            metadata = {}
         inferred_ids = {}
         if id_patterns is not None:
             conflicting = set(ids) & set(id_patterns)
             if conflicting:
-                raise ArcanaUsageError(
+                raise ArcanaDataTreeConstructionError(
                     "Inferred IDs from decomposition conflict with explicitly provided IDs: "
                     + str(conflicting)
                 )
@@ -538,7 +540,7 @@ class DataStore(metaclass=ABCMeta):
                     whole_str = False
                 substitutions = []
                 for comp in comps:
-                    parts = comp.split(":")
+                    parts = comp.strip("#").split(":")
                     source_freq = parts[0] if parts[0] else freq
                     attr_name = parts[1] if len(parts) >= 2 and parts[1] else "ID"
                     regex = ":".join(parts[2:])
@@ -547,29 +549,27 @@ class DataStore(metaclass=ABCMeta):
                         attr_name = attr_name.upper()
                     else:
                         try:
-                            attr = metadata[source_freq][attr_name]
+                            attr = str(metadata[source_freq][attr_name])
                         except KeyError:
                             raise ArcanaDataTreeConstructionError(
                                 f"'{ids[source_freq]}' {source_freq} row doesn't have "
                                 f"the metadata field '{attr_name}'"
                             )
                     if regex:
-                        match = re.match(regex, attr)
-                        if not match:
-                            raise ArcanaDataTreeConstructionError(
-                                f"Provided pattern in '{comp}' id-pattern component, doesn't "
-                                f"match '{attr_name}' attribute of '{ids[source_freq]}' "
-                                f"{source_freq} row, {attr}"
+                        match = re.fullmatch(regex, attr)
+                        if not match or len(match.groups()) != 1:
+                            match_msg = (
+                                f"matched {len(match.groups())} groups"
+                                if match
+                                else "didn't match the pattern"
                             )
-                        try:
-                            attr = match.group(1)
-                        except IndexError:
                             raise ArcanaDataTreeConstructionError(
-                                f"Provided pattern in '{comp}' id-pattern component, either "
-                                "didn't contain a regular-expression group or that group "
-                                f"matched an empty string in '{ids[source_freq]}' "
-                                f"{source_freq} row"
+                                f"Provided ID-pattern component,'{regex}', needs to match "
+                                f"exactly one group on '{attr_name}' attribute of "
+                                f"'{ids[source_freq]}' {source_freq} row, '{attr}', when it "
+                                + match_msg
                             )
+                        attr = match.group(1)
                     substitutions.append(attr)
                 if whole_str:
                     assert len(substitutions) == 1
@@ -577,7 +577,9 @@ class DataStore(metaclass=ABCMeta):
                 else:
                     inferred_id = pattern
                     for sub in substitutions:
-                        cls.pattern_comp_re.subn(sub, inferred_id, count=1)
+                        inferred_id = cls.pattern_comp_re.subn(
+                            sub, inferred_id, count=1
+                        )[0]
                 inferred_ids[freq] = inferred_id
         return inferred_ids
 
