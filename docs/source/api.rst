@@ -35,7 +35,7 @@ Core
 .. autoclass:: arcana.core.data.datatype.DataType
     :members: get, put
 
-.. autoclass:: arcana.core.data.datatype.FileGroup
+.. autoclass:: arcana.core.data.datatype.FileSet
 
 .. autoclass:: arcana.core.data.datatype.Field
 

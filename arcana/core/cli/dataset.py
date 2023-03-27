@@ -20,7 +20,7 @@ def dataset():
 dataset. Where possible, the definition file is saved inside the dataset for
 use by multiple users, if not possible it is stored in the ~/.arcana directory.
 
-ID_STR string containing the nick-name of the store, the ID of the dataset
+DATASET_LOCATOR string containing the nick-name of the store, the ID of the dataset
 (e.g. XNAT project ID or file-system directory) and the dataset's name in the
 format <store-nickname>//<dataset-id>[@<dataset-name>]
 
@@ -30,7 +30,7 @@ store types this is fixed (e.g. XNAT-> subject > session) but for more flexible
 can be arbitrarily specified. dimensions"""
     ),
 )
-@click.argument("id_str")
+@click.argument("dataset_locator")
 @click.argument("hierarchy", nargs=-1)
 @click.option(
     "--space",
@@ -82,9 +82,9 @@ can be arbitrarily specified. dimensions"""
     ),
 )
 @click.option(
-    "--id-composition",
+    "--id-pattern",
     nargs=2,
-    metavar="<source-id> <composition-regex>",
+    metavar="<row-frequency> <pattern>",
     multiple=True,
     help="""Specifies how IDs of row frequencies that not explicitly
 provided are inferred from the IDs that are. For example, given a set
@@ -95,16 +95,16 @@ CONTROL01, CONTROL02, CONTROL03, ... and TEST01, TEST02, TEST03
 
 the group ID can be extracted by providing the ID to source it from
 (i.e. subject) and a regular expression (in Python regex syntax:
-https://docs.python.org/3/library/re.html) with a named
-groups corresponding to the inferred IDs
+https://docs.python.org/3/library/re.html) with a single group corresponding to
+the inferred IDs
 
---id-inference subject '(?P<group>[A-Z]+)(?P<member>[0-9]+)'
+--id-pattern group 'subject:([A-Z]+)[0-9]+' --id-pattern member 'subject:[A-Z]+([0-9]+)'
 
 """,
 )
-def define(id_str, hierarchy, include, exclude, space, id_composition):
+def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
 
-    store_name, id, name = Dataset.parse_id_str(id_str)
+    store_name, id, name = Dataset.parse_id_str(dataset_locator)
 
     if not hierarchy:
         hierarchy = None
@@ -118,32 +118,12 @@ def define(id_str, hierarchy, include, exclude, space, id_composition):
         id,
         hierarchy=hierarchy,
         space=space,
-        id_composition=dict(id_composition),
-        include=include,
-        exclude=exclude,
+        id_patterns=dict(id_pattern),
+        include=dict(include),
+        exclude=dict(exclude),
     )
 
     dataset.save(name)
-
-
-@dataset.command(
-    help="""
-Renames a data store saved in the stores.yaml to a new name
-
-dataset_path
-    The current name of the store
-new_name
-    The new name for the store"""
-)
-@click.argument("dataset_path")
-@click.argument("new_name")
-def copy(dataset_path, new_name):
-    dataset = Dataset.load(dataset_path)
-    dataset.save(new_name)
-
-
-# def optional_args(names, args):
-#     kwargs = {}
 
 
 @dataset.command(
@@ -152,7 +132,7 @@ def copy(dataset_path, new_name):
 selects comparable items along a dimension of the dataset to serve as
 an input to pipelines and analyses.
 
-DATASET_PATH: The path to the dataset including store and dataset name
+DATASET_LOCATOR The path to the dataset including store and dataset name
 (where applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
 
 NAME: The name the source will be referenced by
@@ -162,7 +142,7 @@ field array (list[int|float|str|bool]) or
 "file-set" (file, file+header/side-cars or directory)
 """,
 )
-@click.argument("dataset_path")
+@click.argument("dataset_locator")
 @click.argument("name")
 @click.argument("datatype")
 @click.option(
@@ -222,9 +202,17 @@ field array (list[int|float|str|bool]) or
     ),
 )
 def add_source(
-    dataset_path, name, datatype, row_frequency, path, order, quality, is_regex, header
+    dataset_locator,
+    name,
+    datatype,
+    row_frequency,
+    path,
+    order,
+    quality,
+    is_regex,
+    header,
 ):
-    dataset = Dataset.load(dataset_path)
+    dataset = Dataset.load(dataset_locator)
     dataset.add_source(
         name=name,
         path=path,
@@ -256,7 +244,7 @@ datatype
     (file, file+header/side-cars or directory)
 """,
 )
-@click.argument("dataset_path")
+@click.argument("dataset_locator")
 @click.argument("name")
 @click.argument("datatype")
 @click.option(
@@ -286,8 +274,8 @@ datatype
         "'arcana derive menu'"
     ),
 )
-def add_sink(dataset_path, name, datatype, row_frequency, path, salience):
-    dataset = Dataset.load(dataset_path)
+def add_sink(dataset_locator, name, datatype, row_frequency, path, salience):
+    dataset = Dataset.load(dataset_locator)
     dataset.add_sink(
         name=name,
         path=path,
@@ -303,16 +291,90 @@ def add_sink(dataset_path, name, datatype, row_frequency, path, salience):
     help="""Finds the IDs of rows that are missing a valid entry for an item in
 the column.
 
-Arguments
----------
-dataset_path
-    The path to the dataset including store and dataset name (where
+DATASET_LOCATOR of the dataset including store and dataset name (where
     applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc
-name
-    The name of the column to check
+
+COLUMN_NAMES, [COLUMN_NAMES, ...] for the columns to check, defaults to all source columns
 """,
 )
-@click.argument("dataset_path")
-@click.argument("name")
-def missing_items(name):
-    raise NotImplementedError
+@click.argument("dataset_locator")
+@click.argument("column_names", nargs=-1)
+def missing_items(dataset_locator, column_names):
+    dataset = Dataset.load(dataset_locator)
+    if not column_names:
+        column_names = [n for n, c in dataset.columns.items() if not c.is_sink]
+    for column_name in column_names:
+        column = dataset.columns[column_name]
+        empty_cells = [c for c in column.cells() if c.is_empty]
+        if empty_cells:
+            click.echo(f"'{column.name}': " + ", ".join(c.row.id for c in empty_cells))
+
+
+@dataset.command(
+    help="""
+Exports a dataset from one data store into another
+
+DATASET_LOCATOR of the dataset to copy
+
+STORE_NICKNAME of the destination store
+
+ID for the dataset in the destination store
+
+COLUMN_NAMES, [COLUMN_NAMES, ...] to be included in the export, by default all will be included
+"""
+)
+@click.argument("dataset_locator")
+@click.argument("store_nickname")
+@click.argument("imported_id")
+@click.argument("column_names", nargs=-1)
+@click.option(
+    "--id-pattern",
+    nargs=2,
+    metavar="<id> <regex>",
+    help="mapping of ID from hierarchy of the source dataset to that of the destination",
+)
+@click.option(
+    "--use-original-paths/--use-column-names",
+    type=bool,
+    default=False,
+    help=(
+        "whether to rename the paths of the exported data items to match their column "
+        "names, or whether to use the original paths in the source store"
+    ),
+)
+def export(
+    dataset_locator,
+    store_nickname,
+    imported_id,
+    column_names,
+    id_pattern,
+    use_original_paths,
+):
+    dataset = Dataset.load(dataset_locator)
+    store = DataStore.load(store_nickname)
+    if not column_names:
+        column_names = None
+    store.import_dataset(
+        id=imported_id,
+        dataset=dataset,
+        column_names=column_names,
+        id_patterns=id_pattern,
+        use_original_paths=use_original_paths,
+    )
+
+
+@dataset.command(
+    help="""
+Creates a copy of a dataset definition under a new name (so it can be modified, e.g.
+for different analysis)
+
+DATASET_LOCATOR of the dataset to copy
+
+NEW_NAME for the dataset
+"""
+)
+@click.argument("dataset_locator")
+@click.argument("new_name")
+def copy(dataset_locator, new_name):
+    dataset = Dataset.load(dataset_locator)
+    dataset.save(new_name)

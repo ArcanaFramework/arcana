@@ -172,7 +172,9 @@ class TestDatasetBlueprint:
     dim_lengths: list[int]  # size of layers a-d respectively
     entries: list[EntryBlueprint] = attrs.field(factory=list)
     derivatives: list[EntryBlueprint] = attrs.field(factory=list)
-    id_composition: dict[str, str] = attrs.field(factory=dict)
+    id_patterns: dict[str, str] = attrs.field(factory=dict)
+    include: dict[str, ty.Union[str, list[str]]] = attrs.field(factory=dict)
+    exclude: dict[str, ty.Union[str, list[str]]] = attrs.field(factory=dict)
 
     DEFAULT_NUM_ACCESS_ATTEMPTS = 300
     DEFAULT_ACCESS_ATTEMPT_INTERVAL = 1.0  # secs
@@ -212,14 +214,17 @@ class TestDatasetBlueprint:
             logger.debug(
                 "Creating test dataset in %s at %s from %s", store, dataset_id, self
             )
+            if self.id_patterns:
+                kwargs = {"id_patterns": self.id_patterns}
             dataset = store.create_dataset(
                 id=dataset_id,
                 leaves=self.all_ids,
                 name=name,
                 hierarchy=self.hierarchy,
-                id_composition=self.id_composition,
                 space=self.space,
                 metadata=metadata,
+                include=self.include,
+                exclude=self.exclude,
                 **kwargs,
             )
         with store.connection:
@@ -497,9 +502,11 @@ TEST_DATASET_BLUEPRINTS = {
         space=TestDataSpace,
         hierarchy=["bc", "ad"],
         dim_lengths=[2, 3, 2, 4],
-        id_composition={
-            "bc": r"b(?P<b>\d+)c(?P<c>\d+)",
-            "ad": r"a(?P<a>\d+)d(?P<d>\d+)",
+        id_patterns={
+            "a": r"ad::a(\d+)d\d+",
+            "b": r"bc::b(\d+)c\d+",
+            "c": r"bc::b\d+c(\d+)",
+            "d": r"ad::a\d+d(\d+)",
         },
         entries=[
             FileSetEntryBlueprint(
@@ -519,9 +526,11 @@ TEST_DATASET_BLUEPRINTS = {
             "abcd",
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         dim_lengths=[3, 4, 5, 6],
-        id_composition={
-            "abc": r"a(?P<a>\d+)b(?P<b>\d+)c(?P<c>\d+)",
-            "abcd": r"a\d+b\d+c\d+d(?P<d>\d+)",
+        id_patterns={
+            "a": r"abc::a(\d+)b\d+c\d+",
+            "b": r"abc::a\d+b(\d+)c\d+",
+            "c": r"abc::a\d+b\d+c(\d+)",
+            "d": r"abcd::a\d+b\d+c\d+d(\d+)",
         },
         entries=[
             FileSetEntryBlueprint(

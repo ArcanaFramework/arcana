@@ -386,7 +386,9 @@ class DataSink(DataColumn):
         for the sink
     """
 
-    path = attrs.field()  # i.e. make mandatory
+    path = attrs.field(
+        validator=attrs.validators.instance_of(str)
+    )  # i.e. make mandatory
     salience: ColumnSalience = attrs.field(
         default=ColumnSalience.supplementary,
         converter=lambda s: ColumnSalience[str(s)] if s is not None else None,
