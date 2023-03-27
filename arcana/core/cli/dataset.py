@@ -333,11 +333,33 @@ COLUMN_NAMES, [COLUMN_NAMES, ...] to be included in the export, by default all w
     metavar="<id> <regex>",
     help="mapping of ID from hierarchy of the source dataset to that of the destination",
 )
-def export(dataset_locator, store_nickname, id, column_names, id_patterns):
+@click.option(
+    "--use-original-paths/--use-column-names",
+    type=bool,
+    default=False,
+    help=(
+        "whether to rename the paths of the exported data items to match their column "
+        "names, or whether to use the original paths in the source store"
+    ),
+)
+def export(
+    dataset_locator,
+    store_nickname,
+    imported_id,
+    column_names,
+    id_pattern,
+    use_original_paths,
+):
     dataset = Dataset.load(dataset_locator)
     store = DataStore.load(store_nickname)
+    if not column_names:
+        column_names = None
     store.import_dataset(
-        id=id, dataset=dataset, column_names=column_names, id_patterns=id_patterns
+        id=imported_id,
+        dataset=dataset,
+        column_names=column_names,
+        id_patterns=id_pattern,
+        use_original_paths=use_original_paths,
     )
 
 

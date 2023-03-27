@@ -357,6 +357,7 @@ class DataStore(metaclass=ABCMeta):
         dataset: Dataset,
         column_names: list[str],
         id_patterns: dict[str, str] = None,
+        use_original_paths: bool = False,
         **kwargs,
     ):
         """Import a dataset from another store, transferring metadata and columns
@@ -373,9 +374,14 @@ class DataStore(metaclass=ABCMeta):
         id_patterns : dict[str, str]
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
             the data tree. See ``DataStore.infer_ids()`` for syntax
+        use_original_paths : bool, optional
+            use the original paths in the source store instead of renaming the imported
+            entries to match their column names
         **kwargs:
             keyword arguments passed through to the `create_data_tree` method
         """
+        if use_original_paths:
+            raise NotImplementedError
         # Create a new dataset in the store to import the data into
         imported = self.create_dataset(
             id,
@@ -391,7 +397,7 @@ class DataStore(metaclass=ABCMeta):
             column_names = list(dataset.columns)
         for column_name in column_names:
             column = dataset.columns[column_name]
-            path = column.name if not column.is_sink else None
+            path = column.name if not column.is_sink else column.path
             # Create columns in imported dataset
             imported_col = imported.add_sink(
                 name=column.name,
@@ -402,7 +408,7 @@ class DataStore(metaclass=ABCMeta):
             # Copy across data from dataset to import
             for cell in column.cells():
                 imported_col[cell.row.id] = cell.item
-        dataset.save(name="")
+        imported.save(name="")
 
     @classmethod
     def singletons(cls):

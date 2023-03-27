@@ -220,7 +220,7 @@ class Dataset:
                     f"are not part of the {self.space} data space"
                 )
 
-    def save(self, name=None):
+    def save(self, name=""):
         self.store.save_dataset(self, name=name)
 
     @classmethod
