@@ -1,3 +1,4 @@
+from __future__ import annotations
 from operator import itemgetter
 import pytest
 from fileformats.text import Plain as PlainText
