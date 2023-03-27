@@ -4,9 +4,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="#" /><link rel="search" title="Search" href="search.html" />
 
-    <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 --><title>Index - Arcana v0.9.9</title>
+    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.23 --><title>Index - Arcana v0.9.10</title>
 <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
     
     
@@ -127,7 +127,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.9.9</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.9.10</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -153,7 +153,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.9</span>
+  <span class="sidebar-brand-text">Arcana v0.9.10</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -249,10 +249,10 @@
 </li>
         </ul></li>
         <li>
-    --id-composition
+    --id-pattern
 
         <ul>
-          <li><a href="cli.html#cmdoption-arcana-dataset-define-id-composition">arcana-dataset-define command line option</a>
+          <li><a href="cli.html#cmdoption-arcana-dataset-define-id-pattern">arcana-dataset-define command line option</a>
 </li>
         </ul></li>
         <li>
@@ -622,7 +622,7 @@
 </li>
           <li><a href="cli.html#cmdoption-arcana-dataset-add-sink-s">-s</a>
 </li>
-          <li><a href="cli.html#cmdoption-arcana-dataset-add-sink-arg-DATASET_PATH">DATASET_PATH</a>
+          <li><a href="cli.html#cmdoption-arcana-dataset-add-sink-arg-DATASET_LOCATOR">DATASET_LOCATOR</a>
 </li>
           <li><a href="cli.html#cmdoption-arcana-dataset-add-sink-arg-DATATYPE">DATATYPE</a>
 </li>
@@ -655,7 +655,7 @@
 </li>
           <li><a href="cli.html#cmdoption-arcana-dataset-add-source-q">-q</a>
 </li>
-          <li><a href="cli.html#cmdoption-arcana-dataset-add-source-arg-DATASET_PATH">DATASET_PATH</a>
+          <li><a href="cli.html#cmdoption-arcana-dataset-add-source-arg-DATASET_LOCATOR">DATASET_LOCATOR</a>
 </li>
           <li><a href="cli.html#cmdoption-arcana-dataset-add-source-arg-DATATYPE">DATATYPE</a>
 </li>
@@ -668,15 +668,15 @@
         <ul>
           <li><a href="cli.html#cmdoption-arcana-dataset-define-exclude">--exclude</a>
 </li>
-          <li><a href="cli.html#cmdoption-arcana-dataset-define-id-composition">--id-composition</a>
+          <li><a href="cli.html#cmdoption-arcana-dataset-define-id-pattern">--id-pattern</a>
 </li>
           <li><a href="cli.html#cmdoption-arcana-dataset-define-include">--include</a>
 </li>
           <li><a href="cli.html#cmdoption-arcana-dataset-define-0">--space</a>, <a href="cli.html#cmdoption-arcana-dataset-define-space">[1]</a>
 </li>
-          <li><a href="cli.html#cmdoption-arcana-dataset-define-arg-HIERARCHY">HIERARCHY</a>
+          <li><a href="cli.html#cmdoption-arcana-dataset-define-arg-DATASET_LOCATOR">DATASET_LOCATOR</a>
 </li>
-          <li><a href="cli.html#cmdoption-arcana-dataset-define-arg-ID_STR">ID_STR</a>
+          <li><a href="cli.html#cmdoption-arcana-dataset-define-arg-HIERARCHY">HIERARCHY</a>
 </li>
         </ul></li>
     </ul></td>
@@ -685,9 +685,9 @@
     arcana-dataset-missing-items command line option
 
         <ul>
-          <li><a href="cli.html#cmdoption-arcana-dataset-missing-items-arg-DATASET_PATH">DATASET_PATH</a>
+          <li><a href="cli.html#cmdoption-arcana-dataset-missing-items-arg-COLUMN_NAMES">COLUMN_NAMES</a>
 </li>
-          <li><a href="cli.html#cmdoption-arcana-dataset-missing-items-arg-NAME">NAME</a>
+          <li><a href="cli.html#cmdoption-arcana-dataset-missing-items-arg-DATASET_LOCATOR">DATASET_LOCATOR</a>
 </li>
         </ul></li>
         <li>
@@ -804,6 +804,15 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li>
+    COLUMN_NAMES
+
+        <ul>
+          <li><a href="cli.html#cmdoption-arcana-dataset-missing-items-arg-COLUMN_NAMES">arcana-dataset-missing-items command line option</a>
+</li>
+        </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li>
     COLUMNS
 
         <ul>
@@ -828,18 +837,15 @@
         <ul>
           <li><a href="cli.html#cmdoption-arcana-apply-pipeline-arg-DATASET_LOCATOR">arcana-apply-pipeline command line option</a>
 </li>
+          <li><a href="cli.html#cmdoption-arcana-dataset-add-sink-arg-DATASET_LOCATOR">arcana-dataset-add-sink command line option</a>
+</li>
+          <li><a href="cli.html#cmdoption-arcana-dataset-add-source-arg-DATASET_LOCATOR">arcana-dataset-add-source command line option</a>
+</li>
+          <li><a href="cli.html#cmdoption-arcana-dataset-define-arg-DATASET_LOCATOR">arcana-dataset-define command line option</a>
+</li>
+          <li><a href="cli.html#cmdoption-arcana-dataset-missing-items-arg-DATASET_LOCATOR">arcana-dataset-missing-items command line option</a>
+</li>
           <li><a href="cli.html#cmdoption-arcana-derive-column-arg-DATASET_LOCATOR">arcana-derive-column command line option</a>
-</li>
-        </ul></li>
-        <li>
-    DATASET_PATH
-
-        <ul>
-          <li><a href="cli.html#cmdoption-arcana-dataset-add-sink-arg-DATASET_PATH">arcana-dataset-add-sink command line option</a>
-</li>
-          <li><a href="cli.html#cmdoption-arcana-dataset-add-source-arg-DATASET_PATH">arcana-dataset-add-source command line option</a>
-</li>
-          <li><a href="cli.html#cmdoption-arcana-dataset-missing-items-arg-DATASET_PATH">arcana-dataset-missing-items command line option</a>
 </li>
         </ul></li>
     </ul></td>
@@ -885,15 +891,6 @@
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
         <li>
-    ID_STR
-
-        <ul>
-          <li><a href="cli.html#cmdoption-arcana-dataset-define-arg-ID_STR">arcana-dataset-define command line option</a>
-</li>
-        </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
-        <li>
     IMAGE_TAG
 
         <ul>
@@ -916,13 +913,9 @@
 </li>
           <li><a href="cli.html#cmdoption-arcana-dataset-add-source-arg-NAME">arcana-dataset-add-source command line option</a>
 </li>
-          <li><a href="cli.html#cmdoption-arcana-dataset-missing-items-arg-NAME">arcana-dataset-missing-items command line option</a>
-</li>
           <li><a href="cli.html#cmdoption-arcana-store-add-arg-NAME">arcana-store-add command line option</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li>
     NEW_NICKNAME
 
@@ -930,6 +923,8 @@
           <li><a href="cli.html#cmdoption-arcana-store-rename-arg-NEW_NICKNAME">arcana-store-rename command line option</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li>
     NICKANME
 

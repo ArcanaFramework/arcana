@@ -5,10 +5,10 @@
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Processing" href="processing.html" /><link rel="prev" title="Getting started" href="getting_started.html" />
 
-    <!-- Generated with Sphinx 6.1.3 and Furo 2022.12.07 -->
-        <title>Data model - Arcana v0.9.9</title>
+    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.23 -->
+        <title>Data model - Arcana v0.9.10</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
     
     
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.9.9</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.9.10</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.9</span>
+  <span class="sidebar-brand-text">Arcana v0.9.10</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -405,7 +405,7 @@ corresponding to <em>MYXNATPROJECT</em></p>
 <p>Atomic items within a dataset are encapsulated by <code class="xref py py-class docutils literal notranslate"><span class="pre">DataType</span></code> objects.
 There are three types of data items:</p>
 <ul class="simple">
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">FileGroup</span></code> (single files, files + header/side-cars or directories)</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">FileSet</span></code> (single files, files + header/side-cars or directories)</p></li>
 <li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Field</span></code> (int, float, str or bool)</p></li>
 <li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">ArrayField</span></code> (an array of int, float, str or bool)</p></li>
 </ul>
@@ -414,7 +414,7 @@ fields stored in the data store. Before data in remote stores
 are accessed they need to be cached locally with <code class="xref py py-meth docutils literal notranslate"><span class="pre">DataType.get()</span></code>.
 Newly created and modified data items are placed into the store with
 <code class="xref py py-meth docutils literal notranslate"><span class="pre">DataType.put()</span></code>.</p>
-<p><code class="xref py py-class docutils literal notranslate"><span class="pre">FileGroup</span></code> is typically subclassed to specify the datatype of the
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">FileSet</span></code> is typically subclassed to specify the datatype of the
 files/directories in the group. For example, there are a number common file
 formats implemented in <code class="xref py py-mod docutils literal notranslate"><span class="pre">arcana.dirtree.data</span></code>, including</p>
 <ul class="simple">
