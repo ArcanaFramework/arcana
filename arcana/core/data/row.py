@@ -27,10 +27,13 @@ class DataRow:
     ids : Dict[DataSpace, str]
         The ids for the frequency of the row and all "parent" frequencies
         within the tree
-    frequency : str
-        The frequency of the row
     dataset : Dataset
         A reference to the root of the data tree
+    frequency : str
+        The frequency of the row
+    tree_path : list[str], optional
+        the path to the row within the data tree. None if the row doesn't sit within
+        the original tree (e.g. timepoints within a subject>session hierarchy)
     uri : str, optional
         a URI for the row, can be set and used by the data store implementation if
         appropriate, by default None
@@ -39,6 +42,7 @@ class DataRow:
     ids: ty.Dict[DataSpace, str] = attrs.field()
     dataset: Dataset = attrs.field(repr=False)
     frequency: str = attrs.field()
+    tree_path: list[str] = None
     uri: str = None
     metadata: dict = None
 
@@ -143,12 +147,12 @@ class DataRow:
     def id(self):
         return self.ids[self.frequency]
 
-    def frequency_id(self, frequency: str):
-        return self.ids[self.dataset.space[str(frequency)]]
-
     @property
     def label(self):
-        return self.path[-1]
+        return self.tree_path[-1]
+
+    def frequency_id(self, frequency: str):
+        return self.ids[self.dataset.space[str(frequency)]]
 
     def __iter__(self):
         return iter(self.keys())

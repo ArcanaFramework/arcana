@@ -43,7 +43,7 @@ class DataTree(NestedContext):
 
     def add_leaf(
         self, tree_path, metadata: dict[str, dict[str, str]] = None
-    ) -> list[str]:
+    ) -> tuple[DataRow, list[str]]:
         """Creates a new row at a the path down the tree of the dataset as
         well as all "parent" rows upstream in the data tree
 
@@ -58,6 +58,8 @@ class DataTree(NestedContext):
 
         Returns
         -------
+        row : DataRow or None
+            the added row if it is not excluded, None if it was excluded
         exclusions : list[str]
             the list of frequencies that caused the leaf to be excluded (empty if it
             was added) according to the the exclusion criteria provided to the dataset
@@ -129,12 +131,17 @@ class DataTree(NestedContext):
         assert cummulative_freq == self.dataset.space.leaf()
         missing_axes = set(str(f) for f in self.dataset.space.axes()) - set(ids)
         if missing_axes:
-            raise ArcanaDataTreeConstructionError(
-                f"Leaf node at {tree_path} is missing explicit IDs for the following axes, '"
-                + "', '".join(missing_axes)
-                + "', please set 'id-patterns' on the dataset to extract the missing "
-                "axis IDs from composite IDs or row metadata"
+            logger.debug(
+                "Leaf node at %s is missing explicit IDs for the following axes, %s"
+                ", they will be set to None, noting that an error will be raised if there "
+                " multiple nodes for this session. In that case,  set 'id-patterns' on the "
+                "dataset to extract the missing axis IDs from composite IDs or row "
+                "metadata",
+                tree_path,
+                missing_axes,
             )
+            for m in missing_axes:
+                ids[m] = None
         # # Set or override any inferred IDs within the ones that have been
         # # explicitly provided
         # clashing_ids = set(ids) & set(additional_ids)
@@ -177,11 +184,13 @@ class DataTree(NestedContext):
                     f"'{freq_id}' is explicitly excluded: {exclude}"
                 )
         if not exclusions:
-            self._add_row(
+            row = self._add_row(
                 ids={f: ids.get(str(f)) for f in self.dataset.space},
                 row_frequency=self.dataset.space.leaf(),
             )
-        return exclusions
+        else:
+            row = None
+        return row, exclusions
 
     def _add_row(self, ids: dict[DataSpace, str], row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows
@@ -237,8 +246,8 @@ class DataTree(NestedContext):
                 children_dict = parent_row.children[row_frequency]
                 if diff_id in children_dict:
                     raise ArcanaDataTreeConstructionError(
-                        f"ID clash ({diff_id}) between rows inserted into "
-                        f"data tree in {diff_freq} children of {parent_row} "
+                        f"ID clash between rows inserted into data tree, {diff_id}, "
+                        f"in {diff_freq} children of {parent_row} "
                         f"({children_dict[diff_id]} and {row}). You may "
                         f"need to set the `id_patterns` attr of the dataset "
                         "to disambiguate ID components (e.g. how to extract "

@@ -173,6 +173,8 @@ class TestDatasetBlueprint:
     entries: list[EntryBlueprint] = attrs.field(factory=list)
     derivatives: list[EntryBlueprint] = attrs.field(factory=list)
     id_patterns: dict[str, str] = attrs.field(factory=dict)
+    include: dict[str, ty.Union[str, list[str]]] = attrs.field(factory=dict)
+    exclude: dict[str, ty.Union[str, list[str]]] = attrs.field(factory=dict)
 
     DEFAULT_NUM_ACCESS_ATTEMPTS = 300
     DEFAULT_ACCESS_ATTEMPT_INTERVAL = 1.0  # secs
@@ -221,6 +223,8 @@ class TestDatasetBlueprint:
                 hierarchy=self.hierarchy,
                 space=self.space,
                 metadata=metadata,
+                include=self.include,
+                exclude=self.exclude,
                 **kwargs,
             )
         with store.connection:

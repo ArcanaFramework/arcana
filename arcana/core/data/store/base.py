@@ -200,6 +200,10 @@ class DataStore(metaclass=ABCMeta):
             The data space of the dataset
         hierarchy: list[str]
             The hierarchy of the dataset
+        id_patterns : dict[str, str], optional
+            Patterns used to infer row IDs not explicitly within the hierarchy of the
+            data tree, e.g. groups and timepoints in an XNAT project with subject>session
+            hierarchy
         space : EnumMeta
             The DataSpace enum that defines the frequencies (e.g.
             per-session, per-subject,...) present in the dataset.
@@ -224,11 +228,11 @@ class DataStore(metaclass=ABCMeta):
                 hierarchy = list(self.DEFAULT_HIERARCHY)
             except AttributeError:
                 hierarchy = [str(max(space))]  # one-layer with only leaf nodes
-        if id_patterns is None:
-            try:
-                id_patterns = dict(self.DEFAULT_ID_PATTERNS)
-            except AttributeError:
-                pass
+        # if id_patterns is None:
+        #     try:
+        #         id_patterns = dict(self.DEFAULT_ID_PATTERNS)
+        #     except AttributeError:
+        #         pass
         from arcana.core.data.set import (
             Dataset,
         )  # avoid circular imports it is imported here rather than at the top of the file
