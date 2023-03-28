@@ -334,6 +334,16 @@ COLUMN_NAMES, [COLUMN_NAMES, ...] to be included in the export, by default all w
     help="mapping of ID from hierarchy of the source dataset to that of the destination",
 )
 @click.option(
+    "--hierarchy",
+    "-h",
+    type=str,
+    default=None,
+    help=(
+        "The hierarchy to use for the target dataset, e.g. whether the layers of the "
+        "data tree correspond to subject>session or group>subject>timeptoint, etc..."
+    ),
+)
+@click.option(
     "--use-original-paths/--use-column-names",
     type=bool,
     default=False,
@@ -348,10 +358,13 @@ def export(
     imported_id,
     column_names,
     id_pattern,
+    hierarchy,
     use_original_paths,
 ):
     dataset = Dataset.load(dataset_locator)
     store = DataStore.load(store_nickname)
+    if hierarchy:
+        hierarchy = hierarchy.split(",")
     if not column_names:
         column_names = None
     store.import_dataset(
@@ -359,6 +372,7 @@ def export(
         dataset=dataset,
         column_names=column_names,
         id_patterns=id_pattern,
+        hierarchy=hierarchy,
         use_original_paths=use_original_paths,
     )
 

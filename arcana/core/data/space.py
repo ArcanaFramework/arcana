@@ -143,7 +143,7 @@ class DataSpace(Enum):
         "Returns the union between data frequency values"
         union = cls(0)
         for f in freqs:
-            union |= f
+            union |= f if isinstance(f, cls) else cls[f]
         return union
 
     @classmethod

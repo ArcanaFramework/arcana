@@ -4,7 +4,7 @@ import typing as ty
 import re
 import attrs
 import attrs.filters
-from arcana.core.utils.misc import NestedContext
+from arcana.core.utils.misc import NestedContext, add_exc_note
 from arcana.core.data.space import DataSpace
 from arcana.core.exceptions import (
     ArcanaNameError,
@@ -89,7 +89,8 @@ class DataTree(NestedContext):
         # ids = {f: None for f in self.dataset.space}
         ids = dict(zip(self.dataset.hierarchy, tree_path))
         # Infer IDs and add them to those explicitly in the hierarchy
-        ids.update(self.dataset.infer_ids(ids, metadata=metadata))
+        inferred_ids = self.dataset.infer_ids(ids, metadata=metadata)
+        ids.update(inferred_ids)
         # Calculate the combined freqs after each layer is added
         cummulative_freq = self.dataset.space(0)
         for layer_str in self.dataset.hierarchy:
@@ -121,9 +122,16 @@ class DataTree(NestedContext):
             #           'timepoint': r'session:id:.*MR(0-9+)$'
             #       }
             layer_span = [str(f) for f in layer_freq.span()]
-            if not (layer_freq & cummulative_freq) and not any(
-                f in ids for f in layer_span
-            ):
+            resolved_freqs = [f for f in layer_span if f in ids]
+            prev_freqs = layer_freq & cummulative_freq
+            new_axes = prev_freqs ^ layer_freq
+            if not new_axes:
+                assert (
+                    False
+                ), f"{layer_str} doesn't add any new axes on predecessor layers"
+            if not prev_freqs and not resolved_freqs:
+                # assume defefault split, where least-significant axes takes on the
+                # label and the rest are set to None
                 for freq in layer_span[:-1]:
                     ids[freq] = None
                 ids[layer_span[-1]] = ids[layer_str]
@@ -184,10 +192,21 @@ class DataTree(NestedContext):
                     f"'{freq_id}' is explicitly excluded: {exclude}"
                 )
         if not exclusions:
-            row = self._add_row(
-                ids={f: ids.get(str(f)) for f in self.dataset.space},
-                row_frequency=self.dataset.space.leaf(),
-            )
+            try:
+                row = self._add_row(
+                    ids={f: ids.get(str(f)) for f in self.dataset.space},
+                    row_frequency=self.dataset.space.leaf(),
+                )
+            except ArcanaDataTreeConstructionError as e:
+                if missing_axes:
+                    add_exc_note(
+                        e,
+                        (
+                            "\nNB: the following axes are neither explicit in the dataset "
+                            f"hierarchy or inferred (see `id-patterns` flag): {missing_axes}"
+                        ),
+                    )
+                raise e
         else:
             row = None
         return row, exclusions
@@ -218,7 +237,12 @@ class DataTree(NestedContext):
         row_dict = self.root.children[row.frequency]
         if row.id in row_dict:
             raise ArcanaDataTreeConstructionError(
-                f"ID clash ({row.id}) between rows inserted into data " "tree"
+                f"ID clash ({row.id}) between rows inserted into the data tree of "
+                f"{self.dataset.id} in {self.dataset.store.name} store:\n"
+                "  exist: "
+                + ", ".join(f"{f}={i}" for f, i in sorted(row_dict[row.id].ids.items()))
+                + "\n  added: "
+                + ", ".join(f"{f}={i}" for f, i in sorted(row.ids.items()))
             )
         row_dict[row.id] = row
         # Insert root row
