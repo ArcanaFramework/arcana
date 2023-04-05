@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import typing as ty
 import re
+from collections import defaultdict
 import attrs
 import attrs.filters
 from arcana.core.utils.misc import NestedContext
@@ -19,12 +20,18 @@ if ty.TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger("arcana")
 
 
+def accumulating_ids_default():
+    return defaultdict(dict)
+
+
 @attrs.define
 class DataTree(NestedContext):
 
     dataset: Dataset = None
     root: DataRow = None
-    _accumulating_ids: dict[tuple[str, ...], dict[str, int]] = attrs.field(factory=dict)
+    _accumulating_ids: dict[tuple[str, ...], dict[str, int]] = attrs.field(
+        factory=accumulating_ids_default
+    )
 
     def enter(self):
         assert self.root is None
@@ -152,19 +159,17 @@ class DataTree(NestedContext):
                     ids[axis] = None
                 # If all axes added by the layer are new and none are resolved to IDs
                 # we can just use the ID for the layer to be equivalent to the last axis
-                if prev_accounted_for:
-                    # node_path = tuple(tree_path[:i])
-                    # self._num_children[node_path] += 1
-                    try:
-                        parent = self.root.children[cummulative_freq][
-                            ids[str(prev_accounted_for)]
-                        ]
-                    except KeyError:
-                        assumed_id = "1"
-                    else:
-                        assumed_id = str(len(parent.children[layer_freq]))
-                else:
+                if not prev_accounted_for and unresolved_axes == layer_span:
                     assumed_id = ids[layer_str]
+                else:
+                    node_accum_ids = self._accumulating_ids[tuple(tree_path[:i])]
+                    resolved_ids = tuple(ids[f] for f in layer_span if f in ids)
+                    try:
+                        assumed_id = node_accum_ids[resolved_ids]
+                    except KeyError:
+                        assumed_id = node_accum_ids[resolved_ids] = str(
+                            len(node_accum_ids) + 1
+                        )
                 ids[unresolved_axes[-1]] = assumed_id
             cummulative_freq |= layer_freq
         assert cummulative_freq == self.dataset.space.leaf()
@@ -279,4 +284,4 @@ class DataTree(NestedContext):
             frequency=self.dataset.root_freq,
             dataset=self.dataset,
         )
-        self._accumulating_ids = {}
+        self._accumulating_ids = accumulating_ids_default()

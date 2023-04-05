@@ -210,27 +210,6 @@ def test_include_exclude_fail3(work_dir):
         )
 
 
-def test_requires_id_pattern(work_dir):
-
-    blueprint = TestDatasetBlueprint(  # dataset name
-        space=TestDataSpace,
-        hierarchy=["a", "b", "c", "abcd"],
-        dim_lengths=[1, 2, 3, 4],
-        entries=[
-            FileSetEntryBlueprint(
-                path="file1", datatype=PlainText, filenames=["file1.txt"]
-            ),
-        ],
-    )
-    with pytest.raises(
-        ArcanaDataTreeConstructionError,
-        match="ID clash between rows inserted into data tree",
-    ):
-        blueprint.make_dataset(
-            store=DirTree(), dataset_id=work_dir / "include-exclude-fail"
-        )
-
-
 TEST_INCREMENTING_IDS = {
     "d_dim": (
         TestDatasetBlueprint(  # dataset name
@@ -260,16 +239,28 @@ TEST_INCREMENTING_IDS = {
         ),
         {
             "member": ["1", "2"],
-            "session": [
-                ("group0", "1", "timepoint0"),
-                ("group0", "1", "timepoint1"),
-                ("group0", "2", "timepoint0"),
-                ("group0", "2", "timepoint1"),
-                ("group1", "1", "timepoint0"),
-                ("group1", "1", "timepoint1"),
-                ("group1", "2", "timepoint0"),
-                ("group1", "2", "timepoint1"),
+        },
+    ),
+    "double_increment": (
+        TestDatasetBlueprint(  # dataset name
+            space=TestDataSpace,
+            hierarchy=["ab", "cd"],
+            dim_lengths=[2, 2, 2, 2],
+            entries=[
+                FileSetEntryBlueprint(
+                    path="file1", datatype=PlainText, filenames=["file1.txt"]
+                ),
             ],
+            id_patterns={
+                "b": r"ab::a\d+(b\d+)",
+                "c": r"cd::(c\d+)d\d+",
+            },
+        ),
+        {
+            "a": ["1", "2"],
+            "b": ["b0", "b1"],
+            "c": ["c0", "c1"],
+            "d": ["1", "2"],
         },
     ),
 }
