@@ -16,7 +16,6 @@ from arcana.core.exceptions import (
     DatatypeUnsupportedByStoreError,
 )
 from arcana.core.utils.misc import get_home_dir, append_suffix
-from ..space import Samples
 from ..row import DataRow
 from ..entry import DataEntry
 from .base import DataStore
@@ -321,6 +320,8 @@ class LocalStore(DataStore):
         try:
             dataset = self.load_dataset(dataset_root)
         except KeyError:
+            from arcana.stdlib import Samples
+
             dataset = self.define_dataset(dataset_root, space=Samples)
         return dataset
 

@@ -21,7 +21,7 @@ def submodules(package, subpkg=None):
         the package to iterate over
     subpkg : str, optional
         the sub-package (of the sub-packages) to return instead of the first level down.
-        e.g. package=arcana, subpkg=data -> arcana.dirtree.data, arcana.xnat.data, etc...
+        e.g. package=arcana, subpkg=data -> arcana.stdlib.data, arcana.xnat.data, etc...
     skip : list[str], optional
         submodules to skip
 
@@ -56,7 +56,7 @@ def list_subclasses(package, base_class, subpkg=None):
         the base class
     subpkg : str, optional
         the sub-package (of the sub-packages) to return instead of the first level down.
-        e.g. package=arcana, subpkg=data -> arcana.dirtree.data, arcana.xnat.data, etc...
+        e.g. package=arcana, subpkg=data -> arcana.stdlib.data, arcana.xnat.data, etc...
 
     Returns
     -------

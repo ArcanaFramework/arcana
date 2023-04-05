@@ -10,7 +10,7 @@ from arcana.testing.data import TestDataSpace
 from fileformats.text import Plain as Text
 from fileformats.testing import EncodedText
 from arcana.core.data.set import Dataset
-from arcana.dirtree import DirTree
+from arcana.stdlib import DirTree
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.core.exceptions import ArcanaDataMatchError
 

@@ -3,7 +3,7 @@ from operator import itemgetter
 import pytest
 from fileformats.text import Plain as PlainText
 from arcana.core.exceptions import ArcanaUsageError, ArcanaDataTreeConstructionError
-from arcana.dirtree import DirTree
+from arcana.stdlib import DirTree, Clinical
 from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
 from arcana.testing.data.space import TestDataSpace
 
@@ -231,21 +231,58 @@ def test_requires_id_pattern(work_dir):
         )
 
 
-def test_incrementing_ids(work_dir):
+TEST_INCREMENTING_IDS = {
+    "d_dim": (
+        TestDatasetBlueprint(  # dataset name
+            space=TestDataSpace,
+            hierarchy=["a", "b", "c", "abcd"],
+            dim_lengths=[1, 2, 3, 4],
+            entries=[
+                FileSetEntryBlueprint(
+                    path="file1", datatype=PlainText, filenames=["file1.txt"]
+                ),
+            ],
+        ),
+        {
+            "d": ["1", "2", "3", "4"],
+        },
+    ),
+    "member": (
+        TestDatasetBlueprint(  # dataset name
+            space=Clinical,
+            hierarchy=["group", "subject", "timepoint"],
+            dim_lengths=[2, 2, 2],
+            entries=[
+                FileSetEntryBlueprint(
+                    path="file1", datatype=PlainText, filenames=["file1.txt"]
+                ),
+            ],
+        ),
+        {
+            "member": ["1", "2"],
+            "session": [
+                ("group0", "1", "timepoint0"),
+                ("group0", "1", "timepoint1"),
+                ("group0", "2", "timepoint0"),
+                ("group0", "2", "timepoint1"),
+                ("group1", "1", "timepoint0"),
+                ("group1", "1", "timepoint1"),
+                ("group1", "2", "timepoint0"),
+                ("group1", "2", "timepoint1"),
+            ],
+        },
+    ),
+}
 
-    blueprint = TestDatasetBlueprint(  # dataset name
-        space=TestDataSpace,
-        hierarchy=["a", "b", "c", "abcd"],
-        dim_lengths=[1, 2, 3, 4],
-        entries=[
-            FileSetEntryBlueprint(
-                path="file1", datatype=PlainText, filenames=["file1.txt"]
-            ),
-        ],
-    )
+
+@pytest.mark.parametrize("fixture", TEST_INCREMENTING_IDS.items(), ids=itemgetter(0))
+def test_incrementing_ids(work_dir, fixture):
+
+    _, (blueprint, expected) = fixture
 
     dataset = blueprint.make_dataset(
-        store=DirTree(), dataset_id=work_dir / "include-exclude-fail"
+        store=DirTree(), dataset_id=work_dir / "incrementing-ids"
     )
 
-    assert sorted(dataset.row_ids("d")) == ["1", "2", "3", "4"]
+    for key, ids in expected.items():
+        assert sorted(dataset.row_ids(key)) == ids

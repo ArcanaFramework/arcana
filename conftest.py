@@ -22,7 +22,7 @@ from arcana.testing.data.blueprint import (
     GOOD_DATASETS,
 )
 from arcana.testing import TestDataSpace, MockRemote
-from arcana.dirtree import DirTree
+from arcana.stdlib import DirTree
 from pydra import set_input_validator
 
 set_input_validator(True)
