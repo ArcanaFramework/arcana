@@ -20,13 +20,17 @@ if ty.TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger("arcana")
 
 
+def num_children_factory():
+    return defaultdict(int)
+
+
 @attrs.define
 class DataTree(NestedContext):
 
     dataset: Dataset = None
     root: DataRow = None
     _num_children: dict[tuple[str, ...], int] = attrs.field(
-        factory=lambda: defaultdict(int)
+        factory=num_children_factory
     )
 
     def enter(self):
@@ -114,7 +118,7 @@ class DataTree(NestedContext):
         ids.update(inferred_ids)
         # Calculate the combined freqs after each layer is added
         cummulative_freq = self.dataset.space(0)
-        for i, layer_str in enumerate(self.dataset.hierarchy, start=1):
+        for i, layer_str in enumerate(self.dataset.hierarchy):
             layer_freq = self.dataset.space[layer_str]
             # If all the axes introduced by the layer not present in parent layers
             # and none of the IDs of these axes have been inferred from other IDs,
@@ -275,3 +279,4 @@ class DataTree(NestedContext):
             frequency=self.dataset.root_freq,
             dataset=self.dataset,
         )
+        self._num_children = num_children_factory()

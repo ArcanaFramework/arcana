@@ -229,3 +229,23 @@ def test_requires_id_pattern(work_dir):
         blueprint.make_dataset(
             store=DirTree(), dataset_id=work_dir / "include-exclude-fail"
         )
+
+
+def test_incrementing_ids(work_dir):
+
+    blueprint = TestDatasetBlueprint(  # dataset name
+        space=TestDataSpace,
+        hierarchy=["a", "b", "c", "abcd"],
+        dim_lengths=[1, 2, 3, 4],
+        entries=[
+            FileSetEntryBlueprint(
+                path="file1", datatype=PlainText, filenames=["file1.txt"]
+            ),
+        ],
+    )
+
+    dataset = blueprint.make_dataset(
+        store=DirTree(), dataset_id=work_dir / "include-exclude-fail"
+    )
+
+    assert sorted(dataset.row_ids("d")) == ["1", "2", "3", "4"]
