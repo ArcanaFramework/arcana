@@ -2,9 +2,10 @@ from __future__ import annotations
 import logging
 import typing as ty
 import re
+from collections import defaultdict
 import attrs
 import attrs.filters
-from arcana.core.utils.misc import NestedContext, add_exc_note
+from arcana.core.utils.misc import NestedContext
 from arcana.core.data.space import DataSpace
 from arcana.core.exceptions import (
     ArcanaNameError,
@@ -24,6 +25,9 @@ class DataTree(NestedContext):
 
     dataset: Dataset = None
     root: DataRow = None
+    _num_children: dict[tuple[str, ...], int] = attrs.field(
+        factory=lambda: defaultdict(int)
+    )
 
     def enter(self):
         assert self.root is None
@@ -74,6 +78,19 @@ class DataTree(NestedContext):
             raised if one of the groups specified in the ID inference reg-ex
             doesn't match a valid row_frequency in the data dimensions
         """
+
+        def matches_criteria(
+            label: str, freq_str: str, criteria: dict[str, ty.Union[list, str]]
+        ):
+            try:
+                freq_criteria = criteria[freq_str]
+            except KeyError:
+                return None
+            if isinstance(freq_criteria, list):
+                return label in freq_criteria
+            else:
+                return bool(re.match(freq_criteria, label))
+
         if self.root is None:
             self._set_root()
         if metadata is None:
@@ -84,6 +101,10 @@ class DataTree(NestedContext):
                 f"Tree path ({tree_path}) should have the same length as "
                 f"the hierarchy ({self.dataset.hierarchy}) of {self}"
             )
+        if self.dataset.exclude:
+            for freq_str, label in zip(self.dataset.hierarchy, tree_path):
+                if matches_criteria(label, freq_str, self.dataset.exclude):
+                    return None  # Don't add leaf
         # Set a default ID of None for all parent frequencies that could be
         # inferred from a row at this depth
         # ids = {f: None for f in self.dataset.space}
@@ -93,7 +114,7 @@ class DataTree(NestedContext):
         ids.update(inferred_ids)
         # Calculate the combined freqs after each layer is added
         cummulative_freq = self.dataset.space(0)
-        for layer_str in self.dataset.hierarchy:
+        for i, layer_str in enumerate(self.dataset.hierarchy, start=1):
             layer_freq = self.dataset.space[layer_str]
             # If all the axes introduced by the layer not present in parent layers
             # and none of the IDs of these axes have been inferred from other IDs,
@@ -121,35 +142,29 @@ class DataTree(NestedContext):
             #       id_inference = {
             #           'timepoint': r'session:id:.*MR(0-9+)$'
             #       }
+            # Axes already added by predecessor layers
+            prev_accounted_for = layer_freq & cummulative_freq
+            # Axes added by this layer
+            new = prev_accounted_for ^ layer_freq
+            assert new, f"{layer_str} doesn't add any new axes on predecessor layers"
             layer_span = [str(f) for f in layer_freq.span()]
-            resolved_freqs = [f for f in layer_span if f in ids]
-            prev_freqs = layer_freq & cummulative_freq
-            new_axes = prev_freqs ^ layer_freq
-            if not new_axes:
-                assert (
-                    False
-                ), f"{layer_str} doesn't add any new axes on predecessor layers"
-            if not prev_freqs and not resolved_freqs:
-                # assume defefault split, where least-significant axes takes on the
-                # label and the rest are set to None
-                for freq in layer_span[:-1]:
-                    ids[freq] = None
-                ids[layer_span[-1]] = ids[layer_str]
+            # Axes that have an ID already
+            unresolved_axes = [f for f in layer_span if f not in ids]
+            if unresolved_axes:
+                for axis in unresolved_axes[:-1]:
+                    ids[axis] = None
+                # If all axes added by the layer are new and none are resolved to IDs
+                # we can just use the ID for the layer to be equivalent to the last axis
+                if prev_accounted_for:
+                    node_path = tuple(tree_path[:i])
+                    self._num_children[node_path] += 1
+                    assumed_id = str(self._num_children[node_path])
+                else:
+                    assumed_id = ids[layer_str]
+                ids[unresolved_axes[-1]] = assumed_id
             cummulative_freq |= layer_freq
         assert cummulative_freq == self.dataset.space.leaf()
-        missing_axes = set(str(f) for f in self.dataset.space.axes()) - set(ids)
-        if missing_axes:
-            logger.debug(
-                "Leaf node at %s is missing explicit IDs for the following axes, %s"
-                ", they will be set to None, noting that an error will be raised if there "
-                " multiple nodes for this session. In that case,  set 'id-patterns' on the "
-                "dataset to extract the missing axis IDs from composite IDs or row "
-                "metadata",
-                tree_path,
-                missing_axes,
-            )
-            for m in missing_axes:
-                ids[m] = None
+        assert set(ids).issuperset(str(f) for f in self.dataset.space.axes())
         # # Set or override any inferred IDs within the ones that have been
         # # explicitly provided
         # clashing_ids = set(ids) & set(additional_ids)
@@ -163,53 +178,27 @@ class DataTree(NestedContext):
         for freq in set(self.dataset.space) - set(self.dataset.space.axes()):
             freq_str = str(freq)
             if freq_str not in ids:
-                id = tuple(ids[str(b)] for b in freq.span() if ids[str(b)] is not None)
-                if id:
-                    if len(id) == 1:
-                        id = id[0]
-                    ids[freq_str] = id
+                id_ = tuple(ids[str(b)] for b in freq.span() if ids[str(b)] is not None)
+                if id_:
+                    if len(id_) == 1:
+                        id_ = id_[0]
+                else:
+                    id_ = None
+                ids[freq_str] = id_
         # Determine whether leaf node is included in the dataset definition according
         # to the include and exclude criteria
-        exclusions = []
-        for freq, include in self.dataset.include.items():
-            freq_id = ids[freq]
-            if (isinstance(include, list) and freq_id not in include) or (
-                isinstance(include, str) and not re.match(include, freq_id)
-            ):
-                exclusions.append(freq)
-                logger.debug(
-                    f"skipping adding leaf at {tree_path} as {str(freq)} ID "
-                    f"'{freq_id}' is not explicitly included: {include}"
-                )
-        for freq, exclude in self.dataset.exclude.items():
-            freq_id = ids[freq]
-            if (isinstance(exclude, list) and freq_id in exclude) or (
-                isinstance(exclude, str) and re.match(exclude, freq_id)
-            ):
-                exclusions.append(freq)
-                logger.debug(
-                    f"skipping adding leaf at {tree_path} as {str(freq)} ID "
-                    f"'{freq_id}' is explicitly excluded: {exclude}"
-                )
-        if not exclusions:
-            try:
-                row = self._add_row(
-                    ids={f: ids.get(str(f)) for f in self.dataset.space},
-                    row_frequency=self.dataset.space.leaf(),
-                )
-            except ArcanaDataTreeConstructionError as e:
-                if missing_axes:
-                    add_exc_note(
-                        e,
-                        (
-                            "\nNB: the following axes are neither explicit in the dataset "
-                            f"hierarchy or inferred (see `id-patterns` flag): {missing_axes}"
-                        ),
-                    )
-                raise e
-        else:
-            row = None
-        return row, exclusions
+        if self.dataset.include:
+            for freq in self.dataset.space:
+                freq_str = str(freq)
+                if (
+                    matches_criteria(ids[freq_str], freq_str, self.dataset.include)
+                    is False
+                ):
+                    return None
+        return self._add_row(
+            ids={f: ids.get(str(f)) for f in self.dataset.space},
+            row_frequency=self.dataset.space.leaf(),
+        )
 
     def _add_row(self, ids: dict[DataSpace, str], row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows

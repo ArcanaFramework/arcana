@@ -29,7 +29,7 @@ if ty.TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger("arcana")
 
 
-@attrs.define
+@attrs.define(kw_only=True)
 class Dataset:
     """
     A representation of a "dataset", the complete collection of data
@@ -43,6 +43,12 @@ class Dataset:
     store : Repository
         The store the dataset is stored into. Can be the local file
         system by providing a MockRemote repo.
+    space: DataSpace
+        The space of the dataset. See https://arcana.readthedocs.io/en/latest/data_model.html#spaces)
+        for a description
+    id_patterns : dict[str, str]
+        Patterns for inferring IDs of rows not explicitly present in the hierarchy of
+        the data tree. See ``DataStore.infer_ids()`` for syntax
     hierarchy : list[str]
         The data frequencies that are explicitly present in the data tree.
         For example, if a MockRemote dataset (i.e. directory) has
@@ -72,12 +78,8 @@ class Dataset:
         space defined in the DataSpace enum, i.e. the "bitwise or" of the
         layer values of the hierarchy must be 1 across all bits
         (e.g. 'session': 0b111).
-    space: DataSpace
-        The space of the dataset. See https://arcana.readthedocs.io/en/latest/data_model.html#spaces)
-        for a description
-    id_patterns : dict[str, str]
-        Patterns for inferring IDs of rows not explicitly present in the hierarchy of
-        the data tree. See ``DataStore.infer_ids()`` for syntax
+    metadata : dict or DatasetMetadata
+        Generic metadata associated with the dataset, e.g. authors, funding sources, etc...
     include : list[tuple[DataSpace, str or list[str]]]
         The IDs to be included in the dataset per row_frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
@@ -92,8 +94,8 @@ class Dataset:
     columns : list[tuple[str, DataSource or DataSink]
         The sources and sinks to be initially added to the dataset (columns are
         explicitly added when workflows are applied to the dataset).
-    workflows : Dict[str, pydra.Workflow]
-        Workflows that have been applied to the dataset to generate sink
+    pipelines : dict[str, pydra.Workflow]
+        Pipelines that have been applied to the dataset to generate sink
     access_args: ty.Dict[str, Any]
         Repository specific args used to control the way the dataset is accessed
     """
@@ -105,14 +107,14 @@ class Dataset:
     id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.DataStore = attrs.field()
     space: DataSpace = attrs.field()
+    id_patterns: dict[str, str] = attrs.field(
+        factory=dict, converter=default_if_none(factory=dict)
+    )
     hierarchy: ty.List[DataSpace] = attrs.field(converter=list)
     metadata: DatasetMetadata = attrs.field(
         factory=DatasetMetadata,
         converter=metadata_converter,
         repr=False,
-    )
-    id_patterns: dict[str, str] = attrs.field(
-        factory=dict, converter=default_if_none(factory=dict)
     )
     include: dict[str, ty.Union[list[str], str]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
@@ -158,20 +160,48 @@ class Dataset:
         ]
         if wrong_freq:
             raise ArcanaUsageError(
-                f"Data hierarchy of {wrong_freq} column specs do(es) not match"
-                f" that of dataset {self.space}"
+                f"Data hierarchy of {wrong_freq} column specs do(es) not match "
+                f"that of dataset {self.space}"
             )
 
-    @exclude.validator
-    def exclude_validator(self, _, exclude: dict[str, str]):
-        include_freqs = set(f for f, i in self.include.items() if i is not None)
-        exclude_freqs = set(f for f, i in exclude.items() if i is not None)
-        both = include_freqs & exclude_freqs
-        if both:
+    @include.validator
+    def include_validator(self, _, include: dict[str, ty.Union[str, list[str]]]):
+        valid = set(str(f) for f in self.space)
+        freqs = set(include)
+        unrecognised = freqs - valid
+        if unrecognised:
             raise ArcanaUsageError(
-                "Cannot provide both 'include' and 'exclude' arguments "
-                "for frequencies ('{}') to Dataset".format("', '".join(both))
+                f"Unrecognised frequencies in 'include' dictionary provided to {self}: "
+                + ", ".join(unrecognised)
             )
+        self._validate_criteria(include, "inclusion")
+
+    @exclude.validator
+    def exclude_validator(self, _, exclude: dict[str, ty.Union[str, list[str]]]):
+        valid = set(self.hierarchy)
+        freqs = set(exclude)
+        unrecognised = freqs - valid
+        if unrecognised:
+            raise ArcanaUsageError(
+                f"Unrecognised frequencies in 'exclude' dictionary provided to {self}, "
+                "only frequencies present in the dataset hierarchy are allowed: "
+                + ", ".join(unrecognised)
+            )
+        self._validate_criteria(exclude, "exclusion")
+
+    def _validate_criteria(self, criteria, type_):
+        for freq, criterion in criteria.items():
+            try:
+                re.compile(criterion)
+            except Exception:
+                if not isinstance(criterion, list) or any(
+                    not isinstance(x, str) for x in criterion
+                ):
+                    raise ArcanaUsageError(
+                        f"Unrecognised {type_} criterion for '{freq}' provided to {self}, "
+                        f"{criterion}, should either be a list of ID strings or a valid "
+                        "regular expression"
+                    )
 
     @hierarchy.validator
     def hierarchy_validator(self, _, hierarchy):
@@ -202,6 +232,18 @@ class Dataset:
                 + "', '".join(str(m) for m in (covered ^ max(self.space)).span())
                 + f"'] the '{self.space.__module__}.{self.space.__name__}' data space"
             )
+        # if missing_axes:
+        #     raise ArcanaDataTreeConstructionError(
+        #         "Leaf node at %s is missing explicit IDs for the following axes, %s"
+        #         ", they will be set to None, noting that an error will be raised if there "
+        #         " multiple nodes for this session. In that case, set 'id-patterns' on the "
+        #         "dataset to extract the missing axis IDs from composite IDs or row "
+        #         "metadata",
+        #         tree_path,
+        #         missing_axes,
+        #     )
+        #     for m in missing_axes:
+        #         ids[m] = None
 
     @id_patterns.validator
     def id_patterns_validator(self, _, id_patterns):

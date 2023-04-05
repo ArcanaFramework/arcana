@@ -93,7 +93,6 @@ TEST_INCLUSIONS = {
             exclude={
                 "c": ["c2"],
                 "abcd": ["a0b0c1d1", "a0b1c1d2"],
-                "d": ["d3"],
             },
             id_patterns={"d": r"abcd::.*(d\d+)"},
         ),
@@ -101,13 +100,17 @@ TEST_INCLUSIONS = {
             "a0b0c0d0",
             "a0b0c0d1",
             "a0b0c0d2",
+            "a0b0c0d3",
             "a0b0c1d0",
             "a0b0c1d2",
+            "a0b0c1d3",
             "a0b1c0d0",
             "a0b1c0d1",
             "a0b1c0d2",
+            "a0b1c0d3",
             "a0b1c1d0",
             "a0b1c1d1",
+            "a0b1c1d3",
         ],
     ),
     "regex": (
@@ -120,11 +123,10 @@ TEST_INCLUSIONS = {
                     path="file1", datatype=PlainText, filenames=["file1.txt"]
                 ),
             ],
-            id_patterns={"bc": r"BC#b:id##c:id#"},
+            id_patterns={"d": r"abcd::.*(d\d+)"},
             include={
                 "abcd": r"a\d+b\dc(\d+)d\1",
             },
-            exclude={"bc": r"BC(\d)\1"},
         ),
         [
             "a0b0c0d0",
@@ -148,7 +150,7 @@ def test_dataset_inclusion(
     assert sorted(dataset.row_ids()) == expected
 
 
-def test_include_exclude_fail(work_dir):
+def test_include_exclude_fail1(work_dir):
 
     blueprint = TestDatasetBlueprint(  # dataset name
         space=TestDataSpace,
@@ -160,13 +162,51 @@ def test_include_exclude_fail(work_dir):
             ),
         ],
         include={"session": r"a0.*d1.*"},
-        exclude={"session": r"a0.*d2.*"},
+    )
+    with pytest.raises(ArcanaUsageError, match="Unrecognised frequencies in 'include'"):
+        blueprint.make_dataset(
+            store=DirTree(), dataset_id=work_dir / "include-exclude-fail1"
+        )
+
+
+def test_include_exclude_fail2(work_dir):
+
+    blueprint = TestDatasetBlueprint(  # dataset name
+        space=TestDataSpace,
+        hierarchy=["a", "b", "c", "abcd"],
+        dim_lengths=[1, 2, 3, 4],
+        entries=[
+            FileSetEntryBlueprint(
+                path="file1", datatype=PlainText, filenames=["file1.txt"]
+            ),
+        ],
+        exclude={"bc": r"a0.*d1.*"},
     )
     with pytest.raises(
-        ArcanaUsageError, match="Cannot provide both 'include' and 'exclude' arguments"
+        ArcanaUsageError,
+        match="only frequencies present in the dataset hierarchy are allowed",
     ):
         blueprint.make_dataset(
-            store=DirTree(), dataset_id=work_dir / "include-exclude-fail"
+            store=DirTree(), dataset_id=work_dir / "include-exclude-fail2"
+        )
+
+
+def test_include_exclude_fail3(work_dir):
+
+    blueprint = TestDatasetBlueprint(  # dataset name
+        space=TestDataSpace,
+        hierarchy=["a", "b", "c", "abcd"],
+        dim_lengths=[1, 2, 3, 4],
+        entries=[
+            FileSetEntryBlueprint(
+                path="file1", datatype=PlainText, filenames=["file1.txt"]
+            ),
+        ],
+        include={"abcd": r"a**"},
+    )
+    with pytest.raises(ArcanaUsageError, match="valid regular expression"):
+        blueprint.make_dataset(
+            store=DirTree(), dataset_id=work_dir / "include-exclude-fail3"
         )
 
 

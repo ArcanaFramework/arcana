@@ -238,7 +238,7 @@ class DataStore(metaclass=ABCMeta):
         )  # avoid circular imports it is imported here rather than at the top of the file
 
         dataset = Dataset(
-            id,
+            id=id,
             store=self,
             space=space,
             hierarchy=hierarchy,
@@ -616,6 +616,10 @@ class DataStore(metaclass=ABCMeta):
         """
         Populates the nodes of the data tree with those found in the dataset using
         the ``DataTree.add_leaf`` method for every "leaf" node of the dataset tree.
+
+        The order that the tree leaves are added is important and should be consistent
+        between reads, because it is used to give default values to the ID's of data
+        space axes not explicitly in the hierarchy of the tree.
 
         Parameters
         ----------
