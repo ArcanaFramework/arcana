@@ -180,7 +180,7 @@ description: >-
   a test of the YAML join functionality
 command:
   task: arcana.testing.tasks:identity_file
-  row_frequency: common:Samples[sample]
+  row_frequency: stdlib:Samples[sample]
   inputs:
     in_file:
       datatype: fileformats.text:Plain

@@ -3,9 +3,9 @@ from arcana.core.data.space import DataSpace
 
 class Clinical(DataSpace):
     """
-    An enum that specifies the data hierarchy of data trees typical of
-    medimage research, i.e. subjects split into groups scanned at different
-    timepoints (in longitudinal studies).
+    An enum used to specify the hierarchy of data trees and the "frequencies" of items
+    within dataset typical of medimage research, i.e. subjects split into groups scanned
+    at different timepoints (in longitudinal studies).
     """
 
     # Root row of the dataset
