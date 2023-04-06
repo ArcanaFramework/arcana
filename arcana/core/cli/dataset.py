@@ -73,7 +73,7 @@ can be arbitrarily specified. dimensions"""
 )
 @click.option(
     "--space",
-    default="core:Clinical",
+    default="stdlib:Clinical",
     help=(
         "The enum that specifies the data dimensions of the dataset. "
         "Defaults to `Clinical`, which "
@@ -152,7 +152,7 @@ field array (list[int|float|str|bool]) or
     help=(
         "The row-frequency that items appear in the dataset (e.g. per "
         "'session', 'subject', 'timepoint', 'group', 'dataset' for "
-        "core:Clinical data dimensions"
+        "stdlib:Clinical data dimensions"
     ),
     show_default="highest",
 )

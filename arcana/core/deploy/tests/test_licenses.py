@@ -45,7 +45,7 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
         make_app,
         args=[
             str(root_dir),
-            "core:App",
+            "stdlib:App",
             "--build-dir",
             str(build_dir),
             "--license",

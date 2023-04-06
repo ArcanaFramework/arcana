@@ -47,7 +47,7 @@ def test_deploy_make_app_cli(command_spec, cli_runner, work_dir):
         make_app,
         [
             str(spec_path),
-            "core:App",
+            "stdlib:App",
             "--build-dir",
             str(build_dir),
             "--registry",
@@ -90,7 +90,7 @@ def test_deploy_remake_app_cli(command_spec, docker_registry, cli_runner, run_pr
             make_app,
             [
                 str(spec_path),
-                "core:App",
+                "stdlib:App",
                 "--build-dir",
                 str(build_dir),
                 "--registry",
@@ -298,7 +298,7 @@ command:
         field: flags
         datatype: str
         help_string: description of flags param
-    row_frequency: core:Clinical[session]
+    row_frequency: stdlib:Clinical[session]
     configuration:
       executable: /usr/local/miniconda/bin/mriqc
       dataset: /work/bids-dataset

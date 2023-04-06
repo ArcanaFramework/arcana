@@ -24,7 +24,7 @@ def get_pipeline_image(license_path, app_cls=App) -> App:
         },
         command={
             "task": "arcana.testing.tasks:check_license",
-            "row_frequency": "core:Samples[sample]",
+            "row_frequency": "stdlib:Samples[sample]",
             "inputs": [
                 {
                     "name": LICENSE_INPUT_FIELD,
