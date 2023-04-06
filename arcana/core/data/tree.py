@@ -20,7 +20,7 @@ if ty.TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger("arcana")
 
 
-def accumulating_ids_default():
+def auto_ids_default():
     return defaultdict(dict)
 
 
@@ -29,8 +29,8 @@ class DataTree(NestedContext):
 
     dataset: Dataset = None
     root: DataRow = None
-    _accumulating_ids: dict[tuple[str, ...], dict[str, int]] = attrs.field(
-        factory=accumulating_ids_default
+    _auto_ids: dict[tuple[str, ...], dict[str, int]] = attrs.field(
+        factory=auto_ids_default
     )
 
     def enter(self):
@@ -162,14 +162,15 @@ class DataTree(NestedContext):
                 if not prev_accounted_for and unresolved_axes == layer_span:
                     assumed_id = ids[layer_str]
                 else:
-                    node_accum_ids = self._accumulating_ids[tuple(tree_path[:i])]
-                    resolved_ids = tuple(ids[f] for f in layer_span if f in ids)
+                    node_path = tuple(tree_path[:i]) + tuple(
+                        ids[str(f)] for f in new.span() if str(f) in ids
+                    )
+                    layer_label = tree_path[i]
                     try:
-                        assumed_id = node_accum_ids[resolved_ids]
+                        assumed_id = self._auto_ids[node_path][layer_label]
                     except KeyError:
-                        assumed_id = node_accum_ids[resolved_ids] = str(
-                            len(node_accum_ids) + 1
-                        )
+                        assumed_id = str(len(self._auto_ids[node_path]) + 1)
+                        self._auto_ids[node_path][layer_label] = assumed_id
                 ids[unresolved_axes[-1]] = assumed_id
             cummulative_freq |= layer_freq
         assert cummulative_freq == self.dataset.space.leaf()
@@ -284,4 +285,4 @@ class DataTree(NestedContext):
             frequency=self.dataset.root_freq,
             dataset=self.dataset,
         )
-        self._accumulating_ids = accumulating_ids_default()
+        self._auto_ids = auto_ids_default()

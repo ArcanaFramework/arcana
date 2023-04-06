@@ -2,7 +2,7 @@ from __future__ import annotations
 from operator import itemgetter
 import pytest
 from fileformats.text import Plain as PlainText
-from arcana.core.exceptions import ArcanaUsageError, ArcanaDataTreeConstructionError
+from arcana.core.exceptions import ArcanaUsageError
 from arcana.stdlib import DirTree, Clinical
 from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
 from arcana.testing.data.space import TestDataSpace
@@ -210,7 +210,7 @@ def test_include_exclude_fail3(work_dir):
         )
 
 
-TEST_INCREMENTING_IDS = {
+TEST_AUTO_IDS = {
     "d_dim": (
         TestDatasetBlueprint(  # dataset name
             space=TestDataSpace,
@@ -266,8 +266,8 @@ TEST_INCREMENTING_IDS = {
 }
 
 
-@pytest.mark.parametrize("fixture", TEST_INCREMENTING_IDS.items(), ids=itemgetter(0))
-def test_incrementing_ids(work_dir, fixture):
+@pytest.mark.parametrize("fixture", TEST_AUTO_IDS.items(), ids=itemgetter(0))
+def test_auto_ids(work_dir, fixture):
 
     _, (blueprint, expected) = fixture
 
