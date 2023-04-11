@@ -4,8 +4,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../genindex.html" /><link rel="search" title="Search" href="../../../../search.html" />
 
-    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.23 -->
-        <title>arcana.core.data.space - Arcana v0.9.10</title>
+    <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 -->
+        <title>arcana.core.data.space - Arcana v0.9.11</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../index.html"><div class="brand">Arcana v0.9.10</div></a>
+      <a href="../../../../index.html"><div class="brand">Arcana v0.9.11</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.10</span>
+  <span class="sidebar-brand-text">Arcana v0.9.11</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -358,7 +358,7 @@
         <span class="s2">&quot;Returns the union between data frequency values&quot;</span>
         <span class="n">union</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">freqs</span><span class="p">:</span>
-            <span class="n">union</span> <span class="o">|=</span> <span class="n">f</span>
+            <span class="n">union</span> <span class="o">|=</span> <span class="n">f</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="bp">cls</span><span class="p">)</span> <span class="k">else</span> <span class="bp">cls</span><span class="p">[</span><span class="n">f</span><span class="p">]</span>
         <span class="k">return</span> <span class="n">union</span>
 
     <span class="nd">@classmethod</span>
@@ -403,47 +403,6 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Cannot be a regular class attribute because then DataSpace won&#39;t be able to</span>
 <span class="sd">        be extended&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="s2">&quot;data&quot;</span></div>
-
-
-<span class="k">class</span> <span class="nc">Clinical</span><span class="p">(</span><span class="n">DataSpace</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    An enum that specifies the data hierarchy of data trees typical of</span>
-<span class="sd">    medimage research, i.e. subjects split into groups scanned at different</span>
-<span class="sd">    timepoints (in longitudinal studies).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="c1"># Root row of the dataset</span>
-    <span class="n">dataset</span> <span class="o">=</span> <span class="mb">0b000</span>  <span class="c1"># singular within the dataset</span>
-
-    <span class="c1"># Axes of the data space</span>
-    <span class="n">member</span> <span class="o">=</span> <span class="mb">0b001</span>  <span class="c1"># subjects relative to their group membership, i.e.</span>
-    <span class="c1"># matched pairs of test and control subjects should share</span>
-    <span class="c1"># the same member IDs.</span>
-    <span class="n">group</span> <span class="o">=</span> <span class="mb">0b010</span>  <span class="c1"># subject groups (e.g. test &amp; control)</span>
-    <span class="n">timepoint</span> <span class="o">=</span> <span class="mb">0b100</span>  <span class="c1"># timepoints in longitudinal studies</span>
-
-    <span class="c1"># Combinations</span>
-    <span class="n">session</span> <span class="o">=</span> <span class="mb">0b111</span>  <span class="c1"># a single session (i.e. a single timepoint of a subject)</span>
-    <span class="n">subject</span> <span class="o">=</span> <span class="mb">0b011</span>  <span class="c1"># uniquely identified subject within in the dataset.</span>
-    <span class="c1"># As opposed to &#39;member&#39;, which specifies a subject in</span>
-    <span class="c1"># relation to its group (i.e. one subject for each member</span>
-    <span class="c1"># in each group). For datasets with only one study group,</span>
-    <span class="c1"># then subject and member are equivalent</span>
-    <span class="n">batch</span> <span class="o">=</span> <span class="mb">0b110</span>  <span class="c1"># data from separate groups at separate timepoints</span>
-    <span class="n">matchedpoint</span> <span class="o">=</span> <span class="mb">0b101</span>  <span class="c1"># matched members (e.g. test &amp; control) across</span>
-    <span class="c1"># all groups and timepoints</span>
-
-
-<span class="k">class</span> <span class="nc">Samples</span><span class="p">(</span><span class="n">DataSpace</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The most basic data space within only one dimension</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-
-    <span class="c1"># Root row of the dataset</span>
-    <span class="n">dataset</span> <span class="o">=</span> <span class="mb">0b0</span>  <span class="c1"># singular within the dataset</span>
-
-    <span class="c1"># Axes of the data space</span>
-    <span class="n">sample</span> <span class="o">=</span> <span class="mb">0b1</span>
 </pre></div>
         </article>
       </div>
