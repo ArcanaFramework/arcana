@@ -73,7 +73,7 @@ can be arbitrarily specified. dimensions"""
 )
 @click.option(
     "--space",
-    default="core:Clinical",
+    default="stdlib:Clinical",
     help=(
         "The enum that specifies the data dimensions of the dataset. "
         "Defaults to `Clinical`, which "
@@ -152,7 +152,7 @@ field array (list[int|float|str|bool]) or
     help=(
         "The row-frequency that items appear in the dataset (e.g. per "
         "'session', 'subject', 'timepoint', 'group', 'dataset' for "
-        "core:Clinical data dimensions"
+        "stdlib:Clinical data dimensions"
     ),
     show_default="highest",
 )
@@ -334,6 +334,16 @@ COLUMN_NAMES, [COLUMN_NAMES, ...] to be included in the export, by default all w
     help="mapping of ID from hierarchy of the source dataset to that of the destination",
 )
 @click.option(
+    "--hierarchy",
+    "-h",
+    type=str,
+    default=None,
+    help=(
+        "The hierarchy to use for the target dataset, e.g. whether the layers of the "
+        "data tree correspond to subject>session or group>subject>timeptoint, etc..."
+    ),
+)
+@click.option(
     "--use-original-paths/--use-column-names",
     type=bool,
     default=False,
@@ -348,10 +358,13 @@ def export(
     imported_id,
     column_names,
     id_pattern,
+    hierarchy,
     use_original_paths,
 ):
     dataset = Dataset.load(dataset_locator)
     store = DataStore.load(store_nickname)
+    if hierarchy:
+        hierarchy = hierarchy.split(",")
     if not column_names:
         column_names = None
     store.import_dataset(
@@ -359,6 +372,7 @@ def export(
         dataset=dataset,
         column_names=column_names,
         id_patterns=id_pattern,
+        hierarchy=hierarchy,
         use_original_paths=use_original_paths,
     )
 

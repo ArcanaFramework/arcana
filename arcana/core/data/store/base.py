@@ -238,7 +238,7 @@ class DataStore(metaclass=ABCMeta):
         )  # avoid circular imports it is imported here rather than at the top of the file
 
         dataset = Dataset(
-            id,
+            id=id,
             store=self,
             space=space,
             hierarchy=hierarchy,
@@ -356,6 +356,7 @@ class DataStore(metaclass=ABCMeta):
         id: str,
         dataset: Dataset,
         column_names: list[str],
+        hierarchy: list[str] = None,
         id_patterns: dict[str, str] = None,
         use_original_paths: bool = False,
         **kwargs,
@@ -371,6 +372,10 @@ class DataStore(metaclass=ABCMeta):
             the dataset to import
         column_names : list[str]
             list of columns to be included in the imported dataset
+        hierarchy : list[str], optional
+            the hierarchy of the imported dataset, by default either the default
+            hierarchy of the target store if applicable or the hierarchy of the original
+            dataset
         id_patterns : dict[str, str]
             Patterns for inferring IDs of rows not explicitly present in the hierarchy of
             the data tree. See ``DataStore.infer_ids()`` for syntax
@@ -382,12 +387,21 @@ class DataStore(metaclass=ABCMeta):
         """
         if use_original_paths:
             raise NotImplementedError
+        if hierarchy is None:
+            try:
+                hierarchy = self.DEFAULT_HIERARCHY
+            except AttributeError:
+                hierarchy = dataset.hierarchy
+                if id_patterns is None:
+                    id_patterns = dataset.id_patterns
         # Create a new dataset in the store to import the data into
         imported = self.create_dataset(
             id,
             space=dataset.space,
-            hierarchy=dataset.hierarchy,
-            leaves=dataset.row_ids(),
+            hierarchy=hierarchy,
+            leaves=[
+                tuple(r.frequency_id(h) for h in hierarchy) for r in dataset.rows()
+            ],
             id_patterns=id_patterns,
             metadata=dataset.metadata,
             **kwargs,
@@ -602,6 +616,10 @@ class DataStore(metaclass=ABCMeta):
         """
         Populates the nodes of the data tree with those found in the dataset using
         the ``DataTree.add_leaf`` method for every "leaf" node of the dataset tree.
+
+        The order that the tree leaves are added is important and should be consistent
+        between reads, because it is used to give default values to the ID's of data
+        space axes not explicitly in the hierarchy of the tree.
 
         Parameters
         ----------

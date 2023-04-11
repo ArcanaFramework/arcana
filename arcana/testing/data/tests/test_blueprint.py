@@ -8,8 +8,7 @@
 # from arcana.core.utils.misc import add_exc_note
 from pathlib import Path
 import pytest
-from arcana.core.data.space import Clinical
-from arcana.dirtree import DirTree
+from arcana.stdlib import DirTree, Clinical
 from arcana.testing.data.blueprint import TEST_DATASET_BLUEPRINTS
 
 

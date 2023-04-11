@@ -1,42 +1,9 @@
 name: no_motion
-sources:
-  anat/t1w:
-    datatype:
-      format: medimage/dicom
-      classifiers:
-        species: human
-        region: brain
-        modality: mri
-        contrast: t1w
-    is_regex: true
-    order: null
-    path: "*.mprage.*"
-    quality_threshold: null
-    required_metadata: null
-    row_frequency: session
-  another_column:
-    datatype:
-      format: text/plain
-    is_regex: false
-    order: null
-    path: file2
-    quality_threshold: null
-    required_metadata: null
-    row_frequency: group
-sinks:
-  a_derivative:
-    datatype:
-      format: medimage/nifti1+gzip
-    path: brain-template@no_motion
-    row_frequency: subject
-id_inference: []
-include: []
-exclude:
-  subject:
-  - CONT04
-  - TEST11
-  timepoint:
-  - 03
+space: /clinical  # This could be extended
+hierarchy:  # This is fixed for XNAT
+- subject
+- session
+store-version: 1.0.0
 metadata:  # Primarily required for BIDS export
   title: A sample dataset with subjects with high motion excluded
   acknowledgements: null
@@ -60,14 +27,55 @@ metadata:  # Primarily required for BIDS export
   row_keys: []
   sources: []
   type: derivative
+id_patterns:
+  group: "subject::(\\w+)\\d+"
+  member: "subject::\\w+(\\d+)"
+  visit: "MYVIS#session:visit_id:VISIT(\\d+)#"
+subsets:
+  neuro:
+    common_axes:
+    - group
+    - member
+    sources:
+      anat/t1w:
+        datatype:
+          format: medimage/dicom
+          classifiers:
+            species: human
+            region: brain
+            modality: mri
+            contrast: t1w
+        is_regex: true
+        order: null
+        path: "*.mprage.*"
+        quality_threshold: null
+        required_metadata: null
+        row_frequency: session
+      another_column:
+        datatype:
+          format: text/plain
+        is_regex: false
+        order: null
+        path: file2
+        quality_threshold: null
+        required_metadata: null
+        row_frequency: group
+    sinks:
+      a_derivative:
+        datatype:
+          format: medimage/nifti1+gzip
+        path: brain-template@no_motion
+        row_frequency: subject
+    include:
+      timepoint:
+      - 02
+    exclude:
+      subject:
+      - CONT04
+      - TEST11
+      timepoint:
+      - 03
 pipelines: {}
 pkg_versions:
   arcana: 0.9.8
   fileformats: 0.5.0
-space: core/Clinical  # This could be extended
-hierarchy:  # This is fixed for XNAT
-- subject
-- session
-id_composition:
-  subject: "(?P<group>[A-Z]+)(?P<member>[0-9]+)"  # Not 100% sure on this, suggestions welcom
-store-version: 1.0.0

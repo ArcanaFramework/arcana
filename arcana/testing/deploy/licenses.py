@@ -1,7 +1,6 @@
 from arcana.core.deploy.image import App
-from arcana.core.data.space import Samples
 from arcana.core.data.set import Dataset
-from arcana.dirtree import DirTree
+from arcana.stdlib import DirTree, Samples
 
 
 def get_pipeline_image(license_path, app_cls=App) -> App:
@@ -25,7 +24,7 @@ def get_pipeline_image(license_path, app_cls=App) -> App:
         },
         command={
             "task": "arcana.testing.tasks:check_license",
-            "row_frequency": "core:Samples[sample]",
+            "row_frequency": "stdlib:Samples[sample]",
             "inputs": [
                 {
                     "name": LICENSE_INPUT_FIELD,

@@ -54,7 +54,7 @@ class CommandField(PipelineField):
     field : str, optional
         the name of the pydra input field to connect to, defaults to name
     datatype : type, optional
-        the type of the items to be passed to the input, arcana.dirtree.data.File by default
+        the type of the items to be passed to the input, fileformats.generic.File by default
     help_string : str
         short description of the field to be displayed in the UI
     configuration : dict[str, Any] or bool

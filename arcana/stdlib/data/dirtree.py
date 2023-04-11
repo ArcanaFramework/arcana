@@ -65,7 +65,8 @@ class DirTree(LocalStore):
                 f"Could not find a directory at '{tree.dataset_id}' to be the "
                 "root row of the dataset"
             )
-        for dpath, _, _ in os.walk(tree.dataset_id):
+        dpaths = sorted(d for d, _, _ in os.walk(tree.dataset_id))
+        for dpath in dpaths:
             tree_path = tuple(Path(dpath).relative_to(tree.dataset_id).parts)
             if len(tree_path) != len(tree.hierarchy):
                 continue

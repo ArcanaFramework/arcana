@@ -10,7 +10,7 @@ from fileformats.generic import Directory
 from arcana.core.utils.misc import show_cli_trace
 from arcana.testing.data.blueprint import TEST_DATASET_BLUEPRINTS
 from arcana.testing.data import MockRemote
-from arcana.dirtree import DirTree
+from arcana.stdlib import DirTree
 
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]
@@ -106,7 +106,7 @@ def test_define_cli(dataset: Dataset, cli_runner):
         a, b = get_arbitrary_slice(i, dim_length)
         if i % 2:
             included[str(axis)] = f"{a}:{b}"
-        elif (b - a) < dim_length:  # Check that we aren't excluding all
+        elif str(axis) in dataset.hierarchy:  # Check that we aren't excluding all
             excluded[str(axis)] = f"{a}:{b}"
     # Add include and exclude options
     for axis, slce in included.items():
