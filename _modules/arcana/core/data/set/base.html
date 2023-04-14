@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" />
 
     <!-- Generated with Sphinx 6.1.3 and Furo 2023.03.27 -->
-        <title>arcana.core.data.set.base - Arcana v0.9.11</title>
+        <title>arcana.core.data.set.base - Arcana v0.9.12</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?digest=fad236701ea90a88636c2a8c73b44ae642ed2a53" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../../index.html"><div class="brand">Arcana v0.9.11</div></a>
+      <a href="../../../../../index.html"><div class="brand">Arcana v0.9.12</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.11</span>
+  <span class="sidebar-brand-text">Arcana v0.9.12</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -325,7 +325,7 @@
     <span class="n">id_patterns</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
         <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
     <span class="p">)</span>
-    <span class="n">hierarchy</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">DataSpace</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">hierarchy</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">metadata</span><span class="p">:</span> <span class="n">DatasetMetadata</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
         <span class="n">factory</span><span class="o">=</span><span class="n">DatasetMetadata</span><span class="p">,</span>
         <span class="n">converter</span><span class="o">=</span><span class="n">metadata_converter</span><span class="p">,</span>
@@ -656,7 +656,7 @@
                 <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">spec</span>
 
-    <span class="k">def</span> <span class="nf">row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">id_kwargs</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">row</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="n">attrs</span><span class="o">.</span><span class="n">NOTHING</span><span class="p">,</span> <span class="o">**</span><span class="n">id_kwargs</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns the row associated with the given frequency and ids dict</span>
 
 <span class="sd">        Parameters</span>
@@ -685,42 +685,51 @@
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">:</span>
             <span class="c1"># Parse str to frequency enums</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">frequency</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">attrs</span><span class="o">.</span><span class="n">NOTHING</span><span class="p">):</span>
                     <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Root rows don&#39;t have any IDs (</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
                 <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span>
             <span class="n">frequency</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parse_frequency</span><span class="p">(</span><span class="n">frequency</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">id_kwargs</span><span class="p">:</span>
-                <span class="k">if</span> <span class="nb">id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">attrs</span><span class="o">.</span><span class="n">NOTHING</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">id_kwargs</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
                         <span class="sa">f</span><span class="s2">&quot;ID (</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">) and id_kwargs (</span><span class="si">{</span><span class="n">id_kwargs</span><span class="si">}</span><span class="s2">) cannot be both &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;provided to `row` method of </span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">&quot;</span>
                     <span class="p">)</span>
-                <span class="c1"># Iterate through the tree to find the row (i.e. tree node) matching the</span>
-                <span class="c1"># provided IDs</span>
-                <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span>
-                <span class="k">for</span> <span class="n">freq</span><span class="p">,</span> <span class="nb">id</span> <span class="ow">in</span> <span class="n">id_kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="n">children_dict</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">[</span><span class="n">freq</span><span class="p">]]</span>
-                    <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="n">ArcanaNameError</span><span class="p">(</span>
-                            <span class="n">freq</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">freq</span><span class="si">}</span><span class="s2"> is not a child frequency of </span><span class="si">{</span><span class="n">row</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="n">row</span> <span class="o">=</span> <span class="n">children_dict</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span>
-                    <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                        <span class="k">raise</span> <span class="n">ArcanaNameError</span><span class="p">(</span>
-                            <span class="nb">id</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">freq</span><span class="si">}</span><span class="s2">) not a child row of </span><span class="si">{</span><span class="n">row</span><span class="si">}</span><span class="s2">&quot;</span>
-                        <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
-                <span class="k">return</span> <span class="n">row</span>
-            <span class="k">else</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">frequency</span><span class="p">][</span><span class="nb">id</span><span class="p">]</span>
                 <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">ndim</span><span class="p">:</span>
+                        <span class="c1"># Expand ID tuple to see if it is an expansion of the ID axes</span>
+                        <span class="c1"># instead of a direct label for the row</span>
+                        <span class="n">id_kwargs</span> <span class="o">=</span> <span class="p">{</span><span class="n">a</span><span class="p">:</span> <span class="n">i</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">axes</span><span class="p">(),</span> <span class="nb">id</span><span class="p">)}</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">ArcanaNameError</span><span class="p">(</span>
+                            <span class="nb">id</span><span class="p">,</span>
+                            <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2"> not present in data tree &quot;</span>
+                            <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">row_ids</span><span class="p">(</span><span class="n">frequency</span><span class="p">))</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                        <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="n">id_kwargs</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Neither ID nor id_kwargs cannot were provided `row` method of </span><span class="si">{</span><span class="bp">self</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="p">)</span>
+            <span class="c1"># Iterate through the tree to find the row (i.e. tree node) matching the</span>
+            <span class="c1"># provided IDs</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span>
+            <span class="n">cum_freq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">freq</span><span class="p">,</span> <span class="nb">id</span> <span class="ow">in</span> <span class="n">id_kwargs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">cum_freq</span> <span class="o">|=</span> <span class="n">freq</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">row</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">cum_freq</span><span class="p">][</span><span class="nb">id</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="n">ArcanaNameError</span><span class="p">(</span>
-                        <span class="nb">id</span><span class="p">,</span>
-                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2"> not present in data tree &quot;</span>
-                        <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">row_ids</span><span class="p">(</span><span class="n">frequency</span><span class="p">))</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+                        <span class="nb">id</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">freq</span><span class="si">}</span><span class="s2">) not a child row of </span><span class="si">{</span><span class="n">row</span><span class="si">}</span><span class="s2">&quot;</span>
                     <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+            <span class="k">if</span> <span class="n">cum_freq</span> <span class="o">!=</span> <span class="n">frequency</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Cumulative frequency of ID kwargs </span><span class="si">{</span><span class="n">id_kwargs</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">cum_freq</span><span class="si">}</span><span class="s2">) does not &quot;</span>
+                    <span class="s2">&quot;match that of row&quot;</span>
+                <span class="p">)</span>
+            <span class="k">return</span> <span class="n">row</span>
 
     <span class="k">def</span> <span class="nf">rows</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frequency</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ids</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all the IDs in the dataset for a given frequency</span>
@@ -770,7 +779,10 @@
         <span class="k">if</span> <span class="n">frequency</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">root_freq</span><span class="p">:</span>
             <span class="k">return</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span>
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">tree</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">frequency</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">children</span><span class="p">[</span><span class="n">frequency</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="p">()</span>
 
     <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Return all data items across the dataset for a given source or sink</span>
