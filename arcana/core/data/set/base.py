@@ -441,7 +441,7 @@ class Dataset:
                 )
         self.columns[name] = spec
 
-    def row(self, frequency=None, id=None, **id_kwargs):
+    def row(self, frequency=None, id=attrs.NOTHING, **id_kwargs):
         """Returns the row associated with the given frequency and ids dict
 
         Parameters
@@ -470,11 +470,11 @@ class Dataset:
         with self.tree:
             # Parse str to frequency enums
             if not frequency:
-                if id is not None:
+                if id not in (None, attrs.NOTHING):
                     raise ArcanaUsageError(f"Root rows don't have any IDs ({id})")
                 return self.root
             frequency = self.parse_frequency(frequency)
-            if id is not None:
+            if id is not attrs.NOTHING:
                 if id_kwargs:
                     raise ArcanaUsageError(
                         f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
