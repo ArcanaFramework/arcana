@@ -110,8 +110,9 @@ class DataStore(metaclass=ABCMeta):
         if name is None:
             if self.name is None:
                 raise ArcanaNameError(
+                    None,
                     f"Must provide name to save store {self} as as it doesn't have one "
-                    "already"
+                    "already",
                 )
         else:
             self.name = name
@@ -127,9 +128,7 @@ class DataStore(metaclass=ABCMeta):
         return asdict(self, **kwargs)
 
     @classmethod
-    def load(
-        cls: DataStore, name: str, config_path: Path = None, **kwargs
-    ) -> DataStore:
+    def load(cls, name: str, config_path: Path = None, **kwargs) -> DataStore:
         """Loads a DataStore from that has been saved in the configuration file.
         If no entry is saved under that name, then it searches for DataStore
         sub-classes with aliases matching `name` and checks whether they can
@@ -355,7 +354,7 @@ class DataStore(metaclass=ABCMeta):
         self,
         id: str,
         dataset: Dataset,
-        column_names: list[str],
+        column_names: list[ty.Union[str, tuple[str, type]]] = None,
         hierarchy: list[str] = None,
         id_patterns: dict[str, str] = None,
         use_original_paths: bool = False,
@@ -370,8 +369,12 @@ class DataStore(metaclass=ABCMeta):
             the ID of the dataset within this store
         dataset : Dataset
             the dataset to import
-        column_names : list[str]
-            list of columns to be included in the imported dataset
+        column_names : list[str or tuple[str, type]], optional
+            list of columns to the to be included in the imported dataset. Items of the
+            list are either a tuple corresponding to the name of a column to import and the
+            datatype to import it as. If the datatype isn't provided and the store has
+            a `DEFAULT_DATATYPE` attribute it would be used instead otherwise the original
+            datatype will be used, by default all columns are imported
         hierarchy : list[str], optional
             the hierarchy of the imported dataset, by default either the default
             hierarchy of the target store if applicable or the hierarchy of the original
@@ -385,44 +388,63 @@ class DataStore(metaclass=ABCMeta):
         **kwargs:
             keyword arguments passed through to the `create_data_tree` method
         """
-        if use_original_paths:
-            raise NotImplementedError
-        if hierarchy is None:
-            try:
-                hierarchy = self.DEFAULT_HIERARCHY
-            except AttributeError:
-                hierarchy = dataset.hierarchy
-                if id_patterns is None:
-                    id_patterns = dataset.id_patterns
-        # Create a new dataset in the store to import the data into
-        imported = self.create_dataset(
-            id,
-            space=dataset.space,
-            hierarchy=hierarchy,
-            leaves=[
-                tuple(r.frequency_id(h) for h in hierarchy) for r in dataset.rows()
-            ],
-            id_patterns=id_patterns,
-            metadata=dataset.metadata,
-            **kwargs,
-        )
-        # Loop through columns
-        if column_names is None:
-            column_names = list(dataset.columns)
-        for column_name in column_names:
-            column = dataset.columns[column_name]
-            path = column.name if not column.is_sink else column.path
-            # Create columns in imported dataset
-            imported_col = imported.add_sink(
-                name=column.name,
-                datatype=column.datatype,
-                path=path,
-                row_frequency=column.row_frequency,
+        with self.connection, dataset.store.connection:
+            if use_original_paths:
+                raise NotImplementedError
+            if hierarchy is None:
+                try:
+                    hierarchy = self.DEFAULT_HIERARCHY
+                except AttributeError:
+                    hierarchy = dataset.hierarchy
+            if id_patterns is None:
+                id_patterns = {}
+                for freq, pattern in dataset.id_patterns.items():
+                    source_labels = re.findall(r"(\w+):.*:[^#]+", pattern)
+                    if freq not in hierarchy and set(source_labels).issubset(hierarchy):
+                        id_patterns[freq] = pattern
+            # Create a new dataset in the store to import the data into
+            imported = self.create_dataset(
+                id,
+                space=dataset.space,
+                hierarchy=hierarchy,
+                leaves=[
+                    tuple(r.frequency_id(h) for h in hierarchy) for r in dataset.rows()
+                ],
+                id_patterns=id_patterns,
+                metadata=dataset.metadata,
+                **kwargs,
             )
-            # Copy across data from dataset to import
-            for cell in column.cells():
-                imported_col[cell.row.id] = cell.item
-        imported.save(name="")
+            # Loop through columns
+            if column_names is None:
+                column_names = list(dataset.columns)
+            for col_name in column_names:
+                try:
+                    col_name, col_dtype = col_name
+                except ValueError:
+                    try:
+                        col_dtype = self.DEFAULT_DATATYPE
+                    except AttributeError:
+                        col_dtype = None
+                column = dataset.columns[col_name]
+                if col_dtype is None:
+                    col_dtype = column.datatype
+                path = column.name if not column.is_sink else column.path
+                # Create columns in imported dataset
+                imported_col = imported.add_sink(
+                    name=column.name,
+                    datatype=col_dtype,
+                    path=path,
+                    row_frequency=column.row_frequency,
+                )
+                # Copy across data from dataset to import
+                for cell in column.cells():
+                    item = cell.item
+                    if not isinstance(item, imported_col.datatype):
+                        item = imported_col.datatype.convert(item)
+                    imported_col[
+                        tuple(cell.row.frequency_id(a) for a in dataset.space.axes())
+                    ] = item
+            imported.save(name="")
 
     @classmethod
     def singletons(cls):

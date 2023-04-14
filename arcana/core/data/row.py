@@ -1,7 +1,6 @@
 from __future__ import annotations
 import typing as ty
 import attrs
-from collections import defaultdict
 from arcana.core.exceptions import (
     ArcanaNameError,
     ArcanaWrongFrequencyError,
@@ -47,9 +46,9 @@ class DataRow:
     metadata: dict = None
 
     # Automatically populated fields
-    children: ty.DefaultDict[
-        DataSpace, dict[ty.Union[str, tuple[str]], str]
-    ] = attrs.field(factory=lambda: defaultdict(dict), repr=False, init=False)
+    children: dict[DataSpace, dict[ty.Union[str, tuple[str]], str]] = attrs.field(
+        factory=dict, repr=False, init=False
+    )
     _entries_dict: dict[str, DataEntry] = attrs.field(
         default=None, init=False, repr=False
     )
@@ -148,10 +147,14 @@ class DataRow:
         return self.ids[self.frequency]
 
     @property
+    def ids_tuple(self):
+        return tuple(self.ids[a] for a in self.dataset.space.axes())
+
+    @property
     def label(self):
         return self.tree_path[-1]
 
-    def frequency_id(self, frequency: str):
+    def frequency_id(self, frequency: ty.Union[str, DataSpace]):
         return self.ids[self.dataset.space[str(frequency)]]
 
     def __iter__(self):
@@ -198,10 +201,6 @@ class DataRow:
                 return self.children[spec.row_frequency].values()
             except KeyError:
                 return self.dataset.column(spec.row_frequency)
-
-    @property
-    def ids_tuple(self):
-        return self.dataset.ids_tuple(self.ids)
 
     def add_entry(
         self,

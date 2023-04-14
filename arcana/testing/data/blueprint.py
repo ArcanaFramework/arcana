@@ -6,6 +6,7 @@ from pathlib import Path
 import tempfile
 import shutil
 import logging
+import glob
 import decimal
 from copy import deepcopy
 import zipfile
@@ -102,17 +103,21 @@ class FileSetEntryBlueprint(EntryBlueprint):
             out_path = None
             if source_data is not None:
                 src_path = source_data.joinpath(*fname.split("/"))
-                if src_path.exists():
-                    if escape_source_name:
-                        parts = fname.split(".")
-                        out_fname = path2varname(parts[0]) + "." + ".".join(parts[1:])
-                    else:
-                        out_fname = Path(fname).name
-                    out_path = tmp_dir / out_fname
-                    if src_path.is_dir():
-                        shutil.copytree(src_path, out_path)
-                    else:
-                        shutil.copyfile(src_path, out_path, follow_symlinks=True)
+                fspaths = [Path(f) for f in glob.glob(str(src_path))]
+                if fspaths:
+                    for fspath in fspaths:
+                        if escape_source_name:
+                            parts = fname.split(".")
+                            out_fname = (
+                                path2varname(parts[0]) + "." + ".".join(parts[1:])
+                            )
+                        else:
+                            out_fname = Path(fname).name
+                        out_path = tmp_dir / out_fname
+                        if fspath.is_dir():
+                            shutil.copytree(fspath, out_path)
+                        else:
+                            shutil.copyfile(fspath, out_path, follow_symlinks=True)
                 elif not source_fallback:
                     raise ArcanaError(
                         f"Couldn't find {fname} in source data directory {source_data}"
@@ -208,7 +213,7 @@ class TestDatasetBlueprint:
         """
         if metadata is None:
             metadata = {}
-        orig_type = metadata.get("type", "test")
+        orig_type = metadata.get("type", "derivative")
         metadata["type"] = "in-construction"
         with store.connection:
             logger.debug(
