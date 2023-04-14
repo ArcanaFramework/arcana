@@ -233,7 +233,10 @@ class DataTree(NestedContext):
         row_frequency = self.dataset.parse_frequency(row_frequency)
         row = DataRow(ids=ids, frequency=row_frequency, dataset=self.dataset)
         # Create new data row
-        row_dict = self.root.children[row.frequency]
+        try:
+            row_dict = self.root.children[row.frequency]
+        except KeyError:
+            row_dict = self.root.children[row.frequency] = {}
         if row.id in row_dict:
             raise ArcanaDataTreeConstructionError(
                 f"ID clash ({row.id}) between rows inserted into the data tree of "
@@ -252,21 +255,21 @@ class DataTree(NestedContext):
                 continue  # Don't need to insert root row again
             diff_freq = (row.frequency ^ parent_freq) & row.frequency
             if diff_freq:
-                # logger.debug(f'Linking parent {parent_freq}: {parent_id}')
                 try:
-                    parent_row = self.dataset.row(parent_freq, parent_id)
+                    parent_row = self.dataset.row(frequency=parent_freq, id=parent_id)
                 except ArcanaNameError:
-                    # logger.debug(
-                    #     f'Parent {parent_freq}:{parent_id} not found, adding')
                     parent_ids = {
                         f: i
                         for f, i in row.ids.items()
-                        if (f.is_parent(parent_freq) or f == parent_freq)
+                        if f.is_parent(parent_freq, if_match=True)
                     }
                     parent_row = self._add_row(parent_ids, parent_freq)
                 # Set reference to level row in new row
                 diff_id = row.frequency_id(diff_freq)
-                children_dict = parent_row.children[row_frequency]
+                try:
+                    children_dict = parent_row.children[row_frequency]
+                except KeyError:
+                    children_dict = parent_row.children[row_frequency] = {}
                 if diff_id in children_dict:
                     raise ArcanaDataTreeConstructionError(
                         f"ID clash between rows inserted into data tree, {diff_id}, "

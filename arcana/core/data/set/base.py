@@ -110,7 +110,7 @@ class Dataset:
     id_patterns: dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
-    hierarchy: ty.List[DataSpace] = attrs.field(converter=list)
+    hierarchy: list[str] = attrs.field(converter=list)
     metadata: DatasetMetadata = attrs.field(
         factory=DatasetMetadata,
         converter=metadata_converter,
@@ -474,38 +474,47 @@ class Dataset:
                     raise ArcanaUsageError(f"Root rows don't have any IDs ({id})")
                 return self.root
             frequency = self.parse_frequency(frequency)
-            if id_kwargs:
-                if id is not None:
+            if id is not None:
+                if id_kwargs:
                     raise ArcanaUsageError(
                         f"ID ({id}) and id_kwargs ({id_kwargs}) cannot be both "
                         f"provided to `row` method of {self}"
                     )
-                # Iterate through the tree to find the row (i.e. tree node) matching the
-                # provided IDs
-                row = self.root
-                for freq, id in id_kwargs.items():
-                    try:
-                        children_dict = row.children[self.space[freq]]
-                    except KeyError as e:
-                        raise ArcanaNameError(
-                            freq, f"{freq} is not a child frequency of {row}"
-                        ) from e
-                    try:
-                        row = children_dict[id]
-                    except KeyError as e:
-                        raise ArcanaNameError(
-                            id, f"{id} ({freq}) not a child row of {row}"
-                        ) from e
-                return row
-            else:
                 try:
                     return self.root.children[frequency][id]
                 except KeyError as e:
+                    if isinstance(id, tuple) and len(id) == self.space.ndim:
+                        # Expand ID tuple to see if it is an expansion of the ID axes
+                        # instead of a direct label for the row
+                        id_kwargs = {a: i for a, i in zip(self.space.axes(), id)}
+                    else:
+                        raise ArcanaNameError(
+                            id,
+                            f"{id} not present in data tree "
+                            f"({list(self.row_ids(frequency))})",
+                        ) from e
+            elif not id_kwargs:
+                raise ArcanaUsageError(
+                    f"Neither ID nor id_kwargs cannot were provided `row` method of {self}"
+                )
+            # Iterate through the tree to find the row (i.e. tree node) matching the
+            # provided IDs
+            row = self.root
+            cum_freq = self.space(0)
+            for freq, id in id_kwargs.items():
+                cum_freq |= freq
+                try:
+                    row = row.children[cum_freq][id]
+                except KeyError as e:
                     raise ArcanaNameError(
-                        id,
-                        f"{id} not present in data tree "
-                        f"({list(self.row_ids(frequency))})",
+                        id, f"{id} ({freq}) not a child row of {row}"
                     ) from e
+            if cum_freq != frequency:
+                raise ArcanaUsageError(
+                    f"Cumulative frequency of ID kwargs {id_kwargs} ({cum_freq}) does not "
+                    "match that of row"
+                )
+            return row
 
     def rows(self, frequency=None, ids=None):
         """Return all the IDs in the dataset for a given frequency
@@ -555,7 +564,10 @@ class Dataset:
         if frequency == self.root_freq:
             return [None]
         with self.tree:
-            return self.root.children[frequency].keys()
+            try:
+                return self.root.children[frequency].keys()
+            except KeyError:
+                return ()
 
     def __getitem__(self, name):
         """Return all data items across the dataset for a given source or sink

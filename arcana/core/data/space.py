@@ -67,7 +67,7 @@ class DataSpace(Enum):
 
     @classproperty
     def ndim(self):
-        return len(self.axes)
+        return len(self.axes())
 
     def span(self):
         """Returns the basis dimensions in the data tree that the given
