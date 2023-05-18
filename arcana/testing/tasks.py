@@ -240,8 +240,8 @@ def contents_are_numeric(in_file: PathTypes) -> bool:
 
 @mark.task
 def check_license(
-    expected_license_path: ty.Union[str, Path],
-    expected_license_contents: ty.Union[str, Path],
+    expected_license_path: os.PathLike,
+    expected_license_contents: os.PathLike,
 ) -> Path:
     """Checks the `expected_license_path` to see if there is a file with the same contents
     as that of `expected_license_contents`
