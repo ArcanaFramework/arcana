@@ -4,6 +4,7 @@ import re
 import typing as ty
 from pathlib import Path
 import shutil
+from enum import EnumMeta
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
@@ -15,17 +16,17 @@ from arcana.core.exceptions import (
     ArcanaUsageError,
     ArcanaWrongDataSpaceError,
 )
-from ..space import DataSpace
 from ..column import DataColumn, DataSink, DataSource
 from .. import store as datastore
 from ..tree import DataTree
 from .metadata import DatasetMetadata, metadata_converter
-from arcana.core.analysis import Analysis
 
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from arcana.core.deploy.image.components import License
     from arcana.core.data.entry import DataEntry
+    from arcana.core.analysis.base import Analysis
+    from arcana.core.analysis.pipeline import Pipeline
 
 logger = logging.getLogger("arcana")
 
@@ -107,7 +108,7 @@ class Dataset:
 
     id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.DataStore = attrs.field()
-    space: DataSpace = attrs.field()
+    space: EnumMeta = attrs.field()
     id_patterns: dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
@@ -124,13 +125,13 @@ class Dataset:
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
     name: str = attrs.field(default="")
-    columns: ty.Optional[ty.Dict[str, DataColumn]] = attrs.field(
+    columns: ty.Dict[str, DataColumn] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    pipelines: ty.Dict[str, ty.Any] = attrs.field(
+    pipelines: dict[str, Pipeline] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    analyses: ty.Dict[str, Analysis] = attrs.field(
+    analyses: dict[str, Analysis] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
     tree: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
