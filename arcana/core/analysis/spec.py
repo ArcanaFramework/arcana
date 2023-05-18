@@ -12,7 +12,7 @@ from ..utils.misc import ARCANA_SPEC
 from arcana.core.exceptions import ArcanaDesignError
 
 
-@attrs.define
+@attrs.define(frozen=True)
 class BaseAttr:
 
     name: ty.Optional[

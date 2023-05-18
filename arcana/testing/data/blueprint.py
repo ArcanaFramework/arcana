@@ -182,6 +182,14 @@ class TestDatasetBlueprint:
     include: ty.Dict[str, ty.Union[str, ty.List[str]]] = attrs.field(factory=dict)
     exclude: ty.Dict[str, ty.Union[str, ty.List[str]]] = attrs.field(factory=dict)
 
+    @dim_lengths.validator
+    def dim_lengths_validator(self, attr, dim_lengths):
+        if len(dim_lengths) != self.space.ndims:
+            raise RuntimeError(
+                f"Number of dimensions in dim lengths ({dim_lengths}) does match "
+                "number of axes in data space"
+            )
+
     DEFAULT_NUM_ACCESS_ATTEMPTS = 300
     DEFAULT_ACCESS_ATTEMPT_INTERVAL = 1.0  # secs
 
@@ -269,14 +277,14 @@ class TestDatasetBlueprint:
             try:
                 blueprint.hierarchy = data_store.DEFAULT_HIERARCHY
             except AttributeError:
-                if space.ndim > self.space.ndim:
+                if space.ndims > self.space.ndims:
                     raise RuntimeError(
                         f"cannot translate hierarchy as from {self.space} to {space} "
                         "as it has more dimensions"
                     )
                 # Translate frequencies into new space
                 blueprint.hierarchy = [
-                    space.union(*f.span()[-space.ndim :]) for f in self.hierarchy
+                    space.union(*f.span()[-space.ndims :]) for f in self.hierarchy
                 ]
                 # Drop frequencies that mapped onto same value
                 blueprint.hierarchy = [

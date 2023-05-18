@@ -66,7 +66,7 @@ class DataSpace(Enum):
         return cls.leaf().span()
 
     @classproperty
-    def ndim(self):
+    def ndims(self):
         return len(self.axes())
 
     def span(self):

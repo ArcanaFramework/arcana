@@ -492,7 +492,7 @@ class Dataset:
                 try:
                     return self.root.children[frequency][id]
                 except KeyError as e:
-                    if isinstance(id, tuple) and len(id) == self.space.ndim:
+                    if isinstance(id, tuple) and len(id) == self.space.ndims:
                         # Expand ID tuple to see if it is an expansion of the ID axes
                         # instead of a direct label for the row
                         id_kwargs = {a: i for a, i in zip(self.space.axes(), id)}
