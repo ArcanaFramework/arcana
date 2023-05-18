@@ -21,10 +21,10 @@ class BaseAttr:
     type: ty.Optional[type] = None
     desc: ty.Optional[str] = None
     inherited: bool = False
-    defined_in: ty.Tuple[type, ...] = ()
-    modified: ty.Tuple[ty.Tuple[str, ty.Any], ...] = ()
+    defined_in: tuple[type, ...] = ()
+    modified: tuple[tuple[str, ty.Any], ...] = ()
     mapped_from: ty.Optional[
-        ty.Tuple[str, str or ty.Tuple]
+        tuple[str, ty.Union[str, tuple]]
     ] = None  # sub-analysis name, column name
     metadata: dict = attrs.field(
         factory=dict, converter=default_if_none(default=attrs.Factory(dict))
@@ -88,7 +88,7 @@ class Parameter(BaseAttr):
     """Specifies a free parameter of an analysis"""
 
     default: ty.Union[
-        int, float, str, ty.Tuple[int], ty.Tuple[float], ty.Tuple[str], None
+        int, float, str, ty.Tuple[int], ty.Tuple[float], ty.Tuple[str]
     ] = attrs.field(default=None)
     salience: ty.Optional[ParameterSalience] = None
     choices: ty.Union[
@@ -214,8 +214,8 @@ class PipelineConstructor(BaseMethod):
     that is able to generate data for sink columns under certain conditions"""
 
     outputs: ty.Tuple[str]
-    condition: ty.Union[Operation, None] = None
-    switch: ty.Union[Switch, None] = None
+    condition: ty.Optional[Operation] = None
+    switch: ty.Optional[Switch] = None
 
 
 @attrs.define(frozen=True)

@@ -40,7 +40,7 @@ if ty.TYPE_CHECKING:  # pragma: no cover
 @attrs.define
 class ConnectionManager(NestedContext):
 
-    store: ty.Any = None
+    store: ty.Optional[ty.Any] = None
     session: ty.Any = attrs.field(default=None, init=False)
 
     def __getattr__(self, attr_name):

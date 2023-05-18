@@ -495,7 +495,7 @@ class ObjectConverter:
 
     klass: type
     allow_none: bool = False
-    default_if_none: ty.Any = None
+    default_if_none: ty.Optional[ty.Any] = None
     accept_metadata: bool = False
 
     def __call__(self, value):

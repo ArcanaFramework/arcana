@@ -41,7 +41,7 @@ class DataRow:
     ids: ty.Dict[DataSpace, str] = attrs.field()
     dataset: Dataset = attrs.field(repr=False)
     frequency: str = attrs.field()
-    tree_path: ty.List[str] = None
+    tree_path: ty.Optional[ty.List[str]] = None
     uri: ty.Optional[str] = None
     metadata: ty.Optional[dict] = None
 
@@ -210,7 +210,7 @@ class DataRow:
         item_metadata: ty.Optional[dict] = None,
         order: ty.Optional[int] = None,
         quality: DataQuality = DataQuality.usable,
-        checksums: ty.Dict[str, str] = None,
+        checksums: ty.Optional[ty.Dict[str, str]] = None,
     ):
         """Adds an data entry to a row that has been found while scanning the row in the
         repository.

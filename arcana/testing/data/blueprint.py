@@ -160,7 +160,7 @@ class FileSetEntryBlueprint(EntryBlueprint):
 class FieldEntryBlueprint(EntryBlueprint):
 
     value: ty.Any
-    expected_value: ty.Any = None
+    expected_value: ty.Optional[ty.Any] = None
 
     def make_item(self, **kwargs) -> Field:
         return self.datatype(self.value)

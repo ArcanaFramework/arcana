@@ -225,4 +225,4 @@ class CommandParameter(CommandField):
         converter=lambda x: getattr(builtins, x) if isinstance(x, str) else x
     )
     required: bool = False
-    default: ty.Any = None
+    default: ty.Optional[ty.Any] = None

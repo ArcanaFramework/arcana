@@ -32,7 +32,7 @@ class DataCell:
     row: DataRow
     column: DataColumn
     entry: DataEntry
-    provenance: ty.Dict[str, ty.Any] = None
+    provenance: ty.Optional[ty.Dict[str, ty.Any]] = None
 
     @property
     def datatype(self):

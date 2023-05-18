@@ -65,6 +65,7 @@ class ArcanaImage:
     name: str
     version: str = attrs.field(converter=str)
     build_iteration: ty.Optional[str] = None
+    build_iteration: ty.Optional[str] = None
     base_image: BaseImage = attrs.field(
         default=BaseImage(), converter=ObjectConverter(BaseImage)
     )
@@ -72,9 +73,10 @@ class ArcanaImage:
         default=Packages(), converter=ObjectConverter(Packages)
     )
     org: ty.Optional[str] = None
+    org: ty.Optional[str] = None
     registry: str = DOCKER_HUB
     readme: ty.Optional[str] = None
-    labels: ty.Dict[str, str] = None
+    labels: ty.Optional[ty.Dict[str, str]] = None
 
     @property
     def reference(self):
