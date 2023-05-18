@@ -400,7 +400,7 @@ class DataStore(metaclass=ABCMeta):
                     hierarchy = self.DEFAULT_HIERARCHY
                 except AttributeError:
                     hierarchy = dataset.hierarchy
-            hierarchy = ty.cast(list[str], hierarchy)
+            hierarchy = ty.cast(ty.List[str], hierarchy)
             if id_patterns is None:
                 id_patterns = {}
                 for freq, pattern in dataset.id_patterns.items():
