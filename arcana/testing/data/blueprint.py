@@ -40,7 +40,7 @@ class EntryBlueprint(metaclass=ABCMeta):
 
     path: str
     datatype: type = attrs.field()
-    row_frequency: str = None
+    row_frequency: ty.Optional[str] = None
     ids: list[str] = None  # the list of row IDs to create the blueprint in
     alternative_datatypes: list[type] = attrs.field(factory=list)
 
@@ -74,7 +74,7 @@ class FileSetEntryBlueprint(EntryBlueprint):
 
     def make_item(
         self,
-        source_data: Path = None,
+        source_data: ty.Optional[Path] = None,
         source_fallback: bool = False,
         escape_source_name: bool = True,
     ) -> FileSet:
@@ -188,8 +188,8 @@ class TestDatasetBlueprint:
         self,
         store: DataStore,
         dataset_id: str,
-        name: str = None,
-        source_data: Path = None,
+        name: ty.Optional[str] = None,
+        source_data: ty.Optional[Path] = None,
         metadata: dict[str, ty.Any] = None,
         **kwargs,
     ):
@@ -290,7 +290,7 @@ class TestDatasetBlueprint:
     #     self,
     #     store: DataStore,
     #     dataset_id: str,
-    #     name: str = None,
+    #     name: ty.Optional[str] = None,
     #     max_num_attempts: int = DEFAULT_NUM_ACCESS_ATTEMPTS,
     #     attempt_interval: float = DEFAULT_ACCESS_ATTEMPT_INTERVAL,
     # ):

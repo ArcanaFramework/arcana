@@ -62,7 +62,7 @@ class ContainerCommand:
     task: pydra.engine.task.TaskBase = attrs.field(
         converter=ClassResolver(TaskBase, alternative_types=[ty.Callable])
     )
-    row_frequency: DataSpace = None
+    row_frequency: ty.Optional[DataSpace] = None
     inputs: list[CommandInput] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CommandInput),
@@ -81,7 +81,7 @@ class ContainerCommand:
     configuration: dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(dict)
     )
-    image: App = None
+    image: ty.Optional[App] = None
 
     def __attrs_post_init__(self):
         if isinstance(self.row_frequency, DataSpace):
@@ -152,17 +152,17 @@ class ContainerCommand:
         input_values: dict[str, str] = None,
         output_values: dict[str, str] = None,
         parameter_values: dict[str, ty.Any] = None,
-        work_dir: Path = None,
+        work_dir: ty.Optional[Path] = None,
         ids: list[str] = None,
-        dataset_hierarchy: str = None,
-        dataset_name: str = None,
+        dataset_hierarchy: ty.Optional[str] = None,
+        dataset_name: ty.Optional[str] = None,
         overwrite: bool = False,
         loglevel: str = "warning",
-        plugin: str = None,
+        plugin: ty.Optional[str] = None,
         export_work: Path = False,
         raise_errors: bool = False,
         keep_running_on_errors=False,
-        pipeline_name: str = None,
+        pipeline_name: ty.Optional[str] = None,
     ):
         """Runs the command within the entrypoint of the container image.
 

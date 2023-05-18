@@ -1,5 +1,6 @@
 from __future__ import annotations
 from types import MemberDescriptorType
+import typing as ty
 from .spec import (
     _UnresolvedOp,
     _Inherited,
@@ -8,7 +9,7 @@ from .spec import (
     Parameter,
     SubanalysisSpec,
 )
-from .make import make
+from .base import make
 from .salience import ColumnSalience, ParameterSalience, CheckSalience
 from ..utils.misc import (
     SWICTH_ANNOTATIONS,
@@ -36,7 +37,7 @@ def column(
     row_frequency=None,
     salience=ColumnSalience.supplementary,
     metadata=None,
-):
+) -> ty.Any:
     return ColumnSpec(
         desc=desc,
         row_frequency=row_frequency,
@@ -53,7 +54,7 @@ def parameter(
     upper_bound=None,
     salience=ParameterSalience.recommended,
     metadata=None,
-):
+) -> ty.Any:
     return Parameter(
         desc=desc,
         default=default,
@@ -65,7 +66,7 @@ def parameter(
     )
 
 
-def subanalysis(desc, metadata=None, **mappings):
+def subanalysis(desc, metadata=None, **mappings) -> ty.Any:
     return SubanalysisSpec(
         desc=desc, mappings=tuple(mappings.items()), metadata=metadata
     )
@@ -125,7 +126,7 @@ def check(column, salience=CheckSalience.prudent):
     return decorator
 
 
-def inherit(ref: MemberDescriptorType = None, **to_overwrite):
+def inherit(ref: ty.Optional[MemberDescriptorType] = None, **to_overwrite):
     """Used to explicitly inherit a column or attribute from a base class so it can be
     used in a sub class. This explicit inheritance is enforced when the column/parameter
     is referenced in the base class in order to make the code more readable (i.e. so
@@ -171,7 +172,7 @@ def value_of(param):
     return _UnresolvedOp("value_of", (param,))
 
 
-def is_provided(column, in_format: type = None):
+def is_provided(column, in_format: ty.Optional[type] = None):
     """Test whether a column mapping is specified when the analysis class is applied to a
     dataset"""
     return _UnresolvedOp(

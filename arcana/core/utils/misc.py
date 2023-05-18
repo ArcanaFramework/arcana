@@ -519,7 +519,7 @@ def show_workflow_errors(
 
 
 def extract_file_from_docker_image(
-    image_tag, file_path: PosixPath, out_path: Path = None
+    image_tag, file_path: PosixPath, out_path: ty.Optional[Path] = None
 ) -> Path:
     """Extracts a file from a Docker image onto the local host
 

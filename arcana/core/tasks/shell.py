@@ -99,15 +99,15 @@ class ShellCmdInput(ShellCmdField):
         field will be sent).
     """
 
-    sep: str = None
-    argstr: str = None
-    position: int = None
-    allowed_values: list = None
-    requires: list = None
-    xor: list = None
-    copyfile: bool = None
-    mandatory: bool = None
-    readonly: bool = None
+    sep: ty.Optional[str] = None
+    argstr: ty.Optional[str] = None
+    position: ty.Optional[int] = None
+    allowed_values: ty.Optional[list] = None
+    requires: ty.Optional[list] = None
+    xor: ty.Optional[list] = None
+    copyfile: ty.Optional[bool] = None
+    mandatory: ty.Optional[bool] = None
+    readonly: ty.Optional[bool] = None
     formatter: ty.Callable = attrs.field(
         default=None,
         converter=ClassResolver(allow_none=True),
@@ -149,12 +149,12 @@ class ShellCmdOutput(ShellCmdField):
     """
 
     argstr: bool = attrs.field(default=None, metadata={"input": True})
-    mandatory: bool = None
+    mandatory: ty.Optional[bool] = None
     position: int = attrs.field(default=None, metadata={"input": True})
-    output_file_template: str = None
-    output_field_name: str = None
+    output_file_template: ty.Optional[str] = None
+    output_field_name: ty.Optional[str] = None
     keep_extension: bool = attrs.field(default=None, metadata={"input": True})
-    requires: list = None
+    requires: ty.Optional[list] = None
     formatter: ty.Callable = attrs.field(
         default=None, converter=ClassResolver(allow_none=True), metadata={"input": True}
     )

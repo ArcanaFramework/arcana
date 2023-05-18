@@ -31,7 +31,7 @@ class DataColumn(metaclass=ABCMeta):
     row_frequency: DataSpace = attrs.field(
         validator=attrs.validators.instance_of(DataSpace)
     )
-    path: str = None
+    path: ty.Optional[str] = None
     dataset: Dataset = attrs.field(
         default=None, metadata={"asdict": False}, eq=False, hash=False, repr=False
     )
@@ -64,7 +64,7 @@ class DataColumn(metaclass=ABCMeta):
             allow_empty=allow_empty,
         )
 
-    def cells(self, allow_empty: bool = None) -> ty.Iterable[DataCell]:
+    def cells(self, allow_empty: ty.Optional[bool] = None) -> ty.Iterable[DataCell]:
         """Return an iterator over all cells in the column.
 
         Parameters

@@ -42,8 +42,8 @@ class DataRow:
     dataset: Dataset = attrs.field(repr=False)
     frequency: str = attrs.field()
     tree_path: list[str] = None
-    uri: str = None
-    metadata: dict = None
+    uri: ty.Optional[str] = None
+    metadata: ty.Optional[dict] = None
 
     # Automatically populated fields
     children: dict[DataSpace, dict[ty.Union[str, tuple[str]], str]] = attrs.field(
@@ -92,7 +92,7 @@ class DataRow:
         self.cell(column_name).item = value
         return self
 
-    def cell(self, column_name: str, allow_empty: bool = None) -> DataCell:
+    def cell(self, column_name: str, allow_empty: ty.Optional[bool] = None) -> DataCell:
         try:
             cell = self._cells[column_name]
         except KeyError:
@@ -121,7 +121,7 @@ class DataRow:
         self._cells[column_name] = cell
         return cell
 
-    def cells(self, allow_empty: bool = None) -> ty.Iterable[DataCell]:
+    def cells(self, allow_empty: ty.Optional[bool] = None) -> ty.Iterable[DataCell]:
         for column_name in self.dataset.columns:
             yield self.cell(column_name, allow_empty=allow_empty)
 
@@ -207,8 +207,8 @@ class DataRow:
         path: str,
         datatype: type,
         uri: str,
-        item_metadata: dict = None,
-        order: int = None,
+        item_metadata: ty.Optional[dict] = None,
+        order: ty.Optional[int] = None,
         quality: DataQuality = DataQuality.usable,
         checksums: dict[str, str] = None,
     ):

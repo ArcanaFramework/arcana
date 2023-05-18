@@ -15,15 +15,17 @@ from arcana.core.exceptions import ArcanaDesignError
 @attrs.define
 class BaseAttr:
 
-    name: str = None  # Default to None, as will be set later after class is initialised
-    type: type = None
-    desc: str = None
+    name: ty.Optional[
+        str
+    ] = None  # Default to None, as will be set later after class is initialised
+    type: ty.Optional[type] = None
+    desc: ty.Optional[str] = None
     inherited: bool = False
-    defined_in: ty.Tuple[type] = ()
-    modified: ty.Tuple[ty.Tuple[str, ty.Any]] = ()
-    mapped_from: ty.Tuple[
-        str, str or ty.Tuple
-    ] or None = None  # sub-analysis name, column name
+    defined_in: ty.Tuple[type, ...] = ()
+    modified: ty.Tuple[ty.Tuple[str, ty.Any], ...] = ()
+    mapped_from: ty.Optional[
+        ty.Tuple[str, str or ty.Tuple]
+    ] = None  # sub-analysis name, column name
     metadata: dict = attrs.field(
         factory=dict, converter=default_if_none(default=attrs.Factory(dict))
     )
@@ -33,7 +35,7 @@ class BaseAttr:
 class ColumnSpec(BaseAttr):
     """Specifies a column that the analysis can add when it is applied to a dataset"""
 
-    row_frequency: DataSpace = None
+    row_frequency: ty.Optional[DataSpace] = None
     salience: ColumnSalience = ColumnSalience.default()
 
     def select_pipeline_builders(self, analysis, dataset):
@@ -85,10 +87,10 @@ class ColumnSpec(BaseAttr):
 class Parameter(BaseAttr):
     """Specifies a free parameter of an analysis"""
 
-    default: int or float or str or ty.Tuple[int] or ty.Tuple[float] or ty.Tuple[
-        str
+    default: ty.Union[
+        int, float, str, ty.Tuple[int], ty.Tuple[float], ty.Tuple[str], None
     ] = attrs.field(default=None)
-    salience: ParameterSalience = None
+    salience: ty.Optional[ParameterSalience] = None
     choices: ty.Union[
         ty.Tuple[int], ty.Tuple[float], ty.Tuple[str], None
     ] = attrs.field(default=None)
@@ -138,9 +140,8 @@ class SubanalysisSpec(BaseAttr):
     """Specifies a "sub-analysis" component, when composing an analysis of several
     predefined analyses"""
 
-    mappings: ty.Tuple[
-        str, str
-    ] = ()  # to name in subanalysis, from name in analysis class
+    mappings: tuple[tuple[str, str], ...] = ()
+    # to name in subanalysis, from name in analysis class
 
     def mapping(self, name):
         try:
@@ -196,7 +197,7 @@ class BaseMethod:
     inputs: ty.Tuple[str]
     parameters: ty.Tuple[str]
     method: ty.Callable
-    defined_in: ty.Tuple[type]
+    defined_in: ty.Tuple[type, ...]
 
 
 @attrs.define(frozen=True)
@@ -371,8 +372,8 @@ class AnalysisSpec:
 class _Inherited:
 
     to_overwrite: ty.Dict[str, ty.Any]
-    resolved_to: str = None
-    name: str = None
+    resolved_to: ty.Optional[str] = None
+    name: ty.Optional[str] = None
 
     def resolve(self, name, klass):
         """Resolve to columns and parameters in the specified class
@@ -413,8 +414,8 @@ class _MappedFrom:
     subanalysis_name: str
     attr_name: str
     to_overwrite: ty.Dict[str, ty.Any]
-    resolved_to: str = None
-    name: str = None
+    resolved_to: ty.Optional[str] = None
+    name: ty.Optional[str] = None
 
     def resolve(self, name, klass):
         """Resolve to a column temporary attribute to be transformed into a attribute
@@ -451,7 +452,7 @@ class _UnresolvedOp:
     """An operation within a conditional expression that hasn't been resolved"""
 
     operator: str
-    operands: ty.Tuple[str]
+    operands: tuple
 
     def resolve(self, klass, column_specs, parameters):
         """Resolves counting attribute operands to the names of attributes in the class
@@ -484,13 +485,13 @@ class _UnresolvedOp:
             assert len(resolved) == 1
             if resolved[0] not in parameters:
                 raise ValueError(
-                    f"'value_of' can only be used on parameter attributes not '{operand}'"
+                    f"'value_of' can only be used on parameter attributes not '{resolved[0]}'"
                 )
         elif self.operator == "is_provided":
             assert len(resolved) <= 2
             if resolved[0] not in column_specs:
                 raise ValueError(
-                    f"'is_provided' can only be used on column specs not '{operand}'"
+                    f"'is_provided' can only be used on column specs not '{resolved[0]}'"
                 )
         return Operation(
             self.operator, tuple(a.name if hasattr(a, "name") else a for a in resolved)

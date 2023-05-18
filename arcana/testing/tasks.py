@@ -4,6 +4,7 @@ from pathlib import Path
 import typing as ty
 import attrs
 from pydra import mark, Workflow
+import fileformats.core
 import fileformats.text
 from arcana.core.data.row import DataRow
 
@@ -49,7 +50,10 @@ def attrs_func(a, b):
 @mark.task
 @mark.annotate({"return": {"out_file": Path}})
 def concatenate(
-    in_file1: PathTypes, in_file2: PathTypes, out_file: Path = None, duplicates: int = 1
+    in_file1: PathTypes,
+    in_file2: PathTypes,
+    out_file: ty.Optional[Path] = None,
+    duplicates: int = 1,
 ) -> Path:
     """Concatenates the contents of two files and writes them to a third
 
@@ -81,7 +85,7 @@ def concatenate(
 
 @mark.task
 @mark.annotate({"return": {"out_file": Path}})
-def reverse(in_file: PathTypes, out_file: PathTypes = None) -> Path:
+def reverse(in_file: PathTypes, out_file: ty.Optional[PathTypes] = None) -> PathTypes:
     """Reverses the contents of a file and outputs it to another file
 
     Parameters
@@ -155,21 +159,29 @@ def plus_10_to_filenumbers(filenumber_row: DataRow) -> None:
         the data row to modify
     """
     for entry in filenumber_row.entries:
-        item = fileformats.text.Plain(entry.item)
+        item = fileformats.text.Plain(ty.cast(fileformats.core.FileSet, entry.item))
         new_item_stem = str(int(item.stem) + 10)
         shutil.move(item.fspath, item.fspath.parent / (new_item_stem + item.actual_ext))
 
 
+T = ty.TypeVar("T")
+
+
 @mark.task
-def identity_file(in_file: PathTypes) -> Path:
+def identity_file(in_file: T) -> T:
     return in_file
+
+
+@mark.task
+def identity(in_: T) -> T:
+    return in_
 
 
 @mark.task
 def multiply_contents(
     in_file: PathTypes,
     multiplier: ty.Union[int, float],
-    out_file: PathTypes = None,
+    out_file: ty.Optional[PathTypes] = None,
     dtype: type = float,
 ) -> Path:
     """Multiplies the contents of the file, assuming that it contains numeric
@@ -228,7 +240,8 @@ def contents_are_numeric(in_file: PathTypes) -> bool:
 
 @mark.task
 def check_license(
-    expected_license_path: str, expected_license_contents: PathTypes
+    expected_license_path: ty.Union[str, Path],
+    expected_license_contents: ty.Union[str, Path],
 ) -> Path:
     """Checks the `expected_license_path` to see if there is a file with the same contents
     as that of `expected_license_contents`

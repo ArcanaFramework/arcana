@@ -28,7 +28,6 @@ from arcana.core.analysis.spec import Operation, ARCANA_SPEC
 from fileformats.text import Plain as Text
 from fileformats.archive import Zip
 from arcana.stdlib import DirTree
-from arcana.testing import MockRemote
 from arcana.core.analysis.salience import (
     CheckStatus,
     ColumnSalience as cs,
@@ -135,7 +134,9 @@ def Concat():
         )
 
         @pipeline(concatenated)
-        def concat_pipeline(self, wf, file1: Text, file2: Text, duplicates: int):
+        def concat_pipeline(
+            self, wf: pydra.Workflow, file1: Text, file2: Text, duplicates: int
+        ):
 
             wf.add(
                 concatenate(

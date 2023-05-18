@@ -39,8 +39,8 @@ class DefaultColumn:
             alternative_types=[DataRow],
         ),
     )
-    row_frequency: DataSpace = None
-    path: str = None
+    row_frequency: ty.Optional[DataSpace] = None
+    path: ty.Optional[str] = None
 
 
 @attrs.define(kw_only=True)

@@ -73,7 +73,7 @@ class DataStore(metaclass=ABCMeta):
           analyses on the same data
     """
 
-    # name: str = None
+    # name: ty.Optional[str] = None
     connection: ConnectionManager = attrs.field(
         factory=ConnectionManager, init=False, hash=False, repr=False, eq=False
     )
@@ -93,7 +93,9 @@ class DataStore(metaclass=ABCMeta):
     # Public API #
     ##############
 
-    def save(self, name: str = None, config_path: Path = None):
+    def save(
+        self, name: ty.Optional[str] = None, config_path: ty.Optional[Path] = None
+    ):
         """Saves the configuration of a DataStore in 'stores.yaml'
 
         Parameters
@@ -128,7 +130,9 @@ class DataStore(metaclass=ABCMeta):
         return asdict(self, **kwargs)
 
     @classmethod
-    def load(cls, name: str, config_path: Path = None, **kwargs) -> DataStore:
+    def load(
+        cls, name: str, config_path: ty.Optional[Path] = None, **kwargs
+    ) -> DataStore:
         """Loads a DataStore from that has been saved in the configuration file.
         If no entry is saved under that name, then it searches for DataStore
         sub-classes with aliases matching `name` and checks whether they can
@@ -171,7 +175,7 @@ class DataStore(metaclass=ABCMeta):
         return store
 
     @classmethod
-    def remove(cls, name: str, config_path: Path = None):
+    def remove(cls, name: str, config_path: ty.Optional[Path] = None):
         """Removes the entry saved under 'name' in the config file
 
         Parameters
@@ -302,11 +306,11 @@ class DataStore(metaclass=ABCMeta):
     def create_dataset(
         self,
         id: str,
-        leaves: list[tuple[str, ...]],
+        leaves: ty.Iterable[tuple[str, ...]],
         hierarchy: list[str],
         space: type,
-        name: str = None,
-        id_patterns: dict[str, str] = None,
+        name: ty.Optional[str] = None,
+        id_patterns: ty.Optional[dict[str, str]] = None,
         **kwargs,
     ) -> Dataset:
         """Creates a new dataset with new rows to store data in
@@ -335,7 +339,7 @@ class DataStore(metaclass=ABCMeta):
         """
         self.create_data_tree(
             id=id,
-            leaves=leaves,
+            leaves=list(leaves),
             hierarchy=hierarchy,
             space=space,
         )
@@ -354,9 +358,9 @@ class DataStore(metaclass=ABCMeta):
         self,
         id: str,
         dataset: Dataset,
-        column_names: list[ty.Union[str, tuple[str, type]]] = None,
-        hierarchy: list[str] = None,
-        id_patterns: dict[str, str] = None,
+        column_names: ty.Optional[list[ty.Union[str, tuple[str, type]]]] = None,
+        hierarchy: ty.Optional[list[str]] = None,
+        id_patterns: ty.Optional[dict[str, str]] = None,
         use_original_paths: bool = False,
         **kwargs,
     ):
@@ -396,6 +400,7 @@ class DataStore(metaclass=ABCMeta):
                     hierarchy = self.DEFAULT_HIERARCHY
                 except AttributeError:
                     hierarchy = dataset.hierarchy
+            hierarchy = ty.cast(list[str], hierarchy)
             if id_patterns is None:
                 id_patterns = {}
                 for freq, pattern in dataset.id_patterns.items():
@@ -467,7 +472,9 @@ class DataStore(metaclass=ABCMeta):
         return cls._singletons
 
     @classmethod
-    def load_saved_configs(cls, config_path: Path = None) -> dict[str, ty.Any]:
+    def load_saved_configs(
+        cls, config_path: ty.Optional[Path] = None
+    ) -> dict[str, ty.Any]:
         """Loads the saved data store configurations from the the user's home
         directory
 
@@ -491,7 +498,9 @@ class DataStore(metaclass=ABCMeta):
         return configs
 
     @classmethod
-    def save_configs(cls, configs: dict[str, ty.Any], config_path: Path = None):
+    def save_configs(
+        cls, configs: dict[str, ty.Any], config_path: ty.Optional[Path] = None
+    ):
         """_summary_
 
         Parameters
@@ -511,7 +520,7 @@ class DataStore(metaclass=ABCMeta):
         cls,
         ids: dict[str, str],
         id_patterns: dict[str, str],
-        metadata: dict[str, dict[str, str]] = None,
+        metadata: ty.Optional[dict[str, dict[str, str]]] = None,
     ):
         """Infer IDs from those explicitly provided by using the inference patterns
         provided to the dataset definition.

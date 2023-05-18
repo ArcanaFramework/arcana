@@ -383,7 +383,7 @@ def _make_docs(
     work_dir: Path,
     docs: Union[str, Dict[str, str]],
     *args,
-    flatten: bool = None,
+    flatten: ty.Optional[bool] = None,
 ) -> Union[str, Dict[str, str]]:
     out_dir = work_dir / "out"
     specs_dir = work_dir / "specs"

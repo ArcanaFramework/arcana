@@ -12,9 +12,9 @@ class Metadata:
 @attrs.define
 class ContainerMetadata(Metadata):
 
-    type: str = None
-    tag: str = None
-    uri: str = None
+    type: ty.Optional[str] = None
+    tag: ty.Optional[str] = None
+    uri: ty.Optional[str] = None
 
 
 @attrs.define
@@ -32,9 +32,9 @@ class GeneratorMetadata(Metadata):
 @attrs.define
 class SourceDatasetMetadata(Metadata):
 
-    url: str = None
-    doi: str = None
-    version: str = None
+    url: ty.Optional[str] = None
+    doi: ty.Optional[str] = None
+    version: ty.Optional[str] = None
 
 
 DEFAULT_README = f"""

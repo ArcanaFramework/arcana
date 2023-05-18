@@ -59,7 +59,7 @@ class ClassResolver:
         pydra.tasks.fsl.preprocess.first.First
     """
 
-    base_class: type = None
+    base_class: ty.Optional[type] = None
     allow_none: bool = False
     alternative_types: list[type] = attrs.field(factory=list)
 
@@ -212,7 +212,7 @@ class ClassResolver:
     FALLBACK_TO_STR = _FallbackContext()
 
 
-def asdict(obj, omit: ty.Iterable[str] = (), required_modules: set = None):
+def asdict(obj, omit: ty.Iterable[str] = (), required_modules: ty.Optional[set] = None):
     """Serialises an object of a class defined with attrs to a dictionary
 
     Parameters
@@ -361,7 +361,7 @@ NOTHING_STR = "__PIPELINE_INPUT__"
 
 
 def pydra_asdict(
-    obj: TaskBase, required_modules: ty.Set[str], workflow: Workflow = None
+    obj: TaskBase, required_modules: ty.Set[str], workflow: ty.Optional[Workflow] = None
 ) -> dict:
     """Converts a Pydra Task/Workflow into a dictionary that can be serialised
 
@@ -438,7 +438,9 @@ def lazy_field_fromdict(dct: dict, workflow: Workflow):
     return lf
 
 
-def pydra_fromdict(dct: dict, workflow: Workflow = None, **kwargs) -> TaskBase:
+def pydra_fromdict(
+    dct: dict, workflow: ty.Optional[Workflow] = None, **kwargs
+) -> TaskBase:
     """Recreates a Pydra Task/Workflow from a dictionary object created by
     `pydra_asdict`
 

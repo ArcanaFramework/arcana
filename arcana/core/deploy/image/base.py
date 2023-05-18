@@ -64,16 +64,16 @@ class ArcanaImage:
 
     name: str
     version: str = attrs.field(converter=str)
-    build_iteration: str = None
+    build_iteration: ty.Optional[str] = None
     base_image: BaseImage = attrs.field(
         default=BaseImage(), converter=ObjectConverter(BaseImage)
     )
     packages: Packages = attrs.field(
         default=Packages(), converter=ObjectConverter(Packages)
     )
-    org: str = None
+    org: ty.Optional[str] = None
     registry: str = DOCKER_HUB
-    readme: str = None
+    readme: ty.Optional[str] = None
     labels: dict[str, str] = None
 
     @property
@@ -96,7 +96,7 @@ class ArcanaImage:
 
     def make(
         self,
-        build_dir: Path = None,
+        build_dir: ty.Optional[Path] = None,
         generate_only: bool = False,
         **kwargs,
     ):

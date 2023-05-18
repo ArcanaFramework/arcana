@@ -65,7 +65,7 @@ class DataCell:
 
     @classmethod
     def intersection(
-        cls, column: DataColumn, row: DataRow, allow_empty: bool = None
+        cls, column: DataColumn, row: DataRow, allow_empty: ty.Optional[bool] = None
     ) -> DataCell:
         if allow_empty is None:
             allow_empty = column.is_sink
