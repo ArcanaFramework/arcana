@@ -490,7 +490,7 @@ class ContainerCommand:
             dataset = Dataset.load(dataset_locator)
         except KeyError:
 
-            store_name, id, name = Dataset.parse_id_str(dataset_locator)
+            store_name, id, name = Dataset.parse_locator_str(dataset_locator)
 
             if dataset_name is not None:
                 name = dataset_name

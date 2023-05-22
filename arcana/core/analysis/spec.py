@@ -15,10 +15,8 @@ from arcana.core.exceptions import ArcanaDesignError
 @attrs.define(frozen=True)
 class BaseAttr:
 
-    name: ty.Optional[
-        str
-    ] = None  # Default to None, as will be set later after class is initialised
-    type: ty.Optional[type] = None
+    name: str = None  # type: ignore
+    type: type = None  # type: ignore
     desc: ty.Optional[str] = None
     inherited: bool = False
     defined_in: tuple[type, ...] = ()
@@ -88,16 +86,16 @@ class Parameter(BaseAttr):
     """Specifies a free parameter of an analysis"""
 
     default: ty.Union[
-        int, float, str, ty.Tuple[int], ty.Tuple[float], ty.Tuple[str]
+        int, float, str, tuple[int], tuple[float], tuple[str], None
     ] = attrs.field(default=None)
     salience: ty.Optional[ParameterSalience] = None
-    choices: ty.Union[
-        ty.Tuple[int], ty.Tuple[float], ty.Tuple[str], None
-    ] = attrs.field(default=None)
+    choices: ty.Union[tuple[int], tuple[float], tuple[str], None] = attrs.field(
+        default=None
+    )
     lower_bound: ty.Union[int, float, None] = None
     upper_bound: ty.Union[int, float, None] = None
 
-    @default.validator
+    @default.validator  # type: ignore
     def default_validator(self, _, default):
         if default is None:
             if self.salience != ParameterSalience.required:
@@ -117,7 +115,7 @@ class Parameter(BaseAttr):
                     f"upper bound ({self.upper_bound})"
                 )
 
-    @choices.validator
+    @choices.validator  # type: ignore
     def choices_validator(self, _, choices):
         if choices is not None:
             if self.upper_bound is not None or self.lower_bound is not None:
@@ -163,7 +161,7 @@ class Operation:
     of pipelines will run"""
 
     operator: str
-    operands: ty.Tuple[str]
+    operands: tuple[str]
 
     def evaluate(self, analysis, dataset):
         operands = [o.evaluate(analysis, dataset) for o in self.operands]
@@ -194,10 +192,10 @@ class BaseMethod:
 
     name: str
     desc: str
-    inputs: ty.Tuple[str]
-    parameters: ty.Tuple[str]
+    inputs: tuple[str]
+    parameters: tuple[str]
     method: ty.Callable
-    defined_in: ty.Tuple[type, ...]
+    defined_in: tuple[type, ...]
 
 
 @attrs.define(frozen=True)
@@ -213,7 +211,7 @@ class PipelineConstructor(BaseMethod):
     """Specifies a method that is used to add nodes in the construction of a pipeline
     that is able to generate data for sink columns under certain conditions"""
 
-    outputs: ty.Tuple[str]
+    outputs: tuple[str]
     condition: ty.Optional[Operation] = None
     switch: ty.Optional[Switch] = None
 
@@ -237,15 +235,13 @@ def unique_names(inst, attr, val):
 class AnalysisSpec:
     """Specifies all the components of the analysis class"""
 
-    space: type
-    column_specs: ty.Tuple[ColumnSpec] = attrs.field(validator=unique_names)
-    pipeline_builders: ty.Tuple[PipelineConstructor] = attrs.field(
-        validator=unique_names
-    )
-    parameters: ty.Tuple[Parameter] = attrs.field(validator=unique_names)
-    switches: ty.Tuple[Switch] = attrs.field(validator=unique_names)
-    checks: ty.Tuple[Check] = attrs.field(validator=unique_names)
-    subanalysis_specs: ty.Tuple[SubanalysisSpec] = attrs.field(validator=unique_names)
+    space: ty.Type[DataSpace]
+    column_specs: tuple[ColumnSpec] = attrs.field(validator=unique_names)
+    pipeline_builders: tuple[PipelineConstructor] = attrs.field(validator=unique_names)
+    parameters: tuple[Parameter] = attrs.field(validator=unique_names)
+    switches: tuple[Switch] = attrs.field(validator=unique_names)
+    checks: tuple[Check] = attrs.field(validator=unique_names)
+    subanalysis_specs: tuple[SubanalysisSpec] = attrs.field(validator=unique_names)
 
     @property
     def column_names(self):

@@ -111,7 +111,7 @@ class DataRow:
                 + "')",
             ) from e
         if column.row_frequency != self.frequency:
-            return ArcanaWrongFrequencyError(
+            raise ArcanaWrongFrequencyError(
                 column_name,
                 f"'column_name' ({column_name}) is of {column.row_frequency} "
                 f"frequency and therefore not in rows of {self.frequency}"
@@ -173,7 +173,7 @@ class DataRow:
             if c.row_frequency == self.frequency
         )
 
-    def column_items(self, column_name):
+    def column_items(self, column_name: str) -> list[DataType]:
         """Gets the item for the current row if item's frequency matches
         otherwise gets all the items that are related to the current row (
         i.e. are in child rows)
@@ -198,9 +198,11 @@ class DataRow:
             # rows) or the whole dataset
             spec = self.dataset.columns[column_name]
             try:
-                return self.children[spec.row_frequency].values()
+                return [
+                    r[column_name] for r in self.children[spec.row_frequency].values()
+                ]
             except KeyError:
-                return self.dataset.column(spec.row_frequency)
+                return list(self.dataset[spec.row_frequency])
 
     def add_entry(
         self,

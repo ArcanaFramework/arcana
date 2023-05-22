@@ -104,7 +104,7 @@ the inferred IDs
 )
 def define(dataset_locator, hierarchy, include, exclude, space, id_pattern):
 
-    store_name, id, name = Dataset.parse_id_str(dataset_locator)
+    store_name, id, name = Dataset.parse_locator_str(dataset_locator)
 
     if not hierarchy:
         hierarchy = None

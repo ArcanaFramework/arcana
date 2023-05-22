@@ -4,7 +4,6 @@ import re
 import typing as ty
 from pathlib import Path
 import shutil
-from enum import EnumMeta
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
@@ -20,11 +19,12 @@ from ..column import DataColumn, DataSink, DataSource
 from .. import store as datastore
 from ..tree import DataTree
 from .metadata import DatasetMetadata, metadata_converter
-
+from ..space import DataSpace
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from arcana.core.deploy.image.components import License
     from arcana.core.data.entry import DataEntry
+    from arcana.core.data.row import DataRow
     from arcana.core.analysis.base import Analysis
     from arcana.core.analysis.pipeline import Pipeline
 
@@ -108,7 +108,7 @@ class Dataset:
 
     id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.DataStore = attrs.field()
-    space: EnumMeta = attrs.field()
+    space: ty.Type[DataSpace] = attrs.field()
     id_patterns: ty.Dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
@@ -274,7 +274,7 @@ class Dataset:
     def load(
         cls,
         id: str,
-        store: datastore.DataStore = None,
+        store: ty.Optional[datastore.DataStore] = None,
         name: ty.Optional[str] = None,
         **kwargs,
     ):
@@ -300,10 +300,14 @@ class Dataset:
         Dataset
             the loaded dataset"""
         if store is None:
-            store_name, id, parsed_name = cls.parse_id_str(id)
+            store_name, id, parsed_name = cls.parse_locator_str(id)
             store = datastore.DataStore.load(store_name, **kwargs)
-        if name is None:
-            name = parsed_name
+            if name is None:
+                name = parsed_name
+        elif name is None:
+            raise RuntimeError(
+                f"Name needs to be provided if ID is not a locator string ('{id}')"
+            )
         return store.load_dataset(id, name=name)
 
     @property
@@ -327,7 +331,7 @@ class Dataset:
         }
 
     @property
-    def root(self):
+    def root(self) -> DataRow:
         """Lazily loads the data tree from the store on demand and return root
 
         Returns
@@ -339,7 +343,9 @@ class Dataset:
         # "with <this-dataset>.tree" statement further up the call stack then the
         # cache won't be broken down until the highest cache statement exits
         with self.tree:
-            return self.tree.root
+            import arcana.core.data.row
+
+            return ty.cast(arcana.core.data.row.DataRow, self.tree.root)
 
     @property
     def locator(self):
@@ -382,14 +388,13 @@ class Dataset:
         **kwargs : ty.Dict[str, Any]
             Additional kwargs to pass to DataSource.__init__
         """
-        row_frequency = self.parse_frequency(row_frequency)
         if path is None:
             path = name
         source = DataSource(
             name=name,
             datatype=datatype,
             path=path,
-            row_frequency=row_frequency,
+            row_frequency=self.parse_frequency(row_frequency),
             dataset=self,
             **kwargs,
         )
@@ -424,11 +429,10 @@ class Dataset:
         overwrite : bool
             Whether to overwrite an existing sink
         """
-        row_frequency = self.parse_frequency(row_frequency)
         sink = DataSink(
             name=name,
             datatype=datatype,
-            row_frequency=row_frequency,
+            row_frequency=self.parse_frequency(row_frequency),
             dataset=self,
             **kwargs,
         )
@@ -525,7 +529,11 @@ class Dataset:
                 )
             return row
 
-    def rows(self, frequency=None, ids=None):
+    def rows(
+        self,
+        frequency: ty.Optional[str | DataSpace] = None,
+        ids: ty.Optional[ty.Iterable[str | tuple[str]]] = None,
+    ) -> tuple[DataRow]:
         """Return all the IDs in the dataset for a given frequency
 
         Parameters
@@ -547,8 +555,8 @@ class Dataset:
             frequency = self.parse_frequency(frequency)
         with self.tree:
             if frequency == self.root_freq:
-                return [self.root]
-            rows = self.root.children[frequency].values()
+                return (self.root,)
+            rows = tuple(self.root.children[frequency].values())
             if ids is not None:
                 rows = (n for n in rows if n.id in set(ids))
             return rows
@@ -679,8 +687,12 @@ class Dataset:
 
         return pipeline
 
-    def apply(self, analysis):
-        self.analyses[analysis.name] = analysis
+    def apply(self, name: str, analysis_class: ty.Type[Analysis], **kwargs):
+        kwargs = {
+            n: (self[v] if n in analysis_class.__spec__.column_names else v)
+            for n, v in kwargs.items()
+        }
+        self.analyses[name] = analysis_class(name=name, dataset=self, **kwargs)
 
     def derive(self, *sink_names, ids=None, cache_dir=None, **kwargs):
         """Generate derivatives from the workflows
@@ -709,7 +721,7 @@ class Dataset:
             with self.tree:
                 pipeline(ids=ids, cache_dir=cache_dir)(**kwargs)
 
-    def parse_frequency(self, freq):
+    def parse_frequency(self, freq: DataSpace | str | None) -> DataSpace:
         """Parses the data row_frequency, converting from string if necessary and
         checks it matches the dimensions of the dataset"""
         if freq is None:
@@ -730,7 +742,7 @@ class Dataset:
         return f"{workflow_name}/{sink_name}"
 
     @classmethod
-    def parse_id_str(cls, id):
+    def parse_locator_str(cls, id):
         parts = id.split("//")
         if len(parts) == 1:  # No store definition, default to the `DirTree` store
             store_name = "dirtree"

@@ -9,7 +9,7 @@ from .spec import (
     Parameter,
     SubanalysisSpec,
 )
-from .base import make
+from .base import Analysis
 from .salience import ColumnSalience, ParameterSalience, CheckSalience
 from ..utils.misc import (
     SWICTH_ANNOTATIONS,
@@ -27,7 +27,7 @@ def analysis(space: type):
         The data space the analysis operates on, see"""
 
     def decorator(klass):
-        return make(klass, space)
+        return Analysis.make(klass, space)
 
     return decorator
 
@@ -126,7 +126,7 @@ def check(column, salience=CheckSalience.prudent):
     return decorator
 
 
-def inherit(ref: ty.Optional[MemberDescriptorType] = None, **to_overwrite):
+def inherit(ref: ty.Optional[MemberDescriptorType] = None, **to_overwrite) -> ty.Any:
     """Used to explicitly inherit a column or attribute from a base class so it can be
     used in a sub class. This explicit inheritance is enforced when the column/parameter
     is referenced in the base class in order to make the code more readable (i.e. so
@@ -147,7 +147,7 @@ def inherit(ref: ty.Optional[MemberDescriptorType] = None, **to_overwrite):
     return _Inherited(to_overwrite)
 
 
-def map_from(subanalysis_name, column_name, **to_overwrite):
+def map_from(subanalysis_name, column_name, **to_overwrite) -> ty.Any:
     """Used to explicitly inherit a column or attribute from a base class so it can be
     used in a sub class. This explicit inheritance is enforced when the column/parameter
     is referenced in the base class in order to make the code more readable (i.e. so
