@@ -429,7 +429,7 @@ def test_analysis_basic(Concat, test_file1, test_file2, test_dataset: Dataset):
     assert concatenated.defined_in == (Concat,)
     assert concatenated.mapped_from is None
 
-    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_constructor("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -543,7 +543,7 @@ def test_analysis_extended(
     assert doubly_concatenated.salience == cs.supplementary
     assert doubly_concatenated.defined_in == (ExtendedConcat,)
 
-    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_constructor("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -553,7 +553,9 @@ def test_analysis_extended(
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
-    doubly_concat_pipeline = analysis_spec.pipeline_builder("doubly_concat_pipeline")
+    doubly_concat_pipeline = analysis_spec.pipeline_constructor(
+        "doubly_concat_pipeline"
+    )
     assert doubly_concat_pipeline.name == "doubly_concat_pipeline"
     assert doubly_concat_pipeline.parameters == ("duplicates",)
     assert doubly_concat_pipeline.inputs == ("concatenated", "file3")
@@ -652,7 +654,7 @@ def test_analysis_with_check(
     assert concatenated.defined_in == (Concat,)
     assert concatenated.mapped_from is None
 
-    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_constructor("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -760,7 +762,7 @@ def test_analysis_override(
     assert order.salience == ps.recommended
     assert order.defined_in == (OverridenConcat,)
 
-    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_constructor("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -770,7 +772,9 @@ def test_analysis_override(
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
-    reverse_concat_pipeline = analysis_spec.pipeline_builder("reverse_concat_pipeline")
+    reverse_concat_pipeline = analysis_spec.pipeline_constructor(
+        "reverse_concat_pipeline"
+    )
     assert reverse_concat_pipeline.name == "reverse_concat_pipeline"
     assert reverse_concat_pipeline.parameters == ("duplicates",)
     assert reverse_concat_pipeline.inputs == ("file1", "file2")
@@ -880,7 +884,7 @@ def test_analysis_switch(
     assert multiplier.salience == ps.required
     assert multiplier.defined_in == (ConcatWithSwitch,)
 
-    concat_pipeline = analysis_spec.pipeline_builder("concat_pipeline")
+    concat_pipeline = analysis_spec.pipeline_constructor("concat_pipeline")
     assert concat_pipeline.name == "concat_pipeline"
     assert concat_pipeline.parameters == ("duplicates",)
     assert concat_pipeline.inputs == ("file1", "file2")
@@ -890,7 +894,7 @@ def test_analysis_switch(
     assert concat_pipeline.condition is None
     assert concat_pipeline.switch is None
 
-    multiply_pipeline = analysis_spec.pipeline_builder("multiply_pipeline")
+    multiply_pipeline = analysis_spec.pipeline_constructor("multiply_pipeline")
     assert multiply_pipeline.name == "multiply_pipeline"
     assert multiply_pipeline.parameters == ("multiplier",)
     assert multiply_pipeline.inputs == ("concatenated",)
@@ -1319,7 +1323,7 @@ def test_change_of_type_errors():
     assert "Cannot change datatype" in e.value.msg
 
 
-def test_multiple_pipeline_builder_errors():
+def test_multiple_pipeline_constructor_errors():
 
     with pytest.raises(ArcanaDesignError) as e:
 

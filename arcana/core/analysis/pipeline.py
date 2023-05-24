@@ -35,6 +35,8 @@ from ..utils.serialize import (
     ObjectListConverter,
 )
 
+if ty.TYPE_CHECKING:
+    from arcana.core.data.set import Dataset
 
 logger = logging.getLogger("arcana")
 
@@ -87,12 +89,12 @@ class Pipeline:
         by default None
     workflow : Workflow
         The pydra workflow that performs the actual analysis
-    inputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
+    inputs : Sequence[PipelineField]
         List of column names (i.e. either data sources or sinks) to be
         connected to the inputs of the pipeline. If the pipelines requires
         the input to be in a datatype to the source, then it can be specified
         in a tuple (NAME, FORMAT)
-    outputs : Sequence[ty.Union[str, ty.Tuple[str, type]]]
+    outputs : Sequence[PipelineField]
         List of sink names to be connected to the outputs of the pipeline
         If the input to be in a specific datatype, then it can be provided in
         a tuple (NAME, FORMAT)
@@ -409,9 +411,10 @@ class Pipeline:
         return fromdict(dct, workflow=pydra_fromdict(dct["workflow"]), **kwargs)
 
     @classmethod
-    def stack(cls, *sinks):
+    def stack(cls, dataset: Dataset, *sinks):
         """Determines the pipelines stack, in order of execution,
-        required to generate the specified sink columns.
+        required to generate the specified sink columns, applying pipelines defined in
+        analyses where required.
 
         Parameters
         ----------
@@ -433,7 +436,27 @@ class Pipeline:
         # Stack of pipelines to process in reverse order of required execution
         stack = OrderedDict()
 
-        def push_pipeline_on_stack(sink, downstream: ty.Tuple[Pipeline] = None):
+        def resolve_column(col_name):
+            try:
+                return dataset[col_name]
+            except KeyError:
+                if "." not in col_name:
+                    raise
+                parts = col_name.split(".")
+                analysis_name = parts[0]
+                deriv_name = ".".join(parts[1:])
+                analysis = dataset.analyses[analysis_name]
+                column_spec = analysis.__spec__.column_spec(deriv_name)
+                sink = dataset.add_sink(
+                    col_name,
+                    datatype=column_spec.type,
+                    row_frequency=column_spec.row_frequency,
+                )
+                return sink
+
+        def push_pipeline_on_stack(
+            sink_name: str, downstream: ty.Tuple[Pipeline] = None
+        ):
             """
             Push a pipeline onto the stack of pipelines to be processed,
             detecting common upstream pipelines and resolving them to a single
@@ -441,12 +464,13 @@ class Pipeline:
 
             Parameters
             ----------
-            sink: DataSink
+            sink_name: str
                 the sink to push its deriving pipeline for
             downstream : tuple[Pipeline]
                 The pipelines directly downstream of the pipeline to be added.
                 Used to detect circular dependencies
             """
+            sink = resolve_column(sink_name)
             if downstream is None:
                 downstream = []
             if sink.pipeline_name is None:
@@ -484,7 +508,7 @@ class Pipeline:
             stack[pipeline.name] = pipeline, to_produce
             # Recursively add all the pipeline's prerequisite pipelines to the stack
             for inpt in pipeline.inputs:
-                inpt_column = sink.dataset[inpt.name]
+                inpt_column = resolve_column(inpt.name)
                 if inpt_column.is_sink:
                     try:
                         push_pipeline_on_stack(

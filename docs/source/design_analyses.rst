@@ -21,7 +21,7 @@ Basics
 
 There are two main components of analysis classes, column specifications
 (:ref:`column_param_specs`), which define the data to be provided to and
-derived by the class, and pipeline builder methods (:ref:`pipeline_builders`),
+derived by the class, and pipeline builder methods (:ref:`pipeline_constructors`),
 which construct the `Pydra workflows <https://pydra.readthedocs.io/en/latest/components.html#workflows>`_
 used to generate the derivatives. Parameter attributes (:ref:`column_param_specs`)
 expose key parameters used by the workflow construction and output methods
@@ -108,7 +108,7 @@ See :ref:`comprehensive_example` L4-29 for examples of these attributes of
 column and parameter specifications.
 
 
-.. _pipeline_builders:
+.. _pipeline_constructors:
 
 Pipeline builders
 ~~~~~~~~~~~~~~~~~

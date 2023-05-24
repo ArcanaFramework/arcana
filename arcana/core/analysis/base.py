@@ -489,7 +489,7 @@ class Analysis:
 
         # Initialise lists to hold all the different components of an analysis
         column_specs = []
-        pipeline_builders = []
+        pipeline_constructors = []
         parameters = []
         switches = []
         checks = []
@@ -576,10 +576,16 @@ class Analysis:
 
             if PIPELINE_ANNOTATIONS in attr_anots:
                 anots = attr_anots[PIPELINE_ANNOTATIONS]
-                outputs = tuple(o.name for o in anots["outputs"])
-                input_columns, used_parameters = cls._get_args_automagically(
+                output_names = tuple(o.name for o in anots["outputs"])
+                (
+                    input_columns,
+                    used_parameters,
+                    output_types,
+                ) = cls._get_args_automagically(
                     column_specs=column_specs, parameters=parameters, method=attr
                 )
+                assert len(output_names) == len(output_types)
+                outputs = list(zip(output_names, output_types))
                 unresolved_condition = anots["condition"]
                 if unresolved_condition is not None:
                     try:
@@ -592,7 +598,7 @@ class Analysis:
                         )
                 else:
                     condition = None
-                pipeline_builders.append(
+                pipeline_constructors.append(
                     PipelineConstructor(
                         name=attr.__name__,
                         desc=attr.__doc__,
@@ -606,9 +612,17 @@ class Analysis:
                     )
                 )
             elif SWICTH_ANNOTATIONS in attr_anots:
-                input_columns, used_parameters = cls._get_args_automagically(
+                (
+                    input_columns,
+                    used_parameters,
+                    output_types,
+                ) = cls._get_args_automagically(
                     column_specs=column_specs, parameters=parameters, method=attr
                 )
+                if output_types and output_types != (bool,):
+                    raise ArcanaDesignError(
+                        f"Switch methods should have return type bool, not {output_types}"
+                    )
                 switches.append(
                     Switch(
                         name=attr.__name__,
@@ -622,7 +636,11 @@ class Analysis:
             elif CHECK_ANNOTATIONS in attr_anots:
                 anots = attr_anots[CHECK_ANNOTATIONS]
                 column_name = anots["column"].name
-                input_columns, used_parameters = cls._get_args_automagically(
+                (
+                    input_columns,
+                    used_parameters,
+                    output_types,
+                ) = cls._get_args_automagically(
                     column_specs=column_specs, parameters=parameters, method=attr
                 )
                 checks.append(
@@ -638,7 +656,9 @@ class Analysis:
                     )
                 )
 
-        to_set_defined_in = to_convert_to_attrs + pipeline_builders + switches + checks
+        to_set_defined_in = (
+            to_convert_to_attrs + pipeline_constructors + switches + checks
+        )
 
         # Combine with specs from base classes
         for base in klass.__mro__[1:]:
@@ -678,7 +698,7 @@ class Analysis:
                 lst.extend(b for b in base_lst if b.name not in (x.name for x in lst))
             # Append methods to those that that were inherited from base classes
             for lst, base_lst in (
-                (pipeline_builders, base_spec.pipeline_builders),
+                (pipeline_constructors, base_spec.pipeline_constructors),
                 (switches, base_spec.switches),
                 (checks, base_spec.checks),
             ):
@@ -712,7 +732,9 @@ class Analysis:
         analysis_spec = AnalysisSpec(
             space=space,
             column_specs=tuple(sorted(column_specs, key=attrgetter("name"))),
-            pipeline_builders=tuple(sorted(pipeline_builders, key=attrgetter("name"))),
+            pipeline_constructors=tuple(
+                sorted(pipeline_constructors, key=attrgetter("name"))
+            ),
             parameters=tuple(sorted(parameters, key=attrgetter("name"))),
             switches=tuple(sorted(switches, key=attrgetter("name"))),
             checks=tuple(sorted(checks, key=attrgetter("name"))),
@@ -751,7 +773,9 @@ class Analysis:
         parameters: list[Parameter],
         method: ty.Callable,
         index_start: int = 2,
-    ):
+    ) -> tuple[
+        tuple[tuple[str, type]], tuple[tuple[str, type]], tuple[tuple[str, type]]
+    ]:
         """Automagically determine inputs to pipeline or switched by matching
         a methods argument names with columns and parameters of the class
 
@@ -769,10 +793,12 @@ class Analysis:
 
         Returns
         -------
-        list[str]
+        inputs: tuple[tuple[str, type]]
             the names of the input columns to automagically provide to the method
-        list[str]
+        parameters : tuple[tuple[str, type]]
             the names of the parameters to automagically provide to the method
+        output_types: tuple[type]
+            the return types of the method
         """
         inputs = []
         used_parameters = []
@@ -788,16 +814,19 @@ class Analysis:
                 if required_type is not None and required_type is not column_spec.type:
                     # Check to see whether conversion is possible
                     required_type.get_converter(column_spec.type, name="dummy")
-                inputs.append(arg)
+                inputs.append((arg, required_type))
             elif arg in param_names:
-                used_parameters.append(arg)
+                used_parameters.append((arg, required_type))
             else:
                 raise ArcanaDesignError(
                     f"Unrecognised argument '{arg}'. If it is from a base class, "
                     "make sure that it is explicitly inherited using the `Inherited` "
                     "function."
                 )
-        return tuple(inputs), tuple(used_parameters)
+        output_types = method.__annotations__["return"]
+        if not isinstance(output_types, tuple):
+            output_types = (output_types,)
+        return tuple(inputs), tuple(used_parameters), output_types
 
 
 @attrs.define

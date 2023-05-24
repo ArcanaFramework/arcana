@@ -6,10 +6,15 @@ from collections import defaultdict
 import operator as operator_module
 import attrs
 from attrs.converters import default_if_none
+import pydra
 from ..data.space import DataSpace
 from .salience import CheckSalience, ColumnSalience, ParameterSalience
 from ..utils.misc import ARCANA_SPEC
-from arcana.core.exceptions import ArcanaDesignError
+from arcana.core.exceptions import ArcanaDesignError, ArcanaNoValidPipelineError
+from .pipeline import Pipeline, PipelineField
+
+if ty.TYPE_CHECKING:
+    from .base import Analysis, Subanalysis
 
 
 @attrs.define(frozen=True)
@@ -36,32 +41,35 @@ class ColumnSpec(BaseAttr):
     row_frequency: ty.Optional[DataSpace] = None
     salience: ColumnSalience = ColumnSalience.default()
 
-    def select_pipeline_builders(self, analysis, dataset):
+    def get_pipeline(self, analysis: Analysis):
         candidates = [
-            p for p in analysis.__spec__.pipeline_builders if self.name in p.outputs
+            pc
+            for pc in analysis.__spec__.pipeline_constructors
+            if self.name in pc.outputs
         ]
         selected = [
-            m
-            for m in candidates
-            if (
-                m.condition is not None
-                and m.condition.evaluate(self, analysis, dataset)
-            )
+            pc
+            for pc in candidates
+            if (pc.condition is not None and pc.condition.evaluate(self, analysis))
         ]
         # Check for defaults
         if not selected:
-            selected = [p for p in candidates if p.condition is None]
+            selected = [pc for pc in candidates if pc.condition is None]
         # Select pipeline builders from subanalysis if present
         if not selected and self.mapped_from is not None:
-            subanalysis = getattr(analysis, self.mapped_from[0])
-            sub_column_spec = subanalysis.__spec__.column(self.mapped_from[1])
-            selected = sub_column_spec.select_pipeline_builders(subanalysis, dataset)
+            subanalysis: Subanalysis = getattr(analysis, self.mapped_from[0])
+            sub_column_spec = subanalysis._spec.column(self.mapped_from[1])
+            try:
+                return sub_column_spec.get_pipeline(subanalysis)
+            except ArcanaNoValidPipelineError as e:
+                candidates.extend(e.candidates)
 
         if not selected:
-            raise ArcanaDesignError(
+            raise ArcanaNoValidPipelineError(
+                candidates,
                 "Could not find any potential pipeline builders with conditions that "
                 "match the current analysis parameterisation and provided dataset. "
-                f"All candidates are: {candidates}"
+                f"All candidates are: {candidates}",
             )
         # Check to see whether there are pipelines with the same switch
         all_switches = [p.switch for p in selected]
@@ -192,10 +200,22 @@ class BaseMethod:
 
     name: str
     desc: str
-    inputs: tuple[str]
-    parameters: tuple[str]
-    method: ty.Callable
-    defined_in: tuple[type, ...]
+    inputs: tuple[tuple[str, type]]
+    parameters: tuple[tuple[str, type]]
+    method: ty.Callable = attrs.field(converter=staticmethod)
+    defined_in: tuple[type, ...] = attrs.field()
+
+    @property
+    def input_names(self):
+        return (i for i, _ in self.inputs)
+
+    @property
+    def parameter_names(self):
+        return (p for p, _ in self.parameters)
+
+    @property
+    def argument_names(self):
+        return itertools.chain(self.input_names, self.parameter_names)
 
 
 @attrs.define(frozen=True)
@@ -211,9 +231,40 @@ class PipelineConstructor(BaseMethod):
     """Specifies a method that is used to add nodes in the construction of a pipeline
     that is able to generate data for sink columns under certain conditions"""
 
-    outputs: tuple[str]
+    outputs: tuple[str] = attrs.field()
     condition: ty.Optional[Operation] = None
     switch: ty.Optional[Switch] = None
+
+    @property
+    def output_names(self):
+        return (o for o, _ in self.outputs)
+
+    @property
+    def workflow(self) -> pydra.Workflow:
+        wf = pydra.Workflow(name=self.name, input_spec=list(self.argument_names))
+        wf_outputs = self.method(
+            wf, **{a: getattr(wf.lzin, a) for a in self.argument_names}
+        )
+        assert len(wf_outputs) == len(self.outputs)
+        wf.set_output(list(zip(self.output_names, wf_outputs)))
+
+    def apply(self, analysis: Analysis) -> Pipeline:
+        output_cols = [analysis.dataset[i] for i, _ in self.outputs]
+        row_frequencies = set(c.row_frequency for c in output_cols)
+        if len(row_frequencies) > 1:
+            col_freqs = ", ".join(f"{c.name}={c.row_frequency}" for c in output_cols)
+            raise ArcanaDesignError(
+                f"Outputs of {self.name} pipeline constructor are of differring "
+                f"frequencies ({col_freqs}), they must be consistent"
+            )
+        row_frequency = list(row_frequencies)[0]
+        return analysis.dataset.apply_pipeline(
+            name=self.name,
+            workflow=self.workflow,
+            inputs=[PipelineField(name=n, datatype=t) for n, t in self.inputs],
+            outputs=[PipelineField(name=n, datatype=t) for n, t in self.outputs],
+            row_frequency=row_frequency,
+        )
 
 
 @attrs.define(frozen=True)
@@ -237,84 +288,86 @@ class AnalysisSpec:
 
     space: ty.Type[DataSpace]
     column_specs: tuple[ColumnSpec] = attrs.field(validator=unique_names)
-    pipeline_builders: tuple[PipelineConstructor] = attrs.field(validator=unique_names)
+    pipeline_constructors: tuple[PipelineConstructor] = attrs.field(
+        validator=unique_names
+    )
     parameters: tuple[Parameter] = attrs.field(validator=unique_names)
     switches: tuple[Switch] = attrs.field(validator=unique_names)
     checks: tuple[Check] = attrs.field(validator=unique_names)
     subanalysis_specs: tuple[SubanalysisSpec] = attrs.field(validator=unique_names)
 
     @property
-    def column_names(self):
+    def column_names(self) -> ty.Iterator[str]:
         return (c.name for c in self.column_specs)
 
     @property
-    def parameter_names(self):
+    def parameter_names(self) -> ty.Iterator[str]:
         return (p.name for p in self.parameters)
 
     @property
-    def pipeline_names(self):
-        return (p.name for p in self.pipeline_builders)
+    def pipeline_names(self) -> ty.Iterator[str]:
+        return (p.name for p in self.pipeline_constructors)
 
     @property
-    def switch_names(self):
+    def switch_names(self) -> ty.Iterator[str]:
         return (s.name for s in self.switches)
 
     @property
-    def check_names(self):
+    def check_names(self) -> ty.Iterator[str]:
         return (c.name for c in self.checks)
 
     @property
-    def subanalysis_names(self):
+    def subanalysis_names(self) -> ty.Iterator[str]:
         return (s.name for s in self.subanalysis_specs)
 
-    def column_spec(self, name):
+    def column_spec(self, name: str) -> ColumnSpec:
         try:
             return next(c for c in self.column_specs if c.name == name)
         except StopIteration:
             raise KeyError(f"No column spec named '{name}' in {self}")
 
-    def parameter(self, name):
+    def parameter(self, name: str) -> Parameter:
         try:
             return next(p for p in self.parameters if p.name == name)
         except StopIteration:
             raise KeyError(f"No parameter named '{name}' in {self}")
 
-    def subanalysis_spec(self, name):
+    def subanalysis_spec(self, name: str) -> SubanalysisSpec:
         try:
             return next(s for s in self.subanalysis_specs if s.name == name)
         except StopIteration:
             raise KeyError(f"No subanalysis spec named '{name}' in {self}")
 
-    def pipeline_builder(self, name):
+    def pipeline_constructor(self, name: str) -> PipelineConstructor:
         try:
-            return next(p for p in self.pipeline_builders if p.name == name)
+            return next(p for p in self.pipeline_constructors if p.name == name)
         except StopIteration:
             raise KeyError(f"No pipeline builder named '{name}' in {self}")
 
-    def switch(self, name):
+    def switch(self, name: str) -> Switch:
         try:
             return next(s for s in self.switches if s.name == name)
         except StopIteration:
             raise KeyError(f"No switches named '{name}' in {self}")
 
-    def check(self, name):
+    def check(self, name: str) -> Check:
         try:
             return next(c for c in self.checks if c.name == name)
         except StopIteration:
             raise KeyError(f"No checks named '{name}' in {self}")
 
-    def member(self, name):
+    def member(self, name: str) -> ty.Type[BaseAttr]:
         try:
             return next(m for m in self.members() if m.name == name)
         except StopIteration:
             raise KeyError(f"No member named '{name}' in {self}")
 
-    def members(self):
+    def members(self) -> ty.Iterator[ty.Type[BaseAttr]]:
         return itertools.chain(
             self.column_specs, self.parameters, self.subanalysis_specs
         )
 
-    def column_checks(self, column_name):
+    def column_checks(self, column_name) -> ty.Iterator[Check]:
         "Return all checks for a given column"
         return (c for c in self.checks if c.column == column_name)
 
@@ -322,7 +375,7 @@ class AnalysisSpec:
     def column_specs_validator(self, _, column_specs):
         for column_spec in column_specs:
             sorted_by_cond = defaultdict(list)
-            for pipe_spec in self.pipeline_builders:
+            for pipe_spec in self.pipeline_constructors:
                 if column_spec.name in pipe_spec.outputs:
                     sorted_by_cond[(pipe_spec.condition, pipe_spec.switch)].append(
                         pipe_spec
@@ -341,7 +394,9 @@ class AnalysisSpec:
                 )
             if not sorted_by_cond and not column_spec.mapped_from:
                 inputs_to = [
-                    p for p in self.pipeline_builders if column_spec.name in p.inputs
+                    p
+                    for p in self.pipeline_constructors
+                    if column_spec.name in p.inputs
                 ]
                 if not inputs_to:
                     raise ArcanaDesignError(
@@ -353,14 +408,15 @@ class AnalysisSpec:
                         f"is not specified as 'raw' or 'primary'"
                     )
 
-    @pipeline_builders.validator
-    def pipeline_builders_validator(self, _, pipeline_builders):
-        for pipeline_builder in pipeline_builders:
+    @pipeline_constructors.validator
+    def pipeline_constructors_validator(self, _, pipeline_constructors):
+        for pipeline_constructor in pipeline_constructors:
             if missing_outputs := [
-                o for o in pipeline_builder.outputs if o not in self.column_names
+                o for o in pipeline_constructor.outputs if o not in self.column_names
             ]:
                 raise ArcanaDesignError(
-                    f"'{pipeline_builder.name}' pipeline outputs to unknown columns: {missing_outputs}"
+                    f"'{pipeline_constructor.name}' pipeline outputs to unknown "
+                    f"columns: {missing_outputs}"
                 )
 
 

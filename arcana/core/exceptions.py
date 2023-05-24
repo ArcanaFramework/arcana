@@ -64,6 +64,12 @@ class ArcanaDesignError(ArcanaError):
     pass
 
 
+class ArcanaNoValidPipelineError(ArcanaDesignError):
+    def __init__(self, candidates, msg):
+        super().__init__(msg)
+        self.candidates = candidates
+
+
 class NamedArcanaError(ArcanaError):
     def __init__(self, name, msg):
         super(NamedArcanaError, self).__init__(msg)

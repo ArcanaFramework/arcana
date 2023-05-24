@@ -7,6 +7,7 @@ import shutil
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
+import pydra
 from fileformats.generic import File
 from arcana.core.exceptions import (
     ArcanaDataMatchError,
@@ -26,7 +27,7 @@ if ty.TYPE_CHECKING:  # pragma: no cover
     from arcana.core.data.entry import DataEntry
     from arcana.core.data.row import DataRow
     from arcana.core.analysis.base import Analysis
-    from arcana.core.analysis.pipeline import Pipeline
+    from arcana.core.analysis.pipeline import Pipeline, PipelineField
 
 logger = logging.getLogger("arcana")
 
@@ -603,13 +604,13 @@ class Dataset:
 
     def apply_pipeline(
         self,
-        name,
-        workflow,
-        inputs,
-        outputs,
-        row_frequency=None,
-        overwrite=False,
-        converter_args=None,
+        name: str,
+        workflow: pydra.Workflow,
+        inputs: list[PipelineField],
+        outputs: list[PipelineField],
+        row_frequency: ty.Optional[str] = None,
+        overwrite: bool = False,
+        converter_args: dict[str, dict] = None,
     ):
         """Connect a Pydra workflow as a pipeline of the dataset
 
@@ -712,8 +713,7 @@ class Dataset:
         """
         from arcana.core.analysis.pipeline import Pipeline
 
-        sinks = [self[s] for s in set(sink_names)]
-        for pipeline, _ in Pipeline.stack(*sinks):
+        for pipeline, _ in Pipeline.stack(self, *sink_names):
             # Execute pipelines in stack
             # FIXME: Should combine the pipelines into a single workflow and
             # dilate the IDs that need to be run when summarising over different
