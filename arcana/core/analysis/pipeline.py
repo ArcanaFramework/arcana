@@ -134,7 +134,7 @@ class Pipeline:
     outputs: ty.List[PipelineField] = attrs.field(
         converter=ObjectListConverter(PipelineField)
     )
-    switch_worklfows: list[tuple[pydra.Workflow, pydra.Workflow]] = attrs.field(
+    switch_workflows: list[tuple[pydra.Workflow, pydra.Workflow]] = attrs.field(
         factory=list, converter=attrs.converters.default_if_none(factory=list)
     )
     converter_args: ty.Dict[str, dict] = attrs.field(
@@ -189,7 +189,7 @@ class Pipeline:
                         f"that of '{outpt.name}' output ('{str(self.row_frequency)}')"
                     )
                 # Check that a converter can be found if required
-                if outpt.datatype:
+                if outpt.datatype and outpt.datatype is not column.datatype:
                     try:
                         column.datatype.get_converter(outpt.datatype, name="dummy")
                     except FormatConversionError as e:
@@ -199,6 +199,11 @@ class Pipeline:
                         )
                         add_exc_note(e, msg)
                         raise
+                    except AttributeError as e:
+                        raise FormatConversionError(
+                            f"column datatype, {outpt.datatype}, cannot be converted to "
+                            f"{column.datatype}"
+                        ) from e
             elif outpt.datatype is None:
                 raise ValueError(
                     f"Datatype must be explicitly set for {outpt.name} in unbound Pipeline"
@@ -209,7 +214,7 @@ class Pipeline:
                     f"pipeline: " + "', '".join(self.workflow.output_names)
                 )
 
-    @switch_worklfows.validator
+    @switch_workflows.validator
     def switch_workflows_validator(
         self, _, switch_workflows: list[tuple[pydra.Workflow, pydra.Workflow]]
     ):

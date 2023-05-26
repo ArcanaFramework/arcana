@@ -86,7 +86,7 @@ def test_analysis(analysis_dataset: Dataset, work_dir: Path):
         a_parameter=10,
     )
 
-    analysis_dataset.derive("example_analysis.deriv_file")
+    analysis_dataset.derive("example_analysis.deriv_file", plugin="serial")
 
     for item in analysis_dataset.columns["example_analysis.deriv_file"]:
         assert item.contents == "file1.txt"

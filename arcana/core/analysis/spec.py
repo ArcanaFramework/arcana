@@ -171,7 +171,7 @@ class BaseMethod:
         wf = pydra.Workflow(name=self.name, input_spec=list(self.input_names))
         kwargs = {n: getattr(wf.lzin, n) for n in self.input_names}
         kwargs.update({n: getattr(analysis, n) for n in self.parameter_names})
-        wf_outputs = self.method(wf, **kwargs)
+        wf_outputs = self.method(analysis, wf, **kwargs)
         assert len(wf_outputs) == len(self.outputs)
         wf.set_output(list(zip(self.output_names, wf_outputs)))
         return wf
@@ -263,10 +263,10 @@ class ColumnSpec(BaseAttr):
         default_constructor = no_switch[0]
         pipeline_name = default_constructor.name
         switch_constructors = [c for c in constructors if c.switch is not None]
-        outputs = default_constructor.outputs
-        inputs = dict(default_constructor.inputs)
+        wf_outputs = default_constructor.outputs
+        wf_inputs = dict(default_constructor.inputs)
         for sw_constructor in switch_constructors:
-            if sw_constructor.outputs != outputs:
+            if sw_constructor.outputs != wf_outputs:
                 raise ArcanaDesignError(
                     f"Inconsistent outputs between default {pipeline_name} "
                     f"({default_constructor.outputs}) and switch workflow "
@@ -276,9 +276,9 @@ class ColumnSpec(BaseAttr):
                 sw_constructor.inputs, sw_constructor.switch.inputs
             ):
                 try:
-                    prev_type = inputs[in_name]
+                    prev_type = wf_inputs[in_name]
                 except KeyError:
-                    inputs[in_name] = in_type  # add new input to list
+                    wf_inputs[in_name] = in_type  # add new input to list
                 else:
                     if prev_type is not in_type:
                         raise ArcanaDesignError(
@@ -292,23 +292,34 @@ class ColumnSpec(BaseAttr):
             for c in switch_constructors
         ]
         # Recursively add inputs and any pipelines required to derive them.
-        for in_name, _ in inputs:
-            analysis.dataset[in_name]
-        for out_name, out_type in outputs:
-            if out_name in analysis.dataset:
+        pipeline_inputs = []
+        for in_name, in_type in wf_inputs.items():
+            column = getattr(analysis, in_name)
+            if column is None:
+                column = analysis.dataset[f"{analysis.name}.{in_name}"]
+            pipeline_inputs.append(
+                PipelineField(name=column.name, datatype=column.datatype, field=in_name)
+            )
+        pipeline_outputs = []
+        for out_name, out_type in wf_outputs:
+            sink_name = f"{analysis.name}.{out_name}"
+            if sink_name in analysis.dataset.columns:
                 raise ArcanaDesignError(
-                    f"Clash between generated sinks {out_name} in analysis {analysis.name} "
-                    f"{pipeline_name} and {analysis.dataset[out_name].pipeline_name}"
+                    f"Clash between generated sinks {sink_name} in analysis {analysis.name} "
+                    f"{pipeline_name} and {analysis.dataset[sink_name].pipeline_name}"
                 )
-            analysis.dataset.add_sink(
-                name=out_name, datatype=out_type, row_frequency=self.row_frequency
+            sink = analysis.dataset.add_sink(
+                name=sink_name, datatype=out_type, row_frequency=self.row_frequency
+            )
+            pipeline_outputs.append(
+                PipelineField(name=sink_name, datatype=sink.datatype, field=out_name)
             )
         analysis.dataset.apply_pipeline(
             name=pipeline_name,
             workflow=workflow,
             switch_workflows=switch_workflows,
-            inputs=[PipelineField(name=n, datatype=t) for n, t in inputs],
-            outputs=[PipelineField(name=n, datatype=t) for n, t in outputs],
+            inputs=pipeline_inputs,
+            outputs=pipeline_outputs,
             row_frequency=self.row_frequency,
         )
 

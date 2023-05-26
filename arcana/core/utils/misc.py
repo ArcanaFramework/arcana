@@ -18,6 +18,7 @@ import cloudpickle as cp
 from pydra.engine.core import Workflow, LazyField, TaskBase
 from pydra.engine.task import FunctionTask
 from pydra.engine.specs import BaseSpec, SpecInfo
+from fileformats.core import DataType, Field
 from arcana.core.exceptions import ArcanaUsageError, ArcanaError
 
 
@@ -669,6 +670,12 @@ def show_cli_trace(result):
 def append_suffix(path: Path, suffix: str) -> Path:
     "Appends a string suffix to a Path object"
     return Path(str(path) + suffix)
+
+
+def datatype_converter(datatype):
+    if not issubclass(datatype, DataType):
+        datatype = Field.from_primitive(datatype)
+    return datatype
 
 
 # Minimum version of Arcana that this version can read the serialisation from

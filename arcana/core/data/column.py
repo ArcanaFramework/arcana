@@ -14,6 +14,7 @@ from .quality import DataQuality
 from .space import DataSpace
 from .cell import DataCell
 from .entry import DataEntry
+from arcana.core.utils.misc import datatype_converter
 
 if ty.TYPE_CHECKING:  # pragma: no cover
     from .row import DataRow
@@ -27,7 +28,7 @@ logger = logging.getLogger("arcana")
 class DataColumn(metaclass=ABCMeta):
 
     name: str
-    datatype: type = attrs.field()
+    datatype: type = attrs.field(converter=datatype_converter)
     row_frequency: DataSpace = attrs.field(
         validator=attrs.validators.instance_of(DataSpace)
     )
