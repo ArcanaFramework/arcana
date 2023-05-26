@@ -74,6 +74,18 @@ class PipelineField:
 logger = logging.getLogger("arcana")
 
 
+def switched_workflows_compare(
+    x: list[tuple[pydra.Workflow, pydra.Workflow | None]],
+    y: list[tuple[pydra.Workflow, pydra.Workflow | None]],
+) -> bool:
+    if len(x) != len(y):
+        return False
+    for (s1, w1), (s2, w2) in zip(x, y):
+        if not (pydra_eq(s1, s2) and pydra_eq(w1, w2)):
+            return False
+    return True
+
+
 @attrs.define
 class Pipeline:
     """A thin wrapper around a Pydra workflow to link it to sources and sinks
@@ -98,6 +110,14 @@ class Pipeline:
         List of sink names to be connected to the outputs of the pipeline
         If the input to be in a specific datatype, then it can be provided in
         a tuple (NAME, FORMAT)
+    switch_workflows : list[tuple[pydra.Workflow, pydra.Workflow]]
+        pairs of workflows consisting of a "switch workflow" that is used to select
+        a subset of rows and a workflow to be "switched-in" in place of the default
+        workflow for the row subset. The "switch workflow" should return a boolean
+        value that designates whether the given row should be included in subset or
+        not. The outputs of the switched-in workflows must be the same as the default
+        workflow. The inputs can differ between switched workflows and with the default
+        but must be included in the `inputs` keyword arg
     converter_args : dict[str, dict]
         keyword arguments passed on to the converter to control how the
         conversion is performed.
@@ -113,6 +133,9 @@ class Pipeline:
     )
     outputs: ty.List[PipelineField] = attrs.field(
         converter=ObjectListConverter(PipelineField)
+    )
+    switch_worklfows: list[tuple[pydra.Workflow, pydra.Workflow]] = attrs.field(
+        factory=list, converter=attrs.converters.default_if_none(factory=list)
     )
     converter_args: ty.Dict[str, dict] = attrs.field(
         factory=dict, converter=attrs.converters.default_if_none(factory=dict)
@@ -185,6 +208,13 @@ class Pipeline:
                     f"{outpt.field} is not in the output spec of '{self.name}' "
                     f"pipeline: " + "', '".join(self.workflow.output_names)
                 )
+
+    @switch_worklfows.validator
+    def switch_workflows_validator(
+        self, _, switch_workflows: list[tuple[pydra.Workflow, pydra.Workflow]]
+    ):
+        if switch_workflows:
+            raise NotImplementedError("Switch workflows are not currently supported")
 
     @property
     def input_varnames(self):
@@ -436,24 +466,6 @@ class Pipeline:
         # Stack of pipelines to process in reverse order of required execution
         stack = OrderedDict()
 
-        def resolve_column(col_name):
-            try:
-                return dataset[col_name]
-            except KeyError:
-                if "." not in col_name:
-                    raise
-                parts = col_name.split(".")
-                analysis_name = parts[0]
-                deriv_name = ".".join(parts[1:])
-                analysis = dataset.analyses[analysis_name]
-                column_spec = analysis.__spec__.column_spec(deriv_name)
-                sink = dataset.add_sink(
-                    col_name,
-                    datatype=column_spec.type,
-                    row_frequency=column_spec.row_frequency,
-                )
-                return sink
-
         def push_pipeline_on_stack(
             sink_name: str, downstream: ty.Tuple[Pipeline] = None
         ):
@@ -470,7 +482,7 @@ class Pipeline:
                 The pipelines directly downstream of the pipeline to be added.
                 Used to detect circular dependencies
             """
-            sink = resolve_column(sink_name)
+            sink = dataset[sink_name]
             if downstream is None:
                 downstream = []
             if sink.pipeline_name is None:
@@ -508,7 +520,7 @@ class Pipeline:
             stack[pipeline.name] = pipeline, to_produce
             # Recursively add all the pipeline's prerequisite pipelines to the stack
             for inpt in pipeline.inputs:
-                inpt_column = resolve_column(inpt.name)
+                inpt_column = dataset[inpt.name]
                 if inpt_column.is_sink:
                     try:
                         push_pipeline_on_stack(

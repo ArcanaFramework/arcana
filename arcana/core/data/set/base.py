@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import re
 import typing as ty
+from typing_extensions import Self
 from pathlib import Path
 import shutil
 import attrs
@@ -278,7 +279,7 @@ class Dataset:
         store: ty.Optional[datastore.DataStore] = None,
         name: ty.Optional[str] = None,
         **kwargs,
-    ):
+    ) -> Self:
         """Loads a dataset from an store/ID/name string, as used in the CLI
 
         Parameters
@@ -312,11 +313,11 @@ class Dataset:
         return store.load_dataset(id, name=name)
 
     @property
-    def root_freq(self):
+    def root_freq(self) -> DataSpace:
         return self.space(0)
 
     @property
-    def root_dir(self):
+    def root_dir(self) -> Path:
         return Path(self.id)
 
     @property
@@ -324,7 +325,7 @@ class Dataset:
         return max(self.space)
 
     @property
-    def prov(self):
+    def prov(self) -> dict[str, ty.Any]:
         return {
             "id": self.id,
             "store": self.store.prov,
@@ -455,7 +456,12 @@ class Dataset:
                 )
         self.columns[name] = spec
 
-    def row(self, frequency=None, id=attrs.NOTHING, **id_kwargs):
+    def row(
+        self,
+        frequency: str | DataSpace = None,
+        id: ty.Optional[str | tuple[str, ...]] = attrs.NOTHING,
+        **id_kwargs,
+    ) -> DataRow:
         """Returns the row associated with the given frequency and ids dict
 
         Parameters
@@ -534,20 +540,20 @@ class Dataset:
         self,
         frequency: ty.Optional[str | DataSpace] = None,
         ids: ty.Optional[ty.Iterable[str | tuple[str]]] = None,
-    ) -> tuple[DataRow]:
+    ) -> list[DataRow]:
         """Return all the IDs in the dataset for a given frequency
 
         Parameters
         ----------
         frequency : DataSpace, optional
-            The "frequency" of the rows, e.g. per-session, per-subject, defaults to
-            leaf rows
+            The "frequency" of the rows, e.g. per-session, per-subject, defaults to the
+            leaf rows of the data tree hierarchy
         ids : Sequence[str or Tuple[str]]
-            The i
+            The IDs to limit the returned rows to
 
         Returns
         -------
-        Sequence[DataRow]
+        list[DataRow]
             The sequence of the data row within the dataset
         """
         if frequency is None:
@@ -556,13 +562,15 @@ class Dataset:
             frequency = self.parse_frequency(frequency)
         with self.tree:
             if frequency == self.root_freq:
-                return (self.root,)
-            rows = tuple(self.root.children[frequency].values())
+                return [self.root]
+            rows = list(self.root.children[frequency].values())
             if ids is not None:
-                rows = (n for n in rows if n.id in set(ids))
+                rows = [n for n in rows if n.id in set(ids)]
             return rows
 
-    def row_ids(self, frequency: ty.Optional[str] = None):
+    def row_ids(
+        self, frequency: ty.Optional[str] = None
+    ) -> list[str | tuple[str, ...]]:
         """Return all the IDs in the dataset for a given row_frequency
 
         Parameters
@@ -572,7 +580,7 @@ class Dataset:
 
         Returns
         -------
-        Sequence[str]
+        list[str | tuple[str,...]]
             The IDs of the rows
         """
         if frequency is None:
@@ -583,12 +591,14 @@ class Dataset:
             return [None]
         with self.tree:
             try:
-                return self.root.children[frequency].keys()
+                return list(self.root.children[frequency].keys())
             except KeyError:
-                return ()
+                return []
 
-    def __getitem__(self, name):
-        """Return all data items across the dataset for a given source or sink
+    def __getitem__(self, name: str) -> DataColumn:
+        """Returns the data column of the array, implicitly adding sink columns and
+        pipelines from Analysis class column and pipeline constructor specs where
+        necessary
 
         Parameters
         ----------
@@ -600,7 +610,19 @@ class Dataset:
         DataColumn
             the column object
         """
-        return self.columns[name]
+        try:
+            return self.columns[name]
+        except KeyError:
+            if "." not in name:
+                raise  # If column name is not an analysis derivative
+            # Get the corresponding column specification and its pipeline constructor
+            parts = name.split(".")
+            analysis = self.analyses[parts[0]]
+            deriv_name = ".".join(parts[1:])
+            column_spec = analysis.__spec__.column_spec(deriv_name)
+            column_spec.apply_generating_pipelines(analysis)
+            # Return newly added sink column
+            return self.columns[name]
 
     def apply_pipeline(
         self,
@@ -608,10 +630,13 @@ class Dataset:
         workflow: pydra.Workflow,
         inputs: list[PipelineField],
         outputs: list[PipelineField],
+        switch_workflows: list[
+            pydra.Workflow | tuple[pydra.Workflow, pydra.Workflow]
+        ] = None,
         row_frequency: ty.Optional[str] = None,
         overwrite: bool = False,
         converter_args: dict[str, dict] = None,
-    ):
+    ) -> Pipeline:
         """Connect a Pydra workflow as a pipeline of the dataset
 
         Parameters
@@ -619,11 +644,19 @@ class Dataset:
         name : str
             name of the pipeline
         workflow : pydra.Workflow
-            pydra workflow to connect to the dataset as a pipeline
+            the pydra workflow to connect to the dataset as a pipeline
         inputs : list[arcana.core.analysis.pipeline.Input or tuple[str, str, type] or tuple[str, str]]
-            List of inputs to the pipeline (see `arcana.core.analysis.pipeline.Pipeline.PipelineInput`)
+            inputs to the pipeline (see `arcana.core.analysis.pipeline.Pipeline.PipelineInput`)
         outputs : list[arcana.core.analysis.pipeline.Output or tuple[str, str, type] or tuple[str, str]]
-            List of outputs of the pipeline (see `arcana.core.analysis.pipeline.Pipeline.PipelineOutput`)
+            outputs of the pipeline (see `arcana.core.analysis.pipeline.Pipeline.PipelineOutput`)
+        switch_workflows : list[tuple[pydra.Workflow, pydra.Workflow]]
+            pairs of workflows consisting of a "switch workflow" that is used to select
+            a subset of rows and a workflow to be "switched-in" in place of the default
+            workflow for the row subset. The "switch workflow" should return a boolean
+            value that designates whether the given row should be included in subset or
+            not. The outputs of the switched-in workflows must be the same as the default
+            workflow. The inputs can differ between switched workflows and with the default
+            but must be included in the `inputs` keyword arg
         row_frequency : str, optional
             the frequency of the data rows the pipeline will be executed over, i.e.
             will it be run once per-session, per-subject or per whole dataset,
@@ -665,6 +698,7 @@ class Dataset:
             dataset=self,
             row_frequency=row_frequency,
             workflow=workflow,
+            switch_workflows=switch_workflows,
             inputs=inputs,
             outputs=outputs,
             converter_args=converter_args,

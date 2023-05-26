@@ -11,7 +11,7 @@ from ..data.space import DataSpace
 from .salience import CheckSalience, ColumnSalience, ParameterSalience
 from ..utils.misc import ARCANA_SPEC
 from arcana.core.exceptions import ArcanaDesignError, ArcanaNoValidPipelineError
-from .pipeline import Pipeline, PipelineField
+from .pipeline import PipelineField
 
 if ty.TYPE_CHECKING:
     from .base import Analysis, Subanalysis
@@ -32,61 +32,6 @@ class BaseAttr:
     metadata: dict = attrs.field(
         factory=dict, converter=default_if_none(default=attrs.Factory(dict))
     )
-
-
-@attrs.define(frozen=True)
-class ColumnSpec(BaseAttr):
-    """Specifies a column that the analysis can add when it is applied to a dataset"""
-
-    row_frequency: ty.Optional[DataSpace] = None
-    salience: ColumnSalience = ColumnSalience.default()
-
-    def get_pipeline(self, analysis: Analysis):
-        candidates = [
-            pc
-            for pc in analysis.__spec__.pipeline_constructors
-            if self.name in pc.outputs
-        ]
-        selected = [
-            pc
-            for pc in candidates
-            if (pc.condition is not None and pc.condition.evaluate(self, analysis))
-        ]
-        # Check for defaults
-        if not selected:
-            selected = [pc for pc in candidates if pc.condition is None]
-        # Select pipeline builders from subanalysis if present
-        if not selected and self.mapped_from is not None:
-            subanalysis: Subanalysis = getattr(analysis, self.mapped_from[0])
-            sub_column_spec = subanalysis._spec.column(self.mapped_from[1])
-            try:
-                return sub_column_spec.get_pipeline(subanalysis)
-            except ArcanaNoValidPipelineError as e:
-                candidates.extend(e.candidates)
-
-        if not selected:
-            raise ArcanaNoValidPipelineError(
-                candidates,
-                "Could not find any potential pipeline builders with conditions that "
-                "match the current analysis parameterisation and provided dataset. "
-                f"All candidates are: {candidates}",
-            )
-        # Check to see whether there are pipelines with the same switch
-        all_switches = [p.switch for p in selected]
-        if with_duplicate_switches := [
-            p for p in selected if all_switches.count(p.switch)
-        ]:
-            raise ArcanaDesignError(
-                "Multiple potential pipelines match criteria for the given analysis "
-                f"configuration and provided dataset: {with_duplicate_switches}"
-            )
-        return selected
-
-    def to_attrs_field(self):
-        return attrs.field(
-            default=None,
-            metadata={ARCANA_SPEC: self},
-        )
 
 
 @attrs.define(frozen=True)
@@ -195,12 +140,13 @@ class Operation:
         return val
 
 
-@attrs.define(frozen=True)
+@attrs.define(frozen=True, slots=False)
 class BaseMethod:
 
     name: str
     desc: str
     inputs: tuple[tuple[str, type]]
+    outputs: tuple[tuple[str, type]]
     parameters: tuple[tuple[str, type]]
     method: ty.Callable = attrs.field(converter=staticmethod)
     defined_in: tuple[type, ...] = attrs.field()
@@ -214,8 +160,21 @@ class BaseMethod:
         return (p for p, _ in self.parameters)
 
     @property
+    def output_names(self):
+        return (o for o, _ in self.outputs)
+
+    @property
     def argument_names(self):
         return itertools.chain(self.input_names, self.parameter_names)
+
+    def build_workflow(self, analysis: Analysis) -> pydra.Workflow:
+        wf = pydra.Workflow(name=self.name, input_spec=list(self.input_names))
+        kwargs = {n: getattr(wf.lzin, n) for n in self.input_names}
+        kwargs.update({n: getattr(analysis, n) for n in self.parameter_names})
+        wf_outputs = self.method(wf, **kwargs)
+        assert len(wf_outputs) == len(self.outputs)
+        wf.set_output(list(zip(self.output_names, wf_outputs)))
+        return wf
 
 
 @attrs.define(frozen=True)
@@ -223,7 +182,7 @@ class Switch(BaseMethod):
     """Specifies a "switch" point at which the processing can bifurcate to handle two
     separate types of input streams"""
 
-    pass
+    outputs = (("out", bool),)
 
 
 @attrs.define(frozen=True)
@@ -231,39 +190,132 @@ class PipelineConstructor(BaseMethod):
     """Specifies a method that is used to add nodes in the construction of a pipeline
     that is able to generate data for sink columns under certain conditions"""
 
-    outputs: tuple[str] = attrs.field()
     condition: ty.Optional[Operation] = None
     switch: ty.Optional[Switch] = None
 
-    @property
-    def output_names(self):
-        return (o for o, _ in self.outputs)
 
-    @property
-    def workflow(self) -> pydra.Workflow:
-        wf = pydra.Workflow(name=self.name, input_spec=list(self.argument_names))
-        wf_outputs = self.method(
-            wf, **{a: getattr(wf.lzin, a) for a in self.argument_names}
-        )
-        assert len(wf_outputs) == len(self.outputs)
-        wf.set_output(list(zip(self.output_names, wf_outputs)))
+@attrs.define(frozen=True)
+class ColumnSpec(BaseAttr):
+    """Specifies a column that the analysis can add when it is applied to a dataset"""
 
-    def apply(self, analysis: Analysis) -> Pipeline:
-        output_cols = [analysis.dataset[i] for i, _ in self.outputs]
-        row_frequencies = set(c.row_frequency for c in output_cols)
-        if len(row_frequencies) > 1:
-            col_freqs = ", ".join(f"{c.name}={c.row_frequency}" for c in output_cols)
-            raise ArcanaDesignError(
-                f"Outputs of {self.name} pipeline constructor are of differring "
-                f"frequencies ({col_freqs}), they must be consistent"
+    row_frequency: ty.Optional[DataSpace] = None
+    salience: ColumnSalience = ColumnSalience.default()
+
+    def apply_generating_pipelines(self, analysis: Analysis):
+        """Adds the pipelines required to generate the column to the dataset
+
+        Parameters
+        ----------
+        analysis : Analysis
+            the analysis to generate the pipelines from into the dataset it is applied
+            to
+        """
+        candidates = [
+            pc
+            for pc in analysis.__spec__.pipeline_constructors
+            if self.name in pc.output_names
+        ]
+        # Check for pipelines with active conditions for the given analysis
+        constructors = [
+            pc
+            for pc in candidates
+            if (pc.condition is not None and pc.condition.evaluate(self, analysis))
+        ]
+        # Check for defaults
+        if not constructors:
+            constructors = [pc for pc in candidates if pc.condition is None]
+        # If there aren't candidates in the outer class, check subanalysis
+        # for an appropriate pipeline
+        if not constructors and self.mapped_from is not None:
+            subanalysis: Subanalysis = getattr(analysis, self.mapped_from[0])
+            sub_column_spec = subanalysis._spec.column(self.mapped_from[1])
+            try:
+                return sub_column_spec.get_pipeline(subanalysis)
+            except ArcanaNoValidPipelineError as e:
+                candidates.extend(e.candidates)
+
+        # Couldn't find any candidates, raise an error
+        if not constructors:
+            raise ArcanaNoValidPipelineError(
+                candidates,
+                f"Could not find any potential pipeline builders for column {self.name} "
+                "with conditions that match the current analysis parameterisation and "
+                f"provided dataset. All candidates are: {candidates}",
             )
-        row_frequency = list(row_frequencies)[0]
-        return analysis.dataset.apply_pipeline(
-            name=self.name,
-            workflow=self.workflow,
-            inputs=[PipelineField(name=n, datatype=t) for n, t in self.inputs],
-            outputs=[PipelineField(name=n, datatype=t) for n, t in self.outputs],
-            row_frequency=row_frequency,
+        # Check to see that there aren't multiple pipelines which run on same switch
+        # NB: Different rows of the same column can be derived by separate pipelines,
+        # depending on the value of the switch for that column.
+        all_switches = [p.switch for p in constructors]
+        with_duplicate_switches = [
+            p for p in constructors if all_switches.count(p.switch) > 1
+        ]
+        if with_duplicate_switches:
+            raise ArcanaDesignError(
+                "Multiple potential pipelines match criteria for the given analysis "
+                f"configuration and provided dataset: {with_duplicate_switches}"
+            )
+        no_switch = [c for c in constructors if c.switch is None]
+        if not no_switch:
+            raise ArcanaDesignError(
+                f"No default pipeline defined to produce {self.name} column, only found "
+                f"{candidates}"
+            )
+        default_constructor = no_switch[0]
+        pipeline_name = default_constructor.name
+        switch_constructors = [c for c in constructors if c.switch is not None]
+        outputs = default_constructor.outputs
+        inputs = dict(default_constructor.inputs)
+        for sw_constructor in switch_constructors:
+            if sw_constructor.outputs != outputs:
+                raise ArcanaDesignError(
+                    f"Inconsistent outputs between default {pipeline_name} "
+                    f"({default_constructor.outputs}) and switch workflow "
+                    f"{sw_constructor.name}' ({sw_constructor.outputs})"
+                )
+            for in_name, in_type in itertools.chain(
+                sw_constructor.inputs, sw_constructor.switch.inputs
+            ):
+                try:
+                    prev_type = inputs[in_name]
+                except KeyError:
+                    inputs[in_name] = in_type  # add new input to list
+                else:
+                    if prev_type is not in_type:
+                        raise ArcanaDesignError(
+                            f"Inconsistent types between switches/pipeline-constructors "
+                            f"requested for '{in_name}' input in '{pipeline_name}' "
+                            "pipeline"
+                        )
+        workflow = default_constructor.build_workflow(analysis)
+        switch_workflows = [
+            (c.switch.build_workflow(analysis), c.build_workflow(analysis))
+            for c in switch_constructors
+        ]
+        # Recursively add inputs and any pipelines required to derive them.
+        for in_name, _ in inputs:
+            analysis.dataset[in_name]
+        for out_name, out_type in outputs:
+            if out_name in analysis.dataset:
+                raise ArcanaDesignError(
+                    f"Clash between generated sinks {out_name} in analysis {analysis.name} "
+                    f"{pipeline_name} and {analysis.dataset[out_name].pipeline_name}"
+                )
+            analysis.dataset.add_sink(
+                name=out_name, datatype=out_type, row_frequency=self.row_frequency
+            )
+        analysis.dataset.apply_pipeline(
+            name=pipeline_name,
+            workflow=workflow,
+            switch_workflows=switch_workflows,
+            inputs=[PipelineField(name=n, datatype=t) for n, t in inputs],
+            outputs=[PipelineField(name=n, datatype=t) for n, t in outputs],
+            row_frequency=self.row_frequency,
+        )
+
+    def to_attrs_field(self):
+        return attrs.field(
+            default=None,
+            metadata={ARCANA_SPEC: self},
         )
 
 
@@ -376,7 +428,7 @@ class AnalysisSpec:
         for column_spec in column_specs:
             sorted_by_cond = defaultdict(list)
             for pipe_spec in self.pipeline_constructors:
-                if column_spec.name in pipe_spec.outputs:
+                if column_spec.name in pipe_spec.output_names:
                     sorted_by_cond[(pipe_spec.condition, pipe_spec.switch)].append(
                         pipe_spec
                     )
@@ -396,7 +448,7 @@ class AnalysisSpec:
                 inputs_to = [
                     p
                     for p in self.pipeline_constructors
-                    if column_spec.name in p.inputs
+                    if column_spec.name in p.input_names
                 ]
                 if not inputs_to:
                     raise ArcanaDesignError(
@@ -409,15 +461,31 @@ class AnalysisSpec:
                     )
 
     @pipeline_constructors.validator
-    def pipeline_constructors_validator(self, _, pipeline_constructors):
+    def pipeline_constructors_validator(
+        self, _, pipeline_constructors: tuple[PipelineConstructor]
+    ):
         for pipeline_constructor in pipeline_constructors:
             if missing_outputs := [
-                o for o in pipeline_constructor.outputs if o not in self.column_names
+                o
+                for o in pipeline_constructor.output_names
+                if o not in self.column_names
             ]:
                 raise ArcanaDesignError(
                     f"'{pipeline_constructor.name}' pipeline outputs to unknown "
                     f"columns: {missing_outputs}"
                 )
+            row_frequencies = {
+                n: self.column_spec(n).row_frequency
+                for n in pipeline_constructor.output_names
+            }
+            if len(set(row_frequencies.values())) > 1:
+                col_freqs = ", ".join(f"{n}={f}" for n, f in row_frequencies.items())
+                raise ArcanaDesignError(
+                    f"Outputs of {pipeline_constructor.name} pipeline constructor are "
+                    f"of differring frequencies ({col_freqs}), they must be consistent"
+                )
+        # TODO: need to add check for pipelines consisting of multiple workflows on
+        #       differing switch conditions produce the same output
 
 
 @attrs.define

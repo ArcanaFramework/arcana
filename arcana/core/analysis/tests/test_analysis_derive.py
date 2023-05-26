@@ -72,12 +72,12 @@ def test_analysis(analysis_dataset: Dataset, work_dir: Path):
             wf: pydra.Workflow,
             a_file: PlainText,  # arg names must match columns or parameters
             a_parameter: int,  # " " "
-        ) -> ty.Tuple[PlainText, int]:
+        ) -> tuple[PlainText, int]:
 
             wf.add(identity(name="file_identity", in_=a_file))
             wf.add(identity(name="metric_identity", in_=a_parameter))
 
-            return (wf.file_identity.lzout.out, wf.metric_identity.lzout.out)
+            return wf.file_identity.lzout.out, wf.metric_identity.lzout.out
 
     analysis_dataset.apply(
         "example_analysis",

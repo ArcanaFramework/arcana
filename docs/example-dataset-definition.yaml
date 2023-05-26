@@ -46,6 +46,10 @@ grid:
       datatype:
         format: medimage/dicom-set
         classifiers:
+        - ontology: radlex.org
+          id: RID39073
+          desc: human (material anatomical entity)
+
           species: human
           region: brain
           modality: mri

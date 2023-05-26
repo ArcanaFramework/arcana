@@ -27,7 +27,7 @@ def analysis(space: type):
         The data space the analysis operates on, see"""
 
     def decorator(klass):
-        return Analysis.make(klass, space)
+        return Analysis.make_klass(klass, space)
 
     return decorator
 

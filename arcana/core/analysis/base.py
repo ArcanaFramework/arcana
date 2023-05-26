@@ -463,7 +463,7 @@ class Analysis:
                 )
 
     @classmethod
-    def make(cls, klass: type, space: ty.Type[DataSpace]) -> ty.Type["Analysis"]:
+    def make_klass(cls, klass: type, space: ty.Type[DataSpace]) -> ty.Type["Analysis"]:
         """
         Construct an analysis class and validate all the components fit together
 
@@ -824,8 +824,8 @@ class Analysis:
                     "function."
                 )
         output_types = method.__annotations__["return"]
-        if not isinstance(output_types, tuple):
-            output_types = (output_types,)
+        if output_types.__origin__ is tuple:
+            output_types = output_types.__args__
         return tuple(inputs), tuple(used_parameters), output_types
 
 

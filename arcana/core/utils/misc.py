@@ -410,7 +410,7 @@ extract_import_re = re.compile(r"\s*(?:from|import)\s+([\w\.]+)")
 NOTHING_STR = "__PIPELINE_INPUT__"
 
 
-def pydra_eq(a: TaskBase, b: TaskBase):
+def pydra_eq(a: TaskBase, b: TaskBase) -> bool:
     """Compares two Pydra Task/Workflows for equality
 
     Parameters

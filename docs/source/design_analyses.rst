@@ -411,22 +411,24 @@ such as the default value for a given parameter (see ``duplicates`` in above exa
 Conditionals and switches
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-There are cases where different analysis methods need to be applied depending on the
-requirements of a particular study or to deal with idiosyncrasies of a particular
-dataset. There are two mechanisms for handling such cases in Arcana: "condition
-expressions" and "switches".
-
-Both condition expressions and switches are referenced within the ``@pipeline`` decorator.
-When a condition expression or switch is set on a pipeline builder, that pipeline will
-be used to generate data for a sink column only when certain criteria are met. If the criteria
-aren't met, then either the default pipeline builder (one without either a switch or
-condition expression) will be used if it is present or an "not produced" error will be
-raised instead.
+Depending the study design or idiosyncrasies of the acquired dataset, different methods
+may need to be selected to analyse the data appropriately. In Arcana, there are two
+mechanisms for handling such conditional logic: "condition expressions" and "switches".
+Both condition expressions and switches are applied to a pipeline via keyword args of
+the ``@pipeline`` decorator.
 
 The difference between a condition expression and a switch is that a condition
-expression is true or false over a whole dataset given a specific parameterisation,
-whereas a switch can be true or false for different rows of the dataset depending on
-the nature of the input data.
+expressions are evaluated on the dataset as a whole based the parameterisation of the
+analysis and the input columns present (e.g. parameters to select between analysis
+techniques or whether the data was acquired with a particular field map), whereas
+the evaluation of a switch occurs on each row of the dataset and can factor in the input
+data itself (e.g. read headers to extract the version of acquisition protocol used).
+
+When a condition expression or switch is set on a pipeline builder, that pipeline will
+be used to generate data for a sink column only when certain criteria are met. If the
+criteria aren't met, then either the default pipeline builder (one without either a switch or
+condition expression) will be used if it is present or an "not produced" error will be
+raised instead.
 
 Condition expressions are specified as using the functions ``value_of(parameter)``
 and ``is_provided(column)`` as placeholders for parameter values or whether a column
@@ -462,7 +464,7 @@ the ``reverse_concat_pipeline`` by setting the value of the ``order`` parameter.
         )
         def reverse_concat_pipeline(
             self, wf, file1: Text, file2: Text, duplicates: int
-        ):
+        ) -> Text:
 
             wf.add(
                 concatenate_reverse(
@@ -506,7 +508,7 @@ determined by the ``inputs_are_numeric`` switch.
         )
 
         @switch
-        def inputs_are_numeric(self, wf, file1: Text, file2: Text):
+        def inputs_are_numeric(self, wf, file1: Text, file2: Text) -> bool:
 
             wf.add(contents_are_numeric(in_file=file1, name="check_file1"))
 
@@ -525,7 +527,7 @@ determined by the ``inputs_are_numeric`` switch.
             return wf.bool_and.out
 
         @pipeline(multiplied, switch=inputs_are_numeric)
-        def multiply_pipeline(self, wf, concatenated, multiplier):
+        def multiply_pipeline(self, wf, concatenated: Text, multiplier: Text) -> Text:
 
             wf.add(
                 multiply_contents(
