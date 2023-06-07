@@ -212,7 +212,7 @@ class MockRemote(RemoteStore):
         self._check_connected()
         fileset = FileSet(self.iterdir(self.entry_fspath(entry)))
         data_path = download_dir / "downloaded"
-        fileset.copy_to(data_path, make_dirs=True, symlink=True)
+        fileset.copy_to(data_path, make_dirs=True, link_type="symbolic")
         time.sleep(self.mock_delay)
         return data_path
 
