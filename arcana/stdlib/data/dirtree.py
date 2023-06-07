@@ -210,7 +210,7 @@ class DirTree(LocalStore):
             the entry to store the field in
         """
         fspath, key = self._fields_fspath_and_key(entry)
-        self.update_json(fspath, key, field.raw_type(field))
+        self.update_json(fspath, key, field.primitive(field))
 
     def get_fileset_provenance(
         self, entry: DataEntry
