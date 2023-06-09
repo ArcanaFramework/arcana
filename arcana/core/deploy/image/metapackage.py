@@ -1,4 +1,5 @@
 import json
+import typing as ty
 import tempfile
 import attrs
 from pathlib import Path
@@ -12,7 +13,7 @@ class Metapackage(ArcanaImage):
 
     def construct_dockerfile(
         self,
-        build_dir: Path = None,
+        build_dir: ty.Optional[Path] = None,
         use_local_packages=False,
     ):
 

@@ -32,6 +32,12 @@ RESERVED_NAMES = ("dataset", "menu", "stack")
 RESERVED_NAMES += tuple("_" + n for n in RESERVED_NAMES)
 
 
+@attrs.define(kw_only=True, slots=False)
+class Analysis:
+
+    name: str
+
+
 def make(klass: type, space: type) -> type:
     """
     Construct an analysis class and validate all the components fit together

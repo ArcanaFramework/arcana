@@ -23,9 +23,10 @@ from arcana.testing.data.blueprint import (
 )
 from arcana.testing import TestDataSpace, MockRemote
 from arcana.stdlib import DirTree
-from pydra import set_input_validator
 
-set_input_validator(True)
+# from pydra import set_input_validator
+
+# set_input_validator(True)
 
 
 # Set DEBUG logging for unittests

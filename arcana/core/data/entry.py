@@ -88,7 +88,7 @@ class DataEntry:
     item_metadata: ItemMetadata = attrs.field(
         default=None, converter=ItemMetadata, repr=False, kw_only=True
     )
-    order: int = None
+    order: ty.Optional[int] = None
     quality: DataQuality = DataQuality.usable
     checksums: dict[str, ty.Union[str, dict]] = attrs.field(
         default=None, repr=False, eq=False

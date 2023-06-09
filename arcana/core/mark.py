@@ -10,5 +10,4 @@ from arcana.core.analysis.mark import (  # noqa: F401
     map_from,
     value_of,
     is_provided,
-    converter,
 )

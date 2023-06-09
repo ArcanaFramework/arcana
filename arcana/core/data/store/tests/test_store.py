@@ -81,7 +81,7 @@ def test_post(dataset: Dataset):
                 if deriv_bp.datatype.is_fileset:
                     assert item.hash_files() == all_checksums[deriv_bp.path]
                 else:
-                    assert item.raw_type(item.value) == item.raw_type(
+                    assert item.primitive(item.value) == item.primitive(
                         deriv_bp.expected_value
                     )
 

@@ -54,7 +54,7 @@ class RemoteStore(DataStore):
 
     server: str = attrs.field()
     cache_dir: Path = attrs.field(converter=full_path)
-    name: str = None
+    name: ty.Optional[str] = None
     user: str = attrs.field(default=None, metadata={"asdict": False})
     password: str = attrs.field(default=None, metadata={"asdict": False})
     race_condition_delay: int = attrs.field(default=5)

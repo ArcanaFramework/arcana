@@ -27,8 +27,8 @@ def auto_ids_default():
 @attrs.define
 class DataTree(NestedContext):
 
-    dataset: Dataset = None
-    root: DataRow = None
+    dataset: ty.Optional[Dataset] = None
+    root: ty.Optional[DataRow] = None
     _auto_ids: dict[tuple[str, ...], dict[str, int]] = attrs.field(
         factory=auto_ids_default
     )

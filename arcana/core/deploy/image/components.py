@@ -157,8 +157,8 @@ class BasePackage:
 class PipPackage(BasePackage):
     """Specification of a Python package"""
 
-    url: str = None
-    file_path: str = None
+    url: ty.Optional[str] = None
+    file_path: ty.Optional[str] = None
     extras: ty.List[str] = attrs.field(factory=list)
 
     @classmethod

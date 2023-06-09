@@ -4,6 +4,7 @@ import re
 import typing as ty
 from pathlib import Path
 import shutil
+from enum import EnumMeta
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
@@ -15,7 +16,6 @@ from arcana.core.exceptions import (
     ArcanaUsageError,
     ArcanaWrongDataSpaceError,
 )
-from ..space import DataSpace
 from ..column import DataColumn, DataSink, DataSource
 from .. import store as datastore
 from ..tree import DataTree
@@ -25,6 +25,8 @@ from .metadata import DatasetMetadata, metadata_converter
 if ty.TYPE_CHECKING:  # pragma: no cover
     from arcana.core.deploy.image.components import License
     from arcana.core.data.entry import DataEntry
+    from arcana.core.analysis.base import Analysis
+    from arcana.core.analysis.pipeline import Pipeline
 
 logger = logging.getLogger("arcana")
 
@@ -106,7 +108,7 @@ class Dataset:
 
     id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.DataStore = attrs.field()
-    space: DataSpace = attrs.field()
+    space: EnumMeta = attrs.field()
     id_patterns: dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
@@ -123,10 +125,13 @@ class Dataset:
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
     name: str = attrs.field(default="")
-    columns: ty.Optional[ty.Dict[str, DataColumn]] = attrs.field(
+    columns: ty.Dict[str, DataColumn] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    pipelines: ty.Dict[str, ty.Any] = attrs.field(
+    pipelines: dict[str, Pipeline] = attrs.field(
+        factory=dict, converter=default_if_none(factory=dict), repr=False
+    )
+    analyses: dict[str, Analysis] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
     tree: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
@@ -267,7 +272,11 @@ class Dataset:
 
     @classmethod
     def load(
-        cls, id: str, store: datastore.DataStore = None, name: str = None, **kwargs
+        cls,
+        id: str,
+        store: datastore.DataStore = None,
+        name: ty.Optional[str] = None,
+        **kwargs,
     ):
         """Loads a dataset from an store/ID/name string, as used in the CLI
 
@@ -348,8 +357,8 @@ class Dataset:
         self,
         name: str,
         datatype: type,
-        path: str = None,
-        row_frequency: str = None,
+        path: ty.Optional[str] = None,
+        row_frequency: ty.Optional[str] = None,
         overwrite: bool = False,
         **kwargs,
     ) -> DataSource:
@@ -391,7 +400,7 @@ class Dataset:
         self,
         name: str,
         datatype: type,
-        row_frequency: str = None,
+        row_frequency: ty.Optional[str] = None,
         overwrite: bool = False,
         **kwargs,
     ) -> DataSink:
@@ -544,7 +553,7 @@ class Dataset:
                 rows = (n for n in rows if n.id in set(ids))
             return rows
 
-    def row_ids(self, frequency: str = None):
+    def row_ids(self, frequency: ty.Optional[str] = None):
         """Return all the IDs in the dataset for a given row_frequency
 
         Parameters
@@ -669,6 +678,9 @@ class Dataset:
         self.pipelines[name] = pipeline
 
         return pipeline
+
+    def apply(self, analysis):
+        self.analyses[analysis.name] = analysis
 
     def derive(self, *sink_names, ids=None, cache_dir=None, **kwargs):
         """Generate derivatives from the workflows

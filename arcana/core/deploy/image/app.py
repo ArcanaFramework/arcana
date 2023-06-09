@@ -215,7 +215,7 @@ class App(ArcanaImage):
     def load(
         cls,
         yml: ty.Union[Path, dict],
-        root_dir: Path = None,
+        root_dir: ty.Optional[Path] = None,
         license_paths: dict[str, Path] = None,
         licenses_to_download: set[str] = None,
         **kwargs,
