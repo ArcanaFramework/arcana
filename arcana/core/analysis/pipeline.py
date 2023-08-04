@@ -321,24 +321,6 @@ class Pipeline:
                 # Map converter output to input_interface
                 sourced[inpt.name] = converter.lzout.out_file
 
-        # Create identity row to accept connections from user-defined rows
-        # via `set_output` method
-        wf.per_row.add(
-            func_task(
-                access_paths_and_values,
-                in_fields=[
-                    (
-                        i.name,
-                        ty.Union[DataType, arcana.core.data.row.DataRow, os.PathLike],
-                    )
-                    for i in self.inputs
-                ],
-                out_fields=[(i.name, ty.Any) for i in self.inputs],
-                name="input_interface",
-                **sourced,
-            )
-        )
-
         # Add the "inner" workflow of the pipeline that actually performs the
         # analysis/processing
         wf.per_row.add(deepcopy(self.workflow))
@@ -347,32 +329,13 @@ class Pipeline:
             setattr(
                 getattr(wf.per_row, self.workflow.name).inputs,
                 inpt.field,
-                getattr(wf.per_row.input_interface.lzout, inpt.name),
+                sourced[inpt.name],
             )
-
-        # Creates a row to accept values from user-defined rows and
-        # encapsulate them into DataTypes
-        wf.per_row.add(
-            func_task(
-                encapsulate_paths_and_values,
-                in_fields=[("outputs", ty.List[PipelineField])]
-                + [(o.name, ty.Union[str, Path]) for o in self.outputs],
-                out_fields=[(o.name, DataType) for o in self.outputs],
-                name="output_interface",
-                outputs=self.outputs,
-                **{
-                    o.name: getattr(
-                        getattr(wf.per_row, self.workflow.name).lzout, o.field
-                    )
-                    for o in self.outputs
-                },
-            )
-        )
 
         # Set datatype converters where required
         to_sink = {
-            o: getattr(wf.per_row.output_interface.lzout, o)
-            for o in self.output_varnames
+            o.name: getattr(getattr(wf.per_row, self.workflow.name).lzout, o.field)
+            for o in self.outputs
         }
 
         # Do output datatype conversions if required
