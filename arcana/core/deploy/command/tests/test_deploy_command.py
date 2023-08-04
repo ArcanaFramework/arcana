@@ -141,7 +141,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
             },
             {
                 "name": "source2",
-                "datatype": "generic/directory",
+                "datatype": "text/text-file",
                 "field": "in_file2",
                 "help_string": "dummy",
             },
@@ -171,7 +171,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
             dataset_locator=saved_dataset.locator,
             input_values=[
                 ("source1", "bad-file-path"),
-                ("source2", "file2"),
+                ("source2", "file1"),
             ],
             output_values=[
                 ("sink1", "concatenated"),
