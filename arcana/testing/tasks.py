@@ -1,15 +1,12 @@
-import os
 import shutil
 from pathlib import Path
 import typing as ty
 import attrs
 from pydra import mark, Workflow
 import fileformats.core
+from fileformats.generic import File
 import fileformats.text
 from arcana.core.data.row import DataRow
-
-
-PathTypes = ty.Union[str, bytes, os.PathLike]
 
 
 @mark.task
@@ -48,10 +45,10 @@ def attrs_func(a, b):
 
 
 @mark.task
-@mark.annotate({"return": {"out_file": Path}})
+@mark.annotate({"return": {"out_file": File}})
 def concatenate(
-    in_file1: PathTypes,
-    in_file2: PathTypes,
+    in_file1: File,
+    in_file2: File,
     out_file: ty.Optional[Path] = None,
     duplicates: int = 1,
 ) -> Path:
@@ -84,8 +81,8 @@ def concatenate(
 
 
 @mark.task
-@mark.annotate({"return": {"out_file": Path}})
-def reverse(in_file: PathTypes, out_file: ty.Optional[PathTypes] = None) -> PathTypes:
+@mark.annotate({"return": {"out_file": File}})
+def reverse(in_file: File, out_file: ty.Optional[Path] = None) -> File:
     """Reverses the contents of a file and outputs it to another file
 
     Parameters
@@ -159,31 +156,28 @@ def plus_10_to_filenumbers(filenumber_row: DataRow) -> None:
         the data row to modify
     """
     for entry in filenumber_row.entries:
-        item = fileformats.text.Plain(ty.cast(fileformats.core.FileSet, entry.item))
+        item = fileformats.text.TextFile(ty.cast(fileformats.core.FileSet, entry.item))
         new_item_stem = str(int(item.stem) + 10)
         shutil.move(item.fspath, item.fspath.parent / (new_item_stem + item.actual_ext))
 
 
-T = ty.TypeVar("T")
-
-
 @mark.task
-def identity_file(in_file: T) -> T:
+def identity_file(in_file: File) -> File:
     return in_file
 
 
 @mark.task
-def identity(in_: T) -> T:
+def identity(in_):
     return in_
 
 
 @mark.task
 def multiply_contents(
-    in_file: PathTypes,
+    in_file: File,
     multiplier: ty.Union[int, float],
-    out_file: ty.Optional[PathTypes] = None,
+    out_file: ty.Optional[Path] = None,
     dtype: type = float,
-) -> Path:
+) -> File:
     """Multiplies the contents of the file, assuming that it contains numeric
     values on separate lines
 
@@ -211,11 +205,11 @@ def multiply_contents(
     with open(out_file, "w") as f:
         f.write("\n".join(multiplied))
 
-    return out_file
+    return File(out_file)
 
 
 @mark.task
-def contents_are_numeric(in_file: PathTypes) -> bool:
+def contents_are_numeric(in_file: File) -> bool:
     """Checks the contents of a file to see whether each line can be cast to a numeric
     value
 
@@ -240,31 +234,27 @@ def contents_are_numeric(in_file: PathTypes) -> bool:
 
 @mark.task
 def check_license(
-    expected_license_path: os.PathLike,
-    expected_license_contents: os.PathLike,
-) -> Path:
+    expected_license_path: File,
+    expected_license_contents: File,
+) -> File:
     """Checks the `expected_license_path` to see if there is a file with the same contents
     as that of `expected_license_contents`
 
     Parameters
     ----------
-    expected_license_path : Path
+    expected_license_path : File
         path to the expected license file
-    expected_license_contents : Path
+    expected_license_contents : File
         path containing the contents expected in the expected license file
 
     Returns
     -------
-    Path
+    File
         passes through the expected license file so the task can be connected back to the
         dataset
     """
-    expected_license_path = Path(expected_license_path)
-    expected_license_contents = Path(expected_license_contents)
     with open(expected_license_contents) as f:
         expected_contents = f.read()
-    if not expected_license_path.exists():
-        raise Exception(f"Did not find license file at {expected_license_path}")
     with open(expected_license_path) as f:
         actual_contents = f.read()
     if expected_contents != actual_contents:

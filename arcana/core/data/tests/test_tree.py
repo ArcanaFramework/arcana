@@ -1,7 +1,8 @@
 from __future__ import annotations
 from operator import itemgetter
 import pytest
-from fileformats.text import Plain as PlainText
+import typing as ty
+from fileformats.text import TextFile
 from arcana.core.exceptions import ArcanaUsageError
 from arcana.stdlib import DirTree, Clinical
 from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
@@ -16,7 +17,7 @@ TEST_INCLUSIONS = {
             dim_lengths=[1, 2, 3, 4],
             entries=[
                 FileSetEntryBlueprint(
-                    path="file1", datatype=PlainText, filenames=["file1.txt"]
+                    path="file1", datatype=TextFile, filenames=["file1.txt"]
                 ),
             ],
             id_patterns={"d": r"abcd::.*(d\d+)"},
@@ -55,7 +56,7 @@ TEST_INCLUSIONS = {
             dim_lengths=[1, 2, 3, 4],
             entries=[
                 FileSetEntryBlueprint(
-                    path="file1", datatype=PlainText, filenames=["file1.txt"]
+                    path="file1", datatype=TextFile, filenames=["file1.txt"]
                 ),
             ],
             include={
@@ -87,7 +88,7 @@ TEST_INCLUSIONS = {
             dim_lengths=[1, 2, 3, 4],
             entries=[
                 FileSetEntryBlueprint(
-                    path="file1", datatype=PlainText, filenames=["file1.txt"]
+                    path="file1", datatype=TextFile, filenames=["file1.txt"]
                 ),
             ],
             exclude={
@@ -120,7 +121,7 @@ TEST_INCLUSIONS = {
             dim_lengths=[1, 2, 3, 4],
             entries=[
                 FileSetEntryBlueprint(
-                    path="file1", datatype=PlainText, filenames=["file1.txt"]
+                    path="file1", datatype=TextFile, filenames=["file1.txt"]
                 ),
             ],
             id_patterns={"d": r"abcd::.*(d\d+)"},
@@ -142,7 +143,7 @@ TEST_INCLUSIONS = {
 
 @pytest.mark.parametrize("fixture", TEST_INCLUSIONS.items(), ids=itemgetter(0))
 def test_dataset_inclusion(
-    fixture: tuple[str, tuple[TestDatasetBlueprint, list[str]]], work_dir
+    fixture: ty.Tuple[str, ty.Tuple[TestDatasetBlueprint, ty.List[str]]], work_dir
 ):
     test_name, (blueprint, expected) = fixture
     dataset_path = work_dir / test_name
@@ -158,7 +159,7 @@ def test_include_exclude_fail1(work_dir):
         dim_lengths=[1, 2, 3, 4],
         entries=[
             FileSetEntryBlueprint(
-                path="file1", datatype=PlainText, filenames=["file1.txt"]
+                path="file1", datatype=TextFile, filenames=["file1.txt"]
             ),
         ],
         include={"session": r"a0.*d1.*"},
@@ -177,7 +178,7 @@ def test_include_exclude_fail2(work_dir):
         dim_lengths=[1, 2, 3, 4],
         entries=[
             FileSetEntryBlueprint(
-                path="file1", datatype=PlainText, filenames=["file1.txt"]
+                path="file1", datatype=TextFile, filenames=["file1.txt"]
             ),
         ],
         exclude={"bc": r"a0.*d1.*"},
@@ -199,7 +200,7 @@ def test_include_exclude_fail3(work_dir):
         dim_lengths=[1, 2, 3, 4],
         entries=[
             FileSetEntryBlueprint(
-                path="file1", datatype=PlainText, filenames=["file1.txt"]
+                path="file1", datatype=TextFile, filenames=["file1.txt"]
             ),
         ],
         include={"abcd": r"a**"},
@@ -218,7 +219,7 @@ TEST_AUTO_IDS = {
             dim_lengths=[1, 2, 3, 4],
             entries=[
                 FileSetEntryBlueprint(
-                    path="file1", datatype=PlainText, filenames=["file1.txt"]
+                    path="file1", datatype=TextFile, filenames=["file1.txt"]
                 ),
             ],
         ),
@@ -233,7 +234,7 @@ TEST_AUTO_IDS = {
             dim_lengths=[2, 2, 2],
             entries=[
                 FileSetEntryBlueprint(
-                    path="file1", datatype=PlainText, filenames=["file1.txt"]
+                    path="file1", datatype=TextFile, filenames=["file1.txt"]
                 ),
             ],
         ),
@@ -248,7 +249,7 @@ TEST_AUTO_IDS = {
             dim_lengths=[2, 2, 2, 2],
             entries=[
                 FileSetEntryBlueprint(
-                    path="file1", datatype=PlainText, filenames=["file1.txt"]
+                    path="file1", datatype=TextFile, filenames=["file1.txt"]
                 ),
             ],
             id_patterns={

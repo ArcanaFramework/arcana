@@ -201,7 +201,7 @@ class DataStore(metaclass=ABCMeta):
             the store
         space: DataSpace
             The data space of the dataset
-        hierarchy: list[str]
+        hierarchy: ty.List[str]
             The hierarchy of the dataset
         id_patterns : dict[str, str], optional
             Patterns used to infer row IDs not explicitly within the hierarchy of the
@@ -306,11 +306,11 @@ class DataStore(metaclass=ABCMeta):
     def create_dataset(
         self,
         id: str,
-        leaves: ty.Iterable[tuple[str, ...]],
-        hierarchy: list[str],
+        leaves: ty.Iterable[ty.Tuple[str, ...]],
+        hierarchy: ty.List[str],
         space: type,
         name: ty.Optional[str] = None,
-        id_patterns: ty.Optional[dict[str, str]] = None,
+        id_patterns: ty.Optional[ty.Dict[str, str]] = None,
         **kwargs,
     ) -> Dataset:
         """Creates a new dataset with new rows to store data in
@@ -358,9 +358,9 @@ class DataStore(metaclass=ABCMeta):
         self,
         id: str,
         dataset: Dataset,
-        column_names: ty.Optional[list[ty.Union[str, tuple[str, type]]]] = None,
-        hierarchy: ty.Optional[list[str]] = None,
-        id_patterns: ty.Optional[dict[str, str]] = None,
+        column_names: ty.Optional[ty.List[ty.Union[str, ty.Tuple[str, type]]]] = None,
+        hierarchy: ty.Optional[ty.List[str]] = None,
+        id_patterns: ty.Optional[ty.Dict[str, str]] = None,
         use_original_paths: bool = False,
         **kwargs,
     ):
@@ -474,7 +474,7 @@ class DataStore(metaclass=ABCMeta):
     @classmethod
     def load_saved_configs(
         cls, config_path: ty.Optional[Path] = None
-    ) -> dict[str, ty.Any]:
+    ) -> ty.Dict[str, ty.Any]:
         """Loads the saved data store configurations from the the user's home
         directory
 
@@ -485,7 +485,7 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        dict[str, ty.Any]
+        ty.Dict[str, ty.Any]
             dictionary containing the saved configs
         """
         if config_path is None:
@@ -499,7 +499,7 @@ class DataStore(metaclass=ABCMeta):
 
     @classmethod
     def save_configs(
-        cls, configs: dict[str, ty.Any], config_path: ty.Optional[Path] = None
+        cls, configs: ty.Dict[str, ty.Any], config_path: ty.Optional[Path] = None
     ):
         """_summary_
 
@@ -518,9 +518,9 @@ class DataStore(metaclass=ABCMeta):
     @classmethod
     def infer_ids(
         cls,
-        ids: dict[str, str],
-        id_patterns: dict[str, str],
-        metadata: ty.Optional[dict[str, dict[str, str]]] = None,
+        ids: ty.Dict[str, str],
+        id_patterns: ty.Dict[str, str],
+        metadata: ty.Optional[ty.Dict[str, ty.Dict[str, str]]] = None,
     ):
         """Infer IDs from those explicitly provided by using the inference patterns
         provided to the dataset definition.
@@ -567,7 +567,7 @@ class DataStore(metaclass=ABCMeta):
             explicitly provided IDs
         id_patterns : dict[str, str]
             patterns used to infer IDs not explicitly in the hierarchy of the dataset
-        metadata : dict[str, dict[str, str]]
+        metadata : dict[str, ty.Dict[str, str]]
             metadata associated with the nodes in each layer. Can be used as an input
             to a pattern
 
@@ -717,19 +717,19 @@ class DataStore(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def put_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+    def put_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
         """Stores provenance information for a given data item in the store
 
         Parameters
         ----------
         entry: DataEntry
             The item to store the provenance data for
-        provenance: dict[str, Any]
+        provenance: ty.Dict[str, Any]
             The provenance data to store
         """
 
     @abstractmethod
-    def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
+    def get_provenance(self, entry: DataEntry) -> ty.Dict[str, ty.Any]:
         """Stores provenance information for a given data item in the store
 
         Parameters
@@ -739,7 +739,7 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        provenance: dict[str, Any] or None
+        provenance: ty.Dict[str, Any] or None
             The provenance data stored in the repository for the data item.
             None if no provenance data has been stored
         """
@@ -754,7 +754,7 @@ class DataStore(metaclass=ABCMeta):
         ----------
         dataset_id: str
             The ID/path of the dataset within the store
-        definition: dict[str, Any]
+        definition: ty.Dict[str, Any]
             A dictionary containing the dct Dataset to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
@@ -779,7 +779,7 @@ class DataStore(metaclass=ABCMeta):
 
         Returns
         -------
-        definition: dict[str, Any]
+        definition: ty.Dict[str, Any]
             A dct Dataset object that was saved in the data store
         """
 
@@ -814,8 +814,8 @@ class DataStore(metaclass=ABCMeta):
     def create_data_tree(
         self,
         id: str,
-        leaves: list[tuple[str, ...]],
-        hierarchy: list[str],
+        leaves: ty.List[ty.Tuple[str, ...]],
+        hierarchy: ty.List[str],
         space: type,
         **kwargs,
     ):
@@ -831,7 +831,7 @@ class DataStore(metaclass=ABCMeta):
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
             for a hierarchy of [subject, timepoint] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
-        hierarchy: list[str]
+        hierarchy: ty.List[str]
             the hierarchy of the dataset to be created
         space : type(DataSpace)
             the data space of the dataset

@@ -41,18 +41,18 @@ class DataRow:
     ids: ty.Dict[DataSpace, str] = attrs.field()
     dataset: Dataset = attrs.field(repr=False)
     frequency: str = attrs.field()
-    tree_path: list[str] = None
+    tree_path: ty.List[str] = None
     uri: ty.Optional[str] = None
     metadata: ty.Optional[dict] = None
 
     # Automatically populated fields
-    children: dict[DataSpace, dict[ty.Union[str, tuple[str]], str]] = attrs.field(
-        factory=dict, repr=False, init=False
-    )
-    _entries_dict: dict[str, DataEntry] = attrs.field(
+    children: ty.Dict[
+        DataSpace, ty.Dict[ty.Union[str, ty.Tuple[str]], str]
+    ] = attrs.field(factory=dict, repr=False, init=False)
+    _entries_dict: ty.Dict[str, DataEntry] = attrs.field(
         default=None, init=False, repr=False
     )
-    _cells: dict[str, DataCell] = attrs.field(factory=dict, init=False, repr=False)
+    _cells: ty.Dict[str, DataCell] = attrs.field(factory=dict, init=False, repr=False)
 
     @dataset.validator
     def dataset_validator(self, _, dataset):
@@ -210,7 +210,7 @@ class DataRow:
         item_metadata: ty.Optional[dict] = None,
         order: ty.Optional[int] = None,
         quality: DataQuality = DataQuality.usable,
-        checksums: dict[str, str] = None,
+        checksums: ty.Dict[str, str] = None,
     ):
         """Adds an data entry to a row that has been found while scanning the row in the
         repository.

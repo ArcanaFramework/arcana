@@ -25,7 +25,7 @@ from arcana.core.analysis.mark import (
     subanalysis,
 )
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
-from fileformats.text import Plain as Text
+from fileformats.text import TextFile
 from fileformats.archive import Zip
 from arcana.stdlib import DirTree
 from arcana.core.analysis.salience import (
@@ -104,9 +104,9 @@ def test_numeric_file2(sample_dir2):
 @pytest.fixture
 def test_dataset(source_dir, test_file1, test_file2, test_file3):
     dataset = DirTree().define_dataset(source_dir, space=Samples, hierarchy=["sample"])
-    dataset.add_source("a_column", Text, "file1")
-    dataset.add_source("another_column", Text, "file2")
-    dataset.add_source("yet_another_column", Text, "file3")
+    dataset.add_source("a_column", TextFile, "file1")
+    dataset.add_source("another_column", TextFile, "file2")
+    dataset.add_source("yet_another_column", TextFile, "file3")
     return dataset
 
 
@@ -115,8 +115,8 @@ def test_partial_numeric_dataset(
     source_dir, test_file1, test_file2, test_numeric_file1, test_numeric_file2
 ):
     dataset = DirTree().define_dataset(source_dir, space=Samples, hierarchy=["sample"])
-    dataset.add_source("a_column", Text, "file1")
-    dataset.add_source("another_column", Text, "file2")
+    dataset.add_source("a_column", TextFile, "file1")
+    dataset.add_source("another_column", TextFile, "file2")
     return dataset
 
 
@@ -125,9 +125,9 @@ def Concat():
     @analysis(Samples)
     class _Concat:
 
-        file1: Zip[Text] = column("an arbitrary text file", salience=cs.primary)
-        file2: Text = column("another arbitrary text file", salience=cs.primary)
-        concatenated: Text = column("the output of concatenating file1 and file2")
+        file1: Zip[TextFile] = column("an arbitrary text file", salience=cs.primary)
+        file2: TextFile = column("another arbitrary text file", salience=cs.primary)
+        concatenated: TextFile = column("the output of concatenating file1 and file2")
 
         duplicates: int = parameter(
             "the number of times to duplicate the concatenation", default=1
@@ -135,7 +135,7 @@ def Concat():
 
         @pipeline(concatenated)
         def concat_pipeline(
-            self, wf: pydra.Workflow, file1: Text, file2: Text, duplicates: int
+            self, wf: pydra.Workflow, file1: TextFile, file2: TextFile, duplicates: int
         ):
 
             wf.add(
@@ -156,10 +156,10 @@ def ExtendedConcat(Concat):
 
         # Sources
         concatenated = inherit()
-        file3: Text = column("Another file to concatenate", salience=cs.primary)
+        file3: TextFile = column("Another file to concatenate", salience=cs.primary)
 
         # Sinks
-        doubly_concatenated: Text = column("The doubly concatenated file")
+        doubly_concatenated: TextFile = column("The doubly concatenated file")
 
         # Parameters
         # Change the default 'duplicates' value for first concat and inherit it into the
@@ -168,7 +168,7 @@ def ExtendedConcat(Concat):
 
         @pipeline(doubly_concatenated)
         def doubly_concat_pipeline(
-            self, wf, concatenated: Text, file3: Text, duplicates: int
+            self, wf, concatenated: TextFile, file3: TextFile, duplicates: int
         ):
 
             wf.add(
@@ -195,7 +195,7 @@ def ConcatWithCheck(Concat):
         duplicates = inherit()
 
         @check(concatenated, salience=chs.recommended)
-        def num_lines_check(self, wf, concatenated: Text, duplicates: int):
+        def num_lines_check(self, wf, concatenated: TextFile, duplicates: int):
             """Checks the number of lines in the concatenated file to see whether they
             match what is expected for the number of duplicates specified"""
 
@@ -243,8 +243,8 @@ def OverridenConcat(Concat):
             condition=((value_of(order) == "reversed") & is_provided(file1)),
         )
         def reverse_concat_pipeline(
-            self, wf, file1: Text, file2: Text, duplicates: int
-        ) -> Text:
+            self, wf, file1: TextFile, file2: TextFile, duplicates: int
+        ) -> TextFile:
 
             wf.add(
                 concatenate_reverse(
@@ -265,14 +265,16 @@ def ConcatWithSwitch(Concat):
         file1 = inherit()
         file2 = inherit()
         concatenated = inherit()
-        multiplied: Text = column("contents of the concatenated files are multiplied")
+        multiplied: TextFile = column(
+            "contents of the concatenated files are multiplied"
+        )
 
         multiplier: int = parameter(
             "the multiplier used to apply", salience=ps.required
         )
 
         @switch
-        def inputs_are_numeric(self, wf, file1: Text, file2: Text):
+        def inputs_are_numeric(self, wf, file1: TextFile, file2: TextFile):
 
             wf.add(contents_are_numeric(in_file=file1, name="check_file1"))
 
@@ -402,21 +404,21 @@ def test_analysis_basic(Concat, test_file1, test_file2, test_dataset):
     assert duplicates.defined_in == (Concat,)
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip[Text]
+    assert file1.type is Zip[TextFile]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     assert file1.defined_in == (Concat,)
     assert file1.mapped_from is None
 
     file2 = analysis_spec.column_spec("file2")
-    assert file2.type is Text
+    assert file2.type is TextFile
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
     assert file2.defined_in == (Concat,)
     assert file2.mapped_from is None
 
     concatenated = analysis_spec.column_spec("concatenated")
-    assert concatenated.type is Text
+    assert concatenated.type is TextFile
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
     assert concatenated.defined_in == (Concat,)
@@ -492,35 +494,35 @@ def test_analysis_extended(
     assert duplicates.modified == ((("default", 2),),)
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip[Text]
+    assert file1.type is Zip[TextFile]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     assert file1.defined_in == (Concat,)
     assert file1.mapped_from is None
 
     file2 = analysis_spec.column_spec("file2")
-    assert file2.type is Text
+    assert file2.type is TextFile
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
     assert file2.defined_in == (Concat,)
     assert file2.mapped_from is None
 
     file3 = analysis_spec.column_spec("file3")
-    assert file3.type is Text
+    assert file3.type is TextFile
     assert file3.row_frequency == Samples.sample
     assert file3.salience == cs.primary
     assert file3.defined_in == (ExtendedConcat,)
     assert file3.mapped_from is None
 
     concatenated = analysis_spec.column_spec("concatenated")
-    assert concatenated.type is Text
+    assert concatenated.type is TextFile
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
     assert concatenated.defined_in == (Concat,)
     assert concatenated.mapped_from is None
 
     doubly_concatenated = analysis_spec.column_spec("doubly_concatenated")
-    assert doubly_concatenated.type is Text
+    assert doubly_concatenated.type is TextFile
     assert doubly_concatenated.row_frequency == Samples.sample
     assert doubly_concatenated.salience == cs.supplementary
     assert doubly_concatenated.defined_in == (ExtendedConcat,)
@@ -612,21 +614,21 @@ def test_analysis_with_check(
     assert duplicates.defined_in == (Concat,)
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip[Text]
+    assert file1.type is Zip[TextFile]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     assert file1.defined_in == (Concat,)
     assert file1.mapped_from is None
 
     file2 = analysis_spec.column_spec("file2")
-    assert file2.type is Text
+    assert file2.type is TextFile
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
     assert file2.defined_in == (Concat,)
     assert file2.mapped_from is None
 
     concatenated = analysis_spec.column_spec("concatenated")
-    assert concatenated.type is Text
+    assert concatenated.type is TextFile
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
     assert concatenated.defined_in == (Concat,)
@@ -703,21 +705,21 @@ def test_analysis_override(
     assert list(analysis_spec.subanalysis_names) == []
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip[Text]
+    assert file1.type is Zip[TextFile]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     assert file1.defined_in == (Concat,)
     assert file1.mapped_from is None
 
     file2 = analysis_spec.column_spec("file2")
-    assert file2.type is Text
+    assert file2.type is TextFile
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
     assert file2.defined_in == (Concat,)
     assert file2.mapped_from is None
 
     concatenated = analysis_spec.column_spec("concatenated")
-    assert concatenated.type is Text
+    assert concatenated.type is TextFile
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
     assert concatenated.defined_in == (Concat,)
@@ -814,28 +816,28 @@ def test_analysis_switch(
     assert list(analysis_spec.subanalysis_names) == []
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip[Text]
+    assert file1.type is Zip[TextFile]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     assert file1.defined_in == (Concat,)
     assert file1.mapped_from is None
 
     file2 = analysis_spec.column_spec("file2")
-    assert file2.type is Text
+    assert file2.type is TextFile
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
     assert file2.defined_in == (Concat,)
     assert file2.mapped_from is None
 
     concatenated = analysis_spec.column_spec("concatenated")
-    assert concatenated.type is Text
+    assert concatenated.type is TextFile
     assert concatenated.row_frequency == Samples.sample
     assert concatenated.salience == cs.supplementary
     assert concatenated.defined_in == (Concat,)
     assert concatenated.mapped_from is None
 
     multiplied = analysis_spec.column_spec("multiplied")
-    assert multiplied.type is Text
+    assert multiplied.type is TextFile
     assert multiplied.row_frequency == Samples.sample
     assert multiplied.salience == cs.supplementary
     assert multiplied.defined_in == (ConcatWithSwitch,)
@@ -950,21 +952,21 @@ def test_analysis_with_subanalyses(
     # assert common_duplicates.defined_in == (ConcatWithSubanalyses,)
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip[Text]
+    assert file1.type is Zip[TextFile]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     # assert file1.defined_in == (Concat,)
     assert file1.mapped_from == ("sub1", "file1")
 
     file2 = analysis_spec.column_spec("file2")
-    assert file2.type is Text
+    assert file2.type is TextFile
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
     # assert file2.defined_in == (Concat,)
     assert file2.mapped_from == ("sub1", "file2")
 
     concat_and_multiplied = analysis_spec.column_spec("concat_and_multiplied")
-    assert concat_and_multiplied.type is Text
+    assert concat_and_multiplied.type is TextFile
     assert concat_and_multiplied.row_frequency == Samples.sample
     assert concat_and_multiplied.salience == cs.supplementary
     # assert concat_and_multiplied.defined_in == (ConcatWithSwitch,)
@@ -1085,14 +1087,14 @@ def test_analysis_with_nested_subanalyses(
     # assert common_duplicates.defined_in == (ConcatWithSubanalyses,)
 
     file1 = analysis_spec.column_spec("file1")
-    assert file1.type is Zip[Text]
+    assert file1.type is Zip[TextFile]
     assert file1.row_frequency == Samples.sample
     assert file1.salience == cs.primary
     # assert file1.defined_in == (Concat,)
     assert file1.mapped_from == ("basic_sub", "file1")
 
     file2 = analysis_spec.column_spec("file2")
-    assert file2.type is Zip[Text]
+    assert file2.type is Zip[TextFile]
     assert file2.row_frequency == Samples.sample
     assert file2.salience == cs.primary
     # assert file2.defined_in == (Concat,)
@@ -1251,29 +1253,29 @@ def test_reserved_name_errors():
 
         @analysis(Samples)
         class A:
-            dataset: Text = column("a reserved attribute")
+            dataset: TextFile = column("a reserved attribute")
 
     with pytest.raises(ArcanaDesignError):
 
         @analysis(Samples)
         class B:
-            menu: Text = column("another reserved attribute")
+            menu: TextFile = column("another reserved attribute")
 
     with pytest.raises(ArcanaDesignError):
 
         @analysis(Samples)
         class C:
-            stack: Text = column("yet another reserved attribute")
+            stack: TextFile = column("yet another reserved attribute")
 
 
 def test_change_of_type_errors():
     @analysis(Samples)
     class A:
-        x: Text = column("a reserved attribute", salience=cs.primary)
-        y: Text = column("another column")
+        x: TextFile = column("a reserved attribute", salience=cs.primary)
+        y: TextFile = column("another column")
 
         @pipeline(y)
-        def a_pipeline(self, wf, x: Text):
+        def a_pipeline(self, wf, x: TextFile):
             wf.add(identity_file(name="identity", in_file=x))
             return wf.identity.lzout.out_file
 
@@ -1281,7 +1283,7 @@ def test_change_of_type_errors():
 
         @analysis(Samples)
         class B(A):
-            x: Zip[Text] = inherit()
+            x: Zip[TextFile] = inherit()
 
     assert "Cannot change datatype" in e.value.msg
 
@@ -1292,16 +1294,16 @@ def test_multiple_pipeline_builder_errors():
 
         @analysis(Samples)
         class A:
-            x: Text = column("a column", salience=cs.primary)
-            y: Text = column("another column")
+            x: TextFile = column("a column", salience=cs.primary)
+            y: TextFile = column("another column")
 
             @pipeline(y)
-            def a_pipeline(self, wf, x: Text):
+            def a_pipeline(self, wf, x: TextFile):
                 wf.add(identity_file(name="identity", in_file=x))
                 return wf.identity.lzout.out_file
 
             @pipeline(y)
-            def another_pipeline(self, wf, x: Text):
+            def another_pipeline(self, wf, x: TextFile):
                 wf.add(identity_file(name="identity", in_file=x))
                 return wf.identity.lzout.out_file
 
@@ -1313,11 +1315,11 @@ def test_unconnected_column_errors():
     # Should work
     @analysis(Samples)
     class A:
-        x: Text = column("a column", salience=cs.primary)
-        y: Text = column("another column")
+        x: TextFile = column("a column", salience=cs.primary)
+        y: TextFile = column("another column")
 
         @pipeline(y)
-        def a_pipeline(self, wf, x: Text):
+        def a_pipeline(self, wf, x: TextFile):
             wf.add(identity_file(name="identity", in_file=x))
             return wf.identity.lzout.out_file
 
@@ -1325,7 +1327,7 @@ def test_unconnected_column_errors():
 
         @analysis(Samples)
         class B:
-            x: Text = column("a column", salience=cs.primary)
+            x: TextFile = column("a column", salience=cs.primary)
 
     assert "'x' is neither an input nor output to any pipeline" in e.value.msg
 
@@ -1333,11 +1335,11 @@ def test_unconnected_column_errors():
 
         @analysis(Samples)
         class C:
-            x: Text = column("a column")
-            y: Text = column("another column")
+            x: TextFile = column("a column")
+            y: TextFile = column("another column")
 
             @pipeline(y)
-            def a_pipeline(self, wf, x: Text):
+            def a_pipeline(self, wf, x: TextFile):
                 wf.add(identity_file(name="identity", in_file=x))
                 return wf.identity.lzout.out_file
 
@@ -1368,10 +1370,10 @@ def test_automagic_arg_errors():
 
         @analysis(Samples)
         class A:
-            y: Text = column("another column")
+            y: TextFile = column("another column")
 
             @pipeline(y)
-            def a_pipeline(self, wf, x: Text):
+            def a_pipeline(self, wf, x: TextFile):
                 wf.add(identity_file(name="identity", in_file=x))
                 return wf.identity.lzout.out_file
 
@@ -1381,11 +1383,11 @@ def test_automagic_arg_errors():
 def test_inherit_errors():
     @analysis(Samples)
     class A:
-        x: Text = column("a reserved attribute", salience=cs.primary)
-        y: Text = column("another column")
+        x: TextFile = column("a reserved attribute", salience=cs.primary)
+        y: TextFile = column("another column")
 
         @pipeline(y)
-        def a_pipeline(self, wf, x: Text):
+        def a_pipeline(self, wf, x: TextFile):
             wf.add(identity_file(name="identity", in_file=x))
             return wf.identity.lzout.out_file
 
@@ -1393,7 +1395,7 @@ def test_inherit_errors():
 
         @analysis(Samples)
         class B(A):
-            z: Text = inherit()
+            z: TextFile = inherit()
 
     assert "have no attribute named 'z' to inherit" in str(e.value)
 
@@ -1405,7 +1407,7 @@ def test_inherit_errors():
 
     #     @analysis(Samples)
     #     class D(C):
-    #         x: Text = inherit()
+    #         x: TextFile = inherit()
 
     # assert (
     #     "'x' must inherit from a column that is explicitly defined in the base class it references"
@@ -1416,22 +1418,22 @@ def test_inherit_errors():
 def test_defined_in():
     @analysis(Samples)
     class A:
-        x: Text = column("a reserved attribute", salience=cs.primary)
-        y: Text = column("another column")
+        x: TextFile = column("a reserved attribute", salience=cs.primary)
+        y: TextFile = column("another column")
 
         @pipeline(y)
-        def a_pipeline(self, wf, x: Text):
+        def a_pipeline(self, wf, x: TextFile):
             wf.add(identity_file(name="identity", in_file=x))
             return wf.identity.lzout.out_file
 
     @analysis(Samples)
     class E(A):
 
-        y: Text = inherit(salience=cs.publication)
-        z: Text = column("yet another column", salience=cs.primary)
+        y: TextFile = inherit(salience=cs.publication)
+        z: TextFile = column("yet another column", salience=cs.primary)
 
         @pipeline(z)
-        def another_pipeline(self, wf, y: Text) -> Text:
+        def another_pipeline(self, wf, y: TextFile) -> TextFile:
 
             wf.add(identity_file(name="identity", in_file=y))
 
@@ -1440,11 +1442,11 @@ def test_defined_in():
     @analysis(Samples)
     class F(E):
 
-        x: Text = inherit(ref=A.x)
-        z: Text = inherit(ref=E.z)
+        x: TextFile = inherit(ref=A.x)
+        z: TextFile = inherit(ref=E.z)
 
         @pipeline(z)
-        def another_pipeline(self, wf, x: Text) -> Text:
+        def another_pipeline(self, wf, x: TextFile) -> TextFile:
 
             wf.add(identity_file(name="identity", in_file=x))
 
@@ -1456,23 +1458,23 @@ def test_defined_in():
 def test_pipeline_overrides():
     @analysis(Samples)
     class A:
-        x: Text = column("a reserved attribute", salience=cs.primary)
-        y: Text = column("another column")
+        x: TextFile = column("a reserved attribute", salience=cs.primary)
+        y: TextFile = column("another column")
 
         @pipeline(y)
-        def a_pipeline(self, wf, x: Text):
+        def a_pipeline(self, wf, x: TextFile):
             wf.add(identity_file(name="identity", in_file=x))
             return wf.identity.lzout.out_file
 
     @analysis(Samples)
     class B(A):
 
-        x: Text = inherit(ref=A.x)
-        y: Text = inherit(ref=A.y)
-        z: Text = column("yet another column")
+        x: TextFile = inherit(ref=A.x)
+        y: TextFile = inherit(ref=A.y)
+        z: TextFile = column("yet another column")
 
         @pipeline(y, z)
-        def a_pipeline(self, wf, x: Text):
+        def a_pipeline(self, wf, x: TextFile):
             wf.add(identity_file(name="identity", in_file=x))
             return wf.identity.lzout.out_file, wf.identity.lzout.out_file
 
@@ -1481,11 +1483,11 @@ def test_pipeline_overrides():
         @analysis(Samples)
         class C(B):
 
-            x: Text = inherit(ref=A.x)
-            z: Text = inherit()
+            x: TextFile = inherit(ref=A.x)
+            z: TextFile = inherit()
 
             @pipeline(z)
-            def a_pipeline(self, wf, x: Text):
+            def a_pipeline(self, wf, x: TextFile):
                 wf.add(identity_file(name="identity", in_file=x))
                 return wf.identity.lzout.out_file
 
@@ -1495,8 +1497,8 @@ def test_pipeline_overrides():
 def test_parameter_bounds_validation(test_dataset):
     @analysis(Samples)
     class A:
-        x: Text = column("a reserved attribute", salience=cs.primary)
-        y: Text = column("another column")
+        x: TextFile = column("a reserved attribute", salience=cs.primary)
+        y: TextFile = column("another column")
 
         a: int = parameter("an int parameter", default=2, lower_bound=2)
         b: float = parameter("a float parameter", default=5, upper_bound=10)
@@ -1508,7 +1510,9 @@ def test_parameter_bounds_validation(test_dataset):
         )
 
         @pipeline(y)
-        def a_pipeline(self, wf, x: Text, a: int, b: float, required: str) -> Text:
+        def a_pipeline(
+            self, wf, x: TextFile, a: int, b: float, required: str
+        ) -> TextFile:
             wf.add(identity_file(name="identity", in_file=x))
             return wf.identity.lzout.out_file
 

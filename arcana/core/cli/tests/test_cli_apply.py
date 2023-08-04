@@ -1,5 +1,5 @@
 from arcana.core.data.set.base import Dataset
-from fileformats.text import Plain as Text
+from fileformats.text import TextFile
 from arcana.core.cli.apply import apply_pipeline
 from arcana.core.utils.misc import show_cli_trace
 
@@ -9,9 +9,9 @@ def test_apply_pipeline_cli(saved_dataset: Dataset, concatenate_task, cli_runner
     # Start generating the arguments for the CLI
     # Add source to loaded dataset
     duplicates = 5
-    saved_dataset.add_source("file1", Text)
-    saved_dataset.add_source("file2", Text)
-    saved_dataset.add_sink("concatenated", Text)
+    saved_dataset.add_source("file1", TextFile)
+    saved_dataset.add_source("file2", TextFile)
+    saved_dataset.add_sink("concatenated", TextFile)
     saved_dataset.apply_pipeline(
         name="a_pipeline",
         workflow=concatenate_task(name="workflow", duplicates=duplicates),
@@ -28,15 +28,15 @@ def test_apply_pipeline_cli(saved_dataset: Dataset, concatenate_task, cli_runner
             "--source",
             "file1",
             "in_file1",
-            "fileformats.text:Plain",
+            "text/text-file",
             "--source",
             "file2",
             "in_file2",
-            "fileformats.text:Plain",
+            "text/text-file",
             "--sink",
             "concatenated",
             "out_file",
-            "fileformats.text:Plain",
+            "text/text-file",
             "--parameter",
             "duplicates",
             str(duplicates),

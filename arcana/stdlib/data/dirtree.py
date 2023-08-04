@@ -6,7 +6,7 @@ import typing as ty
 import logging
 import json
 import attrs
-from fileformats.core.base import FileSet, Field
+from fileformats.core import FileSet, Field
 from arcana.core.exceptions import ArcanaUsageError
 from arcana.core.data.set.base import DataTree
 from arcana.core.data.row import DataRow
@@ -191,10 +191,12 @@ class DirTree(LocalStore):
         """
         fspath = self._fileset_fspath(entry)
         # Create target directory if it doesn't exist already
-        copied_fileset = fileset.copy_to(
+        copied_fileset = fileset.copy(
             dest_dir=fspath.parent,
-            stem=fspath.name[: -len(fileset.ext)] if fileset.ext else fspath.name,
+            collation=fileset.CopyCollation.adjacent,
+            new_stem=fspath.name[: -len(fileset.ext)] if fileset.ext else fspath.name,
             make_dirs=True,
+            overwrite=True,
         )
         return copied_fileset
 
@@ -214,7 +216,7 @@ class DirTree(LocalStore):
 
     def get_fileset_provenance(
         self, entry: DataEntry
-    ) -> ty.Union[dict[str, ty.Any], None]:
+    ) -> ty.Union[ty.Dict[str, ty.Any], None]:
         """Retrieves provenance associated with a file-set data entry
 
         Parameters
@@ -224,14 +226,16 @@ class DirTree(LocalStore):
 
         Returns
         -------
-        dict[str, ty.Any] or None
+        ty.Dict[str, ty.Any] or None
             the retrieved provenance or None if it doesn't exist
         """
         with open(self._fileset_prov_fspath(entry)) as f:
             provenance = json.load(f)
         return provenance
 
-    def put_fileset_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+    def put_fileset_provenance(
+        self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
+    ):
         """Puts provenance associated with a file-set data entry into the store
 
         Parameters
@@ -246,7 +250,7 @@ class DirTree(LocalStore):
 
     def get_field_provenance(
         self, entry: DataEntry
-    ) -> ty.Union[dict[str, ty.Any], None]:
+    ) -> ty.Union[ty.Dict[str, ty.Any], None]:
         """Retrieves provenance associated with a field data entry
 
         Parameters
@@ -256,7 +260,7 @@ class DirTree(LocalStore):
 
         Returns
         -------
-        dict[str, ty.Any] or None
+        ty.Dict[str, ty.Any] or None
             the retrieved provenance or None if it doesn't exist
         """
         fspath, key = self._fields_prov_fspath_and_key(entry)
@@ -264,7 +268,7 @@ class DirTree(LocalStore):
             fields_provenance = json.load(f)
         return fields_provenance[key]
 
-    def put_field_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+    def put_field_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
         """Puts provenance associated with a field data entry into the store
 
         Parameters
@@ -297,7 +301,7 @@ class DirTree(LocalStore):
         """
         path, dataset_name = DataEntry.split_dataset_name_from_path(path)
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
-        return str(row_dir.joinpath(*path.split("/"))) + datatype.ext
+        return str(row_dir.joinpath(*path.split("/"))) + datatype.strext
 
     def field_uri(self, path: str, datatype: type, row: DataRow) -> str:
         """Returns the "uri" (e.g. file-system path relative to root dir) of a field
@@ -321,7 +325,7 @@ class DirTree(LocalStore):
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
         return str(row_dir / self.FIELDS_FNAME) + "::" + path
 
-    def create_data_tree(self, id: str, leaves: list[tuple[str, ...]], **kwargs):
+    def create_data_tree(self, id: str, leaves: ty.List[ty.Tuple[str, ...]], **kwargs):
         """creates a new empty dataset within in the store. Used in test routines and
         importing/exporting datasets between stores
 
@@ -334,7 +338,7 @@ class DirTree(LocalStore):
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
             for a hierarchy of [subject, timepoint] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
-        hierarchy: list[str]
+        hierarchy: ty.List[str]
             the hierarchy of the dataset to be created
         space : type(DataSpace)
             the data space of the dataset

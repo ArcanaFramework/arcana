@@ -165,7 +165,7 @@ class RemoteStore(DataStore):
     @abstractmethod
     def download_value(
         self, entry: DataEntry
-    ) -> ty.Union[float, int, str, list[float], list[int], list[str]]:
+    ) -> ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]:
         """
         Extract and return the value of the field from the store
 
@@ -176,21 +176,21 @@ class RemoteStore(DataStore):
 
         Returns
         -------
-        value : float or int or str or list[float] or list[int] or list[str]
+        value : float or int or str or ty.List[float] or ty.List[int] or ty.List[str]
             The value of the Field
         """
 
     @abstractmethod
     def upload_value(
         self,
-        value: ty.Union[float, int, str, list[float], list[int], list[str]],
+        value: ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]],
         entry: DataEntry,
     ):
         """Store the value for a field in the XNAT repository
 
         Parameters
         ----------
-        value : float or int or str or list[float] or list[int] or list[str]
+        value : float or int or str or ty.List[float] or ty.List[int] or ty.List[str]
             the value to store in the entry
         entry : DataEntry
             the entry to store the value in
@@ -217,7 +217,7 @@ class RemoteStore(DataStore):
         """
 
     @abstractmethod
-    def get_checksums(self, uri: str) -> dict[str, str]:
+    def get_checksums(self, uri: str) -> ty.Dict[str, str]:
         """
         Downloads the checksum digests associated with the files in the file-set.
         These are saved with the downloaded files in the cache and used to
@@ -230,7 +230,7 @@ class RemoteStore(DataStore):
         """
 
     @abstractmethod
-    def calculate_checksums(self, fileset: FileSet) -> dict[str, str]:
+    def calculate_checksums(self, fileset: FileSet) -> ty.Dict[str, str]:
         """
         Calculates the checksum digests associated with the files in the file-set.
         These checksums should match the cryptography method used by the remote store
@@ -387,12 +387,12 @@ class RemoteStore(DataStore):
         ----------
         fileset : FileSet
             The file-set to put the paths for
-        fspaths: list[Path or str  ]
+        fspaths: ty.List[Path or str  ]
             The paths of files/directories to put into the XNAT repository
 
         Returns
         -------
-        list[Path]
+        ty.List[Path]
             The locations of the locally cached paths
         """
 
@@ -401,13 +401,14 @@ class RemoteStore(DataStore):
         if cache_path.exists():
             shutil.rmtree(cache_path)
         # Copy to cache
-        cached = fileset.copy_to(cache_path, make_dirs=True, trim=False)
+        cached = fileset.copy(cache_path, make_dirs=True, trim=False)
         self.upload_files(cache_path, entry)
         checksums = self.get_checksums(entry.uri)
         calculated_checksums = self.calculate_checksums(cached)
         if checksums != calculated_checksums:
             raise ArcanaError(
-                f"Checksums for uploaded file-set at {entry} don't match that of the original files:\n\n"
+                f"Checksums for uploaded file-set at {entry} don't match that of the "
+                "original files:\n\n"
                 + dict_diff(
                     calculated_checksums,
                     checksums,

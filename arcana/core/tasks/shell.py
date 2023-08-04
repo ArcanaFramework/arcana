@@ -5,7 +5,7 @@ from pydra import ShellCommandTask
 import pydra.engine.specs
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
 from arcana.core.utils.serialize import ClassResolver, ObjectListConverter
-from fileformats.core.base import FileSet, DataType
+from fileformats.core import FileSet, DataType
 
 
 @attrs.define(kw_only=True)
@@ -183,10 +183,10 @@ class ShellCmdOutput(ShellCmdField):
 
 def shell_cmd(
     name: str,
-    inputs: list[ty.Union[ShellCmdInput, dict[str, str]]],
-    outputs: list[ty.Union[ShellCmdOutput, dict[str, str]]],
+    inputs: ty.List[ty.Union[ShellCmdInput, ty.Dict[str, str]]],
+    outputs: ty.List[ty.Union[ShellCmdOutput, ty.Dict[str, str]]],
     executable: str = "",  # Use entrypoint of container,
-    parameters: list[ty.Union[ShellCmdInput, dict[str, str]]] = None,
+    parameters: ty.List[ty.Union[ShellCmdInput, ty.Dict[str, str]]] = None,
 ):
     """Creates a Pydra shell command task which takes file inputs and runs it on the
     provided inputs, outputs and parameters
@@ -196,12 +196,12 @@ def shell_cmd(
     name : str
         Name of the workflow/BIDS app. Will be used to name the 'derivatives'
         sub-directory where the app outputs are stored
-    inputs : list[tuple[str, type] or dict[str, str]]
+    inputs : list[tuple[str, type] or ty.Dict[str, str]]
         The inputs to be inserted into the BIDS dataset. Should be a list of tuples
         consisting of the the path the file/directory should be stored within a BIDS subject/session,
         e.g. anat/T1w, func/bold, and the DataFormat class it should be stored in, e.g.
         arcana.bids.data.NiftiGzX.
-    outputs : list[tuple[str, type] or dict[str, str]]
+    outputs : list[tuple[str, type] or ty.Dict[str, str]]
         The outputs to be extracted from the derivatives directory. Should be a list of tuples
         consisting of the the path the file/directory is saved by the app within a BIDS subject/session,
         e.g. freesurfer/recon-all, and the DataFormat class it is stored in

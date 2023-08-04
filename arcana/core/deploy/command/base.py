@@ -44,13 +44,13 @@ class ContainerCommand:
         the task to run or the location of the class
     row_frequency: DataSpace, optional
         the frequency that the command operates on
-    inputs: list[CommandInput]
+    inputs: ty.List[CommandInput]
         inputs of the command
-    outputs: list[CommandOutput]
+    outputs: ty.List[CommandOutput]
         outputs of the command
-    parameters: list[CommandParameter]
+    parameters: ty.List[CommandParameter]
         parameters of the command
-    configuration: dict[str, ty.Any]
+    configuration: ty.Dict[str, ty.Any]
         constant values used to configure the task/workflow
     image: App
         back-reference to the image the command is installed in
@@ -63,22 +63,22 @@ class ContainerCommand:
         converter=ClassResolver(TaskBase, alternative_types=[ty.Callable])
     )
     row_frequency: ty.Optional[DataSpace] = None
-    inputs: list[CommandInput] = attrs.field(
+    inputs: ty.List[CommandInput] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CommandInput),
         metadata={"serializer": ObjectListConverter.asdict},
     )
-    outputs: list[CommandOutput] = attrs.field(
+    outputs: ty.List[CommandOutput] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CommandOutput),
         metadata={"serializer": ObjectListConverter.asdict},
     )
-    parameters: list[CommandParameter] = attrs.field(
+    parameters: ty.List[CommandParameter] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CommandParameter),
         metadata={"serializer": ObjectListConverter.asdict},
     )
-    configuration: dict[str, ty.Any] = attrs.field(
+    configuration: ty.Dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(dict)
     )
     image: ty.Optional[App] = None
@@ -149,11 +149,11 @@ class ContainerCommand:
     def execute(
         self,
         dataset_locator: str,
-        input_values: dict[str, str] = None,
-        output_values: dict[str, str] = None,
-        parameter_values: dict[str, ty.Any] = None,
+        input_values: ty.Dict[str, str] = None,
+        output_values: ty.Dict[str, str] = None,
+        parameter_values: ty.Dict[str, ty.Any] = None,
         work_dir: ty.Optional[Path] = None,
-        ids: list[str] = None,
+        ids: ty.List[str] = None,
         dataset_hierarchy: ty.Optional[str] = None,
         dataset_name: ty.Optional[str] = None,
         overwrite: bool = False,

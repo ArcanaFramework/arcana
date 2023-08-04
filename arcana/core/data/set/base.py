@@ -82,12 +82,12 @@ class Dataset:
         (e.g. 'session': 0b111).
     metadata : dict or DatasetMetadata
         Generic metadata associated with the dataset, e.g. authors, funding sources, etc...
-    include : list[tuple[DataSpace, str or list[str]]]
+    include : list[tuple[DataSpace, str or ty.List[str]]]
         The IDs to be included in the dataset per row_frequency. E.g. can be
         used to limit the subject IDs in a project to the sub-set that passed
         QC. If a row_frequency is omitted or its value is None, then all available
         will be used
-    exclude : list[tuple[DataSpace, str or list[str]]]
+    exclude : list[tuple[DataSpace, str or ty.List[str]]]
         The IDs to be excluded in the dataset per row_frequency. E.g. can be
         used to exclude specific subjects that failed QC. If a row_frequency is
         omitted or its value is None, then all available will be used
@@ -109,29 +109,29 @@ class Dataset:
     id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.DataStore = attrs.field()
     space: EnumMeta = attrs.field()
-    id_patterns: dict[str, str] = attrs.field(
+    id_patterns: ty.Dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
-    hierarchy: list[str] = attrs.field(converter=list)
+    hierarchy: ty.List[str] = attrs.field(converter=list)
     metadata: DatasetMetadata = attrs.field(
         factory=DatasetMetadata,
         converter=metadata_converter,
         repr=False,
     )
-    include: dict[str, ty.Union[list[str], str]] = attrs.field(
+    include: ty.Dict[str, ty.Union[ty.List[str], str]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    exclude: dict[str, ty.Union[list[str], str]] = attrs.field(
+    exclude: ty.Dict[str, ty.Union[ty.List[str], str]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
     name: str = attrs.field(default="")
     columns: ty.Dict[str, DataColumn] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    pipelines: dict[str, Pipeline] = attrs.field(
+    pipelines: ty.Dict[str, Pipeline] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    analyses: dict[str, Analysis] = attrs.field(
+    analyses: ty.Dict[str, Analysis] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
     tree: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
@@ -170,7 +170,7 @@ class Dataset:
             )
 
     @include.validator
-    def include_validator(self, _, include: dict[str, ty.Union[str, list[str]]]):
+    def include_validator(self, _, include: ty.Dict[str, ty.Union[str, ty.List[str]]]):
         valid = set(str(f) for f in self.space)
         freqs = set(include)
         unrecognised = freqs - valid
@@ -182,7 +182,7 @@ class Dataset:
         self._validate_criteria(include, "inclusion")
 
     @exclude.validator
-    def exclude_validator(self, _, exclude: dict[str, ty.Union[str, list[str]]]):
+    def exclude_validator(self, _, exclude: ty.Dict[str, ty.Union[str, ty.List[str]]]):
         valid = set(self.hierarchy)
         freqs = set(exclude)
         unrecognised = freqs - valid
@@ -743,7 +743,7 @@ class Dataset:
             id, name = parts
         return store_name, id, name
 
-    def download_licenses(self, licenses: list[License]):
+    def download_licenses(self, licenses: ty.List[License]):
         """Install licenses from project-specific location in data store and
         install them at the destination location
 
@@ -824,7 +824,9 @@ class Dataset:
         )
         return File(column.match_entry(dataset.root).item)
 
-    def infer_ids(self, ids: dict[str, str], metadata: dict[str, dict[str, str]]):
+    def infer_ids(
+        self, ids: ty.Dict[str, str], metadata: ty.Dict[str, ty.Dict[str, str]]
+    ):
         return self.store.infer_ids(
             ids=ids, id_patterns=self.id_patterns, metadata=metadata
         )

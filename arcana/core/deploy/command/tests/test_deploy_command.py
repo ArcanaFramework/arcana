@@ -1,3 +1,5 @@
+import os
+import typing as ty
 from functools import reduce
 from operator import mul
 from pathlib import Path
@@ -6,13 +8,47 @@ from arcana.testing.data.blueprint import (
     TestDatasetBlueprint,
     FileSetEntryBlueprint as FileBP,
 )
-from arcana.testing.data import TestDataSpace
-from fileformats.text import Plain as Text
+import pydra.mark
+from fileformats.text import TextFile
 from fileformats.testing import EncodedText
+from fileformats.core.mark import converter
 from arcana.core.data.set import Dataset
 from arcana.stdlib import DirTree
+from arcana.testing.data import TestDataSpace
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.core.exceptions import ArcanaDataMatchError
+
+
+# Set up converter between text and encoded-text and back again
+@pytest.fixture(scope="session")
+def encoded_text_converter():
+    @converter(
+        source_format=EncodedText, target_format=TextFile, out_filename="out_file.txt"
+    )
+    @converter(
+        source_format=TextFile, target_format=EncodedText, out_filename="out_file.enc"
+    )
+    @pydra.mark.task
+    @pydra.mark.annotate({"return": {"out_file": Path}})
+    def encoder_task(
+        in_file: ty.Union[str, bytes, os.PathLike],
+        out_filename: str,
+        shift: int = 0,
+    ) -> Path:
+        def encode_text(text: str, shift: int) -> str:
+            encoded = []
+            for c in text:
+                encoded.append(chr(ord(c) + shift))
+            return "".join(encoded)
+
+        with open(in_file) as f:
+            contents = f.read()
+        encoded = encode_text(contents, shift)
+        with open(out_filename, "w") as f:
+            f.write(encoded)
+        return Path(out_filename).absolute()
+
+    return None
 
 
 def test_command_execute(concatenate_task, saved_dataset, work_dir):
@@ -26,13 +62,13 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source1",
-                "datatype": "fileformats.text:Plain",
+                "datatype": "text/text-file",
                 "field": "in_file1",
                 "help_string": "dummy",
             },
             {
                 "name": "source2",
-                "datatype": "fileformats.text:Plain",
+                "datatype": "text/text-file",
                 "field": "in_file2",
                 "help_string": "dummy",
             },
@@ -40,7 +76,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "fileformats.text:Plain",
+                "datatype": "text/text-file",
                 "field": "out_file",
                 "help_string": "dummy",
             }
@@ -76,7 +112,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         pipeline_name="test_pipeline",
     )
     # Add source column to saved dataset
-    sink = saved_dataset.add_sink("concatenated", Text)
+    sink = saved_dataset.add_sink("concatenated", TextFile)
     assert len(sink) == reduce(mul, bp.dim_lengths)
     fnames = ["file1.txt", "file2.txt"]
     if concatenate_task.__name__.endswith("reverse"):
@@ -99,13 +135,13 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source1",
-                "datatype": "fileformats.text:Plain",
+                "datatype": "text/text-file",
                 "field": "in_file1",
                 "help_string": "dummy",
             },
             {
                 "name": "source2",
-                "datatype": "fileformats.generic:Directory",
+                "datatype": "text/text-file",
                 "field": "in_file2",
                 "help_string": "dummy",
             },
@@ -113,7 +149,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "fileformats.text:Plain",
+                "datatype": "text/text-file",
                 "field": "out_file",
                 "help_string": "dummy",
             }
@@ -135,7 +171,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
             dataset_locator=saved_dataset.locator,
             input_values=[
                 ("source1", "bad-file-path"),
-                ("source2", "file2"),
+                ("source2", "file1"),
             ],
             output_values=[
                 ("sink1", "concatenated"),
@@ -164,7 +200,7 @@ def test_command_execute_on_row(cli_runner, work_dir):
         ],  # e.g. XNAT where session ID is unique in project but final layer is organised by timepoint
         dim_lengths=[1, 1, 1, 1],
         entries=[
-            FileBP(path=str(i), datatype=Text, filenames=[f"{i}.txt"])
+            FileBP(path=str(i), datatype=TextFile, filenames=[f"{i}.txt"])
             for i in filenumbers
         ],
     )
@@ -209,7 +245,9 @@ def test_command_execute_on_row(cli_runner, work_dir):
     assert get_dataset_filenumbers() == [i + 10 for i in filenumbers]
 
 
-def test_command_execute_with_converter_args(saved_dataset: Dataset, work_dir: Path):
+def test_command_execute_with_converter_args(
+    saved_dataset: Dataset, work_dir: Path, encoded_text_converter
+):
     """Test passing arguments to file format converter tasks via input/output
     "qualifiers", e.g. 'converter.shift=3' using the arcana-run-pipeline CLI
     tool (as used in the XNAT CS commands)
@@ -224,8 +262,8 @@ def test_command_execute_with_converter_args(saved_dataset: Dataset, work_dir: P
         inputs=[
             {
                 "name": "source",
-                "datatype": "fileformats.testing:EncodedText",
-                "default_column": {"datatype": "fileformats.text:Plain"},
+                "datatype": "testing/encoded-text",
+                "default_column": {"datatype": "text/text-file"},
                 "field": "in_file",
                 "help_string": "dummy",
             },
@@ -233,14 +271,14 @@ def test_command_execute_with_converter_args(saved_dataset: Dataset, work_dir: P
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "fileformats.testing:EncodedText",
+                "datatype": "testing/encoded-text",
                 "field": "out",
                 "help_string": "dummy",
             },
             {
                 "name": "sink2",
-                "datatype": "fileformats.testing:EncodedText",
-                "default_column": {"datatype": "fileformats.text:Plain"},
+                "datatype": "testing/encoded-text",
+                "default_column": {"datatype": "text/text-file"},
                 "field": "out",
                 "help_string": "dummy",
             },
@@ -263,9 +301,9 @@ def test_command_execute_with_converter_args(saved_dataset: Dataset, work_dir: P
         dataset_hierarchy=",".join(bp.hierarchy),
         pipeline_name="test_pipeline",
     )
-    # Add source column to saved dataset
+    # Add sink column to saved dataset to access data created by the executed command spec
     saved_dataset.add_sink("sink1", EncodedText, path="encoded@")
-    saved_dataset.add_sink("sink2", Text, path="decoded@")
+    saved_dataset.add_sink("sink2", TextFile, path="decoded@")
     unencoded_contents = "file1.txt"
     encoded_contents = (
         "iloh41w{w"  # 'file1.txt' characters shifted up by 3 in ASCII code

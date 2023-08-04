@@ -5,7 +5,7 @@ from arcana.core.analysis.salience import ColumnSalience
 from arcana.core.data.quality import DataQuality
 from arcana.testing import TestDataSpace
 from arcana.core.cli.dataset import define, add_source, add_sink, missing_items, export
-from fileformats.text import Plain as Text
+from fileformats.text import TextFile
 from fileformats.generic import Directory
 from arcana.core.utils.misc import show_cli_trace
 from arcana.testing.data.blueprint import TEST_DATASET_BLUEPRINTS
@@ -31,7 +31,7 @@ def test_add_column_cli(saved_dataset: Dataset, cli_runner):
     saved_dataset.add_source(
         name="a_source",
         path="file1",
-        datatype=Text,
+        datatype=TextFile,
         row_frequency=TestDataSpace.d,
         quality_threshold=DataQuality.questionable,
         order=1,
@@ -44,7 +44,7 @@ def test_add_column_cli(saved_dataset: Dataset, cli_runner):
         [
             saved_dataset.locator,
             "a_source",
-            "fileformats.text:Plain",
+            "text/text-file",
             "--path",
             "file1",
             "--row-frequency",
@@ -61,7 +61,7 @@ def test_add_column_cli(saved_dataset: Dataset, cli_runner):
     saved_dataset.add_sink(
         name="a_sink",
         path="deriv",
-        datatype=Text,
+        datatype=TextFile,
         row_frequency=TestDataSpace.d,
         salience=ColumnSalience.qa,
     )
@@ -70,7 +70,7 @@ def test_add_column_cli(saved_dataset: Dataset, cli_runner):
         [
             saved_dataset.locator,
             "a_sink",
-            "fileformats.text:Plain",
+            "text/text-file",
             "--path",
             "deriv",
             "--row-frequency",

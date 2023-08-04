@@ -1,6 +1,6 @@
 from operator import mul
 from functools import reduce
-from fileformats.core.base import FileSet
+from fileformats.core import FileSet
 from arcana.core.data.set.base import Dataset
 
 

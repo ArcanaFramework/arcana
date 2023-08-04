@@ -5,7 +5,7 @@ import time
 from multiprocessing import Pool, cpu_count
 import pytest
 from fileformats.generic import File
-from fileformats.text import Plain as PlainText
+from fileformats.text import TextFile
 from fileformats.field import Text as TextField
 from arcana.core.data.set.base import Dataset
 from arcana.core.data.store import DataStore
@@ -170,7 +170,7 @@ def test_delayed_download(
 def delayed_download(entry: DataEntry, start_offset: float):
     # Set the downloads off at slightly different times
     time.sleep(start_offset)
-    text_file = PlainText(entry.item)
+    text_file = TextFile(entry.item)
     contents = text_file.contents
     if not start_offset:
         with open(text_file.fspath, "w") as f:

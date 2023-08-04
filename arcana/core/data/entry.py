@@ -1,7 +1,7 @@
 from __future__ import annotations
 import typing as ty
 import attrs
-from fileformats.core.base import DataType
+from fileformats.core import DataType
 from arcana.core.exceptions import ArcanaDataMatchError, ArcanaUsageError
 from .quality import DataQuality
 
@@ -34,24 +34,23 @@ class ItemMetadata:
 
     def load(self, overwrite=False):
         assert self._entry is not None
-        if hasattr(self._entry.datatype, "load_metadata"):
-            item_metadata = self._entry.item.metadata
-            if not overwrite:
-                mismatching = [
-                    k
-                    for k in set(self.loaded) & set(item_metadata)
-                    if self.loaded[k] != item_metadata[k]
-                ]
-                if mismatching:
-                    raise RuntimeError(
-                        "Mismatch in values between loaded and loaded metadata values, "
-                        "use 'load(overwrite=True)' to overwrite:\n"
-                        + "\n".join(
-                            f"{k}: loaded={self.loaded[k]}, loaded={item_metadata[k]}"
-                            for k in mismatching
-                        )
+        item_metadata = self._entry.item.metadata
+        if not overwrite:
+            mismatching = [
+                k
+                for k in set(self.loaded) & set(item_metadata)
+                if self.loaded[k] != item_metadata[k]
+            ]
+            if mismatching:
+                raise RuntimeError(
+                    "Mismatch in values between loaded and loaded metadata values, "
+                    "use 'load(overwrite=True)' to overwrite:\n"
+                    + "\n".join(
+                        f"{k}: loaded={self.loaded[k]}, loaded={item_metadata[k]}"
+                        for k in mismatching
                     )
-            self.loaded.update(item_metadata)
+                )
+        self.loaded.update(item_metadata)
         self._has_been_loaded = True
 
 
@@ -90,7 +89,7 @@ class DataEntry:
     )
     order: ty.Optional[int] = None
     quality: DataQuality = DataQuality.usable
-    checksums: dict[str, ty.Union[str, dict]] = attrs.field(
+    checksums: ty.Dict[str, ty.Union[str, dict]] = attrs.field(
         default=None, repr=False, eq=False
     )
 
@@ -112,7 +111,7 @@ class DataEntry:
     @item.setter
     def item(self, item):
         if isinstance(item, DataType):
-            if not type(item).issubtype(self.datatype):
+            if not isinstance(item, self.datatype):
                 raise ArcanaDataMatchError(
                     f"Cannot put {item} into {self.datatype} entry of {self.row}"
                 )

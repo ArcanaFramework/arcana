@@ -29,7 +29,7 @@ class DataTree(NestedContext):
 
     dataset: ty.Optional[Dataset] = None
     root: ty.Optional[DataRow] = None
-    _auto_ids: dict[tuple[str, ...], dict[str, int]] = attrs.field(
+    _auto_ids: ty.Dict[ty.Tuple[str, ...], ty.Dict[str, int]] = attrs.field(
         factory=auto_ids_default
     )
 
@@ -50,8 +50,8 @@ class DataTree(NestedContext):
         return self.dataset.hierarchy
 
     def add_leaf(
-        self, tree_path, metadata: dict[str, dict[str, str]] = None
-    ) -> tuple[DataRow, list[str]]:
+        self, tree_path, metadata: ty.Dict[str, ty.Dict[str, str]] = None
+    ) -> ty.Tuple[DataRow, ty.List[str]]:
         """Creates a new row at a the path down the tree of the dataset as
         well as all "parent" rows upstream in the data tree
 
@@ -60,7 +60,7 @@ class DataTree(NestedContext):
         tree_path : list[str]
             The sequence of labels for each layer in the hierarchy of the
             dataset leading to the current row.
-        metadata : dict[str, dict[str, str]]
+        metadata : dict[str, ty.Dict[str, str]]
             metadata passed to ``DataStore.infer_ids()`` used to infer IDs not directly
             represented in the hierarchy of the data tree.
 
@@ -84,7 +84,7 @@ class DataTree(NestedContext):
         """
 
         def matches_criteria(
-            label: str, freq_str: str, criteria: dict[str, ty.Union[list, str]]
+            label: str, freq_str: str, criteria: ty.Dict[str, ty.Union[list, str]]
         ):
             try:
                 freq_criteria = criteria[freq_str]
@@ -210,7 +210,7 @@ class DataTree(NestedContext):
             row_frequency=self.dataset.space.leaf(),
         )
 
-    def _add_row(self, ids: dict[DataSpace, str], row_frequency):
+    def _add_row(self, ids: ty.Dict[DataSpace, str], row_frequency):
         """Adds a row to the dataset, creating all parent "aggregate" rows
         (e.g. for each subject, group or timepoint) where required
 

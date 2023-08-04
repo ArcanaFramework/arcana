@@ -9,13 +9,13 @@ def test_shell_cmd(work_dir):
         inputs=[
             {
                 "name": "in_dir",
-                "datatype": "fileformats.generic:Directory",
+                "datatype": "generic/directory",
             }
         ],
         outputs=[
             {
                 "name": "out_dir",
-                "datatype": "fileformats.generic:Directory",
+                "datatype": "generic/directory",
                 "position": -1,
             }
         ],

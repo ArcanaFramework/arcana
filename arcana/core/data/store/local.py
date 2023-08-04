@@ -9,7 +9,7 @@ import json
 import attrs
 import yaml
 from fasteners import InterProcessLock
-from fileformats.core.base import DataType, FileSet, Field
+from fileformats.core import DataType, FileSet, Field
 from arcana.core.exceptions import (
     ArcanaMissingDataException,
     ArcanaUsageError,
@@ -183,7 +183,7 @@ class LocalStore(DataStore):
     @abstractmethod
     def get_fileset_provenance(
         self, entry: DataEntry
-    ) -> ty.Union[dict[str, ty.Any], None]:
+    ) -> ty.Union[ty.Dict[str, ty.Any], None]:
         """Retrieves provenance associated with a file-set data entry
 
         Parameters
@@ -193,12 +193,14 @@ class LocalStore(DataStore):
 
         Returns
         -------
-        dict[str, ty.Any] or None
+        ty.Dict[str, ty.Any] or None
             the retrieved provenance
         """
 
     @abstractmethod
-    def put_fileset_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+    def put_fileset_provenance(
+        self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
+    ):
         """Puts provenance associated with a file-set data entry into the store
 
         Parameters
@@ -212,7 +214,7 @@ class LocalStore(DataStore):
     @abstractmethod
     def get_field_provenance(
         self, entry: DataEntry
-    ) -> ty.Union[dict[str, ty.Any], None]:
+    ) -> ty.Union[ty.Dict[str, ty.Any], None]:
         """Retrieves provenance associated with a field data entry
 
         Parameters
@@ -222,12 +224,12 @@ class LocalStore(DataStore):
 
         Returns
         -------
-        dict[str, ty.Any] or None
+        ty.Dict[str, ty.Any] or None
             the retrieved provenance
         """
 
     @abstractmethod
-    def put_field_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+    def put_field_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
         """Puts provenance associated with a field data entry into the store
 
         Parameters
@@ -292,7 +294,7 @@ class LocalStore(DataStore):
             )
         return cpy
 
-    def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
+    def get_provenance(self, entry: DataEntry) -> ty.Dict[str, ty.Any]:
         if entry.datatype.is_fileset:
             provenance = self.get_fileset_provenance(entry)
         elif entry.datatype.is_field:
@@ -301,7 +303,7 @@ class LocalStore(DataStore):
             raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return provenance
 
-    def put_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+    def put_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
         if entry.datatype.is_fileset:
             self.put_fileset_provenance(provenance, entry)
         elif entry.datatype.is_field:

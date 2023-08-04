@@ -13,7 +13,7 @@ import zipfile
 import attrs
 from fileformats.core import FileSet, Field
 from fileformats.generic import Directory
-from fileformats.text import Plain as PlainText
+from fileformats.text import TextFile
 from fileformats.archive import Zip
 from fileformats.field import Text as TextField, Decimal, Boolean, Integer, Array
 from fileformats.serialization import Json
@@ -27,6 +27,7 @@ from fileformats.testing import (
     Xyz,
 )
 from arcana.core.data.row import DataRow
+from arcana.core.data.space import DataSpace
 from arcana.core.utils.misc import path2varname, set_cwd
 from arcana.core.exceptions import ArcanaError
 from arcana.core.data.store import DataStore
@@ -41,8 +42,8 @@ class EntryBlueprint(metaclass=ABCMeta):
     path: str
     datatype: type = attrs.field()
     row_frequency: ty.Optional[str] = None
-    ids: list[str] = None  # the list of row IDs to create the blueprint in
-    alternative_datatypes: list[type] = attrs.field(factory=list)
+    ids: ty.List[str] = None  # the list of row IDs to create the blueprint in
+    alternative_datatypes: ty.List[type] = attrs.field(factory=list)
 
     @datatype.validator
     def datatype_validator(self, _, datatype):
@@ -70,7 +71,7 @@ class EntryBlueprint(metaclass=ABCMeta):
 @attrs.define(kw_only=True)
 class FileSetEntryBlueprint(EntryBlueprint):
 
-    filenames: list[str]
+    filenames: ty.List[str]
 
     def make_item(
         self,
@@ -172,14 +173,14 @@ class FieldEntryBlueprint(EntryBlueprint):
 @attrs.define(slots=False, kw_only=True)
 class TestDatasetBlueprint:
 
-    space: type
-    hierarchy: list[str]
-    dim_lengths: list[int]  # size of layers a-d respectively
-    entries: list[EntryBlueprint] = attrs.field(factory=list)
-    derivatives: list[EntryBlueprint] = attrs.field(factory=list)
-    id_patterns: dict[str, str] = attrs.field(factory=dict)
-    include: dict[str, ty.Union[str, list[str]]] = attrs.field(factory=dict)
-    exclude: dict[str, ty.Union[str, list[str]]] = attrs.field(factory=dict)
+    space: ty.Type[DataSpace]
+    hierarchy: ty.List[str]
+    dim_lengths: ty.List[int]  # size of layers a-d respectively
+    entries: ty.List[EntryBlueprint] = attrs.field(factory=list)
+    derivatives: ty.List[EntryBlueprint] = attrs.field(factory=list)
+    id_patterns: ty.Dict[str, str] = attrs.field(factory=dict)
+    include: ty.Dict[str, ty.Union[str, ty.List[str]]] = attrs.field(factory=dict)
+    exclude: ty.Dict[str, ty.Union[str, ty.List[str]]] = attrs.field(factory=dict)
 
     DEFAULT_NUM_ACCESS_ATTEMPTS = 300
     DEFAULT_ACCESS_ATTEMPT_INTERVAL = 1.0  # secs
@@ -190,7 +191,7 @@ class TestDatasetBlueprint:
         dataset_id: str,
         name: ty.Optional[str] = None,
         source_data: ty.Optional[Path] = None,
-        metadata: dict[str, ty.Any] = None,
+        metadata: ty.Optional[ty.Dict[str, ty.Any]] = None,
         **kwargs,
     ):
         """For use in tests, this method creates a test dataset from the provided
@@ -383,7 +384,7 @@ TEST_DATASET_BLUEPRINTS = {
         dim_lengths=[2, 3, 4, 5],
         entries=[
             FileSetEntryBlueprint(
-                path="file1", datatype=PlainText, filenames=["file1.txt"]
+                path="file1", datatype=TextFile, filenames=["file1.txt"]
             ),
             FileSetEntryBlueprint(
                 path="file2", datatype=MyFormatGz, filenames=["file2.my.gz"]
@@ -407,7 +408,7 @@ TEST_DATASET_BLUEPRINTS = {
             FileSetEntryBlueprint(
                 path="deriv1",
                 row_frequency="abcd",
-                datatype=PlainText,
+                datatype=TextFile,
                 filenames=["file1.txt"],
             ),  # Derivatives to insert
             FileSetEntryBlueprint(
@@ -419,7 +420,7 @@ TEST_DATASET_BLUEPRINTS = {
             FileSetEntryBlueprint(
                 path="deriv3",
                 row_frequency="bd",
-                datatype=PlainText,
+                datatype=TextFile,
                 filenames=["file1.txt"],
             ),
             FieldEntryBlueprint(
@@ -562,10 +563,10 @@ TEST_DATASET_BLUEPRINTS = {
         dim_lengths=[1, 1, 1, 2],
         entries=[
             FileSetEntryBlueprint(
-                path="file1", datatype=PlainText, filenames=["file1.txt"]
+                path="file1", datatype=TextFile, filenames=["file1.txt"]
             ),
             FileSetEntryBlueprint(
-                path="file2", datatype=PlainText, filenames=["file2.txt"]
+                path="file2", datatype=TextFile, filenames=["file2.txt"]
             ),
         ],
     ),
@@ -593,7 +594,7 @@ EXTENSION_DATASET_BLUEPRINTS = {
         dim_lengths=[2, 2, 2, 2],
         entries=[
             FileSetEntryBlueprint(
-                path="file1", datatype=PlainText, filenames=["file.txt"]
+                path="file1", datatype=TextFile, filenames=["file.txt"]
             ),
             FileSetEntryBlueprint(
                 path="file2", datatype=MyFormatGz, filenames=["file.my.gz"]
@@ -622,7 +623,7 @@ EXTENSION_DATASET_BLUEPRINTS = {
             FileSetEntryBlueprint(
                 path="deriv1",
                 row_frequency="abcd",
-                datatype=PlainText,
+                datatype=TextFile,
                 filenames=["file1.txt"],
             ),  # Derivatives to insert
             FileSetEntryBlueprint(
@@ -634,7 +635,7 @@ EXTENSION_DATASET_BLUEPRINTS = {
             FileSetEntryBlueprint(
                 path="deriv3",
                 row_frequency="bd",
-                datatype=PlainText,
+                datatype=TextFile,
                 filenames=["file1.txt"],
             ),
             FieldEntryBlueprint(
@@ -665,7 +666,7 @@ SIMPLE_DATASET = TestDatasetBlueprint(  # dataset name
     hierarchy=["abcd"],
     dim_lengths=[2, 2, 2, 2],
     entries=[
-        FileSetEntryBlueprint(path="file1", datatype=PlainText, filenames=["file.txt"]),
+        FileSetEntryBlueprint(path="file1", datatype=TextFile, filenames=["file.txt"]),
         FieldEntryBlueprint(path="field1", datatype=TextField, value="a field"),
     ],
 )

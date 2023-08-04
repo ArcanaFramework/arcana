@@ -1,7 +1,7 @@
 from __future__ import annotations
 import typing as ty
 import attrs
-from fileformats.core.base import DataType
+from fileformats.core import DataType
 from arcana.core.exceptions import ArcanaError
 
 if ty.TYPE_CHECKING:  # pragma: no cover
@@ -32,7 +32,7 @@ class DataCell:
     row: DataRow
     column: DataColumn
     entry: DataEntry
-    provenance: dict[str, ty.Any] = None
+    provenance: ty.Dict[str, ty.Any] = None
 
     @property
     def datatype(self):

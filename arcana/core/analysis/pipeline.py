@@ -1,9 +1,7 @@
-from __future__ import annotations
 import os
 import attrs
 import typing as ty
 from collections import OrderedDict
-from pathlib import Path
 import logging
 from copy import copy, deepcopy
 import attrs.converters
@@ -17,8 +15,7 @@ from arcana.core.exceptions import (
     ArcanaOutputNotProducedException,
     ArcanaDataMatchError,
 )
-from fileformats.core.base import DataType, FileSet
-from fileformats.field import Field
+from fileformats.core import DataType
 from fileformats.core.exceptions import FormatConversionError
 import arcana.core.data.set.base
 import arcana.core.data.row
@@ -109,10 +106,10 @@ class Pipeline:
     name: str = attrs.field()
     row_frequency: DataSpace = attrs.field()
     workflow: Workflow = attrs.field(eq=attrs.cmp_using(pydra_eq))
-    inputs: list[PipelineField] = attrs.field(
+    inputs: ty.List[PipelineField] = attrs.field(
         converter=ObjectListConverter(PipelineField)
     )
-    outputs: list[PipelineField] = attrs.field(
+    outputs: ty.List[PipelineField] = attrs.field(
         converter=ObjectListConverter(PipelineField)
     )
     converter_args: ty.Dict[str, dict] = attrs.field(
@@ -128,7 +125,7 @@ class Pipeline:
                 field.datatype = self.dataset[field.name].datatype
 
     @inputs.validator
-    def inputs_validator(self, _, inputs: list[PipelineField]):
+    def inputs_validator(self, _, inputs: ty.List[PipelineField]):
         for inpt in inputs:
             if inpt.datatype is arcana.core.data.row.DataRow:  # special case
                 continue
@@ -157,7 +154,7 @@ class Pipeline:
                 )
 
     @outputs.validator
-    def outputs_validator(self, _, outputs: list[PipelineField]):
+    def outputs_validator(self, _, outputs: ty.List[PipelineField]):
         for outpt in outputs:
             if self.dataset:
                 column = self.dataset[outpt.name]
@@ -246,9 +243,9 @@ class Pipeline:
         # Create the workflow that will be split across all rows for the
         # given data row_frequency
         wf.add(
-            Workflow(
-                name="per_row", input_spec=["id"], id=wf.to_process.lzout.ids
-            ).split("id")
+            Workflow(name="per_row", input_spec=["id"]).split(
+                id=wf.to_process.lzout.ids
+            )
         )
 
         # Automatically output interface for source node to include sourced
@@ -267,7 +264,7 @@ class Pipeline:
                 if not self.dataset[inpt.name].row_frequency.is_parent(
                     self.row_frequency, if_match=True
                 ):
-                    dtype = list[dtype]
+                    dtype = ty.List[dtype]
             source_out_dct[inpt.name] = dtype
         source_out_dct["provenance_"] = ty.Dict[str, ty.Any]
 
@@ -322,24 +319,6 @@ class Pipeline:
                 # Map converter output to input_interface
                 sourced[inpt.name] = converter.lzout.out_file
 
-        # Create identity row to accept connections from user-defined rows
-        # via `set_output` method
-        wf.per_row.add(
-            func_task(
-                access_paths_and_values,
-                in_fields=[
-                    (
-                        i.name,
-                        ty.Union[DataType, arcana.core.data.row.DataRow, os.PathLike],
-                    )
-                    for i in self.inputs
-                ],
-                out_fields=[(i.name, ty.Any) for i in self.inputs],
-                name="input_interface",
-                **sourced,
-            )
-        )
-
         # Add the "inner" workflow of the pipeline that actually performs the
         # analysis/processing
         wf.per_row.add(deepcopy(self.workflow))
@@ -348,32 +327,13 @@ class Pipeline:
             setattr(
                 getattr(wf.per_row, self.workflow.name).inputs,
                 inpt.field,
-                getattr(wf.per_row.input_interface.lzout, inpt.name),
+                sourced[inpt.name],
             )
-
-        # Creates a row to accept values from user-defined rows and
-        # encapsulate them into DataTypes
-        wf.per_row.add(
-            func_task(
-                encapsulate_paths_and_values,
-                in_fields=[("outputs", ty.List[PipelineField])]
-                + [(o.name, ty.Union[str, Path]) for o in self.outputs],
-                out_fields=[(o.name, DataType) for o in self.outputs],
-                name="output_interface",
-                outputs=self.outputs,
-                **{
-                    o.name: getattr(
-                        getattr(wf.per_row, self.workflow.name).lzout, o.field
-                    )
-                    for o in self.outputs
-                },
-            )
-        )
 
         # Set datatype converters where required
         to_sink = {
-            o: getattr(wf.per_row.output_interface.lzout, o)
-            for o in self.output_varnames
+            o.name: getattr(getattr(wf.per_row, self.workflow.name).lzout, o.field)
+            for o in self.outputs
         }
 
         # Do output datatype conversions if required
@@ -460,7 +420,7 @@ class Pipeline:
 
         Returns
         -------
-        list[tuple[Pipeline, list[DataSink]]]
+        ty.List[tuple[Pipeline, ty.List[DataSink]]]
             stack of pipelines required to produce the specified data sinks,
             along with the sinks each stage needs to produce.
 
@@ -563,8 +523,8 @@ def to_process(
     dataset: arcana.core.data.set.base.Dataset,
     row_frequency: DataSpace,
     outputs: ty.List[PipelineField],
-    requested_ids: ty.Union[list[str], None],
-    parameterisation: dict[str, ty.Any],
+    requested_ids: ty.Union[ty.List[str], None],
+    parameterisation: ty.Dict[str, ty.Any],
 ):
     if requested_ids is None:
         requested_ids = dataset.row_ids(row_frequency)
@@ -652,38 +612,6 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
     return id
 
 
-def access_paths_and_values(**data_items):
-    """Copies files into the CWD renaming so the basenames match
-    except for extensions"""
-    logger.debug("Extracting paths/values from %s", data_items)
-    values = []
-    for name, item in data_items.items():
-        if isinstance(item, FileSet):
-            cpy = item.copy_to(Path.cwd() / name, link_type="symbolic", make_dirs=True)
-            values.append(cpy)
-        elif isinstance(item, Field):
-            values.append(item.value)
-        else:
-            values.append(item)
-    return tuple(values) if len(values) > 1 else values[0]
-
-
-def encapsulate_paths_and_values(outputs, **kwargs):
-    """Copies files into the CWD renaming so the basenames match
-    except for extensions"""
-    logger.debug("Encapsulating %s into %s", kwargs, outputs)
-    items = []
-    for outpt in outputs:
-        val = kwargs[outpt.name]
-        items.append(outpt.datatype(val))
-    if len(items) > 1:
-        return tuple(items)
-    elif items:
-        return items[0]
-    else:
-        return None
-
-
 # Provenance mismatch detection methods salvaged from data.provenance
 
 # def mismatches(self, other, include=None, exclude=None):
@@ -697,10 +625,10 @@ def encapsulate_paths_and_values(outputs, **kwargs):
 #     ----------
 #     other : Provenance
 #         The provenance object to compare against
-#     include : list[list[str]] | None
+#     include : list[ty.List[str]] | None
 #         Paths in the provenance to include in the match. If None all are
 #         incluced
-#     exclude : list[list[str]] | None
+#     exclude : list[ty.List[str]] | None
 #         Paths in the provenance to exclude from the match. In None all are
 #         excluded
 #     """

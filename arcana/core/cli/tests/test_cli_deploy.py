@@ -161,7 +161,7 @@ class DocsFixture:
 
     yaml_src: str
     markdown: str
-    licenses_to_provide: list[str] = attrs.field(factory=list)
+    licenses_to_provide: ty.List[str] = attrs.field(factory=list)
 
 
 docs_fixtures = {
@@ -183,11 +183,11 @@ command:
   row_frequency: stdlib:Samples[sample]
   inputs:
     in_file:
-      datatype: fileformats.text:Plain
+      datatype: text/text-file
       help_string: the input file
   outputs:
     out_file:
-      datatype: fileformats.text:Plain
+      datatype: text/text-file
       help_string: the output file
     """.strip(),
         """
@@ -219,12 +219,12 @@ a test of the YAML join functionality
 #### Inputs
 |Name|Required data-type|Default column data-type|Description|
 |----|------------------|------------------------|-----------|
-|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|the input file|
+|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text/text-file" aria-label="text/text-file">text/text-file</span>|<span data-toggle="tooltip" data-placement="bottom" title="text/text-file" aria-label="text/text-file">text/text-file</span>|the input file|
 
 #### Outputs
 |Name|Required data-type|Default column data-type|Description|
 |----|------------------|------------------------|-----------|
-|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|the output file|
+|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text/text-file" aria-label="text/text-file">text/text-file</span>|<span data-toggle="tooltip" data-placement="bottom" title="text/text-file" aria-label="text/text-file">text/text-file</span>|the output file|
 
 #### Parameters
 |Name|Data type|Description|
@@ -269,27 +269,27 @@ command:
       T1w:
         configuration:
           path: anat/T1w
-        datatype: fileformats.medimage:NiftiGzX
+        datatype: medimage/nifti-gz-x
         help_string: "T1-weighted anatomical scan"
         default_column:
-          datatype: fileformats.medimage:DicomSet
+          datatype: medimage/dicom-set
       T2w:
         configuration:
           path: anat/T2w
-        datatype: fileformats.medimage:NiftiGzX
+        datatype: medimage/nifti-gz-x
         help_string: "T2-weighted anatomical scan"
         default_column:
-          datatype: fileformats.medimage:DicomSet
+          datatype: medimage/dicom-set
       fMRI:
-        datatype: fileformats.medimage:NiftiGzX
+        datatype: medimage/nifti-gz-x
         help_string: "functional MRI"
         configuration:
           path: func/bold/task=rest
         default_column:
-          datatype: fileformats.medimage:DicomSet
+          datatype: medimage/dicom-set
     outputs:
       mriqc:
-        datatype: fileformats.generic:Directory
+        datatype: generic/directory
         help_string: "MRIQC output directory"
         configuration:
           path: mriqc

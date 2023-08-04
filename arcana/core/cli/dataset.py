@@ -4,7 +4,7 @@ from .base import cli
 from arcana.core.data.set.base import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.data.space import DataSpace
-from fileformats.core.base import DataType
+from fileformats.core import DataType
 from arcana.core.utils.serialize import ClassResolver
 
 
@@ -138,7 +138,7 @@ DATASET_LOCATOR The path to the dataset including store and dataset name
 NAME: The name the source will be referenced by
 
 FORMAT: The data type of the column. Can be a field (int|float|str|bool),
-field array (list[int|float|str|bool]) or
+field array (ty.List[int|float|str|bool]) or
 "file-set" (file, file+header/side-cars or directory)
 """,
 )
@@ -198,7 +198,7 @@ field array (list[int|float|str|bool]) or
     help=(
         "Match on specific header value. This option is only valid for "
         "select formats that the implement the 'header_val()' method "
-        "(e.g. medimage/DicomSet)."
+        "(e.g. medimage/dicom-set)."
     ),
 )
 def add_source(
@@ -240,7 +240,7 @@ name
     The name the source will be referenced by
 datatype
     The data type of the column. Can be a field (int|float|str|bool),
-    field array (list[int|float|str|bool]) or "file-set"
+    field array (ty.List[int|float|str|bool]) or "file-set"
     (file, file+header/side-cars or directory)
 """,
 )
