@@ -407,7 +407,8 @@ class RemoteStore(DataStore):
         calculated_checksums = self.calculate_checksums(cached)
         if checksums != calculated_checksums:
             raise ArcanaError(
-                f"Checksums for uploaded file-set at {entry} don't match that of the original files:\n\n"
+                f"Checksums for uploaded file-set at {entry} don't match that of the "
+                "original files:\n\n"
                 + dict_diff(
                     calculated_checksums,
                     checksums,
