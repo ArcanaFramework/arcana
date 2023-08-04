@@ -52,19 +52,19 @@ to appropriate columns in the dataset (``T1w``, ``T2w`` and
 .. code-block:: console
 
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T1w \
-      fileformats.medimage:Dicom --path '.*mprage.*' --regex
+      medimage/dicom --path '.*mprage.*' --regex
 
     $ arcana dataset add-source 'myuni-xnat//myproject:training' T2w \
-      fileformats.medimage:Dicom --path '.*t2spc.*' --regex
+      medimage/dicom --path '.*t2spc.*' --regex
 
     $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurfer/recon-all \
-      fileformats.archive:Zip
+      archive/zip
 
     $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
-      --input T1w in_file fileformats.medimage:NiftiGz \
-      --input T2w peel fileformats.medimage:NiftiGz \
-      --output freesurfer/recon-all out_file fileformats.generic:Directory \
+      --input T1w in_file medimage/niftiGz \
+      --input T2w peel medimage/niftiGz \
+      --output freesurfer/recon-all out_file generic/directory \
       --parameter param1 10 \
       --parameter param2 20
 

@@ -4,11 +4,11 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" />
 
-    <!-- Generated with Sphinx 7.0.1 and Furo 2023.05.20 -->
-        <title>arcana.core.data.set.base - Arcana v0.9.13</title>
-      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?digest=e6660623a769aa55fea372102b9bf3151b292993" />
-    <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
+        <title>arcana.core.data.set.base - Arcana v0.10</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=53e15035" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?v=36a5483c" />
     
     
 
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../../index.html"><div class="brand">Arcana v0.9.13</div></a>
+      <a href="../../../../../index.html"><div class="brand">Arcana v0.10</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.13</span>
+  <span class="sidebar-brand-text">Arcana v0.10</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -297,12 +297,12 @@
 <span class="sd">        (e.g. &#39;session&#39;: 0b111).</span>
 <span class="sd">    metadata : dict or DatasetMetadata</span>
 <span class="sd">        Generic metadata associated with the dataset, e.g. authors, funding sources, etc...</span>
-<span class="sd">    include : list[tuple[DataSpace, str or list[str]]]</span>
+<span class="sd">    include : list[tuple[DataSpace, str or ty.List[str]]]</span>
 <span class="sd">        The IDs to be included in the dataset per row_frequency. E.g. can be</span>
 <span class="sd">        used to limit the subject IDs in a project to the sub-set that passed</span>
 <span class="sd">        QC. If a row_frequency is omitted or its value is None, then all available</span>
 <span class="sd">        will be used</span>
-<span class="sd">    exclude : list[tuple[DataSpace, str or list[str]]]</span>
+<span class="sd">    exclude : list[tuple[DataSpace, str or ty.List[str]]]</span>
 <span class="sd">        The IDs to be excluded in the dataset per row_frequency. E.g. can be</span>
 <span class="sd">        used to exclude specific subjects that failed QC. If a row_frequency is</span>
 <span class="sd">        omitted or its value is None, then all available will be used</span>
@@ -324,29 +324,29 @@
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;asdict&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
     <span class="n">store</span><span class="p">:</span> <span class="n">datastore</span><span class="o">.</span><span class="n">DataStore</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
     <span class="n">space</span><span class="p">:</span> <span class="n">EnumMeta</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
-    <span class="n">id_patterns</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+    <span class="n">id_patterns</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
         <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
     <span class="p">)</span>
-    <span class="n">hierarchy</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+    <span class="n">hierarchy</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
     <span class="n">metadata</span><span class="p">:</span> <span class="n">DatasetMetadata</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
         <span class="n">factory</span><span class="o">=</span><span class="n">DatasetMetadata</span><span class="p">,</span>
         <span class="n">converter</span><span class="o">=</span><span class="n">metadata_converter</span><span class="p">,</span>
         <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span>
-    <span class="n">include</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+    <span class="n">include</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
         <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span>
     <span class="p">)</span>
-    <span class="n">exclude</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+    <span class="n">exclude</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
         <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span>
     <span class="p">)</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
     <span class="n">columns</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">DataColumn</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
         <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span>
     <span class="p">)</span>
-    <span class="n">pipelines</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+    <span class="n">pipelines</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Pipeline</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
         <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span>
     <span class="p">)</span>
-    <span class="n">analyses</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Analysis</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
+    <span class="n">analyses</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Analysis</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
         <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">),</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span>
     <span class="p">)</span>
     <span class="n">tree</span><span class="p">:</span> <span class="n">DataTree</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="n">DataTree</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">eq</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -385,7 +385,7 @@
             <span class="p">)</span>
 
     <span class="nd">@include</span><span class="o">.</span><span class="n">validator</span>
-    <span class="k">def</span> <span class="nf">include_validator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">include</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]):</span>
+    <span class="k">def</span> <span class="nf">include_validator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">include</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]):</span>
         <span class="n">valid</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">)</span>
         <span class="n">freqs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">include</span><span class="p">)</span>
         <span class="n">unrecognised</span> <span class="o">=</span> <span class="n">freqs</span> <span class="o">-</span> <span class="n">valid</span>
@@ -397,7 +397,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_validate_criteria</span><span class="p">(</span><span class="n">include</span><span class="p">,</span> <span class="s2">&quot;inclusion&quot;</span><span class="p">)</span>
 
     <span class="nd">@exclude</span><span class="o">.</span><span class="n">validator</span>
-    <span class="k">def</span> <span class="nf">exclude_validator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">exclude</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]):</span>
+    <span class="k">def</span> <span class="nf">exclude_validator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">exclude</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]]):</span>
         <span class="n">valid</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hierarchy</span><span class="p">)</span>
         <span class="n">freqs</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">exclude</span><span class="p">)</span>
         <span class="n">unrecognised</span> <span class="o">=</span> <span class="n">freqs</span> <span class="o">-</span> <span class="n">valid</span>
@@ -958,7 +958,7 @@
             <span class="nb">id</span><span class="p">,</span> <span class="n">name</span> <span class="o">=</span> <span class="n">parts</span>
         <span class="k">return</span> <span class="n">store_name</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">name</span>
 
-    <span class="k">def</span> <span class="nf">download_licenses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">licenses</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">License</span><span class="p">]):</span>
+    <span class="k">def</span> <span class="nf">download_licenses</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">licenses</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">List</span><span class="p">[</span><span class="n">License</span><span class="p">]):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Install licenses from project-specific location in data store and</span>
 <span class="sd">        install them at the destination location</span>
 
@@ -1039,7 +1039,9 @@
         <span class="p">)</span>
         <span class="k">return</span> <span class="n">File</span><span class="p">(</span><span class="n">column</span><span class="o">.</span><span class="n">match_entry</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">infer_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ids</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]):</span>
+    <span class="k">def</span> <span class="nf">infer_ids</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">ids</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span>
+    <span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">infer_ids</span><span class="p">(</span>
             <span class="n">ids</span><span class="o">=</span><span class="n">ids</span><span class="p">,</span> <span class="n">id_patterns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">id_patterns</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span>
         <span class="p">)</span></div>
@@ -1087,9 +1089,9 @@
       
     </aside>
   </div>
-</div><script data-url_root="../../../../../" id="documentation_options" src="../../../../../_static/documentation_options.js"></script>
-    <script src="../../../../../_static/doctools.js"></script>
-    <script src="../../../../../_static/sphinx_highlight.js"></script>
-    <script src="../../../../../_static/scripts/furo.js"></script>
+</div><script data-url_root="../../../../../" id="documentation_options" src="../../../../../_static/documentation_options.js?v=d4d462f8"></script>
+    <script src="../../../../../_static/doctools.js?v=888ff710"></script>
+    <script src="../../../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../../../../_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>

@@ -5,11 +5,11 @@
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Application Programming Interface" href="api.html" /><link rel="prev" title="Alternative storage systems" href="alternative_stores.html" />
 
-    <!-- Generated with Sphinx 7.0.1 and Furo 2023.05.20 -->
-        <title>Command-line interface - Arcana v0.9.13</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=e6660623a769aa55fea372102b9bf3151b292993" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
+    <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
+        <title>Command-line interface - Arcana v0.10</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=53e15035" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
     
     
 
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.9.13</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.10</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.9.13</span>
+  <span class="sidebar-brand-text">Arcana v0.10</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -458,7 +458,7 @@ an input to pipelines and analyses.</p>
 (where applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc</p>
 <p>NAME: The name the source will be referenced by</p>
 <p>FORMAT: The data type of the column. Can be a field (int|float|str|bool),
-field array (list[int|float|str|bool]) or
+field array (ty.List[int|float|str|bool]) or
 “file-set” (file, file+header/side-cars or directory)</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>dataset<span class="w"> </span>add-source<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>DATASET_LOCATOR<span class="w"> </span>NAME<span class="w"> </span>DATATYPE
 </pre></div>
@@ -502,7 +502,7 @@ field array (list[int|float|str|bool]) or
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-h">
 <span id="cmdoption-arcana-dataset-add-source-header"></span><span class="sig-name descname"><span class="pre">-h</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--header</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;key-val&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-h" title="Permalink to this definition">#</a></dt>
-<dd><p>Match on specific header value. This option is only valid for select formats that the implement the ‘header_val()’ method (e.g. medimage/DicomSet).</p>
+<dd><p>Match on specific header value. This option is only valid for select formats that the implement the ‘header_val()’ method (e.g. medimage/dicom-set).</p>
 </dd></dl>
 
 <p class="rubric">Arguments</p>
@@ -538,7 +538,7 @@ applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc</p>
 <dt>name</dt><dd><p>The name the source will be referenced by</p>
 </dd>
 <dt>datatype</dt><dd><p>The data type of the column. Can be a field (int|float|str|bool),
-field array (list[int|float|str|bool]) or “file-set”
+field array (ty.List[int|float|str|bool]) or “file-set”
 (file, file+header/side-cars or directory)</p>
 </dd>
 </dl>
@@ -940,9 +940,9 @@ and new parameterisation</p>
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
-    <script src="_static/scripts/furo.js"></script>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=d4d462f8"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>
