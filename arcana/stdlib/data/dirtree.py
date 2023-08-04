@@ -323,7 +323,7 @@ class DirTree(LocalStore):
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
         return str(row_dir / self.FIELDS_FNAME) + "::" + path
 
-    def create_data_tree(self, id: str, leaves: list[tuple[str, ...]], **kwargs):
+    def create_data_tree(self, id: str, leaves: ty.List[tuple[str, ...]], **kwargs):
         """creates a new empty dataset within in the store. Used in test routines and
         importing/exporting datasets between stores
 
@@ -336,7 +336,7 @@ class DirTree(LocalStore):
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
             for a hierarchy of [subject, timepoint] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
-        hierarchy: list[str]
+        hierarchy: ty.List[str]
             the hierarchy of the dataset to be created
         space : type(DataSpace)
             the data space of the dataset

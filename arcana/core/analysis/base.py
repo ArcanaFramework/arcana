@@ -358,9 +358,9 @@ def _get_args_automagically(column_specs, parameters, method, index_start=2):
 
     Returns
     -------
-    list[str]
+    ty.List[str]
         the names of the input columns to automagically provide to the method
-    list[str]
+    ty.List[str]
         the names of the parameters to automagically provide to the method
     """
     inputs = []

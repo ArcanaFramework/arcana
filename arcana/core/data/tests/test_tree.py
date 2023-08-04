@@ -142,7 +142,7 @@ TEST_INCLUSIONS = {
 
 @pytest.mark.parametrize("fixture", TEST_INCLUSIONS.items(), ids=itemgetter(0))
 def test_dataset_inclusion(
-    fixture: tuple[str, tuple[TestDatasetBlueprint, list[str]]], work_dir
+    fixture: tuple[str, tuple[TestDatasetBlueprint, ty.List[str]]], work_dir
 ):
     test_name, (blueprint, expected) = fixture
     dataset_path = work_dir / test_name

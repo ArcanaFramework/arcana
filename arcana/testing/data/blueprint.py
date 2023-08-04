@@ -42,8 +42,8 @@ class EntryBlueprint(metaclass=ABCMeta):
     path: str
     datatype: type = attrs.field()
     row_frequency: ty.Optional[str] = None
-    ids: list[str] = None  # the list of row IDs to create the blueprint in
-    alternative_datatypes: list[type] = attrs.field(factory=list)
+    ids: ty.List[str] = None  # the list of row IDs to create the blueprint in
+    alternative_datatypes: ty.List[type] = attrs.field(factory=list)
 
     @datatype.validator
     def datatype_validator(self, _, datatype):
@@ -71,7 +71,7 @@ class EntryBlueprint(metaclass=ABCMeta):
 @attrs.define(kw_only=True)
 class FileSetEntryBlueprint(EntryBlueprint):
 
-    filenames: list[str]
+    filenames: ty.List[str]
 
     def make_item(
         self,
@@ -174,13 +174,13 @@ class FieldEntryBlueprint(EntryBlueprint):
 class TestDatasetBlueprint:
 
     space: ty.Type[DataSpace]
-    hierarchy: list[str]
-    dim_lengths: list[int]  # size of layers a-d respectively
-    entries: list[EntryBlueprint] = attrs.field(factory=list)
-    derivatives: list[EntryBlueprint] = attrs.field(factory=list)
+    hierarchy: ty.List[str]
+    dim_lengths: ty.List[int]  # size of layers a-d respectively
+    entries: ty.List[EntryBlueprint] = attrs.field(factory=list)
+    derivatives: ty.List[EntryBlueprint] = attrs.field(factory=list)
     id_patterns: dict[str, str] = attrs.field(factory=dict)
-    include: dict[str, ty.Union[str, list[str]]] = attrs.field(factory=dict)
-    exclude: dict[str, ty.Union[str, list[str]]] = attrs.field(factory=dict)
+    include: dict[str, ty.Union[str, ty.List[str]]] = attrs.field(factory=dict)
+    exclude: dict[str, ty.Union[str, ty.List[str]]] = attrs.field(factory=dict)
 
     DEFAULT_NUM_ACCESS_ATTEMPTS = 300
     DEFAULT_ACCESS_ATTEMPT_INTERVAL = 1.0  # secs

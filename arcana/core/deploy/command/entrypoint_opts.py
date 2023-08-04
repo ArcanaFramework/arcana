@@ -1,6 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import click
+import typing as ty
 from click_option_group import optgroup
 from arcana.core.deploy.image import App
 
@@ -211,7 +212,7 @@ def debugging(func):
     )
 
 
-def _apply_options(func, options: list[click.Option]):
+def _apply_options(func, options: ty.List[click.Option]):
 
     for opt in reversed(options):
         func = opt(func)

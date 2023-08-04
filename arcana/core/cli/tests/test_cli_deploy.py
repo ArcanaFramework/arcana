@@ -161,7 +161,7 @@ class DocsFixture:
 
     yaml_src: str
     markdown: str
-    licenses_to_provide: list[str] = attrs.field(factory=list)
+    licenses_to_provide: ty.List[str] = attrs.field(factory=list)
 
 
 docs_fixtures = {

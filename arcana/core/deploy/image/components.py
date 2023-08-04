@@ -331,22 +331,22 @@ def python_package_converter(packages):
 @attrs.define
 class Packages:
 
-    system: list[SystemPackage] = attrs.field(
+    system: ty.List[SystemPackage] = attrs.field(
         factory=list,
         converter=ObjectListConverter(SystemPackage),
         metadata={"serializer": ObjectListConverter.asdict},
     )
-    pip: list[PipPackage] = attrs.field(
+    pip: ty.List[PipPackage] = attrs.field(
         factory=list,
         converter=python_package_converter,
         metadata={"serializer": ObjectListConverter.asdict},
     )
-    conda: list[CondaPackage] = attrs.field(
+    conda: ty.List[CondaPackage] = attrs.field(
         factory=list,
         converter=ObjectListConverter(CondaPackage),
         metadata={"serializer": ObjectListConverter.asdict},
     )
-    neurodocker: list[NeurodockerTemplate] = attrs.field(
+    neurodocker: ty.List[NeurodockerTemplate] = attrs.field(
         factory=list,
         converter=ObjectListConverter(NeurodockerTemplate),
         metadata={"serializer": ObjectListConverter.asdict},

@@ -79,12 +79,12 @@ class App(ArcanaImage):
     )
     description: str
     command: ContainerCommand = attrs.field(converter=ObjectConverter(ContainerCommand))
-    licenses: list[License] = attrs.field(
+    licenses: ty.List[License] = attrs.field(
         factory=dict,
         converter=ObjectListConverter(License),
         metadata={"serializer": ObjectListConverter.asdict},
     )
-    known_issues: list[KnownIssue] = attrs.field(
+    known_issues: ty.List[KnownIssue] = attrs.field(
         factory=list,
         converter=ObjectListConverter(KnownIssue),
         metadata={"serializer": ObjectListConverter.asdict},

@@ -165,7 +165,7 @@ class RemoteStore(DataStore):
     @abstractmethod
     def download_value(
         self, entry: DataEntry
-    ) -> ty.Union[float, int, str, list[float], list[int], list[str]]:
+    ) -> ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]:
         """
         Extract and return the value of the field from the store
 
@@ -176,21 +176,21 @@ class RemoteStore(DataStore):
 
         Returns
         -------
-        value : float or int or str or list[float] or list[int] or list[str]
+        value : float or int or str or ty.List[float] or ty.List[int] or ty.List[str]
             The value of the Field
         """
 
     @abstractmethod
     def upload_value(
         self,
-        value: ty.Union[float, int, str, list[float], list[int], list[str]],
+        value: ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]],
         entry: DataEntry,
     ):
         """Store the value for a field in the XNAT repository
 
         Parameters
         ----------
-        value : float or int or str or list[float] or list[int] or list[str]
+        value : float or int or str or ty.List[float] or ty.List[int] or ty.List[str]
             the value to store in the entry
         entry : DataEntry
             the entry to store the value in
@@ -387,12 +387,12 @@ class RemoteStore(DataStore):
         ----------
         fileset : FileSet
             The file-set to put the paths for
-        fspaths: list[Path or str  ]
+        fspaths: ty.List[Path or str  ]
             The paths of files/directories to put into the XNAT repository
 
         Returns
         -------
-        list[Path]
+        ty.List[Path]
             The locations of the locally cached paths
         """
 

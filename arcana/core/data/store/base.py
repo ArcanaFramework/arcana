@@ -201,7 +201,7 @@ class DataStore(metaclass=ABCMeta):
             the store
         space: DataSpace
             The data space of the dataset
-        hierarchy: list[str]
+        hierarchy: ty.List[str]
             The hierarchy of the dataset
         id_patterns : dict[str, str], optional
             Patterns used to infer row IDs not explicitly within the hierarchy of the
@@ -307,7 +307,7 @@ class DataStore(metaclass=ABCMeta):
         self,
         id: str,
         leaves: ty.Iterable[tuple[str, ...]],
-        hierarchy: list[str],
+        hierarchy: ty.List[str],
         space: type,
         name: ty.Optional[str] = None,
         id_patterns: ty.Optional[dict[str, str]] = None,
@@ -358,8 +358,8 @@ class DataStore(metaclass=ABCMeta):
         self,
         id: str,
         dataset: Dataset,
-        column_names: ty.Optional[list[ty.Union[str, tuple[str, type]]]] = None,
-        hierarchy: ty.Optional[list[str]] = None,
+        column_names: ty.Optional[ty.List[ty.Union[str, tuple[str, type]]]] = None,
+        hierarchy: ty.Optional[ty.List[str]] = None,
         id_patterns: ty.Optional[dict[str, str]] = None,
         use_original_paths: bool = False,
         **kwargs,
@@ -814,8 +814,8 @@ class DataStore(metaclass=ABCMeta):
     def create_data_tree(
         self,
         id: str,
-        leaves: list[tuple[str, ...]],
-        hierarchy: list[str],
+        leaves: ty.List[tuple[str, ...]],
+        hierarchy: ty.List[str],
         space: type,
         **kwargs,
     ):
@@ -831,7 +831,7 @@ class DataStore(metaclass=ABCMeta):
             leaf should be a tuple with an ID for each level in the tree's hierarchy, e.g.
             for a hierarchy of [subject, timepoint] ->
             [("SUBJ01", "TIMEPOINT01"), ("SUBJ01", "TIMEPOINT02"), ....]
-        hierarchy: list[str]
+        hierarchy: ty.List[str]
             the hierarchy of the dataset to be created
         space : type(DataSpace)
             the data space of the dataset

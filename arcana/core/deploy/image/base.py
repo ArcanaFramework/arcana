@@ -263,7 +263,7 @@ class ArcanaImage:
 
         Returns
         -------
-        list[list[str, list[str, str]]]
+        ty.List[ty.List[str, ty.List[str, str]]]
             neurodocker instructions to install python and required packages
         """
 

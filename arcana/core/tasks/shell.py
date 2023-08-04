@@ -183,10 +183,10 @@ class ShellCmdOutput(ShellCmdField):
 
 def shell_cmd(
     name: str,
-    inputs: list[ty.Union[ShellCmdInput, dict[str, str]]],
-    outputs: list[ty.Union[ShellCmdOutput, dict[str, str]]],
+    inputs: ty.List[ty.Union[ShellCmdInput, dict[str, str]]],
+    outputs: ty.List[ty.Union[ShellCmdOutput, dict[str, str]]],
     executable: str = "",  # Use entrypoint of container,
-    parameters: list[ty.Union[ShellCmdInput, dict[str, str]]] = None,
+    parameters: ty.List[ty.Union[ShellCmdInput, dict[str, str]]] = None,
 ):
     """Creates a Pydra shell command task which takes file inputs and runs it on the
     provided inputs, outputs and parameters

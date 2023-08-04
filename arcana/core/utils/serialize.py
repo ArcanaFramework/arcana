@@ -62,7 +62,7 @@ class ClassResolver:
 
     base_class: ty.Optional[type] = None
     allow_none: bool = False
-    alternative_types: list[type] = attrs.field(factory=list)
+    alternative_types: ty.List[type] = attrs.field(factory=list)
 
     def __call__(self, class_str: str) -> type:
         """

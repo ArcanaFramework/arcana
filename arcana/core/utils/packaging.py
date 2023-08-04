@@ -85,7 +85,7 @@ def package_from_module(module: Sequence[str]):
 
     Returns
     -------
-    PackageInfo or list[PackageInfo]
+    PackageInfo or ty.List[PackageInfo]
         the package info object corresponding to the module. If `module`
         parameter is a list of modules/strings then a set of packages are
         returned

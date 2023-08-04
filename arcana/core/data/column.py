@@ -85,7 +85,7 @@ class DataColumn(metaclass=ABCMeta):
         )
 
     @property
-    def ids(self) -> list[str]:
+    def ids(self) -> ty.List[str]:
         return [n.id for n in self.dataset.rows(self.row_frequency)]
 
     @property
@@ -138,7 +138,7 @@ class DataColumn(metaclass=ABCMeta):
         return self.select_entry_from_matches(row, matches)
 
     @abstractmethod
-    def criteria(self) -> list[ty.Callable]:
+    def criteria(self) -> ty.List[ty.Callable]:
         """returns all methods used to filter out potential matches"""
 
     @abstractmethod
@@ -187,7 +187,7 @@ class DataColumn(metaclass=ABCMeta):
             return True
 
     def select_entry_from_matches(
-        self, row: DataRow, matches: list[DataEntry]
+        self, row: DataRow, matches: ty.List[DataEntry]
     ) -> DataEntry:
         if len(matches) > 1:
             raise ArcanaDataMatchError(
@@ -195,7 +195,7 @@ class DataColumn(metaclass=ABCMeta):
             )
         return matches[0]
 
-    def _error_msg(self, row: DataRow, matches: list[DataEntry]) -> str:
+    def _error_msg(self, row: DataRow, matches: ty.List[DataEntry]) -> str:
         row_str = f"'{row.id}' {row.frequency}" if row.id is not None else "root"
         return (
             f", when attempting to match an entry to the '{self.name}' column "
@@ -204,7 +204,7 @@ class DataColumn(metaclass=ABCMeta):
             + self.format_criteria()
         )
 
-    def _format_matches(self, matches: list[DataEntry]) -> str:
+    def _format_matches(self, matches: ty.List[DataEntry]) -> str:
         out_str = ""
         for match in sorted(matches, key=attrgetter("path")):
             out_str += "\n    "
@@ -273,7 +273,7 @@ class DataSource(DataColumn):
         converter=lambda x: x.lower() == "true" if isinstance(x, str) else x,
     )
 
-    def criteria(self) -> list[ty.Callable]:
+    def criteria(self) -> ty.List[ty.Callable]:
         criteria = []
         if self.path is not None:
             if self.is_regex:
@@ -339,7 +339,7 @@ class DataSource(DataColumn):
             )
 
     def select_entry_from_matches(
-        self, row: DataRow, matches: list[DataEntry]
+        self, row: DataRow, matches: ty.List[DataEntry]
     ) -> DataEntry:
         # Select a single item from the ones that match the criteria
         if self.order is not None:
@@ -401,7 +401,7 @@ class DataSink(DataColumn):
     def path_default(self):
         return f"{self.name}@{self.dataset.name}"
 
-    def derive(self, ids: list[str] = None):
+    def derive(self, ids: ty.List[str] = None):
         self.dataset.derive(self.name, ids=ids)
 
     def criteria(self):

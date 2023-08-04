@@ -106,10 +106,10 @@ class Pipeline:
     name: str = attrs.field()
     row_frequency: DataSpace = attrs.field()
     workflow: Workflow = attrs.field(eq=attrs.cmp_using(pydra_eq))
-    inputs: list[PipelineField] = attrs.field(
+    inputs: ty.List[PipelineField] = attrs.field(
         converter=ObjectListConverter(PipelineField)
     )
-    outputs: list[PipelineField] = attrs.field(
+    outputs: ty.List[PipelineField] = attrs.field(
         converter=ObjectListConverter(PipelineField)
     )
     converter_args: ty.Dict[str, dict] = attrs.field(
@@ -125,7 +125,7 @@ class Pipeline:
                 field.datatype = self.dataset[field.name].datatype
 
     @inputs.validator
-    def inputs_validator(self, _, inputs: list[PipelineField]):
+    def inputs_validator(self, _, inputs: ty.List[PipelineField]):
         for inpt in inputs:
             if inpt.datatype is arcana.core.data.row.DataRow:  # special case
                 continue
@@ -154,7 +154,7 @@ class Pipeline:
                 )
 
     @outputs.validator
-    def outputs_validator(self, _, outputs: list[PipelineField]):
+    def outputs_validator(self, _, outputs: ty.List[PipelineField]):
         for outpt in outputs:
             if self.dataset:
                 column = self.dataset[outpt.name]
@@ -264,7 +264,7 @@ class Pipeline:
                 if not self.dataset[inpt.name].row_frequency.is_parent(
                     self.row_frequency, if_match=True
                 ):
-                    dtype = list[dtype]
+                    dtype = ty.List[dtype]
             source_out_dct[inpt.name] = dtype
         source_out_dct["provenance_"] = ty.Dict[str, ty.Any]
 
@@ -420,7 +420,7 @@ class Pipeline:
 
         Returns
         -------
-        list[tuple[Pipeline, list[DataSink]]]
+        ty.List[tuple[Pipeline, ty.List[DataSink]]]
             stack of pipelines required to produce the specified data sinks,
             along with the sinks each stage needs to produce.
 
@@ -523,7 +523,7 @@ def to_process(
     dataset: arcana.core.data.set.base.Dataset,
     row_frequency: DataSpace,
     outputs: ty.List[PipelineField],
-    requested_ids: ty.Union[list[str], None],
+    requested_ids: ty.Union[ty.List[str], None],
     parameterisation: dict[str, ty.Any],
 ):
     if requested_ids is None:
@@ -625,10 +625,10 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
 #     ----------
 #     other : Provenance
 #         The provenance object to compare against
-#     include : list[list[str]] | None
+#     include : list[ty.List[str]] | None
 #         Paths in the provenance to include in the match. If None all are
 #         incluced
-#     exclude : list[list[str]] | None
+#     exclude : list[ty.List[str]] | None
 #         Paths in the provenance to exclude from the match. In None all are
 #         excluded
 #     """

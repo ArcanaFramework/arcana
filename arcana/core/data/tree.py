@@ -51,7 +51,7 @@ class DataTree(NestedContext):
 
     def add_leaf(
         self, tree_path, metadata: dict[str, dict[str, str]] = None
-    ) -> tuple[DataRow, list[str]]:
+    ) -> tuple[DataRow, ty.List[str]]:
         """Creates a new row at a the path down the tree of the dataset as
         well as all "parent" rows upstream in the data tree
 

@@ -41,7 +41,7 @@ class DataRow:
     ids: ty.Dict[DataSpace, str] = attrs.field()
     dataset: Dataset = attrs.field(repr=False)
     frequency: str = attrs.field()
-    tree_path: list[str] = None
+    tree_path: ty.List[str] = None
     uri: ty.Optional[str] = None
     metadata: ty.Optional[dict] = None
 

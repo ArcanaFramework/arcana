@@ -179,7 +179,11 @@ class MockRemote(RemoteStore):
             json.dump(provenance, f)
 
     def create_data_tree(
-        self, id: str, leaves: list[tuple[str, ...]], hierarchy: list[str], **kwargs
+        self,
+        id: str,
+        leaves: ty.List[tuple[str, ...]],
+        hierarchy: ty.List[str],
+        **kwargs,
     ):
         """reate test data within store with rows specified by row_ids
 
@@ -229,7 +233,7 @@ class MockRemote(RemoteStore):
 
     def download_value(
         self, entry: DataEntry
-    ) -> ty.Union[float, int, str, list[float], list[int], list[str]]:
+    ) -> ty.Union[float, int, str, ty.List[float], ty.List[int], ty.List[str]]:
         """
         Retrieves a fields value
 
@@ -340,7 +344,7 @@ class MockRemote(RemoteStore):
 
     @classmethod
     def get_row_dirname_from_ids(
-        cls, ids: dict[ty.Union[str, DataSpace], str], hierarchy: list[str]
+        cls, ids: dict[ty.Union[str, DataSpace], str], hierarchy: ty.List[str]
     ):
         # Ensure that ID keys are strings not DataSpace enums
         ids = {str(f): i for f, i in ids.items()}
