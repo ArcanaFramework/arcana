@@ -181,7 +181,7 @@ class MockRemote(RemoteStore):
     def create_data_tree(
         self,
         id: str,
-        leaves: ty.List[tuple[str, ...]],
+        leaves: ty.List[ty.Tuple[str, ...]],
         hierarchy: ty.List[str],
         **kwargs,
     ):

@@ -325,7 +325,7 @@ class DirTree(LocalStore):
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
         return str(row_dir / self.FIELDS_FNAME) + "::" + path
 
-    def create_data_tree(self, id: str, leaves: ty.List[tuple[str, ...]], **kwargs):
+    def create_data_tree(self, id: str, leaves: ty.List[ty.Tuple[str, ...]], **kwargs):
         """creates a new empty dataset within in the store. Used in test routines and
         importing/exporting datasets between stores
 

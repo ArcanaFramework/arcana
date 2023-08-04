@@ -29,7 +29,7 @@ class DataTree(NestedContext):
 
     dataset: ty.Optional[Dataset] = None
     root: ty.Optional[DataRow] = None
-    _auto_ids: ty.Dict[tuple[str, ...], ty.Dict[str, int]] = attrs.field(
+    _auto_ids: ty.Dict[ty.Tuple[str, ...], ty.Dict[str, int]] = attrs.field(
         factory=auto_ids_default
     )
 
@@ -51,7 +51,7 @@ class DataTree(NestedContext):
 
     def add_leaf(
         self, tree_path, metadata: ty.Dict[str, ty.Dict[str, str]] = None
-    ) -> tuple[DataRow, ty.List[str]]:
+    ) -> ty.Tuple[DataRow, ty.List[str]]:
         """Creates a new row at a the path down the tree of the dataset as
         well as all "parent" rows upstream in the data tree
 

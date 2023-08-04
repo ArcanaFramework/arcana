@@ -306,7 +306,7 @@ class DataStore(metaclass=ABCMeta):
     def create_dataset(
         self,
         id: str,
-        leaves: ty.Iterable[tuple[str, ...]],
+        leaves: ty.Iterable[ty.Tuple[str, ...]],
         hierarchy: ty.List[str],
         space: type,
         name: ty.Optional[str] = None,
@@ -358,7 +358,7 @@ class DataStore(metaclass=ABCMeta):
         self,
         id: str,
         dataset: Dataset,
-        column_names: ty.Optional[ty.List[ty.Union[str, tuple[str, type]]]] = None,
+        column_names: ty.Optional[ty.List[ty.Union[str, ty.Tuple[str, type]]]] = None,
         hierarchy: ty.Optional[ty.List[str]] = None,
         id_patterns: ty.Optional[ty.Dict[str, str]] = None,
         use_original_paths: bool = False,
@@ -814,7 +814,7 @@ class DataStore(metaclass=ABCMeta):
     def create_data_tree(
         self,
         id: str,
-        leaves: ty.List[tuple[str, ...]],
+        leaves: ty.List[ty.Tuple[str, ...]],
         hierarchy: ty.List[str],
         space: type,
         **kwargs,

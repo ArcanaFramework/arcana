@@ -140,7 +140,7 @@ class SubanalysisSpec(BaseAttr):
     """Specifies a "sub-analysis" component, when composing an analysis of several
     predefined analyses"""
 
-    mappings: tuple[tuple[str, str], ...] = ()
+    mappings: ty.Tuple[ty.Tuple[str, str], ...] = ()
     # to name in subanalysis, from name in analysis class
 
     def mapping(self, name):

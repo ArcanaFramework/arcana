@@ -46,9 +46,9 @@ class DataRow:
     metadata: ty.Optional[dict] = None
 
     # Automatically populated fields
-    children: ty.Dict[DataSpace, ty.Dict[ty.Union[str, tuple[str]], str]] = attrs.field(
-        factory=dict, repr=False, init=False
-    )
+    children: ty.Dict[
+        DataSpace, ty.Dict[ty.Union[str, ty.Tuple[str]], str]
+    ] = attrs.field(factory=dict, repr=False, init=False)
     _entries_dict: ty.Dict[str, DataEntry] = attrs.field(
         default=None, init=False, repr=False
     )

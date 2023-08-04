@@ -1,6 +1,7 @@
 from __future__ import annotations
 from operator import itemgetter
 import pytest
+import typing as ty
 from fileformats.text import TextFile
 from arcana.core.exceptions import ArcanaUsageError
 from arcana.stdlib import DirTree, Clinical
@@ -142,7 +143,7 @@ TEST_INCLUSIONS = {
 
 @pytest.mark.parametrize("fixture", TEST_INCLUSIONS.items(), ids=itemgetter(0))
 def test_dataset_inclusion(
-    fixture: tuple[str, tuple[TestDatasetBlueprint, ty.List[str]]], work_dir
+    fixture: ty.Tuple[str, ty.Tuple[TestDatasetBlueprint, ty.List[str]]], work_dir
 ):
     test_name, (blueprint, expected) = fixture
     dataset_path = work_dir / test_name
