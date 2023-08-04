@@ -1,3 +1,5 @@
+import os
+import typing as ty
 from functools import reduce
 from operator import mul
 from pathlib import Path
@@ -6,13 +8,47 @@ from arcana.testing.data.blueprint import (
     TestDatasetBlueprint,
     FileSetEntryBlueprint as FileBP,
 )
-from arcana.testing.data import TestDataSpace
+import pydra.mark
 from fileformats.text import Plain as Text
 from fileformats.testing import EncodedText
+from fileformats.core.mark import converter
 from arcana.core.data.set import Dataset
 from arcana.stdlib import DirTree
+from arcana.testing.data import TestDataSpace
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.core.exceptions import ArcanaDataMatchError
+
+
+# Set up converter between text and encoded-text and back again
+@pytest.fixture
+def encoded_text_converter():
+    @converter(
+        source_format=EncodedText, target_format=Text, out_filename="out_file.txt"
+    )
+    @converter(
+        source_format=Text, target_format=EncodedText, out_filename="out_file.enc"
+    )
+    @pydra.mark.task
+    @pydra.mark.annotate({"return": {"out_file": Path}})
+    def encoder_task(
+        in_file: ty.Union[str, bytes, os.PathLike],
+        out_filename: str,
+        shift: int = 0,
+    ) -> Path:
+        def encode_text(text: str, shift: int) -> str:
+            encoded = []
+            for c in text:
+                encoded.append(chr(ord(c) + shift))
+            return "".join(encoded)
+
+        with open(in_file) as f:
+            contents = f.read()
+        encoded = encode_text(contents, shift)
+        with open(out_filename, "w") as f:
+            f.write(encoded)
+        return Path(out_filename).absolute()
+
+    return None
 
 
 def test_command_execute(concatenate_task, saved_dataset, work_dir):
@@ -209,7 +245,9 @@ def test_command_execute_on_row(cli_runner, work_dir):
     assert get_dataset_filenumbers() == [i + 10 for i in filenumbers]
 
 
-def test_command_execute_with_converter_args(saved_dataset: Dataset, work_dir: Path):
+def test_command_execute_with_converter_args(
+    saved_dataset: Dataset, work_dir: Path, encoded_text_converter
+):
     """Test passing arguments to file format converter tasks via input/output
     "qualifiers", e.g. 'converter.shift=3' using the arcana-run-pipeline CLI
     tool (as used in the XNAT CS commands)
