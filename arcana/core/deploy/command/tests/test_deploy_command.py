@@ -20,7 +20,7 @@ from arcana.core.exceptions import ArcanaDataMatchError
 
 
 # Set up converter between text and encoded-text and back again
-@pytest.fixture
+@pytest.fixture(scope="session")
 def encoded_text_converter():
     @converter(
         source_format=EncodedText, target_format=TextFile, out_filename="out_file.txt"
@@ -301,7 +301,7 @@ def test_command_execute_with_converter_args(
         dataset_hierarchy=",".join(bp.hierarchy),
         pipeline_name="test_pipeline",
     )
-    # Add source column to saved dataset
+    # Add sink column to saved dataset to access data created by the executed command spec
     saved_dataset.add_sink("sink1", EncodedText, path="encoded@")
     saved_dataset.add_sink("sink2", TextFile, path="decoded@")
     unencoded_contents = "file1.txt"

@@ -5,6 +5,7 @@ import typing as ty
 import attrs
 from pydra import mark, Workflow
 import fileformats.core
+from fileformats.generic import File
 import fileformats.text
 from arcana.core.data.row import DataRow
 
@@ -164,16 +165,13 @@ def plus_10_to_filenumbers(filenumber_row: DataRow) -> None:
         shutil.move(item.fspath, item.fspath.parent / (new_item_stem + item.actual_ext))
 
 
-T = ty.TypeVar("T")
-
-
 @mark.task
-def identity_file(in_file: T) -> T:
+def identity_file(in_file: File) -> File:
     return in_file
 
 
 @mark.task
-def identity(in_: T) -> T:
+def identity(in_):
     return in_
 
 
