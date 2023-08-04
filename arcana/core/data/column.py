@@ -172,7 +172,7 @@ class DataColumn(metaclass=ABCMeta):
         "that matched the datatype '{self.datatype.mime_like}'"
         if self.datatype is entry.datatype:
             return True
-        if not self.datatype.issubtype(entry.datatype):
+        if not issubclass(self.datatype, entry.datatype):
             return self._log_mismatch(
                 entry,
                 "required datatype '{}' is not a " "sub-type of '{}'",
