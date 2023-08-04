@@ -191,7 +191,7 @@ class DirTree(LocalStore):
         """
         fspath = self._fileset_fspath(entry)
         # Create target directory if it doesn't exist already
-        copied_fileset = fileset.copy_to(
+        copied_fileset = fileset.copy(
             dest_dir=fspath.parent,
             stem=fspath.name[: -len(fileset.ext)] if fileset.ext else fspath.name,
             make_dirs=True,
