@@ -178,9 +178,9 @@ class TestDatasetBlueprint:
     dim_lengths: ty.List[int]  # size of layers a-d respectively
     entries: ty.List[EntryBlueprint] = attrs.field(factory=list)
     derivatives: ty.List[EntryBlueprint] = attrs.field(factory=list)
-    id_patterns: dict[str, str] = attrs.field(factory=dict)
-    include: dict[str, ty.Union[str, ty.List[str]]] = attrs.field(factory=dict)
-    exclude: dict[str, ty.Union[str, ty.List[str]]] = attrs.field(factory=dict)
+    id_patterns: ty.Dict[str, str] = attrs.field(factory=dict)
+    include: ty.Dict[str, ty.Union[str, ty.List[str]]] = attrs.field(factory=dict)
+    exclude: ty.Dict[str, ty.Union[str, ty.List[str]]] = attrs.field(factory=dict)
 
     DEFAULT_NUM_ACCESS_ATTEMPTS = 300
     DEFAULT_ACCESS_ATTEMPT_INTERVAL = 1.0  # secs

@@ -110,7 +110,7 @@ class MockRemote(RemoteStore):
         ----------
         dataset_id: str
             The ID/path of the dataset within the store
-        definition: dict[str, Any]
+        definition: ty.Dict[str, Any]
             A dictionary containing the dct Dataset to be saved. The
             dictionary is in a format ready to be dumped to file as JSON or
             YAML.
@@ -138,7 +138,7 @@ class MockRemote(RemoteStore):
 
         Returns
         -------
-        definition: dict[str, Any]
+        definition: ty.Dict[str, Any]
             A dct Dataset object that was saved in the data store
         """
         self._check_connected()
@@ -162,7 +162,7 @@ class MockRemote(RemoteStore):
         """
         self.connected = False
 
-    def get_provenance(self, entry: DataEntry) -> dict[str, ty.Any]:
+    def get_provenance(self, entry: DataEntry) -> ty.Dict[str, ty.Any]:
         self._check_connected()
         prov_path = entry.uri.with_suffix(".json")
         if prov_path.exists():
@@ -172,7 +172,7 @@ class MockRemote(RemoteStore):
             provenance = None
         return provenance
 
-    def put_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+    def put_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
         self._check_connected()
         prov_path = entry.uri.with_suffix(".json")
         with open(prov_path, "w") as f:
@@ -265,7 +265,7 @@ class MockRemote(RemoteStore):
     def create_field_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
         return self._create_entry(path=path, datatype=datatype, row=row)
 
-    def get_checksums(self, uri: str) -> dict[str, str]:
+    def get_checksums(self, uri: str) -> ty.Dict[str, str]:
         """
         Downloads the checksum digests associated with the files in the file-set.
         These are saved with the downloaded files in the cache and used to
@@ -283,7 +283,7 @@ class MockRemote(RemoteStore):
             checksums = json.load(f)
         return checksums
 
-    def calculate_checksums(self, fileset: FileSet) -> dict[str, str]:
+    def calculate_checksums(self, fileset: FileSet) -> ty.Dict[str, str]:
         """
         Downloads the checksum digests associated with the files in the file-set.
         These are saved with the downloaded files in the cache and used to
@@ -344,7 +344,7 @@ class MockRemote(RemoteStore):
 
     @classmethod
     def get_row_dirname_from_ids(
-        cls, ids: dict[ty.Union[str, DataSpace], str], hierarchy: ty.List[str]
+        cls, ids: ty.Dict[ty.Union[str, DataSpace], str], hierarchy: ty.List[str]
     ):
         # Ensure that ID keys are strings not DataSpace enums
         ids = {str(f): i for f, i in ids.items()}

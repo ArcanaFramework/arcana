@@ -89,7 +89,7 @@ class DataEntry:
     )
     order: ty.Optional[int] = None
     quality: DataQuality = DataQuality.usable
-    checksums: dict[str, ty.Union[str, dict]] = attrs.field(
+    checksums: ty.Dict[str, ty.Union[str, dict]] = attrs.field(
         default=None, repr=False, eq=False
     )
 

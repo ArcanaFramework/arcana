@@ -524,7 +524,7 @@ def to_process(
     row_frequency: DataSpace,
     outputs: ty.List[PipelineField],
     requested_ids: ty.Union[ty.List[str], None],
-    parameterisation: dict[str, ty.Any],
+    parameterisation: ty.Dict[str, ty.Any],
 ):
     if requested_ids is None:
         requested_ids = dataset.row_ids(row_frequency)

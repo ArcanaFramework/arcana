@@ -216,7 +216,7 @@ class DirTree(LocalStore):
 
     def get_fileset_provenance(
         self, entry: DataEntry
-    ) -> ty.Union[dict[str, ty.Any], None]:
+    ) -> ty.Union[ty.Dict[str, ty.Any], None]:
         """Retrieves provenance associated with a file-set data entry
 
         Parameters
@@ -226,14 +226,16 @@ class DirTree(LocalStore):
 
         Returns
         -------
-        dict[str, ty.Any] or None
+        ty.Dict[str, ty.Any] or None
             the retrieved provenance or None if it doesn't exist
         """
         with open(self._fileset_prov_fspath(entry)) as f:
             provenance = json.load(f)
         return provenance
 
-    def put_fileset_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+    def put_fileset_provenance(
+        self, provenance: ty.Dict[str, ty.Any], entry: DataEntry
+    ):
         """Puts provenance associated with a file-set data entry into the store
 
         Parameters
@@ -248,7 +250,7 @@ class DirTree(LocalStore):
 
     def get_field_provenance(
         self, entry: DataEntry
-    ) -> ty.Union[dict[str, ty.Any], None]:
+    ) -> ty.Union[ty.Dict[str, ty.Any], None]:
         """Retrieves provenance associated with a field data entry
 
         Parameters
@@ -258,7 +260,7 @@ class DirTree(LocalStore):
 
         Returns
         -------
-        dict[str, ty.Any] or None
+        ty.Dict[str, ty.Any] or None
             the retrieved provenance or None if it doesn't exist
         """
         fspath, key = self._fields_prov_fspath_and_key(entry)
@@ -266,7 +268,7 @@ class DirTree(LocalStore):
             fields_provenance = json.load(f)
         return fields_provenance[key]
 
-    def put_field_provenance(self, provenance: dict[str, ty.Any], entry: DataEntry):
+    def put_field_provenance(self, provenance: ty.Dict[str, ty.Any], entry: DataEntry):
         """Puts provenance associated with a field data entry into the store
 
         Parameters

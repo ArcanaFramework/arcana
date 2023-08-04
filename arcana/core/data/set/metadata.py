@@ -82,7 +82,7 @@ class DatasetMetadata(Metadata):
         a description of the dataset
     type : str
         type of dataset, by default "derivative"
-    row_metadata : dict[str, dict[str, str]]
+    row_metadata : dict[str, ty.Dict[str, str]]
         a dictionary of dictionaries that map keys of metadata present in the rows of the
         dataset with a short description. The key of the outer dictionary is the frequency
         of the rows
@@ -105,7 +105,7 @@ class DatasetMetadata(Metadata):
     )
     description: str = attrs.field(default=DEFAULT_README)
     type: str = attrs.field(default="derivative", repr=False)
-    row_metadata: dict[str, dict[str, str]] = attrs.field(factory=dict)
+    row_metadata: ty.Dict[str, ty.Dict[str, str]] = attrs.field(factory=dict)
 
     @generated_by.default
     def generated_by_default(self):

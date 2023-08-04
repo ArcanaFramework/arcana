@@ -267,7 +267,7 @@ class DataSource(DataColumn):
     order: int = attrs.field(
         default=None, converter=lambda x: int(x) if x is not None else None
     )
-    required_metadata: dict[str, ty.Any] = attrs.field(default=None)
+    required_metadata: ty.Dict[str, ty.Any] = attrs.field(default=None)
     is_regex: bool = attrs.field(
         default=False,
         converter=lambda x: x.lower() == "true" if isinstance(x, str) else x,

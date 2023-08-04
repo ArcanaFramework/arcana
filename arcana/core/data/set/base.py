@@ -109,7 +109,7 @@ class Dataset:
     id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.DataStore = attrs.field()
     space: EnumMeta = attrs.field()
-    id_patterns: dict[str, str] = attrs.field(
+    id_patterns: ty.Dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
     hierarchy: ty.List[str] = attrs.field(converter=list)
@@ -118,20 +118,20 @@ class Dataset:
         converter=metadata_converter,
         repr=False,
     )
-    include: dict[str, ty.Union[ty.List[str], str]] = attrs.field(
+    include: ty.Dict[str, ty.Union[ty.List[str], str]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    exclude: dict[str, ty.Union[ty.List[str], str]] = attrs.field(
+    exclude: ty.Dict[str, ty.Union[ty.List[str], str]] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
     name: str = attrs.field(default="")
     columns: ty.Dict[str, DataColumn] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    pipelines: dict[str, Pipeline] = attrs.field(
+    pipelines: ty.Dict[str, Pipeline] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
-    analyses: dict[str, Analysis] = attrs.field(
+    analyses: ty.Dict[str, Analysis] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict), repr=False
     )
     tree: DataTree = attrs.field(factory=DataTree, init=False, repr=False, eq=False)
@@ -170,7 +170,7 @@ class Dataset:
             )
 
     @include.validator
-    def include_validator(self, _, include: dict[str, ty.Union[str, ty.List[str]]]):
+    def include_validator(self, _, include: ty.Dict[str, ty.Union[str, ty.List[str]]]):
         valid = set(str(f) for f in self.space)
         freqs = set(include)
         unrecognised = freqs - valid
@@ -182,7 +182,7 @@ class Dataset:
         self._validate_criteria(include, "inclusion")
 
     @exclude.validator
-    def exclude_validator(self, _, exclude: dict[str, ty.Union[str, ty.List[str]]]):
+    def exclude_validator(self, _, exclude: ty.Dict[str, ty.Union[str, ty.List[str]]]):
         valid = set(self.hierarchy)
         freqs = set(exclude)
         unrecognised = freqs - valid
@@ -824,7 +824,9 @@ class Dataset:
         )
         return File(column.match_entry(dataset.root).item)
 
-    def infer_ids(self, ids: dict[str, str], metadata: dict[str, dict[str, str]]):
+    def infer_ids(
+        self, ids: ty.Dict[str, str], metadata: ty.Dict[str, ty.Dict[str, str]]
+    ):
         return self.store.infer_ids(
             ids=ids, id_patterns=self.id_patterns, metadata=metadata
         )

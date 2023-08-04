@@ -217,7 +217,7 @@ class RemoteStore(DataStore):
         """
 
     @abstractmethod
-    def get_checksums(self, uri: str) -> dict[str, str]:
+    def get_checksums(self, uri: str) -> ty.Dict[str, str]:
         """
         Downloads the checksum digests associated with the files in the file-set.
         These are saved with the downloaded files in the cache and used to
@@ -230,7 +230,7 @@ class RemoteStore(DataStore):
         """
 
     @abstractmethod
-    def calculate_checksums(self, fileset: FileSet) -> dict[str, str]:
+    def calculate_checksums(self, fileset: FileSet) -> ty.Dict[str, str]:
         """
         Calculates the checksum digests associated with the files in the file-set.
         These checksums should match the cryptography method used by the remote store

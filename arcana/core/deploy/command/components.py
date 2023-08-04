@@ -65,7 +65,7 @@ class CommandField(PipelineField):
     """
 
     help_string: str
-    configuration: ty.Union[dict[str, ty.Any], bool] = attrs.field(factory=dict)
+    configuration: ty.Union[ty.Dict[str, ty.Any], bool] = attrs.field(factory=dict)
 
     @property
     def config_dict(self):

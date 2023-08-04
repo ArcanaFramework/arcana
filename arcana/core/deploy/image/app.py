@@ -51,7 +51,7 @@ class App(ArcanaImage):
         single line description to be when referring to the pipeline in UIs
     command : ContainerCommand
         description of the command that is to be run within the image
-    licenses : list[dict[str, str]], optional
+    licenses : list[ty.Dict[str, str]], optional
         specification of licenses required by the commands in the container. Each dict
         should contain the 'name' of the license and the 'destination' it should be
         installed inside the container.
@@ -216,7 +216,7 @@ class App(ArcanaImage):
         cls,
         yml: ty.Union[Path, dict],
         root_dir: ty.Optional[Path] = None,
-        license_paths: dict[str, Path] = None,
+        license_paths: ty.Dict[str, Path] = None,
         licenses_to_download: set[str] = None,
         **kwargs,
     ):

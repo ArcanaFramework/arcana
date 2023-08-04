@@ -49,7 +49,7 @@ class ArcanaImage:
     packages : arcana.core.deploy.image.components.Packages
         System (OS), PyPI, Conda and Neurodocker packages/templates to be installed
         in the image
-    package_templates : Iterable[dict[str, str]]
+    package_templates : Iterable[ty.Dict[str, str]]
         Neurodocker package installation templates to be installed inside the image. A
         dictionary containing the 'name' and 'version' of the template along
         with any additional keyword arguments required by the template
@@ -74,7 +74,7 @@ class ArcanaImage:
     org: ty.Optional[str] = None
     registry: str = DOCKER_HUB
     readme: ty.Optional[str] = None
-    labels: dict[str, str] = None
+    labels: ty.Dict[str, str] = None
 
     @property
     def reference(self):
@@ -325,7 +325,7 @@ class ArcanaImage:
         ----------
         dockerfile : DockerRenderer
             the neurodocker renderer to append the install instructions to
-        package_templates : Iterable[dict[str, str]]
+        package_templates : Iterable[ty.Dict[str, str]]
             Neurodocker installation package_templates to be installed inside the image. A
             dictionary containing the 'name' and 'version' of the template along
             with any additional keyword arguments required by the template

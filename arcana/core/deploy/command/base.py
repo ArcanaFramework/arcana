@@ -50,7 +50,7 @@ class ContainerCommand:
         outputs of the command
     parameters: ty.List[CommandParameter]
         parameters of the command
-    configuration: dict[str, ty.Any]
+    configuration: ty.Dict[str, ty.Any]
         constant values used to configure the task/workflow
     image: App
         back-reference to the image the command is installed in
@@ -78,7 +78,7 @@ class ContainerCommand:
         converter=ObjectListConverter(CommandParameter),
         metadata={"serializer": ObjectListConverter.asdict},
     )
-    configuration: dict[str, ty.Any] = attrs.field(
+    configuration: ty.Dict[str, ty.Any] = attrs.field(
         factory=dict, converter=default_if_none(dict)
     )
     image: ty.Optional[App] = None
@@ -149,9 +149,9 @@ class ContainerCommand:
     def execute(
         self,
         dataset_locator: str,
-        input_values: dict[str, str] = None,
-        output_values: dict[str, str] = None,
-        parameter_values: dict[str, ty.Any] = None,
+        input_values: ty.Dict[str, str] = None,
+        output_values: ty.Dict[str, str] = None,
+        parameter_values: ty.Dict[str, ty.Any] = None,
         work_dir: ty.Optional[Path] = None,
         ids: ty.List[str] = None,
         dataset_hierarchy: ty.Optional[str] = None,
