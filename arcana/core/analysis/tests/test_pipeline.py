@@ -1,7 +1,7 @@
 import zipfile
 import tempfile
 from pathlib import Path
-from fileformats.text import Plain as Text
+from fileformats.text import TextFile
 from fileformats.archive import Zip
 from arcana.testing import TestDataSpace
 from arcana.stdlib import DirTree
@@ -14,9 +14,9 @@ def test_pipeline(work_dir):
         DirTree(), work_dir / "dataset"
     )
 
-    dataset.add_source("file1", Text)
-    dataset.add_source("file2", Text)
-    dataset.add_sink("deriv", Text)
+    dataset.add_source("file1", TextFile)
+    dataset.add_source("file2", TextFile)
+    dataset.add_sink("deriv", TextFile)
 
     pipeline = dataset.apply_pipeline(
         name="test_pipeline",
@@ -38,21 +38,21 @@ def test_pipeline(work_dir):
 
 
 def test_pipeline_with_implicit_conversion(work_dir):
-    """Input files are converted from zip to Text, concatenated and then
+    """Input files are converted from zip to TextFile, concatenated and then
     written back as zip files into the data store"""
     dataset = TEST_DATASET_BLUEPRINTS["concatenate_zip_test"].make_dataset(
         DirTree(), work_dir / "dataset"
     )
 
-    dataset.add_source("file1", Zip[Text])
-    dataset.add_source("file2", Zip[Text])
-    dataset.add_sink("deriv", Zip[Text])
+    dataset.add_source("file1", Zip[TextFile])
+    dataset.add_source("file2", Zip[TextFile])
+    dataset.add_sink("deriv", Zip[TextFile])
 
     pipeline = dataset.apply_pipeline(
         name="test_pipeline",
         workflow=concatenate(duplicates=2, name="concatenate"),
-        inputs=[("file1", "in_file1", Text), ("file2", "in_file2", Text)],
-        outputs=[("deriv", "out_file", Text)],
+        inputs=[("file1", "in_file1", TextFile), ("file2", "in_file2", TextFile)],
+        outputs=[("deriv", "out_file", TextFile)],
         row_frequency=TestDataSpace.abcd,
     )
 

@@ -1,4 +1,3 @@
-from __future__ import annotations
 import os
 import attrs
 import typing as ty
@@ -246,9 +245,9 @@ class Pipeline:
         # Create the workflow that will be split across all rows for the
         # given data row_frequency
         wf.add(
-            Workflow(
-                name="per_row", input_spec=["id"], id=wf.to_process.lzout.ids
-            ).split("id")
+            Workflow(name="per_row", input_spec=["id"]).split(
+                id=wf.to_process.lzout.ids
+            )
         )
 
         # Automatically output interface for source node to include sourced
@@ -659,7 +658,9 @@ def access_paths_and_values(**data_items):
     values = []
     for name, item in data_items.items():
         if isinstance(item, FileSet):
-            cpy = item.copy(Path.cwd() / name, link_type="symbolic", make_dirs=True)
+            cpy = item.copy(
+                Path.cwd() / name, mode=FileSet.CopyMode.symlink, make_dirs=True
+            )
             values.append(cpy)
         elif isinstance(item, Field):
             values.append(item.value)

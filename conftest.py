@@ -240,7 +240,7 @@ def command_spec():
         "task": "arcana.testing.tasks:concatenate",
         "inputs": {
             "first_file": {
-                "datatype": "fileformats.text:Plain",
+                "datatype": "text/plain",
                 "field": "in_file1",
                 "default_column": {
                     "row_frequency": "stdlib:Samples[sample]",
@@ -248,7 +248,7 @@ def command_spec():
                 "help_string": "the first file to pass as an input",
             },
             "second_file": {
-                "datatype": "fileformats.text:Plain",
+                "datatype": "text/plain",
                 "field": "in_file2",
                 "default_column": {
                     "row_frequency": "stdlib:Samples[sample]",
@@ -258,7 +258,7 @@ def command_spec():
         },
         "outputs": {
             "concatenated": {
-                "datatype": "fileformats.text:Plain",
+                "datatype": "text/plain",
                 "field": "out_file",
                 "help_string": "an output file",
             }

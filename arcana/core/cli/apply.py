@@ -3,7 +3,7 @@ import typing as ty
 from arcana.core.data.set.base import Dataset
 from pydra.engine.core import TaskBase
 from arcana.core.utils.serialize import ClassResolver, parse_value
-from fileformats.core import DataType
+from fileformats.core.utils import from_mime
 from .base import cli
 
 
@@ -184,4 +184,4 @@ def apply_bids_app():
 
 
 def parse_col_option(option):
-    return [(c, p, ClassResolver(DataType)(f)) for c, p, f in option]
+    return [(c, p, from_mime(f)) for c, p, f in option]

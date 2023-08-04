@@ -14,6 +14,7 @@ from pathlib import PurePath, Path
 import logging
 import cloudpickle as cp
 import attrs
+from fileformats.core import from_mime
 from pydra.engine.core import Workflow, LazyField, TaskBase
 from pydra.engine.task import FunctionTask
 from arcana.core.exceptions import ArcanaUsageError
@@ -118,6 +119,8 @@ class ClassResolver:
         """
         if not isinstance(class_str, str):
             return class_str  # Assume that it is already resolved
+        if "/" in class_str:  # Assume mime-type/like string
+            return from_mime(class_str)
         if class_str.startswith("<") and class_str.endswith(">"):
             class_str = class_str[1:-1]
         try:

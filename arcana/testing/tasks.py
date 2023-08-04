@@ -159,7 +159,7 @@ def plus_10_to_filenumbers(filenumber_row: DataRow) -> None:
         the data row to modify
     """
     for entry in filenumber_row.entries:
-        item = fileformats.text.Plain(ty.cast(fileformats.core.FileSet, entry.item))
+        item = fileformats.text.TextFile(ty.cast(fileformats.core.FileSet, entry.item))
         new_item_stem = str(int(item.stem) + 10)
         shutil.move(item.fspath, item.fspath.parent / (new_item_stem + item.actual_ext))
 

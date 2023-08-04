@@ -193,8 +193,10 @@ class DirTree(LocalStore):
         # Create target directory if it doesn't exist already
         copied_fileset = fileset.copy(
             dest_dir=fspath.parent,
-            stem=fspath.name[: -len(fileset.ext)] if fileset.ext else fspath.name,
+            collation=fileset.CopyCollation.adjacent,
+            new_stem=fspath.name[: -len(fileset.ext)] if fileset.ext else fspath.name,
             make_dirs=True,
+            overwrite=True,
         )
         return copied_fileset
 
@@ -297,7 +299,7 @@ class DirTree(LocalStore):
         """
         path, dataset_name = DataEntry.split_dataset_name_from_path(path)
         row_dir = self._row_relpath(row, dataset_name=dataset_name)
-        return str(row_dir.joinpath(*path.split("/"))) + datatype.ext
+        return str(row_dir.joinpath(*path.split("/"))) + datatype.strext
 
     def field_uri(self, path: str, datatype: type, row: DataRow) -> str:
         """Returns the "uri" (e.g. file-system path relative to root dir) of a field
