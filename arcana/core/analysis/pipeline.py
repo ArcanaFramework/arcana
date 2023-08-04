@@ -2,7 +2,6 @@ import os
 import attrs
 import typing as ty
 from collections import OrderedDict
-from pathlib import Path
 import logging
 from copy import copy, deepcopy
 import attrs.converters
@@ -16,8 +15,7 @@ from arcana.core.exceptions import (
     ArcanaOutputNotProducedException,
     ArcanaDataMatchError,
 )
-from fileformats.core import DataType, FileSet
-from fileformats.field import Field
+from fileformats.core import DataType
 from fileformats.core.exceptions import FormatConversionError
 import arcana.core.data.set.base
 import arcana.core.data.row
@@ -612,40 +610,6 @@ def sink_items(dataset, row_frequency, id, provenance, **to_sink):
         for outpt_name, output in to_sink.items():
             row.cell(outpt_name).item = output
     return id
-
-
-def access_paths_and_values(**data_items):
-    """Copies files into the CWD renaming so the basenames match
-    except for extensions"""
-    logger.debug("Extracting paths/values from %s", data_items)
-    values = []
-    for name, item in data_items.items():
-        if isinstance(item, FileSet):
-            cpy = item.copy(
-                Path.cwd() / name, mode=FileSet.CopyMode.symlink, make_dirs=True
-            )
-            values.append(cpy)
-        elif isinstance(item, Field):
-            values.append(item.value)
-        else:
-            values.append(item)
-    return tuple(values) if len(values) > 1 else values[0]
-
-
-def encapsulate_paths_and_values(outputs, **kwargs):
-    """Copies files into the CWD renaming so the basenames match
-    except for extensions"""
-    logger.debug("Encapsulating %s into %s", kwargs, outputs)
-    items = []
-    for outpt in outputs:
-        val = kwargs[outpt.name]
-        items.append(outpt.datatype(val))
-    if len(items) > 1:
-        return tuple(items)
-    elif items:
-        return items[0]
-    else:
-        return None
 
 
 # Provenance mismatch detection methods salvaged from data.provenance
