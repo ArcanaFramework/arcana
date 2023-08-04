@@ -6,7 +6,7 @@ from pathlib import Path
 import attrs
 import time
 import yaml
-from fileformats.core.base import FileSet, Field
+from fileformats.core import FileSet, Field
 from arcana.core.data.store import RemoteStore
 from arcana.core.data.row import DataRow
 from arcana.core.data.tree import DataTree

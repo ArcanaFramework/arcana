@@ -4,7 +4,7 @@ from pydra import mark
 from pydra.engine.core import File
 from pydra.engine.specs import BaseSpec, SpecInfo
 from pydra.engine.task import FunctionTask
-from fileformats.core.base import DataType, FileSet
+from fileformats.core import DataType, FileSet
 from arcana.core.data.row import DataRow
 
 

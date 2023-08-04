@@ -4,7 +4,7 @@ from .base import cli
 from arcana.core.data.set.base import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.data.space import DataSpace
-from fileformats.core.base import DataType
+from fileformats.core import DataType
 from arcana.core.utils.serialize import ClassResolver
 
 

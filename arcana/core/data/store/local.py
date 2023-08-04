@@ -9,7 +9,7 @@ import json
 import attrs
 import yaml
 from fasteners import InterProcessLock
-from fileformats.core.base import DataType, FileSet, Field
+from fileformats.core import DataType, FileSet, Field
 from arcana.core.exceptions import (
     ArcanaMissingDataException,
     ArcanaUsageError,

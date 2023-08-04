@@ -17,7 +17,7 @@ from arcana.core.exceptions import (
     ArcanaOutputNotProducedException,
     ArcanaDataMatchError,
 )
-from fileformats.core.base import DataType, FileSet
+from fileformats.core import DataType, FileSet
 from fileformats.field import Field
 from fileformats.core.exceptions import FormatConversionError
 import arcana.core.data.set.base

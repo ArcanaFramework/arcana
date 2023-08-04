@@ -5,7 +5,7 @@ from pydra import ShellCommandTask
 import pydra.engine.specs
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
 from arcana.core.utils.serialize import ClassResolver, ObjectListConverter
-from fileformats.core.base import FileSet, DataType
+from fileformats.core import FileSet, DataType
 
 
 @attrs.define(kw_only=True)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import typing as ty
 import attrs
-from fileformats.core.base import DataType
+from fileformats.core import DataType
 from arcana.core.exceptions import ArcanaDataMatchError, ArcanaUsageError
 from .quality import DataQuality
 

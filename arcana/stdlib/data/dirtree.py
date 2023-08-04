@@ -6,7 +6,7 @@ import typing as ty
 import logging
 import json
 import attrs
-from fileformats.core.base import FileSet, Field
+from fileformats.core import FileSet, Field
 from arcana.core.exceptions import ArcanaUsageError
 from arcana.core.data.set.base import DataTree
 from arcana.core.data.row import DataRow
