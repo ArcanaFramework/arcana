@@ -62,13 +62,13 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source1",
-                "datatype": "text/plain",
+                "datatype": "text/text-file",
                 "field": "in_file1",
                 "help_string": "dummy",
             },
             {
                 "name": "source2",
-                "datatype": "text/plain",
+                "datatype": "text/text-file",
                 "field": "in_file2",
                 "help_string": "dummy",
             },
@@ -76,7 +76,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "text/plain",
+                "datatype": "text/text-file",
                 "field": "out_file",
                 "help_string": "dummy",
             }
@@ -135,7 +135,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         inputs=[
             {
                 "name": "source1",
-                "datatype": "text/plain",
+                "datatype": "text/text-file",
                 "field": "in_file1",
                 "help_string": "dummy",
             },
@@ -149,7 +149,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         outputs=[
             {
                 "name": "sink1",
-                "datatype": "text/plain",
+                "datatype": "text/text-file",
                 "field": "out_file",
                 "help_string": "dummy",
             }
@@ -263,7 +263,7 @@ def test_command_execute_with_converter_args(
             {
                 "name": "source",
                 "datatype": "testing/encoded-text",
-                "default_column": {"datatype": "text/plain"},
+                "default_column": {"datatype": "text/text-file"},
                 "field": "in_file",
                 "help_string": "dummy",
             },
@@ -278,7 +278,7 @@ def test_command_execute_with_converter_args(
             {
                 "name": "sink2",
                 "datatype": "testing/encoded-text",
-                "default_column": {"datatype": "text/plain"},
+                "default_column": {"datatype": "text/text-file"},
                 "field": "out",
                 "help_string": "dummy",
             },

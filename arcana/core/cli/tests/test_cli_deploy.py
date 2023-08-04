@@ -183,11 +183,11 @@ command:
   row_frequency: stdlib:Samples[sample]
   inputs:
     in_file:
-      datatype: text/plain
+      datatype: text/text-file
       help_string: the input file
   outputs:
     out_file:
-      datatype: text/plain
+      datatype: text/text-file
       help_string: the output file
     """.strip(),
         """
@@ -219,12 +219,12 @@ a test of the YAML join functionality
 #### Inputs
 |Name|Required data-type|Default column data-type|Description|
 |----|------------------|------------------------|-----------|
-|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|the input file|
+|`in_file`|<span data-toggle="tooltip" data-placement="bottom" title="text/text-file" aria-label="text/text-file">text/text-file</span>|<span data-toggle="tooltip" data-placement="bottom" title="text/text-file" aria-label="text/text-file">text/text-file</span>|the input file|
 
 #### Outputs
 |Name|Required data-type|Default column data-type|Description|
 |----|------------------|------------------------|-----------|
-|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|<span data-toggle="tooltip" data-placement="bottom" title="text/plain" aria-label="text/plain">text/plain</span>|the output file|
+|`out_file`|<span data-toggle="tooltip" data-placement="bottom" title="text/text-file" aria-label="text/text-file">text/text-file</span>|<span data-toggle="tooltip" data-placement="bottom" title="text/text-file" aria-label="text/text-file">text/text-file</span>|the output file|
 
 #### Parameters
 |Name|Data type|Description|

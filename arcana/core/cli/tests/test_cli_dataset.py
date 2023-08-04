@@ -44,7 +44,7 @@ def test_add_column_cli(saved_dataset: Dataset, cli_runner):
         [
             saved_dataset.locator,
             "a_source",
-            "text/plain",
+            "text/text-file",
             "--path",
             "file1",
             "--row-frequency",
@@ -70,7 +70,7 @@ def test_add_column_cli(saved_dataset: Dataset, cli_runner):
         [
             saved_dataset.locator,
             "a_sink",
-            "text/plain",
+            "text/text-file",
             "--path",
             "deriv",
             "--row-frequency",
