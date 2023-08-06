@@ -8,6 +8,7 @@ from operator import attrgetter
 from attrs.converters import optional
 from fileformats.core import DataType
 from fileformats.core.exceptions import FormatMismatchError
+from pydra.utils.hash import hash_single
 from arcana.core.exceptions import ArcanaDataMatchError
 from ..analysis.salience import ColumnSalience
 from .quality import DataQuality
@@ -221,6 +222,14 @@ class DataColumn(metaclass=ABCMeta):
     # Split a path into sections delimited by '/' or '.'
     path_split_re = re.compile(r"/|\.|@")
 
+    def __bytes_repr__(self, cache):
+        """For Pydra input hashing"""
+        yield f"{type(self).__module__}.{type(self).__name__}:".encode()
+        yield self.name.encode()
+        yield bytes(hash_single(self.datatype, cache))
+        yield bytes(hash_single(self.row_frequency, cache))
+        yield bytes(hash_single(self.path, cache))
+
 
 @attrs.define(kw_only=True)
 class DataSource(DataColumn):
@@ -354,6 +363,14 @@ class DataSource(DataColumn):
         else:
             return super().select_entry_from_matches(row, matches)
 
+    def __bytes_repr__(self, cache):
+        """For Pydra input hashing"""
+        yield from super().__bytes_repr__(cache)
+        yield bytes(hash_single(self.quality_threshold, cache))
+        yield bytes(hash_single(self.order, cache))
+        yield bytes(hash_single(self.required_metadata, cache))
+        yield bytes(hash_single(self.is_regex, cache))
+
 
 @attrs.define(kw_only=True)
 class DataSink(DataColumn):
@@ -416,3 +433,9 @@ class DataSink(DataColumn):
 
     def __setitem__(self, id, value: DataType):
         self.cell(id, allow_empty=True).item = value
+
+    def __bytes_repr__(self, cache):
+        """For Pydra input hashing"""
+        yield from super().__bytes_repr__(cache)
+        yield bytes(hash_single(self.salience, cache))
+        yield bytes(hash_single(self.pipeline_name, cache))

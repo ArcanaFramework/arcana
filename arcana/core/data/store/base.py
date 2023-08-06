@@ -638,6 +638,11 @@ class DataStore(metaclass=ABCMeta):
                 inferred_ids[freq] = inferred_id
         return inferred_ids
 
+    def __bytes_repr__(self, cache):
+        """Bytes representation of store to be used in Pydra input hashing"""
+        yield type(self).__module__.encode()
+        yield type(self).__name__.encode()
+
     ####################
     # Abstract methods #
     ####################
