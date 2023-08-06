@@ -175,7 +175,7 @@ class TestDatasetBlueprint:
 
     space: ty.Type[DataSpace]
     hierarchy: ty.List[str]
-    dim_lengths: ty.List[int]  # size of layers a-d respectively
+    dim_lengths: ty.List[int] = attrs.field()  # size of layers a-d respectively
     entries: ty.List[EntryBlueprint] = attrs.field(factory=list)
     derivatives: ty.List[EntryBlueprint] = attrs.field(factory=list)
     id_patterns: ty.Dict[str, str] = attrs.field(factory=dict)

@@ -35,8 +35,6 @@ from ..utils.serialize import (
     ObjectListConverter,
 )
 
-if ty.TYPE_CHECKING:
-    from arcana.core.data.set import Dataset
 
 logger = logging.getLogger("arcana")
 
@@ -446,7 +444,7 @@ class Pipeline:
         return fromdict(dct, workflow=pydra_fromdict(dct["workflow"]), **kwargs)
 
     @classmethod
-    def stack(cls, dataset: Dataset, *sinks):
+    def stack(cls, dataset: arcana.core.data.set.base.Dataset, *sinks):
         """Determines the pipelines stack, in order of execution,
         required to generate the specified sink columns, applying pipelines defined in
         analyses where required.
