@@ -10,7 +10,7 @@ from fileformats.generic import Directory
 from arcana.core.utils.misc import show_cli_trace
 from arcana.testing.data.blueprint import TEST_DATASET_BLUEPRINTS
 from arcana.testing.data import MockRemote
-from arcana.stdlib import DirTree
+from arcana.common import DirTree
 
 
 ARBITRARY_INTS_A = [234221, 93380, 43271, 137483, 30009, 214205, 363526]

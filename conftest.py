@@ -22,7 +22,7 @@ from arcana.testing.data.blueprint import (
     GOOD_DATASETS,
 )
 from arcana.testing import TestDataSpace, MockRemote
-from arcana.stdlib import DirTree
+from arcana.common import DirTree
 
 # from pydra import set_input_validator
 
@@ -243,7 +243,7 @@ def command_spec():
                 "datatype": "text/text-file",
                 "field": "in_file1",
                 "default_column": {
-                    "row_frequency": "stdlib:Samples[sample]",
+                    "row_frequency": "common:Samples[sample]",
                 },
                 "help_string": "the first file to pass as an input",
             },
@@ -251,7 +251,7 @@ def command_spec():
                 "datatype": "text/text-file",
                 "field": "in_file2",
                 "default_column": {
-                    "row_frequency": "stdlib:Samples[sample]",
+                    "row_frequency": "common:Samples[sample]",
                 },
                 "help_string": "the second file to pass as an input",
             },
@@ -272,7 +272,7 @@ def command_spec():
                 "help_string": "a parameter",
             }
         },
-        "row_frequency": "stdlib:Samples[sample]",
+        "row_frequency": "common:Samples[sample]",
     }
 
 

@@ -11,7 +11,7 @@ from arcana.core.data.set.base import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.data.entry import DataEntry
 from arcana.core.utils.serialize import asdict
-from arcana.stdlib import DirTree
+from arcana.common import DirTree
 from arcana.testing.data.blueprint import (
     TestDatasetBlueprint,
     FileSetEntryBlueprint as FileBP,

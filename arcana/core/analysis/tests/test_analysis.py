@@ -3,7 +3,7 @@ import tempfile
 import attrs
 import pytest
 import pydra
-from arcana.stdlib import Samples
+from arcana.common import Samples
 from arcana.testing.tasks import (
     concatenate,
     concatenate_reverse,
@@ -27,7 +27,7 @@ from arcana.core.analysis.mark import (
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
 from fileformats.text import TextFile
 from fileformats.archive import Zip
-from arcana.stdlib import DirTree
+from arcana.common import DirTree
 from arcana.core.analysis.salience import (
     CheckStatus,
     ColumnSalience as cs,

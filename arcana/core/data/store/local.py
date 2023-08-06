@@ -322,7 +322,7 @@ class LocalStore(DataStore):
         try:
             dataset = self.load_dataset(dataset_root)
         except KeyError:
-            from arcana.stdlib import Samples
+            from arcana.common import Samples
 
             dataset = self.define_dataset(dataset_root, space=Samples)
         return dataset

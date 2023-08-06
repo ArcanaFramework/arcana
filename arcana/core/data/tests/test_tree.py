@@ -4,7 +4,7 @@ import pytest
 import typing as ty
 from fileformats.text import TextFile
 from arcana.core.exceptions import ArcanaUsageError
-from arcana.stdlib import DirTree, Clinical
+from arcana.common import DirTree, Clinical
 from arcana.testing.data.blueprint import TestDatasetBlueprint, FileSetEntryBlueprint
 from arcana.testing.data.space import TestDataSpace
 
