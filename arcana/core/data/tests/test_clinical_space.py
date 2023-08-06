@@ -1,4 +1,4 @@
-from arcana.stdlib import Clinical
+from arcana.common import Clinical
 
 
 def test_is_parent():

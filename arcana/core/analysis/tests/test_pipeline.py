@@ -4,7 +4,7 @@ from pathlib import Path
 from fileformats.text import TextFile
 from fileformats.archive import Zip
 from arcana.testing import TestDataSpace
-from arcana.stdlib import DirTree
+from arcana.common import DirTree
 from conftest import TEST_DATASET_BLUEPRINTS
 from arcana.testing.tasks import concatenate
 

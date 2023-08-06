@@ -13,7 +13,7 @@ from fileformats.text import TextFile
 from fileformats.testing import EncodedText
 from fileformats.core.mark import converter
 from arcana.core.data.set import Dataset
-from arcana.stdlib import DirTree
+from arcana.common import DirTree
 from arcana.testing.data import TestDataSpace
 from arcana.core.deploy.command.base import ContainerCommand
 from arcana.core.exceptions import ArcanaDataMatchError
