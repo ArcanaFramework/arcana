@@ -71,7 +71,9 @@ class RemoteStore(DataStore):
     def __bytes_repr__(self, cache):
         yield from super().__bytes_repr__(cache)
         yield self.server.encode()
-        yield self.cache_dir.encode()
+        yield str(self.cache_dir).encode()
+        yield self.user.encode()
+        yield self.password.encode()
 
     ####################
     # Attrs validators #
