@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" />
 
     <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>arcana.core.data.set.base - Arcana v0.10.2</title>
+        <title>arcana.core.data.set.base - Arcana v0.10.3</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../../index.html"><div class="brand">Arcana v0.10.2</div></a>
+      <a href="../../../../../index.html"><div class="brand">Arcana v0.10.3</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.2</span>
+  <span class="sidebar-brand-text">Arcana v0.10.3</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -1056,9 +1056,7 @@
         <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">include</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
         <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exclude</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
         <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
-        <span class="k">yield from</span> <span class="n">bytes_repr_mapping_contents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
-        <span class="k">yield from</span> <span class="n">bytes_repr_mapping_contents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pipelines</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
-        <span class="k">yield from</span> <span class="n">bytes_repr_mapping_contents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">analyses</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span></div>
+        <span class="k">yield from</span> <span class="n">bytes_repr_mapping_contents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span></div>
 
 
 <span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span>
@@ -1103,7 +1101,7 @@
       
     </aside>
   </div>
-</div><script data-url_root="../../../../../" id="documentation_options" src="../../../../../_static/documentation_options.js?v=69c39844"></script>
+</div><script data-url_root="../../../../../" id="documentation_options" src="../../../../../_static/documentation_options.js?v=cdbb1c5d"></script>
     <script src="../../../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../../../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../../../../../_static/scripts/furo.js?v=32e29ea5"></script>
