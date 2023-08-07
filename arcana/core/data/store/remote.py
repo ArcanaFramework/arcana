@@ -68,6 +68,13 @@ class RemoteStore(DataStore):
     SITE_LICENSES_USER_ENV = "ARCANA_SITE_LICENSE_USER"
     SITE_LICENSES_PASS_ENV = "ARCANA_SITE_LICENSE_PASS"
 
+    def __bytes_repr__(self, cache):
+        yield from super().__bytes_repr__(cache)
+        yield self.server.encode()
+        yield str(self.cache_dir).encode()
+        yield self.user.encode() if self.user else b"None"
+        yield self.password.encode() if self.user else b"None"
+
     ####################
     # Attrs validators #
     ####################

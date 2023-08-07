@@ -4,10 +4,10 @@ import re
 import typing as ty
 from pathlib import Path
 import shutil
-from enum import EnumMeta
 import attrs
 import attrs.filters
 from attrs.converters import default_if_none
+from pydra.utils.hash import hash_single, bytes_repr_mapping_contents
 from fileformats.generic import File
 from arcana.core.exceptions import (
     ArcanaDataMatchError,
@@ -19,6 +19,7 @@ from arcana.core.exceptions import (
 from ..column import DataColumn, DataSink, DataSource
 from .. import store as datastore
 from ..tree import DataTree
+from ..space import DataSpace
 from .metadata import DatasetMetadata, metadata_converter
 
 
@@ -108,7 +109,7 @@ class Dataset:
 
     id: str = attrs.field(converter=str, metadata={"asdict": False})
     store: datastore.DataStore = attrs.field()
-    space: EnumMeta = attrs.field()
+    space: ty.Type[DataSpace] = attrs.field()
     id_patterns: ty.Dict[str, str] = attrs.field(
         factory=dict, converter=default_if_none(factory=dict)
     )
@@ -830,6 +831,19 @@ class Dataset:
         return self.store.infer_ids(
             ids=ids, id_patterns=self.id_patterns, metadata=metadata
         )
+
+    def __bytes_repr__(self, cache):
+        """For Pydra input hashing"""
+        yield f"{type(self).__module__}.{type(self).__name__}(".encode()
+        yield self.id.encode()
+        yield bytes(hash_single(self.store, cache))
+        yield bytes(hash_single(self.space, cache))
+        yield bytes(hash_single(self.include, cache))
+        yield bytes(hash_single(self.exclude, cache))
+        yield self.name.encode()
+        yield from bytes_repr_mapping_contents(self.columns, cache)
+        yield from bytes_repr_mapping_contents(self.pipelines, cache)
+        yield from bytes_repr_mapping_contents(self.analyses, cache)
 
 
 @attrs.define
