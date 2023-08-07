@@ -842,8 +842,6 @@ class Dataset:
         yield bytes(hash_single(self.exclude, cache))
         yield self.name.encode()
         yield from bytes_repr_mapping_contents(self.columns, cache)
-        yield from bytes_repr_mapping_contents(self.pipelines, cache)
-        yield from bytes_repr_mapping_contents(self.analyses, cache)
 
 
 @attrs.define

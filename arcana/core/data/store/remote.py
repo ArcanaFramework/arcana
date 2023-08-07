@@ -72,8 +72,8 @@ class RemoteStore(DataStore):
         yield from super().__bytes_repr__(cache)
         yield self.server.encode()
         yield str(self.cache_dir).encode()
-        yield self.user.encode() if self.user else b"None"
-        yield self.password.encode() if self.user else b"None"
+        yield self.user.encode() if self.user else b"\x00"
+        yield self.password.encode() if self.user else b"\x00"
 
     ####################
     # Attrs validators #
