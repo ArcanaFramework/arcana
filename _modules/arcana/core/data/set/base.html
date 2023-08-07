@@ -5,8 +5,8 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" />
 
     <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>arcana.core.data.set.base - Arcana v0.10.1</title>
-      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=53e15035" />
+        <title>arcana.core.data.set.base - Arcana v0.10.2</title>
+      <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?v=36a5483c" />
     
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../../index.html"><div class="brand">Arcana v0.10.1</div></a>
+      <a href="../../../../../index.html"><div class="brand">Arcana v0.10.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.1</span>
+  <span class="sidebar-brand-text">Arcana v0.10.2</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -219,10 +219,10 @@
 <span class="kn">import</span> <span class="nn">typing</span> <span class="k">as</span> <span class="nn">ty</span>
 <span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
-<span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">EnumMeta</span>
 <span class="kn">import</span> <span class="nn">attrs</span>
 <span class="kn">import</span> <span class="nn">attrs.filters</span>
 <span class="kn">from</span> <span class="nn">attrs.converters</span> <span class="kn">import</span> <span class="n">default_if_none</span>
+<span class="kn">from</span> <span class="nn">pydra.utils.hash</span> <span class="kn">import</span> <span class="n">hash_single</span><span class="p">,</span> <span class="n">bytes_repr_mapping_contents</span>
 <span class="kn">from</span> <span class="nn">fileformats.generic</span> <span class="kn">import</span> <span class="n">File</span>
 <span class="kn">from</span> <span class="nn">arcana.core.exceptions</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">ArcanaDataMatchError</span><span class="p">,</span>
@@ -234,6 +234,7 @@
 <span class="kn">from</span> <span class="nn">..column</span> <span class="kn">import</span> <span class="n">DataColumn</span><span class="p">,</span> <span class="n">DataSink</span><span class="p">,</span> <span class="n">DataSource</span>
 <span class="kn">from</span> <span class="nn">..</span> <span class="kn">import</span> <span class="n">store</span> <span class="k">as</span> <span class="n">datastore</span>
 <span class="kn">from</span> <span class="nn">..tree</span> <span class="kn">import</span> <span class="n">DataTree</span>
+<span class="kn">from</span> <span class="nn">..space</span> <span class="kn">import</span> <span class="n">DataSpace</span>
 <span class="kn">from</span> <span class="nn">.metadata</span> <span class="kn">import</span> <span class="n">DatasetMetadata</span><span class="p">,</span> <span class="n">metadata_converter</span>
 
 
@@ -323,7 +324,7 @@
 
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;asdict&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
     <span class="n">store</span><span class="p">:</span> <span class="n">datastore</span><span class="o">.</span><span class="n">DataStore</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
-    <span class="n">space</span><span class="p">:</span> <span class="n">EnumMeta</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
+    <span class="n">space</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Type</span><span class="p">[</span><span class="n">DataSpace</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">()</span>
     <span class="n">id_patterns</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span>
         <span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">,</span> <span class="n">converter</span><span class="o">=</span><span class="n">default_if_none</span><span class="p">(</span><span class="n">factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
     <span class="p">)</span>
@@ -1044,7 +1045,20 @@
     <span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">infer_ids</span><span class="p">(</span>
             <span class="n">ids</span><span class="o">=</span><span class="n">ids</span><span class="p">,</span> <span class="n">id_patterns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">id_patterns</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span>
-        <span class="p">)</span></div>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__bytes_repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;For Pydra input hashing&quot;&quot;&quot;</span>
+        <span class="k">yield</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">(&quot;</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">include</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">exclude</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="k">yield from</span> <span class="n">bytes_repr_mapping_contents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
+        <span class="k">yield from</span> <span class="n">bytes_repr_mapping_contents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pipelines</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span>
+        <span class="k">yield from</span> <span class="n">bytes_repr_mapping_contents</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">analyses</span><span class="p">,</span> <span class="n">cache</span><span class="p">)</span></div>
 
 
 <span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span>
@@ -1089,7 +1103,7 @@
       
     </aside>
   </div>
-</div><script data-url_root="../../../../../" id="documentation_options" src="../../../../../_static/documentation_options.js?v=5e3b122e"></script>
+</div><script data-url_root="../../../../../" id="documentation_options" src="../../../../../_static/documentation_options.js?v=69c39844"></script>
     <script src="../../../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../../../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../../../../../_static/scripts/furo.js?v=32e29ea5"></script>

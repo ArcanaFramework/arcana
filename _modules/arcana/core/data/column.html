@@ -5,8 +5,8 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../genindex.html" /><link rel="search" title="Search" href="../../../../search.html" />
 
     <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>arcana.core.data.column - Arcana v0.10.1</title>
-      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=53e15035" />
+        <title>arcana.core.data.column - Arcana v0.10.2</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo-extensions.css?v=36a5483c" />
     
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../index.html"><div class="brand">Arcana v0.10.1</div></a>
+      <a href="../../../../index.html"><div class="brand">Arcana v0.10.2</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.1</span>
+  <span class="sidebar-brand-text">Arcana v0.10.2</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -223,6 +223,7 @@
 <span class="kn">from</span> <span class="nn">attrs.converters</span> <span class="kn">import</span> <span class="n">optional</span>
 <span class="kn">from</span> <span class="nn">fileformats.core</span> <span class="kn">import</span> <span class="n">DataType</span>
 <span class="kn">from</span> <span class="nn">fileformats.core.exceptions</span> <span class="kn">import</span> <span class="n">FormatMismatchError</span>
+<span class="kn">from</span> <span class="nn">pydra.utils.hash</span> <span class="kn">import</span> <span class="n">hash_single</span>
 <span class="kn">from</span> <span class="nn">arcana.core.exceptions</span> <span class="kn">import</span> <span class="n">ArcanaDataMatchError</span>
 <span class="kn">from</span> <span class="nn">..analysis.salience</span> <span class="kn">import</span> <span class="n">ColumnSalience</span>
 <span class="kn">from</span> <span class="nn">.quality</span> <span class="kn">import</span> <span class="n">DataQuality</span>
@@ -436,6 +437,14 @@
     <span class="c1"># Split a path into sections delimited by &#39;/&#39; or &#39;.&#39;</span>
     <span class="n">path_split_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;/|\.|@&quot;</span><span class="p">)</span>
 
+    <span class="k">def</span> <span class="nf">__bytes_repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;For Pydra input hashing&quot;&quot;&quot;</span>
+        <span class="k">yield</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__module__</span><span class="si">}</span><span class="s2">.</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">:&quot;</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">datatype</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">row_frequency</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+
 
 <div class="viewcode-block" id="DataSource"><a class="viewcode-back" href="../../../../api.html#arcana.core.data.column.DataSource">[docs]</a><span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">DataSource</span><span class="p">(</span><span class="n">DataColumn</span><span class="p">):</span>
@@ -567,7 +576,15 @@
                     <span class="s2">&quot;(starting from 1), found:&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_format_matches</span><span class="p">(</span><span class="n">matches</span><span class="p">)</span>
                 <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">select_entry_from_matches</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">matches</span><span class="p">)</span></div>
+            <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">select_entry_from_matches</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">matches</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__bytes_repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;For Pydra input hashing&quot;&quot;&quot;</span>
+        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__bytes_repr__</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">quality_threshold</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">order</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">required_metadata</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">is_regex</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="DataSink"><a class="viewcode-back" href="../../../../api.html#arcana.core.data.column.DataSink">[docs]</a><span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -630,7 +647,13 @@
         <span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">id</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">DataType</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">allow_empty</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">item</span> <span class="o">=</span> <span class="n">value</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">allow_empty</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">item</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="nf">__bytes_repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;For Pydra input hashing&quot;&quot;&quot;</span>
+        <span class="k">yield from</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__bytes_repr__</span><span class="p">(</span><span class="n">cache</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">salience</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span>
+        <span class="k">yield</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">hash_single</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pipeline_name</span><span class="p">,</span> <span class="n">cache</span><span class="p">))</span></div>
 </pre></div>
         </article>
       </div>
@@ -663,7 +686,7 @@
       
     </aside>
   </div>
-</div><script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js?v=5e3b122e"></script>
+</div><script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js?v=69c39844"></script>
     <script src="../../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../../../../_static/scripts/furo.js?v=32e29ea5"></script>
