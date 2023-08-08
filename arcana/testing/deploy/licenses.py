@@ -5,12 +5,14 @@ from arcana.common import DirTree, Samples
 
 def get_pipeline_image(license_path, app_cls=App) -> App:
     return app_cls(
+        title="A test of the license installation",
         name="to_be_overridden",
         org=ORG,
         version="1.0",
         authors=[{"name": "Some One", "email": "some.one@an.email.org"}],
-        info_url="http://concatenate.readthefakedocs.io",
-        title="A test of the license installation",
+        docs={
+            "info_url": "http://concatenate.readthefakedocs.io",
+        },
         readme="This is a test README",
         packages={
             "pip": ["fileformats"],
