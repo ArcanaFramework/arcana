@@ -10,7 +10,7 @@ def get_pipeline_image(license_path, app_cls=App) -> App:
         version="1.0",
         authors=[{"name": "Some One", "email": "some.one@an.email.org"}],
         info_url="http://concatenate.readthefakedocs.io",
-        description="A test of the license installation",
+        title="A test of the license installation",
         readme="This is a test README",
         packages={
             "pip": ["fileformats"],
