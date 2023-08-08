@@ -46,7 +46,7 @@ def get_pipeline_image(license_path, app_cls=App) -> App:
             "parameters": [
                 {
                     "name": LICENSE_PATH_PARAM,
-                    "datatype": "str",
+                    "datatype": "field/text",
                     "field": "expected_license_path",
                     "required": True,
                     "help": "the expected contents of the license file",
