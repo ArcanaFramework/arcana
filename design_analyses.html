@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="New formats and spaces" href="adding_formats.html" /><link rel="prev" title="Contributing" href="contributing.html" />
 
     <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>Designing Analyses - Arcana v0.10.4</title>
+        <title>Designing Analyses - Arcana v0.10.5</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.10.4</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.10.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.4</span>
+  <span class="sidebar-brand-text">Arcana v0.10.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -246,7 +246,7 @@ in the <code class="docutils literal notranslate"><span class="pre">desc</span><
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@analysis</span><span class="p">(</span><span class="n">ExampleDataSpace</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">ExampleAnalysis</span><span class="p">():</span>
 
-    <span class="n">recorded_datafile</span><span class="p">:</span> <span class="n">Zip</span><span class="p">[</span><span class="n">Text</span><span class="p">]</span>  <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+    <span class="n">recorded_datafile</span><span class="p">:</span> <span class="n">DatFile</span>  <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
         <span class="n">desc</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Datafile acquired from an example scanner. Contains key &quot;</span>
               <span class="s2">&quot;data to analyse&quot;</span><span class="p">))</span>
     <span class="n">recorded_metadata</span><span class="p">:</span> <span class="n">Json</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
@@ -255,7 +255,7 @@ in the <code class="docutils literal notranslate"><span class="pre">desc</span><
         <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Preprocessed data file, corrected for distortions&quot;</span><span class="p">)</span>
     <span class="n">derived_image</span><span class="p">:</span> <span class="n">Png</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
         <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;Map of the processed data&quot;</span><span class="p">)</span>
-    <span class="n">summary_metric</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
+    <span class="n">summary_metric</span><span class="p">:</span> <span class="n">field</span><span class="o">.</span><span class="n">Decimal</span> <span class="o">=</span> <span class="n">column</span><span class="p">(</span>
         <span class="n">desc</span><span class="o">=</span><span class="s2">&quot;A summary metric extracted from the derived image&quot;</span><span class="p">,</span>
         <span class="n">row_frequency</span><span class="o">=</span><span class="s1">&#39;dataset&#39;</span><span class="p">)</span>
 </pre></div>
@@ -328,7 +328,7 @@ For file formats with side cars, lazy-field pointers to side car
 files can be accessed as attributes of the primary <code class="docutils literal notranslate"><span class="pre">LazyField</span></code>, e.g.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">fileformats.field</span> <span class="kn">import</span> <span class="n">Decimal</span>
 <span class="kn">from</span> <span class="nn">fileformats.medimage</span> <span class="kn">import</span> <span class="n">DicomCollection</span>
-<span class="kn">from</span> <span class="nn">arcana.medimage.data</span> <span class="kn">import</span> <span class="n">Clinical</span>
+<span class="kn">from</span> <span class="nn">arcana.common</span> <span class="kn">import</span> <span class="n">Clinical</span>
 <span class="kn">from</span> <span class="nn">arcana.core</span> <span class="kn">import</span> <span class="n">mark</span>
 <span class="kn">from</span> <span class="nn">arcana.core.tasks.misc</span> <span class="kn">import</span> <span class="n">ExtractFromJson</span>
 <span class="kn">from</span> <span class="nn">arcana.core.data.salience</span> <span class="kn">import</span> <span class="n">ColumnSalience</span> <span class="k">as</span> <span class="n">ds</span>
@@ -879,7 +879,7 @@ and then back into the <code class="docutils literal notranslate"><span class="p
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=06328c90"></script>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=a24a0889"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>

@@ -27,10 +27,10 @@ remote repository, but also how the data are accessed, e.g. whether to assume th
 they are in BIDS format, or whether files in an XNAT archive mount can be
 accessed directly (i.e. as exposed to the container service), or only via the API.
 
-There are four data store classes in the :mod:`arcana.dirtree.data`
-and :mod:`arcana.medimage.data` arcana sub-packages:
+There are currently four supported store classes in the main, `arcana-bids` and `arcana-xnat`
+packages
 
-* :class:`.SimpleStore` - access data organised within an arbitrary directory tree on the file system
+* :class:`.DirTree` - access data organised within an arbitrary directory tree on the file system
 * :class:`.Bids` - access data on file systems organised in the `Brain Imaging Data Structure (BIDS) <https://bids.neuroimaging.io/>`__
 * :class:`.Xnat` - access data stored in XNAT_ repositories vi its REST API
 * :class:`.XnatViaCS` - access data stored in XNAT_ via its `container service <https://wiki.xnat.org/container-service/using-the-container-service-122978908.html>`_
@@ -39,9 +39,9 @@ For instructions on how to add support for new systems see :ref:`alternative_sto
 
 To configure access to a store via the CLI use the ':ref:`arcana store add`' command.
 The store type is specified by the path to the data store sub-class,
-*<module-path>:<class-name>*,  e.g. ``arcana.xnat.data:Xnat``.
-However, if the store is in a submodule of ``arcana.data.stores`` then that
-prefix can be dropped for convenience, e.g. ``mediamge:Xnat``.
+*<module-path>:<class-name>*,  e.g. ``arcana.xnat:Xnat``.
+However, if the store is in a submodule of ``arcana`` then that
+prefix can be dropped for convenience, e.g. ``xnat:Xnat``.
 
 .. code-block:: console
 
@@ -68,7 +68,7 @@ data store classes directly.
 .. code-block:: python
 
     import os
-    from arcana.medimage.data import Xnat
+    from arcana.xnat import Xnat
 
     # Initialise the data store object
     xnat_store = Xnat(
@@ -208,30 +208,22 @@ corresponding to *MYXNATPROJECT*
 
 .. _data_formats:
 
-Items
+Entries
 -----
 
-Atomic items within a dataset are encapsulated by :class:`DataType` objects.
-There are three types of data items:
+Atomic entries within a dataset contain either file-based data or text/numeric fields.
+In Arcana, these data items are represented using `fileformats <https://arcanaframework.github.io/fileformats/>`__
+classes, :class:`.FileSet`, (i.e. single files, files + header/side-cars or directories)
+and :class:`.Field` (e.g. integer, decimal, text, boolean, or arrays thereof), respectively.
 
-* :class:`.FileSet` (single files, files + header/side-cars or directories)
-* :class:`.Field` (int, float, str or bool)
-* :class:`.ArrayField` (an array of int, float, str or bool)
+:class:`.FileSet` is typically subclassed to specify the file formats of the
+files/directories in the data items. For example, some common used standard types are
 
-Instead of holding the data directly, data items reference files and
-fields stored in the data store. Before data in remote stores
-are accessed they need to be cached locally with :meth:`.DataType.get`.
-Newly created and modified data items are placed into the store with
-:meth:`.DataType.put`.
-
-:class:`.FileSet` is typically subclassed to specify the datatype of the
-files/directories in the group. For example, there are a number common file
-formats implemented in :mod:`arcana.dirtree.data`, including
-
-* :class:`.dirtree.Text`
-* :class:`.dirtree.Zip`
-* :class:`.dirtree.Json`
-* :class:`.dirtree.Directory`
+* :class:`.fileformats.text.Plain`
+* :class:`.fileformats.application.Zip`
+* :class:`.fileformats.application.Json`
+* :class:`.fileformats.generic.File`
+* :class:`.fileformats.generic.Directory`
 
 File-group classes specify the extensions of the expected files/directories,
 converters from alternative file formats, and may
@@ -242,10 +234,11 @@ Arcana will automatically run the conversion between the format required by
 a pipeline and that stored in the data store. See :ref:`adding_formats` for detailed
 instructions on how to specify new file formats and converters between them.
 
-As with data stores, file formats are specified in the CLI by *<module-path>:<class-name>*,
-e.g. ``arcana.dirtree.data:Text``. However, if the datatype is in a submodule of
-``arcana.data.types`` then that prefix can be dropped for convenience,
-e.g. ``text/plain``.
+File format can be specified in the CLI using their `MIME-type <https://www.iana.org/assignments/media-types/media-types.xhtml>`__
+or a "MIME-like" string, where their type name and registry correspond directly to the
+fileformats to the fileformats
+sub-package/class name are specified in the CLI by *<module-path>:<class-name>*,
+e.g. ``mediamge/nifti-gz``.
 
 
 .. _data_columns:
@@ -312,11 +305,11 @@ commands to add columns to a dataset using the CLI.
 .. code-block:: console
 
     $ arcana dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
-      medimage:Dicom --path '.*t1_mprage.*' \
+      medimage/dicom-set --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
     $ arcana dataset add-sink '/data/imaging/my-project' fmri_activation_map \
-      medimage:NiftiGz --row-frequency group
+      medimage/nifti-gz --row-frequency group
 
 
 Alternatively, the :meth:`.Dataset.add_source` and :meth:`.Dataset.add_sink`
@@ -324,13 +317,13 @@ methods can be used directly to add sources and sinks via the Python API.
 
 .. code-block:: python
 
-    from arcana.medimage.data import Clinical
-    from fileformats.medimage.data import Dicom, NiftiGz
+    from arcana.common import Clinical
+    from fileformats.medimage import DicomSet, NiftiGz
 
     xnat_dataset.add_source(
         name='T1w',
         path=r'.*t1_mprage.*'
-        datatype=Dicom,
+        datatype=DicomSet,
         order=1,
         quality_threshold='usable',
         is_regex=True
@@ -367,8 +360,7 @@ initialised.
 
 .. code-block:: python
 
-    from arcana.bids.data import Bids
-    from arcana.medimage.data import Clinical
+    from arcana.bids import Bids
 
     bids_dataset = Bids().dataset(
         id='/data/openneuro/ds00014')
@@ -567,7 +559,7 @@ appropriate.
 .. code-block:: python
 
     from arcana.dirtree import DirTree
-    from arcana.medimage.data import Clinical
+    from arcana.common import Clinical
 
     fs_dataset = DirTree().dataset(
         id='/data/imaging/my-project',
@@ -647,7 +639,7 @@ a dataset.
 .. code-block:: console
 
     $ arcana dataset define '/data/imaging/my-project@manually_qcd' \
-      medimage:Clinical subject session \
+      common:Clinical subject session \
       --exclude member 03,11,27
 
 
@@ -659,7 +651,7 @@ frequencies.
 .. code-block:: console
 
     $ arcana dataset define '/data/imaging/my-project@manually_qcd' \
-      medimage:Clinical subject session \
+      common:Clinical subject session \
       --exclude member 03,11,27 \
       --include timepoint 1,2
 
@@ -674,7 +666,7 @@ CLI, append the name to the dataset's ID string separated by '::', e.g.
 .. code-block:: console
 
     $ arcana dataset define '/data/imaging/my-project@training' \
-      medimage:Clinical group subject \
+      common:Clinical group subject \
       --include member 10:20
 
 

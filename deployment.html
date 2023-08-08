@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Contributing" href="contributing.html" /><link rel="prev" title="Processing" href="processing.html" />
 
     <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>Deployment - Arcana v0.10.4</title>
+        <title>Deployment - Arcana v0.10.5</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.10.4</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.10.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.4</span>
+  <span class="sidebar-brand-text">Arcana v0.10.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -286,22 +286,24 @@ it shouldn’t conflict with packages on existing Docker images for third-party
 pipelines.</p>
 <p>Extending the <a class="reference external" href="https://yaml.org">YAML</a> format used to define the command configurations,
 the full configuration required to build an XNAT docker image looks like</p>
-<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">pkg_name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FSL</span>
-<span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="nl">&amp;version</span><span class="w"> </span><span class="s">&#39;6.0.1&#39;</span>
-<span class="nt">build_iteration</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;1&#39;</span>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">title</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">FMRIB Scientific Library (FSL)</span>
+<span class="nt">version</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">package</span><span class="p">:</span><span class="w"> </span><span class="nl">&amp;package_version</span><span class="w"> </span><span class="s">&#39;6.0.1&#39;</span>
+<span class="w">    </span><span class="nt">build</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;1&#39;</span>
 <span class="nt">authors</span><span class="p">:</span>
 <span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Thomas G. Close</span>
 <span class="w">      </span><span class="nt">email</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">thomas.close@sydney.edu.au</span>
 <span class="nt">base_image</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">brainlife/fsl&#39;</span>
-<span class="w">    </span><span class="nt">tag</span><span class="p">:</span><span class="w"> </span><span class="nv">*version</span>
-<span class="nt">info_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://fsl.fmrib.ox.ac.uk/fsl/fslwiki</span>
+<span class="w">    </span><span class="nt">tag</span><span class="p">:</span><span class="w"> </span><span class="nv">*package_version</span>
 <span class="nt">packages</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">neurodocker</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">dcm2niix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1.0.20201102</span>
 <span class="w">    </span><span class="nt">pip</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">pydra-dcm2niix</span><span class="p">:</span><span class="w">  </span><span class="c1"># Uses the default version on PyPI</span>
-<span class="nt">commands</span><span class="p">:</span>
+<span class="nt">docs</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">info_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https://fsl.fmrib.ox.ac.uk/fsl/fslwiki</span>
+<span class="nt">command</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">task</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pydra.tasks.fsl.preprocess.fast:FAST</span>
 <span class="w">    </span><span class="nt">description</span><span class="p">:</span>
 <span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">FAST (FMRIBs Automated Segmentation Tool) segments a 3D image of</span>
@@ -310,16 +312,16 @@ the full configuration required to build an XNAT docker image looks like</p>
 <span class="w">        </span><span class="l l-Scalar l-Scalar-Plain">(also known as bias field or RF inhomogeneities).</span>
 <span class="w">    </span><span class="nt">inputs</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">in_files</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage:NiftiGzX</span>
+<span class="w">          </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage/nifti-gz</span>
 <span class="w">          </span><span class="nt">column_defaults</span><span class="p">:</span>
-<span class="w">            </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage:Dicom</span>
+<span class="w">            </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage/dicom-set</span>
 <span class="w">          </span><span class="nt">help</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Anatomical image to segment into different tissues</span>
 <span class="w">    </span><span class="nt">outputs</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">tissue_classes</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage:NiftiGz</span>
+<span class="w">          </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage/nifti-gz</span>
 <span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fast/tissue-classes</span>
 <span class="w">        </span><span class="nt">probability_maps</span><span class="p">:</span>
-<span class="w">          </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage:NiftiGz</span>
+<span class="w">          </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage/nifti-gz</span>
 <span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fast/probability-map</span>
 <span class="w">    </span><span class="nt">parameters</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">use_priors</span><span class="p">:</span>
@@ -330,34 +332,18 @@ the full configuration required to build an XNAT docker image looks like</p>
 <span class="w">        </span><span class="nt">output_biasfield</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">        </span><span class="nt">bias_lowpass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span>
 <span class="w">    </span><span class="nt">row_frequency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">session</span>
-</pre></div>
-</div>
-<p>where fields in the top-level <a class="reference external" href="https://yaml.org">YAML</a> are provided as arguments to
-<code class="xref py py-meth docutils literal notranslate"><span class="pre">XnatViaCS.generate_dockerfile()</span></code>, i.e.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">arcana.medimage.data</span> <span class="kn">import</span> <span class="n">XnatViaCS</span>
-
-<span class="n">xnat_command</span> <span class="o">=</span> <span class="n">XnatViaCS</span><span class="o">.</span><span class="n">generate_dockerfile</span><span class="p">(</span>
-    <span class="n">xnat_commands</span><span class="o">=</span><span class="p">[</span><span class="n">xnat_command</span><span class="p">],</span>  <span class="c1"># List of commands available on the image generated by XnatViaCS.generate_xnat_command()</span>
-    <span class="n">python_packages</span><span class="o">=</span><span class="p">[</span>
-        <span class="p">(</span><span class="s1">&#39;pydra-fsl&#39;</span><span class="p">,</span> <span class="s1">&#39;0.1.0&#39;</span><span class="p">)],</span>  <span class="c1"># Required python packages (aside from arcana and its dependencies)</span>
-    <span class="n">maintainer</span><span class="o">=</span><span class="s1">&#39;your-email@your-institute.org&#39;</span><span class="p">,</span>  <span class="c1"># maintainer of wrapper (i.e. not pipeline unless they are the same)</span>
-    <span class="n">base_image</span><span class="o">=</span><span class="s1">&#39;brainlife/fsl&#39;</span><span class="p">,</span>  <span class="c1"># base Docker image</span>
-    <span class="n">package_manager</span><span class="o">=</span><span class="s1">&#39;apt&#39;</span><span class="p">,</span>  <span class="c1"># package manager of base image</span>
-    <span class="n">packages</span><span class="o">=</span><span class="p">[],</span>  <span class="c1"># system packages to install (i.e. with &#39;apt&#39;)</span>
-    <span class="n">extra_labels</span><span class="o">=</span><span class="p">{},</span>  <span class="c1"># extra labels you might want to put into the image</span>
-    <span class="n">arcana_extras</span><span class="o">=</span><span class="p">[]</span>  <span class="c1"># install extras for Arcana package (e.g. &#39;test&#39;</span>
-<span class="p">))</span>
+<span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
 </pre></div>
 </div>
 <p>The CLI command to build the image from the <a class="reference external" href="https://yaml.org">YAML</a> configuration is</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>deploy<span class="w"> </span>build<span class="w"> </span><span class="s1">&#39;your-pipeline-config.yml&#39;</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>deploy<span class="w"> </span>make-app<span class="w"> </span>xnat:XnatApp<span class="w"> </span><span class="s1">&#39;your-pipeline-config.yml&#39;</span>
 <span class="go">Successfully built &quot;FSL&quot; image with [&quot;fast&quot;] commands</span>
 </pre></div>
 </div>
 <p>To build a suite of pipelines from a series of <a class="reference external" href="https://yaml.org">YAML</a> files stored in a directory tree
 simply provide the root directory instead and Arcana will walk the sub-directories
 and attempt to build any <a class="reference external" href="https://yaml.org">YAML</a> files it finds, e.g.</p>
-<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>deploy<span class="w"> </span>build<span class="w"> </span><span class="s1">&#39;config-root-dir&#39;</span>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>deploy<span class="w"> </span>make-app<span class="w"> </span>xnat:XnatApp<span class="w"> </span><span class="s1">&#39;config-root-dir&#39;</span>
 <span class="go">./config-root-dir/mri/neuro/fsl.yml: FSL [fast]</span>
 <span class="go">./config-root-dir/mri/neuro/mrtrix3.yml: MRtrix3 [dwi2fod, dwi2tensor, tckgen]</span>
 <span class="go">./config-root-dir/mri/neuro/freesurfer.yml: Freesurfer [recon-all]</span>
@@ -566,7 +552,7 @@ organised hierarchically to match the structure of the source directory.</p>
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=06328c90"></script>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=a24a0889"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>

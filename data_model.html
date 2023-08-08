@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Processing" href="processing.html" /><link rel="prev" title="Getting started" href="getting_started.html" />
 
     <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>Data model - Arcana v0.10.4</title>
+        <title>Data model - Arcana v0.10.5</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.10.4</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.10.5</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.4</span>
+  <span class="sidebar-brand-text">Arcana v0.10.5</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -225,7 +225,7 @@ tree and generated derivatives stored alongside them.</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="#stores"><span class="std std-ref">Stores</span></a> - encapsulations of tree-based file storage systems</p></li>
 <li><p><a class="reference internal" href="#datasets"><span class="std std-ref">Datasets</span></a> - sets of comparable data to be jointly analysed</p></li>
-<li><p><a class="reference internal" href="#items"><span class="std std-ref">Items</span></a> - references to data elements (files, scalars, and arrays)</p></li>
+<li><p><span class="xref std std-ref">Items</span> - references to data elements (files, scalars, and arrays)</p></li>
 <li><p><a class="reference internal" href="#data-columns"><span class="std std-ref">Frames: Rows and Columns</span></a> - abstract tables within datasets</p></li>
 <li><p><a class="reference internal" href="#data-spaces"><span class="std std-ref">Spaces</span></a> - conceptual link between tree and tabular data structures</p></li>
 <li><p><a class="reference internal" href="#data-grids"><span class="std std-ref">Grids</span></a> - selection of data points to be included in an analysis</p></li>
@@ -238,10 +238,10 @@ classes not only encapsulate where the data are stored, e.g. on local disk or
 remote repository, but also how the data are accessed, e.g. whether to assume that
 they are in BIDS format, or whether files in an XNAT archive mount can be
 accessed directly (i.e. as exposed to the container service), or only via the API.</p>
-<p>There are four data store classes in the <code class="xref py py-mod docutils literal notranslate"><span class="pre">arcana.dirtree.data</span></code>
-and <code class="xref py py-mod docutils literal notranslate"><span class="pre">arcana.medimage.data</span></code> arcana sub-packages:</p>
+<p>There are currently four supported store classes in the main, <cite>arcana-bids</cite> and <cite>arcana-xnat</cite>
+packages</p>
 <ul class="simple">
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">SimpleStore</span></code> - access data organised within an arbitrary directory tree on the file system</p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">DirTree</span></code> - access data organised within an arbitrary directory tree on the file system</p></li>
 <li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Bids</span></code> - access data on file systems organised in the <a class="reference external" href="https://bids.neuroimaging.io/">Brain Imaging Data Structure (BIDS)</a></p></li>
 <li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Xnat</span></code> - access data stored in <a class="reference external" href="https://xnat.org">XNAT</a> repositories vi its REST API</p></li>
 <li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">XnatViaCS</span></code> - access data stored in <a class="reference external" href="https://xnat.org">XNAT</a> via its <a class="reference external" href="https://wiki.xnat.org/container-service/using-the-container-service-122978908.html">container service</a></p></li>
@@ -249,9 +249,9 @@ and <code class="xref py py-mod docutils literal notranslate"><span class="pre">
 <p>For instructions on how to add support for new systems see <a class="reference internal" href="alternative_stores.html#alternative-stores"><span class="std std-ref">Alternative storage systems</span></a>.</p>
 <p>To configure access to a store via the CLI use the ‘<a class="reference internal" href="cli.html#arcana-store-add"><span class="std std-ref">arcana store add</span></a>’ command.
 The store type is specified by the path to the data store sub-class,
-<em>&lt;module-path&gt;:&lt;class-name&gt;</em>,  e.g. <code class="docutils literal notranslate"><span class="pre">arcana.xnat.data:Xnat</span></code>.
-However, if the store is in a submodule of <code class="docutils literal notranslate"><span class="pre">arcana.data.stores</span></code> then that
-prefix can be dropped for convenience, e.g. <code class="docutils literal notranslate"><span class="pre">mediamge:Xnat</span></code>.</p>
+<em>&lt;module-path&gt;:&lt;class-name&gt;</em>,  e.g. <code class="docutils literal notranslate"><span class="pre">arcana.xnat:Xnat</span></code>.
+However, if the store is in a submodule of <code class="docutils literal notranslate"><span class="pre">arcana</span></code> then that
+prefix can be dropped for convenience, e.g. <code class="docutils literal notranslate"><span class="pre">xnat:Xnat</span></code>.</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>store<span class="w"> </span>add<span class="w"> </span>xnat-central<span class="w"> </span>xnat:Xnat<span class="w"> </span>https://central.xnat.org<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--user<span class="w"> </span>user123<span class="w"> </span>--cache<span class="w"> </span>/work/xnat-cache
 <span class="go">Password:</span>
@@ -272,7 +272,7 @@ been created</p>
 <p>Alternatively, data stores can be configured via the Python API by initialising the
 data store classes directly.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
-<span class="kn">from</span> <span class="nn">arcana.medimage.data</span> <span class="kn">import</span> <span class="n">Xnat</span>
+<span class="kn">from</span> <span class="nn">arcana.xnat</span> <span class="kn">import</span> <span class="n">Xnat</span>
 
 <span class="c1"># Initialise the data store object</span>
 <span class="n">xnat_store</span> <span class="o">=</span> <span class="n">Xnat</span><span class="p">(</span>
@@ -400,28 +400,20 @@ corresponding to <em>MYXNATPROJECT</em></p>
 </pre></div>
 </div>
 </section>
-<section id="items">
-<span id="data-formats"></span><h2>Items<a class="headerlink" href="#items" title="Permalink to this heading">#</a></h2>
-<p>Atomic items within a dataset are encapsulated by <code class="xref py py-class docutils literal notranslate"><span class="pre">DataType</span></code> objects.
-There are three types of data items:</p>
+<section id="entries">
+<span id="data-formats"></span><h2>Entries<a class="headerlink" href="#entries" title="Permalink to this heading">#</a></h2>
+<p>Atomic entries within a dataset contain either file-based data or text/numeric fields.
+In Arcana, these data items are represented using <a class="reference external" href="https://arcanaframework.github.io/fileformats/">fileformats</a>
+classes, <code class="xref py py-class docutils literal notranslate"><span class="pre">FileSet</span></code>, (i.e. single files, files + header/side-cars or directories)
+and <code class="xref py py-class docutils literal notranslate"><span class="pre">Field</span></code> (e.g. integer, decimal, text, boolean, or arrays thereof), respectively.</p>
+<p><code class="xref py py-class docutils literal notranslate"><span class="pre">FileSet</span></code> is typically subclassed to specify the file formats of the
+files/directories in the data items. For example, some common used standard types are</p>
 <ul class="simple">
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">FileSet</span></code> (single files, files + header/side-cars or directories)</p></li>
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Field</span></code> (int, float, str or bool)</p></li>
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">ArrayField</span></code> (an array of int, float, str or bool)</p></li>
-</ul>
-<p>Instead of holding the data directly, data items reference files and
-fields stored in the data store. Before data in remote stores
-are accessed they need to be cached locally with <code class="xref py py-meth docutils literal notranslate"><span class="pre">DataType.get()</span></code>.
-Newly created and modified data items are placed into the store with
-<code class="xref py py-meth docutils literal notranslate"><span class="pre">DataType.put()</span></code>.</p>
-<p><code class="xref py py-class docutils literal notranslate"><span class="pre">FileSet</span></code> is typically subclassed to specify the datatype of the
-files/directories in the group. For example, there are a number common file
-formats implemented in <code class="xref py py-mod docutils literal notranslate"><span class="pre">arcana.dirtree.data</span></code>, including</p>
-<ul class="simple">
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">dirtree.Text</span></code></p></li>
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">dirtree.Zip</span></code></p></li>
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">dirtree.Json</span></code></p></li>
-<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">dirtree.Directory</span></code></p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">fileformats.text.Plain</span></code></p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">fileformats.application.Zip</span></code></p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">fileformats.application.Json</span></code></p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">fileformats.generic.File</span></code></p></li>
+<li><p><code class="xref py py-class docutils literal notranslate"><span class="pre">fileformats.generic.Directory</span></code></p></li>
 </ul>
 <p>File-group classes specify the extensions of the expected files/directories,
 converters from alternative file formats, and may
@@ -431,10 +423,11 @@ Where a converter is specified from an alternative file format is specified,
 Arcana will automatically run the conversion between the format required by
 a pipeline and that stored in the data store. See <a class="reference internal" href="adding_formats.html#adding-formats"><span class="std std-ref">New formats and spaces</span></a> for detailed
 instructions on how to specify new file formats and converters between them.</p>
-<p>As with data stores, file formats are specified in the CLI by <em>&lt;module-path&gt;:&lt;class-name&gt;</em>,
-e.g. <code class="docutils literal notranslate"><span class="pre">arcana.dirtree.data:Text</span></code>. However, if the datatype is in a submodule of
-<code class="docutils literal notranslate"><span class="pre">arcana.data.types</span></code> then that prefix can be dropped for convenience,
-e.g. <code class="docutils literal notranslate"><span class="pre">text/plain</span></code>.</p>
+<p>File format can be specified in the CLI using their <a class="reference external" href="https://www.iana.org/assignments/media-types/media-types.xhtml">MIME-type</a>
+or a “MIME-like” string, where their type name and registry correspond directly to the
+fileformats to the fileformats
+sub-package/class name are specified in the CLI by <em>&lt;module-path&gt;:&lt;class-name&gt;</em>,
+e.g. <code class="docutils literal notranslate"><span class="pre">mediamge/nifti-gz</span></code>.</p>
 </section>
 <section id="frames-rows-and-columns">
 <span id="data-columns"></span><h2>Frames: Rows and Columns<a class="headerlink" href="#frames-rows-and-columns" title="Permalink to this heading">#</a></h2>
@@ -456,7 +449,7 @@ across a single layer of the data tree, such as</p>
 (typically acquired) data, and “sink” columns to define where
 derivatives will be stored within the data tree. The “row frequency” argument
 of the column (e.g. per ‘session’, ‘subject’, etc…) specifies which data frame
-the column belongs to. The datatype of a column’s member items (see <a class="reference internal" href="#items"><span class="std std-ref">Items</span></a>)
+the column belongs to. The datatype of a column’s member items (see <span class="xref std std-ref">Items</span>)
 must be consistent and is also specified when the column is created.</p>
 <p>The data items (e.g. files, scans) within a source column do not need to have
 consistent labels throughout the dataset although it makes it easier where possible.
@@ -509,22 +502,22 @@ The column name is used as the default value for the path of sink columns.</p>
 <p>Use the ‘<a class="reference internal" href="cli.html#arcana-dataset-add-source"><span class="std std-ref">arcana dataset add-source</span></a>’ and ‘<a class="reference internal" href="cli.html#arcana-dataset-add-sink"><span class="std std-ref">arcana dataset add-sink</span></a>’
 commands to add columns to a dataset using the CLI.</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>add-source<span class="w"> </span><span class="s1">&#39;xnat-central//MYXNATPROJECT&#39;</span><span class="w"> </span>T1w<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>medimage:Dicom<span class="w"> </span>--path<span class="w"> </span><span class="s1">&#39;.*t1_mprage.*&#39;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>medimage/dicom-set<span class="w"> </span>--path<span class="w"> </span><span class="s1">&#39;.*t1_mprage.*&#39;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--order<span class="w"> </span><span class="m">1</span><span class="w"> </span>--quality<span class="w"> </span>usable<span class="w"> </span>--regex
 
 <span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>add-sink<span class="w"> </span><span class="s1">&#39;/data/imaging/my-project&#39;</span><span class="w"> </span>fmri_activation_map<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>medimage:NiftiGz<span class="w"> </span>--row-frequency<span class="w"> </span>group
+<span class="w">  </span>medimage/nifti-gz<span class="w"> </span>--row-frequency<span class="w"> </span>group
 </pre></div>
 </div>
 <p>Alternatively, the <a class="reference internal" href="api.html#arcana.core.data.set.Dataset.add_source" title="arcana.core.data.set.Dataset.add_source"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Dataset.add_source()</span></code></a> and <a class="reference internal" href="api.html#arcana.core.data.set.Dataset.add_sink" title="arcana.core.data.set.Dataset.add_sink"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Dataset.add_sink()</span></code></a>
 methods can be used directly to add sources and sinks via the Python API.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">arcana.medimage.data</span> <span class="kn">import</span> <span class="n">Clinical</span>
-<span class="kn">from</span> <span class="nn">fileformats.medimage.data</span> <span class="kn">import</span> <span class="n">Dicom</span><span class="p">,</span> <span class="n">NiftiGz</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">arcana.common</span> <span class="kn">import</span> <span class="n">Clinical</span>
+<span class="kn">from</span> <span class="nn">fileformats.medimage</span> <span class="kn">import</span> <span class="n">DicomSet</span><span class="p">,</span> <span class="n">NiftiGz</span>
 
 <span class="n">xnat_dataset</span><span class="o">.</span><span class="n">add_source</span><span class="p">(</span>
     <span class="n">name</span><span class="o">=</span><span class="s1">&#39;T1w&#39;</span><span class="p">,</span>
     <span class="n">path</span><span class="o">=</span><span class="sa">r</span><span class="s1">&#39;.*t1_mprage.*&#39;</span>
-    <span class="n">datatype</span><span class="o">=</span><span class="n">Dicom</span><span class="p">,</span>
+    <span class="n">datatype</span><span class="o">=</span><span class="n">DicomSet</span><span class="p">,</span>
     <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
     <span class="n">quality_threshold</span><span class="o">=</span><span class="s1">&#39;usable&#39;</span><span class="p">,</span>
     <span class="n">is_regex</span><span class="o">=</span><span class="kc">True</span>
@@ -556,8 +549,7 @@ operator</p>
 and file formats of the data are strictly defined. This allows the <code class="xref py py-class docutils literal notranslate"><span class="pre">Bids</span></code>
 data store object to automatically add sources to the dataset when it is
 initialised.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">arcana.bids.data</span> <span class="kn">import</span> <span class="n">Bids</span>
-<span class="kn">from</span> <span class="nn">arcana.medimage.data</span> <span class="kn">import</span> <span class="n">Clinical</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">arcana.bids</span> <span class="kn">import</span> <span class="n">Bids</span>
 
 <span class="n">bids_dataset</span> <span class="o">=</span> <span class="n">Bids</span><span class="p">()</span><span class="o">.</span><span class="n">dataset</span><span class="p">(</span>
     <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;/data/openneuro/ds00014&#39;</span><span class="p">)</span>
@@ -740,7 +732,7 @@ detail in <a class="reference internal" href="#data-spaces"><span class="std std
 medical imaging field, the <code class="xref py py-class docutils literal notranslate"><span class="pre">arcana.medimage.data.Clinical</span></code> space is
 appropriate.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">arcana.dirtree</span> <span class="kn">import</span> <span class="n">DirTree</span>
-<span class="kn">from</span> <span class="nn">arcana.medimage.data</span> <span class="kn">import</span> <span class="n">Clinical</span>
+<span class="kn">from</span> <span class="nn">arcana.common</span> <span class="kn">import</span> <span class="n">Clinical</span>
 
 <span class="n">fs_dataset</span> <span class="o">=</span> <span class="n">DirTree</span><span class="p">()</span><span class="o">.</span><span class="n">dataset</span><span class="p">(</span>
     <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;/data/imaging/my-project&#39;</span><span class="p">,</span>
@@ -810,7 +802,7 @@ form the row of the data frame.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">--exclude</span></code> option is used to specify the data points to exclude from
 a dataset.</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>define<span class="w"> </span><span class="s1">&#39;/data/imaging/my-project@manually_qcd&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>medimage:Clinical<span class="w"> </span>subject<span class="w"> </span>session<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>common:Clinical<span class="w"> </span>subject<span class="w"> </span>session<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--exclude<span class="w"> </span>member<span class="w"> </span><span class="m">03</span>,11,27
 </pre></div>
 </div>
@@ -819,7 +811,7 @@ you only want to select a small sample or split the dataset into sections.
 <code class="docutils literal notranslate"><span class="pre">include</span></code> can be used in conjunction with <code class="docutils literal notranslate"><span class="pre">exclude</span></code> but not for the same
 frequencies.</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>define<span class="w"> </span><span class="s1">&#39;/data/imaging/my-project@manually_qcd&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>medimage:Clinical<span class="w"> </span>subject<span class="w"> </span>session<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>common:Clinical<span class="w"> </span>subject<span class="w"> </span>session<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--exclude<span class="w"> </span>member<span class="w"> </span><span class="m">03</span>,11,27<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--include<span class="w"> </span>timepoint<span class="w"> </span><span class="m">1</span>,2
 </pre></div>
@@ -832,7 +824,7 @@ assign a dataset definition a name, which is used differentiate between multiple
 definitions stored in the same dataset project/directory. To do this via the
 CLI, append the name to the dataset’s ID string separated by ‘::’, e.g.</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>define<span class="w"> </span><span class="s1">&#39;/data/imaging/my-project@training&#39;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>medimage:Clinical<span class="w"> </span>group<span class="w"> </span>subject<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>common:Clinical<span class="w"> </span>group<span class="w"> </span>subject<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--include<span class="w"> </span>member<span class="w"> </span><span class="m">10</span>:20
 </pre></div>
 </div>
@@ -897,7 +889,7 @@ CLI, append the name to the dataset’s ID string separated by ‘::’, e.g.</p
 <li><a class="reference internal" href="#">Data model</a><ul>
 <li><a class="reference internal" href="#stores">Stores</a></li>
 <li><a class="reference internal" href="#datasets">Datasets</a></li>
-<li><a class="reference internal" href="#items">Items</a></li>
+<li><a class="reference internal" href="#entries">Entries</a></li>
 <li><a class="reference internal" href="#frames-rows-and-columns">Frames: Rows and Columns</a></li>
 <li><a class="reference internal" href="#spaces">Spaces</a></li>
 <li><a class="reference internal" href="#grids">Grids</a></li>
@@ -912,7 +904,7 @@ CLI, append the name to the dataset’s ID string separated by ‘::’, e.g.</p
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=06328c90"></script>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=a24a0889"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
