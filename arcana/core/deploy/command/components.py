@@ -1,6 +1,5 @@
 from __future__ import annotations
 import typing as ty
-import builtins
 import attrs
 from arcana.core.utils.serialize import (
     ObjectConverter,
@@ -10,7 +9,7 @@ from arcana.core.analysis.pipeline import (
     PipelineField,
 )
 from arcana.core.data.row import DataRow
-from fileformats.core import DataType
+from fileformats.core import DataType, from_mime, to_mime
 from fileformats.core.exceptions import FormatMismatchError
 from arcana.core.data.space import DataSpace
 from arcana.core.utils.misc import add_exc_note
@@ -222,7 +221,15 @@ class CommandParameter(CommandField):
     """
 
     datatype: ty.Union[int, float, bool, str] = attrs.field(
-        converter=lambda x: getattr(builtins, x) if isinstance(x, str) else x
+        converter=lambda t: from_mime(t) if isinstance(t, str) else t
     )
     required: bool = False
     default: ty.Any = None
+
+    @datatype.validator
+    def datatype_validator(self, _, datatype: ty.Type[DataType]):
+        if datatype.namespace != "field":
+            raise TypeError(
+                f"Non-field type parameters ({self.name}: {to_mime(self.datatype)}) are "
+                "not currently supported"
+            )
