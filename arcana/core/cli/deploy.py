@@ -170,9 +170,7 @@ common:App
     "--clean-up/--dont-clean-up",
     type=bool,
     default=False,
-    help=(
-        "Remove built images after they are pushed to the registry (requires --push)"
-    ),
+    help=("Remove built images after they are pushed to the registry"),
 )
 def make_app(
     target,
@@ -345,16 +343,16 @@ def make_app(
                 logger.info(
                     "Successfully pushed '%s' to registry", image_spec.reference
                 )
-            if clean_up:
-                dc.api.remove_image(image_spec.reference)
-                dc.containers.prune()
-                dc.images.prune(filters={"dangling": False})
-                dc.api.remove_image(image_spec.base_image)
-                dc.images.prune(filters={"dangling": False})
-                logger.info(
-                    "Removed '%s' and pruned dangling images to free up disk space",
-                    image_spec.reference,
-                )
+        if clean_up:
+            dc.api.remove_image(image_spec.reference)
+            dc.containers.prune()
+            dc.images.prune(filters={"dangling": False})
+            dc.api.remove_image(image_spec.base_image)
+            dc.images.prune(filters={"dangling": False})
+            logger.info(
+                "Removed '%s' and pruned dangling images to free up disk space",
+                image_spec.reference,
+            )
 
         if release or save_manifest:
             manifest["images"].append(
