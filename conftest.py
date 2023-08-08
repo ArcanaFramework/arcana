@@ -242,7 +242,7 @@ def command_spec():
             "first_file": {
                 "datatype": "text/text-file",
                 "field": "in_file1",
-                "default_column": {
+                "column_defaults": {
                     "row_frequency": "common:Samples[sample]",
                 },
                 "help": "the first file to pass as an input",
@@ -250,7 +250,7 @@ def command_spec():
             "second_file": {
                 "datatype": "text/text-file",
                 "field": "in_file2",
-                "default_column": {
+                "column_defaults": {
                     "row_frequency": "common:Samples[sample]",
                 },
                 "help": "the second file to pass as an input",

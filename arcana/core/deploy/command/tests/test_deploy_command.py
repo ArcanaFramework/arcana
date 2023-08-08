@@ -263,7 +263,7 @@ def test_command_execute_with_converter_args(
             {
                 "name": "source",
                 "datatype": "testing/encoded-text",
-                "default_column": {"datatype": "text/text-file"},
+                "column_defaults": {"datatype": "text/text-file"},
                 "field": "in_file",
                 "help": "dummy",
             },
@@ -278,7 +278,7 @@ def test_command_execute_with_converter_args(
             {
                 "name": "sink2",
                 "datatype": "testing/encoded-text",
-                "default_column": {"datatype": "text/text-file"},
+                "column_defaults": {"datatype": "text/text-file"},
                 "field": "out",
                 "help": "dummy",
             },

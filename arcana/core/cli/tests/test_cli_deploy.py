@@ -277,21 +277,21 @@ command:
           path: anat/T1w
         datatype: medimage/nifti-gz-x
         help: "T1-weighted anatomical scan"
-        default_column:
+        column_defaults:
           datatype: medimage/dicom-set
       T2w:
         configuration:
           path: anat/T2w
         datatype: medimage/nifti-gz-x
         help: "T2-weighted anatomical scan"
-        default_column:
+        column_defaults:
           datatype: medimage/dicom-set
       fMRI:
         datatype: medimage/nifti-gz-x
         help: "functional MRI"
         configuration:
           path: func/bold/task=rest
-        default_column:
+        column_defaults:
           datatype: medimage/dicom-set
     outputs:
       mriqc:

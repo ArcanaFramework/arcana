@@ -268,7 +268,7 @@ class ContainerCommand:
                 logger.info(f"Adding new source column '{inpt.name}'")
                 dataset.add_source(
                     name=inpt.name,
-                    datatype=inpt.default_column.datatype,
+                    datatype=inpt.column_defaults.datatype,
                     path=path,
                     is_regex=True,
                     **source_kwargs,
@@ -300,7 +300,7 @@ class ContainerCommand:
                 logger.info(f"Adding new source column '{output.name}'")
                 dataset.add_sink(
                     name=output.name,
-                    datatype=output.default_column.datatype,
+                    datatype=output.column_defaults.datatype,
                     path=path,
                 )
             if output_config := output.config_dict:

@@ -17,7 +17,7 @@ from arcana.core.utils.misc import add_exc_note
 
 
 @attrs.define
-class DefaultColumn:
+class ColumnDefaults:
     """
     Values to set the default column of a command input/output
 
@@ -110,29 +110,29 @@ class CommandInput(CommandField):
         task/workflow/analysis (e.g. ``bids_path`` or ``argstr``). If the configuration
         is not explicitly False (i.e. provided in the YAML definition) then it will
         be passed on as an element in the `inputs` input field to the task/workflow
-    default_columm: DefaultColumn, optional
+    column_defaults: ColumnDefaults, optional
         the values to use to configure a default column if the name doesn't match an
         existing column
     """
 
-    default_column: DefaultColumn = attrs.field(
+    column_defaults: ColumnDefaults = attrs.field(
         converter=ObjectConverter(
-            DefaultColumn, allow_none=True, default_if_none=DefaultColumn
+            ColumnDefaults, allow_none=True, default_if_none=ColumnDefaults
         ),
         default=None,
     )
 
-    @default_column.validator
-    def default_column_validator(self, _, default_column: DefaultColumn):
+    @column_defaults.validator
+    def column_validator(self, _, column: ColumnDefaults):
         if (
-            default_column.datatype is not None
-            and self.datatype is not default_column.datatype
+            column.datatype is not None
+            and self.datatype is not column.datatype
             and not isinstance(
                 self.datatype, str
             )  # if has fallen back to string in non-build envs
         ):
             try:
-                self.datatype.get_converter(default_column.datatype)
+                self.datatype.get_converter(column.datatype)
             except FormatMismatchError as e:
                 add_exc_note(
                     e,
@@ -141,8 +141,8 @@ class CommandInput(CommandField):
                 raise
 
     def __attrs_post_init__(self):
-        if self.default_column.datatype is None:
-            self.default_column.datatype = self.datatype
+        if self.column_defaults.datatype is None:
+            self.column_defaults.datatype = self.datatype
 
 
 @attrs.define(kw_only=True)
@@ -169,21 +169,21 @@ class CommandOutput(CommandField):
         existing column
     """
 
-    default_column: DefaultColumn = attrs.field(
+    column_defaults: ColumnDefaults = attrs.field(
         converter=ObjectConverter(
-            DefaultColumn, allow_none=True, default_if_none=DefaultColumn
+            ColumnDefaults, allow_none=True, default_if_none=ColumnDefaults
         ),
         default=None,
     )
 
-    @default_column.validator
-    def default_column_validator(self, _, default_column: DefaultColumn):
+    @column_defaults.validator
+    def column_defaults_validator(self, _, column_defaults: ColumnDefaults):
         if (
-            default_column.datatype is not None
-            and self.datatype is not default_column.datatype
+            column_defaults.datatype is not None
+            and self.datatype is not column_defaults.datatype
         ):
             try:
-                default_column.datatype.get_converter(self.datatype)
+                column_defaults.datatype.get_converter(self.datatype)
             except FormatMismatchError as e:
                 add_exc_note(
                     e,
@@ -192,8 +192,8 @@ class CommandOutput(CommandField):
                 raise
 
     def __attrs_post_init__(self):
-        if self.default_column.datatype is None:
-            self.default_column.datatype = self.datatype
+        if self.column_defaults.datatype is None:
+            self.column_defaults.datatype = self.datatype
 
 
 @attrs.define(kw_only=True)
