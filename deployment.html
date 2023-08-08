@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Contributing" href="contributing.html" /><link rel="prev" title="Processing" href="processing.html" />
 
     <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>Deployment - Arcana v0.10.5</title>
+        <title>Deployment - Arcana v0.10.6</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.10.5</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.10.6</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.5</span>
+  <span class="sidebar-brand-text">Arcana v0.10.6</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -296,6 +296,7 @@ the full configuration required to build an XNAT docker image looks like</p>
 <span class="nt">base_image</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">brainlife/fsl&#39;</span>
 <span class="w">    </span><span class="nt">tag</span><span class="p">:</span><span class="w"> </span><span class="nv">*package_version</span>
+<span class="w">    </span><span class="nt">package_manager</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">apt</span>
 <span class="nt">packages</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">neurodocker</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">dcm2niix</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v1.0.20201102</span>
@@ -320,9 +321,11 @@ the full configuration required to build an XNAT docker image looks like</p>
 <span class="w">        </span><span class="nt">tissue_classes</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage/nifti-gz</span>
 <span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fast/tissue-classes</span>
+<span class="w">          </span><span class="nt">help</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Segmented tissue classes</span>
 <span class="w">        </span><span class="nt">probability_maps</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage/nifti-gz</span>
 <span class="w">          </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">fast/probability-map</span>
+<span class="w">          </span><span class="nt">help</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Probability maps for tissue classes</span>
 <span class="w">    </span><span class="nt">parameters</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">use_priors</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">help</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Use priors in tissue estimation</span>
@@ -332,7 +335,7 @@ the full configuration required to build an XNAT docker image looks like</p>
 <span class="w">        </span><span class="nt">output_biasfield</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
 <span class="w">        </span><span class="nt">bias_lowpass</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span>
 <span class="w">    </span><span class="nt">row_frequency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">session</span>
-<span class="nt">schema_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
+<span class="nt">arcana_spec_version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
 </pre></div>
 </div>
 <p>The CLI command to build the image from the <a class="reference external" href="https://yaml.org">YAML</a> configuration is</p>
@@ -552,7 +555,7 @@ organised hierarchically to match the structure of the source directory.</p>
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=a24a0889"></script>
+</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=95b282e3"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
