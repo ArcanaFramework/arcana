@@ -267,7 +267,7 @@ def command_spec():
             "number_of_duplicates": {
                 "field": "duplicates",
                 "default": 2,
-                "datatype": "field/integer",
+                "datatype": "int",
                 "required": True,
                 "help": "a parameter",
             }

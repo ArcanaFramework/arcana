@@ -84,7 +84,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
         parameters=[
             {
                 "name": "duplicates",
-                "datatype": "field/integer",
+                "datatype": "int",
                 "default": 2,
                 "help": "dummy",
             }
@@ -157,7 +157,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
         parameters=[
             {
                 "name": "duplicates",
-                "datatype": "field/integer",
+                "datatype": "int",
                 "default": 2,
                 "help": "dummy",
             }
