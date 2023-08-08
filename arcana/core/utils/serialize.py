@@ -209,7 +209,10 @@ class ClassResolver:
             if klass in self.alternative_types:
                 return  # ok
             # TypeParser handles unions and other exotic base classes Python < 3.10
-            if not TypeParser.is_subclass(klass, self.base_class):
+            if not (
+                TypeParser.is_subclass(klass, self.base_class)
+                or issubclass(klass, self.base_class)
+            ):
                 raise ValueError(
                     f"Found {klass}, which is not a subclass of {self.base_class}"
                 )
