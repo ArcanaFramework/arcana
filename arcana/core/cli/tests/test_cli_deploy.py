@@ -23,16 +23,17 @@ def test_deploy_make_app_cli(command_spec, cli_runner, work_dir):
     IMAGE_GROUP_NAME = "testpkg"
 
     concatenate_spec = {
+        "title": "a test image spec",
         "command": command_spec,
-        "version": "1.0",
-        "build_iteration": "1",
+        "version": {"package": "1.0", "build": "1"},
         "packages": {
             "system": ["vim"],  # just to test it out
             "pip": {"pydra": None},  # just to test it out
         },
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
-        "info_url": "http://concatenate.readthefakedocs.io",
-        "description": "a test image spec",
+        "docs": {
+            "info_url": "http://concatenate.readthefakedocs.io",
+        },
     }
 
     build_dir = work_dir / "build"
@@ -109,14 +110,13 @@ def test_deploy_remake_app_cli(command_spec, docker_registry, cli_runner, run_pr
         return result
 
     concatenate_spec = {
+        "title": "a test image",
         "command": command_spec,
-        "version": "1.0",
-        "build_iteration": "1",
+        "version": {"package": "1.0", "build": "1"},
         "packages": {"system": ["vim"]},
-        "description": "a test image",
         "name": "test_deploy_rebuild_cli",
         "authors": [{"name": "Some One", "email": "some.one@an.email.org"}],
-        "info_url": "http://concatenate.readthefakedocs.io",
+        "docs": {"info_url": "http://concatenate.readthefakedocs.io"},
     }
 
     # Build a basic image
@@ -144,8 +144,8 @@ def test_deploy_remake_app_cli(command_spec, docker_registry, cli_runner, run_pr
             excinfo.value
         )
 
-        # Increment the version number to avoid the clash
-        concatenate_spec["build_iteration"] = "2"
+        # Increment the build number to avoid the clash
+        concatenate_spec["version"]["build"] = "2"
 
         result = build_spec(concatenate_spec)
         assert result.exit_code == 0, show_cli_trace(result)
@@ -167,28 +167,31 @@ class DocsFixture:
 docs_fixtures = {
     "simple": DocsFixture(
         """
-version: &version '0.16.1'
+title: a simple app
+version:
+  package: &package_version '0.16.1'
 authors:
   - name: author_name
     email: author@email.org
 base_image:
   name: abc
-  tag: *version
+  tag: *package_version
   package_manager: apt
-info_url: https://example.com
-description: >-
-  a test of the YAML join functionality
+docs:
+  info_url: https://example.com
+  description: >-
+    a test of the YAML join functionality
 command:
   task: arcana.testing.tasks:identity_file
   row_frequency: common:Samples[sample]
   inputs:
     in_file:
       datatype: text/text-file
-      help_string: the input file
+      help: the input file
   outputs:
     out_file:
       datatype: text/text-file
-      help_string: the output file
+      help: the output file
     """.strip(),
         """
 ---
@@ -202,12 +205,12 @@ weight: 10
 |Key|Value|
 |---|-----|
 |Name|spec|
-|App version|0.16.1|
-|Build iteration|0|
+|Title|a simple app|
+|Package version|0.16.1|
+|Build|0|
 |Base image|`abc:0.16.1`|
 |Maintainer|author_name (author@email.org)|
 |Info URL|https://example.com|
-|Short description|a test of the YAML join functionality|
 
 a test of the YAML join functionality
 
@@ -233,21 +236,24 @@ a test of the YAML join functionality
     ),
     "full": DocsFixture(
         """
-version: &version '0.16.1'
-build_iteration: '10'
+title: a more involved image spec
+version:
+  package: &package_version '0.16.1'
+  build: '10'
 authors:
   - name: author_name
     email: author@email.org
 base_image:
   name: abc
-  tag: *version
+  tag: *package_version
   package_manager: yum
-description: a description
-long_description: >-
-  a longer description
-known_issues:
-  - url: https://example.com
-info_url: https://example.com
+docs:
+  info_url: https://example.com
+  description: >-
+    a longer description
+  known_issues:
+    - description: Memory overrun on large file paths
+      url: https://github.com/myorg/mypackage/issues/644
 packages:
   system:
     vim: 99.1
@@ -270,34 +276,34 @@ command:
         configuration:
           path: anat/T1w
         datatype: medimage/nifti-gz-x
-        help_string: "T1-weighted anatomical scan"
-        default_column:
+        help: "T1-weighted anatomical scan"
+        column_defaults:
           datatype: medimage/dicom-set
       T2w:
         configuration:
           path: anat/T2w
         datatype: medimage/nifti-gz-x
-        help_string: "T2-weighted anatomical scan"
-        default_column:
+        help: "T2-weighted anatomical scan"
+        column_defaults:
           datatype: medimage/dicom-set
       fMRI:
         datatype: medimage/nifti-gz-x
-        help_string: "functional MRI"
+        help: "functional MRI"
         configuration:
           path: func/bold/task=rest
-        default_column:
+        column_defaults:
           datatype: medimage/dicom-set
     outputs:
       mriqc:
         datatype: generic/directory
-        help_string: "MRIQC output directory"
+        help: "MRIQC output directory"
         configuration:
           path: mriqc
     parameters:
       fmriprep_flags:
         field: flags
         datatype: str
-        help_string: description of flags param
+        help: description of flags param
     row_frequency: common:Clinical[session]
     configuration:
       executable: /usr/local/miniconda/bin/mriqc
@@ -316,13 +322,13 @@ weight: 10
 |Key|Value|
 |---|-----|
 |Name|spec|
-|App version|0.16.1|
-|Build iteration|10|
+|Title|a more involved image spec|
+|Package version|0.16.1|
+|Build|10|
 |Base image|`abc:0.16.1`|
 |Maintainer|author_name (author@email.org)|
 |Info URL|https://example.com|
-|Short description|a description|
-|Known issues|https://example.com|
+|Known issues|https://github.com/myorg/mypackage/issues/644|
 
 a longer description
 

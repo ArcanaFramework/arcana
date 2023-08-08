@@ -8,7 +8,6 @@ import shlex
 import shutil
 import attrs
 import yaml
-from urllib.parse import urlparse
 from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana.core import __version__
@@ -19,7 +18,7 @@ from arcana.core.utils.serialize import (
 )
 from ..command.base import ContainerCommand
 from .base import ArcanaImage
-from .components import ContainerAuthor, License, KnownIssue
+from .components import ContainerAuthor, License, Docs
 
 
 logger = logging.getLogger("arcana")
@@ -32,9 +31,11 @@ class App(ArcanaImage):
     Parameters
     ----------
     name : str
-        name of the package/pipeline
-    version : str
-        version of the package/pipeline
+        a name of the app to be used in naming of packages/images
+    title : str
+        a single line description of the app to be exposed in UIs
+    version : Version
+        version of the package/build of the app
     org : str
         the organisation the image will be tagged within
     base_image : BaseImage, optional
@@ -43,27 +44,16 @@ class App(ArcanaImage):
         the package manager used to install system packages (should match OS on base image)
     registry : str, optional
         the container registry the image is to be installed at
-    info_url : str
-        the url of a documentation page describing the package
     authors : list[ContainerAuthor]
         list of authors of the package
-    description : str
-        single line description to be when referring to the pipeline in UIs
     command : ContainerCommand
         description of the command that is to be run within the image
     licenses : list[ty.Dict[str, str]], optional
         specification of licenses required by the commands in the container. Each dict
         should contain the 'name' of the license and the 'destination' it should be
         installed inside the container.
-    build_iteration : str, optional
-        version of the specification relative to the package version, i.e. if the package
-        version hasn't been updated but the specification has been altered, the spec
-        version should be updated (otherwise builds will fail). The spec version should
-        reset to "0" if the package version is updated.
-    long_description : str
-        Multi-line description of the pipeline used in documentation
-    known_issues : dict
-        Any known issues with the pipeline. To be used in auto-doc generation
+    docs : Docs
+        information for automatically generated documentation
     loaded_from : Path
         the file the spec was loaded from, if applicable
     """
@@ -72,24 +62,18 @@ class App(ArcanaImage):
 
     SUBPACKAGE = "deploy"
 
-    info_url: str = attrs.field()
+    title: str
     authors: ty.List[ContainerAuthor] = attrs.field(
         converter=ObjectListConverter(ContainerAuthor),
         metadata={"serializer": ObjectListConverter.asdict},
     )
-    description: str
-    command: ContainerCommand = attrs.field(converter=ObjectConverter(ContainerCommand))
     licenses: ty.List[License] = attrs.field(
         factory=dict,
         converter=ObjectListConverter(License),
         metadata={"serializer": ObjectListConverter.asdict},
     )
-    known_issues: ty.List[KnownIssue] = attrs.field(
-        factory=list,
-        converter=ObjectListConverter(KnownIssue),
-        metadata={"serializer": ObjectListConverter.asdict},
-    )
-    long_description: str = ""
+    docs: Docs = attrs.field(converter=ObjectConverter(Docs))
+    command: ContainerCommand = attrs.field(converter=ObjectConverter(ContainerCommand))
     loaded_from: Path = attrs.field(default=None, metadata={"asdict": False})
     arcana_version: str = __version__
 
@@ -97,14 +81,6 @@ class App(ArcanaImage):
 
         # Set back-references to this image in the command spec
         self.command.image = self
-
-    @info_url.validator
-    def info_url_validator(self, _, info_url):
-        parsed = urlparse(info_url)
-        if not parsed.scheme or not parsed.netloc:
-            raise ValueError(
-                f"Could not parse info url '{info_url}', please include URL scheme"
-            )
 
     def add_entrypoint(self, dockerfile: DockerRenderer, build_dir: Path):
 
@@ -357,21 +333,20 @@ class App(ArcanaImage):
             f.write("## Package Info\n")
             tbl_info = MarkdownTable(f, "Key", "Value")
             tbl_info.write_row("Name", self.name)
-            tbl_info.write_row("App version", self.version)
-            tbl_info.write_row(
-                "Build iteration", self.build_iteration if self.build_iteration else "0"
-            )
+            tbl_info.write_row("Title", self.title)
+            tbl_info.write_row("Package version", self.version.package)
+            tbl_info.write_row("Build", self.version.build_info())
             tbl_info.write_row("Base image", escaped_md(self.base_image.reference))
             tbl_info.write_row(
                 "Maintainer", f"{self.authors[0].name} ({self.authors[0].email})"
             )
-            tbl_info.write_row("Info URL", self.info_url)
-            tbl_info.write_row("Short description", self.description)
-            for known_issue in self.known_issues:
+            tbl_info.write_row("Info URL", self.docs.info_url)
+
+            for known_issue in self.docs.known_issues:
                 tbl_info.write_row("Known issues", known_issue.url)
 
-            short_desc = self.long_description or self.description
-            f.write(f"\n{short_desc}\n\n")
+            desc = self.docs.description or self.title
+            f.write(f"\n{desc}\n\n")
 
             if self.licenses:
                 f.write("### Required licenses\n")
@@ -414,8 +389,8 @@ class App(ArcanaImage):
                     tbl_inputs.write_row(
                         escaped_md(inpt.name),
                         self._data_format_html(inpt.datatype),
-                        self._data_format_html(inpt.default_column.datatype),
-                        inpt.help_string,
+                        self._data_format_html(inpt.column_defaults.datatype),
+                        inpt.help,
                     )
                 f.write("\n")
 
@@ -432,8 +407,8 @@ class App(ArcanaImage):
                     tbl_outputs.write_row(
                         escaped_md(outpt.name),
                         self._data_format_html(outpt.datatype),
-                        self._data_format_html(outpt.default_column.datatype),
-                        outpt.help_string,
+                        self._data_format_html(outpt.column_defaults.datatype),
+                        outpt.help,
                     )
                 f.write("\n")
 
@@ -444,7 +419,7 @@ class App(ArcanaImage):
                     tbl_params.write_row(
                         escaped_md(param.name),
                         escaped_md(ClassResolver.tostr(param.datatype)),
-                        param.help_string,
+                        param.help,
                     )
                 f.write("\n")
 

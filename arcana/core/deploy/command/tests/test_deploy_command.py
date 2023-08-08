@@ -64,13 +64,13 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
                 "name": "source1",
                 "datatype": "text/text-file",
                 "field": "in_file1",
-                "help_string": "dummy",
+                "help": "dummy",
             },
             {
                 "name": "source2",
                 "datatype": "text/text-file",
                 "field": "in_file2",
-                "help_string": "dummy",
+                "help": "dummy",
             },
         ],
         outputs=[
@@ -78,7 +78,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
                 "name": "sink1",
                 "datatype": "text/text-file",
                 "field": "out_file",
-                "help_string": "dummy",
+                "help": "dummy",
             }
         ],
         parameters=[
@@ -86,7 +86,7 @@ def test_command_execute(concatenate_task, saved_dataset, work_dir):
                 "name": "duplicates",
                 "datatype": "int",
                 "default": 2,
-                "help_string": "dummy",
+                "help": "dummy",
             }
         ],
     )
@@ -137,13 +137,13 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
                 "name": "source1",
                 "datatype": "text/text-file",
                 "field": "in_file1",
-                "help_string": "dummy",
+                "help": "dummy",
             },
             {
                 "name": "source2",
                 "datatype": "text/text-file",
                 "field": "in_file2",
-                "help_string": "dummy",
+                "help": "dummy",
             },
         ],
         outputs=[
@@ -151,7 +151,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
                 "name": "sink1",
                 "datatype": "text/text-file",
                 "field": "out_file",
-                "help_string": "dummy",
+                "help": "dummy",
             }
         ],
         parameters=[
@@ -159,7 +159,7 @@ def test_command_execute_fail(concatenate_task, saved_dataset, work_dir):
                 "name": "duplicates",
                 "datatype": "int",
                 "default": 2,
-                "help_string": "dummy",
+                "help": "dummy",
             }
         ],
     )
@@ -222,7 +222,7 @@ def test_command_execute_on_row(cli_runner, work_dir):
                 "name": "a_row",
                 "datatype": "arcana.core.data.row:DataRow",
                 "field": "filenumber_row",
-                "help_string": "dummy",
+                "help": "dummy",
             },
         ],
     )
@@ -263,9 +263,9 @@ def test_command_execute_with_converter_args(
             {
                 "name": "source",
                 "datatype": "testing/encoded-text",
-                "default_column": {"datatype": "text/text-file"},
+                "column_defaults": {"datatype": "text/text-file"},
                 "field": "in_file",
-                "help_string": "dummy",
+                "help": "dummy",
             },
         ],
         outputs=[
@@ -273,14 +273,14 @@ def test_command_execute_with_converter_args(
                 "name": "sink1",
                 "datatype": "testing/encoded-text",
                 "field": "out",
-                "help_string": "dummy",
+                "help": "dummy",
             },
             {
                 "name": "sink2",
                 "datatype": "testing/encoded-text",
-                "default_column": {"datatype": "text/text-file"},
+                "column_defaults": {"datatype": "text/text-file"},
                 "field": "out",
-                "help_string": "dummy",
+                "help": "dummy",
             },
         ],
     )

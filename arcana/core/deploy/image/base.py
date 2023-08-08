@@ -24,7 +24,7 @@ from arcana.core.utils.misc import (
 )
 from arcana.core.data.space import DataSpace
 from arcana.core.exceptions import ArcanaBuildError
-from .components import Packages, BaseImage, PipPackage, CondaPackage
+from .components import Packages, BaseImage, PipPackage, CondaPackage, Version
 
 logger = logging.getLogger("arcana")
 
@@ -37,22 +37,15 @@ class ArcanaImage:
 
     name : str
         name of the package/pipeline
-    version : str
+    version : Version
         version of the package/pipeline
-    build_iteration : str
-        will be appended to the tag of the built images. Used to specify that the build
-        specification has been updated but the underlying software is the same
     org : str
         the organisation the image will be tagged within
     base_image : arcana.core.deploy.image.components.BaseImage, optional
         the base image to build from
-    packages : arcana.core.deploy.image.components.Packages
+    packages : Packages
         System (OS), PyPI, Conda and Neurodocker packages/templates to be installed
         in the image
-    package_templates : Iterable[ty.Dict[str, str]]
-        Neurodocker package installation templates to be installed inside the image. A
-        dictionary containing the 'name' and 'version' of the template along
-        with any additional keyword arguments required by the template
     registry : str, optional
         the container registry the image is to be installed at
     readme : str, optional
@@ -63,8 +56,7 @@ class ArcanaImage:
     IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
 
     name: str
-    version: str = attrs.field(converter=str)
-    build_iteration: ty.Optional[str] = None
+    version: Version = attrs.field(converter=ObjectConverter(Version))
     base_image: BaseImage = attrs.field(
         default=BaseImage(), converter=ObjectConverter(BaseImage)
     )
@@ -82,11 +74,7 @@ class ArcanaImage:
 
     @property
     def tag(self):
-        return (
-            f"{self.version}-{self.build_iteration}"
-            if self.build_iteration
-            else self.version
-        )
+        return str(self.version)
 
     @property
     def path(self):

@@ -14,19 +14,6 @@ from arcana.core.utils.serialize import ObjectListConverter
 logger = logging.getLogger("arcana")
 
 
-@attrs.define
-class ContainerAuthor:
-
-    name: str
-    email: str
-
-
-@attrs.define
-class KnownIssue:
-
-    url: str
-
-
 @attrs.define(kw_only=True)
 class BaseImage:
 
@@ -82,6 +69,73 @@ class BaseImage:
             raise ValueError(
                 f"Unsupported package manager '{package_manager}' provided. Only 'apt' "
                 "and 'yum' package managers are currently supported by Neurodocker"
+            )
+
+
+@attrs.define
+class Version:
+    """Version of the app, derived from a combination of the underlying package version
+    and the "build version" of the YAML spec"""
+
+    package: str
+    build: ty.Optional[str] = None
+    prerelease: ty.Optional[str] = None
+
+    def __str__(self):
+        tag = self.package
+        if self.prerelease:
+            tag += "-" + self.prerelease
+        if self.build:
+            tag += "-" + self.build
+        return tag
+
+    def __repr__(self):
+        rpr = f"Version(package={self.package}"
+        if self.build:
+            rpr += f", build={self.build}"
+        if self.prerelease:
+            rpr += f", prerelease={self.prerelease}"
+        return rpr + ")"
+
+    def build_info(self):
+        info = self.build if self.build else "0"
+        if self.prerelease:
+            info += f" ({self.prerelease})"
+        return info
+
+
+@attrs.define
+class ContainerAuthor:
+
+    name: str
+    email: str
+    affliation: ty.Optional[str] = None
+
+
+@attrs.define
+class KnownIssue:
+
+    description: str
+    url: ty.Optional[str] = None
+
+
+@attrs.define
+class Docs:
+
+    info_url: str = attrs.field()
+    description: ty.Optional[str] = None
+    known_issues: ty.List[KnownIssue] = attrs.field(
+        factory=list,
+        converter=ObjectListConverter(KnownIssue),
+        metadata={"serializer": ObjectListConverter.asdict},
+    )
+
+    @info_url.validator
+    def info_url_validator(self, _, info_url):
+        parsed = urlparse(info_url)
+        if not parsed.scheme or not parsed.netloc:
+            raise ValueError(
+                f"Could not parse info url '{info_url}', please include URL scheme"
             )
 
 
