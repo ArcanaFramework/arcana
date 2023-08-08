@@ -146,7 +146,7 @@ the full configuration required to build an XNAT docker image looks like
               datatype: medimage:NiftiGzX
               default_column:
                 datatype: medimage:Dicom
-              help_string: Anatomical image to segment into different tissues
+              help: Anatomical image to segment into different tissues
         outputs:
             tissue_classes:
               datatype: medimage:NiftiGz
@@ -156,9 +156,9 @@ the full configuration required to build an XNAT docker image looks like
               path: fast/probability-map
         parameters:
             use_priors:
-              help_string: Use priors in tissue estimation
+              help: Use priors in tissue estimation
             bias_lowpass:
-              help_string: Low-pass filter bias field
+              help: Low-pass filter bias field
         configuration:
             output_biasfield: true
             bias_lowpass: 5.0

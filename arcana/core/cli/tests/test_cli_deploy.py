@@ -187,11 +187,11 @@ command:
   inputs:
     in_file:
       datatype: text/text-file
-      help_string: the input file
+      help: the input file
   outputs:
     out_file:
       datatype: text/text-file
-      help_string: the output file
+      help: the output file
     """.strip(),
         """
 ---
@@ -276,19 +276,19 @@ command:
         configuration:
           path: anat/T1w
         datatype: medimage/nifti-gz-x
-        help_string: "T1-weighted anatomical scan"
+        help: "T1-weighted anatomical scan"
         default_column:
           datatype: medimage/dicom-set
       T2w:
         configuration:
           path: anat/T2w
         datatype: medimage/nifti-gz-x
-        help_string: "T2-weighted anatomical scan"
+        help: "T2-weighted anatomical scan"
         default_column:
           datatype: medimage/dicom-set
       fMRI:
         datatype: medimage/nifti-gz-x
-        help_string: "functional MRI"
+        help: "functional MRI"
         configuration:
           path: func/bold/task=rest
         default_column:
@@ -296,14 +296,14 @@ command:
     outputs:
       mriqc:
         datatype: generic/directory
-        help_string: "MRIQC output directory"
+        help: "MRIQC output directory"
         configuration:
           path: mriqc
     parameters:
       fmriprep_flags:
         field: flags
         datatype: str
-        help_string: description of flags param
+        help: description of flags param
     row_frequency: common:Clinical[session]
     configuration:
       executable: /usr/local/miniconda/bin/mriqc

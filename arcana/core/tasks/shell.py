@@ -14,7 +14,7 @@ class ShellCmdField:
     datatype: type = attrs.field(
         converter=ClassResolver(DataType, alternative_types=[bool, str, float, int])
     )
-    help_string: str = ""
+    help: str = ""
 
     def attrs_metadata(self, skip_fields=None):
         if skip_fields is None:

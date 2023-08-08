@@ -390,7 +390,7 @@ class App(ArcanaImage):
                         escaped_md(inpt.name),
                         self._data_format_html(inpt.datatype),
                         self._data_format_html(inpt.default_column.datatype),
-                        inpt.help_string,
+                        inpt.help,
                     )
                 f.write("\n")
 
@@ -408,7 +408,7 @@ class App(ArcanaImage):
                         escaped_md(outpt.name),
                         self._data_format_html(outpt.datatype),
                         self._data_format_html(outpt.default_column.datatype),
-                        outpt.help_string,
+                        outpt.help,
                     )
                 f.write("\n")
 
@@ -419,7 +419,7 @@ class App(ArcanaImage):
                     tbl_params.write_row(
                         escaped_md(param.name),
                         escaped_md(ClassResolver.tostr(param.datatype)),
-                        param.help_string,
+                        param.help,
                     )
                 f.write("\n")
 

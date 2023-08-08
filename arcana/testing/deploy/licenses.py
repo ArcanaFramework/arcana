@@ -30,7 +30,7 @@ def get_pipeline_image(license_path, app_cls=App) -> App:
                     "name": LICENSE_INPUT_FIELD,
                     "datatype": "text/plain",
                     "field": "expected_license_contents",
-                    "help_string": "the path to the license",
+                    "help": "the path to the license",
                 },
             ],
             "outputs": [
@@ -38,7 +38,7 @@ def get_pipeline_image(license_path, app_cls=App) -> App:
                     "name": LICENSE_OUTPUT_FIELD,
                     "datatype": "text/plain",
                     "field": "out",
-                    "help_string": "the validated license path",
+                    "help": "the validated license path",
                 }
             ],
             "parameters": [
@@ -47,7 +47,7 @@ def get_pipeline_image(license_path, app_cls=App) -> App:
                     "datatype": "str",
                     "field": "expected_license_path",
                     "required": True,
-                    "help_string": "the expected contents of the license file",
+                    "help": "the expected contents of the license file",
                 }
             ],
         },

@@ -55,7 +55,7 @@ class CommandField(PipelineField):
         the name of the pydra input field to connect to, defaults to name
     datatype : type, optional
         the type of the items to be passed to the input, fileformats.generic.File by default
-    help_string : str
+    help : str
         short description of the field to be displayed in the UI
     configuration : dict[str, Any] or bool
         Arguments that should be passed onto the the command configuration dict in
@@ -64,7 +64,7 @@ class CommandField(PipelineField):
         and dataset
     """
 
-    help_string: str
+    help: str
     configuration: ty.Union[ty.Dict[str, ty.Any], bool] = attrs.field(factory=dict)
 
     @property
@@ -103,7 +103,7 @@ class CommandInput(CommandField):
         the name of the pydra input field to connect to, defaults to name
     datatype : type, optional
         the type of the items to be passed to the input
-    help_string : str
+    help : str
         description of the input/output field
     configuration : dict
         additional attributes to be used in the configuration of the
@@ -157,7 +157,7 @@ class CommandOutput(CommandField):
         the name of the pydra input field to connect to, defaults to name
     datatype : type, optional
         the type of the items to be passed to the input
-    help_string : str
+    help : str
         description of the input/output field
     configuration : dict
         additional attributes to be used in the configuration of the
@@ -208,7 +208,7 @@ class CommandParameter(CommandField):
         the name of the pydra input field to connect to, defaults to name
     datatype : type, optional
         the type of the items to be passed to the input
-    help_string : str
+    help : str
         description of the input/output field
     configuration : dict[str, Any]
         additional attributes to be used in the configuration of the
