@@ -575,6 +575,10 @@ class ObjectListConverter(ObjectConverter):
             dct[obj_dict.pop("name")] = obj_dict
         return dct
 
+    @classmethod
+    def aslist(cls, objs: list, **kwargs) -> list:
+        return [attrs.asdict(obj, **kwargs) for obj in objs]
+
 
 def parse_value(value):
     """Parses values from string representations"""
