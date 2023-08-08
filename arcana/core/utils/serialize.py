@@ -17,6 +17,7 @@ import attrs
 from fileformats.core import from_mime
 from pydra.engine.core import Workflow, LazyField, TaskBase
 from pydra.engine.task import FunctionTask
+from pydra.utils.typing import TypeParser
 from arcana.core.exceptions import ArcanaUsageError
 from .packaging import pkg_versions, package_from_module
 from .misc import add_exc_note
@@ -207,7 +208,8 @@ class ClassResolver:
                     )
             if klass in self.alternative_types:
                 return  # ok
-            if not isclass(klass) or not issubclass(klass, self.base_class):
+            # TypeParser handles unions and other exotic base classes Python < 3.10
+            if not TypeParser.is_subclass(klass, self.base_class):
                 raise ValueError(
                     f"Found {klass}, which is not a subclass of {self.base_class}"
                 )
