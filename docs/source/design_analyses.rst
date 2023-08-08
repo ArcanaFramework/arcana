@@ -45,7 +45,7 @@ in the ``desc`` keyword arg.
     @analysis(ExampleDataSpace)
     class ExampleAnalysis():
 
-        recorded_datafile: Zip[Text]  = column(
+        recorded_datafile: DatFile  = column(
             desc=("Datafile acquired from an example scanner. Contains key "
                   "data to analyse"))
         recorded_metadata: Json = column(
@@ -54,7 +54,7 @@ in the ``desc`` keyword arg.
             desc="Preprocessed data file, corrected for distortions")
         derived_image: Png = column(
             desc="Map of the processed data")
-        summary_metric: float = column(
+        summary_metric: field.Decimal = column(
             desc="A summary metric extracted from the derived image",
             row_frequency='dataset')
 
@@ -137,7 +137,7 @@ files can be accessed as attributes of the primary ``LazyField``, e.g.
 
     from fileformats.field import Decimal
     from fileformats.medimage import DicomCollection
-    from arcana.medimage.data import Clinical
+    from arcana.common import Clinical
     from arcana.core import mark
     from arcana.core.tasks.misc import ExtractFromJson
     from arcana.core.data.salience import ColumnSalience as ds
