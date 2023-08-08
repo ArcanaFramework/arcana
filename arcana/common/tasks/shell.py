@@ -5,7 +5,7 @@ from pydra import ShellCommandTask
 import pydra.engine.specs
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
 from arcana.core.utils.serialize import ClassResolver, ObjectListConverter
-from fileformats.core import FileSet, DataType
+from fileformats.core import FileSet, DataType, Field
 
 
 @attrs.define(kw_only=True)
@@ -38,6 +38,8 @@ class ShellCmdField:
                 tp = pydra.engine.specs.File
         elif self.datatype.__module__ == "builtins":
             tp = self.datatype
+        elif issubclass(self.datatype, Field):
+            tp = self.datatype.primitive
         else:
             raise ValueError(f"Unsupported shell command input type {self.datatype}")
         return tp
