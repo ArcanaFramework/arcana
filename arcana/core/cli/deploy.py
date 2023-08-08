@@ -194,9 +194,6 @@ def make_app(
     clean_up,
 ):
 
-    if clean_up and not push:
-        raise ValueError("'--clean-up' flag requires '--push'")
-
     if tag_latest and not release:
         raise ValueError("'--tag-latest' flag requires '--release'")
 
