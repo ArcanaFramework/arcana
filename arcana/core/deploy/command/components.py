@@ -1,6 +1,5 @@
 from __future__ import annotations
 import typing as ty
-import builtins
 import attrs
 from arcana.core.utils.serialize import (
     ObjectConverter,
@@ -10,7 +9,7 @@ from arcana.core.analysis.pipeline import (
     PipelineField,
 )
 from arcana.core.data.row import DataRow
-from fileformats.core import DataType
+from fileformats.core import DataType, Field
 from fileformats.core.exceptions import FormatMismatchError
 from arcana.core.data.space import DataSpace
 from arcana.core.utils.misc import add_exc_note
@@ -196,6 +195,13 @@ class CommandOutput(CommandField):
             self.column_defaults.datatype = self.datatype
 
 
+def datatype_converter(datatype):
+    datatype = ClassResolver(ty.Union[int, float, bool, str, Field])(datatype)
+    if issubclass(datatype, Field):
+        datatype = datatype.primitive
+    return datatype
+
+
 @attrs.define(kw_only=True)
 class CommandParameter(CommandField):
     """Defines a fixed parameter of the task/workflow/analysis to be exposed in the UI
@@ -222,7 +228,7 @@ class CommandParameter(CommandField):
     """
 
     datatype: ty.Union[int, float, bool, str] = attrs.field(
-        converter=lambda x: getattr(builtins, x) if isinstance(x, str) else x
+        converter=datatype_converter
     )
     required: bool = False
     default: ty.Any = None

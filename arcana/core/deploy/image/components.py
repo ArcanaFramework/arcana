@@ -127,7 +127,7 @@ class Docs:
     known_issues: ty.List[KnownIssue] = attrs.field(
         factory=list,
         converter=ObjectListConverter(KnownIssue),
-        metadata={"serializer": ObjectListConverter.asdict},
+        metadata={"serializer": ObjectListConverter.aslist},
     )
 
     @info_url.validator
