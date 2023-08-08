@@ -302,7 +302,7 @@ command:
     parameters:
       fmriprep_flags:
         field: flags
-        datatype: str
+        datatype: field/text
         help: description of flags param
     row_frequency: common:Clinical[session]
     configuration:

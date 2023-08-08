@@ -22,7 +22,7 @@ def test_shell_cmd(work_dir):
         parameters=[
             {
                 "name": "recursive",
-                "datatype": "bool",
+                "datatype": "field/boolean",
                 "argstr": "-R",
                 "position": 0,
             }
