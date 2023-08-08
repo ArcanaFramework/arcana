@@ -9,9 +9,7 @@ from arcana.core.analysis.pipeline import (
     PipelineField,
 )
 from arcana.core.data.row import DataRow
-from fileformats.core import DataType
-
-# from_mime, to_mime
+from fileformats.core import DataType, Field
 from fileformats.core.exceptions import FormatMismatchError
 from arcana.core.data.space import DataSpace
 from arcana.core.utils.misc import add_exc_note
@@ -197,6 +195,13 @@ class CommandOutput(CommandField):
             self.column_defaults.datatype = self.datatype
 
 
+def datatype_converter(datatype):
+    datatype = ClassResolver(ty.Union[int, float, bool, str, Field])(datatype)
+    if issubclass(datatype, Field):
+        datatype = datatype.primitive
+    return datatype
+
+
 @attrs.define(kw_only=True)
 class CommandParameter(CommandField):
     """Defines a fixed parameter of the task/workflow/analysis to be exposed in the UI
@@ -223,15 +228,7 @@ class CommandParameter(CommandField):
     """
 
     datatype: ty.Union[int, float, bool, str] = attrs.field(
-        converter=ClassResolver(ty.Union[int, float, bool, str])
+        converter=datatype_converter
     )
     required: bool = False
     default: ty.Any = None
-
-    # @datatype.validator
-    # def datatype_validator(self, _, datatype: ty.Type[DataType]):
-    #     if datatype.namespace != "field":
-    #         raise TypeError(
-    #             f"Non-field type parameters ({self.name}: {to_mime(self.datatype)}) are "
-    #             "not currently supported"
-    #         )
