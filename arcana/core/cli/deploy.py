@@ -208,7 +208,10 @@ def make_app(
         build_dir = Path(build_dir.decode("utf-8"))
 
     if build_dir is None:
-        build_dir = spec_root / ".build"
+        if spec_root.is_file():
+            build_dir = spec_root.parent / (".build-" + spec_root.stem)
+        else:
+            build_dir = spec_root / ".build"
 
     if not build_dir.exists():
         build_dir.mkdir()
@@ -304,7 +307,7 @@ def make_app(
 
     for image_spec in image_specs:
         spec_build_dir = (
-            build_dir / image_spec.loaded_from.relative_to(spec_root)
+            build_dir / image_spec.loaded_from.relative_to(spec_root.absolute())
         ).with_suffix("")
         if spec_build_dir.exists():
             shutil.rmtree(spec_build_dir)

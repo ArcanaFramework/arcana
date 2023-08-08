@@ -129,6 +129,7 @@ the full configuration required to build an XNAT docker image looks like
     base_image:
         name: brainlife/fsl'
         tag: *package_version
+        package_manager: apt
     packages:
         neurodocker:
             dcm2niix: v1.0.20201102
@@ -153,9 +154,11 @@ the full configuration required to build an XNAT docker image looks like
             tissue_classes:
               datatype: medimage/nifti-gz
               path: fast/tissue-classes
+              help: Segmented tissue classes
             probability_maps:
               datatype: medimage/nifti-gz
               path: fast/probability-map
+              help: Probability maps for tissue classes
         parameters:
             use_priors:
               help: Use priors in tissue estimation
@@ -165,7 +168,7 @@ the full configuration required to build an XNAT docker image looks like
             output_biasfield: true
             bias_lowpass: 5.0
         row_frequency: session
-    schema_version: 1.0
+    arcana_spec_version: 1.0
 
 
 The CLI command to build the image from the YAML_ configuration is
