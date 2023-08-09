@@ -319,3 +319,80 @@ def test_command_execute_with_converter_args(
             dec_contents = f.read()
         assert enc_contents == encoded_contents
         assert dec_contents == unencoded_contents
+
+
+@pytest.mark.skip
+def test_shell_command_execute(saved_dataset, work_dir):
+    # Get CLI name for dataset (i.e. file system path prepended by 'dirtree//')
+    bp = saved_dataset.__annotations__["blueprint"]
+    duplicates = 1
+
+    command_spec = ContainerCommand(
+        task="arcana.common:shell_cmd",
+        row_frequency=bp.space.default(),
+        inputs=[
+            {
+                "name": "source1",
+                "datatype": "text/text-file",
+                "field": "in_file1",
+                "help": "dummy",
+                "configuration": {
+                    "argstr": "",
+                    "position": 0,
+                },
+            },
+            {
+                "name": "source2",
+                "datatype": "text/text-file",
+                "field": "in_file2",
+                "help": "dummy",
+                "configuration": {
+                    "argstr": "",
+                    "position": 2,
+                },
+            },
+        ],
+        outputs=[
+            {
+                "name": "sink1",
+                "datatype": "text/text-file",
+                "field": "out_file",
+                "help": "dummy",
+                "configuration": {
+                    "argstr": ">{sink1}",
+                    "position": 3,
+                },
+            }
+        ],
+        configuration={"executable": "cat"},
+    )
+    # Start generating the arguments for the CLI
+    # Add source to loaded dataset
+    command_spec.execute(
+        dataset_locator=saved_dataset.locator,
+        input_values=[
+            ("source1", "file1"),
+            ("source2", "file2"),
+        ],
+        output_values=[
+            ("sink1", "concatenated"),
+        ],
+        parameter_values=[
+            ("duplicates", str(duplicates)),
+        ],
+        raise_errors=True,
+        plugin="serial",
+        work_dir=str(work_dir),
+        loglevel="debug",
+        dataset_hierarchy=",".join(bp.hierarchy),
+        pipeline_name="test_pipeline",
+    )
+    # Add source column to saved dataset
+    sink = saved_dataset.add_sink("concatenated", TextFile)
+    assert len(sink) == reduce(mul, bp.dim_lengths)
+    fnames = ["file1.txt", "file2.txt"]
+    expected_contents = "\n".join(fnames * duplicates)
+    for item in sink:
+        with open(item) as f:
+            contents = f.read()
+        assert contents == expected_contents

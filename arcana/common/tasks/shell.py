@@ -1,5 +1,6 @@
 from __future__ import annotations
 import typing as ty
+from pathlib import Path
 import attrs
 from pydra import ShellCommandTask
 import pydra.engine.specs
@@ -32,10 +33,7 @@ class ShellCmdField:
     @property
     def attrs_type(self):
         if issubclass(self.datatype, FileSet):
-            if self.datatype.is_dir:
-                tp = pydra.engine.specs.Directory
-            else:
-                tp = pydra.engine.specs.File
+            tp = self.datatype
         elif self.datatype.__module__ == "builtins":
             tp = self.datatype
         elif issubclass(self.datatype, Field):
@@ -153,7 +151,7 @@ class ShellCmdOutput(ShellCmdField):
     argstr: bool = attrs.field(default=None, metadata={"input": True})
     mandatory: ty.Optional[bool] = None
     position: int = attrs.field(default=None, metadata={"input": True})
-    output_file_template: ty.Optional[str] = None
+    output_file_template: ty.Optional[str] = attrs.field()
     output_field_name: ty.Optional[str] = None
     keep_extension: bool = attrs.field(default=None, metadata={"input": True})
     requires: ty.Optional[list] = None
@@ -163,6 +161,13 @@ class ShellCmdOutput(ShellCmdField):
     callable: ty.Callable = attrs.field(
         default=None, converter=ClassResolver(allow_none=True)
     )
+
+    @output_file_template.default
+    def output_file_template_default(self):
+        if issubclass(self.datatype, FileSet):
+            return self.name + self.datatype.strext
+        else:
+            return None
 
     @property
     def input_required(self):
@@ -189,6 +194,7 @@ def shell_cmd(
     outputs: ty.List[ty.Union[ShellCmdOutput, ty.Dict[str, str]]],
     executable: str = "",  # Use entrypoint of container,
     parameters: ty.List[ty.Union[ShellCmdInput, ty.Dict[str, str]]] = None,
+    **kwargs,
 ):
     """Creates a Pydra shell command task which takes file inputs and runs it on the
     provided inputs, outputs and parameters
@@ -224,7 +230,7 @@ def shell_cmd(
     """
     inputs = ObjectListConverter(ShellCmdInput)(inputs)
     outputs = ObjectListConverter(ShellCmdOutput)(outputs)
-    parameters = ObjectListConverter(ShellCmdInput)(parameters)
+    parameters = ObjectListConverter(ShellCmdInput, allow_none=True)(parameters)
 
     input_fields = []
     for inpt in inputs + parameters:
@@ -239,10 +245,14 @@ def shell_cmd(
     output_fields = []
     for outpt in outputs:
         if outpt.input_required:
+            if issubclass(outpt.datatype, FileSet):
+                tp = Path
+            else:
+                tp = outpt.datatype
             input_fields.append(
                 (
                     outpt.name,
-                    outpt.attrs_type,
+                    tp,
                     outpt.attrs_metadata(),
                 )
             )
@@ -261,4 +271,5 @@ def shell_cmd(
         output_spec=SpecInfo(
             name="Output", fields=output_fields, bases=(ShellOutSpec,)
         ),
+        **kwargs,
     )
