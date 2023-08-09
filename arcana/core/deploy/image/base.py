@@ -60,6 +60,7 @@ class ArcanaImage:
 
     IN_DOCKER_ARCANA_HOME_DIR = "/arcana-home"
     SPEC_VERSION = "1.0"
+    PIP_DEPENDENCIES = ()
 
     name: str
     version: Version = attrs.field(converter=ObjectConverter(Version))
@@ -158,6 +159,8 @@ class ArcanaImage:
             )
 
         dockerfile = self.init_dockerfile()
+
+        dockerfile.user("root")
 
         self.install_system_packages(dockerfile)
 
@@ -263,7 +266,9 @@ class ArcanaImage:
         """
 
         pip_specs = PipPackage.unique(
-            self.packages.pip + [PipPackage(PACKAGE_NAME, extras=arcana_install_extras)]
+            self.packages.pip
+            + [PipPackage(PACKAGE_NAME, extras=arcana_install_extras)]
+            + [PipPackage(d) for d in self.PIP_DEPENDENCIES]
         )
 
         pip_strs = []
