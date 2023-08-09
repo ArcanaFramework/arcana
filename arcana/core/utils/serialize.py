@@ -14,7 +14,7 @@ from pathlib import PurePath, Path
 import logging
 import cloudpickle as cp
 import attrs
-from fileformats.core import from_mime
+from fileformats.core import from_mime, to_mime, DataType
 from pydra.engine.core import Workflow, LazyField, TaskBase
 from pydra.engine.task import FunctionTask
 from pydra.utils.typing import TypeParser
@@ -182,6 +182,8 @@ class ClassResolver:
             return klass
         if not (isclass(klass) or isfunction(klass)):
             klass = type(klass)  # Get the class rather than the object
+        if isclass(klass) and issubclass(klass, DataType):
+            return to_mime(klass)
         module_name = klass.__module__
         if module_name == "builtins":
             return klass.__name__
