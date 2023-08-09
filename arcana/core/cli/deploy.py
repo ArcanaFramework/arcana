@@ -341,6 +341,10 @@ def make_app(
                     "Successfully pushed '%s' to registry", image_spec.reference
                 )
         if clean_up:
+            logger.info(
+                "Removing '%s' and pruning dangling images to free up disk space",
+                image_spec.reference,
+            )
             dc.api.remove_image(image_spec.reference)
             dc.containers.prune()
             dc.images.prune(filters={"dangling": False})
