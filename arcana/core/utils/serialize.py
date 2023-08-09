@@ -533,7 +533,8 @@ class ObjectConverter:
             try:
                 obj = self.klass(**value_kwargs)
             except TypeError as e:
-                msg = f"when creating {self.klass} from {value_kwargs}"
+                field_names = [f.name for f in attrs.fields(self.klass)]
+                msg = f"when creating {self.klass} from {value_kwargs}, expected {field_names}"
                 add_exc_note(e, msg)
                 raise
         elif isinstance(value, (list, tuple)):
@@ -564,6 +565,11 @@ class ObjectConverter:
 class ObjectListConverter(ObjectConverter):
     def __call__(self, value):
         converted = []
+        if value is None:
+            if self.allow_none:
+                return converted
+            else:
+                raise ValueError("Value cannot be None")
         if isinstance(value, dict):
             for name, item in value.items():
                 converted.append(self._create_object(item, name=name))
