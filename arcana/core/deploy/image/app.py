@@ -20,6 +20,11 @@ from ..command.base import ContainerCommand
 from .base import ArcanaImage
 from .components import ContainerAuthor, License, Docs
 
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
+
 
 logger = logging.getLogger("arcana")
 
@@ -286,7 +291,7 @@ class App(ArcanaImage):
         return dct
 
     @classmethod
-    def load_tree(cls, root_dir: Path, **kwargs) -> list:
+    def load_tree(cls, root_dir: Path, **kwargs) -> ty.List[Self]:
         """Walk the given directory structure and load all specs found within it
 
         Parameters

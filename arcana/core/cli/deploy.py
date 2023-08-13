@@ -217,7 +217,7 @@ def make_app(
 
     temp_dir = tempfile.mkdtemp()
 
-    target_cls = ClassResolver(App)(target)
+    target_cls: App = ClassResolver(App)(target)
 
     dc = docker.from_env()
 
@@ -233,7 +233,7 @@ def make_app(
     # aren't present in the build environment
     # FIXME: need to test for this
     with ClassResolver.FALLBACK_TO_STR:
-        image_specs = target_cls.load_tree(
+        image_specs: ty.List[target_cls] = target_cls.load_tree(
             spec_root,
             registry=registry,
             license_paths=license_paths,
@@ -313,6 +313,7 @@ def make_app(
                 use_test_config=use_test_config,
                 use_local_packages=use_local_packages,
                 generate_only=generate_only,
+                no_cache=clean_up,
             )
         except Exception:
             if raise_errors:
@@ -342,18 +343,13 @@ def make_app(
                 )
         if clean_up:
             logger.info(
-                "Removing '%s' and pruning dangling images to free up disk space",
+                "Removing '%s' and base image '%s' to free up disk space as '--clean-up' "
+                "is set",
                 image_spec.reference,
+                image_spec.base_image,
             )
             dc.api.remove_image(image_spec.reference)
-            dc.containers.prune()
-            dc.images.prune(filters={"dangling": False})
             dc.api.remove_image(image_spec.base_image)
-            dc.images.prune(filters={"dangling": False})
-            logger.info(
-                "Removed '%s' and pruned dangling images to free up disk space",
-                image_spec.reference,
-            )
 
         if release or save_manifest:
             manifest["images"].append(
