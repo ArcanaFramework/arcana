@@ -94,6 +94,7 @@ class ArcanaImage:
         self,
         build_dir: ty.Optional[Path] = None,
         generate_only: bool = False,
+        no_cache: bool = False,
         **kwargs,
     ):
         """Makes the container image from the spec: generates the Dockerfile and then
@@ -115,7 +116,9 @@ class ArcanaImage:
         dockerfile = self.construct_dockerfile(build_dir, **kwargs)
 
         if not generate_only:
-            self.build(dockerfile, build_dir, image_tag=self.reference)
+            self.build(
+                dockerfile, build_dir, image_tag=self.reference, no_cache=no_cache
+            )
 
     def construct_dockerfile(
         self,
@@ -185,7 +188,13 @@ class ArcanaImage:
         return dockerfile
 
     @classmethod
-    def build(cls, dockerfile: DockerRenderer, build_dir: Path, image_tag: str):
+    def build(
+        cls,
+        dockerfile: DockerRenderer,
+        build_dir: Path,
+        image_tag: str,
+        no_cache: bool = False,
+    ):
         """Builds the dockerfile in the specified build directory
 
         Parameters
@@ -196,6 +205,8 @@ class ArcanaImage:
             path of the build directory
         image_tag : str
             Docker image tag to assign to the built image
+        no_cache : bool, optional
+            whether to cache the build layers or not, by default False
         """
 
         # Save generated dockerfile to file
@@ -207,7 +218,7 @@ class ArcanaImage:
 
         dc = docker.from_env()
         try:
-            dc.images.build(path=str(build_dir), tag=image_tag)
+            dc.images.build(path=str(build_dir), tag=image_tag, nocache=no_cache)
         except docker.errors.BuildError as e:
             build_log = "\n".join(ln.get("stream", "") for ln in e.build_log)
             raise RuntimeError(
