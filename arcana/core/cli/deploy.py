@@ -346,10 +346,10 @@ def make_app(
                 "Removing '%s' and base image '%s' to free up disk space as '--clean-up' "
                 "is set",
                 image_spec.reference,
-                image_spec.base_image,
+                image_spec.base_image.reference,
             )
             dc.api.remove_image(image_spec.reference)
-            dc.api.remove_image(image_spec.base_image)
+            dc.api.remove_image(image_spec.base_image.reference)
 
         if release or save_manifest:
             manifest["images"].append(
