@@ -193,6 +193,7 @@ def make_app(
     push,
     clean_up,
 ):
+
     if tag_latest and not release:
         raise ValueError("'--tag-latest' flag requires '--release'")
 
