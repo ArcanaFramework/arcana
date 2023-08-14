@@ -193,7 +193,6 @@ def make_app(
     push,
     clean_up,
 ):
-
     if tag_latest and not release:
         raise ValueError("'--tag-latest' flag requires '--release'")
 
@@ -243,11 +242,9 @@ def make_app(
     # Check the target registry to see a) if the images with the same tag
     # already exists and b) whether it was built with the same specs
     if check_registry:
-
         conflicting = {}
         to_build = []
         for image_spec in image_specs:
-
             extracted_dir = extract_file_from_docker_image(
                 image_spec.reference, image_spec.IN_DOCKER_SPEC_PATH
             )
@@ -342,14 +339,20 @@ def make_app(
                     "Successfully pushed '%s' to registry", image_spec.reference
                 )
         if clean_up:
-            logger.info(
-                "Removing '%s' and base image '%s' to free up disk space as '--clean-up' "
-                "is set",
-                image_spec.reference,
-                image_spec.base_image.reference,
-            )
-            dc.api.remove_image(image_spec.reference)
-            dc.api.remove_image(image_spec.base_image.reference)
+
+            def remove_image_and_containers(image_ref):
+                logger.info(
+                    "Removing '%s' image and associated containers to free up disk space "
+                    "as '--clean-up' is set",
+                    image_ref,
+                )
+                for container in dc.containers.list(filters={"ancestor": image_ref}):
+                    container.stop()
+                    container.remove()
+                dc.api.remove_image(image_ref)
+
+            remove_image_and_containers(image_spec.reference)
+            remove_image_and_containers(image_spec.base_image.reference)
 
         if release or save_manifest:
             manifest["images"].append(
@@ -435,7 +438,6 @@ DOCKER_ORG is the Docker organisation the images should belong to""",
     help="The Docker registry to deploy the pipeline to",
 )
 def list_images(spec_root, registry):
-
     if isinstance(spec_root, bytes):  # FIXME: This shouldn't be necessary
         spec_root = Path(spec_root.decode("utf-8"))
 
@@ -495,7 +497,6 @@ def make_docs(spec_root, output, registry, flatten, loglevel):
         image_specs = App.load_tree(spec_root, registry=registry)
 
     for image_spec in image_specs:
-
         image_spec.autodoc(output, flatten=flatten)
         logging.info("Successfully created docs for %s", image_spec.path)
 
@@ -507,7 +508,6 @@ specified workflows and return them and their versions""",
 )
 @click.argument("task_locations", nargs=-1)
 def required_packages(task_locations):
-
     required_modules = set()
     for task_location in task_locations:
         workflow = ClassResolver(TaskBase, alternative_types=[ty.Callable])(
@@ -550,7 +550,6 @@ and the commands present in them"""
 @click.argument("manifest_json", type=click.File())
 @click.argument("images", nargs=-1)
 def changelog(manifest_json):
-
     manifest = json.load(manifest_json)
 
     for entry in manifest["images"]:
@@ -588,7 +587,6 @@ project ID for managed data repositories.
 )
 @click.option("--loglevel", default="info", help="The level to display logs at")
 def install_license(install_locations, license_name, source_file, logfile, loglevel):
-
     logging.basicConfig(filename=logfile, level=getattr(logging, loglevel.upper()))
 
     if isinstance(source_file, bytes):  # FIXME: This shouldn't be necessary
@@ -639,7 +637,6 @@ def pipeline_entrypoint(
     spec_path,
     **kwargs,
 ):
-
     image_spec = App.load(spec_path)
 
     image_spec.command.execute(
