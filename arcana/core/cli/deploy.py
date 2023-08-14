@@ -349,7 +349,7 @@ def make_app(
                 for container in dc.containers.list(filters={"ancestor": image_ref}):
                     container.stop()
                     container.remove()
-                dc.api.remove_image(image_ref)
+                dc.images.remove(image_ref, force=True)
 
             remove_image_and_containers(image_spec.reference)
             remove_image_and_containers(image_spec.base_image.reference)
