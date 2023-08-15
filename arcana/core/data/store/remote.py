@@ -236,7 +236,7 @@ class RemoteStore(DataStore):
             uri of the data item to download the checksums for
         """
 
-    def put_checksums(self, uri: str, fileset: FileSet):
+    def put_checksums(self, uri: str, fileset: FileSet) -> ty.Dict[str, str]:
         """
         Uploads the checksum digests associated with the files in the file-set to
         the repository. Can be left as NotImplementedError if the repository
@@ -248,6 +248,11 @@ class RemoteStore(DataStore):
             uri of the data item to upload the checksums of
         fileset : FileSet
             the fileset to calculate and upload the checksums for
+
+        Returns
+        -------
+        checksums : dict[str, str]
+            the calculated checksums
         """
         raise NotImplementedError
 
@@ -426,7 +431,7 @@ class RemoteStore(DataStore):
         cached = fileset.copy(cache_path, make_dirs=True, trim=False)
         self.upload_files(cache_path, entry)
         try:
-            self.put_checksums(entry.uri, cached)
+            checksums = self.put_checksums(entry.uri, cached)
         except NotImplementedError:
             # Assuming that the checksums are generated internally by the repository so
             # we download the ones it calculated and check they match with the ones we
