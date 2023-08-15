@@ -391,5 +391,14 @@ class MockRemote(RemoteStore):
             raise RuntimeError("Mock data store has not been connected")
 
 
+class AlternateMockRemote(MockRemote):
+    """An alternative mock remote with `put_checksums` implemented for store types like
+    Flywheel that don't implement internal checksums
+    """
+
+    def put_checksums(self, uri: str, fileset: FileSet) -> ty.Dict[str, str]:
+        return self.calculate_checksums(fileset)
+
+
 class NotInHierarchyException(Exception):
     pass
