@@ -193,7 +193,6 @@ def make_app(
     push,
     clean_up,
 ):
-
     if tag_latest and not release:
         raise ValueError("'--tag-latest' flag requires '--release'")
 
@@ -483,7 +482,15 @@ The generated documentation will be saved to OUTPUT.
 )
 @click.option("--flatten/--no-flatten", default=False)
 @click.option("--loglevel", default="warning", help="The level to display logs at")
-def make_docs(spec_root, output, registry, flatten, loglevel):
+@click.option(
+    "--default-data-space",
+    default=None,
+    help=(
+        "The default data space to assume if it isn't explicitly stated in "
+        "the command"
+    ),
+)
+def make_docs(spec_root, output, registry, flatten, loglevel, default_data_space):
     # FIXME: Workaround for click 7.x, which improperly handles path_type
     if type(spec_root) is bytes:
         spec_root = Path(spec_root.decode("utf-8"))
@@ -494,8 +501,12 @@ def make_docs(spec_root, output, registry, flatten, loglevel):
 
     output.mkdir(parents=True, exist_ok=True)
 
+    default_data_space = ClassResolver.fromstr(default_data_space)
+
     with ClassResolver.FALLBACK_TO_STR:
-        image_specs = App.load_tree(spec_root, registry=registry)
+        image_specs = App.load_tree(
+            spec_root, registry=registry, default_data_space=default_data_space
+        )
 
     for image_spec in image_specs:
         image_spec.autodoc(output, flatten=flatten)

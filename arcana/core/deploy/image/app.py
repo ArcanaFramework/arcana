@@ -16,9 +16,11 @@ from arcana.core.utils.serialize import (
     ObjectListConverter,
     ClassResolver,
 )
+from arcana.core.data.space import DataSpace
 from ..command.base import ContainerCommand
 from .base import ArcanaImage
 from .components import ContainerAuthor, License, Docs
+
 
 try:
     from typing import Self
@@ -83,12 +85,10 @@ class App(ArcanaImage):
     arcana_version: str = __version__
 
     def __attrs_post_init__(self):
-
         # Set back-references to this image in the command spec
         self.command.image = self
 
     def add_entrypoint(self, dockerfile: DockerRenderer, build_dir: Path):
-
         command_line = (
             self.command.activate_conda_cmd() + "arcana deploy pipeline-entrypoint"
         )
@@ -199,6 +199,7 @@ class App(ArcanaImage):
         root_dir: ty.Optional[Path] = None,
         license_paths: ty.Dict[str, Path] = None,
         licenses_to_download: set[str] = None,
+        default_data_space: ty.Type[DataSpace] = None,
         **kwargs,
     ):
         """Loads a deploy-build specification from a YAML file
@@ -219,6 +220,8 @@ class App(ArcanaImage):
             None (i.e. how to access required licenses are to be specified) then required
             licenses that are not in license_paths need to be explicitly listed in
             `licenses_to_download` otherwise an error is raised
+        default_data_space : type[DataSpace]
+            the default data space to assume when one isn't explicitly defined
         **kwargs
             additional keyword arguments that override/augment the values loaded from
             the spec file
@@ -258,6 +261,15 @@ class App(ArcanaImage):
 
         # Override/augment loaded values from spec
         yml_dict.update(kwargs)
+
+        # If data-space is not defined, default to `default_data_space`
+        if (
+            re.match(r"\w+", yml_dict["command"]["row_frequency"])
+            and default_data_space
+        ):
+            yml_dict["command"]["row_frequency"] = default_data_space[
+                yml_dict["command"]["row_frequency"]
+            ]
 
         image = cls(**yml_dict)
 
@@ -304,7 +316,6 @@ class App(ArcanaImage):
         specs = []
         for path in chain(root_dir.rglob("*.yml"), root_dir.rglob("*.yaml")):
             if not any(p.startswith(".") for p in path.parts):
-
                 logging.info("Found container image specification file '%s'", path)
                 specs.append(cls.load(path, root_dir=root_dir, **kwargs))
 
@@ -473,7 +484,6 @@ class App(ArcanaImage):
 
     @classmethod
     def _data_format_html(cls, datatype):
-
         datatype_str = datatype.mime_like if not isinstance(datatype, str) else datatype
 
         return (
