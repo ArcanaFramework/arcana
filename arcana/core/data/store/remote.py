@@ -236,6 +236,26 @@ class RemoteStore(DataStore):
             uri of the data item to download the checksums for
         """
 
+    def put_checksums(self, uri: str, fileset: FileSet) -> ty.Dict[str, str]:
+        """
+        Uploads the checksum digests associated with the files in the file-set to
+        the repository. Can be left as NotImplementedError if the repository
+        calculates its own checksums on upload internally.
+
+        Parameters
+        ----------
+        uri: str
+            uri of the data item to upload the checksums of
+        fileset : FileSet
+            the fileset to calculate and upload the checksums for
+
+        Returns
+        -------
+        checksums : dict[str, str]
+            the calculated checksums
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def calculate_checksums(self, fileset: FileSet) -> ty.Dict[str, str]:
         """
@@ -410,19 +430,25 @@ class RemoteStore(DataStore):
         # Copy to cache
         cached = fileset.copy(cache_path, make_dirs=True, trim=False)
         self.upload_files(cache_path, entry)
-        checksums = self.get_checksums(entry.uri)
-        calculated_checksums = self.calculate_checksums(cached)
-        if checksums != calculated_checksums:
-            raise ArcanaError(
-                f"Checksums for uploaded file-set at {entry} don't match that of the "
-                "original files:\n\n"
-                + dict_diff(
-                    calculated_checksums,
-                    checksums,
-                    label1="original",
-                    label2="remote",
+        try:
+            checksums = self.put_checksums(entry.uri, cached)
+        except NotImplementedError:
+            # Assuming that the checksums are generated internally by the repository so
+            # we download the ones it calculated and check they match with the ones we
+            # calculate.
+            checksums = self.get_checksums(entry.uri)
+            calculated_checksums = self.calculate_checksums(cached)
+            if checksums != calculated_checksums:
+                raise ArcanaError(
+                    f"Checksums for uploaded file-set at {entry} don't match that of the "
+                    "original files:\n\n"
+                    + dict_diff(
+                        calculated_checksums,
+                        checksums,
+                        label1="original",
+                        label2="remote",
+                    )
                 )
-            )
         # Save checksums, to avoid having to redownload if they haven't been altered
         # on XNAT
         with open(

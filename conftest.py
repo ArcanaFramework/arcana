@@ -8,6 +8,7 @@ from tempfile import mkdtemp
 from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
+from arcana.core.data.store import DataStore
 from fileformats.text import Plain as PlainText
 from arcana.testing.tasks import (
     concatenate,
@@ -21,7 +22,7 @@ from arcana.testing.data.blueprint import (
     TEST_DATASET_BLUEPRINTS,
     GOOD_DATASETS,
 )
-from arcana.testing import TestDataSpace, MockRemote
+from arcana.testing import TestDataSpace, MockRemote, AlternateMockRemote
 from arcana.common import DirTree
 
 # from pydra import set_input_validator
@@ -139,14 +140,18 @@ def arcana_home(work_dir):
 
 @pytest.fixture(params=DATA_STORES)
 def data_store(work_dir: Path, arcana_home: Path, request):
+    store: DataStore
     if request.param == "dirtree":
         store = DirTree()
-    elif request.param == "mock_remote":
+    elif request.param.endswith("mock_remote"):
         cache_dir = work_dir / "mock-remote-store" / "cache"
         cache_dir.mkdir(parents=True)
         remote_dir = work_dir / "mock-remote-store" / "remote"
         remote_dir.mkdir(parents=True)
-        store = MockRemote(
+        klass = (
+            AlternateMockRemote if request.param == "alt_mock_remote" else MockRemote
+        )
+        store = klass(
             server="http://a.server.com",
             cache_dir=cache_dir,
             user="admin",
