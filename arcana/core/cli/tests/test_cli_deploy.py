@@ -49,6 +49,8 @@ def test_deploy_make_app_cli(command_spec, cli_runner, work_dir):
         [
             str(spec_path),
             "common:App",
+            "--root-dir",
+            str(spec_path.parent),
             "--build-dir",
             str(build_dir),
             "--registry",
@@ -92,6 +94,8 @@ def test_deploy_remake_app_cli(command_spec, docker_registry, cli_runner, run_pr
             [
                 str(spec_path),
                 "common:App",
+                "--root-dir",
+                str(spec_path.parent),
                 "--build-dir",
                 str(build_dir),
                 "--registry",
@@ -410,6 +414,8 @@ def _make_docs(
         [
             specs_dir.as_posix(),
             out_dir.as_posix(),
+            "--root-dir",
+            str(specs_dir.parent),
         ]
         + (["--flatten" if flatten else "--no-flatten"] if flatten is not None else [])
         + list(args),

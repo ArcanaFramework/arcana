@@ -502,7 +502,7 @@ SPEC_ROOT is the path of a YAML spec file or directory containing one or more su
 The generated documentation will be saved to OUTPUT.
 """,
 )
-@click.argument("spec_root", type=click.Path(exists=True, path_type=Path))
+@click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
 @click.argument("output", type=click.Path(path_type=Path))
 @click.option(
     "--registry",
@@ -519,10 +519,10 @@ The generated documentation will be saved to OUTPUT.
         "the command"
     ),
 )
-def make_docs(spec_root, output, registry, flatten, loglevel, default_data_space):
+def make_docs(spec_path, output, registry, flatten, loglevel, default_data_space):
     # FIXME: Workaround for click 7.x, which improperly handles path_type
-    if type(spec_root) is bytes:
-        spec_root = Path(spec_root.decode("utf-8"))
+    if type(spec_path) is bytes:
+        spec_path = Path(spec_path.decode("utf-8"))
     if type(output) is bytes:
         output = Path(output.decode("utf-8"))
 
@@ -534,7 +534,7 @@ def make_docs(spec_root, output, registry, flatten, loglevel, default_data_space
 
     with ClassResolver.FALLBACK_TO_STR:
         image_specs = App.load_tree(
-            spec_root, registry=registry, default_data_space=default_data_space
+            spec_path, registry=registry, default_data_space=default_data_space
         )
 
     for image_spec in image_specs:
