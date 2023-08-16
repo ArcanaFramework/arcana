@@ -174,7 +174,7 @@ common:App
 )
 @click.option(
     "--spec-root",
-    type=click.Path(type=Path),
+    type=click.Path(path_type=Path),
     default=None,
     help=("The root path to consider the specs to be relative to, defaults to CWD"),
 )
