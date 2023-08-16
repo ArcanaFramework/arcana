@@ -303,18 +303,20 @@ class App(ArcanaImage):
         return dct
 
     @classmethod
-    def load_tree(cls, root_dir: Path, **kwargs) -> ty.List[Self]:
+    def load_tree(cls, spec_path: Path, root_dir: Path, **kwargs) -> ty.List[Self]:
         """Walk the given directory structure and load all specs found within it
 
         Parameters
         ----------
+        spec_path : Path
+            Path to spec or directory tree containing specs of the pipelines to build
         root_dir : Path
-            path to the base directory
+            path to the base of the spec directory
         """
-        if root_dir.is_file():
-            return [cls.load(root_dir, **kwargs)]
+        if spec_path.is_file():
+            return [cls.load(spec_path, root_dir=root_dir, **kwargs)]
         specs = []
-        for path in chain(root_dir.rglob("*.yml"), root_dir.rglob("*.yaml")):
+        for path in chain(spec_path.rglob("*.yml"), spec_path.rglob("*.yaml")):
             if not any(p.startswith(".") for p in path.parts):
                 logging.info("Found container image specification file '%s'", path)
                 specs.append(cls.load(path, root_dir=root_dir, **kwargs))
