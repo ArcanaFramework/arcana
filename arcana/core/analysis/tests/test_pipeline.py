@@ -2,7 +2,7 @@ import zipfile
 import tempfile
 from pathlib import Path
 from fileformats.text import TextFile
-from fileformats.archive import Zip
+from fileformats.application import Zip
 from arcana.testing import TestDataSpace
 from arcana.common import DirTree
 from conftest import TEST_DATASET_BLUEPRINTS

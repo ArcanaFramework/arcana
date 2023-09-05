@@ -14,9 +14,8 @@ import attrs
 from fileformats.core import FileSet, Field
 from fileformats.generic import Directory
 from fileformats.text import TextFile
-from fileformats.archive import Zip
+from fileformats.application import Zip, Json
 from fileformats.field import Text as TextField, Decimal, Boolean, Integer, Array
-from fileformats.serialization import Json
 from fileformats.testing import (
     MyFormatGz,
     MyFormatGzX,
