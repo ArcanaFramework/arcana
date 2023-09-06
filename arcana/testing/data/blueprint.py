@@ -41,7 +41,9 @@ class EntryBlueprint(metaclass=ABCMeta):
     path: str
     datatype: type = attrs.field()
     row_frequency: ty.Optional[str] = None
-    ids: ty.List[str] = None  # the list of row IDs to create the blueprint in
+    ids: ty.Optional[
+        ty.List[str]
+    ] = None  # the list of row IDs to create the blueprint in
     alternative_datatypes: ty.List[type] = attrs.field(factory=list)
 
     @datatype.validator
