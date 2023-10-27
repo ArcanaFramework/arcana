@@ -34,11 +34,13 @@ can be arbitrarily specified. dimensions"""
 @click.argument("hierarchy", nargs=-1)
 @click.option(
     "--space",
+    default="common:Clinical",
     type=str,
-    default=None,
     help=(
-        'The "space" of the dataset, defines the dimensions along the ids '
-        "of row can vary"
+        "The enum that specifies the data dimensions of the dataset. "
+        "Defaults to `Clinical`, which "
+        "consists of the typical dataset>group>subject>session "
+        "data tree used in medimage trials/studies"
     ),
 )
 @click.option(
@@ -69,16 +71,6 @@ can be arbitrarily specified. dimensions"""
         "followed by the IDs to be included in the dataset. "
         "If the second arg contains '/' then it is interpreted as "
         "the path to a text file containing a list of IDs"
-    ),
-)
-@click.option(
-    "--space",
-    default="common:Clinical",
-    help=(
-        "The enum that specifies the data dimensions of the dataset. "
-        "Defaults to `Clinical`, which "
-        "consists of the typical dataset>group>subject>session "
-        "data tree used in medimage trials/studies"
     ),
 )
 @click.option(
