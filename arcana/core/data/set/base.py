@@ -276,7 +276,7 @@ class Dataset:
         cls,
         id: str,
         store: datastore.DataStore = None,
-        name: ty.Optional[str] = None,
+        name: ty.Optional[str] = "",
         **kwargs,
     ):
         """Loads a dataset from an store/ID/name string, as used in the CLI
@@ -303,8 +303,8 @@ class Dataset:
         if store is None:
             store_name, id, parsed_name = cls.parse_id_str(id)
             store = datastore.DataStore.load(store_name, **kwargs)
-        if name is None:
-            name = parsed_name
+            if not name and parsed_name:
+                name = parsed_name
         return store.load_dataset(id, name=name)
 
     @property
