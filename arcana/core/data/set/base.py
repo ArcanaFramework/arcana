@@ -211,8 +211,6 @@ class Dataset:
 
     @hierarchy.validator
     def hierarchy_validator(self, _, hierarchy):
-        if not hierarchy:
-            raise ArcanaUsageError(f"hierarchy provided to {self} cannot be empty")
         not_valid = [f for f in hierarchy if f not in self.space.__members__]
         if not_valid:
             raise ArcanaWrongDataSpaceError(
