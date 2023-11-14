@@ -46,7 +46,7 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
         args=[
             str(spec_path),
             "common:App",
-            "--root-dir",
+            "--spec-root",
             str(spec_path.parent),
             "--build-dir",
             str(build_dir),
