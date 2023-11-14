@@ -204,18 +204,21 @@ def make_app(
         raise ValueError("'--tag-latest' flag requires '--release'")
 
     if spec_root is None:
-        spec_root = Path.cwd()
+        if spec_path.is_dir():
+            spec_root = spec_path
+        else:
+            spec_root = spec_path.parent
+            if not spec_root.name:
+                raise ValueError(
+                    "Spec paths must be placed within a directory, which will "
+                    f"be interpreted as the name of the overall package ({spec_path})"
+                )
         logger.info(
-            "`--spec-root` was not explicitly provided so assuming CWD '%s'",
+            "`--spec-root` was not explicitly provided so assuming the same as spec path '%s'",
             str(spec_root),
         )
 
-    try:
-        package_name = spec_path.relative_to(spec_root).parts[0]
-    except ValueError as e:
-        raise ValueError(
-            f"Spec path '{spec_path}' is not relative to the spec root '{spec_root}'"
-        ) from e
+    package_name = spec_root.name
 
     if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
         spec_path = Path(spec_path.decode("utf-8"))

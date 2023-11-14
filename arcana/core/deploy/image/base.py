@@ -291,7 +291,7 @@ class ArcanaImage:
         conda_pkg_names = set(p.name for p in self.packages.conda)
         conda_strs = []
         if "python" not in conda_pkg_names:
-            conda_strs.append("python")
+            conda_strs.append("python==3.11")
         for pkg_name in CondaPackage.REQUIRED:
             if pkg_name not in conda_pkg_names:
                 conda_strs.append(pkg_name)
