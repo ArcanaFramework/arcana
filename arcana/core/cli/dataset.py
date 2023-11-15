@@ -190,7 +190,7 @@ field array (ty.List[int|float|str|bool]) or
     help=(
         "Match on specific header value. This option is only valid for "
         "select formats that the implement the 'header_val()' method "
-        "(e.g. medimage/dicom-set)."
+        "(e.g. medimage/dicom-series)."
     ),
 )
 def add_source(

@@ -337,7 +337,7 @@ class App(ArcanaImage):
         else:
             assert isinstance(doc_dir, Path)
 
-            out_dir = doc_dir.joinpath(*self.name.split(".")[:-1])
+            out_dir = doc_dir / self.org
 
             assert doc_dir in out_dir.parents or out_dir == doc_dir
 

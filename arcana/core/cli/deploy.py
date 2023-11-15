@@ -477,25 +477,6 @@ def list_images(spec_root, registry):
         click.echo(image_spec.reference)
 
 
-# @deploy.command(
-#     name="test",
-#     help="""Test container images defined by YAML
-# specs
-
-# Arguments
-# ---------
-# module_path
-#     The file system path to the module to build""",
-# )
-# @click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
-# def test(spec_path):
-#     # FIXME: Workaround for click 7.x, which improperly handles path_type
-#     if type(spec_path) is bytes:
-#         spec_path = Path(spec_path.decode("utf-8"))
-
-#     raise NotImplementedError
-
-
 @deploy.command(
     name="make-docs",
     help="""Build docs for one or more yaml wrappers
@@ -522,12 +503,20 @@ The generated documentation will be saved to OUTPUT.
         "the command"
     ),
 )
-def make_docs(spec_path, output, registry, flatten, loglevel, default_data_space):
-    # FIXME: Workaround for click 7.x, which improperly handles path_type
-    if type(spec_path) is bytes:
-        spec_path = Path(spec_path.decode("utf-8"))
-    if type(output) is bytes:
-        output = Path(output.decode("utf-8"))
+@click.option(
+    "--spec-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=("The root path to consider the specs to be relative to, defaults to CWD"),
+)
+def make_docs(
+    spec_path, output, registry, flatten, loglevel, default_data_space, spec_root
+):
+    # # FIXME: Workaround for click 7.x, which improperly handles path_type
+    # if type(spec_path) is bytes:
+    #     spec_path = Path(spec_path.decode("utf-8"))
+    # if type(output) is bytes:
+    #     output = Path(output.decode("utf-8"))
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
@@ -537,7 +526,10 @@ def make_docs(spec_path, output, registry, flatten, loglevel, default_data_space
 
     with ClassResolver.FALLBACK_TO_STR:
         image_specs = App.load_tree(
-            spec_path, registry=registry, default_data_space=default_data_space
+            spec_path,
+            registry=registry,
+            root_dir=spec_root,
+            default_data_space=default_data_space,
         )
 
     for image_spec in image_specs:
