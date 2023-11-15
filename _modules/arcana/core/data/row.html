@@ -1,11 +1,11 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="../../../../">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../genindex.html" /><link rel="search" title="Search" href="../../../../search.html" />
 
-    <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>arcana.core.data.row - Arcana v0.10.12</title>
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.09.10 -->
+        <title>arcana.core.data.row - Arcana v0.10.13</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../index.html"><div class="brand">Arcana v0.10.12</div></a>
+      <a href="../../../../index.html"><div class="brand">Arcana v0.10.13</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.12</span>
+  <span class="sidebar-brand-text">Arcana v0.10.13</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -231,7 +231,9 @@
     <span class="kn">from</span> <span class="nn">.set.base</span> <span class="kn">import</span> <span class="n">Dataset</span>
 
 
-<div class="viewcode-block" id="DataRow"><a class="viewcode-back" href="../../../../api.html#arcana.core.data.row.DataRow">[docs]</a><span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="DataRow">
+<a class="viewcode-back" href="../../../../api.html#arcana.core.data.row.DataRow">[docs]</a>
+<span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span><span class="p">(</span><span class="n">kw_only</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span> <span class="nc">DataRow</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;A &quot;row&quot; in a dataset &quot;frame&quot; where file-sets and fields can be placed, e.g.</span>
 <span class="sd">    a session or subject.</span>
@@ -474,153 +476,6 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_entries_dict</span><span class="p">[</span><span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="n">entry</span>
         <span class="k">return</span> <span class="n">entry</span></div>
 
-
-<span class="c1"># @attrs.define</span>
-<span class="c1"># class UnresolvedDataType(metaclass=ABCMeta):</span>
-<span class="c1">#     &quot;&quot;&quot;A file-set stored in, potentially multiple, unknown file formats.</span>
-<span class="c1">#     File formats are resolved by providing a list of candidates to the</span>
-<span class="c1">#     &#39;resolve&#39; method</span>
-
-<span class="c1">#     Parameters</span>
-<span class="c1">#     ----------</span>
-<span class="c1">#     path : str</span>
-<span class="c1">#         The name_path to the relative location of the file set, i.e. excluding</span>
-<span class="c1">#         information about which row in the data tree it belongs to</span>
-<span class="c1">#     order : int | None</span>
-<span class="c1">#         The ID of the fileset in the session. To be used to</span>
-<span class="c1">#         distinguish multiple filesets with the same scan type in the</span>
-<span class="c1">#         same session, e.g. scans taken before and after a task. For</span>
-<span class="c1">#         datasets where this isn&#39;t stored (i.e. Local), id can be None</span>
-<span class="c1">#     quality : DataQuality</span>
-<span class="c1">#         The quality label assigned to the fileset (e.g. as is saved on XNAT)</span>
-<span class="c1">#     provenance : Provenance | None</span>
-<span class="c1">#         The provenance for the pipeline that generated the file-set,</span>
-<span class="c1">#         if applicable</span>
-<span class="c1">#     &quot;&quot;&quot;</span>
-
-<span class="c1">#     path: str = attrs.field(default=None)</span>
-<span class="c1">#     row: DataRow = attrs.field(default=None)</span>
-<span class="c1">#     order: int = attrs.field(default=None)</span>
-<span class="c1">#     quality: DataQuality = attrs.field(default=DataQuality.usable)</span>
-<span class="c1">#     provenance: ty.Dict[str, ty.Any] = attrs.field(default=None)</span>
-<span class="c1">#     _matched: ty.Dict[str, DataType] = attrs.field(factory=dict, init=False)</span>
-
-<span class="c1">#     @property</span>
-<span class="c1">#     def item_kwargs(self):</span>
-<span class="c1">#         return {</span>
-<span class="c1">#             &quot;path&quot;: self.path,</span>
-<span class="c1">#             &quot;order&quot;: self.order,</span>
-<span class="c1">#             &quot;row&quot;: self.row,</span>
-<span class="c1">#             &quot;quality&quot;: self.quality,</span>
-<span class="c1">#         }</span>
-
-
-<span class="c1"># def normalise_paths(file_paths):</span>
-<span class="c1">#     &quot;Convert all file paths to absolute real paths&quot;</span>
-<span class="c1">#     if file_paths:</span>
-<span class="c1">#         file_paths = [Path(p).absolute() for p in file_paths]</span>
-<span class="c1">#     return file_paths</span>
-
-
-<span class="c1"># @attrs.define</span>
-<span class="c1"># class UnresolvedFileSet(UnresolvedDataType):</span>
-<span class="c1">#     &quot;&quot;&quot;A file-set stored in, potentially multiple, unknown file formats.</span>
-<span class="c1">#     File formats are resolved by providing a list of candidates to the</span>
-<span class="c1">#     &#39;resolve&#39; method</span>
-
-<span class="c1">#     Parameters</span>
-<span class="c1">#     ----------</span>
-<span class="c1">#     name_path : str</span>
-<span class="c1">#         The name_path to the relative location of the file set, i.e. excluding</span>
-<span class="c1">#         information about which row in the data tree it belongs to</span>
-<span class="c1">#     order : int | None</span>
-<span class="c1">#         The ID of the fileset in the session. To be used to</span>
-<span class="c1">#         distinguish multiple filesets with the same scan type in the</span>
-<span class="c1">#         same session, e.g. scans taken before and after a task. For</span>
-<span class="c1">#         datasets where this isn&#39;t stored (i.e. Local), id can be None</span>
-<span class="c1">#     quality : DataQuality</span>
-<span class="c1">#         The quality label assigned to the fileset (e.g. as is saved on XNAT)</span>
-<span class="c1">#     provenance : Provenance | None</span>
-<span class="c1">#         The provenance for the pipeline that generated the file-set,</span>
-<span class="c1">#         if applicable</span>
-<span class="c1">#     row : DataRow</span>
-<span class="c1">#         The data row that the field belongs to</span>
-<span class="c1">#     file_paths : Sequence[str] | None</span>
-<span class="c1">#         Path to the file-set in the local cache</span>
-<span class="c1">#     uris : Dict[str, str] | None</span>
-<span class="c1">#         For stores where the name of the file datatype is saved with the</span>
-<span class="c1">#         data (i.e. XNAT), the name of the resource enables straightforward</span>
-<span class="c1">#         datatype identification. It is stored here along with URIs corresponding</span>
-<span class="c1">#         to each resource</span>
-<span class="c1">#     &quot;&quot;&quot;</span>
-
-<span class="c1">#     file_paths: ty.Sequence[Path] = attrs.field(factory=list, converter=normalise_paths)</span>
-<span class="c1">#     uris: ty.Dict[str] = attrs.field(default=None)</span>
-
-<span class="c1">#     @classmethod</span>
-<span class="c1">#     def from_paths(cls, base_dir: Path, paths: ty.List[Path], **kwargs):</span>
-<span class="c1">#         groups = defaultdict(list)</span>
-<span class="c1">#         for path in paths:</span>
-<span class="c1">#             relpath = path.relative_to(base_dir)</span>
-<span class="c1">#             path_stem = str(relpath)[: -len(&quot;&quot;.join(relpath.suffixes))]</span>
-<span class="c1">#             groups[path_stem].append(path)  # No extension case</span>
-<span class="c1">#             # Add all possible stems</span>
-<span class="c1">#             for i in range(len(relpath.suffixes)):</span>
-<span class="c1">#                 groups[&quot;&quot;.join([path_stem] + relpath.suffixes[: (i + 1)])].append(path)</span>
-<span class="c1">#         return [cls(path=p, file_paths=g, **kwargs) for p, g in groups.items()]</span>
-
-
-<span class="c1"># @attrs.define</span>
-<span class="c1"># class UnresolvedField(UnresolvedDataType):</span>
-<span class="c1">#     &quot;&quot;&quot;A file-set stored in, potentially multiple, unknown file formats.</span>
-<span class="c1">#     File formats are resolved by providing a list of candidates to the</span>
-<span class="c1">#     &#39;resolve&#39; method</span>
-
-<span class="c1">#     Parameters</span>
-<span class="c1">#     ----------</span>
-<span class="c1">#     path : str</span>
-<span class="c1">#         The name_path to the relative location of the file set, i.e. excluding</span>
-<span class="c1">#         information about which row in the data tree it belongs to</span>
-<span class="c1">#     value : str</span>
-<span class="c1">#         The value assigned to the unresolved data item (for fields instead of</span>
-<span class="c1">#         file sets)</span>
-<span class="c1">#     order : int | None</span>
-<span class="c1">#         The ID of the fileset in the session. To be used to</span>
-<span class="c1">#         distinguish multiple filesets with the same scan type in the</span>
-<span class="c1">#         same session, e.g. scans taken before and after a task. For</span>
-<span class="c1">#         datasets where this isn&#39;t stored (i.e. Local), id can be None</span>
-<span class="c1">#     quality : DataQuality</span>
-<span class="c1">#         The quality label assigned to the fileset (e.g. as is saved on XNAT)</span>
-<span class="c1">#     provenance : Provenance | None</span>
-<span class="c1">#         The provenance for the pipeline that generated the file-set,</span>
-<span class="c1">#         if applicable</span>
-<span class="c1">#     row : DataRow</span>
-<span class="c1">#         The data row that the field belongs to</span>
-<span class="c1">#     &quot;&quot;&quot;</span>
-
-<span class="c1">#     value: ty.Union[</span>
-<span class="c1">#         float, int, str, ty.List[float], ty.List[int], ty.List[str]</span>
-<span class="c1">#     ] = attrs.field(default=None)</span>
-
-<span class="c1">#     # def _resolve(self, datatype):</span>
-<span class="c1">#     #     try:</span>
-<span class="c1">#     #         if datatype._name == &#39;Sequence&#39;:</span>
-<span class="c1">#     #             if len(datatype.__args__) &gt; 1:</span>
-<span class="c1">#     #                 raise ArcanaUsageError(</span>
-<span class="c1">#     #                     f&quot;Sequence formats with more than one arg &quot;</span>
-<span class="c1">#     #                     &quot;are not supported ({datatype})&quot;)</span>
-<span class="c1">#     #             subtype = datatype.__args__[0]</span>
-<span class="c1">#     #             value = [subtype(v)</span>
-<span class="c1">#     #                         for v in self.value[1:-1].split(&#39;,&#39;)]</span>
-<span class="c1">#     #         else:</span>
-<span class="c1">#     #             value = datatype(self.value)</span>
-<span class="c1">#     #     except ValueError as e:</span>
-<span class="c1">#     #         raise ArcanaUnresolvableFormatException(</span>
-<span class="c1">#     #                 f&quot;Could not convert value of {self} ({self.value}) &quot;</span>
-<span class="c1">#     #                 f&quot;to datatype {datatype}&quot;) from e</span>
-<span class="c1">#     #     else:</span>
-<span class="c1">#     #         item = DataType(value=value, **self.item_kwargs)</span>
-<span class="c1">#     #     return item</span>
 </pre></div>
         </article>
       </div>
@@ -653,9 +508,9 @@
       
     </aside>
   </div>
-</div><script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js?v=343670f3"></script>
+</div><script src="../../../../_static/documentation_options.js?v=c75e647c"></script>
     <script src="../../../../_static/doctools.js?v=888ff710"></script>
-    <script src="../../../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>

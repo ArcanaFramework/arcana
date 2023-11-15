@@ -1,12 +1,12 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="./">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Deployment" href="deployment.html" /><link rel="prev" title="Data model" href="data_model.html" />
 
-    <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>Processing - Arcana v0.10.12</title>
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.09.10 -->
+        <title>Processing - Arcana v0.10.13</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.10.12</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.10.13</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.12</span>
+  <span class="sidebar-brand-text">Arcana v0.10.13</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -215,7 +215,7 @@
         </div>
         <article role="main">
           <section id="processing">
-<h1>Processing<a class="headerlink" href="#processing" title="Permalink to this heading">#</a></h1>
+<h1>Processing<a class="headerlink" href="#processing" title="Link to this heading">#</a></h1>
 <p>All data processing in Arcana is performed by the <a class="reference external" href="http://pydra.readthedocs.io">Pydra</a> dataflow engine, which
 specifies a declarative domain-specific language (DSL) for creating workflows
 in Python, and enables the execution of workflows to be split over multiple
@@ -241,7 +241,7 @@ you will need to create your own <a class="reference external" href="http://pydr
 domains.</p>
 </div>
 <section id="pydra-workflows">
-<span id="applying-workflows"></span><h2>Pydra workflows<a class="headerlink" href="#pydra-workflows" title="Permalink to this heading">#</a></h2>
+<span id="applying-workflows"></span><h2>Pydra workflows<a class="headerlink" href="#pydra-workflows" title="Link to this heading">#</a></h2>
 <p><a class="reference external" href="https://pydra.readthedocs.io/en/latest/components.html#workflows">Pydra workflows</a>, or individual <a class="reference external" href="https://pydra.readthedocs.io/en/latest/components.html#function-tasks">Pydra tasks</a>, can be applied to dataset in
 order to operate on the data within it. Workflows are connected from source or sink
 columns to sink columns. During the application process <a class="reference internal" href="api.html#arcana.core.analysis.pipeline.Pipeline" title="arcana.core.analysis.pipeline.Pipeline"><code class="xref py py-class docutils literal notranslate"><span class="pre">Pipeline</span></code></a> objects
@@ -264,7 +264,7 @@ to appropriate columns in the dataset (<code class="docutils literal notranslate
 <span class="w">  </span>medimage/dicom<span class="w"> </span>--path<span class="w"> </span><span class="s1">&#39;.*t2spc.*&#39;</span><span class="w"> </span>--regex
 
 <span class="gp">$ </span>arcana<span class="w"> </span>dataset<span class="w"> </span>add-sink<span class="w"> </span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="w"> </span>freesurfer/recon-all<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>archive/zip
+<span class="w">  </span>application/zip
 
 <span class="gp">$ </span>arcana<span class="w"> </span>apply<span class="w"> </span>pipeline<span class="w"> </span><span class="s1">&#39;myuni-xnat//myproject:training&#39;</span><span class="w"> </span>freesurfer<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>pydra.tasks.freesurfer:Freesurfer<span class="w"> </span><span class="se">\</span>
@@ -352,7 +352,7 @@ back to the dataset.</p>
 </div>
 </section>
 <section id="analysis-classes">
-<span id="id1"></span><h2>Analysis classes<a class="headerlink" href="#analysis-classes" title="Permalink to this heading">#</a></h2>
+<span id="id1"></span><h2>Analysis classes<a class="headerlink" href="#analysis-classes" title="Link to this heading">#</a></h2>
 <p><code class="xref py py-class docutils literal notranslate"><span class="pre">Analysis</span></code> classes are used to implement pipeline chains/webs that
 can be applied to types of datasets in a reproducible manner. The syntax used is
 an extension of the <a class="reference external" href="https://www.attrs.org/en/stable/">attrs</a> package (see <a class="reference external" href="https://www.attrs.org/en/stable/extending.html">https://www.attrs.org/en/stable/extending.html</a>). In this syntax, member
@@ -379,9 +379,9 @@ methods, and takes the columns the pipeline outputs are connected to as argument
 <span class="linenos"> 2</span><span class="kn">from</span> <span class="nn">some.example.pydra.tasks</span> <span class="kn">import</span> <span class="n">Preprocess</span><span class="p">,</span> <span class="n">ExtractFromJson</span><span class="p">,</span> <span class="n">MakeImage</span>
 <span class="linenos"> 3</span><span class="kn">from</span> <span class="nn">arcana.core.mark</span> <span class="kn">import</span> <span class="n">analysis</span><span class="p">,</span> <span class="n">pipeline</span><span class="p">,</span> <span class="n">parameter</span>
 <span class="linenos"> 4</span><span class="kn">from</span> <span class="nn">arcana.example.data</span> <span class="kn">import</span> <span class="n">ExampleDataSpace</span>
-<span class="linenos"> 5</span><span class="kn">from</span> <span class="nn">fileformats.archive</span> <span class="kn">import</span> <span class="n">Zip</span>
+<span class="linenos"> 5</span><span class="kn">from</span> <span class="nn">fileformats.application</span> <span class="kn">import</span> <span class="n">Zip</span>
 <span class="linenos"> 6</span><span class="kn">from</span> <span class="nn">fileformats.generic</span> <span class="kn">import</span> <span class="n">Directory</span>
-<span class="linenos"> 7</span><span class="kn">from</span> <span class="nn">fileformats.serialization</span> <span class="kn">import</span> <span class="n">Json</span>
+<span class="linenos"> 7</span><span class="kn">from</span> <span class="nn">fileformats.application</span> <span class="kn">import</span> <span class="n">Json</span>
 <span class="linenos"> 8</span><span class="kn">from</span> <span class="nn">fileformats.image</span> <span class="kn">import</span> <span class="n">Png</span><span class="p">,</span> <span class="n">Gif</span>
 <span class="linenos"> 9</span>
 <span class="linenos">10</span><span class="nd">@analysis</span><span class="p">(</span><span class="n">ExampleDataSpace</span><span class="p">)</span>
@@ -467,7 +467,7 @@ method. <code class="xref py py-meth docutils literal notranslate"><span class="
 with the names of columns in the dataset to link placeholders to and any
 parameters.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">arcana.core.data.set</span> <span class="kn">import</span> <span class="n">Dataset</span>
-<span class="kn">from</span> <span class="nn">fileformats.serialization</span> <span class="kn">import</span> <span class="n">Yaml</span>
+<span class="kn">from</span> <span class="nn">fileformats.application</span> <span class="kn">import</span> <span class="n">Yaml</span>
 <span class="kn">from</span> <span class="nn">arcana.examples</span> <span class="kn">import</span> <span class="n">ExampleAnalysis</span>
 
 <span class="n">a_dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="s1">&#39;/data/a-dataset&#39;</span><span class="p">)</span>
@@ -491,7 +491,7 @@ parameters.</p>
 </div>
 </section>
 <section id="generating-derivatives">
-<span id="derivatives"></span><h2>Generating derivatives<a class="headerlink" href="#generating-derivatives" title="Permalink to this heading">#</a></h2>
+<span id="derivatives"></span><h2>Generating derivatives<a class="headerlink" href="#generating-derivatives" title="Link to this heading">#</a></h2>
 <p>After workflows and/or analysis classes have been connected to a dataset, derivatives can be
 generated using <code class="xref py py-meth docutils literal notranslate"><span class="pre">Dataset.derive()</span></code> or alternatively <code class="xref py py-meth docutils literal notranslate"><span class="pre">DataColumn.derive()</span></code>
 for single columns. These methods check the data store to see whether the
@@ -565,7 +565,7 @@ remaining only in local cache.</p>
 </div>
 </section>
 <section id="provenance">
-<h2>Provenance<a class="headerlink" href="#provenance" title="Permalink to this heading">#</a></h2>
+<h2>Provenance<a class="headerlink" href="#provenance" title="Link to this heading">#</a></h2>
 <p>Provenance metadata is saved alongside derivatives in the data store. The
 metadata includes:</p>
 <ul class="simple">
@@ -780,9 +780,9 @@ method</p>
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=343670f3"></script>
+</div><script src="_static/documentation_options.js?v=c75e647c"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
-    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>

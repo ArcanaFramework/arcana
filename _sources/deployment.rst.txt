@@ -148,7 +148,7 @@ the full configuration required to build an XNAT docker image looks like
             in_files:
               datatype: medimage/nifti-gz
               column_defaults:
-                datatype: medimage/dicom-set
+                datatype: medimage/dicom-series
               help: Anatomical image to segment into different tissues
         outputs:
             tissue_classes:

@@ -1,12 +1,12 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="./">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Contributing" href="contributing.html" /><link rel="prev" title="Processing" href="processing.html" />
 
-    <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>Deployment - Arcana v0.10.12</title>
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.09.10 -->
+        <title>Deployment - Arcana v0.10.13</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.10.12</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.10.13</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.12</span>
+  <span class="sidebar-brand-text">Arcana v0.10.13</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -215,7 +215,7 @@
         </div>
         <article role="main">
           <section id="deployment">
-<h1>Deployment<a class="headerlink" href="#deployment" title="Permalink to this heading">#</a></h1>
+<h1>Deployment<a class="headerlink" href="#deployment" title="Link to this heading">#</a></h1>
 <p>Arcana provides tools for deploying pipelines in Docker containers
 that can be run in XNAT’s <a class="reference external" href="https://wiki.xnat.org/container-service/">container service</a>. Pipelines
 can be built done on an individual basis or as part of a wider a suite (e.g.
@@ -223,7 +223,7 @@ can be built done on an individual basis or as part of a wider a suite (e.g.
 As well as building Docker images, the deployment workflow includes
 procedures to test and generate documentation.</p>
 <section id="command-definitions">
-<h2>Command definitions<a class="headerlink" href="#command-definitions" title="Permalink to this heading">#</a></h2>
+<h2>Command definitions<a class="headerlink" href="#command-definitions" title="Link to this heading">#</a></h2>
 <p>The XNAT container service uses <a class="reference external" href="https://wiki.xnat.org/container-service/command-resolution-122978876.html">command configuration files</a>
 saved in the <cite>org.nrg.commands</cite> image label to resolve metadata for the pipelines
 that available on a given Docker image. The <code class="xref py py-meth docutils literal notranslate"><span class="pre">XnatViaCS.generate_xnat_command()</span></code>
@@ -276,7 +276,7 @@ of the commands as they are provided by the image configuration
 </div>
 </section>
 <section id="building">
-<h2>Building<a class="headerlink" href="#building" title="Permalink to this heading">#</a></h2>
+<h2>Building<a class="headerlink" href="#building" title="Link to this heading">#</a></h2>
 <p>Dockerfiles for pipeline images are created using <a class="reference external" href="https://github.com/ReproNim/neurodocker">Neurodocker</a>
 and can therefore work with any Debian/Ubuntu or Red-Hat based images
 (ensuring that the value for <code class="docutils literal notranslate"><span class="pre">base_image&gt;package_manager</span></code> is set to the correct value,
@@ -315,7 +315,7 @@ the full configuration required to build an XNAT docker image looks like</p>
 <span class="w">        </span><span class="nt">in_files</span><span class="p">:</span>
 <span class="w">          </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage/nifti-gz</span>
 <span class="w">          </span><span class="nt">column_defaults</span><span class="p">:</span>
-<span class="w">            </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage/dicom-set</span>
+<span class="w">            </span><span class="nt">datatype</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">medimage/dicom-series</span>
 <span class="w">          </span><span class="nt">help</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Anatomical image to segment into different tissues</span>
 <span class="w">    </span><span class="nt">outputs</span><span class="p">:</span>
 <span class="w">        </span><span class="nt">tissue_classes</span><span class="p">:</span>
@@ -355,7 +355,7 @@ and attempt to build any <a class="reference external" href="https://yaml.org">Y
 </div>
 </section>
 <section id="testing">
-<h2>Testing<a class="headerlink" href="#testing" title="Permalink to this heading">#</a></h2>
+<h2>Testing<a class="headerlink" href="#testing" title="Link to this heading">#</a></h2>
 <p>After an image has been built successfully, it can be tested against previously
 generated results to check for consistency with previous versions. This can be
 particularly useful when updating dependency versions. Tests that don’t match
@@ -473,7 +473,7 @@ files:</p>
 </ul>
 </section>
 <section id="autodocs">
-<h2>Autodocs<a class="headerlink" href="#autodocs" title="Permalink to this heading">#</a></h2>
+<h2>Autodocs<a class="headerlink" href="#autodocs" title="Link to this heading">#</a></h2>
 <p>Documentation can be automatically generated using from the
 pipeline configuration <a class="reference external" href="https://yaml.org">YAML</a> files (see <a class="reference internal" href="#building"><span class="std std-ref">Building</span></a>) using</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>arcana<span class="w"> </span>deploy<span class="w"> </span>docs<span class="w"> </span>&lt;path-to-yaml-or-directory&gt;<span class="w"> </span>&lt;docs-output-dir&gt;
@@ -555,9 +555,9 @@ organised hierarchically to match the structure of the source directory.</p>
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=343670f3"></script>
+</div><script src="_static/documentation_options.js?v=c75e647c"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
-    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>

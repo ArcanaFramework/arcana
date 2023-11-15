@@ -1,12 +1,12 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="./">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="New formats and spaces" href="adding_formats.html" /><link rel="prev" title="Contributing" href="contributing.html" />
 
-    <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>Designing Analyses - Arcana v0.10.12</title>
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.09.10 -->
+        <title>Designing Analyses - Arcana v0.10.13</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.10.12</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.10.13</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.12</span>
+  <span class="sidebar-brand-text">Arcana v0.10.13</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -215,7 +215,7 @@
         </div>
         <article role="main">
           <section id="designing-analyses">
-<span id="design-analyses"></span><h1>Designing Analyses<a class="headerlink" href="#designing-analyses" title="Permalink to this heading">#</a></h1>
+<span id="design-analyses"></span><h1>Designing Analyses<a class="headerlink" href="#designing-analyses" title="Link to this heading">#</a></h1>
 <p>An great way to contribute to the development of Arcana is to implement new
 analysis classes or extend existing ones. The architecture of analysis
 classes is intended to facilitate the implementation of generic analysis suites
@@ -227,7 +227,7 @@ are described in detail in the <a class="reference internal" href="#basics"><spa
 concepts involved in extending existing classes are covered in the <a class="reference internal" href="#advanced"><span class="std std-ref">Advanced</span></a>
 section.</p>
 <section id="basics">
-<h2>Basics<a class="headerlink" href="#basics" title="Permalink to this heading">#</a></h2>
+<h2>Basics<a class="headerlink" href="#basics" title="Link to this heading">#</a></h2>
 <p>There are two main components of analysis classes, column specifications
 (<a class="reference internal" href="#column-param-specs"><span class="std std-ref">DataColumn and parameter specification</span></a>), which define the data to be provided to and
 derived by the class, and pipeline builder methods (<a class="reference internal" href="#pipeline-builders"><span class="std std-ref">Pipeline builders</span></a>),
@@ -237,7 +237,7 @@ expose key parameters used by the workflow construction and output methods
 (<a class="reference internal" href="#analysis-outputs"><span class="std std-ref">Output methods</span></a>) provide a convenient way to include the final steps
 analyses (e.g. plotting figures) all in the one place.</p>
 <section id="datacolumn-and-parameter-specification">
-<span id="column-param-specs"></span><h3>DataColumn and parameter specification<a class="headerlink" href="#datacolumn-and-parameter-specification" title="Permalink to this heading">#</a></h3>
+<span id="column-param-specs"></span><h3>DataColumn and parameter specification<a class="headerlink" href="#datacolumn-and-parameter-specification" title="Link to this heading">#</a></h3>
 <p>While columns in an <code class="xref py py-class docutils literal notranslate"><span class="pre">Analysis</span></code> class can be specified using the
 dataclass-like syntax of <code class="docutils literal notranslate"><span class="pre">column_name:</span> <span class="pre">Format</span></code>, in most cases you will want to
 explicitly use the <code class="docutils literal notranslate"><span class="pre">arcana.core.mark.column</span></code> function to include some basic
@@ -308,7 +308,7 @@ be any of the following types:</p>
 column and parameter specifications.</p>
 </section>
 <section id="pipeline-builders">
-<span id="id1"></span><h3>Pipeline builders<a class="headerlink" href="#pipeline-builders" title="Permalink to this heading">#</a></h3>
+<span id="id1"></span><h3>Pipeline builders<a class="headerlink" href="#pipeline-builders" title="Link to this heading">#</a></h3>
 <p>“Pipeline builders” are called by Arcana to construct the Pydra workflows that
 derive data columns. The <code class="xref py py-func docutils literal notranslate"><span class="pre">arcana.core.mark.pipeline()</span></code>
 decorator is used to mark a method as a pipeline builder and specify the
@@ -444,7 +444,7 @@ station, could look like</p>
 </div>
 </section>
 <section id="output-methods">
-<span id="analysis-outputs"></span><h3>Output methods<a class="headerlink" href="#output-methods" title="Permalink to this heading">#</a></h3>
+<span id="analysis-outputs"></span><h3>Output methods<a class="headerlink" href="#output-methods" title="Link to this heading">#</a></h3>
 <p>“Output methods” take derivatives and produce the visualisations or tables to be
 included in publications or reports. Since these methods typically rely on
 graphical libraries, they are executed on the local workstation/row and
@@ -485,7 +485,7 @@ isn’t provided.</p>
 </section>
 </section>
 <section id="advanced">
-<h2>Advanced<a class="headerlink" href="#advanced" title="Permalink to this heading">#</a></h2>
+<h2>Advanced<a class="headerlink" href="#advanced" title="Link to this heading">#</a></h2>
 <p>In every software framework, there are always corner cases that are
 more complicated than the basic logic can handle. In designing
 informatics frameworks, these challenges often arise when attempting to write
@@ -497,7 +497,7 @@ into powerful new classes: class inheritance (<a class="reference internal" href
 conditional pipelines (<a class="reference internal" href="#conditional-pipelines"><span class="std std-ref">Conditionals and switches</span></a>),
 quality-control checks (<a class="reference internal" href="#quality-control"><span class="std std-ref">Quality-control checks</span></a>) and sub-analyses (<a class="reference internal" href="#subanalyses"><span class="std std-ref">Sub-analyses</span></a>).</p>
 <section id="inheritance">
-<span id="id2"></span><h3>Inheritance<a class="headerlink" href="#inheritance" title="Permalink to this heading">#</a></h3>
+<span id="id2"></span><h3>Inheritance<a class="headerlink" href="#inheritance" title="Link to this heading">#</a></h3>
 <p>Given a toy example analysis class that has two text-file source columns, <code class="docutils literal notranslate"><span class="pre">file1</span></code> and
 <code class="docutils literal notranslate"><span class="pre">file2</span></code>. The <code class="docutils literal notranslate"><span class="pre">concat_pipeline</span></code> builds a workflow that generates data for the sink
 column <code class="docutils literal notranslate"><span class="pre">concatenated</span></code> and can be modified by the <code class="docutils literal notranslate"><span class="pre">duplicates</span></code> parameter.</p>
@@ -576,7 +576,7 @@ explicitly inheriting columns and parameters it is possible to override their at
 such as the default value for a given parameter (see <code class="docutils literal notranslate"><span class="pre">duplicates</span></code> in above example).</p>
 </section>
 <section id="conditionals-and-switches">
-<span id="conditional-pipelines"></span><h3>Conditionals and switches<a class="headerlink" href="#conditionals-and-switches" title="Permalink to this heading">#</a></h3>
+<span id="conditional-pipelines"></span><h3>Conditionals and switches<a class="headerlink" href="#conditionals-and-switches" title="Link to this heading">#</a></h3>
 <p>There are cases where different analysis methods need to be applied depending on the
 requirements of a particular study or to deal with idiosyncrasies of a particular
 dataset. There are two mechanisms for handling such cases in Arcana: “condition
@@ -693,7 +693,7 @@ determined by the <code class="docutils literal notranslate"><span class="pre">i
 </div>
 </section>
 <section id="quality-control-checks">
-<span id="quality-control"></span><h3>Quality-control checks<a class="headerlink" href="#quality-control-checks" title="Permalink to this heading">#</a></h3>
+<span id="quality-control"></span><h3>Quality-control checks<a class="headerlink" href="#quality-control-checks" title="Link to this heading">#</a></h3>
 <p>When running complex analyses it is important to inspect generated derivatives
 to make sure the workflows completed properly. In Arcana, it is possible to semi-automate
 this process by adding quality-control “checks” to an analysis class.</p>
@@ -733,7 +733,7 @@ to see if it matches the number expected given the value of the <code class="doc
 </div>
 </section>
 <section id="sub-analyses">
-<span id="subanalyses"></span><h3>Sub-analyses<a class="headerlink" href="#sub-analyses" title="Permalink to this heading">#</a></h3>
+<span id="subanalyses"></span><h3>Sub-analyses<a class="headerlink" href="#sub-analyses" title="Link to this heading">#</a></h3>
 <p>When dealing with separate data streams that can be largely analysed in parallel
 (e.g. multiple MRI contrasts), it can be convenient to combine multiple analyses tailored
 to each stream into a single conglomerate analysis. This pattern can implemented in
@@ -879,9 +879,9 @@ and then back into the <code class="docutils literal notranslate"><span class="p
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=343670f3"></script>
+</div><script src="_static/documentation_options.js?v=c75e647c"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
-    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>

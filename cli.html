@@ -1,12 +1,12 @@
 <!doctype html>
-<html class="no-js" lang="en">
+<html class="no-js" lang="en" data-content_root="./">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Application Programming Interface" href="api.html" /><link rel="prev" title="Alternative storage systems" href="alternative_stores.html" />
 
-    <!-- Generated with Sphinx 7.1.2 and Furo 2023.07.26 -->
-        <title>Command-line interface - Arcana v0.10.12</title>
+    <!-- Generated with Sphinx 7.2.6 and Furo 2023.09.10 -->
+        <title>Command-line interface - Arcana v0.10.13</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
@@ -129,7 +129,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">Arcana v0.10.12</div></a>
+      <a href="index.html"><div class="brand">Arcana v0.10.13</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -155,7 +155,7 @@
     <img class="sidebar-logo" src="_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.12</span>
+  <span class="sidebar-brand-text">Arcana v0.10.13</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -215,20 +215,20 @@
         </div>
         <article role="main">
           <section id="command-line-interface">
-<h1>Command-line interface<a class="headerlink" href="#command-line-interface" title="Permalink to this heading">#</a></h1>
+<h1>Command-line interface<a class="headerlink" href="#command-line-interface" title="Link to this heading">#</a></h1>
 <p>Arcana’s command line interface is grouped into five categories, <cite>store</cite>,
 <cite>dataset</cite>, <cite>apply</cite>, <cite>derive</cite>, and <cite>deploy</cite>. Below these categories are the
 commands that interact with Arcana’s data model, processing and deployment
 streams.</p>
 <section id="store">
-<h2>Store<a class="headerlink" href="#store" title="Permalink to this heading">#</a></h2>
+<h2>Store<a class="headerlink" href="#store" title="Link to this heading">#</a></h2>
 <p>Commands used to access remove data stores and save them for further use</p>
 <section id="arcana-store-add">
-<h3>arcana store add<a class="headerlink" href="#arcana-store-add" title="Permalink to this heading">#</a></h3>
+<h3>arcana store add<a class="headerlink" href="#arcana-store-add" title="Link to this heading">#</a></h3>
 <p>Saves the details for a new data store in the configuration
 file (‘~/.arcana/stores.yaml’).</p>
 <section id="arguments">
-<h4>Arguments<a class="headerlink" href="#arguments" title="Permalink to this heading">#</a></h4>
+<h4>Arguments<a class="headerlink" href="#arguments" title="Link to this heading">#</a></h4>
 <dl class="simple">
 <dt>nickname</dt><dd><p>The name given to the store for reference in other commands</p>
 </dd>
@@ -246,57 +246,57 @@ file (‘~/.arcana/stores.yaml’).</p>
 <p class="rubric">Options</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-s">
-<span id="cmdoption-arcana-store-add-server"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--server</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;server&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-s" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-store-add-server"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--server</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;server&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-s" title="Link to this definition">#</a></dt>
 <dd><p>The URI of the server to connect to (if applicable)</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-u">
-<span id="cmdoption-arcana-store-add-user"></span><span class="sig-name descname"><span class="pre">-u</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--user</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;user&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-u" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-store-add-user"></span><span class="sig-name descname"><span class="pre">-u</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--user</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;user&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-u" title="Link to this definition">#</a></dt>
 <dd><p>The username to use to connect to the store</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-p">
-<span id="cmdoption-arcana-store-add-password"></span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--password</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;password&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-p" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-store-add-password"></span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--password</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;password&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-p" title="Link to this definition">#</a></dt>
 <dd><p>The password to use to connect to the store</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-c">
-<span id="cmdoption-arcana-store-add-cache"></span><span class="sig-name descname"><span class="pre">-c</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--cache</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;cache&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-c" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-store-add-cache"></span><span class="sig-name descname"><span class="pre">-c</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--cache</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;cache&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-c" title="Link to this definition">#</a></dt>
 <dd><p>The location of a cache dir to download local copies of remote data</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-d">
-<span id="cmdoption-arcana-store-add-race-condition-delay"></span><span class="sig-name descname"><span class="pre">-d</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--race-condition-delay</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;race_condition_delay&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-d" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-store-add-race-condition-delay"></span><span class="sig-name descname"><span class="pre">-d</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--race-condition-delay</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;race_condition_delay&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-d" title="Link to this definition">#</a></dt>
 <dd><p>How long to wait for changes on a incomplete download before assuming it has been interrupted, clearing it and starting again</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-o">
-<span id="cmdoption-arcana-store-add-option"></span><span class="sig-name descname"><span class="pre">-o</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--option</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;name&gt;</span> <span class="pre">&lt;value&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-o" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-store-add-option"></span><span class="sig-name descname"><span class="pre">-o</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--option</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;name&gt;</span> <span class="pre">&lt;value&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-add-o" title="Link to this definition">#</a></dt>
 <dd><p>Additional key-word arguments that are passed to the store class</p>
 </dd></dl>
 
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-arg-NAME">
-<span class="sig-name descname"><span class="pre">NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-add-arg-NAME" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-add-arg-NAME" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-add-arg-TYPE">
-<span class="sig-name descname"><span class="pre">TYPE</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-add-arg-TYPE" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">TYPE</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-add-arg-TYPE" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 </section>
 </section>
 <section id="arcana-store-rename">
-<h3>arcana store rename<a class="headerlink" href="#arcana-store-rename" title="Permalink to this heading">#</a></h3>
+<h3>arcana store rename<a class="headerlink" href="#arcana-store-rename" title="Link to this heading">#</a></h3>
 <p>Gives a data store saved in the config file (‘~/.arcana/stores.yaml’) a new
 nickname.</p>
 <p>Arguments</p>
@@ -308,19 +308,19 @@ NEW_NICKNAME The new name for the store.</p>
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-rename-arg-OLD_NICKNAME">
-<span class="sig-name descname"><span class="pre">OLD_NICKNAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-rename-arg-OLD_NICKNAME" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">OLD_NICKNAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-rename-arg-OLD_NICKNAME" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-rename-arg-NEW_NICKNAME">
-<span class="sig-name descname"><span class="pre">NEW_NICKNAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-rename-arg-NEW_NICKNAME" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">NEW_NICKNAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-rename-arg-NEW_NICKNAME" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 </section>
 <section id="arcana-store-remove">
-<h3>arcana store remove<a class="headerlink" href="#arcana-store-remove" title="Permalink to this heading">#</a></h3>
+<h3>arcana store remove<a class="headerlink" href="#arcana-store-remove" title="Link to this heading">#</a></h3>
 <p>Remove a saved data store from the config file</p>
 <dl class="simple">
 <dt>nickname</dt><dd><p>The nickname the store was given when its details were saved</p>
@@ -332,13 +332,13 @@ NEW_NICKNAME The new name for the store.</p>
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-remove-arg-NICKNAME">
-<span class="sig-name descname"><span class="pre">NICKNAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-remove-arg-NICKNAME" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">NICKNAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-remove-arg-NICKNAME" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 </section>
 <section id="arcana-store-refresh">
-<h3>arcana store refresh<a class="headerlink" href="#arcana-store-refresh" title="Permalink to this heading">#</a></h3>
+<h3>arcana store refresh<a class="headerlink" href="#arcana-store-refresh" title="Link to this heading">#</a></h3>
 <p>Refreshes credentials saved for the given store
 (typically a token that expires)</p>
 <dl class="simple">
@@ -351,26 +351,26 @@ NEW_NICKNAME The new name for the store.</p>
 <p class="rubric">Options</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-refresh-u">
-<span id="cmdoption-arcana-store-refresh-user"></span><span class="sig-name descname"><span class="pre">-u</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--user</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;user&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-refresh-u" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-store-refresh-user"></span><span class="sig-name descname"><span class="pre">-u</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--user</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;user&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-refresh-u" title="Link to this definition">#</a></dt>
 <dd><p>The username to use to connect to the store</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-refresh-p">
-<span id="cmdoption-arcana-store-refresh-password"></span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--password</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;password&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-refresh-p" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-store-refresh-password"></span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--password</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;password&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-store-refresh-p" title="Link to this definition">#</a></dt>
 <dd><p>The password to use to connect to the store</p>
 </dd></dl>
 
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-store-refresh-arg-NICKANME">
-<span class="sig-name descname"><span class="pre">NICKANME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-refresh-arg-NICKANME" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">NICKANME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-store-refresh-arg-NICKANME" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 </section>
 <section id="arcana-store-ls">
-<h3>arcana store ls<a class="headerlink" href="#arcana-store-ls" title="Permalink to this heading">#</a></h3>
+<h3>arcana store ls<a class="headerlink" href="#arcana-store-ls" title="Link to this heading">#</a></h3>
 <p>List available stores that have been saved</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>store<span class="w"> </span>ls<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </pre></div>
@@ -378,10 +378,10 @@ NEW_NICKNAME The new name for the store.</p>
 </section>
 </section>
 <section id="dataset">
-<h2>Dataset<a class="headerlink" href="#dataset" title="Permalink to this heading">#</a></h2>
+<h2>Dataset<a class="headerlink" href="#dataset" title="Link to this heading">#</a></h2>
 <p>Commands used to define and work with datasets</p>
 <section id="arcana-dataset-define">
-<h3>arcana dataset define<a class="headerlink" href="#arcana-dataset-define" title="Permalink to this heading">#</a></h3>
+<h3>arcana dataset define<a class="headerlink" href="#arcana-dataset-define" title="Link to this heading">#</a></h3>
 <p>Define the tree structure and IDs to include in a
 dataset. Where possible, the definition file is saved inside the dataset for
 use by multiple users, if not possible it is stored in the ~/.arcana directory.</p>
@@ -398,31 +398,25 @@ can be arbitrarily specified. dimensions</p>
 <p class="rubric">Options</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-define-space">
-<span class="sig-name descname"><span class="pre">--space</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;space&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-space" title="Permalink to this definition">#</a></dt>
-<dd><p>The “space” of the dataset, defines the dimensions along the ids of row can vary</p>
+<span class="sig-name descname"><span class="pre">--space</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;space&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-space" title="Link to this definition">#</a></dt>
+<dd><p>The enum that specifies the data dimensions of the dataset. Defaults to <cite>Clinical</cite>, which consists of the typical dataset&gt;group&gt;subject&gt;session data tree used in medimage trials/studies</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-define-include">
-<span class="sig-name descname"><span class="pre">--include</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;freq-id&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-include" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">--include</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;freq-id&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-include" title="Link to this definition">#</a></dt>
 <dd><p>The rows to include in the dataset. First value is the row-frequency of the ID (e.g. ‘group’, ‘subject’, ‘session’) followed by the IDs to be included in the dataset. If the second arg contains ‘/’ then it is interpreted as the path to a text file containing a list of IDs</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-define-exclude">
-<span class="sig-name descname"><span class="pre">--exclude</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;freq-id&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-exclude" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">--exclude</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;freq-id&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-exclude" title="Link to this definition">#</a></dt>
 <dd><p>The rows to exclude from the dataset. First value is the row-frequency of the ID (e.g. ‘group’, ‘subject’, ‘session’) followed by the IDs to be included in the dataset. If the second arg contains ‘/’ then it is interpreted as the path to a text file containing a list of IDs</p>
 </dd></dl>
 
 <dl class="std option">
-<dt class="sig sig-object std" id="cmdoption-arcana-dataset-define-0">
-<span class="sig-name descname"><span class="pre">--space</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;space&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-0" title="Permalink to this definition">#</a></dt>
-<dd><p>The enum that specifies the data dimensions of the dataset. Defaults to <cite>Clinical</cite>, which consists of the typical dataset&gt;group&gt;subject&gt;session data tree used in medimage trials/studies</p>
-</dd></dl>
-
-<dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-define-id-pattern">
-<span class="sig-name descname"><span class="pre">--id-pattern</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;row-frequency&gt;</span> <span class="pre">&lt;pattern&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-id-pattern" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">--id-pattern</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;row-frequency&gt;</span> <span class="pre">&lt;pattern&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-id-pattern" title="Link to this definition">#</a></dt>
 <dd><p>Specifies how IDs of row frequencies that not explicitly
 provided are inferred from the IDs that are. For example, given a set
 of subject IDs that are a combination of the ID of the group that they belong
@@ -438,19 +432,19 @@ the inferred IDs</p>
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-define-arg-DATASET_LOCATOR">
-<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-arg-DATASET_LOCATOR" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-arg-DATASET_LOCATOR" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-define-arg-HIERARCHY">
-<span class="sig-name descname"><span class="pre">HIERARCHY</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-arg-HIERARCHY" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">HIERARCHY</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-define-arg-HIERARCHY" title="Link to this definition">#</a></dt>
 <dd><p>Optional argument(s)</p>
 </dd></dl>
 
 </section>
 <section id="arcana-dataset-add-source">
-<h3>arcana dataset add-source<a class="headerlink" href="#arcana-dataset-add-source" title="Permalink to this heading">#</a></h3>
+<h3>arcana dataset add-source<a class="headerlink" href="#arcana-dataset-add-source" title="Link to this heading">#</a></h3>
 <p>Adds a source column to a dataset. A source column
 selects comparable items along a dimension of the dataset to serve as
 an input to pipelines and analyses.</p>
@@ -466,7 +460,7 @@ field array (ty.List[int|float|str|bool]) or
 <p class="rubric">Options</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-f">
-<span id="cmdoption-arcana-dataset-add-source-row-frequency"></span><span class="sig-name descname"><span class="pre">-f</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--row-frequency</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;dimension&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-f" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-dataset-add-source-row-frequency"></span><span class="sig-name descname"><span class="pre">-f</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--row-frequency</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;dimension&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-f" title="Link to this definition">#</a></dt>
 <dd><p>The row-frequency that items appear in the dataset (e.g. per ‘session’, ‘subject’, ‘timepoint’, ‘group’, ‘dataset’ for common:Clinical data dimensions</p>
 <dl class="field-list simple">
 <dt class="field-odd">Default<span class="colon">:</span></dt>
@@ -477,60 +471,60 @@ field array (ty.List[int|float|str|bool]) or
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-p">
-<span id="cmdoption-arcana-dataset-add-source-path"></span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--path</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;path&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-p" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-dataset-add-source-path"></span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--path</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;path&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-p" title="Link to this definition">#</a></dt>
 <dd><p>Path to item in the dataset. If ‘regex’ option is provided it will be treated as a regular-expression (in Python syntax)</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-order">
-<span class="sig-name descname"><span class="pre">--order</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;order&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-order" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">--order</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;order&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-order" title="Link to this definition">#</a></dt>
 <dd><p>If multiple items match the remaining criteria within a session, select the &lt;order&gt;th of the matching items</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-q">
-<span id="cmdoption-arcana-dataset-add-source-quality"></span><span class="sig-name descname"><span class="pre">-q</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--quality</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;quality&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-q" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-dataset-add-source-quality"></span><span class="sig-name descname"><span class="pre">-q</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--quality</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;quality&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-q" title="Link to this definition">#</a></dt>
 <dd><p>For data stores that enable flagging of data quality, this option can filter out poor quality scans</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-regex">
-<span id="cmdoption-arcana-dataset-add-source-no-regex"></span><span class="sig-name descname"><span class="pre">--regex</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--no-regex</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-regex" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-dataset-add-source-no-regex"></span><span class="sig-name descname"><span class="pre">--regex</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--no-regex</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-regex" title="Link to this definition">#</a></dt>
 <dd><p>Whether the ‘path’ option should be treated as a regular expression or not</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-h">
-<span id="cmdoption-arcana-dataset-add-source-header"></span><span class="sig-name descname"><span class="pre">-h</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--header</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;key-val&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-h" title="Permalink to this definition">#</a></dt>
-<dd><p>Match on specific header value. This option is only valid for select formats that the implement the ‘header_val()’ method (e.g. medimage/dicom-set).</p>
+<span id="cmdoption-arcana-dataset-add-source-header"></span><span class="sig-name descname"><span class="pre">-h</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--header</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;key-val&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-h" title="Link to this definition">#</a></dt>
+<dd><p>Match on specific header value. This option is only valid for select formats that the implement the ‘header_val()’ method (e.g. medimage/dicom-series).</p>
 </dd></dl>
 
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-arg-DATASET_LOCATOR">
-<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-arg-DATASET_LOCATOR" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-arg-DATASET_LOCATOR" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-arg-NAME">
-<span class="sig-name descname"><span class="pre">NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-arg-NAME" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-arg-NAME" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-source-arg-DATATYPE">
-<span class="sig-name descname"><span class="pre">DATATYPE</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-arg-DATATYPE" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">DATATYPE</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-source-arg-DATATYPE" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 </section>
 <section id="arcana-dataset-add-sink">
-<h3>arcana dataset add-sink<a class="headerlink" href="#arcana-dataset-add-sink" title="Permalink to this heading">#</a></h3>
+<h3>arcana dataset add-sink<a class="headerlink" href="#arcana-dataset-add-sink" title="Link to this heading">#</a></h3>
 <p>Adds a sink column to a dataset. A sink column
 specifies how data should be written into the dataset.</p>
 <section id="id3">
-<h4>Arguments<a class="headerlink" href="#id3" title="Permalink to this heading">#</a></h4>
+<h4>Arguments<a class="headerlink" href="#id3" title="Link to this heading">#</a></h4>
 <dl class="simple">
 <dt>dataset_path</dt><dd><p>The path to the dataset including store and dataset name (where
 applicable), e.g. central-xnat//MYXNATPROJECT:pass_t1w_qc</p>
@@ -548,7 +542,7 @@ field array (ty.List[int|float|str|bool]) or “file-set”
 <p class="rubric">Options</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-sink-f">
-<span id="cmdoption-arcana-dataset-add-sink-row-frequency"></span><span class="sig-name descname"><span class="pre">-f</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--row-frequency</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;dimension&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-f" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-dataset-add-sink-row-frequency"></span><span class="sig-name descname"><span class="pre">-f</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--row-frequency</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;dimension&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-f" title="Link to this definition">#</a></dt>
 <dd><p>The row-frequency that items appear in the dataset (e.g. per ‘session’, ‘subject’, ‘timepoint’, ‘group’, ‘dataset’ for Clinical data dimensions</p>
 <dl class="field-list simple">
 <dt class="field-odd">Default<span class="colon">:</span></dt>
@@ -559,39 +553,39 @@ field array (ty.List[int|float|str|bool]) or “file-set”
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-sink-p">
-<span id="cmdoption-arcana-dataset-add-sink-path"></span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--path</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;path&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-p" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-dataset-add-sink-path"></span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--path</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;path&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-p" title="Link to this definition">#</a></dt>
 <dd><p>Path to item in the dataset. If ‘regex’ option is provided it will be treated as a regular-expression (in Python syntax)</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-sink-s">
-<span id="cmdoption-arcana-dataset-add-sink-salience"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--salience</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;salience&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-s" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-dataset-add-sink-salience"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--salience</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;salience&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-s" title="Link to this definition">#</a></dt>
 <dd><p>The salience of the column, i.e. whether it will show up on ‘arcana derive menu’</p>
 </dd></dl>
 
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-sink-arg-DATASET_LOCATOR">
-<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-arg-DATASET_LOCATOR" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-arg-DATASET_LOCATOR" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-sink-arg-NAME">
-<span class="sig-name descname"><span class="pre">NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-arg-NAME" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-arg-NAME" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-add-sink-arg-DATATYPE">
-<span class="sig-name descname"><span class="pre">DATATYPE</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-arg-DATATYPE" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">DATATYPE</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-add-sink-arg-DATATYPE" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 </section>
 </section>
 <section id="arcana-dataset-missing-items">
-<h3>arcana dataset missing-items<a class="headerlink" href="#arcana-dataset-missing-items" title="Permalink to this heading">#</a></h3>
+<h3>arcana dataset missing-items<a class="headerlink" href="#arcana-dataset-missing-items" title="Link to this heading">#</a></h3>
 <p>Finds the IDs of rows that are missing a valid entry for an item in
 the column.</p>
 <dl class="simple">
@@ -605,23 +599,23 @@ the column.</p>
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-missing-items-arg-DATASET_LOCATOR">
-<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-missing-items-arg-DATASET_LOCATOR" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-missing-items-arg-DATASET_LOCATOR" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-dataset-missing-items-arg-COLUMN_NAMES">
-<span class="sig-name descname"><span class="pre">COLUMN_NAMES</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-missing-items-arg-COLUMN_NAMES" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">COLUMN_NAMES</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-dataset-missing-items-arg-COLUMN_NAMES" title="Link to this definition">#</a></dt>
 <dd><p>Optional argument(s)</p>
 </dd></dl>
 
 </section>
 </section>
 <section id="apply">
-<h2>Apply<a class="headerlink" href="#apply" title="Permalink to this heading">#</a></h2>
+<h2>Apply<a class="headerlink" href="#apply" title="Link to this heading">#</a></h2>
 <p>Commands for applying workflows and analyses to datasets</p>
 <section id="arcana-apply-pipeline">
-<h3>arcana apply pipeline<a class="headerlink" href="#arcana-apply-pipeline" title="Permalink to this heading">#</a></h3>
+<h3>arcana apply pipeline<a class="headerlink" href="#arcana-apply-pipeline" title="Link to this heading">#</a></h3>
 <p>Apply a Pydra workflow to a dataset as a pipeline between
 two columns</p>
 <p>DATASET_LOCATOR string containing the nickname of the data store, the ID of the dataset
@@ -637,68 +631,68 @@ format &lt;store-nickname&gt;//&lt;dataset-id&gt;[&#64;&lt;dataset-name&gt;]</p>
 <p class="rubric">Options</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-apply-pipeline-i">
-<span id="cmdoption-arcana-apply-pipeline-input"></span><span class="sig-name descname"><span class="pre">-i</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--input</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;col-name&gt;</span> <span class="pre">&lt;pydra-field&gt;</span> <span class="pre">&lt;required-datatype&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-i" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-apply-pipeline-input"></span><span class="sig-name descname"><span class="pre">-i</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--input</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;col-name&gt;</span> <span class="pre">&lt;pydra-field&gt;</span> <span class="pre">&lt;required-datatype&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-i" title="Link to this definition">#</a></dt>
 <dd><p>the link between a column and an input of the workflow. The required format is the location (&lt;module-path&gt;:&lt;class&gt;) of the format expected by the workflow</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-apply-pipeline-o">
-<span id="cmdoption-arcana-apply-pipeline-output"></span><span class="sig-name descname"><span class="pre">-o</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--output</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;col-name&gt;</span> <span class="pre">&lt;pydra-field&gt;</span> <span class="pre">&lt;produced-datatype&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-o" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-apply-pipeline-output"></span><span class="sig-name descname"><span class="pre">-o</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--output</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;col-name&gt;</span> <span class="pre">&lt;pydra-field&gt;</span> <span class="pre">&lt;produced-datatype&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-o" title="Link to this definition">#</a></dt>
 <dd><p>the link between an output of the workflow and a sink column. The produced datatype is the location (&lt;module-path&gt;:&lt;class&gt;) of the datatype produced by the workflow</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-apply-pipeline-p">
-<span id="cmdoption-arcana-apply-pipeline-parameter"></span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--parameter</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;name&gt;</span> <span class="pre">&lt;value&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-p" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-apply-pipeline-parameter"></span><span class="sig-name descname"><span class="pre">-p</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--parameter</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;name&gt;</span> <span class="pre">&lt;value&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-p" title="Link to this definition">#</a></dt>
 <dd><p>a fixed parameter of the workflow to set when applying it</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-apply-pipeline-s">
-<span id="cmdoption-arcana-apply-pipeline-source"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--source</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;col-name&gt;</span> <span class="pre">&lt;pydra-field&gt;</span> <span class="pre">&lt;required-datatype&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-s" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-apply-pipeline-source"></span><span class="sig-name descname"><span class="pre">-s</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--source</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;col-name&gt;</span> <span class="pre">&lt;pydra-field&gt;</span> <span class="pre">&lt;required-datatype&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-s" title="Link to this definition">#</a></dt>
 <dd><p>add a source to the dataset and link it to an input of the workflow in a single step. The source column must be able to be specified by its path alone and be already in the datatype required by the workflow</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-apply-pipeline-k">
-<span id="cmdoption-arcana-apply-pipeline-sink"></span><span class="sig-name descname"><span class="pre">-k</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--sink</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;col-name&gt;</span> <span class="pre">&lt;pydra-field&gt;</span> <span class="pre">&lt;produced-datatype&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-k" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-apply-pipeline-sink"></span><span class="sig-name descname"><span class="pre">-k</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--sink</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;col-name&gt;</span> <span class="pre">&lt;pydra-field&gt;</span> <span class="pre">&lt;produced-datatype&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-k" title="Link to this definition">#</a></dt>
 <dd><p>add a sink to the dataset and link it to an output of the workflow in a single step. The sink column be in the same datatype as produced by the workflow</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-apply-pipeline-f">
-<span id="cmdoption-arcana-apply-pipeline-row-frequency"></span><span class="sig-name descname"><span class="pre">-f</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--row-frequency</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;row_frequency&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-f" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-apply-pipeline-row-frequency"></span><span class="sig-name descname"><span class="pre">-f</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--row-frequency</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;row_frequency&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-f" title="Link to this definition">#</a></dt>
 <dd><p>the row-frequency of the rows the pipeline will be executed over, i.e. will it be run once per-session, per-subject or per whole dataset, by default the highest row-frequency rows (e.g. per-session)</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-apply-pipeline-overwrite">
-<span id="cmdoption-arcana-apply-pipeline-no-overwrite"></span><span class="sig-name descname"><span class="pre">--overwrite</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--no-overwrite</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-overwrite" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-apply-pipeline-no-overwrite"></span><span class="sig-name descname"><span class="pre">--overwrite</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--no-overwrite</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-overwrite" title="Link to this definition">#</a></dt>
 <dd><p>whether to overwrite previous pipelines</p>
 </dd></dl>
 
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-apply-pipeline-arg-DATASET_LOCATOR">
-<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-arg-DATASET_LOCATOR" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-arg-DATASET_LOCATOR" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-apply-pipeline-arg-PIPELINE_NAME">
-<span class="sig-name descname"><span class="pre">PIPELINE_NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-arg-PIPELINE_NAME" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">PIPELINE_NAME</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-arg-PIPELINE_NAME" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-apply-pipeline-arg-WORKFLOW_LOCATION">
-<span class="sig-name descname"><span class="pre">WORKFLOW_LOCATION</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-arg-WORKFLOW_LOCATION" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">WORKFLOW_LOCATION</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-apply-pipeline-arg-WORKFLOW_LOCATION" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 </section>
 <section id="arcana-apply-analysis">
-<h3>arcana apply analysis<a class="headerlink" href="#arcana-apply-analysis" title="Permalink to this heading">#</a></h3>
+<h3>arcana apply analysis<a class="headerlink" href="#arcana-apply-analysis" title="Link to this heading">#</a></h3>
 <p>Applies an analysis class to a dataset</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>apply<span class="w"> </span>analysis<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </pre></div>
@@ -706,10 +700,10 @@ format &lt;store-nickname&gt;//&lt;dataset-id&gt;[&#64;&lt;dataset-name&gt;]</p>
 </section>
 </section>
 <section id="derive">
-<h2>Derive<a class="headerlink" href="#derive" title="Permalink to this heading">#</a></h2>
+<h2>Derive<a class="headerlink" href="#derive" title="Link to this heading">#</a></h2>
 <p>Commands for calling workflows/analyses to derive derivative data</p>
 <section id="arcana-derive-column">
-<h3>arcana derive column<a class="headerlink" href="#arcana-derive-column" title="Permalink to this heading">#</a></h3>
+<h3>arcana derive column<a class="headerlink" href="#arcana-derive-column" title="Link to this heading">#</a></h3>
 <p>Derive data for a data sink column and
 all prerequisite columns.</p>
 <p>DATASET_LOCATOR string containing the nickname of the data store, the ID of the dataset
@@ -722,52 +716,52 @@ format &lt;store-nickname&gt;//&lt;dataset-id&gt;[&#64;&lt;dataset-name&gt;]</p>
 <p class="rubric">Options</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-derive-column-w">
-<span id="cmdoption-arcana-derive-column-work"></span><span class="sig-name descname"><span class="pre">-w</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--work</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;work&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-derive-column-w" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-derive-column-work"></span><span class="sig-name descname"><span class="pre">-w</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--work</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;work&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-derive-column-w" title="Link to this definition">#</a></dt>
 <dd><p>The location of the directory where the working files created during the pipeline execution will be stored</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-derive-column-plugin">
-<span class="sig-name descname"><span class="pre">--plugin</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;plugin&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-derive-column-plugin" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">--plugin</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;plugin&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-derive-column-plugin" title="Link to this definition">#</a></dt>
 <dd><p>The Pydra plugin with which to process the workflow</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-derive-column-loglevel">
-<span class="sig-name descname"><span class="pre">--loglevel</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;loglevel&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-derive-column-loglevel" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">--loglevel</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;loglevel&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-derive-column-loglevel" title="Link to this definition">#</a></dt>
 <dd><p>The level of detail logging information is presented</p>
 </dd></dl>
 
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-derive-column-arg-DATASET_LOCATOR">
-<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-derive-column-arg-DATASET_LOCATOR" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">DATASET_LOCATOR</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-derive-column-arg-DATASET_LOCATOR" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-derive-column-arg-COLUMNS">
-<span class="sig-name descname"><span class="pre">COLUMNS</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-derive-column-arg-COLUMNS" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">COLUMNS</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-derive-column-arg-COLUMNS" title="Link to this definition">#</a></dt>
 <dd><p>Optional argument(s)</p>
 </dd></dl>
 
 </section>
 <section id="arcana-derive-output">
-<h3>arcana derive output<a class="headerlink" href="#arcana-derive-output" title="Permalink to this heading">#</a></h3>
+<h3>arcana derive output<a class="headerlink" href="#arcana-derive-output" title="Link to this heading">#</a></h3>
 <p>Derive an output</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>derive<span class="w"> </span>output<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </pre></div>
 </div>
 </section>
 <section id="arcana-derive-menu">
-<h3>arcana derive menu<a class="headerlink" href="#arcana-derive-menu" title="Permalink to this heading">#</a></h3>
+<h3>arcana derive menu<a class="headerlink" href="#arcana-derive-menu" title="Link to this heading">#</a></h3>
 <p>Display the potential derivatives that can be derived</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>derive<span class="w"> </span>menu<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </pre></div>
 </div>
 </section>
 <section id="arcana-derive-ignore-diff">
-<h3>arcana derive ignore-diff<a class="headerlink" href="#arcana-derive-ignore-diff" title="Permalink to this heading">#</a></h3>
+<h3>arcana derive ignore-diff<a class="headerlink" href="#arcana-derive-ignore-diff" title="Link to this heading">#</a></h3>
 <p>Ignore difference between provenance of previously generated derivative
 and new parameterisation</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>derive<span class="w"> </span>ignore-diff<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
@@ -776,56 +770,62 @@ and new parameterisation</p>
 </section>
 </section>
 <section id="deploy">
-<h2>Deploy<a class="headerlink" href="#deploy" title="Permalink to this heading">#</a></h2>
+<h2>Deploy<a class="headerlink" href="#deploy" title="Link to this heading">#</a></h2>
 <p>Commands for deploying arcana pipelines</p>
 <section id="arcana-deploy-docs">
-<h3>arcana deploy docs<a class="headerlink" href="#arcana-deploy-docs" title="Permalink to this heading">#</a></h3>
+<h3>arcana deploy docs<a class="headerlink" href="#arcana-deploy-docs" title="Link to this heading">#</a></h3>
 <p>Build docs for one or more yaml wrappers</p>
 <p>SPEC_ROOT is the path of a YAML spec file or directory containing one or more such files.</p>
 <p>The generated documentation will be saved to OUTPUT.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>deploy<span class="w"> </span>docs<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>SPEC_ROOT<span class="w"> </span>OUTPUT
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>deploy<span class="w"> </span>docs<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>SPEC_PATH<span class="w"> </span>OUTPUT
 </pre></div>
 </div>
 <p class="rubric">Options</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-deploy-docs-registry">
-<span class="sig-name descname"><span class="pre">--registry</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;registry&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-registry" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">--registry</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;registry&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-registry" title="Link to this definition">#</a></dt>
 <dd><p>The Docker registry to deploy the pipeline to</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-deploy-docs-flatten">
-<span id="cmdoption-arcana-deploy-docs-no-flatten"></span><span class="sig-name descname"><span class="pre">--flatten</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--no-flatten</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-flatten" title="Permalink to this definition">#</a></dt>
+<span id="cmdoption-arcana-deploy-docs-no-flatten"></span><span class="sig-name descname"><span class="pre">--flatten</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--no-flatten</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-flatten" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-deploy-docs-loglevel">
-<span class="sig-name descname"><span class="pre">--loglevel</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;loglevel&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-loglevel" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">--loglevel</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;loglevel&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-loglevel" title="Link to this definition">#</a></dt>
 <dd><p>The level to display logs at</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-deploy-docs-default-data-space">
-<span class="sig-name descname"><span class="pre">--default-data-space</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;default_data_space&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-default-data-space" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">--default-data-space</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;default_data_space&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-default-data-space" title="Link to this definition">#</a></dt>
 <dd><p>The default data space to assume if it isn’t explicitly stated in the command</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-arcana-deploy-docs-spec-root">
+<span class="sig-name descname"><span class="pre">--spec-root</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;spec_root&gt;</span></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-spec-root" title="Link to this definition">#</a></dt>
+<dd><p>The root path to consider the specs to be relative to, defaults to CWD</p>
 </dd></dl>
 
 <p class="rubric">Arguments</p>
 <dl class="std option">
-<dt class="sig sig-object std" id="cmdoption-arcana-deploy-docs-arg-SPEC_ROOT">
-<span class="sig-name descname"><span class="pre">SPEC_ROOT</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-arg-SPEC_ROOT" title="Permalink to this definition">#</a></dt>
+<dt class="sig sig-object std" id="cmdoption-arcana-deploy-docs-arg-SPEC_PATH">
+<span class="sig-name descname"><span class="pre">SPEC_PATH</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-arg-SPEC_PATH" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-deploy-docs-arg-OUTPUT">
-<span class="sig-name descname"><span class="pre">OUTPUT</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-arg-OUTPUT" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">OUTPUT</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-deploy-docs-arg-OUTPUT" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
 </section>
 <section id="arcana-deploy-inspect-docker">
-<h3>arcana deploy inspect-docker<a class="headerlink" href="#arcana-deploy-inspect-docker" title="Permalink to this heading">#</a></h3>
+<h3>arcana deploy inspect-docker<a class="headerlink" href="#arcana-deploy-inspect-docker" title="Link to this heading">#</a></h3>
 <p>Extract the executable from a Docker image</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>arcana<span class="w"> </span>deploy<span class="w"> </span>inspect-docker<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>IMAGE_TAG
 </pre></div>
@@ -833,7 +833,7 @@ and new parameterisation</p>
 <p class="rubric">Arguments</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-arcana-deploy-inspect-docker-arg-IMAGE_TAG">
-<span class="sig-name descname"><span class="pre">IMAGE_TAG</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-deploy-inspect-docker-arg-IMAGE_TAG" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">IMAGE_TAG</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-arcana-deploy-inspect-docker-arg-IMAGE_TAG" title="Link to this definition">#</a></dt>
 <dd><p>Required argument</p>
 </dd></dl>
 
@@ -946,9 +946,9 @@ and new parameterisation</p>
       
     </aside>
   </div>
-</div><script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=343670f3"></script>
+</div><script src="_static/documentation_options.js?v=c75e647c"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
-    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>
