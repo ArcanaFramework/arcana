@@ -14,9 +14,8 @@ import attrs
 from fileformats.core import FileSet, Field
 from fileformats.generic import Directory
 from fileformats.text import TextFile
-from fileformats.archive import Zip
+from fileformats.application import Zip, Json
 from fileformats.field import Text as TextField, Decimal, Boolean, Integer, Array
-from fileformats.serialization import Json
 from fileformats.testing import (
     MyFormatGz,
     MyFormatGzX,
@@ -42,7 +41,9 @@ class EntryBlueprint(metaclass=ABCMeta):
     path: str
     datatype: type = attrs.field()
     row_frequency: ty.Optional[str] = None
-    ids: ty.List[str] = None  # the list of row IDs to create the blueprint in
+    ids: ty.Optional[
+        ty.List[str]
+    ] = None  # the list of row IDs to create the blueprint in
     alternative_datatypes: ty.List[type] = attrs.field(factory=list)
 
     @datatype.validator

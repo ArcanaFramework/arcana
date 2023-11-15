@@ -26,9 +26,9 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
     image_name = f"license-buildtime-{run_prefix}"
     image_tag = f"{REGISTRY}/{ORG}/{image_name}:{IMAGE_VERSION}"
 
-    root_dir = work_dir / ORG
-    root_dir.mkdir()
-    spec_file = root_dir / (image_name + ".yaml")
+    spec_path = work_dir / ORG
+    spec_path.mkdir()
+    spec_file = spec_path / (image_name + ".yaml")
 
     LICENSE_PATH = "/path/to/licence.txt"
 
@@ -44,8 +44,10 @@ def test_buildtime_license(license_file, run_prefix: str, work_dir: Path, cli_ru
     result = cli_runner(
         make_app,
         args=[
-            str(root_dir),
+            str(spec_path),
             "common:App",
+            "--spec-root",
+            str(spec_path.parent),
             "--build-dir",
             str(build_dir),
             "--license",

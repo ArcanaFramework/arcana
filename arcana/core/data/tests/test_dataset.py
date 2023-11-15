@@ -1,7 +1,7 @@
 from pathlib import Path
 import cloudpickle as cp
 from pydra import mark, Workflow
-from pydra.utils.hash import hash_single, Cache
+from pydra.utils.hash import hash_object
 from arcana.core.data.set.base import Dataset
 from arcana.core.utils.serialize import asdict, fromdict
 
@@ -46,6 +46,6 @@ def func(a, b, dataset):
 
 def test_dataset_bytes_hash(dataset):
 
-    hsh = hash_single(dataset, Cache({}))
+    hsh = hash_object(dataset)
     # Check hashing is stable
-    assert hash_single(dataset, Cache({})) == hsh
+    assert hash_object(dataset) == hsh

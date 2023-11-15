@@ -58,7 +58,7 @@ to appropriate columns in the dataset (``T1w``, ``T2w`` and
       medimage/dicom --path '.*t2spc.*' --regex
 
     $ arcana dataset add-sink 'myuni-xnat//myproject:training' freesurfer/recon-all \
-      archive/zip
+      application/zip
 
     $ arcana apply pipeline 'myuni-xnat//myproject:training' freesurfer \
       pydra.tasks.freesurfer:Freesurfer \
@@ -194,9 +194,9 @@ methods, and takes the columns the pipeline outputs are connected to as argument
     from some.example.pydra.tasks import Preprocess, ExtractFromJson, MakeImage
     from arcana.core.mark import analysis, pipeline, parameter
     from arcana.example.data import ExampleDataSpace
-    from fileformats.archive import Zip
+    from fileformats.application import Zip
     from fileformats.generic import Directory
-    from fileformats.serialization import Json
+    from fileformats.application import Json
     from fileformats.image import Png, Gif
 
     @analysis(ExampleDataSpace)
@@ -286,7 +286,7 @@ parameters.
 .. code-block:: python
 
   from arcana.core.data.set import Dataset
-  from fileformats.serialization import Yaml
+  from fileformats.application import Yaml
   from arcana.examples import ExampleAnalysis
 
   a_dataset = Dataset.load('/data/a-dataset')

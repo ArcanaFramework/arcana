@@ -89,10 +89,6 @@ class DataColumn(metaclass=ABCMeta):
     def ids(self) -> ty.List[str]:
         return [n.id for n in self.dataset.rows(self.row_frequency)]
 
-    @property
-    def path(self) -> str:
-        return self._path
-
     def match_entry(self, row: DataRow, allow_none: bool = False) -> DataEntry:
         """Matches a single entry from a data row against the selection criteria
         defined in the column.

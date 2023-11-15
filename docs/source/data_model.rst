@@ -305,7 +305,7 @@ commands to add columns to a dataset using the CLI.
 .. code-block:: console
 
     $ arcana dataset add-source 'xnat-central//MYXNATPROJECT' T1w \
-      medimage/dicom-set --path '.*t1_mprage.*' \
+      medimage/dicom-series --path '.*t1_mprage.*' \
       --order 1 --quality usable --regex
 
     $ arcana dataset add-sink '/data/imaging/my-project' fmri_activation_map \
@@ -318,12 +318,12 @@ methods can be used directly to add sources and sinks via the Python API.
 .. code-block:: python
 
     from arcana.common import Clinical
-    from fileformats.medimage import DicomSet, NiftiGz
+    from fileformats.medimage import DicomSeries, NiftiGz
 
     xnat_dataset.add_source(
         name='T1w',
         path=r'.*t1_mprage.*'
-        datatype=DicomSet,
+        datatype=DicomSeries,
         order=1,
         quality_threshold='usable',
         is_regex=True

@@ -44,7 +44,7 @@ grid:
   sources:
     anat/t1w:
       datatype:
-        format: medimage/dicom-set
+        format: medimage/dicom-series
         classifiers:
           species: human
           region: brain
@@ -58,7 +58,7 @@ grid:
       metadata_schema: null
     anat/flair:
       datatype:
-        format: medimage/dicom-set
+        format: medimage/dicom-series
         classifiers:
           species: human
           region: brain
@@ -106,7 +106,7 @@ grid:
           path: ".*bold.*"
           order: 0  # First fMRI acquisition is assumed to be REST
           datatype:
-            format: medimage/dicom-set
+            format: medimage/dicom-series
             classifiers:
               species: human
               region: brain
@@ -122,7 +122,7 @@ grid:
           path: ".*bold.*"
           order: 1  # Second fMRI acquisition is assumed to be a finger-tapping task
           datatype:
-            format: medimage/dicom-set
+            format: medimage/dicom-series
             classifiers:
               species: human
               region: brain
@@ -138,7 +138,7 @@ grid:
           path: ".*bold.*"
           order: 2  # Third fMRI acquisition is assumed to be a finger-tapping task
           datatype:
-            format: medimage/dicom-set
+            format: medimage/dicom-series
             classifiers:
               species: human
               region: brain

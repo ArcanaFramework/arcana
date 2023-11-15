@@ -35,7 +35,7 @@ def deploy():
     name="make-app",
     help="""Construct and build a dockerfile/apptainer-file for containing a pipeline
 
-SPEC_ROOT is the file system path to the specification to build, or directory
+SPEC_PATH is the file system path to the specification to build, or directory
 containing multiple specifications
 
 TARGET is the type of image to build, e.g. arcana.xnat.deploy:XnatApp
@@ -44,7 +44,7 @@ If it is located under the `arcana.deploy`, then that prefix can be dropped, e.g
 common:App
 """,
 )
-@click.argument("spec_root", type=click.Path(exists=True, path_type=Path))
+@click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
 @click.argument("target", type=str)
 @click.option(
     "--registry",
@@ -172,9 +172,15 @@ common:App
     default=False,
     help=("Remove built images after they are pushed to the registry"),
 )
+@click.option(
+    "--spec-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=("The root path to consider the specs to be relative to, defaults to CWD"),
+)
 def make_app(
     target,
-    spec_root,
+    spec_path: Path,
     registry,
     release,
     tag_latest,
@@ -192,20 +198,38 @@ def make_app(
     check_registry,
     push,
     clean_up,
+    spec_root: Path,
 ):
     if tag_latest and not release:
         raise ValueError("'--tag-latest' flag requires '--release'")
 
-    if isinstance(spec_root, bytes):  # FIXME: This shouldn't be necessary
-        spec_root = Path(spec_root.decode("utf-8"))
+    if spec_root is None:
+        if spec_path.is_dir():
+            spec_root = spec_path
+        else:
+            spec_root = spec_path.parent
+            if not spec_root.name:
+                raise ValueError(
+                    "Spec paths must be placed within a directory, which will "
+                    f"be interpreted as the name of the overall package ({spec_path})"
+                )
+        logger.info(
+            "`--spec-root` was not explicitly provided so assuming the same as spec path '%s'",
+            str(spec_root),
+        )
+
+    package_name = spec_root.name
+
+    if isinstance(spec_path, bytes):  # FIXME: This shouldn't be necessary
+        spec_path = Path(spec_path.decode("utf-8"))
     if isinstance(build_dir, bytes):  # FIXME: This shouldn't be necessary
         build_dir = Path(build_dir.decode("utf-8"))
 
     if build_dir is None:
-        if spec_root.is_file():
-            build_dir = spec_root.parent / (".build-" + spec_root.stem)
+        if spec_path.is_file():
+            build_dir = spec_path.parent / (".build-" + spec_path.stem)
         else:
-            build_dir = spec_root / ".build"
+            build_dir = spec_path / ".build"
 
     if not build_dir.exists():
         build_dir.mkdir()
@@ -233,7 +257,8 @@ def make_app(
     # FIXME: need to test for this
     with ClassResolver.FALLBACK_TO_STR:
         image_specs: ty.List[target_cls] = target_cls.load_tree(
-            spec_root,
+            spec_path,
+            root_dir=spec_root,
             registry=registry,
             license_paths=license_paths,
             licenses_to_download=set(license_to_download),
@@ -289,7 +314,7 @@ def make_app(
 
     if release or save_manifest:
         manifest = {
-            "package": spec_root.stem,
+            "package": package_name,
             "images": [],
         }
         if release:
@@ -299,7 +324,7 @@ def make_app(
 
     for image_spec in image_specs:
         spec_build_dir = (
-            build_dir / image_spec.loaded_from.relative_to(spec_root.absolute())
+            build_dir / image_spec.loaded_from.relative_to(spec_path.absolute())
         ).with_suffix("")
         if spec_build_dir.exists():
             shutil.rmtree(spec_build_dir)
@@ -350,6 +375,13 @@ def make_app(
                     container.stop()
                     container.remove()
                 dc.images.remove(image_ref, force=True)
+                result = dc.containers.prune()
+                dc.images.prune(filters={"dangling": False})
+                logger.info(
+                    "Removed '%s' image and associated containers and freed up %s of disk space ",
+                    image_ref,
+                    result["SpaceReclaimed"],
+                )
 
             remove_image_and_containers(image_spec.reference)
             remove_image_and_containers(image_spec.base_image.reference)
@@ -365,7 +397,7 @@ def make_app(
         metapkg = Metapackage(
             name=release[0],
             version=release[1],
-            org=spec_root.stem,
+            org=package_name,
             manifest=manifest,
         )
         metapkg.make(use_local_packages=use_local_packages)
@@ -391,7 +423,7 @@ def make_app(
                 # Also push release to "latest" tag
                 image = dc.images.get(metapkg.reference)
                 latest_tag = metapkg.path + ":latest"
-                image.reference(latest_tag)
+                image.tag(latest_tag)
 
                 try:
                     dc.api.push(latest_tag)
@@ -445,25 +477,6 @@ def list_images(spec_root, registry):
         click.echo(image_spec.reference)
 
 
-# @deploy.command(
-#     name="test",
-#     help="""Test container images defined by YAML
-# specs
-
-# Arguments
-# ---------
-# module_path
-#     The file system path to the module to build""",
-# )
-# @click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
-# def test(spec_path):
-#     # FIXME: Workaround for click 7.x, which improperly handles path_type
-#     if type(spec_path) is bytes:
-#         spec_path = Path(spec_path.decode("utf-8"))
-
-#     raise NotImplementedError
-
-
 @deploy.command(
     name="make-docs",
     help="""Build docs for one or more yaml wrappers
@@ -473,7 +486,7 @@ SPEC_ROOT is the path of a YAML spec file or directory containing one or more su
 The generated documentation will be saved to OUTPUT.
 """,
 )
-@click.argument("spec_root", type=click.Path(exists=True, path_type=Path))
+@click.argument("spec_path", type=click.Path(exists=True, path_type=Path))
 @click.argument("output", type=click.Path(path_type=Path))
 @click.option(
     "--registry",
@@ -490,12 +503,20 @@ The generated documentation will be saved to OUTPUT.
         "the command"
     ),
 )
-def make_docs(spec_root, output, registry, flatten, loglevel, default_data_space):
-    # FIXME: Workaround for click 7.x, which improperly handles path_type
-    if type(spec_root) is bytes:
-        spec_root = Path(spec_root.decode("utf-8"))
-    if type(output) is bytes:
-        output = Path(output.decode("utf-8"))
+@click.option(
+    "--spec-root",
+    type=click.Path(path_type=Path),
+    default=None,
+    help=("The root path to consider the specs to be relative to, defaults to CWD"),
+)
+def make_docs(
+    spec_path, output, registry, flatten, loglevel, default_data_space, spec_root
+):
+    # # FIXME: Workaround for click 7.x, which improperly handles path_type
+    # if type(spec_path) is bytes:
+    #     spec_path = Path(spec_path.decode("utf-8"))
+    # if type(output) is bytes:
+    #     output = Path(output.decode("utf-8"))
 
     logging.basicConfig(level=getattr(logging, loglevel.upper()))
 
@@ -505,7 +526,10 @@ def make_docs(spec_root, output, registry, flatten, loglevel, default_data_space
 
     with ClassResolver.FALLBACK_TO_STR:
         image_specs = App.load_tree(
-            spec_root, registry=registry, default_data_space=default_data_space
+            spec_path,
+            registry=registry,
+            root_dir=spec_root,
+            default_data_space=default_data_space,
         )
 
     for image_spec in image_specs:

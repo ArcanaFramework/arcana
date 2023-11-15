@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Union, Dict, Tuple
+import typing as ty
 import shutil
 import re
 import yaml
@@ -196,7 +197,7 @@ command:
         """
 ---
 source_file: spec.yaml
-title: spec
+title: package.spec
 weight: 10
 
 ---
@@ -204,7 +205,7 @@ weight: 10
 ## Package Info
 |Key|Value|
 |---|-----|
-|Name|spec|
+|Name|package.spec|
 |Title|a simple app|
 |Package version|0.16.1|
 |Build|0|
@@ -278,21 +279,21 @@ command:
         datatype: medimage/nifti-gz-x
         help: "T1-weighted anatomical scan"
         column_defaults:
-          datatype: medimage/dicom-set
+          datatype: medimage/dicom-series
       T2w:
         configuration:
           path: anat/T2w
         datatype: medimage/nifti-gz-x
         help: "T2-weighted anatomical scan"
         column_defaults:
-          datatype: medimage/dicom-set
+          datatype: medimage/dicom-series
       fMRI:
         datatype: medimage/nifti-gz-x
         help: "functional MRI"
         configuration:
           path: func/bold/task=rest
         column_defaults:
-          datatype: medimage/dicom-set
+          datatype: medimage/dicom-series
     outputs:
       mriqc:
         datatype: generic/directory
@@ -313,7 +314,7 @@ command:
         """
 ---
 source_file: /var/folders/mz/yn83q2fd3s758w1j75d2nnw80000gn/T/tmp47_dxmyq/specs/spec.yaml
-title: spec
+title: package.spec
 weight: 10
 
 ---
@@ -321,7 +322,7 @@ weight: 10
 ## Package Info
 |Key|Value|
 |---|-----|
-|Name|spec|
+|Name|package.spec|
 |Title|a more involved image spec|
 |Package version|0.16.1|
 |Build|10|
@@ -345,9 +346,9 @@ a longer description
 #### Inputs
 |Name|Required data-type|Default column data-type|Description|
 |----|------------------|------------------------|-----------|
-|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom-set" aria-label="medimage/dicom-set">medimage/dicom-set</span>|T1-weighted anatomical scan|
-|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom-set" aria-label="medimage/dicom-set">medimage/dicom-set</span>|T2-weighted anatomical scan|
-|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom-set" aria-label="medimage/dicom-set">medimage/dicom-set</span>|functional MRI|
+|`T1w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom-series" aria-label="medimage/dicom-series">medimage/dicom-series</span>|T1-weighted anatomical scan|
+|`T2w`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom-series" aria-label="medimage/dicom-series">medimage/dicom-series</span>|T2-weighted anatomical scan|
+|`fMRI`|<span data-toggle="tooltip" data-placement="bottom" title="medimage/nifti-gz-x" aria-label="medimage/nifti-gz-x">medimage/nifti-gz-x</span>|<span data-toggle="tooltip" data-placement="bottom" title="medimage/dicom-series" aria-label="medimage/dicom-series">medimage/dicom-series</span>|functional MRI|
 
 #### Outputs
 |Name|Required data-type|Default column data-type|Description|
@@ -392,10 +393,11 @@ def _make_docs(
     flatten: ty.Optional[bool] = None,
 ) -> Union[str, Dict[str, str]]:
     out_dir = work_dir / "out"
-    specs_dir = work_dir / "specs"
+    org_dir = work_dir / "org"
+    specs_dir = org_dir / "package"
     if specs_dir.exists():
         shutil.rmtree(specs_dir)
-    specs_dir.mkdir()
+    specs_dir.mkdir(parents=True)
 
     if type(docs) is str:
         (specs_dir / "spec.yaml").write_text(docs)
@@ -410,6 +412,8 @@ def _make_docs(
         [
             specs_dir.as_posix(),
             out_dir.as_posix(),
+            "--spec-root",
+            str(org_dir),
         ]
         + (["--flatten" if flatten else "--no-flatten"] if flatten is not None else [])
         + list(args),
@@ -418,7 +422,7 @@ def _make_docs(
     assert result.exit_code == 0, show_cli_trace(result)
 
     if type(docs) is str:
-        return (out_dir / "spec.md").read_text().strip()
+        return (out_dir / "org" / "package.spec.md").read_text().strip()
     else:
         return {
             file.relative_to(out_dir).as_posix(): file.read_text().strip()

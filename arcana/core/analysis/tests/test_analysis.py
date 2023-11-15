@@ -26,7 +26,7 @@ from arcana.core.analysis.mark import (
 )
 from arcana.core.analysis.spec import Operation, ARCANA_SPEC
 from fileformats.text import TextFile
-from fileformats.archive import Zip
+from fileformats.application import Zip
 from arcana.common import DirTree
 from arcana.core.analysis.salience import (
     CheckStatus,
