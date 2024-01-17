@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" />
 
     <!-- Generated with Sphinx 7.2.6 and Furo 2023.09.10 -->
-        <title>arcana.core.data.store.base - Arcana v0.10.13</title>
+        <title>arcana.core.data.store.base - Arcana v0.10.14</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../../index.html"><div class="brand">Arcana v0.10.13</div></a>
+      <a href="../../../../../index.html"><div class="brand">Arcana v0.10.14</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.13</span>
+  <span class="sidebar-brand-text">Arcana v0.10.14</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -227,6 +227,7 @@
 <span class="p">)</span>
 <span class="kn">import</span> <span class="nn">arcana</span>
 <span class="kn">from</span> <span class="nn">fileformats.core</span> <span class="kn">import</span> <span class="n">DataType</span>
+<span class="kn">from</span> <span class="nn">fileformats.text</span> <span class="kn">import</span> <span class="n">Plain</span> <span class="k">as</span> <span class="n">PlainText</span>
 <span class="kn">from</span> <span class="nn">arcana.core.utils.misc</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">get_config_file_path</span><span class="p">,</span>
     <span class="n">NestedContext</span><span class="p">,</span>
@@ -254,7 +255,6 @@
 
 <span class="nd">@attrs</span><span class="o">.</span><span class="n">define</span>
 <span class="k">class</span> <span class="nc">ConnectionManager</span><span class="p">(</span><span class="n">NestedContext</span><span class="p">):</span>
-
     <span class="n">store</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Any</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">session</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Any</span> <span class="o">=</span> <span class="n">attrs</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
@@ -855,6 +855,25 @@
                 <span class="n">inferred_ids</span><span class="p">[</span><span class="n">freq</span><span class="p">]</span> <span class="o">=</span> <span class="n">inferred_id</span>
         <span class="k">return</span> <span class="n">inferred_ids</span>
 
+    <span class="k">def</span> <span class="nf">get_site_license_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlainText</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Access the site-wide license file</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        name : str</span>
+<span class="sd">            name of the license</span>
+<span class="sd">        user : str, optional</span>
+<span class="sd">            the site-licenses user, by default None</span>
+<span class="sd">        password : str, optional</span>
+<span class="sd">            the site-licenses password, by default None</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        PlainText</span>
+<span class="sd">            the license file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">site_licenses_dataset</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">get_license_file</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
     <span class="k">def</span> <span class="nf">__bytes_repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cache</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Bytes representation of store to be used in Pydra input hashing&quot;&quot;&quot;</span>
         <span class="k">yield</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__module__</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
@@ -1163,7 +1182,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2023, Thomas G. Close
+                Copyright &#169; 2024, Thomas G. Close
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -1183,7 +1202,7 @@
       
     </aside>
   </div>
-</div><script src="../../../../../_static/documentation_options.js?v=c75e647c"></script>
+</div><script src="../../../../../_static/documentation_options.js?v=0cd7f4b1"></script>
     <script src="../../../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/scripts/furo.js?v=32e29ea5"></script>

@@ -5,7 +5,7 @@
     <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" />
 
     <!-- Generated with Sphinx 7.2.6 and Furo 2023.09.10 -->
-        <title>arcana.core.data.set.base - Arcana v0.10.13</title>
+        <title>arcana.core.data.set.base - Arcana v0.10.14</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=d8449d71" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -128,7 +128,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../../../../index.html"><div class="brand">Arcana v0.10.13</div></a>
+      <a href="../../../../../index.html"><div class="brand">Arcana v0.10.14</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -154,7 +154,7 @@
     <img class="sidebar-logo" src="../../../../../_static/logo_small.png" alt="Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">Arcana v0.10.13</span>
+  <span class="sidebar-brand-text">Arcana v0.10.14</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../../../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -223,7 +223,7 @@
 <span class="kn">import</span> <span class="nn">attrs.filters</span>
 <span class="kn">from</span> <span class="nn">attrs.converters</span> <span class="kn">import</span> <span class="n">default_if_none</span>
 <span class="kn">from</span> <span class="nn">pydra.utils.hash</span> <span class="kn">import</span> <span class="n">hash_single</span><span class="p">,</span> <span class="n">bytes_repr_mapping_contents</span>
-<span class="kn">from</span> <span class="nn">fileformats.generic</span> <span class="kn">import</span> <span class="n">File</span>
+<span class="kn">from</span> <span class="nn">fileformats.text</span> <span class="kn">import</span> <span class="n">Plain</span> <span class="k">as</span> <span class="n">PlainText</span>
 <span class="kn">from</span> <span class="nn">arcana.core.exceptions</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">ArcanaDataMatchError</span><span class="p">,</span>
     <span class="n">ArcanaLicenseNotFoundError</span><span class="p">,</span>
@@ -428,7 +428,7 @@
 
     <span class="nd">@hierarchy</span><span class="o">.</span><span class="n">validator</span>
     <span class="k">def</span> <span class="nf">hierarchy_validator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">hierarchy</span><span class="p">):</span>
-        <span class="n">not_valid</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">hierarchy</span> <span class="k">if</span> <span class="n">f</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">__members__</span><span class="p">]</span>
+        <span class="n">not_valid</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">hierarchy</span> <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">__members__</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">not_valid</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">ArcanaWrongDataSpaceError</span><span class="p">(</span>
                 <span class="sa">f</span><span class="s2">&quot;hierarchy items </span><span class="si">{</span><span class="n">not_valid</span><span class="si">}</span><span class="s2"> are not part of the </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="si">}</span><span class="s2"> data space&quot;</span>
@@ -437,7 +437,7 @@
         <span class="c1"># each subsequent</span>
         <span class="n">covered</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer_str</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">hierarchy</span><span class="p">):</span>
-            <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">[</span><span class="n">layer_str</span><span class="p">]</span>
+            <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">space</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">layer_str</span><span class="p">)]</span>
             <span class="n">diff</span> <span class="o">=</span> <span class="p">(</span><span class="n">layer</span> <span class="o">^</span> <span class="n">covered</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">layer</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">diff</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">ArcanaUsageError</span><span class="p">(</span>
@@ -989,11 +989,11 @@
 
             <span class="n">missing</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">license_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_license_file</span><span class="p">(</span><span class="n">lic</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="n">license_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_license_file</span><span class="p">(</span><span class="n">lic</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
             <span class="k">except</span> <span class="n">ArcanaDataMatchError</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">site_licenses_dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">try</span><span class="p">:</span>
-                        <span class="n">license_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_license_file</span><span class="p">(</span>
+                        <span class="n">license_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_license_file</span><span class="p">(</span>
                             <span class="n">lic</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="n">site_licenses_dataset</span>
                         <span class="p">)</span>
                     <span class="k">except</span> <span class="n">ArcanaDataMatchError</span><span class="p">:</span>
@@ -1013,38 +1013,42 @@
                 <span class="p">)</span>
             <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">license_file</span><span class="p">,</span> <span class="n">lic</span><span class="o">.</span><span class="n">destination</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">install_license</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">source_file</span><span class="p">:</span> <span class="n">File</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">install_license</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">source_file</span><span class="p">:</span> <span class="n">PlainText</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Store project-specific license in dataset</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        name : str</span>
 <span class="sd">            name of the license to install</span>
-<span class="sd">        source_file : File</span>
-<span class="sd">            path to the license file to install</span>
+<span class="sd">        source_file : PlainText</span>
+<span class="sd">            the license file to install</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span> <span class="nn">arcana.core.deploy.image.components</span> <span class="kn">import</span> <span class="n">License</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
-            <span class="n">item</span><span class="o">=</span><span class="n">File</span><span class="p">(</span><span class="n">source_file</span><span class="p">),</span>
-            <span class="n">path</span><span class="o">=</span><span class="n">License</span><span class="o">.</span><span class="n">column_path</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
-            <span class="n">datatype</span><span class="o">=</span><span class="n">File</span><span class="p">,</span>
-            <span class="n">row</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">,</span>
-        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_license_entry</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">ArcanaDataMatchError</span><span class="p">:</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">create_entry</span><span class="p">(</span>
+                <span class="n">License</span><span class="o">.</span><span class="n">column_path</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">PlainText</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">PlainText</span><span class="p">(</span><span class="n">source_file</span><span class="p">),</span> <span class="n">entry</span><span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_get_license_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataEntry</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">_get_license_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DataEntry</span><span class="p">:</span>
         <span class="kn">from</span> <span class="nn">arcana.core.deploy.image.components</span> <span class="kn">import</span> <span class="n">License</span>
 
         <span class="k">if</span> <span class="n">dataset</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">dataset</span> <span class="o">=</span> <span class="bp">self</span>
         <span class="n">column</span> <span class="o">=</span> <span class="n">DataSink</span><span class="p">(</span>
             <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_license&quot;</span><span class="p">,</span>
-            <span class="n">datatype</span><span class="o">=</span><span class="n">File</span><span class="p">,</span>
+            <span class="n">datatype</span><span class="o">=</span><span class="n">PlainText</span><span class="p">,</span>
             <span class="n">row_frequency</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">root_freq</span><span class="p">,</span>
             <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
             <span class="n">path</span><span class="o">=</span><span class="n">License</span><span class="o">.</span><span class="n">column_path</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
         <span class="p">)</span>
-        <span class="k">return</span> <span class="n">File</span><span class="p">(</span><span class="n">column</span><span class="o">.</span><span class="n">match_entry</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">root</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">column</span><span class="o">.</span><span class="n">match_entry</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_license_file</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlainText</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">PlainText</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_license_entry</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">infer_ids</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ids</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">],</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ty</span><span class="o">.</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span>
@@ -1088,7 +1092,7 @@
         <div class="bottom-of-page">
           <div class="left-details">
             <div class="copyright">
-                Copyright &#169; 2023, Thomas G. Close
+                Copyright &#169; 2024, Thomas G. Close
             </div>
             Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
             
@@ -1108,7 +1112,7 @@
       
     </aside>
   </div>
-</div><script src="../../../../../_static/documentation_options.js?v=c75e647c"></script>
+</div><script src="../../../../../_static/documentation_options.js?v=0cd7f4b1"></script>
     <script src="../../../../../_static/doctools.js?v=888ff710"></script>
     <script src="../../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../../_static/scripts/furo.js?v=32e29ea5"></script>
