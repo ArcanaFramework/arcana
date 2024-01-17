@@ -20,7 +20,6 @@ from arcana.core.exceptions import (
     ArcanaError,
     DatatypeUnsupportedByStoreError,
 )
-from arcana.common.data.space import Samples
 from arcana.core.utils.misc import dict_diff, full_path
 from ..entry import DataEntry
 from ..row import DataRow
@@ -354,6 +353,8 @@ class RemoteStore(DataStore):
                 space = store.DEFAULT_SPACE
                 hierarchy = store.DEFAULT_HIERRACHY
             except AttributeError:
+                from arcana.common.data.space import Samples
+
                 space = Samples
                 hierarchy = [Samples.sample]  # just create a dummy one
             with store.connection:
