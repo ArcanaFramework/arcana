@@ -322,24 +322,20 @@ class RemoteStore(DataStore):
             Password to connect to the XNAT repository with, by default None
         """
         # Reconnect to a new store object using the site-license user/password
-        if user is None:
-            try:
+        try:
+            if user is None:
                 user = os.environ[self.SITE_LICENSES_USER_ENV]
-            except KeyError:
-                raise RuntimeError(
-                    "Username for the account with which to access the "
-                    f"site-licenses dataset must be stored in '{self.SITE_LICENSES_USER_ENV}' "
-                    "environment variables, respectively"
-                )
-        if password is None:
-            try:
+            if password is None:
                 password = os.environ[self.SITE_LICENSES_PASS_ENV]
-            except KeyError:
-                raise RuntimeError(
-                    "Password for the account with which to access the "
-                    "site-licenses dataset must be stored in "
-                    f"'{self.SITE_LICENSES_PASS_ENV}' environment variable"
-                )
+        except KeyError:
+            logger.warning(
+                "Username for the account with which to access the "
+                "site-licenses dataset must be stored in '%s' and '%s' "
+                "environment variables (if not passed directly), respectively",
+                self.SITE_LICENSES_USER_ENV,
+                self.SITE_LICENSES_PASS_ENV,
+            )
+            return None
         kwargs = attrs.asdict(self, recurse=False)
         kwargs["user"] = user
         kwargs["password"] = password
