@@ -1,11 +1,11 @@
 from fileformats.core import DataType
 
 
-class MedimageClassifier(DataType):
+class ContentsClassifier(DataType):
     pass
 
 
-class SpeciesClassifier(MedimageClassifier):
+class SpeciesClassifier(ContentsClassifier):
 
     category = "species"
     category_code = ""

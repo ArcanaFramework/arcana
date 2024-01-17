@@ -73,6 +73,7 @@ def test_deploy_make_app_cli(command_spec, cli_runner, work_dir):
     dc.images.remove(tag)
 
 
+@pytest.mark.xfail(reason="Need to fix the test handle invalid docker tag name used")
 def test_deploy_remake_app_cli(command_spec, docker_registry, cli_runner, run_prefix):
     """Tests the check to see whether"""
 

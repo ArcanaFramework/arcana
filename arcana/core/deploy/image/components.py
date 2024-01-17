@@ -193,7 +193,7 @@ class License:
     def column_path(self, name):
         """The column name (and resource name) for the license if it is to be downloaded
         from the source dataset"""
-        return name + self.COLUMN_SUFFIX
+        return name + self.COLUMN_SUFFIX + "@"
 
     COLUMN_SUFFIX = "_LICENSE"
 
