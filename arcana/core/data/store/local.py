@@ -314,7 +314,7 @@ class LocalStore(DataStore):
     def root_dir(self, row) -> Path:
         return Path(row.dataset.id)
 
-    def site_licenses_dataset(self):
+    def site_licenses_dataset(self, **kwargs):
         """Provide a place to store hold site-wide licenses"""
         dataset_root = get_home_dir() / self.SITE_LICENSES_DIR
         if not dataset_root.exists():
