@@ -190,11 +190,22 @@ class DirTree(LocalStore):
             the copy of the file-set that has been stored within the data entry
         """
         fspath = self._fileset_fspath(entry)
+        _, new_stem, new_ext = FileSet.decompose_fspath(entry.path.split("@")[0])
+        if new_ext:
+            if len(fileset.fspaths) > 1:
+                raise ArcanaUsageError(
+                    "Cannot store file-set with multiple files in dirtree store "
+                    "when extension is specified"
+                )
+            if new_ext != FileSet.decompose_fspath(fileset.fspath)[2]:
+                raise ArcanaUsageError(
+                    "Cannot change extension of file-set when copying to dirtree store"
+                )
         # Create target directory if it doesn't exist already
         copied_fileset = fileset.copy(
             dest_dir=fspath.parent,
             collation=fileset.CopyCollation.adjacent,
-            new_stem=fspath.name[: -len(fileset.ext)] if fileset.ext else fspath.name,
+            new_stem=new_stem,
             make_dirs=True,
             overwrite=True,
         )

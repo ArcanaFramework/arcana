@@ -12,6 +12,7 @@ from arcana.core.utils.serialize import (
 )
 import arcana
 from fileformats.core import DataType
+from fileformats.text import Plain as PlainText
 from arcana.core.utils.misc import (
     get_config_file_path,
     NestedContext,
@@ -39,7 +40,6 @@ if ty.TYPE_CHECKING:  # pragma: no cover
 
 @attrs.define
 class ConnectionManager(NestedContext):
-
     store: ty.Any = None
     session: ty.Any = attrs.field(default=None, init=False)
 
@@ -637,6 +637,25 @@ class DataStore(metaclass=ABCMeta):
                         )[0]
                 inferred_ids[freq] = inferred_id
         return inferred_ids
+
+    def get_site_license_file(self, name: str, **kwargs) -> PlainText:
+        """Access the site-wide license file
+
+        Parameters
+        ----------
+        name : str
+            name of the license
+        user : str, optional
+            the site-licenses user, by default None
+        password : str, optional
+            the site-licenses password, by default None
+
+        Returns
+        -------
+        PlainText
+            the license file
+        """
+        return self.site_licenses_dataset(**kwargs).get_license_file(name)
 
     def __bytes_repr__(self, cache):
         """Bytes representation of store to be used in Pydra input hashing"""

@@ -64,7 +64,7 @@ class RemoteStore(DataStore):
     FIELD_PROV_RESOURCE = "__provenance__"
     METADATA_RESOURCE = "__arcana__"
     LICENSE_RESOURCE = "LICENSES"
-    SITE_LICENSES_DATASET_ENV = "ARCANA_SITE_LICENSE_DATASET"
+    SITE_LICENSES_DATASET = "SITE_SOFTWARE_LICENSES"
     SITE_LICENSES_USER_ENV = "ARCANA_SITE_LICENSE_USER"
     SITE_LICENSES_PASS_ENV = "ARCANA_SITE_LICENSE_PASS"
 
@@ -300,39 +300,71 @@ class RemoteStore(DataStore):
         return item
 
     def create_entry(self, path: str, datatype: type, row: DataRow) -> DataEntry:
-        if datatype.is_fileset:
-            entry = self.create_fileset_entry(path, datatype, row)
-        elif datatype.is_field:
-            entry = self.create_field_entry(path, datatype, row)
-        else:
-            raise DatatypeUnsupportedByStoreError(entry.datatype, self)
+        with self.connection:
+            if datatype.is_fileset:
+                entry = self.create_fileset_entry(path, datatype, row)
+            elif datatype.is_field:
+                entry = self.create_field_entry(path, datatype, row)
+            else:
+                raise DatatypeUnsupportedByStoreError(entry.datatype, self)
         return entry
 
-    def site_licenses_dataset(self):
+    def site_licenses_dataset(self, user: str = None, password: str = None):
         """Return a dataset that holds site-wide licenses
 
         Returns
         -------
         Dataset or None
             the dataset that holds site-wide licenses
+        user: str, optional
+            Username with which to connect to XNAT with, by default None
+        password: str, optional
+            Password to connect to the XNAT repository with, by default None
         """
+        # Reconnect to a new store object using the site-license user/password
+        if user is None:
+            try:
+                user = os.environ[self.SITE_LICENSES_USER_ENV]
+            except KeyError:
+                raise RuntimeError(
+                    "Username for the account with which to access the "
+                    f"site-licenses dataset must be stored in '{self.SITE_LICENSES_USER_ENV}' "
+                    "environment variables, respectively"
+                )
+        if password is None:
+            try:
+                password = os.environ[self.SITE_LICENSES_PASS_ENV]
+            except KeyError:
+                raise RuntimeError(
+                    "Password for the account with which to access the "
+                    "site-licenses dataset must be stored in "
+                    f"'{self.SITE_LICENSES_PASS_ENV}' environment variable"
+                )
+        kwargs = attrs.asdict(self, recurse=False)
+        kwargs["user"] = user
+        kwargs["password"] = password
+        del kwargs["connection"]
+        store = type(self)(**kwargs)
         try:
-            user = os.environ[self.SITE_LICENSES_USER_ENV]
+            return store.load_dataset(self.SITE_LICENSES_DATASET)
         except KeyError:
-            store = self
-        else:
-            # Reconnect to store with site-license user/password
-            store = type(self)(
-                server=self,
-                cache_dir=self.cache_dir,
-                user=user,
-                password=os.environ[self.SITE_LICENSES_PASS_ENV],
-            )
-        try:
-            dataset_name = os.environ[self.SITE_LICENSES_DATASET_ENV]
-        except KeyError:
-            return None
-        return store.load_dataset(dataset_name)
+            # If no site-wide licenses dataset exists, try to create one
+            try:
+                space = store.DEFAULT_SPACE
+                hierarchy = store.DEFAULT_HIERRACHY
+            except AttributeError:
+                from arcana.common.data.space import Samples
+
+                space = Samples
+                hierarchy = [Samples.sample]  # just create a dummy one
+            with store.connection:
+                store.create_data_tree(self.SITE_LICENSES_DATASET, [], hierarchy)
+            with store.connection:
+                dataset = store.define_dataset(
+                    self.SITE_LICENSES_DATASET, space=space, hierarchy=hierarchy
+                )
+                dataset.save()
+            return store.load_dataset(self.SITE_LICENSES_DATASET)
 
     ###################
     # Get and putters #

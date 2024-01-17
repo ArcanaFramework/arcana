@@ -8,7 +8,7 @@ import attrs
 import attrs.filters
 from attrs.converters import default_if_none
 from pydra.utils.hash import hash_single, bytes_repr_mapping_contents
-from fileformats.generic import File
+from fileformats.text import Plain as PlainText
 from arcana.core.exceptions import (
     ArcanaDataMatchError,
     ArcanaLicenseNotFoundError,
@@ -211,7 +211,7 @@ class Dataset:
 
     @hierarchy.validator
     def hierarchy_validator(self, _, hierarchy):
-        not_valid = [f for f in hierarchy if f not in self.space.__members__]
+        not_valid = [f for f in hierarchy if str(f) not in self.space.__members__]
         if not_valid:
             raise ArcanaWrongDataSpaceError(
                 f"hierarchy items {not_valid} are not part of the {self.space} data space"
@@ -220,7 +220,7 @@ class Dataset:
         # each subsequent
         covered = self.space(0)
         for i, layer_str in enumerate(hierarchy):
-            layer = self.space[layer_str]
+            layer = self.space[str(layer_str)]
             diff = (layer ^ covered) & layer
             if not diff:
                 raise ArcanaUsageError(
@@ -766,11 +766,11 @@ class Dataset:
 
             missing = False
             try:
-                license_file = self._get_license_file(lic.name)
+                license_file = self.get_license_file(lic.name)
             except ArcanaDataMatchError:
                 if site_licenses_dataset is not None:
                     try:
-                        license_file = self._get_license_file(
+                        license_file = self.get_license_file(
                             lic.name, dataset=site_licenses_dataset
                         )
                     except ArcanaDataMatchError:
@@ -790,38 +790,42 @@ class Dataset:
                 )
             shutil.copyfile(license_file, lic.destination)
 
-    def install_license(self, name: str, source_file: File):
+    def install_license(self, name: str, source_file: PlainText):
         """Store project-specific license in dataset
 
         Parameters
         ----------
         name : str
             name of the license to install
-        source_file : File
-            path to the license file to install
+        source_file : PlainText
+            the license file to install
         """
         from arcana.core.deploy.image.components import License
 
-        self.store.post(
-            item=File(source_file),
-            path=License.column_path(name),
-            datatype=File,
-            row=self.root,
-        )
+        try:
+            entry = self._get_license_entry(name)
+        except ArcanaDataMatchError:
+            entry = self.store.create_entry(
+                License.column_path(name), PlainText, self.root
+            )
+        self.store.put(PlainText(source_file), entry)
 
-    def _get_license_file(self, name, dataset=None) -> DataEntry:
+    def _get_license_entry(self, name, dataset=None) -> DataEntry:
         from arcana.core.deploy.image.components import License
 
         if dataset is None:
             dataset = self
         column = DataSink(
             name=f"{name}_license",
-            datatype=File,
+            datatype=PlainText,
             row_frequency=self.root_freq,
             dataset=dataset,
             path=License.column_path(name),
         )
-        return File(column.match_entry(dataset.root).item)
+        return column.match_entry(dataset.root)
+
+    def get_license_file(self, name, dataset=None) -> PlainText:
+        return PlainText(self._get_license_entry(name, dataset).item)
 
     def infer_ids(
         self, ids: ty.Dict[str, str], metadata: ty.Dict[str, ty.Dict[str, str]]
