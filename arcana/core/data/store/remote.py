@@ -358,7 +358,9 @@ class RemoteStore(DataStore):
                 space = Samples
                 hierarchy = [Samples.sample]  # just create a dummy one
             with store.connection:
-                store.create_data_tree(self.SITE_LICENSES_DATASET, [], hierarchy)
+                store.create_data_tree(
+                    self.SITE_LICENSES_DATASET, [], hierarchy=hierarchy
+                )
             with store.connection:
                 dataset = store.define_dataset(
                     self.SITE_LICENSES_DATASET, space=space, hierarchy=hierarchy
