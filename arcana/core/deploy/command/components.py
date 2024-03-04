@@ -1,5 +1,6 @@
 from __future__ import annotations
 import typing as ty
+from pathlib import Path
 import attrs
 from arcana.core.utils.serialize import (
     ObjectConverter,
@@ -12,6 +13,8 @@ from arcana.core.data.row import DataRow
 from fileformats.core import DataType, Field
 from fileformats.core.exceptions import FormatMismatchError
 from arcana.core.data.space import DataSpace
+from arcana.core.data.column import DataSource
+from arcana.core.data.store import DataStore
 from arcana.core.utils.misc import add_exc_note
 
 
@@ -232,3 +235,17 @@ class CommandParameter(CommandField):
     )
     required: bool = False
     default: ty.Any = None
+
+
+@attrs.define(kw_only=True)
+class CommandTest:
+
+    store: DataStore
+    ids: ty.List[str]
+    input_columns: ty.List[DataSource]
+    output_columns: ty.List[DataSource]
+
+    def cache_inputs(self, cache_dir: Path = None):
+        with self.store.connection:
+            for col in self.input_columns:
+                col.cache()

@@ -23,7 +23,7 @@ from arcana.core.data.set.base import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.data.space import DataSpace
 from arcana.core.exceptions import ArcanaUsageError
-from .components import CommandInput, CommandOutput, CommandParameter
+from .components import CommandInput, CommandOutput, CommandParameter, CommandTest
 
 
 if ty.TYPE_CHECKING:
@@ -82,6 +82,9 @@ class ContainerCommand:
         factory=dict, converter=default_if_none(dict)
     )
     image: ty.Optional[App] = None
+    tests: ty.List[CommandTest] = attrs.field(
+        factory=list, converter=default_if_none(list)
+    )
 
     def __attrs_post_init__(self):
         if isinstance(self.row_frequency, DataSpace):
