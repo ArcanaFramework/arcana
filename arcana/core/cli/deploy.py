@@ -193,7 +193,8 @@ common:App
 @click.option(
     "--export-file",
     "-e",
-    type=click.Path(path_type=Path),
+    "export_files",
+    type=ty.Tuple[Path, Path],
     multiple=True,
     default=(),
     help=(
@@ -223,7 +224,7 @@ def make_app(
     clean_up,
     spec_root: Path,
     source_package: ty.Sequence[Path],
-    export_file: ty.Sequence[Path],
+    export_files: ty.Sequence[ty.Tuple[Path, Path]],
 ):
     if tag_latest and not release:
         raise ValueError("'--tag-latest' flag requires '--release'")
@@ -473,6 +474,19 @@ def make_app(
         if save_manifest:
             with open(save_manifest, "w") as f:
                 json.dump(manifest, f, indent="    ")
+
+    for src_path, dest_path in export_files:
+        dest_path.mkdir(parents=True, exist_ok=True)
+        full_src_path = build_dir / src_path
+        if not full_src_path.exists():
+            logger.warning(
+                "Could not find file '%s' to export from build directory", full_src_path
+            )
+            continue
+        if full_src_path.is_dir():
+            shutil.copytree(full_src_path, dest_path)
+        else:
+            shutil.copy(full_src_path, dest_path)
 
     shutil.rmtree(temp_dir)
     if errors:
