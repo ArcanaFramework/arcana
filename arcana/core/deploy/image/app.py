@@ -8,6 +8,7 @@ import shlex
 import shutil
 import attrs
 import yaml
+import toml
 from deepdiff import DeepDiff
 from neurodocker.reproenv import DockerRenderer
 from arcana.core import __version__
@@ -19,7 +20,7 @@ from arcana.core.utils.serialize import (
 from arcana.core.data.space import DataSpace
 from ..command.base import ContainerCommand
 from .base import ArcanaImage
-from .components import ContainerAuthor, License, Docs
+from .components import ContainerAuthor, License, Docs, PipPackage
 
 
 try:
@@ -200,6 +201,7 @@ class App(ArcanaImage):
         license_paths: ty.Dict[str, Path] = None,
         licenses_to_download: set[str] = None,
         default_data_space: ty.Type[DataSpace] = None,
+        source_packages: ty.Sequence[Path] = (),
         **kwargs,
     ):
         """Loads a deploy-build specification from a YAML file
@@ -222,6 +224,9 @@ class App(ArcanaImage):
             `licenses_to_download` otherwise an error is raised
         default_data_space : type[DataSpace]
             the default data space to assume when one isn't explicitly defined
+        source_packages : Sequence[Path]
+            Paths to source packages to include in the image, will be used to determine
+            the local version of the package to install
         **kwargs
             additional keyword arguments that override/augment the values loaded from
             the spec file
@@ -236,7 +241,7 @@ class App(ArcanaImage):
             yml = Path(yml)
         if isinstance(yml, Path):
             yml_dict = cls._load_yaml(yml)
-            if type(yml_dict) is not dict:
+            if not isinstance(yml_dict, dict):
                 raise ValueError(f"{yml!r} didn't contain a dict!")
 
             if "name" not in yml_dict:
@@ -272,6 +277,32 @@ class App(ArcanaImage):
             ]
 
         image = cls(**yml_dict)
+
+        # Replace any pip packages with local source packages
+        for source_package in source_packages:
+            pyproject_toml = source_package / "pyproject.toml"
+            package_name = None
+            if pyproject_toml.exists():
+                config = toml.load(pyproject_toml)
+                package_name = config.get("project", {}).get("name")
+            if package_name is None:
+                package_name = source_package.name
+            new_pip_pkg = None
+            for pip_pkg in image.packages.pip:
+                if pip_pkg.name == package_name:
+                    new_pip_pkg = PipPackage(
+                        name=package_name,
+                        file_path=source_package,
+                        extras=pip_pkg.extras,
+                    )
+                    image.packages.pip.remove(pip_pkg)
+                    image.packages.pip.append(new_pip_pkg)
+                    break
+            if not new_pip_pkg:
+                raise ValueError(
+                    f"Could not find package {package_name} in the pip packages of the "
+                    "image spec: " + '", "'.join(image.packages.pip)
+                )
 
         # Explicitly override directive in loaded spec to store license in the image
 

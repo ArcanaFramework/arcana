@@ -23,11 +23,12 @@ dependencies = [
     "importlib-metadata>=1.4",
     "neurodocker>=0.9.4",
     "pydra>=0.23.0a0",
+    "toml",
     "PyYAML>=6.0",
 ]
-license = {file = "LICENSE"}
-authors = [{name = "Thomas G. Close", email = "tom.g.close@gmail.com"}]
-maintainers = [{name = "Thomas G. Close", email = "tom.g.close@gmail.com"}]
+license = { file = "LICENSE" }
+authors = [{ name = "Thomas G. Close", email = "tom.g.close@gmail.com" }]
+maintainers = [{ name = "Thomas G. Close", email = "tom.g.close@gmail.com" }]
 keywords = ["arcana"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -45,13 +46,7 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-dev = [
-    "black",
-    "codespell",
-    "flake8",
-    "flake8-pyproject",
-    "pre-commit",
-]
+dev = ["black", "codespell", "flake8", "flake8-pyproject", "pre-commit"]
 docs = [
     "docutils>=0.10",
     "furo>=2022.2.14.1",
@@ -84,12 +79,8 @@ source = "vcs"
 version-file = "arcana/core/_version.py"
 
 [tool.hatch.build]
-packages = [
-    "arcana",
-]
-exclude = [
-    "/tests",
-]
+packages = ["arcana"]
+exclude = ["/tests"]
 
 [tool.black]
 line-length = 88
@@ -98,9 +89,7 @@ exclude = "_version.py"
 
 [tool.flake8]
 doctests = true
-per-file-ignores = [
-    "__init__.py:F401"
-]
+per-file-ignores = ["__init__.py:F401"]
 max-line-length = 88
 select = "C,E,F,W,B,B950"
 extend-ignore = ['E203', 'E501', 'E129', 'W503']
