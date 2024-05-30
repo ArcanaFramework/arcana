@@ -1,5 +1,5 @@
-import logging
 import sys
+import logging
 import shutil
 from pathlib import Path
 import json
@@ -20,7 +20,7 @@ from arcana.core.exceptions import ArcanaBuildError
 from arcana.core.data.set.base import Dataset
 from arcana.core.data.store import DataStore
 from arcana.core.utils.misc import extract_file_from_docker_image, DOCKER_HUB
-from .base import cli
+from arcana.core.cli.base import cli
 from arcana.core.deploy.command import entrypoint_opts
 
 logger = logging.getLogger("arcana")
@@ -174,9 +174,35 @@ common:App
 )
 @click.option(
     "--spec-root",
-    type=click.Path(path_type=Path),
+    type=click.Path(path_type=Path, exists=True),
     default=None,
     help=("The root path to consider the specs to be relative to, defaults to CWD"),
+)
+@click.option(
+    "--source-package",
+    "-s",
+    type=click.Path(path_type=Path, exists=True),
+    multiple=True,
+    default=(),
+    help=(
+        "Path to a local Python package to be included in the image. Needs to have a "
+        "package definition that can be built into a source distribution and the name of "
+        "the directory needs to match that of the package to be installed. Multiple "
+        "packages can be specified by repeating the option."
+    ),
+)
+@click.option(
+    "--export-file",
+    "-e",
+    "export_files",
+    type=tuple,
+    multiple=True,
+    default=(),
+    metavar="<internal-dir> <external-dir>",
+    help=(
+        "Path to be exported from the Docker build directory for convenience. Multiple "
+        "files can be specified by repeating the option."
+    ),
 )
 def make_app(
     target,
@@ -199,6 +225,8 @@ def make_app(
     push,
     clean_up,
     spec_root: Path,
+    source_package: ty.Sequence[Path],
+    export_files: ty.Sequence[ty.Tuple[Path, Path]],
 ):
     if tag_latest and not release:
         raise ValueError("'--tag-latest' flag requires '--release'")
@@ -262,6 +290,7 @@ def make_app(
             registry=registry,
             license_paths=license_paths,
             licenses_to_download=set(license_to_download),
+            source_packages=source_package,
         )
 
     # Check the target registry to see a) if the images with the same tag
@@ -447,6 +476,19 @@ def make_app(
         if save_manifest:
             with open(save_manifest, "w") as f:
                 json.dump(manifest, f, indent="    ")
+
+    for src_path, dest_path in export_files:
+        dest_path.mkdir(parents=True, exist_ok=True)
+        full_src_path = build_dir / src_path
+        if not full_src_path.exists():
+            logger.warning(
+                "Could not find file '%s' to export from build directory", full_src_path
+            )
+            continue
+        if full_src_path.is_dir():
+            shutil.copytree(full_src_path, dest_path)
+        else:
+            shutil.copy(full_src_path, dest_path)
 
     shutil.rmtree(temp_dir)
     if errors:
@@ -679,3 +721,7 @@ def pipeline_entrypoint(
         dataset_locator,
         **kwargs,
     )
+
+
+if __name__ == "__main__":
+    make_app(sys.argv[1:])

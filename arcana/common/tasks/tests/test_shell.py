@@ -1,4 +1,5 @@
 from arcana.core.tasks import shell_cmd
+from fileformats.generic import Directory
 
 
 def test_shell_cmd(work_dir):
@@ -42,5 +43,5 @@ def test_shell_cmd(work_dir):
         recursive=True,
     )
 
-    assert result.output.out_dir == str(out_dir)
+    assert result.output.out_dir == Directory(out_dir)
     assert list(p.name for p in out_dir.iterdir()) == ["a-file.txt"]

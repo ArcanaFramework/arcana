@@ -18,7 +18,7 @@ file ('~/.arcana/stores.yaml').
 
 Arguments
 ---------
-nickname
+name
     The name given to the store for reference in other commands
 type
     The storage class and the module it is defined in, e.g.
@@ -126,7 +126,7 @@ def remove(nickname):
 nickname
     Nickname given to the store to refresh the credentials of"""
 )
-@click.argument("nickanme")
+@click.argument("nickname")
 @click.option(
     "--user", "-u", default=None, help="The username to use to connect to the store"
 )
