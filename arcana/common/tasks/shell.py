@@ -3,7 +3,6 @@ import typing as ty
 from pathlib import Path
 import attrs
 from pydra import ShellCommandTask
-import pydra.engine.specs
 from pydra.engine.specs import SpecInfo, ShellSpec, ShellOutSpec
 from arcana.core.utils.serialize import ClassResolver, ObjectListConverter
 from fileformats.core import FileSet, DataType, Field
@@ -178,14 +177,14 @@ class ShellCmdOutput(ShellCmdField):
     def input_only_fields(self):
         return [f.name for f in attrs.fields(type(self)) if f.metadata.get("input")]
 
-    @property
-    def attrs_type(self):
-        tp = super().attrs_type
-        # FIXME: this shouldn't be necessary. Pydra should be smart enough that this is
-        # an output file and shouldn't need to exist
-        if tp in (pydra.engine.specs.File, pydra.engine.specs.Directory):
-            tp = str
-        return tp
+    # @property
+    # def attrs_type(self):
+    #     tp = super().attrs_type
+    #     # FIXME: this shouldn't be necessary. Pydra should be smart enough that this is
+    #     # an output file and shouldn't need to exist
+    #     if tp in (pydra.engine.specs.File, pydra.engine.specs.Directory):
+    #         tp = str
+    #     return tp
 
 
 def shell_cmd(
