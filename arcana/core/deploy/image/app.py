@@ -301,7 +301,7 @@ class App(ArcanaImage):
             if not new_pip_pkg:
                 raise ValueError(
                     f"Could not find package {package_name} in the pip packages of the "
-                    "image spec: " + '", "'.join(image.packages.pip)
+                    "image spec: " + '", "'.join(str(p) for p in image.packages.pip)
                 )
 
         # Explicitly override directive in loaded spec to store license in the image
