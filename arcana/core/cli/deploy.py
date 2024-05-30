@@ -195,9 +195,10 @@ common:App
     "--export-file",
     "-e",
     "export_files",
-    type=ty.Tuple[Path, Path],
+    type=tuple,
     multiple=True,
     default=(),
+    metavar="<internal-dir> <external-dir>",
     help=(
         "Path to be exported from the Docker build directory for convenience. Multiple "
         "files can be specified by repeating the option."
@@ -723,6 +724,4 @@ def pipeline_entrypoint(
 
 
 if __name__ == "__main__":
-    import sys
-
     make_app(sys.argv[1:])
