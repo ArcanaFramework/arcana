@@ -41,7 +41,7 @@ if ty.TYPE_CHECKING:  # pragma: no cover
 @attrs.define
 class ConnectionManager(NestedContext):
     store: ty.Any = None
-    session: ty.Any = attrs.field(default=None, init=False)
+    session: ty.Any = attrs.field(default=None)
 
     def __getattr__(self, attr_name):
         return getattr(self.session, attr_name)
@@ -53,8 +53,14 @@ class ConnectionManager(NestedContext):
         self.store.disconnect(self.session)
         self.session = None
 
+    @classmethod
+    def attrs_converter(cls, session_or_manager: ty.Union, **kwargs):
+        if isinstance(session_or_manager, cls):
+            return session_or_manager
+        return cls(session=session_or_manager)
 
-@attrs.define
+
+@attrs.define(kw_only=True)
 class DataStore(metaclass=ABCMeta):
     """
     Abstract base class for all data store adapters. A data store can be an external
@@ -75,7 +81,11 @@ class DataStore(metaclass=ABCMeta):
 
     # name: ty.Optional[str] = None
     connection: ConnectionManager = attrs.field(
-        factory=ConnectionManager, init=False, hash=False, repr=False, eq=False
+        factory=ConnectionManager,
+        converter=ConnectionManager.attrs_converter,
+        hash=False,
+        repr=False,
+        eq=False,
     )
 
     def __attrs_post_init__(self):
