@@ -180,6 +180,7 @@ class Pipeline:
                 )
             if outpt.field not in self.workflow.output_names:
                 raise ArcanaNameError(
+                    outpt.field,
                     f"{outpt.field} is not in the output spec of '{self.name}' "
                     f"pipeline: " + "', '".join(self.workflow.output_names)
                 )
