@@ -183,7 +183,7 @@ class ClassResolver:
         if not (isclass(klass) or isfunction(klass)):
             klass = type(klass)  # Get the class rather than the object
         if isclass(klass) and issubclass(klass, DataType):
-            return to_mime(klass)
+            return to_mime(klass, official=False)
         module_name = klass.__module__
         if module_name == "builtins":
             return klass.__name__
