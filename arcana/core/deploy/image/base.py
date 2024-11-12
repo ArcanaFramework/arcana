@@ -37,7 +37,7 @@ class ArcanaImage:
 
     name : str
         name of the package/pipeline
-    arcana_spec_version : str
+    spec_version : str
         the version of the "schema" the specification used to define the image.
     version : Version
         version of the package/pipeline
@@ -54,7 +54,7 @@ class ArcanaImage:
         text to include in the image README file
     labels : dict[str, str]
         labels to add into the built image
-    arcana_spec_version : str
+    spec_version : str
         the version of the specification language used to define the image (i.e. this)
     """
 
@@ -74,7 +74,7 @@ class ArcanaImage:
     registry: str = DOCKER_HUB
     readme: ty.Optional[str] = None
     labels: ty.Dict[str, str] = None
-    arcana_spec_version: str = SPEC_VERSION
+    spec_version: str = SPEC_VERSION
 
     @property
     def reference(self):
